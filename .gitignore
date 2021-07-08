@@ -1,4 +1,4 @@
-/target/
+*target/
 
 **/*.rs.bk
 
@@ -8,3 +8,9 @@
 # Temp files
 *.tmp
 *.temp
+
+# Env file
+.env
+
+# Cache file
+.*cache.*
