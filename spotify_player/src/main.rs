@@ -16,7 +16,6 @@ const SCOPES: [&str; 10] = [
 
 mod client;
 mod config;
-mod state;
 
 #[tokio::main]
 async fn main() -> Result<()> {
