@@ -1,3 +1,4 @@
+use anyhow::{anyhow, Result};
 use rspotify::client::Spotify;
 use rspotify::oauth2::{SpotifyClientCredentials, SpotifyOAuth};
 use rspotify::util::get_token;
@@ -15,9 +16,21 @@ const SCOPES: [&str; 10] = [
     "user-library-read",
 ];
 
+mod config;
+
 #[tokio::main]
-async fn main() {
-    let mut oauth = SpotifyOAuth::default().scope(&SCOPES.join(" ")).build();
+async fn main() -> Result<()> {
+    let config_folder = config::get_config_folder_path()?;
+    let client_config = config::ClientConfig::from_config_file(config_folder)?;
+
+    let mut oauth = SpotifyOAuth::default()
+        .client_id(&client_config.client_id)
+        .client_secret(&client_config.client_secret)
+        .redirect_uri("http://localhost:8888/callback")
+        .cache_path(config::get_token_cache_file_path()?)
+        .scope(&SCOPES.join(" "))
+        .build();
+
     match get_token(&mut oauth).await {
         Some(token_info) => {
             let client_credential = SpotifyClientCredentials::default()
@@ -29,6 +42,10 @@ async fn main() {
             let result = spotify.current_playing(None, None).await;
             println!("{:?}", result);
         }
-        None => println!("auth failed"),
+        None => {
+            return Err(anyhow!("auth failed"));
+        }
     };
+
+    Ok(())
 }
