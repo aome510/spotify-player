@@ -1,7 +1,5 @@
-use anyhow::{anyhow, Result};
-use rspotify::client::Spotify;
-use rspotify::oauth2::{SpotifyClientCredentials, SpotifyOAuth};
-use rspotify::util::get_token;
+use anyhow::Result;
+use rspotify::oauth2::SpotifyOAuth;
 
 const SCOPES: [&str; 10] = [
     "user-read-recently-played",
@@ -16,14 +14,18 @@ const SCOPES: [&str; 10] = [
     "user-library-read",
 ];
 
+mod client;
 mod config;
+mod state;
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    env_logger::init();
+
     let config_folder = config::get_config_folder_path()?;
     let client_config = config::ClientConfig::from_config_file(config_folder)?;
 
-    let mut oauth = SpotifyOAuth::default()
+    let oauth = SpotifyOAuth::default()
         .client_id(&client_config.client_id)
         .client_secret(&client_config.client_secret)
         .redirect_uri("http://localhost:8888/callback")
@@ -31,21 +33,9 @@ async fn main() -> Result<()> {
         .scope(&SCOPES.join(" "))
         .build();
 
-    match get_token(&mut oauth).await {
-        Some(token_info) => {
-            let client_credential = SpotifyClientCredentials::default()
-                .token_info(token_info)
-                .build();
-            let spotify = Spotify::default()
-                .client_credentials_manager(client_credential)
-                .build();
-            let result = spotify.current_playing(None, None).await;
-            println!("{:?}", result);
-        }
-        None => {
-            return Err(anyhow!("auth failed"));
-        }
-    };
+    let client = client::Client::new(oauth).await?;
+    let result = client.get_currently_playing().await;
+    println!("{:?}", result);
 
     Ok(())
 }
