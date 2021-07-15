@@ -1,5 +1,5 @@
 use anyhow::Result;
-use rspotify::oauth2::SpotifyOAuth;
+use rspotify::{model, oauth2::SpotifyOAuth};
 
 const SCOPES: [&str; 10] = [
     "user-read-recently-played",
@@ -16,6 +16,22 @@ const SCOPES: [&str; 10] = [
 
 mod client;
 mod config;
+mod state;
+
+use std::{sync::mpsc, thread};
+
+#[tokio::main]
+async fn start_client_watcher(
+    state: state::SharedState,
+    mut client: client::Client,
+    recv: mpsc::Receiver<client::Event>,
+) {
+    while let Ok(event) = recv.recv() {
+        if let Err(err) = client.handle_event(&state, event).await {
+            client.handle_error(err);
+        }
+    }
+}
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -32,9 +48,35 @@ async fn main() -> Result<()> {
         .scope(&SCOPES.join(" "))
         .build();
 
-    let client = client::Client::new(oauth).await?;
-    let result = client.get_currently_playing().await;
-    println!("{:?}", result);
+    let (send, recv) = mpsc::channel::<client::Event>();
 
-    Ok(())
+    let mut client = client::Client::new(oauth);
+    let expires_at = client.refresh_token().await?;
+
+    let state = state::State::new();
+    state.write().unwrap().auth_token_expires_at = expires_at;
+
+    let cloned_state = state.clone();
+    thread::spawn(move || {
+        start_client_watcher(cloned_state, client, recv);
+    });
+
+    loop {
+        if std::time::SystemTime::now() > state.read().unwrap().auth_token_expires_at {
+            send.send(client::Event::RefreshToken).unwrap();
+        }
+        send.send(client::Event::GetCurrentPlayingContext).unwrap();
+        std::thread::sleep(std::time::Duration::from_secs(1));
+        if let Some(context) = state.read().unwrap().current_playing_context.clone() {
+            if let Some(model::PlayingItem::Track(track)) = context.item {
+                let progress_in_sec: u32 = context.progress_ms.unwrap() / 1000;
+                println!(
+                    "currently playing {} at {}/{}",
+                    track.name,
+                    progress_in_sec,
+                    track.duration_ms / 1000
+                );
+            }
+        }
+    }
 }
