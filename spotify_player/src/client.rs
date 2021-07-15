@@ -6,6 +6,7 @@ use rspotify::{
     util::get_token,
 };
 
+/// A spotify client
 pub struct Client {
     spotify: Spotify,
     oauth: SpotifyOAuth,
@@ -21,6 +22,7 @@ impl Client {
             .build()
     }
 
+    /// returns the new `Client`
     pub async fn new(oauth: SpotifyOAuth) -> Result<Self> {
         let mut client = Self {
             spotify: Spotify::default(),
@@ -30,10 +32,11 @@ impl Client {
         Ok(client)
     }
 
-    pub fn handle_error(&self, err: anyhow::Error) {
+    fn handle_error(&self, err: anyhow::Error) {
         log::error!("client error: {:#}", err);
     }
 
+    /// refreshes the client's authentication token
     pub async fn refresh_token(&mut self) -> Result<()> {
         let token = match get_token(&mut self.oauth).await {
             Some(token) => token,
@@ -44,6 +47,7 @@ impl Client {
         Ok(())
     }
 
+    /// returns the current playing context
     pub async fn get_currently_playing(&self) -> Option<CurrentlyPlayingContext> {
         let result = self.spotify.current_playing(None, None).await;
         match result {
