@@ -16,6 +16,7 @@ const SCOPES: [&str; 10] = [
 
 mod client;
 mod config;
+mod event;
 mod state;
 
 use std::{sync::mpsc, thread};
@@ -61,7 +62,13 @@ async fn main() -> Result<()> {
         start_client_watcher(cloned_state, client, recv);
     });
 
-    loop {
+    let cloned_state = state.clone();
+    crossterm::terminal::enable_raw_mode()?;
+    thread::spawn(move || {
+        event::poll_events(cloned_state);
+    });
+
+    while state.read().unwrap().is_running {
         if std::time::SystemTime::now() > state.read().unwrap().auth_token_expires_at {
             send.send(client::Event::RefreshToken).unwrap();
         }
@@ -79,4 +86,6 @@ async fn main() -> Result<()> {
             }
         }
     }
+
+    Ok(())
 }
