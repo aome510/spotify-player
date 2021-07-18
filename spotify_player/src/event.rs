@@ -5,10 +5,12 @@ use tokio::stream::StreamExt;
 
 pub enum Event {
     RefreshToken,
-    GetCurrentPlayingContext,
+    GetCurrentPlaybackContext,
     NextSong,
     PreviousSong,
-    TogglePlayingState,
+    ResumePause,
+    Repeat,
+    Shuffle,
 }
 
 pub enum KeyEvent {
@@ -42,7 +44,13 @@ fn handle_event(event: term_event::Event, send: &mpsc::Sender<Event>) {
                 send.send(Event::PreviousSong).unwrap();
             }
             KeyEvent::None(KeyCode::Char(' ')) => {
-                send.send(Event::TogglePlayingState).unwrap();
+                send.send(Event::ResumePause).unwrap();
+            }
+            KeyEvent::None(KeyCode::Char('r')) => {
+                send.send(Event::Repeat).unwrap();
+            }
+            KeyEvent::None(KeyCode::Char('s')) => {
+                send.send(Event::Shuffle).unwrap();
             }
             _ => {}
         }

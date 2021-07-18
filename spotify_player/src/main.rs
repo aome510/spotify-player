@@ -72,16 +72,18 @@ async fn main() -> Result<()> {
         if std::time::SystemTime::now() > state.read().unwrap().auth_token_expires_at {
             send.send(event::Event::RefreshToken).unwrap();
         }
-        send.send(event::Event::GetCurrentPlayingContext).unwrap();
+        send.send(event::Event::GetCurrentPlaybackContext).unwrap();
         std::thread::sleep(std::time::Duration::from_secs(1));
-        if let Some(context) = state.read().unwrap().current_playing_context.clone() {
+        if let Some(context) = state.read().unwrap().current_playback_context.clone() {
             if let Some(model::PlayingItem::Track(track)) = context.item {
                 let progress_in_sec: u32 = context.progress_ms.unwrap() / 1000;
                 println!(
-                    "currently playing {} at {}/{}",
+                    "currently playing {} at {}/{} (repeat: {}, shuffle: {})",
                     track.name,
                     progress_in_sec,
-                    track.duration_ms / 1000
+                    track.duration_ms / 1000,
+                    context.repeat_state.as_str(),
+                    context.shuffle_state,
                 );
             }
         }

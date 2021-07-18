@@ -4,7 +4,7 @@ use rspotify::model::*;
 
 pub struct State {
     pub auth_token_expires_at: std::time::SystemTime,
-    pub current_playing_context: Option<context::CurrentlyPlayingContext>,
+    pub current_playback_context: Option<context::CurrentlyPlaybackContext>,
 }
 
 pub type SharedState = Arc<RwLock<State>>;
@@ -13,7 +13,7 @@ impl Default for State {
     fn default() -> Self {
         State {
             auth_token_expires_at: std::time::SystemTime::now(),
-            current_playing_context: None,
+            current_playback_context: None,
         }
     }
 }

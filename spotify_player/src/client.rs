@@ -5,6 +5,7 @@ use rspotify::{
     client::Spotify,
     model::*,
     oauth2::{SpotifyClientCredentials, SpotifyOAuth, TokenInfo},
+    senum::*,
     util::get_token,
 };
 
@@ -18,15 +19,6 @@ pub struct Client {
 }
 
 impl Client {
-    fn get_spotify_client(token: TokenInfo) -> Spotify {
-        let client_credential = SpotifyClientCredentials::default()
-            .token_info(token)
-            .build();
-        Spotify::default()
-            .client_credentials_manager(client_credential)
-            .build()
-    }
-
     /// returns the new `Client`
     pub fn new(oauth: SpotifyOAuth) -> Self {
         Self {
@@ -45,9 +37,9 @@ impl Client {
             event::Event::RefreshToken => {
                 self.refresh_token().await?;
             }
-            event::Event::GetCurrentPlayingContext => {
-                let context = self.get_current_playing().await?;
-                state.write().unwrap().current_playing_context = context;
+            event::Event::GetCurrentPlaybackContext => {
+                let context = self.get_current_playback().await?;
+                state.write().unwrap().current_playback_context = context;
             }
             event::Event::NextSong => {
                 self.next_track().await?;
@@ -55,9 +47,17 @@ impl Client {
             event::Event::PreviousSong => {
                 self.previous_track().await?;
             }
-            event::Event::TogglePlayingState => {
+            event::Event::ResumePause => {
                 let state = state.read().unwrap();
                 self.toggle_playing_state(state).await?;
+            }
+            event::Event::Shuffle => {
+                let state = state.read().unwrap();
+                self.toggle_shuffle(state).await?;
+            }
+            event::Event::Repeat => {
+                let state = state.read().unwrap();
+                self.cycle_repeat(state).await?;
             }
         }
         Ok(())
@@ -86,29 +86,28 @@ impl Client {
         )
     }
 
-    // wrapper functions and helper functions of `rspotify` client functions
+    // wrapper functions of `rspotify` client functions
 
-    /// converts a `rspotify` result format into `anyhow` compatible result format
-    fn handle_rspotify_result<T, E: Display>(result: std::result::Result<T, E>) -> Result<T> {
-        match result {
-            Ok(data) => Ok(data),
-            Err(err) => Err(anyhow!(format!("{}", err))),
-        }
+    /// cycles through the repeat state of the current playback
+    async fn cycle_repeat(&self, state: RwLockReadGuard<'_, state::State>) -> Result<()> {
+        let state = Self::get_current_playback_state(&state)?;
+        let next_repeat_state = match state.repeat_state {
+            RepeatState::Off => RepeatState::Track,
+            RepeatState::Track => RepeatState::Context,
+            RepeatState::Context => RepeatState::Off,
+        };
+        Self::handle_rspotify_result(self.spotify.repeat(next_repeat_state, None).await)
     }
 
-    /// gets the current playing state from the application state
-    fn get_current_playing_state<'a>(
-        state: &'a RwLockReadGuard<'a, state::State>,
-    ) -> Result<&'a context::CurrentlyPlayingContext> {
-        match state.current_playing_context.as_ref() {
-            Some(state) => Ok(state),
-            None => Err(anyhow!("unable to get the currently playing context")),
-        }
+    /// toggles the shuffle state of the current playback
+    async fn toggle_shuffle(&self, state: RwLockReadGuard<'_, state::State>) -> Result<()> {
+        let state = Self::get_current_playback_state(&state)?;
+        Self::handle_rspotify_result(self.spotify.shuffle(state.shuffle_state, None).await)
     }
 
-    /// toggle the current playing state (pause/resume a track)
+    /// toggles the current playing state (pause/resume a track)
     async fn toggle_playing_state(&self, state: RwLockReadGuard<'_, state::State>) -> Result<()> {
-        let state = Self::get_current_playing_state(&state)?;
+        let state = Self::get_current_playback_state(&state)?;
         if state.is_playing {
             self.pause_track().await
         } else {
@@ -116,7 +115,7 @@ impl Client {
         }
     }
 
-    /// resume a previously paused/played track
+    /// resumes a previously paused/played track
     async fn resume_track(&self) -> Result<()> {
         Self::handle_rspotify_result(
             self.spotify
@@ -125,7 +124,7 @@ impl Client {
         )
     }
 
-    /// pause currently playing track
+    /// pauses currently playing track
     async fn pause_track(&self) -> Result<()> {
         Self::handle_rspotify_result(self.spotify.pause_playback(None).await)
     }
@@ -141,7 +140,36 @@ impl Client {
     }
 
     /// returns the current playing context
-    async fn get_current_playing(&self) -> Result<Option<context::CurrentlyPlayingContext>> {
-        Self::handle_rspotify_result(self.spotify.current_playing(None, None).await)
+    async fn get_current_playback(&self) -> Result<Option<context::CurrentlyPlaybackContext>> {
+        Self::handle_rspotify_result(self.spotify.current_playback(None, None).await)
+    }
+
+    // helper functions
+
+    fn get_spotify_client(token: TokenInfo) -> Spotify {
+        let client_credential = SpotifyClientCredentials::default()
+            .token_info(token)
+            .build();
+        Spotify::default()
+            .client_credentials_manager(client_credential)
+            .build()
+    }
+
+    /// converts a `rspotify` result format into `anyhow` compatible result format
+    fn handle_rspotify_result<T, E: Display>(result: std::result::Result<T, E>) -> Result<T> {
+        match result {
+            Ok(data) => Ok(data),
+            Err(err) => Err(anyhow!(format!("{}", err))),
+        }
+    }
+
+    /// gets the current playing state from the application state
+    fn get_current_playback_state<'a>(
+        state: &'a RwLockReadGuard<'a, state::State>,
+    ) -> Result<&'a context::CurrentlyPlaybackContext> {
+        match state.current_playback_context.as_ref() {
+            Some(state) => Ok(state),
+            None => Err(anyhow!("unable to get the currently playing context")),
+        }
     }
 }
