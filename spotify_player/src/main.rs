@@ -25,7 +25,7 @@ use std::{sync::mpsc, thread};
 async fn start_client_watcher(
     state: state::SharedState,
     mut client: client::Client,
-    recv: mpsc::Receiver<client::Event>,
+    recv: mpsc::Receiver<event::Event>,
 ) {
     while let Ok(event) = recv.recv() {
         if let Err(err) = client.handle_event(&state, event).await {
@@ -49,7 +49,7 @@ async fn main() -> Result<()> {
         .scope(&SCOPES.join(" "))
         .build();
 
-    let (send, recv) = mpsc::channel::<client::Event>();
+    let (send, recv) = mpsc::channel::<event::Event>();
 
     let mut client = client::Client::new(oauth);
     let expires_at = client.refresh_token().await?;
@@ -62,17 +62,17 @@ async fn main() -> Result<()> {
         start_client_watcher(cloned_state, client, recv);
     });
 
-    let cloned_state = state.clone();
+    let cloned_sender = send.clone();
     crossterm::terminal::enable_raw_mode()?;
     thread::spawn(move || {
-        event::poll_events(cloned_state);
+        event::poll_events(cloned_sender);
     });
 
-    while state.read().unwrap().is_running {
+    loop {
         if std::time::SystemTime::now() > state.read().unwrap().auth_token_expires_at {
-            send.send(client::Event::RefreshToken).unwrap();
+            send.send(event::Event::RefreshToken).unwrap();
         }
-        send.send(client::Event::GetCurrentPlayingContext).unwrap();
+        send.send(event::Event::GetCurrentPlayingContext).unwrap();
         std::thread::sleep(std::time::Duration::from_secs(1));
         if let Some(context) = state.read().unwrap().current_playing_context.clone() {
             if let Some(model::PlayingItem::Track(track)) = context.item {
@@ -86,6 +86,4 @@ async fn main() -> Result<()> {
             }
         }
     }
-
-    Ok(())
 }

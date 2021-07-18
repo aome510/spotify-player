@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use anyhow::{anyhow, Result};
 use rspotify::{
     client::Spotify,
@@ -6,17 +8,13 @@ use rspotify::{
     util::get_token,
 };
 
+use crate::event;
 use crate::state;
 
 /// A spotify client
 pub struct Client {
     spotify: Spotify,
     oauth: SpotifyOAuth,
-}
-
-pub enum Event {
-    RefreshToken,
-    GetCurrentPlayingContext,
 }
 
 impl Client {
@@ -38,14 +36,24 @@ impl Client {
     }
 
     /// handles a client event
-    pub async fn handle_event(&mut self, state: &state::SharedState, event: Event) -> Result<()> {
+    pub async fn handle_event(
+        &mut self,
+        state: &state::SharedState,
+        event: event::Event,
+    ) -> Result<()> {
         match event {
-            Event::RefreshToken => {
+            event::Event::RefreshToken => {
                 self.refresh_token().await?;
             }
-            Event::GetCurrentPlayingContext => {
+            event::Event::GetCurrentPlayingContext => {
                 let context = self.get_currently_playing().await?;
                 state.write().unwrap().current_playing_context = context;
+            }
+            event::Event::NextSong => {
+                self.next_track().await?;
+            }
+            event::Event::PreviousSong => {
+                self.previous_track().await?;
             }
         }
         Ok(())
@@ -74,15 +82,25 @@ impl Client {
         )
     }
 
+    fn handle_rspotify_result<T, E: Display>(result: std::result::Result<T, E>) -> Result<T> {
+        match result {
+            Ok(data) => Ok(data),
+            Err(err) => Err(anyhow!(format!("{}", err))),
+        }
+    }
+
+    /// skips to the next track
+    async fn next_track(&self) -> Result<()> {
+        Self::handle_rspotify_result(self.spotify.next_track(None).await)
+    }
+
+    /// skips to the previous track
+    async fn previous_track(&self) -> Result<()> {
+        Self::handle_rspotify_result(self.spotify.previous_track(None).await)
+    }
+
     /// returns the current playing context
     async fn get_currently_playing(&self) -> Result<Option<CurrentlyPlayingContext>> {
-        let result = self.spotify.current_playing(None, None).await;
-        match result {
-            Ok(context) => Ok(context),
-            Err(err) => Err(anyhow!(format!(
-                "failed to get currently playing context {:#?}",
-                err
-            ))),
-        }
+        Self::handle_rspotify_result(self.spotify.current_playing(None, None).await)
     }
 }
