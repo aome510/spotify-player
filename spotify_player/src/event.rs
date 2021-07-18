@@ -1,7 +1,6 @@
 use std::sync::mpsc;
 
-use crate::event;
-use crossterm::event::{Event as CrEvent, EventStream, KeyCode, KeyEvent, KeyModifiers};
+use crossterm::event::{self as term_event, EventStream, KeyCode, KeyModifiers};
 use tokio::stream::StreamExt;
 
 pub enum Event {
@@ -12,38 +11,47 @@ pub enum Event {
     TogglePlayingState,
 }
 
-fn handle_event(event: CrEvent, send: &mpsc::Sender<event::Event>) {
-    match event {
-        CrEvent::Key(KeyEvent {
-            code: KeyCode::Char('c'),
-            modifiers: KeyModifiers::CONTROL,
-        }) => {
-            std::process::exit(0);
+pub enum KeyEvent {
+    None(KeyCode),
+    Ctrl(KeyCode),
+    Alt(KeyCode),
+    Unknown,
+}
+
+impl From<term_event::KeyEvent> for KeyEvent {
+    fn from(event: term_event::KeyEvent) -> Self {
+        match event.modifiers {
+            KeyModifiers::NONE => KeyEvent::None(event.code),
+            KeyModifiers::ALT => KeyEvent::Alt(event.code),
+            KeyModifiers::CONTROL => KeyEvent::Ctrl(event.code),
+            _ => KeyEvent::Unknown,
         }
-        CrEvent::Key(KeyEvent {
-            code: KeyCode::Char('n'),
-            modifiers: KeyModifiers::NONE,
-        }) => {
-            send.send(Event::NextSong).unwrap();
+    }
+}
+
+fn handle_event(event: term_event::Event, send: &mpsc::Sender<Event>) {
+    if let term_event::Event::Key(key_event) = event {
+        match key_event.into() {
+            KeyEvent::Ctrl(KeyCode::Char('c')) => {
+                std::process::exit(0);
+            }
+            KeyEvent::None(KeyCode::Char('n')) => {
+                send.send(Event::NextSong).unwrap();
+            }
+            KeyEvent::None(KeyCode::Char('p')) => {
+                send.send(Event::PreviousSong).unwrap();
+            }
+            KeyEvent::None(KeyCode::Char(' ')) => {
+                send.send(Event::TogglePlayingState).unwrap();
+            }
+            _ => {}
         }
-        CrEvent::Key(KeyEvent {
-            code: KeyCode::Char('p'),
-            modifiers: KeyModifiers::NONE,
-        }) => {
-            send.send(Event::PreviousSong).unwrap();
-        }
-        CrEvent::Key(KeyEvent {
-            code: KeyCode::Char(' '),
-            modifiers: KeyModifiers::NONE,
-        }) => {
-            send.send(Event::TogglePlayingState).unwrap();
-        }
-        _ => {}
     };
 }
 
 #[tokio::main]
-pub async fn poll_events(send: mpsc::Sender<event::Event>) {
+/// actively pools events from the terminal using `crossterm::event::EventStream`
+pub async fn poll_events(send: mpsc::Sender<Event>) {
     println!("start pooling events...");
     let mut event_stream = EventStream::new();
 
