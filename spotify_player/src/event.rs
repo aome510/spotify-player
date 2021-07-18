@@ -9,6 +9,7 @@ pub enum Event {
     GetCurrentPlayingContext,
     NextSong,
     PreviousSong,
+    TogglePlayingState,
 }
 
 fn handle_event(event: CrEvent, send: &mpsc::Sender<event::Event>) {
@@ -30,6 +31,12 @@ fn handle_event(event: CrEvent, send: &mpsc::Sender<event::Event>) {
             modifiers: KeyModifiers::NONE,
         }) => {
             send.send(Event::PreviousSong).unwrap();
+        }
+        CrEvent::Key(KeyEvent {
+            code: KeyCode::Char(' '),
+            modifiers: KeyModifiers::NONE,
+        }) => {
+            send.send(Event::TogglePlayingState).unwrap();
         }
         _ => {}
     };

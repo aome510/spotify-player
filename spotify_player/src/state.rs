@@ -1,6 +1,6 @@
 use std::sync::{Arc, RwLock};
 
-use rspotify::model::context;
+use rspotify::model::*;
 
 pub struct State {
     pub auth_token_expires_at: std::time::SystemTime,

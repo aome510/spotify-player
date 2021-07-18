@@ -1,9 +1,9 @@
-use std::fmt::Display;
+use std::{fmt::Display, sync::RwLockReadGuard};
 
 use anyhow::{anyhow, Result};
 use rspotify::{
     client::Spotify,
-    model::context::CurrentlyPlayingContext,
+    model::*,
     oauth2::{SpotifyClientCredentials, SpotifyOAuth, TokenInfo},
     util::get_token,
 };
@@ -46,7 +46,7 @@ impl Client {
                 self.refresh_token().await?;
             }
             event::Event::GetCurrentPlayingContext => {
-                let context = self.get_currently_playing().await?;
+                let context = self.get_current_playing().await?;
                 state.write().unwrap().current_playing_context = context;
             }
             event::Event::NextSong => {
@@ -54,6 +54,10 @@ impl Client {
             }
             event::Event::PreviousSong => {
                 self.previous_track().await?;
+            }
+            event::Event::TogglePlayingState => {
+                let state = state.read().unwrap();
+                self.toggle_playing_state(state).await?;
             }
         }
         Ok(())
@@ -82,11 +86,48 @@ impl Client {
         )
     }
 
+    // wrapper functions and helper functions of `rspotify` client functions
+
+    /// converts a `rspotify` result format into `anyhow` compatible result format
     fn handle_rspotify_result<T, E: Display>(result: std::result::Result<T, E>) -> Result<T> {
         match result {
             Ok(data) => Ok(data),
             Err(err) => Err(anyhow!(format!("{}", err))),
         }
+    }
+
+    /// gets the current playing state from the application state
+    fn get_current_playing_state<'a>(
+        state: &'a RwLockReadGuard<'a, state::State>,
+    ) -> Result<&'a context::CurrentlyPlayingContext> {
+        match state.current_playing_context.as_ref() {
+            Some(state) => Ok(state),
+            None => Err(anyhow!("unable to get the currently playing context")),
+        }
+    }
+
+    /// toggle the current playing state (pause/resume a track)
+    async fn toggle_playing_state(&self, state: RwLockReadGuard<'_, state::State>) -> Result<()> {
+        let state = Self::get_current_playing_state(&state)?;
+        if state.is_playing {
+            self.pause_track().await
+        } else {
+            self.resume_track().await
+        }
+    }
+
+    /// resume a previously paused/played track
+    async fn resume_track(&self) -> Result<()> {
+        Self::handle_rspotify_result(
+            self.spotify
+                .start_playback(None, None, None, None, None)
+                .await,
+        )
+    }
+
+    /// pause currently playing track
+    async fn pause_track(&self) -> Result<()> {
+        Self::handle_rspotify_result(self.spotify.pause_playback(None).await)
     }
 
     /// skips to the next track
@@ -100,7 +141,7 @@ impl Client {
     }
 
     /// returns the current playing context
-    async fn get_currently_playing(&self) -> Result<Option<CurrentlyPlayingContext>> {
+    async fn get_current_playing(&self) -> Result<Option<context::CurrentlyPlayingContext>> {
         Self::handle_rspotify_result(self.spotify.current_playing(None, None).await)
     }
 }
