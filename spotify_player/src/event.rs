@@ -1,9 +1,10 @@
-use std::sync::mpsc;
-
+use anyhow::Result;
 use crossterm::event::{self as term_event, EventStream, KeyCode, KeyModifiers};
+use std::sync::mpsc;
 use tokio::stream::StreamExt;
 
 pub enum Event {
+    Quit,
     RefreshToken,
     GetCurrentPlaybackContext,
     NextSong,
@@ -31,46 +32,49 @@ impl From<term_event::KeyEvent> for KeyEvent {
     }
 }
 
-fn handle_event(event: term_event::Event, send: &mpsc::Sender<Event>) {
+fn handle_event(event: term_event::Event, send: &mpsc::Sender<Event>) -> Result<()> {
     if let term_event::Event::Key(key_event) = event {
         match key_event.into() {
             KeyEvent::Ctrl(KeyCode::Char('c')) => {
-                std::process::exit(0);
+                send.send(Event::Quit)?;
             }
             KeyEvent::None(KeyCode::Char('n')) => {
-                send.send(Event::NextSong).unwrap();
+                send.send(Event::NextSong)?;
             }
             KeyEvent::None(KeyCode::Char('p')) => {
-                send.send(Event::PreviousSong).unwrap();
+                send.send(Event::PreviousSong)?;
             }
             KeyEvent::None(KeyCode::Char(' ')) => {
-                send.send(Event::ResumePause).unwrap();
+                send.send(Event::ResumePause)?;
             }
             KeyEvent::None(KeyCode::Char('r')) => {
-                send.send(Event::Repeat).unwrap();
+                send.send(Event::Repeat)?;
             }
             KeyEvent::None(KeyCode::Char('s')) => {
-                send.send(Event::Shuffle).unwrap();
+                send.send(Event::Shuffle)?;
             }
             _ => {}
         }
     };
+
+    Ok(())
 }
 
 #[tokio::main]
 /// actively pools events from the terminal using `crossterm::event::EventStream`
-pub async fn poll_events(send: mpsc::Sender<Event>) {
-    println!("start pooling events...");
+pub async fn start_event_stream(send: mpsc::Sender<Event>) {
     let mut event_stream = EventStream::new();
 
     while let Some(event) = event_stream.next().await {
         match event {
             Ok(event) => {
-                println!("Event::{:?}", event);
-                handle_event(event, &send);
+                log::info!("Event::{:?}", event);
+                if let Err(err) = handle_event(event, &send) {
+                    log::error!("failed to handle event: {:#}", err);
+                }
             }
             Err(err) => {
-                eprintln!("Error: {:?}", err);
+                log::error!("failed to get event: {:#}", err);
             }
         }
     }

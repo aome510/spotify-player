@@ -1,5 +1,7 @@
 use anyhow::Result;
 use rspotify::{model, oauth2::SpotifyOAuth};
+use std::{sync::mpsc, thread};
+use tui::widgets::*;
 
 const SCOPES: [&str; 10] = [
     "user-read-recently-played",
@@ -19,8 +21,6 @@ mod config;
 mod event;
 mod state;
 
-use std::{sync::mpsc, thread};
-
 #[tokio::main]
 async fn start_client_watcher(
     state: state::SharedState,
@@ -31,6 +31,61 @@ async fn start_client_watcher(
         if let Err(err) = client.handle_event(&state, event).await {
             client.handle_error(err);
         }
+    }
+}
+
+fn start_app(state: state::SharedState, send: mpsc::Sender<event::Event>) -> Result<()> {
+    let mut stdout = std::io::stdout();
+    crossterm::terminal::enable_raw_mode()?;
+    crossterm::execute!(stdout, crossterm::terminal::EnterAlternateScreen)?;
+
+    let backend = tui::backend::CrosstermBackend::new(stdout);
+    let mut terminal = tui::Terminal::new(backend)?;
+    terminal.clear()?;
+
+    loop {
+        let state = state.read().unwrap();
+
+        if !state.is_running {
+            // a `Quit` event is sent, clean up the application then exit
+            crossterm::terminal::disable_raw_mode()?;
+            crossterm::execute!(
+                terminal.backend_mut(),
+                crossterm::terminal::LeaveAlternateScreen
+            )?;
+            terminal.show_cursor()?;
+            return Ok(());
+        }
+
+        let text = if let Some(context) = state.current_playback_context.clone() {
+            if let Some(model::PlayingItem::Track(track)) = context.item {
+                let progress_in_sec: u32 = context.progress_ms.unwrap() / 1000;
+                format!(
+                    "currently playing {} at {}/{} (repeat: {}, shuffle: {})",
+                    track.name,
+                    progress_in_sec,
+                    track.duration_ms / 1000,
+                    context.repeat_state.as_str(),
+                    context.shuffle_state,
+                )
+            } else {
+                "loading...".to_owned()
+            }
+        } else {
+            "loading...".to_owned()
+        };
+
+        terminal.draw(move |f| {
+            let ui = Paragraph::new(text)
+                .block(Block::default().title("Paragraph").borders(Borders::ALL));
+            f.render_widget(ui, f.size());
+        })?;
+
+        if std::time::SystemTime::now() > state.auth_token_expires_at {
+            send.send(event::Event::RefreshToken).unwrap();
+        }
+        send.send(event::Event::GetCurrentPlaybackContext).unwrap();
+        std::thread::sleep(std::time::Duration::from_secs(1));
     }
 }
 
@@ -63,29 +118,9 @@ async fn main() -> Result<()> {
     });
 
     let cloned_sender = send.clone();
-    crossterm::terminal::enable_raw_mode()?;
     thread::spawn(move || {
-        event::poll_events(cloned_sender);
+        event::start_event_stream(cloned_sender);
     });
 
-    loop {
-        if std::time::SystemTime::now() > state.read().unwrap().auth_token_expires_at {
-            send.send(event::Event::RefreshToken).unwrap();
-        }
-        send.send(event::Event::GetCurrentPlaybackContext).unwrap();
-        std::thread::sleep(std::time::Duration::from_secs(1));
-        if let Some(context) = state.read().unwrap().current_playback_context.clone() {
-            if let Some(model::PlayingItem::Track(track)) = context.item {
-                let progress_in_sec: u32 = context.progress_ms.unwrap() / 1000;
-                println!(
-                    "currently playing {} at {}/{} (repeat: {}, shuffle: {})",
-                    track.name,
-                    progress_in_sec,
-                    track.duration_ms / 1000,
-                    context.repeat_state.as_str(),
-                    context.shuffle_state,
-                );
-            }
-        }
-    }
+    start_app(state, send)
 }

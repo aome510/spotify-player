@@ -59,6 +59,9 @@ impl Client {
                 let state = state.read().unwrap();
                 self.cycle_repeat(state).await?;
             }
+            event::Event::Quit => {
+                state.write().unwrap().is_running = false;
+            }
         }
         Ok(())
     }
