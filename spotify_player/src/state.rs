@@ -5,6 +5,7 @@ use rspotify::model::*;
 pub struct State {
     pub is_running: bool,
     pub auth_token_expires_at: std::time::SystemTime,
+    pub current_playlist: Option<playlist::FullPlaylist>,
     pub current_playback_context: Option<context::CurrentlyPlaybackContext>,
 }
 
@@ -15,6 +16,7 @@ impl Default for State {
         State {
             is_running: true,
             auth_token_expires_at: std::time::SystemTime::now(),
+            current_playlist: None,
             current_playback_context: None,
         }
     }

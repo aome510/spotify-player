@@ -62,6 +62,10 @@ impl Client {
             event::Event::Quit => {
                 state.write().unwrap().is_running = false;
             }
+            event::Event::GetPlaylist(playlist_id) => {
+                let playlist = self.get_playlist(&playlist_id).await?;
+                state.write().unwrap().current_playlist = Some(playlist);
+            }
         }
         Ok(())
     }
@@ -90,6 +94,10 @@ impl Client {
     }
 
     // wrapper functions of `rspotify` client functions
+
+    async fn get_playlist(&self, playlist_id: &str) -> Result<playlist::FullPlaylist> {
+        Self::handle_rspotify_result(self.spotify.playlist(playlist_id, None, None).await)
+    }
 
     /// cycles through the repeat state of the current playback
     async fn cycle_repeat(&self, state: RwLockReadGuard<'_, state::State>) -> Result<()> {

@@ -12,6 +12,7 @@ pub enum Event {
     ResumePause,
     Repeat,
     Shuffle,
+    GetPlaylist(String),
 }
 
 pub enum KeyEvent {
