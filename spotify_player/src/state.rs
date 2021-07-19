@@ -1,6 +1,4 @@
-use std::sync::{Arc, RwLock};
-
-use rspotify::model::*;
+use crate::prelude::*;
 
 pub struct State {
     pub is_running: bool,

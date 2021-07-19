@@ -2,8 +2,7 @@ const TOKEN_CACHE_FILE: &str = ".spotify_token_cache.json";
 const CONFIG_FOLDER: &str = "spotify-player";
 const CLIENT_CONFIG_FILE: &str = "client.toml";
 
-use anyhow::{anyhow, Result};
-use serde::Deserialize;
+use crate::prelude::*;
 use std::path::PathBuf;
 
 #[derive(Deserialize)]

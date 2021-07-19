@@ -1,15 +1,5 @@
-use std::{fmt::Display, sync::RwLockReadGuard};
-
-use anyhow::{anyhow, Result};
-use rspotify::{
-    client::Spotify,
-    model::*,
-    oauth2::{SpotifyClientCredentials, SpotifyOAuth, TokenInfo},
-    senum::*,
-    util::get_token,
-};
-
 use crate::event;
+use crate::prelude::*;
 use crate::state;
 
 /// A spotify client
@@ -167,7 +157,7 @@ impl Client {
     }
 
     /// converts a `rspotify` result format into `anyhow` compatible result format
-    fn handle_rspotify_result<T, E: Display>(result: std::result::Result<T, E>) -> Result<T> {
+    fn handle_rspotify_result<T, E: fmt::Display>(result: std::result::Result<T, E>) -> Result<T> {
         match result {
             Ok(data) => Ok(data),
             Err(err) => Err(anyhow!(format!("{}", err))),

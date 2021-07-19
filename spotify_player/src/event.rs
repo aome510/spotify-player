@@ -1,6 +1,5 @@
-use anyhow::Result;
+use crate::prelude::*;
 use crossterm::event::{self as term_event, EventStream, KeyCode, KeyModifiers};
-use std::sync::mpsc;
 use tokio::stream::StreamExt;
 
 pub enum Event {
