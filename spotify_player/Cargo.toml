@@ -12,7 +12,7 @@ crossterm = { version = "0.20.0", features = ["event-stream"] }
 dirs-next = "2.0.0"
 env_logger = "0.8.4"
 log = "0.4.14"
-reqwest = "0.10.0"
+reqwest = { version = "0.10.0", features = ["json"] }
 rspotify = "0.10.0"
 serde = { version = "1.0.126", features = ["derive"] }
 tokio = { version = "0.2", features = ["full"] }

@@ -59,7 +59,8 @@ impl Client {
                 state.write().unwrap().current_playlist = Some(playlist);
             }
             event::Event::GetCurrentPlaylistTracks => {
-                self.get_current_playlist_tracks(state).await?;
+                let tracks = self.get_current_playlist_tracks(state).await?;
+                state.write().unwrap().current_playlist_tracks = Some(tracks);
             }
         }
         Ok(())
@@ -90,15 +91,25 @@ impl Client {
 
     // client functions
 
-    async fn get_current_playlist_tracks(&self, state: &state::SharedState) -> Result<()> {
+    async fn get_current_playlist_tracks(
+        &self,
+        state: &state::SharedState,
+    ) -> Result<Vec<playlist::PlaylistTrack>> {
+        let mut tracks: Vec<playlist::PlaylistTrack> = vec![];
         if let Some(playlist) = state.read().unwrap().current_playlist.as_ref() {
-            let data = self.internal_call(&playlist.tracks.href).await?;
-            let tracks = self
-                .spotify
-                .convert_result::<page::Page<track::FullTracks>>(&data);
-            log::info!("{:?}", tracks);
+            tracks = playlist.tracks.items.clone();
+            let mut next = playlist.tracks.next.clone();
+            while let Some(url) = next.as_ref() {
+                log::info!("url: {}", url);
+                let mut paged_tracks = self
+                    .internal_call::<page::Page<playlist::PlaylistTrack>>(url)
+                    .await?;
+                log::info!("paged_tracks: {:?}", paged_tracks);
+                tracks.append(&mut paged_tracks.items);
+                next = paged_tracks.next;
+            }
         }
-        Ok(())
+        Ok(tracks)
     }
 
     async fn get_playlist(&self, playlist_id: &str) -> Result<playlist::FullPlaylist> {
@@ -175,14 +186,17 @@ impl Client {
         )
     }
 
-    async fn internal_call(&self, url: &str) -> Result<String> {
+    async fn internal_call<T>(&self, url: &str) -> Result<T>
+    where
+        T: serde::de::DeserializeOwned,
+    {
         Ok(self
             .http
             .get(url)
             .header(reqwest::header::AUTHORIZATION, self.get_auth_token().await)
             .send()
             .await?
-            .text()
+            .json::<T>()
             .await?)
     }
 

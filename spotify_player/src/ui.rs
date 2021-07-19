@@ -45,15 +45,22 @@ pub fn start_ui(state: state::SharedState, send: mpsc::Sender<event::Event>) -> 
                     None => "loading playlist...".to_owned(),
                     Some(playlist) => format!("{:?}", playlist.tracks.href),
                 };
+                let playlist_tracks_info = match state.current_playlist_tracks.as_ref() {
+                    None => "loading playlist track...".to_owned(),
+                    Some(tracks) => {
+                        format!("there are {} track(s) in the playlist", tracks.len())
+                    }
+                };
 
                 format!(
-                    "currently playing {} at {}/{} (repeat: {}, shuffle: {})\n{}",
+                    "currently playing {} at {}/{} (repeat: {}, shuffle: {})\n{}\n{}",
                     track.name,
                     progress_in_sec,
                     track.duration_ms / 1000,
                     context.repeat_state.as_str(),
                     context.shuffle_state,
                     playlist_info,
+                    playlist_tracks_info,
                 )
             } else {
                 "loading current playback...".to_owned()
@@ -77,7 +84,7 @@ pub fn start_ui(state: state::SharedState, send: mpsc::Sender<event::Event>) -> 
             send.send(event::Event::RefreshToken)?;
         }
         send.send(event::Event::GetCurrentPlaybackContext)?;
-        if state.current_playlist.is_some() {
+        if state.current_playlist.is_some() && state.current_playlist_tracks.is_none() {
             send.send(event::Event::GetCurrentPlaylistTracks)?;
         }
         std::thread::sleep(std::time::Duration::from_secs(1));
