@@ -5,6 +5,7 @@ use crate::state;
 /// A spotify client
 pub struct Client {
     spotify: Spotify,
+    http: reqwest::Client,
     oauth: SpotifyOAuth,
 }
 
@@ -13,6 +14,7 @@ impl Client {
     pub fn new(oauth: SpotifyOAuth) -> Self {
         Self {
             spotify: Spotify::default(),
+            http: reqwest::Client::new(),
             oauth,
         }
     }
@@ -56,6 +58,9 @@ impl Client {
                 let playlist = self.get_playlist(&playlist_id).await?;
                 state.write().unwrap().current_playlist = Some(playlist);
             }
+            event::Event::GetCurrentPlaylistTracks => {
+                self.get_current_playlist_tracks(state).await?;
+            }
         }
         Ok(())
     }
@@ -83,7 +88,18 @@ impl Client {
         )
     }
 
-    // wrapper functions of `rspotify` client functions
+    // client functions
+
+    async fn get_current_playlist_tracks(&self, state: &state::SharedState) -> Result<()> {
+        if let Some(playlist) = state.read().unwrap().current_playlist.as_ref() {
+            let data = self.internal_call(&playlist.tracks.href).await?;
+            let tracks = self
+                .spotify
+                .convert_result::<page::Page<track::FullTracks>>(&data);
+            log::info!("{:?}", tracks);
+        }
+        Ok(())
+    }
 
     async fn get_playlist(&self, playlist_id: &str) -> Result<playlist::FullPlaylist> {
         Self::handle_rspotify_result(self.spotify.playlist(playlist_id, None, None).await)
@@ -146,6 +162,29 @@ impl Client {
     }
 
     // helper functions
+
+    async fn get_auth_token(&self) -> String {
+        format!(
+            "Bearer {}",
+            self.spotify
+                .client_credentials_manager
+                .as_ref()
+                .expect("client credentials manager is `None`")
+                .get_access_token()
+                .await
+        )
+    }
+
+    async fn internal_call(&self, url: &str) -> Result<String> {
+        Ok(self
+            .http
+            .get(url)
+            .header(reqwest::header::AUTHORIZATION, self.get_auth_token().await)
+            .send()
+            .await?
+            .text()
+            .await?)
+    }
 
     fn get_spotify_client(token: TokenInfo) -> Spotify {
         let client_credential = SpotifyClientCredentials::default()

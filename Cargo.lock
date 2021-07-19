@@ -1615,6 +1615,7 @@ dependencies = [
  "dirs-next",
  "env_logger 0.8.4",
  "log",
+ "reqwest",
  "rspotify",
  "serde",
  "tokio",
