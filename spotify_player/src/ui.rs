@@ -84,9 +84,6 @@ pub fn start_ui(state: state::SharedState, send: mpsc::Sender<event::Event>) -> 
             send.send(event::Event::RefreshToken)?;
         }
         send.send(event::Event::GetCurrentPlaybackContext)?;
-        if state.current_playlist.is_some() && state.current_playlist_tracks.is_none() {
-            send.send(event::Event::GetCurrentPlaylistTracks)?;
-        }
         std::thread::sleep(std::time::Duration::from_secs(1));
     }
 }

@@ -57,8 +57,6 @@ impl Client {
             event::Event::GetPlaylist(playlist_id) => {
                 let playlist = self.get_playlist(&playlist_id).await?;
                 state.write().unwrap().current_playlist = Some(playlist);
-            }
-            event::Event::GetCurrentPlaylistTracks => {
                 let tracks = self.get_current_playlist_tracks(state).await?;
                 state.write().unwrap().current_playlist_tracks = Some(tracks);
             }
