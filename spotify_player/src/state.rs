@@ -6,6 +6,9 @@ pub struct State {
     pub current_playlist: Option<playlist::FullPlaylist>,
     pub current_playlist_tracks: Option<Vec<playlist::PlaylistTrack>>,
     pub current_playback_context: Option<context::CurrentlyPlaybackContext>,
+
+    // UI states
+    pub ui_playlist_tracks_list_state: ListState,
 }
 
 pub type SharedState = Arc<RwLock<State>>;
@@ -18,6 +21,8 @@ impl Default for State {
             current_playlist: None,
             current_playlist_tracks: None,
             current_playback_context: None,
+
+            ui_playlist_tracks_list_state: ListState::default(),
         }
     }
 }

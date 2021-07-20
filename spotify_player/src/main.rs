@@ -49,7 +49,7 @@ async fn start_client_watcher(
         if std::time::SystemTime::now() > last_refresh + config::REFRESH_DURATION {
             // `config::REFRESH_DURATION` passes since the last refresh, get the
             // current playback context again
-            log::debug!("refresh the current playback context...");
+            log::info!("refresh the current playback context...");
             get_current_playback(&client, &state).await;
             last_refresh = std::time::SystemTime::now()
         }

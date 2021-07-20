@@ -25,7 +25,7 @@ impl Client {
         state: &state::SharedState,
         event: event::Event,
     ) -> Result<()> {
-        log::debug!("handle event: {:?}", event);
+        log::info!("handle event: {:?}", event);
         match event {
             event::Event::RefreshToken => {
                 state.write().unwrap().auth_token_expires_at = self.refresh_token().await?;
