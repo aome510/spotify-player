@@ -6,12 +6,14 @@ use tokio::stream::StreamExt;
 pub enum Event {
     Quit,
     RefreshToken,
-    NextSong,
-    PreviousSong,
+    NextTrack,
+    PreviousTrack,
     ResumePause,
     Repeat,
     Shuffle,
     GetPlaylist(String),
+    SelectNextTrack,
+    SelectPreviousTrack,
 }
 
 pub enum KeyEvent {
@@ -35,14 +37,14 @@ impl From<term_event::KeyEvent> for KeyEvent {
 fn handle_event(event: term_event::Event, send: &mpsc::Sender<Event>) -> Result<()> {
     if let term_event::Event::Key(key_event) = event {
         match key_event.into() {
-            KeyEvent::Ctrl(KeyCode::Char('c')) => {
+            KeyEvent::None(KeyCode::Char('q')) => {
                 send.send(Event::Quit)?;
             }
             KeyEvent::None(KeyCode::Char('n')) => {
-                send.send(Event::NextSong)?;
+                send.send(Event::NextTrack)?;
             }
             KeyEvent::None(KeyCode::Char('p')) => {
-                send.send(Event::PreviousSong)?;
+                send.send(Event::PreviousTrack)?;
             }
             KeyEvent::None(KeyCode::Char(' ')) => {
                 send.send(Event::ResumePause)?;
@@ -52,6 +54,12 @@ fn handle_event(event: term_event::Event, send: &mpsc::Sender<Event>) -> Result<
             }
             KeyEvent::None(KeyCode::Char('s')) => {
                 send.send(Event::Shuffle)?;
+            }
+            KeyEvent::None(KeyCode::Char('j')) => {
+                send.send(Event::SelectNextTrack)?;
+            }
+            KeyEvent::None(KeyCode::Char('k')) => {
+                send.send(Event::SelectPreviousTrack)?;
             }
             _ => {}
         }

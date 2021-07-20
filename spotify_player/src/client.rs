@@ -30,10 +30,10 @@ impl Client {
             event::Event::RefreshToken => {
                 state.write().unwrap().auth_token_expires_at = self.refresh_token().await?;
             }
-            event::Event::NextSong => {
+            event::Event::NextTrack => {
                 self.next_track().await?;
             }
-            event::Event::PreviousSong => {
+            event::Event::PreviousTrack => {
                 self.previous_track().await?;
             }
             event::Event::ResumePause => {
@@ -58,12 +58,36 @@ impl Client {
                         return Ok(());
                     }
                 }
+                // get the playlist
                 let playlist = self.get_playlist(&playlist_id).await?;
                 state.write().unwrap().current_playlist = Some(playlist);
+                // get the playlist's track
                 let tracks = self
                     .get_current_playlist_tracks(&state.read().unwrap())
                     .await?;
+                // update the state (UI) of the `playlist_tracks_widget`
+                if !tracks.is_empty() {
+                    state
+                        .write()
+                        .unwrap()
+                        .ui_playlist_tracks_list_state
+                        .select(Some(0));
+                }
                 state.write().unwrap().current_playlist_tracks = Some(tracks);
+            }
+            event::Event::SelectNextTrack => {
+                let mut state = state.write().unwrap();
+                if let Some(id) = state.ui_playlist_tracks_list_state.selected() {
+                    state.ui_playlist_tracks_list_state.select(Some(id + 1));
+                }
+            }
+            event::Event::SelectPreviousTrack => {
+                let mut state = state.write().unwrap();
+                if let Some(id) = state.ui_playlist_tracks_list_state.selected() {
+                    if id > 0 {
+                        state.ui_playlist_tracks_list_state.select(Some(id - 1));
+                    }
+                }
             }
         }
         Ok(())
