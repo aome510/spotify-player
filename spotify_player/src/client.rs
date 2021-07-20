@@ -52,17 +52,18 @@ impl Client {
                 state.write().unwrap().is_running = false;
             }
             event::Event::GetPlaylist(playlist_id) => {
-                let mut state = state.write().unwrap();
-                if let Some(playlist) = state.current_playlist.as_ref() {
+                if let Some(playlist) = state.read().unwrap().current_playlist.as_ref() {
                     // avoid getting the same playlist more than once
                     if playlist.id == playlist_id {
                         return Ok(());
                     }
                 }
                 let playlist = self.get_playlist(&playlist_id).await?;
-                state.current_playlist = Some(playlist);
-                let tracks = self.get_current_playlist_tracks(&state).await?;
-                state.current_playlist_tracks = Some(tracks);
+                state.write().unwrap().current_playlist = Some(playlist);
+                let tracks = self
+                    .get_current_playlist_tracks(&state.read().unwrap())
+                    .await?;
+                state.write().unwrap().current_playlist_tracks = Some(tracks);
             }
         }
         Ok(())
@@ -95,7 +96,7 @@ impl Client {
 
     pub async fn get_current_playlist_tracks(
         &self,
-        state: &RwLockWriteGuard<'_, state::State>,
+        state: &RwLockReadGuard<'_, state::State>,
     ) -> Result<Vec<playlist::PlaylistTrack>> {
         let mut tracks: Vec<playlist::PlaylistTrack> = vec![];
         if let Some(playlist) = state.current_playlist.as_ref() {
