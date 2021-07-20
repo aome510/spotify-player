@@ -12,6 +12,17 @@ pub fn start_ui(state: state::SharedState, send: mpsc::Sender<event::Event>) -> 
     let mut terminal = tui::Terminal::new(backend)?;
     terminal.clear()?;
 
+    terminal.draw(|f| {
+        let ui = Paragraph::new("Loading the application... Please check your internet connection if this takes too long <(\").")
+            .block(
+                Block::default()
+                    .title("Loading...")
+                    .borders(Borders::ALL),
+            )
+            .wrap(Wrap { trim: true });
+        f.render_widget(ui, f.size())
+    })?;
+
     loop {
         let state = state.read().unwrap();
 
@@ -26,7 +37,7 @@ pub fn start_ui(state: state::SharedState, send: mpsc::Sender<event::Event>) -> 
             return Ok(());
         }
 
-        let text = if let Some(context) = state.current_playback_context.clone() {
+        if let Some(context) = state.current_playback_context.clone() {
             if let Some(PlayingItem::Track(track)) = context.item {
                 let progress_in_sec: u32 = context.progress_ms.unwrap() / 1000;
                 if let Some(playing_context) = context.context {
@@ -46,40 +57,52 @@ pub fn start_ui(state: state::SharedState, send: mpsc::Sender<event::Event>) -> 
                     None => "loading playlist...".to_owned(),
                     Some(playlist) => format!("{:?}", playlist.tracks.href),
                 };
-                let playlist_tracks_info = match state.current_playlist_tracks.as_ref() {
-                    None => "loading playlist track...".to_owned(),
-                    Some(tracks) => {
-                        format!("there are {} track(s) in the playlist", tracks.len())
-                    }
-                };
-
-                format!(
-                    "currently playing {} at {}/{} (repeat: {}, shuffle: {})\n{}\n{}",
+                let playback_info = format!(
+                    "currently playing {} at {}/{} (repeat: {}, shuffle: {})\n{}\n",
                     track.name,
                     progress_in_sec,
                     track.duration_ms / 1000,
                     context.repeat_state.as_str(),
                     context.shuffle_state,
                     playlist_info,
-                    playlist_tracks_info,
-                )
-            } else {
-                "loading current playback...".to_owned()
-            }
-        } else {
-            "loading current playback...".to_owned()
-        };
+                );
 
-        terminal.draw(move |f| {
-            let ui = Paragraph::new(text)
-                .block(
-                    Block::default()
-                        .title("Current playing")
-                        .borders(Borders::ALL),
-                )
-                .wrap(Wrap { trim: true });
-            f.render_widget(ui, f.size());
-        })?;
+                let items = match state.current_playlist_tracks.as_ref() {
+                    Some(tracks) => tracks
+                        .iter()
+                        .filter(|t| t.track.is_some())
+                        .map(|t| ListItem::new(t.track.as_ref().unwrap().name.clone()))
+                        .collect::<Vec<_>>(),
+                    None => vec![],
+                };
+
+                terminal.draw(move |f| {
+                    let chunks = Layout::default()
+                        .direction(Direction::Vertical)
+                        .margin(1)
+                        .constraints(
+                            [Constraint::Percentage(30), Constraint::Percentage(70)].as_ref(),
+                        )
+                        .split(f.size());
+
+                    let desc_block = Paragraph::new(playback_info)
+                        .block(
+                            Block::default()
+                                .title("Current playback context")
+                                .borders(Borders::ALL),
+                        )
+                        .wrap(Wrap { trim: true });
+                    let tracks_block = List::new(items).block(
+                        Block::default()
+                            .title("Playlist tracks")
+                            .borders(Borders::ALL),
+                    );
+
+                    f.render_widget(desc_block, chunks[0]);
+                    f.render_widget(tracks_block, chunks[1]);
+                })?;
+            }
+        }
 
         if std::time::SystemTime::now() > state.auth_token_expires_at {
             send.send(event::Event::RefreshToken)?;

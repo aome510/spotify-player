@@ -131,7 +131,7 @@ impl Client {
     /// toggles the shuffle state of the current playback
     pub async fn toggle_shuffle(&self, state: &RwLockReadGuard<'_, state::State>) -> Result<()> {
         let state = Self::get_current_playback_state(&state)?;
-        Self::handle_rspotify_result(self.spotify.shuffle(state.shuffle_state, None).await)
+        Self::handle_rspotify_result(self.spotify.shuffle(!state.shuffle_state, None).await)
     }
 
     /// toggles the current playing state (pause/resume a track)
