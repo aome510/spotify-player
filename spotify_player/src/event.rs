@@ -2,10 +2,10 @@ use crate::prelude::*;
 use crossterm::event::{self as term_event, EventStream, KeyCode, KeyModifiers};
 use tokio::stream::StreamExt;
 
+#[derive(Debug)]
 pub enum Event {
     Quit,
     RefreshToken,
-    GetCurrentPlaybackContext,
     NextSong,
     PreviousSong,
     ResumePause,
@@ -68,6 +68,7 @@ pub async fn start_event_stream(send: mpsc::Sender<Event>) {
     while let Some(event) = event_stream.next().await {
         match event {
             Ok(event) => {
+                log::debug!("got event: {:?}", event);
                 if let Err(err) = handle_event(event, &send) {
                     log::error!("failed to handle event: {:#}", err);
                 }

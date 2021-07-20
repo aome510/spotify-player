@@ -25,13 +25,10 @@ impl Client {
         state: &state::SharedState,
         event: event::Event,
     ) -> Result<()> {
+        log::debug!("handle event: {:?}", event);
         match event {
             event::Event::RefreshToken => {
-                self.refresh_token().await?;
-            }
-            event::Event::GetCurrentPlaybackContext => {
-                let context = self.get_current_playback().await?;
-                state.write().unwrap().current_playback_context = context;
+                state.write().unwrap().auth_token_expires_at = self.refresh_token().await?;
             }
             event::Event::NextSong => {
                 self.next_track().await?;
@@ -41,24 +38,31 @@ impl Client {
             }
             event::Event::ResumePause => {
                 let state = state.read().unwrap();
-                self.toggle_playing_state(state).await?;
+                self.toggle_playing_state(&state).await?;
             }
             event::Event::Shuffle => {
                 let state = state.read().unwrap();
-                self.toggle_shuffle(state).await?;
+                self.toggle_shuffle(&state).await?;
             }
             event::Event::Repeat => {
                 let state = state.read().unwrap();
-                self.cycle_repeat(state).await?;
+                self.cycle_repeat(&state).await?;
             }
             event::Event::Quit => {
                 state.write().unwrap().is_running = false;
             }
             event::Event::GetPlaylist(playlist_id) => {
+                let mut state = state.write().unwrap();
+                if let Some(playlist) = state.current_playlist.as_ref() {
+                    // avoid getting the same playlist more than once
+                    if playlist.id == playlist_id {
+                        return Ok(());
+                    }
+                }
                 let playlist = self.get_playlist(&playlist_id).await?;
-                state.write().unwrap().current_playlist = Some(playlist);
-                let tracks = self.get_current_playlist_tracks(state).await?;
-                state.write().unwrap().current_playlist_tracks = Some(tracks);
+                state.current_playlist = Some(playlist);
+                let tracks = self.get_current_playlist_tracks(&state).await?;
+                state.current_playlist_tracks = Some(tracks);
             }
         }
         Ok(())
@@ -89,20 +93,18 @@ impl Client {
 
     // client functions
 
-    async fn get_current_playlist_tracks(
+    pub async fn get_current_playlist_tracks(
         &self,
-        state: &state::SharedState,
+        state: &RwLockWriteGuard<'_, state::State>,
     ) -> Result<Vec<playlist::PlaylistTrack>> {
         let mut tracks: Vec<playlist::PlaylistTrack> = vec![];
-        if let Some(playlist) = state.read().unwrap().current_playlist.as_ref() {
+        if let Some(playlist) = state.current_playlist.as_ref() {
             tracks = playlist.tracks.items.clone();
             let mut next = playlist.tracks.next.clone();
             while let Some(url) = next.as_ref() {
-                log::info!("url: {}", url);
                 let mut paged_tracks = self
                     .internal_call::<page::Page<playlist::PlaylistTrack>>(url)
                     .await?;
-                log::info!("paged_tracks: {:?}", paged_tracks);
                 tracks.append(&mut paged_tracks.items);
                 next = paged_tracks.next;
             }
@@ -110,12 +112,12 @@ impl Client {
         Ok(tracks)
     }
 
-    async fn get_playlist(&self, playlist_id: &str) -> Result<playlist::FullPlaylist> {
+    pub async fn get_playlist(&self, playlist_id: &str) -> Result<playlist::FullPlaylist> {
         Self::handle_rspotify_result(self.spotify.playlist(playlist_id, None, None).await)
     }
 
     /// cycles through the repeat state of the current playback
-    async fn cycle_repeat(&self, state: RwLockReadGuard<'_, state::State>) -> Result<()> {
+    pub async fn cycle_repeat(&self, state: &RwLockReadGuard<'_, state::State>) -> Result<()> {
         let state = Self::get_current_playback_state(&state)?;
         let next_repeat_state = match state.repeat_state {
             RepeatState::Off => RepeatState::Track,
@@ -126,13 +128,16 @@ impl Client {
     }
 
     /// toggles the shuffle state of the current playback
-    async fn toggle_shuffle(&self, state: RwLockReadGuard<'_, state::State>) -> Result<()> {
+    pub async fn toggle_shuffle(&self, state: &RwLockReadGuard<'_, state::State>) -> Result<()> {
         let state = Self::get_current_playback_state(&state)?;
         Self::handle_rspotify_result(self.spotify.shuffle(state.shuffle_state, None).await)
     }
 
     /// toggles the current playing state (pause/resume a track)
-    async fn toggle_playing_state(&self, state: RwLockReadGuard<'_, state::State>) -> Result<()> {
+    pub async fn toggle_playing_state(
+        &self,
+        state: &RwLockReadGuard<'_, state::State>,
+    ) -> Result<()> {
         let state = Self::get_current_playback_state(&state)?;
         if state.is_playing {
             self.pause_track().await
@@ -142,7 +147,7 @@ impl Client {
     }
 
     /// resumes a previously paused/played track
-    async fn resume_track(&self) -> Result<()> {
+    pub async fn resume_track(&self) -> Result<()> {
         Self::handle_rspotify_result(
             self.spotify
                 .start_playback(None, None, None, None, None)
@@ -151,22 +156,22 @@ impl Client {
     }
 
     /// pauses currently playing track
-    async fn pause_track(&self) -> Result<()> {
+    pub async fn pause_track(&self) -> Result<()> {
         Self::handle_rspotify_result(self.spotify.pause_playback(None).await)
     }
 
     /// skips to the next track
-    async fn next_track(&self) -> Result<()> {
+    pub async fn next_track(&self) -> Result<()> {
         Self::handle_rspotify_result(self.spotify.next_track(None).await)
     }
 
     /// skips to the previous track
-    async fn previous_track(&self) -> Result<()> {
+    pub async fn previous_track(&self) -> Result<()> {
         Self::handle_rspotify_result(self.spotify.previous_track(None).await)
     }
 
     /// returns the current playing context
-    async fn get_current_playback(&self) -> Result<Option<context::CurrentlyPlaybackContext>> {
+    pub async fn get_current_playback(&self) -> Result<Option<context::CurrentlyPlaybackContext>> {
         Self::handle_rspotify_result(self.spotify.current_playback(None, None).await)
     }
 

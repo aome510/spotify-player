@@ -1,3 +1,4 @@
+use crate::config;
 use crate::event;
 use crate::prelude::*;
 use crate::state;
@@ -83,7 +84,6 @@ pub fn start_ui(state: state::SharedState, send: mpsc::Sender<event::Event>) -> 
         if std::time::SystemTime::now() > state.auth_token_expires_at {
             send.send(event::Event::RefreshToken)?;
         }
-        send.send(event::Event::GetCurrentPlaybackContext)?;
-        std::thread::sleep(std::time::Duration::from_secs(1));
+        std::thread::sleep(config::REFRESH_DURATION);
     }
 }

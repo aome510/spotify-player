@@ -1,9 +1,10 @@
 const TOKEN_CACHE_FILE: &str = ".spotify_token_cache.json";
 const CONFIG_FOLDER: &str = "spotify-player";
 const CLIENT_CONFIG_FILE: &str = "client.toml";
+pub const REFRESH_DURATION: Duration = Duration::from_millis(100);
 
 use crate::prelude::*;
-use std::path::PathBuf;
+use std::{path::PathBuf, time::Duration};
 
 #[derive(Deserialize)]
 /// Spotify client configurations

@@ -21,15 +21,37 @@ const SCOPES: [&str; 10] = [
     "user-library-read",
 ];
 
+async fn get_current_playback(client: &client::Client, state: &state::SharedState) {
+    match client.get_current_playback().await {
+        Ok(context) => {
+            state.write().unwrap().current_playback_context = context;
+        }
+        Err(err) => {
+            client.handle_error(err);
+        }
+    };
+}
+
 #[tokio::main]
 async fn start_client_watcher(
     state: state::SharedState,
     mut client: client::Client,
     recv: mpsc::Receiver<event::Event>,
 ) {
-    while let Ok(event) = recv.recv() {
-        if let Err(err) = client.handle_event(&state, event).await {
-            client.handle_error(err);
+    get_current_playback(&client, &state).await;
+    let mut last_refresh = std::time::SystemTime::now();
+    loop {
+        if let Ok(event) = recv.try_recv() {
+            if let Err(err) = client.handle_event(&state, event).await {
+                client.handle_error(err);
+            }
+        }
+        if std::time::SystemTime::now() > last_refresh + config::REFRESH_DURATION {
+            // `config::REFRESH_DURATION` passes since the last refresh, get the
+            // current playback context again
+            log::debug!("refresh the current playback context...");
+            get_current_playback(&client, &state).await;
+            last_refresh = std::time::SystemTime::now()
         }
     }
 }
