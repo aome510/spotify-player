@@ -65,6 +65,8 @@ impl Client {
                 let tracks = self
                     .get_current_playlist_tracks(&state.read().unwrap())
                     .await?;
+                // filter tracks that are either unaccessible or deleted from album
+                let tracks: Vec<_> = tracks.into_iter().filter(|t| t.track.is_some()).collect();
                 // update the state (UI) of the `playlist_tracks_widget`
                 if !tracks.is_empty() {
                     state
@@ -86,6 +88,22 @@ impl Client {
                 if let Some(id) = state.ui_playlist_tracks_list_state.selected() {
                     if id > 0 {
                         state.ui_playlist_tracks_list_state.select(Some(id - 1));
+                    }
+                }
+            }
+            event::Event::PlaySelectedTrack => {
+                let state = state.read().unwrap();
+                if let (Some(id), Some(tracks), Some(playback)) = (
+                    state.ui_playlist_tracks_list_state.selected(),
+                    state.current_playlist_tracks.as_ref(),
+                    state.current_playback_context.as_ref(),
+                ) {
+                    if let Some(context) = playback.context.as_ref() {
+                        self.play_tracks(
+                            context.uri.clone(),
+                            tracks[id].track.as_ref().unwrap().uri.clone(),
+                        )
+                        .await?;
                     }
                 }
             }
@@ -117,6 +135,20 @@ impl Client {
     }
 
     // client functions
+
+    pub async fn play_tracks(&self, context_uri: String, track_uri: String) -> Result<()> {
+        Self::handle_rspotify_result(
+            self.spotify
+                .start_playback(
+                    None,
+                    Some(context_uri),
+                    None,
+                    offset::for_uri(track_uri),
+                    None,
+                )
+                .await,
+        )
+    }
 
     pub async fn get_current_playlist_tracks(
         &self,

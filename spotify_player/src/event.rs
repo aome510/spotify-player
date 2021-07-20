@@ -14,6 +14,7 @@ pub enum Event {
     GetPlaylist(String),
     SelectNextTrack,
     SelectPreviousTrack,
+    PlaySelectedTrack,
 }
 
 pub enum KeyEvent {
@@ -60,6 +61,9 @@ fn handle_event(event: term_event::Event, send: &mpsc::Sender<Event>) -> Result<
             }
             KeyEvent::None(KeyCode::Char('k')) => {
                 send.send(Event::SelectPreviousTrack)?;
+            }
+            KeyEvent::None(KeyCode::Enter) => {
+                send.send(Event::PlaySelectedTrack)?;
             }
             _ => {}
         }

@@ -40,7 +40,6 @@ fn render_playlist_tracks_widget(frame: &mut Frame, state: &state::SharedState, 
     let items = match state.read().unwrap().current_playlist_tracks.as_ref() {
         Some(tracks) => tracks
             .iter()
-            .filter(|t| t.track.is_some())
             .map(|t| ListItem::new(t.track.as_ref().unwrap().name.clone()))
             .collect::<Vec<_>>(),
         None => vec![],
