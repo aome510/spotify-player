@@ -36,22 +36,25 @@ fn render_current_playback_widget(
     }
 }
 
-fn render_playlist_tracks_widget(
-    frame: &mut Frame,
-    tracks: &[playlist::PlaylistTrack],
-    rect: Rect,
-) {
-    let items = tracks
-        .iter()
-        .filter(|t| t.track.is_some())
-        .map(|t| ListItem::new(t.track.as_ref().unwrap().name.clone()))
-        .collect::<Vec<_>>();
+fn render_playlist_tracks_widget(frame: &mut Frame, state: &state::SharedState, rect: Rect) {
+    let items = match state.read().unwrap().current_playlist_tracks.as_ref() {
+        Some(tracks) => tracks
+            .iter()
+            .filter(|t| t.track.is_some())
+            .map(|t| ListItem::new(t.track.as_ref().unwrap().name.clone()))
+            .collect::<Vec<_>>(),
+        None => vec![],
+    };
     let tracks_block = List::new(items).block(
         Block::default()
             .title("Playlist tracks")
             .borders(Borders::ALL),
     );
-    frame.render_widget(tracks_block, rect);
+    frame.render_stateful_widget(
+        tracks_block,
+        rect,
+        &mut state.write().unwrap().ui_playlist_tracks_list_state,
+    );
 }
 
 fn quit(mut terminal: Terminal) -> Result<()> {
@@ -128,9 +131,7 @@ pub fn start_ui(state: state::SharedState, send: mpsc::Sender<event::Event>) -> 
                 if let Some(context) = state.read().unwrap().current_playback_context.as_ref() {
                     render_current_playback_widget(f, context, chunks[0]);
                 }
-                if let Some(tracks) = state.read().unwrap().current_playlist_tracks.as_ref() {
-                    render_playlist_tracks_widget(f, tracks, chunks[1]);
-                }
+                render_playlist_tracks_widget(f, &state, chunks[1]);
             })?;
         }
 
