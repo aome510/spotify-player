@@ -1,7 +1,8 @@
 const TOKEN_CACHE_FILE: &str = ".spotify_token_cache.json";
 const CONFIG_FOLDER: &str = "spotify-player";
 const CLIENT_CONFIG_FILE: &str = "client.toml";
-pub const REFRESH_DURATION: Duration = Duration::from_millis(100);
+pub const UI_REFRESH_DURATION: Duration = Duration::from_millis(32);
+pub const PLAYBACK_REFRESH_DURACTION: Duration = Duration::from_secs(1);
 
 use crate::prelude::*;
 use std::{path::PathBuf, time::Duration};

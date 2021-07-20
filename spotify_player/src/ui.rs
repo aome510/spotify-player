@@ -139,6 +139,6 @@ pub fn start_ui(state: state::SharedState, send: mpsc::Sender<event::Event>) -> 
             })?;
         }
 
-        std::thread::sleep(config::REFRESH_DURATION);
+        std::thread::sleep(config::UI_REFRESH_DURATION);
     }
 }
