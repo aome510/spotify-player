@@ -12,4 +12,4 @@ pub use std::{
     sync::{mpsc, Arc, RwLock, RwLockReadGuard, RwLockWriteGuard},
     thread,
 };
-pub use tui::{layout::*, widgets::*};
+pub use tui::{layout::*, style::*, widgets::*};

@@ -45,16 +45,20 @@ fn render_playlist_tracks_widget(frame: &mut Frame, state: &state::SharedState, 
             .collect::<Vec<_>>(),
         None => vec![],
     };
-    let tracks_block = List::new(items).block(
-        Block::default()
-            .title("Playlist tracks")
-            .borders(Borders::ALL),
-    );
-    frame.render_stateful_widget(
-        tracks_block,
-        rect,
-        &mut state.write().unwrap().ui_playlist_tracks_list_state,
-    );
+    let mut state = state.write().unwrap();
+    if !items.is_empty() {
+        state.ui_playlist_tracks_list_state.select(Some(0));
+    }
+    let tracks_block = List::new(items)
+        .block(
+            Block::default()
+                .title("Playlist tracks")
+                .borders(Borders::ALL),
+        )
+        .highlight_style(Style::default().add_modifier(Modifier::ITALIC))
+        .highlight_symbol(">>");
+    frame.render_stateful_widget(tracks_block, rect, &mut state.ui_playlist_tracks_list_state);
+    log::info!("list state: {:?}", state.ui_playlist_tracks_list_state);
 }
 
 fn quit(mut terminal: Terminal) -> Result<()> {
@@ -67,6 +71,7 @@ fn quit(mut terminal: Terminal) -> Result<()> {
     Ok(())
 }
 
+/// start the application UI as the main thread
 pub fn start_ui(state: state::SharedState, send: mpsc::Sender<event::Event>) -> Result<()> {
     let mut stdout = std::io::stdout();
     crossterm::terminal::enable_raw_mode()?;
