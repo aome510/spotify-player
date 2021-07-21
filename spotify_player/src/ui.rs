@@ -40,7 +40,7 @@ fn render_playlist_tracks_widget(frame: &mut Frame, state: &state::SharedState, 
     let items = state
         .read()
         .unwrap()
-        .current_playlist_tracks
+        .get_context_tracks()
         .iter()
         .map(|t| ListItem::new(t.track.as_ref().unwrap().name.clone()))
         .collect::<Vec<_>>();
