@@ -75,12 +75,14 @@ impl Client {
                         .ui_playlist_tracks_list_state
                         .select(Some(0));
                 }
-                state.write().unwrap().current_playlist_tracks = Some(tracks);
+                state.write().unwrap().current_playlist_tracks = tracks;
             }
             event::Event::SelectNextTrack => {
                 let mut state = state.write().unwrap();
                 if let Some(id) = state.ui_playlist_tracks_list_state.selected() {
-                    state.ui_playlist_tracks_list_state.select(Some(id + 1));
+                    if id + 1 < state.current_playlist_tracks.len() {
+                        state.ui_playlist_tracks_list_state.select(Some(id + 1));
+                    }
                 }
             }
             event::Event::SelectPreviousTrack => {
@@ -93,15 +95,19 @@ impl Client {
             }
             event::Event::PlaySelectedTrack => {
                 let state = state.read().unwrap();
-                if let (Some(id), Some(tracks), Some(playback)) = (
+                if let (Some(id), Some(playback)) = (
                     state.ui_playlist_tracks_list_state.selected(),
-                    state.current_playlist_tracks.as_ref(),
                     state.current_playback_context.as_ref(),
                 ) {
                     if let Some(context) = playback.context.as_ref() {
                         self.play_tracks(
                             context.uri.clone(),
-                            tracks[id].track.as_ref().unwrap().uri.clone(),
+                            state.current_playlist_tracks[id]
+                                .track
+                                .as_ref()
+                                .unwrap()
+                                .uri
+                                .clone(),
                         )
                         .await?;
                     }
