@@ -4,6 +4,7 @@ mod event;
 pub mod prelude;
 mod state;
 mod ui;
+pub mod utils;
 
 use prelude::*;
 use rspotify::oauth2::SpotifyOAuth;
@@ -85,8 +86,9 @@ async fn main() -> Result<()> {
     });
 
     let cloned_sender = send.clone();
+    let cloned_state = state.clone();
     thread::spawn(move || {
-        event::start_event_stream(cloned_sender);
+        event::start_event_stream(cloned_sender, cloned_state);
     });
 
     ui::start_ui(state, send)

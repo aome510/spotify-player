@@ -1,3 +1,4 @@
+pub use crate::utils::*;
 pub use anyhow::{anyhow, Result};
 pub use rspotify::{
     client::Spotify,

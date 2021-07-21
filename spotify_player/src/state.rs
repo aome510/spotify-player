@@ -1,9 +1,9 @@
 use crate::prelude::*;
 
 #[derive(Default)]
-pub struct PlaylistSearchState {
+pub struct ContextSearchState {
     pub query: Option<String>,
-    pub tracks: Vec<playlist::PlaylistTrack>,
+    pub tracks: Vec<track::FullTrack>,
 }
 
 pub struct State {
@@ -13,7 +13,7 @@ pub struct State {
     pub current_context_tracks: Vec<playlist::PlaylistTrack>,
     pub current_playback_context: Option<context::CurrentlyPlaybackContext>,
 
-    pub playlist_search_state: PlaylistSearchState,
+    pub context_search_state: ContextSearchState,
 
     // UI states
     pub ui_playlist_tracks_list_state: ListState,
@@ -30,7 +30,7 @@ impl Default for State {
             current_context_tracks: vec![],
             current_playback_context: None,
 
-            playlist_search_state: PlaylistSearchState::default(),
+            context_search_state: ContextSearchState::default(),
 
             ui_playlist_tracks_list_state: ListState::default(),
         }
@@ -42,13 +42,21 @@ impl State {
         Arc::new(RwLock::new(State::default()))
     }
 
+    pub fn get_context_tracks(&self) -> Vec<&track::FullTrack> {
+        self.current_context_tracks
+            .iter()
+            .map(|t| t.track.as_ref().unwrap())
+            .collect()
+    }
+
     /// returns the list of tracks in the current playback context (album, playlist, etc)
-    pub fn get_context_tracks(&self) -> &Vec<playlist::PlaylistTrack> {
-        if self.playlist_search_state.query.is_some() {
+    /// filtered by a search query
+    pub fn get_context_filtered_tracks(&self) -> Vec<&track::FullTrack> {
+        if self.context_search_state.query.is_some() {
             // in search mode, return the filtered tracks
-            &self.playlist_search_state.tracks
+            self.context_search_state.tracks.iter().collect()
         } else {
-            &self.current_context_tracks
+            self.get_context_tracks()
         }
     }
 }

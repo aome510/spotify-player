@@ -80,7 +80,7 @@ impl Client {
             event::Event::SelectNextTrack => {
                 let mut state = state.write().unwrap();
                 if let Some(id) = state.ui_playlist_tracks_list_state.selected() {
-                    if id + 1 < state.get_context_tracks().len() {
+                    if id + 1 < state.get_context_filtered_tracks().len() {
                         state.ui_playlist_tracks_list_state.select(Some(id + 1));
                     }
                 }
@@ -102,15 +102,40 @@ impl Client {
                     if let Some(context) = playback.context.as_ref() {
                         self.play_tracks(
                             context.uri.clone(),
-                            state.get_context_tracks()[id]
-                                .track
-                                .as_ref()
-                                .unwrap()
-                                .uri
-                                .clone(),
+                            state.get_context_filtered_tracks()[id].uri.clone(),
                         )
                         .await?;
                     }
+                }
+            }
+            event::Event::SearchTrackInContext => {
+                let mut state = state.write().unwrap();
+                if let Some(query) = state.context_search_state.query.as_ref() {
+                    let mut query = query.clone();
+                    query.remove(0);
+
+                    log::info!("search tracks in context with query {}", query);
+                    state.context_search_state.tracks = state
+                        .get_context_tracks()
+                        .into_iter()
+                        .filter(|&t| {
+                            let desc = get_track_description(t);
+                            desc.to_lowercase().contains(&query)
+                        })
+                        .cloned()
+                        .collect();
+
+                    // update ui selection
+                    let id = if state.context_search_state.tracks.is_empty() {
+                        None
+                    } else {
+                        Some(0)
+                    };
+                    state.ui_playlist_tracks_list_state.select(id);
+                    log::info!(
+                        "after search, context_search_state.tracks = {:?}",
+                        state.context_search_state.tracks
+                    );
                 }
             }
         }
