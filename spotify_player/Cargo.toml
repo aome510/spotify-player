@@ -18,3 +18,4 @@ serde = { version = "1.0.126", features = ["derive"] }
 tokio = { version = "0.2", features = ["full"] }
 toml = "0.5.8"
 tui = { version = "0.15.0", default-features = false, features = ["crossterm"] }
+unicode-width = "0.1.8"

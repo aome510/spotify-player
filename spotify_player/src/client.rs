@@ -119,7 +119,7 @@ impl Client {
                         .get_context_tracks()
                         .into_iter()
                         .filter(|&t| {
-                            let desc = get_track_description(t);
+                            let desc = state::get_track_description(t).to_string();
                             desc.to_lowercase().contains(&query)
                         })
                         .cloned()

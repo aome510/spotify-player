@@ -37,13 +37,17 @@ fn render_current_playback_widget(
 }
 
 fn render_playlist_tracks_widget(frame: &mut Frame, state: &state::SharedState, rect: Rect) {
-    let items = state
+    let track_descs = state
         .read()
         .unwrap()
         .get_context_filtered_tracks()
         .into_iter()
-        .map(|t| ListItem::new(get_track_description(t)))
+        .map(|t| state::get_track_description(t))
         .collect::<Vec<_>>();
+    let items: Vec<_> = state::fmt_track_descriptions(track_descs, rect.width.into())
+        .into_iter()
+        .map(ListItem::new)
+        .collect();
     let tracks_block = List::new(items)
         .block(
             Block::default()

@@ -1621,6 +1621,7 @@ dependencies = [
  "tokio",
  "toml",
  "tui",
+ "unicode-width",
 ]
 
 [[package]]
