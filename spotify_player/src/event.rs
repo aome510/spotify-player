@@ -16,6 +16,7 @@ pub enum Event {
     SelectPreviousTrack,
     PlaySelectedTrack,
     SearchTrackInContext,
+    SortPlaylistTracks(state::PlaylistSortOrder),
 }
 
 pub enum KeyEvent {
@@ -123,6 +124,25 @@ fn handle_event(
                             .collect(),
                     };
                 }
+                // TODO: better handling the search/sort state event input handlers
+                KeyEvent::Alt(KeyCode::Char('1')) => send.send(Event::SortPlaylistTracks(
+                    state::PlaylistSortOrder::DateAdded(true),
+                ))?,
+                KeyEvent::Alt(KeyCode::Char('2')) => send.send(Event::SortPlaylistTracks(
+                    state::PlaylistSortOrder::DateAdded(false),
+                ))?,
+                KeyEvent::Alt(KeyCode::Char('3')) => send.send(Event::SortPlaylistTracks(
+                    state::PlaylistSortOrder::Album(true),
+                ))?,
+                KeyEvent::Alt(KeyCode::Char('4')) => send.send(Event::SortPlaylistTracks(
+                    state::PlaylistSortOrder::Album(false),
+                ))?,
+                KeyEvent::Alt(KeyCode::Char('5')) => send.send(Event::SortPlaylistTracks(
+                    state::PlaylistSortOrder::TrackName(true),
+                ))?,
+                KeyEvent::Alt(KeyCode::Char('6')) => send.send(Event::SortPlaylistTracks(
+                    state::PlaylistSortOrder::TrackName(false),
+                ))?,
                 _ => {}
             }
         };

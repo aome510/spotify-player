@@ -8,13 +8,55 @@ pub struct ContextSearchState {
     pub tracks: Vec<track::FullTrack>,
 }
 
+#[derive(Debug)]
+pub enum PlaylistSortOrder {
+    DateAdded(bool),
+    TrackName(bool),
+    Album(bool),
+}
+
+impl PlaylistSortOrder {
+    pub fn compare(
+        &self,
+        x: &playlist::PlaylistTrack,
+        y: &playlist::PlaylistTrack,
+    ) -> std::cmp::Ordering {
+        let x_track = x.track.as_ref().unwrap();
+        let y_track = y.track.as_ref().unwrap();
+        match *self {
+            Self::DateAdded(asc) => {
+                if asc {
+                    x.added_at.timestamp().cmp(&y.added_at.timestamp())
+                } else {
+                    y.added_at.timestamp().cmp(&x.added_at.timestamp())
+                }
+            }
+            Self::TrackName(asc) => {
+                if asc {
+                    x_track.name.cmp(&y.track.as_ref().unwrap().name)
+                } else {
+                    y_track.name.cmp(&x.track.as_ref().unwrap().name)
+                }
+            }
+            Self::Album(asc) => {
+                if asc {
+                    x_track.album.name.cmp(&y_track.album.name)
+                } else {
+                    y_track.album.name.cmp(&x_track.album.name)
+                }
+            }
+        }
+    }
+}
+
 pub struct State {
     pub is_running: bool,
     pub auth_token_expires_at: std::time::SystemTime,
     pub current_playlist: Option<playlist::FullPlaylist>,
-    pub current_context_tracks: Vec<playlist::PlaylistTrack>,
+    pub current_playlist_tracks: Vec<playlist::PlaylistTrack>,
     pub current_playback_context: Option<context::CurrentlyPlaybackContext>,
 
+    // event states
     pub context_search_state: ContextSearchState,
 
     // UI states
@@ -29,7 +71,7 @@ impl Default for State {
             is_running: true,
             auth_token_expires_at: std::time::SystemTime::now(),
             current_playlist: None,
-            current_context_tracks: vec![],
+            current_playlist_tracks: vec![],
             current_playback_context: None,
 
             context_search_state: ContextSearchState::default(),
@@ -44,9 +86,15 @@ impl State {
         Arc::new(RwLock::new(State::default()))
     }
 
+    /// sorts the
+    pub fn sort_playlist_tracks(&mut self, sort_oder: PlaylistSortOrder) {
+        self.current_playlist_tracks
+            .sort_by(|x, y| sort_oder.compare(x, y));
+    }
+
     /// returns a list of tracks in the current playback context (album, playlist, etc)
     pub fn get_context_tracks(&self) -> Vec<&track::FullTrack> {
-        self.current_context_tracks
+        self.current_playlist_tracks
             .iter()
             .map(|t| t.track.as_ref().unwrap())
             .collect()

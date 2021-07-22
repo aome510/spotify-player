@@ -75,7 +75,7 @@ impl Client {
                         .ui_playlist_tracks_list_state
                         .select(Some(0));
                 }
-                state.write().unwrap().current_context_tracks = tracks;
+                state.write().unwrap().current_playlist_tracks = tracks;
             }
             event::Event::SelectNextTrack => {
                 let mut state = state.write().unwrap();
@@ -137,6 +137,9 @@ impl Client {
                         state.context_search_state.tracks
                     );
                 }
+            }
+            event::Event::SortPlaylistTracks(order) => {
+                state.write().unwrap().sort_playlist_tracks(order);
             }
         }
         Ok(())
