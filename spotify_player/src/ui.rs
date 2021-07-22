@@ -16,10 +16,11 @@ fn render_current_playback_widget(
     if let Some(PlayingItem::Track(track)) = context.item.as_ref() {
         let progress_in_sec: u32 = context.progress_ms.unwrap() / 1000;
         let playback_info = format!(
-            "currently playing {} at {}/{} (repeat: {}, shuffle: {})\n",
+            "Current track: {} at {}/{} (playing: {}, repeat: {}, shuffle: {})\n",
             track.name,
             progress_in_sec,
             track.duration_ms / 1000,
+            context.is_playing,
             context.repeat_state.as_str(),
             context.shuffle_state,
         );
@@ -27,7 +28,7 @@ fn render_current_playback_widget(
         let desc_block = Paragraph::new(playback_info)
             .block(
                 Block::default()
-                    .title("Current playback context")
+                    .title("Playback context")
                     .borders(Borders::ALL),
             )
             .wrap(Wrap { trim: true });
