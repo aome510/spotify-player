@@ -8,33 +8,35 @@ use tui::backend::CrosstermBackend;
 type Terminal = tui::Terminal<CrosstermBackend<Stdout>>;
 type Frame<'a> = tui::Frame<'a, CrosstermBackend<Stdout>>;
 
-fn render_current_playback_widget(
-    frame: &mut Frame,
-    context: &context::CurrentlyPlaybackContext,
-    rect: Rect,
-) {
-    if let Some(PlayingItem::Track(track)) = context.item.as_ref() {
-        let progress_in_sec: u32 = context.progress_ms.unwrap() / 1000;
-        let playback_info = format!(
-            "Current track: {} at {}/{} (playing: {}, repeat: {}, shuffle: {})\n",
-            track.name,
-            progress_in_sec,
-            track.duration_ms / 1000,
-            context.is_playing,
-            context.repeat_state.as_str(),
-            context.shuffle_state,
-        );
+fn render_current_playback_widget(frame: &mut Frame, state: &state::SharedState, rect: Rect) {
+    let playback_info =
+        if let Some(context) = state.read().unwrap().current_playback_context.as_ref() {
+            if let Some(PlayingItem::Track(track)) = context.item.as_ref() {
+                let progress_in_sec: u32 = context.progress_ms.unwrap() / 1000;
+                format!(
+                    "Current track: {} at {}/{} (playing: {}, repeat: {}, shuffle: {})\n",
+                    track.name,
+                    progress_in_sec,
+                    track.duration_ms / 1000,
+                    context.is_playing,
+                    context.repeat_state.as_str(),
+                    context.shuffle_state,
+                )
+            } else {
+                "".to_owned()
+            }
+        } else {
+            "".to_owned()
+        };
+    let desc_block = Paragraph::new(playback_info)
+        .block(
+            Block::default()
+                .title("Playback context")
+                .borders(Borders::ALL),
+        )
+        .wrap(Wrap { trim: true });
 
-        let desc_block = Paragraph::new(playback_info)
-            .block(
-                Block::default()
-                    .title("Playback context")
-                    .borders(Borders::ALL),
-            )
-            .wrap(Wrap { trim: true });
-
-        frame.render_widget(desc_block, rect);
-    }
+    frame.render_widget(desc_block, rect);
 }
 
 fn render_playlist_tracks_widget(frame: &mut Frame, state: &state::SharedState, rect: Rect) {
@@ -74,14 +76,12 @@ fn quit(mut terminal: Terminal) -> Result<()> {
     Ok(())
 }
 
-fn draw_main_layout(f: &mut Frame, state: &state::SharedState, rect: Rect) {
+fn render_main_layout(f: &mut Frame, state: &state::SharedState, rect: Rect) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Percentage(20), Constraint::Percentage(80)].as_ref())
         .split(rect);
-    if let Some(context) = state.read().unwrap().current_playback_context.as_ref() {
-        render_current_playback_widget(f, context, chunks[0]);
-    }
+    render_current_playback_widget(f, &state, chunks[0]);
     render_playlist_tracks_widget(f, &state, chunks[1]);
 }
 
@@ -157,7 +157,7 @@ pub fn start_ui(state: state::SharedState, send: mpsc::Sender<event::Event>) -> 
                         }
                     };
 
-                draw_main_layout(f, &state, main_layout_rect);
+                render_main_layout(f, &state, main_layout_rect);
             })?;
         }
 

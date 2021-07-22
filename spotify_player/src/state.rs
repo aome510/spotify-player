@@ -44,6 +44,7 @@ impl State {
         Arc::new(RwLock::new(State::default()))
     }
 
+    /// returns a list of tracks in the current playback context (album, playlist, etc)
     pub fn get_context_tracks(&self) -> Vec<&track::FullTrack> {
         self.current_context_tracks
             .iter()
@@ -88,6 +89,8 @@ pub fn get_track_description(track: &track::FullTrack) -> TrackDescription {
     }
 }
 
+/// truncates a string whose length exceeds a given `max_len` length.
+/// Such string will be appended with `...` at the end.
 pub fn truncate_string(s: String, max_len: usize) -> String {
     let len = UnicodeWidthStr::width(s.as_str());
     if len > max_len {
@@ -112,10 +115,13 @@ pub fn truncate_string(s: String, max_len: usize) -> String {
     }
 }
 
+/// formats a given list of track descriptions so that track's `name`,
+/// `artists`, and `album` are aligned.
 pub fn fmt_track_descriptions(
     tracks: Vec<TrackDescription>,
     max_horizontal_len: usize,
 ) -> Vec<String> {
+    // the row layout in the track description table
     let layout = [
         max_horizontal_len / 3,
         max_horizontal_len / 3,

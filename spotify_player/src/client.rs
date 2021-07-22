@@ -100,7 +100,7 @@ impl Client {
                     state.current_playback_context.as_ref(),
                 ) {
                     if let Some(context) = playback.context.as_ref() {
-                        self.play_tracks(
+                        self.play_track_with_context(
                             context.uri.clone(),
                             state.get_context_filtered_tracks()[id].uri.clone(),
                         )
@@ -167,7 +167,12 @@ impl Client {
 
     // client functions
 
-    pub async fn play_tracks(&self, context_uri: String, track_uri: String) -> Result<()> {
+    /// starts a track given a playback context
+    pub async fn play_track_with_context(
+        &self,
+        context_uri: String,
+        track_uri: String,
+    ) -> Result<()> {
         Self::handle_rspotify_result(
             self.spotify
                 .start_playback(
@@ -181,6 +186,7 @@ impl Client {
         )
     }
 
+    /// returns a list of tracks in the current playlist
     pub async fn get_current_playlist_tracks(
         &self,
         state: &RwLockReadGuard<'_, state::State>,
@@ -200,6 +206,7 @@ impl Client {
         Ok(tracks)
     }
 
+    /// Returns a playlist given its id
     pub async fn get_playlist(&self, playlist_id: &str) -> Result<playlist::FullPlaylist> {
         Self::handle_rspotify_result(self.spotify.playlist(playlist_id, None, None).await)
     }
@@ -291,6 +298,7 @@ impl Client {
             .await?)
     }
 
+    /// builds a spotify client from an authentication token
     fn get_spotify_client(token: TokenInfo) -> Spotify {
         let client_credential = SpotifyClientCredentials::default()
             .token_info(token)
