@@ -69,6 +69,17 @@ fn quit(mut terminal: Terminal) -> Result<()> {
     Ok(())
 }
 
+fn draw_main_layout(f: &mut Frame, state: &state::SharedState, rect: Rect) {
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Percentage(20), Constraint::Percentage(80)].as_ref())
+        .split(rect);
+    if let Some(context) = state.read().unwrap().current_playback_context.as_ref() {
+        render_current_playback_widget(f, context, chunks[0]);
+    }
+    render_playlist_tracks_widget(f, &state, chunks[1]);
+}
+
 /// start the application UI as the main thread
 pub fn start_ui(state: state::SharedState, send: mpsc::Sender<event::Event>) -> Result<()> {
     let mut stdout = std::io::stdout();
@@ -126,38 +137,22 @@ pub fn start_ui(state: state::SharedState, send: mpsc::Sender<event::Event>) -> 
         {
             // draw ui
             terminal.draw(|f| {
-                let chunks = match state.read().unwrap().context_search_state.query.as_ref() {
-                    None => Layout::default()
-                        .direction(Direction::Vertical)
-                        .margin(1)
-                        .constraints(
-                            [Constraint::Percentage(20), Constraint::Percentage(80)].as_ref(),
-                        )
-                        .split(f.size()),
-                    Some(query) => {
-                        let mut chunks = Layout::default()
-                            .direction(Direction::Vertical)
-                            .margin(1)
-                            .constraints(
-                                [
-                                    Constraint::Percentage(20),
-                                    Constraint::Percentage(75),
-                                    Constraint::Percentage(5),
-                                ]
-                                .as_ref(),
-                            )
-                            .split(f.size());
-                        let search_box = Paragraph::new(query.clone())
-                            .block(Block::default().borders(Borders::ALL).title("Search"));
-                        f.render_widget(search_box, chunks[2]);
-                        chunks.pop().unwrap();
-                        chunks
-                    }
-                };
-                if let Some(context) = state.read().unwrap().current_playback_context.as_ref() {
-                    render_current_playback_widget(f, context, chunks[0]);
-                }
-                render_playlist_tracks_widget(f, &state, chunks[1]);
+                let main_layout_rect =
+                    match state.read().unwrap().context_search_state.query.as_ref() {
+                        None => f.size(),
+                        Some(query) => {
+                            let chunks = Layout::default()
+                                .direction(Direction::Vertical)
+                                .constraints([Constraint::Min(0), Constraint::Length(3)].as_ref())
+                                .split(f.size());
+                            let search_box = Paragraph::new(query.clone())
+                                .block(Block::default().borders(Borders::ALL).title("Search"));
+                            f.render_widget(search_box, chunks[1]);
+                            chunks[0]
+                        }
+                    };
+
+                draw_main_layout(f, &state, main_layout_rect);
             })?;
         }
 
