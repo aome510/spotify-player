@@ -78,10 +78,6 @@ pub fn start_ui(state: state::SharedState, send: mpsc::Sender<event::Event>) -> 
     let backend = tui::backend::CrosstermBackend::new(stdout);
     let mut terminal = tui::Terminal::new(backend)?;
     terminal.clear()?;
-    let layout = Layout::default()
-        .direction(Direction::Vertical)
-        .margin(1)
-        .constraints([Constraint::Percentage(30), Constraint::Percentage(70)].as_ref());
 
     terminal.draw(|f| {
         let ui = Paragraph::new("Loading the application... Please check your internet connection if this takes too long <(\").")
@@ -130,7 +126,34 @@ pub fn start_ui(state: state::SharedState, send: mpsc::Sender<event::Event>) -> 
         {
             // draw ui
             terminal.draw(|f| {
-                let chunks = layout.clone().split(f.size());
+                let chunks = match state.read().unwrap().context_search_state.query.as_ref() {
+                    None => Layout::default()
+                        .direction(Direction::Vertical)
+                        .margin(1)
+                        .constraints(
+                            [Constraint::Percentage(20), Constraint::Percentage(80)].as_ref(),
+                        )
+                        .split(f.size()),
+                    Some(query) => {
+                        let mut chunks = Layout::default()
+                            .direction(Direction::Vertical)
+                            .margin(1)
+                            .constraints(
+                                [
+                                    Constraint::Percentage(20),
+                                    Constraint::Percentage(75),
+                                    Constraint::Percentage(5),
+                                ]
+                                .as_ref(),
+                            )
+                            .split(f.size());
+                        let search_box = Paragraph::new(query.clone())
+                            .block(Block::default().borders(Borders::ALL).title("Search"));
+                        f.render_widget(search_box, chunks[2]);
+                        chunks.pop().unwrap();
+                        chunks
+                    }
+                };
                 if let Some(context) = state.read().unwrap().current_playback_context.as_ref() {
                     render_current_playback_widget(f, context, chunks[0]);
                 }
