@@ -1,3 +1,4 @@
+use crate::config;
 use crate::event;
 use crate::prelude::*;
 use crate::state;
@@ -72,31 +73,31 @@ impl Client {
                     state
                         .write()
                         .unwrap()
-                        .ui_playlist_tracks_list_state
+                        .ui_context_tracks_list_state
                         .select(Some(0));
                 }
                 state.write().unwrap().current_playlist_tracks = tracks;
             }
             event::Event::SelectNextTrack => {
                 let mut state = state.write().unwrap();
-                if let Some(id) = state.ui_playlist_tracks_list_state.selected() {
+                if let Some(id) = state.ui_context_tracks_list_state.selected() {
                     if id + 1 < state.get_context_filtered_tracks().len() {
-                        state.ui_playlist_tracks_list_state.select(Some(id + 1));
+                        state.ui_context_tracks_list_state.select(Some(id + 1));
                     }
                 }
             }
             event::Event::SelectPreviousTrack => {
                 let mut state = state.write().unwrap();
-                if let Some(id) = state.ui_playlist_tracks_list_state.selected() {
+                if let Some(id) = state.ui_context_tracks_list_state.selected() {
                     if id > 0 {
-                        state.ui_playlist_tracks_list_state.select(Some(id - 1));
+                        state.ui_context_tracks_list_state.select(Some(id - 1));
                     }
                 }
             }
             event::Event::PlaySelectedTrack => {
                 let state = state.read().unwrap();
                 if let (Some(id), Some(playback)) = (
-                    state.ui_playlist_tracks_list_state.selected(),
+                    state.ui_context_tracks_list_state.selected(),
                     state.current_playback_context.as_ref(),
                 ) {
                     if let Some(context) = playback.context.as_ref() {
@@ -131,7 +132,7 @@ impl Client {
                     } else {
                         Some(0)
                     };
-                    state.ui_playlist_tracks_list_state.select(id);
+                    state.ui_context_tracks_list_state.select(id);
                     log::info!(
                         "after search, context_search_state.tracks = {:?}",
                         state.context_search_state.tracks
@@ -143,11 +144,6 @@ impl Client {
             }
         }
         Ok(())
-    }
-
-    /// handles a client error
-    pub fn handle_error(&self, err: anyhow::Error) {
-        log::warn!("client error: {:#}", err);
     }
 
     /// refreshes the client's authentication token, returns
@@ -326,6 +322,29 @@ impl Client {
         match state.current_playback_context.as_ref() {
             Some(state) => Ok(state),
             None => Err(anyhow!("unable to get the currently playing context")),
+        }
+    }
+}
+
+/// starts the client's event watcher
+pub async fn start_watcher(
+    state: state::SharedState,
+    mut client: Client,
+    recv: mpsc::Receiver<event::Event>,
+) -> Result<()> {
+    state.write().unwrap().auth_token_expires_at = client.refresh_token().await?;
+    state.write().unwrap().current_playback_context = client.get_current_playback().await?;
+    let mut last_refresh = std::time::SystemTime::now();
+    loop {
+        if let Ok(event) = recv.try_recv() {
+            client.handle_event(&state, event).await?;
+        }
+        if std::time::SystemTime::now() > last_refresh + config::PLAYBACK_REFRESH_DURACTION {
+            // `config::REFRESH_DURATION` passes since the last refresh, get the
+            // current playback context again
+            log::info!("refresh the current playback context...");
+            state.write().unwrap().current_playback_context = client.get_current_playback().await?;
+            last_refresh = std::time::SystemTime::now()
         }
     }
 }

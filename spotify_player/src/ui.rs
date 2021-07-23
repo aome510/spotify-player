@@ -54,7 +54,7 @@ fn render_playlist_tracks_widget(frame: &mut Frame, state: &state::SharedState, 
     let tracks_block = List::new(items)
         .block(
             Block::default()
-                .title("Playlist tracks")
+                .title("Context tracks")
                 .borders(Borders::ALL),
         )
         .highlight_style(Style::default().add_modifier(Modifier::ITALIC))
@@ -62,7 +62,7 @@ fn render_playlist_tracks_widget(frame: &mut Frame, state: &state::SharedState, 
     frame.render_stateful_widget(
         tracks_block,
         rect,
-        &mut state.write().unwrap().ui_playlist_tracks_list_state,
+        &mut state.write().unwrap().ui_context_tracks_list_state,
     );
 }
 
@@ -94,17 +94,6 @@ pub fn start_ui(state: state::SharedState, send: mpsc::Sender<event::Event>) -> 
     let backend = tui::backend::CrosstermBackend::new(stdout);
     let mut terminal = tui::Terminal::new(backend)?;
     terminal.clear()?;
-
-    terminal.draw(|f| {
-        let ui = Paragraph::new("Loading the application... Please check your internet connection if this takes too long <(\").")
-            .block(
-                Block::default()
-                    .title("Loading...")
-                    .borders(Borders::ALL),
-            )
-            .wrap(Wrap { trim: true });
-        f.render_widget(ui, f.size())
-    })?;
 
     loop {
         {

@@ -60,7 +60,7 @@ pub struct State {
     pub context_search_state: ContextSearchState,
 
     // UI states
-    pub ui_playlist_tracks_list_state: ListState,
+    pub ui_context_tracks_list_state: ListState,
 }
 
 pub type SharedState = Arc<RwLock<State>>;
@@ -76,7 +76,7 @@ impl Default for State {
 
             context_search_state: ContextSearchState::default(),
 
-            ui_playlist_tracks_list_state: ListState::default(),
+            ui_context_tracks_list_state: ListState::default(),
         }
     }
 }
@@ -148,7 +148,7 @@ pub fn truncate_string(s: String, max_len: usize) -> String {
             .chars()
             .fold(("".to_owned(), 0_usize), |(mut cs, cw), c| {
                 let w = UnicodeWidthChar::width(c).unwrap_or(2);
-                if cw + w > max_len {
+                if cw + w + 3 > max_len {
                     (cs, cw)
                 } else {
                     cs.push(c);
@@ -179,9 +179,18 @@ pub fn fmt_track_descriptions(
         .into_iter()
         .map(|t| {
             [
-                truncate_string(t.name, config::TRACK_DESC_ITEM_MAX_LEN),
-                truncate_string(t.artists.join(","), config::TRACK_DESC_ITEM_MAX_LEN),
-                truncate_string(t.album, config::TRACK_DESC_ITEM_MAX_LEN),
+                truncate_string(
+                    t.name,
+                    std::cmp::min(config::TRACK_DESC_ITEM_MAX_LEN, layout[0] - 1),
+                ),
+                truncate_string(
+                    t.artists.join(","),
+                    std::cmp::min(config::TRACK_DESC_ITEM_MAX_LEN, layout[1] - 1),
+                ),
+                truncate_string(
+                    t.album,
+                    std::cmp::min(config::TRACK_DESC_ITEM_MAX_LEN, layout[2] - 1),
+                ),
             ]
         })
         .map(|mut descs| {
