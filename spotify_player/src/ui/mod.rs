@@ -9,6 +9,7 @@ type Terminal = tui::Terminal<CrosstermBackend<Stdout>>;
 type Frame<'a> = tui::Frame<'a, CrosstermBackend<Stdout>>;
 
 mod help;
+mod utils;
 
 fn render_current_playback_widget(frame: &mut Frame, state: &state::SharedState, rect: Rect) {
     let playback_info = if let Some(ref context) = state.read().unwrap().current_playback_context {
@@ -155,17 +156,37 @@ pub fn start_ui(state: state::SharedState, send: mpsc::Sender<event::Event>) -> 
         {
             // draw ui
             terminal.draw(|f| {
-                let main_layout_rect = match state.read().unwrap().context_search_state.query {
-                    None => f.size(),
-                    Some(ref query) => {
-                        let chunks = Layout::default()
-                            .direction(Direction::Vertical)
-                            .constraints([Constraint::Min(0), Constraint::Length(3)].as_ref())
-                            .split(f.size());
-                        let search_box = Paragraph::new(query.clone())
-                            .block(Block::default().borders(Borders::ALL).title("Search"));
-                        f.render_widget(search_box, chunks[1]);
-                        chunks[0]
+                let main_layout_rect = {
+                    let state = state.read().unwrap();
+                    match state.current_event_state {
+                        state::EventState::Default => f.size(),
+                        state::EventState::ContextSearch => {
+                            let chunks = Layout::default()
+                                .direction(Direction::Vertical)
+                                .constraints([Constraint::Min(0), Constraint::Length(3)].as_ref())
+                                .split(f.size());
+                            let search_box =
+                                Paragraph::new(state.context_search_state.query.clone().unwrap())
+                                    .block(Block::default().borders(Borders::ALL).title("Search"));
+                            f.render_widget(search_box, chunks[1]);
+                            chunks[0]
+                        }
+                        state::EventState::Sort => {
+                            let chunks = Layout::default()
+                                .direction(Direction::Vertical)
+                                .constraints([Constraint::Min(0), Constraint::Length(7)].as_ref())
+                                .split(f.size());
+                            let table = help::get_shortcut_table(vec![
+                                ("d", "Sort by date ascending"),
+                                ("D", "Sort by date descending"),
+                                ("t", "Sort by track ascending"),
+                                ("T", "Sort by track descending"),
+                                ("a", "Sort by album ascending"),
+                                ("A", "Sort by album descending"),
+                            ]);
+                            f.render_widget(table, chunks[1]);
+                            chunks[0]
+                        }
                     }
                 };
 
