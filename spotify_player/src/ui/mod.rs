@@ -2,6 +2,7 @@ use crate::config;
 use crate::event;
 use crate::prelude::*;
 use crate::state;
+use crate::ui::help::get_sort_shortcuts;
 use std::io::Stdout;
 use tui::backend::CrosstermBackend;
 
@@ -175,14 +176,7 @@ pub fn start_ui(state: state::SharedState, send: mpsc::Sender<event::Event>) -> 
                                 .direction(Direction::Vertical)
                                 .constraints([Constraint::Min(0), Constraint::Length(7)].as_ref())
                                 .split(f.size());
-                            let table = help::get_shortcut_table(vec![
-                                ("d", "Sort by date ascending"),
-                                ("D", "Sort by date descending"),
-                                ("t", "Sort by track ascending"),
-                                ("T", "Sort by track descending"),
-                                ("a", "Sort by album ascending"),
-                                ("A", "Sort by album descending"),
-                            ]);
+                            let table = help::get_shortcut_table(get_sort_shortcuts());
                             f.render_widget(table, chunks[1]);
                             chunks[0]
                         }

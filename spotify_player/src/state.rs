@@ -140,7 +140,7 @@ impl From<playlist::PlaylistTrack> for Track {
                 name: track.album.name,
             },
             duration: track.duration_ms,
-            added_at: 0,
+            added_at: t.added_at.timestamp() as u64,
         }
     }
 }
