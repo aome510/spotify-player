@@ -34,10 +34,12 @@ impl Client {
                 state.write().unwrap().auth_token_expires_at = self.refresh_token().await?;
             }
             event::Event::NextTrack => {
-                self.next_track().await?;
+                self.next_track(state.read().unwrap().devices[0].id.clone())
+                    .await?;
             }
             event::Event::PreviousTrack => {
-                self.previous_track().await?;
+                self.previous_track(state.read().unwrap().devices[0].id.clone())
+                    .await?;
             }
             event::Event::ResumePause => {
                 let state = state.read().unwrap();
@@ -205,6 +207,11 @@ impl Client {
 
     // client functions
 
+    /// gets all available devices
+    pub async fn get_devices(&self) -> Result<Vec<device::Device>> {
+        Ok(Self::handle_rspotify_result(self.spotify.device().await)?.devices)
+    }
+
     /// starts a track given a playback context
     pub async fn play_track_with_context(
         &self,
@@ -255,36 +262,41 @@ impl Client {
         &self,
         state: &RwLockReadGuard<'_, state::State>,
     ) -> Result<()> {
-        let state = Self::get_current_playback_state(&state)?;
-        if state.is_playing {
-            self.pause_track().await
-        } else {
-            self.resume_track().await
+        let device_id = state.devices[0].id.clone();
+        match state.current_playback_context {
+            Some(ref context) => {
+                if context.is_playing {
+                    self.pause_track(device_id).await
+                } else {
+                    self.resume_track(device_id).await
+                }
+            }
+            None => self.resume_track(device_id).await,
         }
     }
 
     /// resumes a previously paused/played track
-    pub async fn resume_track(&self) -> Result<()> {
+    pub async fn resume_track(&self, device_id: String) -> Result<()> {
         Self::handle_rspotify_result(
             self.spotify
-                .start_playback(None, None, None, None, None)
+                .start_playback(Some(device_id), None, None, None, None)
                 .await,
         )
     }
 
     /// pauses currently playing track
-    pub async fn pause_track(&self) -> Result<()> {
-        Self::handle_rspotify_result(self.spotify.pause_playback(None).await)
+    pub async fn pause_track(&self, device_id: String) -> Result<()> {
+        Self::handle_rspotify_result(self.spotify.pause_playback(Some(device_id)).await)
     }
 
     /// skips to the next track
-    pub async fn next_track(&self) -> Result<()> {
-        Self::handle_rspotify_result(self.spotify.next_track(None).await)
+    pub async fn next_track(&self, device_id: String) -> Result<()> {
+        Self::handle_rspotify_result(self.spotify.next_track(Some(device_id)).await)
     }
 
     /// skips to the previous track
-    pub async fn previous_track(&self) -> Result<()> {
-        Self::handle_rspotify_result(self.spotify.previous_track(None).await)
+    pub async fn previous_track(&self, device_id: String) -> Result<()> {
+        Self::handle_rspotify_result(self.spotify.previous_track(Some(device_id)).await)
     }
 
     /// returns the current playing context
@@ -376,12 +388,12 @@ async fn refresh_current_playback_context(state: &state::SharedState, client: &C
 }
 
 /// starts the client's event watcher
+#[tokio::main]
 pub async fn start_watcher(
     state: state::SharedState,
     mut client: Client,
     recv: mpsc::Receiver<event::Event>,
-) -> Result<()> {
-    state.write().unwrap().auth_token_expires_at = client.refresh_token().await?;
+) {
     refresh_current_playback_context(&state, &client).await;
     let mut last_refresh = std::time::SystemTime::now();
     loop {

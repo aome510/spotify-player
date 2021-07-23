@@ -8,6 +8,8 @@ pub struct State {
     pub is_running: bool,
     pub auth_token_expires_at: std::time::SystemTime,
 
+    pub devices: Vec<device::Device>,
+
     pub current_playback_context: Option<context::CurrentlyPlaybackContext>,
     pub current_playlist: Option<playlist::FullPlaylist>,
     pub current_album: Option<album::FullAlbum>,
@@ -73,6 +75,8 @@ impl Default for State {
         State {
             is_running: true,
             auth_token_expires_at: std::time::SystemTime::now(),
+            devices: vec![],
+
             current_playlist: None,
             current_album: None,
             current_context_tracks: vec![],

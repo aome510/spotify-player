@@ -22,15 +22,18 @@ const SCOPES: [&str; 10] = [
     "user-library-read",
 ];
 
-#[tokio::main]
-async fn start_client_watcher(
-    state: state::SharedState,
-    client: client::Client,
-    recv: mpsc::Receiver<event::Event>,
-) {
-    if let Err(err) = client::start_watcher(state, client, recv).await {
-        panic!("client watcher error: {:#?}", err);
+async fn init(client: &mut client::Client, state: &state::SharedState) -> Result<()> {
+    state.write().unwrap().auth_token_expires_at = client.refresh_token().await?;
+
+    let devices = client.get_devices().await?;
+    if devices.is_empty() {
+        return Err(anyhow!(
+            "no active device available. Please connect to one and try again."
+        ));
     }
+    state.write().unwrap().devices = devices;
+
+    Ok(())
 }
 
 #[tokio::main]
@@ -53,10 +56,13 @@ async fn main() -> Result<()> {
             .scope(&SCOPES.join(" "))
             .build();
 
-        let client = client::Client::new(oauth);
+        let mut client = client::Client::new(oauth);
+        // init the application
+        init(&mut client, &state).await?;
+
         let cloned_state = state.clone();
         move || {
-            start_client_watcher(cloned_state, client, recv);
+            client::start_watcher(cloned_state, client, recv);
         }
     });
     thread::spawn({
