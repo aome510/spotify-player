@@ -32,6 +32,7 @@ impl From<term_event::KeyEvent> for KeyEvent {
             KeyModifiers::NONE => KeyEvent::None(event.code),
             KeyModifiers::ALT => KeyEvent::Alt(event.code),
             KeyModifiers::CONTROL => KeyEvent::Ctrl(event.code),
+            KeyModifiers::SHIFT => KeyEvent::None(event.code),
             _ => KeyEvent::Unknown,
         }
     }
@@ -45,7 +46,9 @@ fn handle_search_mode_event(
     if let term_event::Event::Key(key_event) = event {
         match key_event.into() {
             KeyEvent::None(KeyCode::Esc) => {
-                state.write().unwrap().context_search_state.query = None;
+                let mut state = state.write().unwrap();
+                state.current_event_state = state::EventState::Default;
+                state.context_search_state.query = None;
             }
             KeyEvent::None(KeyCode::Char(c)) => {
                 let mut state = state.write().unwrap();
@@ -76,79 +79,118 @@ fn handle_search_mode_event(
     Ok(())
 }
 
+fn handle_sort_mode_event(
+    event: term_event::Event,
+    send: &mpsc::Sender<Event>,
+    state: &state::SharedState,
+) -> Result<()> {
+    if let term_event::Event::Key(key_event) = event {
+        match key_event.into() {
+            KeyEvent::None(KeyCode::Char('d')) => send.send(Event::SortPlaylistTracks(
+                state::PlaylistSortOrder::DateAdded(true),
+            ))?,
+            KeyEvent::None(KeyCode::Char('D')) => send.send(Event::SortPlaylistTracks(
+                state::PlaylistSortOrder::DateAdded(false),
+            ))?,
+            KeyEvent::None(KeyCode::Char('a')) => send.send(Event::SortPlaylistTracks(
+                state::PlaylistSortOrder::Album(true),
+            ))?,
+            KeyEvent::None(KeyCode::Char('A')) => send.send(Event::SortPlaylistTracks(
+                state::PlaylistSortOrder::Album(false),
+            ))?,
+            KeyEvent::None(KeyCode::Char('t')) => send.send(Event::SortPlaylistTracks(
+                state::PlaylistSortOrder::TrackName(true),
+            ))?,
+            KeyEvent::None(KeyCode::Char('T')) => send.send(Event::SortPlaylistTracks(
+                state::PlaylistSortOrder::TrackName(false),
+            ))?,
+            _ => {}
+        }
+    }
+    state.write().unwrap().current_event_state = state::EventState::Default;
+    Ok(())
+}
+
+fn handel_default_mode_event(
+    event: term_event::Event,
+    send: &mpsc::Sender<Event>,
+    state: &state::SharedState,
+) -> Result<()> {
+    if let term_event::Event::Key(key_event) = event {
+        match key_event.into() {
+            KeyEvent::None(KeyCode::Char('q')) => {
+                send.send(Event::Quit)?;
+            }
+            KeyEvent::None(KeyCode::Char('n')) => {
+                send.send(Event::NextTrack)?;
+            }
+            KeyEvent::None(KeyCode::Char('p')) => {
+                send.send(Event::PreviousTrack)?;
+            }
+            KeyEvent::None(KeyCode::Char(' ')) => {
+                send.send(Event::ResumePause)?;
+            }
+            KeyEvent::Ctrl(KeyCode::Char('r')) => {
+                send.send(Event::Repeat)?;
+            }
+            KeyEvent::Ctrl(KeyCode::Char('s')) => {
+                send.send(Event::Shuffle)?;
+            }
+            KeyEvent::None(KeyCode::Char('j')) => {
+                send.send(Event::SelectNextTrack)?;
+            }
+            KeyEvent::None(KeyCode::Char('k')) => {
+                send.send(Event::SelectPreviousTrack)?;
+            }
+            KeyEvent::None(KeyCode::Enter) => {
+                send.send(Event::PlaySelectedTrack)?;
+            }
+            KeyEvent::None(KeyCode::Char('/')) => {
+                let mut state = state.write().unwrap();
+                state.current_event_state = state::EventState::ContextSearch;
+                state.context_search_state = state::ContextSearchState {
+                    query: Some("/".to_owned()),
+                    tracks: state
+                        .get_context_filtered_tracks()
+                        .into_iter()
+                        .cloned()
+                        .collect(),
+                };
+            }
+            KeyEvent::None(KeyCode::Char('s')) => {
+                state.write().unwrap().current_event_state = state::EventState::Sort;
+            }
+            _ => {}
+        }
+    };
+
+    Ok(())
+}
+
 fn handle_event(
     event: term_event::Event,
     send: &mpsc::Sender<Event>,
     state: &state::SharedState,
 ) -> Result<()> {
-    if state.read().unwrap().context_search_state.query.is_some() {
-        handle_search_mode_event(event, send, state)
-    } else {
-        if let term_event::Event::Key(key_event) = event {
-            match key_event.into() {
-                KeyEvent::None(KeyCode::Char('q')) => {
-                    send.send(Event::Quit)?;
-                }
-                KeyEvent::None(KeyCode::Char('n')) => {
-                    send.send(Event::NextTrack)?;
-                }
-                KeyEvent::None(KeyCode::Char('p')) => {
-                    send.send(Event::PreviousTrack)?;
-                }
-                KeyEvent::None(KeyCode::Char(' ')) => {
-                    send.send(Event::ResumePause)?;
-                }
-                KeyEvent::None(KeyCode::Char('r')) => {
-                    send.send(Event::Repeat)?;
-                }
-                KeyEvent::None(KeyCode::Char('s')) => {
-                    send.send(Event::Shuffle)?;
-                }
-                KeyEvent::None(KeyCode::Char('j')) => {
-                    send.send(Event::SelectNextTrack)?;
-                }
-                KeyEvent::None(KeyCode::Char('k')) => {
-                    send.send(Event::SelectPreviousTrack)?;
-                }
-                KeyEvent::None(KeyCode::Enter) => {
-                    send.send(Event::PlaySelectedTrack)?;
-                }
-                KeyEvent::None(KeyCode::Char('/')) => {
-                    let mut state = state.write().unwrap();
-                    state.context_search_state = state::ContextSearchState {
-                        query: Some("/".to_owned()),
-                        tracks: state
-                            .get_context_filtered_tracks()
-                            .into_iter()
-                            .cloned()
-                            .collect(),
-                    };
-                }
-                // TODO: better handling the search/sort state event input handlers
-                KeyEvent::Alt(KeyCode::Char('1')) => send.send(Event::SortPlaylistTracks(
-                    state::PlaylistSortOrder::DateAdded(true),
-                ))?,
-                KeyEvent::Alt(KeyCode::Char('2')) => send.send(Event::SortPlaylistTracks(
-                    state::PlaylistSortOrder::DateAdded(false),
-                ))?,
-                KeyEvent::Alt(KeyCode::Char('3')) => send.send(Event::SortPlaylistTracks(
-                    state::PlaylistSortOrder::Album(true),
-                ))?,
-                KeyEvent::Alt(KeyCode::Char('4')) => send.send(Event::SortPlaylistTracks(
-                    state::PlaylistSortOrder::Album(false),
-                ))?,
-                KeyEvent::Alt(KeyCode::Char('5')) => send.send(Event::SortPlaylistTracks(
-                    state::PlaylistSortOrder::TrackName(true),
-                ))?,
-                KeyEvent::Alt(KeyCode::Char('6')) => send.send(Event::SortPlaylistTracks(
-                    state::PlaylistSortOrder::TrackName(false),
-                ))?,
-                _ => {}
-            }
-        };
-
-        Ok(())
+    // handle global commands
+    if let term_event::Event::Key(key_event) = event {
+        if let KeyEvent::Ctrl(KeyCode::Char('c')) = key_event.into() {
+            send.send(Event::Quit)?;
+        }
     }
+    let current_event_state = state.read().unwrap().current_event_state.clone();
+    match current_event_state {
+        state::EventState::Default => {
+            handel_default_mode_event(event, send, state)?;
+        }
+        state::EventState::ContextSearch => {
+            handle_search_mode_event(event, send, state)?;
+        }
+        state::EventState::Sort => {
+            handle_sort_mode_event(event, send, state)?;
+        }
+    }
+    Ok(())
 }
 
 #[tokio::main]
@@ -161,11 +203,11 @@ pub async fn start_event_stream(send: mpsc::Sender<Event>, state: state::SharedS
             Ok(event) => {
                 log::info!("got event: {:?}", event);
                 if let Err(err) = handle_event(event, &send, &state) {
-                    log::error!("failed to handle event: {:#}", err);
+                    log::warn!("failed to handle event: {:#}", err);
                 }
             }
             Err(err) => {
-                log::error!("failed to get event: {:#}", err);
+                log::warn!("failed to get event: {:#}", err);
             }
         }
     }

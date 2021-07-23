@@ -15,6 +15,13 @@ pub enum PlaylistSortOrder {
     Album(bool),
 }
 
+#[derive(Clone)]
+pub enum EventState {
+    Default,
+    Sort,
+    ContextSearch,
+}
+
 impl PlaylistSortOrder {
     pub fn compare(
         &self,
@@ -57,6 +64,7 @@ pub struct State {
     pub current_playback_context: Option<context::CurrentlyPlaybackContext>,
 
     // event states
+    pub current_event_state: EventState,
     pub context_search_state: ContextSearchState,
 
     // UI states
@@ -74,6 +82,7 @@ impl Default for State {
             current_playlist_tracks: vec![],
             current_playback_context: None,
 
+            current_event_state: EventState::Default,
             context_search_state: ContextSearchState::default(),
 
             ui_context_tracks_list_state: ListState::default(),

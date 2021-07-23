@@ -1,7 +1,7 @@
 const TOKEN_CACHE_FILE: &str = ".spotify_token_cache.json";
 const CONFIG_FOLDER: &str = "spotify-player";
 const CLIENT_CONFIG_FILE: &str = "client.toml";
-pub const UI_REFRESH_DURATION: Duration = Duration::from_millis(10);
+pub const UI_REFRESH_DURATION: Duration = Duration::from_millis(30);
 pub const PLAYBACK_REFRESH_DURACTION: Duration = Duration::from_secs(1);
 pub const TRACK_DESC_ITEM_MAX_LEN: usize = 32;
 
