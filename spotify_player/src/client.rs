@@ -53,7 +53,7 @@ impl Client {
                 state.write().unwrap().is_running = false;
             }
             event::Event::GetPlaylist(playlist_id) => {
-                if let Some(playlist) = state.read().unwrap().current_playlist.as_ref() {
+                if let Some(ref playlist) = state.read().unwrap().current_playlist {
                     // avoid getting the same playlist more than once
                     if playlist.id == playlist_id {
                         return Ok(());
@@ -100,7 +100,7 @@ impl Client {
                     state.ui_context_tracks_list_state.selected(),
                     state.current_playback_context.as_ref(),
                 ) {
-                    if let Some(context) = playback.context.as_ref() {
+                    if let Some(ref context) = playback.context {
                         self.play_track_with_context(
                             context.uri.clone(),
                             state.get_context_filtered_tracks()[id].uri.clone(),
@@ -111,7 +111,7 @@ impl Client {
             }
             event::Event::SearchTrackInContext => {
                 let mut state = state.write().unwrap();
-                if let Some(query) = state.context_search_state.query.as_ref() {
+                if let Some(ref query) = state.context_search_state.query {
                     let mut query = query.clone();
                     query.remove(0);
 
@@ -191,12 +191,12 @@ impl Client {
         state: &RwLockReadGuard<'_, state::State>,
     ) -> Result<Vec<playlist::PlaylistTrack>> {
         let mut tracks: Vec<playlist::PlaylistTrack> = vec![];
-        if let Some(playlist) = state.current_playlist.as_ref() {
+        if let Some(ref playlist) = state.current_playlist {
             tracks = playlist.tracks.items.clone();
             let mut next = playlist.tracks.next.clone();
-            while let Some(url) = next.as_ref() {
+            while let Some(url) = next {
                 let mut paged_tracks = self
-                    .internal_call::<page::Page<playlist::PlaylistTrack>>(url)
+                    .internal_call::<page::Page<playlist::PlaylistTrack>>(&url)
                     .await?;
                 tracks.append(&mut paged_tracks.items);
                 next = paged_tracks.next;
@@ -319,8 +319,8 @@ impl Client {
     fn get_current_playback_state<'a>(
         state: &'a RwLockReadGuard<'a, state::State>,
     ) -> Result<&'a context::CurrentlyPlaybackContext> {
-        match state.current_playback_context.as_ref() {
-            Some(state) => Ok(state),
+        match state.current_playback_context {
+            Some(ref state) => Ok(state),
             None => Err(anyhow!("unable to get the currently playing context")),
         }
     }

@@ -33,9 +33,9 @@ impl PlaylistSortOrder {
             }
             Self::TrackName(asc) => {
                 if asc {
-                    x_track.name.cmp(&y.track.as_ref().unwrap().name)
+                    x_track.name.cmp(&y_track.name)
                 } else {
-                    y_track.name.cmp(&x.track.as_ref().unwrap().name)
+                    y_track.name.cmp(&x_track.name)
                 }
             }
             Self::Album(asc) => {

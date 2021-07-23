@@ -9,25 +9,24 @@ type Terminal = tui::Terminal<CrosstermBackend<Stdout>>;
 type Frame<'a> = tui::Frame<'a, CrosstermBackend<Stdout>>;
 
 fn render_current_playback_widget(frame: &mut Frame, state: &state::SharedState, rect: Rect) {
-    let playback_info =
-        if let Some(context) = state.read().unwrap().current_playback_context.as_ref() {
-            if let Some(PlayingItem::Track(track)) = context.item.as_ref() {
-                let progress_in_sec: u32 = context.progress_ms.unwrap() / 1000;
-                format!(
-                    "Current track: {} at {}/{} (playing: {}, repeat: {}, shuffle: {})\n",
-                    track.name,
-                    progress_in_sec,
-                    track.duration_ms / 1000,
-                    context.is_playing,
-                    context.repeat_state.as_str(),
-                    context.shuffle_state,
-                )
-            } else {
-                "".to_owned()
-            }
+    let playback_info = if let Some(ref context) = state.read().unwrap().current_playback_context {
+        if let Some(PlayingItem::Track(ref track)) = context.item {
+            let progress_in_sec: u32 = context.progress_ms.unwrap() / 1000;
+            format!(
+                "Current track: {} at {}/{} (playing: {}, repeat: {}, shuffle: {})\n",
+                track.name,
+                progress_in_sec,
+                track.duration_ms / 1000,
+                context.is_playing,
+                context.repeat_state.as_str(),
+                context.shuffle_state,
+            )
         } else {
             "".to_owned()
-        };
+        }
+    } else {
+        "".to_owned()
+    };
     let desc_block = Paragraph::new(playback_info)
         .block(
             Block::default()
@@ -110,14 +109,12 @@ pub fn start_ui(state: state::SharedState, send: mpsc::Sender<event::Event>) -> 
 
             // check if state's current playlist matches the playlist inside the current playback,
             // if not request a new playlist.
-            let current_playback_context = state.current_playback_context.as_ref();
-            let current_playlist = state.current_playlist.as_ref();
-            if let Some(playback) = current_playback_context {
-                if let Some(context) = playback.context.as_ref() {
+            if let Some(ref playback) = state.current_playback_context {
+                if let Some(ref context) = playback.context {
                     if let rspotify::senum::Type::Playlist = context._type {
                         let playlist_id = context.uri.split(':').nth(2).unwrap();
-                        let current_playlist_id = match current_playlist {
-                            Some(playlist) => &playlist.id,
+                        let current_playlist_id = match state.current_playlist {
+                            Some(ref playlist) => &playlist.id,
                             None => "",
                         };
                         if current_playlist_id != playlist_id {
@@ -131,20 +128,19 @@ pub fn start_ui(state: state::SharedState, send: mpsc::Sender<event::Event>) -> 
         {
             // draw ui
             terminal.draw(|f| {
-                let main_layout_rect =
-                    match state.read().unwrap().context_search_state.query.as_ref() {
-                        None => f.size(),
-                        Some(query) => {
-                            let chunks = Layout::default()
-                                .direction(Direction::Vertical)
-                                .constraints([Constraint::Min(0), Constraint::Length(3)].as_ref())
-                                .split(f.size());
-                            let search_box = Paragraph::new(query.clone())
-                                .block(Block::default().borders(Borders::ALL).title("Search"));
-                            f.render_widget(search_box, chunks[1]);
-                            chunks[0]
-                        }
-                    };
+                let main_layout_rect = match state.read().unwrap().context_search_state.query {
+                    None => f.size(),
+                    Some(ref query) => {
+                        let chunks = Layout::default()
+                            .direction(Direction::Vertical)
+                            .constraints([Constraint::Min(0), Constraint::Length(3)].as_ref())
+                            .split(f.size());
+                        let search_box = Paragraph::new(query.clone())
+                            .block(Block::default().borders(Borders::ALL).title("Search"));
+                        f.render_widget(search_box, chunks[1]);
+                        chunks[0]
+                    }
+                };
 
                 render_main_layout(f, &state, main_layout_rect);
             })?;
