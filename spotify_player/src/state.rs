@@ -2,6 +2,23 @@ use crate::prelude::*;
 
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
+pub type SharedState = Arc<RwLock<State>>;
+
+pub struct State {
+    pub is_running: bool,
+    pub auth_token_expires_at: std::time::SystemTime,
+    pub current_playlist: Option<playlist::FullPlaylist>,
+    pub current_playlist_tracks: Vec<playlist::PlaylistTrack>,
+    pub current_playback_context: Option<context::CurrentlyPlaybackContext>,
+
+    // event states
+    pub current_event_state: EventState,
+    pub context_search_state: ContextSearchState,
+
+    // UI states
+    pub ui_context_tracks_table_state: TableState,
+}
+
 #[derive(Default)]
 pub struct ContextSearchState {
     pub query: Option<String>,
@@ -22,56 +39,11 @@ pub enum EventState {
     ContextSearch,
 }
 
-impl PlaylistSortOrder {
-    pub fn compare(
-        &self,
-        x: &playlist::PlaylistTrack,
-        y: &playlist::PlaylistTrack,
-    ) -> std::cmp::Ordering {
-        let x_track = x.track.as_ref().unwrap();
-        let y_track = y.track.as_ref().unwrap();
-        match *self {
-            Self::DateAdded(asc) => {
-                if asc {
-                    x.added_at.timestamp().cmp(&y.added_at.timestamp())
-                } else {
-                    y.added_at.timestamp().cmp(&x.added_at.timestamp())
-                }
-            }
-            Self::TrackName(asc) => {
-                if asc {
-                    x_track.name.cmp(&y_track.name)
-                } else {
-                    y_track.name.cmp(&x_track.name)
-                }
-            }
-            Self::Album(asc) => {
-                if asc {
-                    x_track.album.name.cmp(&y_track.album.name)
-                } else {
-                    y_track.album.name.cmp(&x_track.album.name)
-                }
-            }
-        }
-    }
+pub struct TrackDescription {
+    pub name: String,
+    pub artists: Vec<String>,
+    pub album: String,
 }
-
-pub struct State {
-    pub is_running: bool,
-    pub auth_token_expires_at: std::time::SystemTime,
-    pub current_playlist: Option<playlist::FullPlaylist>,
-    pub current_playlist_tracks: Vec<playlist::PlaylistTrack>,
-    pub current_playback_context: Option<context::CurrentlyPlaybackContext>,
-
-    // event states
-    pub current_event_state: EventState,
-    pub context_search_state: ContextSearchState,
-
-    // UI states
-    pub ui_context_tracks_table_state: TableState,
-}
-
-pub type SharedState = Arc<RwLock<State>>;
 
 impl Default for State {
     fn default() -> Self {
@@ -121,10 +93,38 @@ impl State {
     }
 }
 
-pub struct TrackDescription {
-    pub name: String,
-    pub artists: Vec<String>,
-    pub album: String,
+impl PlaylistSortOrder {
+    pub fn compare(
+        &self,
+        x: &playlist::PlaylistTrack,
+        y: &playlist::PlaylistTrack,
+    ) -> std::cmp::Ordering {
+        let x_track = x.track.as_ref().unwrap();
+        let y_track = y.track.as_ref().unwrap();
+        match *self {
+            Self::DateAdded(asc) => {
+                if asc {
+                    x.added_at.timestamp().cmp(&y.added_at.timestamp())
+                } else {
+                    y.added_at.timestamp().cmp(&x.added_at.timestamp())
+                }
+            }
+            Self::TrackName(asc) => {
+                if asc {
+                    x_track.name.cmp(&y_track.name)
+                } else {
+                    y_track.name.cmp(&x_track.name)
+                }
+            }
+            Self::Album(asc) => {
+                if asc {
+                    x_track.album.name.cmp(&y_track.album.name)
+                } else {
+                    y_track.album.name.cmp(&x_track.album.name)
+                }
+            }
+        }
+    }
 }
 
 impl fmt::Display for TrackDescription {
