@@ -16,7 +16,7 @@ pub enum Event {
     SelectPreviousTrack,
     PlaySelectedTrack,
     SearchTrackInContext,
-    SortPlaylistTracks(state::PlaylistSortOrder),
+    SortContextTracks(state::ContextSortOrder),
 }
 
 pub enum KeyEvent {
@@ -86,23 +86,35 @@ fn handle_sort_mode_event(
 ) -> Result<()> {
     if let term_event::Event::Key(key_event) = event {
         match key_event.into() {
-            KeyEvent::None(KeyCode::Char('d')) => send.send(Event::SortPlaylistTracks(
-                state::PlaylistSortOrder::DateAdded(true),
+            KeyEvent::None(KeyCode::Char('q')) => send.send(Event::SortContextTracks(
+                state::ContextSortOrder::TrackName(true),
             ))?,
-            KeyEvent::None(KeyCode::Char('D')) => send.send(Event::SortPlaylistTracks(
-                state::PlaylistSortOrder::DateAdded(false),
+            KeyEvent::None(KeyCode::Char('Q')) => send.send(Event::SortContextTracks(
+                state::ContextSortOrder::TrackName(false),
             ))?,
-            KeyEvent::None(KeyCode::Char('a')) => send.send(Event::SortPlaylistTracks(
-                state::PlaylistSortOrder::Album(true),
+            KeyEvent::None(KeyCode::Char('w')) => send.send(Event::SortContextTracks(
+                state::ContextSortOrder::Album(true),
             ))?,
-            KeyEvent::None(KeyCode::Char('A')) => send.send(Event::SortPlaylistTracks(
-                state::PlaylistSortOrder::Album(false),
+            KeyEvent::None(KeyCode::Char('W')) => send.send(Event::SortContextTracks(
+                state::ContextSortOrder::Album(false),
             ))?,
-            KeyEvent::None(KeyCode::Char('t')) => send.send(Event::SortPlaylistTracks(
-                state::PlaylistSortOrder::TrackName(true),
+            KeyEvent::None(KeyCode::Char('e')) => send.send(Event::SortContextTracks(
+                state::ContextSortOrder::Artists(true),
             ))?,
-            KeyEvent::None(KeyCode::Char('T')) => send.send(Event::SortPlaylistTracks(
-                state::PlaylistSortOrder::TrackName(false),
+            KeyEvent::None(KeyCode::Char('E')) => send.send(Event::SortContextTracks(
+                state::ContextSortOrder::Artists(false),
+            ))?,
+            KeyEvent::None(KeyCode::Char('r')) => send.send(Event::SortContextTracks(
+                state::ContextSortOrder::AddedAt(true),
+            ))?,
+            KeyEvent::None(KeyCode::Char('R')) => send.send(Event::SortContextTracks(
+                state::ContextSortOrder::AddedAt(false),
+            ))?,
+            KeyEvent::None(KeyCode::Char('t')) => send.send(Event::SortContextTracks(
+                state::ContextSortOrder::Duration(true),
+            ))?,
+            KeyEvent::None(KeyCode::Char('T')) => send.send(Event::SortContextTracks(
+                state::ContextSortOrder::Duration(false),
             ))?,
             _ => {}
         }

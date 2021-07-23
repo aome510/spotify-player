@@ -48,18 +48,17 @@ fn render_playlist_tracks_widget(frame: &mut Frame, state: &state::SharedState, 
         .get_context_filtered_tracks()
         .into_iter()
         .map(|t| {
-            let desc = state::get_track_description(t);
             Row::new(vec![
                 Cell::from(state::truncate_string(
-                    desc.name,
+                    t.name.clone(),
                     config::TRACK_DESC_ITEM_MAX_LEN,
                 )),
                 Cell::from(state::truncate_string(
-                    desc.artists.join(","),
+                    t.get_artists_info(),
                     config::TRACK_DESC_ITEM_MAX_LEN,
                 )),
                 Cell::from(state::truncate_string(
-                    desc.album,
+                    t.album.name.clone(),
                     config::TRACK_DESC_ITEM_MAX_LEN,
                 )),
             ])

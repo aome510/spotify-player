@@ -1,3 +1,5 @@
+use rspotify::model::page::Page;
+
 use crate::config;
 use crate::event;
 use crate::prelude::*;
@@ -61,13 +63,15 @@ impl Client {
                 }
                 // get the playlist
                 let playlist = self.get_playlist(&playlist_id).await?;
+                let playlist_tracks = self.get_all_paging_items(playlist.tracks.clone()).await?;
                 state.write().unwrap().current_playlist = Some(playlist);
                 // get the playlist's track
-                let tracks = self
-                    .get_current_playlist_tracks(&state.read().unwrap())
-                    .await?;
                 // filter tracks that are either unaccessible or deleted from album
-                let tracks: Vec<_> = tracks.into_iter().filter(|t| t.track.is_some()).collect();
+                let tracks: Vec<_> = playlist_tracks
+                    .into_iter()
+                    .filter(|t| t.track.is_some())
+                    .map(|t| t.into())
+                    .collect();
                 // update the state (UI) of the `playlist_tracks_widget`
                 if !tracks.is_empty() {
                     state
@@ -76,7 +80,7 @@ impl Client {
                         .ui_context_tracks_table_state
                         .select(Some(0));
                 }
-                state.write().unwrap().current_playlist_tracks = tracks;
+                state.write().unwrap().current_context_tracks = tracks;
             }
             event::Event::SelectNextTrack => {
                 let mut state = state.write().unwrap();
@@ -117,12 +121,9 @@ impl Client {
 
                     log::info!("search tracks in context with query {}", query);
                     state.context_search_state.tracks = state
-                        .get_context_tracks()
-                        .into_iter()
-                        .filter(|&t| {
-                            let desc = state::get_track_description(t).to_string();
-                            desc.to_lowercase().contains(&query)
-                        })
+                        .current_context_tracks
+                        .iter()
+                        .filter(|&t| t.get_basic_info().to_lowercase().contains(&query))
                         .cloned()
                         .collect();
 
@@ -139,8 +140,8 @@ impl Client {
                     );
                 }
             }
-            event::Event::SortPlaylistTracks(order) => {
-                state.write().unwrap().sort_playlist_tracks(order);
+            event::Event::SortContextTracks(order) => {
+                state.write().unwrap().sort_context_tracks(order);
             }
         }
         Ok(())
@@ -183,26 +184,6 @@ impl Client {
                 )
                 .await,
         )
-    }
-
-    /// returns a list of tracks in the current playlist
-    pub async fn get_current_playlist_tracks(
-        &self,
-        state: &RwLockReadGuard<'_, state::State>,
-    ) -> Result<Vec<playlist::PlaylistTrack>> {
-        let mut tracks: Vec<playlist::PlaylistTrack> = vec![];
-        if let Some(ref playlist) = state.current_playlist {
-            tracks = playlist.tracks.items.clone();
-            let mut next = playlist.tracks.next.clone();
-            while let Some(url) = next {
-                let mut paged_tracks = self
-                    .internal_call::<page::Page<playlist::PlaylistTrack>>(&url)
-                    .await?;
-                tracks.append(&mut paged_tracks.items);
-                next = paged_tracks.next;
-            }
-        }
-        Ok(tracks)
     }
 
     /// Returns a playlist given its id
@@ -295,6 +276,21 @@ impl Client {
             .await?
             .json::<T>()
             .await?)
+    }
+
+    /// returns a list of all paging items starting from a pagination object of the first page
+    async fn get_all_paging_items<T>(&self, first_page: Page<T>) -> Result<Vec<T>>
+    where
+        T: serde::de::DeserializeOwned,
+    {
+        let mut items = first_page.items;
+        let mut maybe_next = first_page.next.clone();
+        while let Some(url) = maybe_next {
+            let mut next_page = self.internal_call::<page::Page<T>>(&url).await?;
+            items.append(&mut next_page.items);
+            maybe_next = next_page.next;
+        }
+        Ok(items)
     }
 
     /// builds a spotify client from an authentication token

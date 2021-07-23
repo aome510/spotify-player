@@ -7,9 +7,9 @@ pub type SharedState = Arc<RwLock<State>>;
 pub struct State {
     pub is_running: bool,
     pub auth_token_expires_at: std::time::SystemTime,
-    pub current_playlist: Option<playlist::FullPlaylist>,
-    pub current_playlist_tracks: Vec<playlist::PlaylistTrack>,
     pub current_playback_context: Option<context::CurrentlyPlaybackContext>,
+    pub current_playlist: Option<playlist::FullPlaylist>,
+    pub current_context_tracks: Vec<Track>,
 
     // event states
     pub current_event_state: EventState,
@@ -22,14 +22,16 @@ pub struct State {
 #[derive(Default)]
 pub struct ContextSearchState {
     pub query: Option<String>,
-    pub tracks: Vec<track::FullTrack>,
+    pub tracks: Vec<Track>,
 }
 
 #[derive(Debug)]
-pub enum PlaylistSortOrder {
-    DateAdded(bool),
+pub enum ContextSortOrder {
+    AddedAt(bool),
     TrackName(bool),
     Album(bool),
+    Artists(bool),
+    Duration(bool),
 }
 
 #[derive(Clone)]
@@ -39,10 +41,26 @@ pub enum EventState {
     ContextSearch,
 }
 
-pub struct TrackDescription {
+#[derive(Debug, Clone)]
+pub struct Track {
+    pub uri: String,
     pub name: String,
-    pub artists: Vec<String>,
-    pub album: String,
+    pub artists: Vec<Artist>,
+    pub album: Album,
+    pub duration: u32,
+    pub added_at: u64,
+}
+
+#[derive(Debug, Clone)]
+pub struct Album {
+    pub uri: Option<String>,
+    pub name: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct Artist {
+    pub uri: Option<String>,
+    pub name: String,
 }
 
 impl Default for State {
@@ -51,7 +69,7 @@ impl Default for State {
             is_running: true,
             auth_token_expires_at: std::time::SystemTime::now(),
             current_playlist: None,
-            current_playlist_tracks: vec![],
+            current_context_tracks: vec![],
             current_playback_context: None,
 
             current_event_state: EventState::Default,
@@ -67,82 +85,105 @@ impl State {
         Arc::new(RwLock::new(State::default()))
     }
 
-    /// sorts the
-    pub fn sort_playlist_tracks(&mut self, sort_oder: PlaylistSortOrder) {
-        self.current_playlist_tracks
+    pub fn sort_context_tracks(&mut self, sort_oder: ContextSortOrder) {
+        self.current_context_tracks
             .sort_by(|x, y| sort_oder.compare(x, y));
-    }
-
-    /// returns a list of tracks in the current playback context (album, playlist, etc)
-    pub fn get_context_tracks(&self) -> Vec<&track::FullTrack> {
-        self.current_playlist_tracks
-            .iter()
-            .map(|t| t.track.as_ref().unwrap())
-            .collect()
     }
 
     /// returns the list of tracks in the current playback context (album, playlist, etc)
     /// filtered by a search query
-    pub fn get_context_filtered_tracks(&self) -> Vec<&track::FullTrack> {
+    pub fn get_context_filtered_tracks(&self) -> Vec<&Track> {
         if self.context_search_state.query.is_some() {
             // in search mode, return the filtered tracks
             self.context_search_state.tracks.iter().collect()
         } else {
-            self.get_context_tracks()
+            self.current_context_tracks.iter().collect()
         }
     }
 }
 
-impl PlaylistSortOrder {
-    pub fn compare(
-        &self,
-        x: &playlist::PlaylistTrack,
-        y: &playlist::PlaylistTrack,
-    ) -> std::cmp::Ordering {
-        let x_track = x.track.as_ref().unwrap();
-        let y_track = y.track.as_ref().unwrap();
+impl Track {
+    pub fn get_artists_info(&self) -> String {
+        self.artists
+            .iter()
+            .map(|a| a.name.clone())
+            .collect::<Vec<_>>()
+            .join(",")
+    }
+
+    pub fn get_basic_info(&self) -> String {
+        format!(
+            "{} {} {}",
+            self.name,
+            self.get_artists_info(),
+            self.album.name
+        )
+    }
+}
+
+impl From<playlist::PlaylistTrack> for Track {
+    fn from(t: playlist::PlaylistTrack) -> Self {
+        let track = t.track.unwrap();
+        Self {
+            uri: track.uri,
+            name: track.name,
+            artists: track
+                .artists
+                .into_iter()
+                .map(|a| Artist {
+                    uri: a.uri,
+                    name: a.name,
+                })
+                .collect(),
+            album: Album {
+                uri: track.album.uri,
+                name: track.album.name,
+            },
+            duration: track.duration_ms,
+            added_at: 0,
+        }
+    }
+}
+
+impl ContextSortOrder {
+    pub fn compare(&self, x: &Track, y: &Track) -> std::cmp::Ordering {
         match *self {
-            Self::DateAdded(asc) => {
+            Self::AddedAt(asc) => {
                 if asc {
-                    x.added_at.timestamp().cmp(&y.added_at.timestamp())
+                    x.added_at.cmp(&y.added_at)
                 } else {
-                    y.added_at.timestamp().cmp(&x.added_at.timestamp())
+                    y.added_at.cmp(&x.added_at)
                 }
             }
             Self::TrackName(asc) => {
                 if asc {
-                    x_track.name.cmp(&y_track.name)
+                    x.name.cmp(&y.name)
                 } else {
-                    y_track.name.cmp(&x_track.name)
+                    y.name.cmp(&x.name)
                 }
             }
             Self::Album(asc) => {
                 if asc {
-                    x_track.album.name.cmp(&y_track.album.name)
+                    x.album.name.cmp(&y.album.name)
                 } else {
-                    y_track.album.name.cmp(&x_track.album.name)
+                    y.album.name.cmp(&x.album.name)
+                }
+            }
+            Self::Duration(asc) => {
+                if asc {
+                    x.duration.cmp(&y.duration)
+                } else {
+                    y.duration.cmp(&x.duration)
+                }
+            }
+            Self::Artists(asc) => {
+                if asc {
+                    x.get_artists_info().cmp(&y.get_artists_info())
+                } else {
+                    y.get_artists_info().cmp(&x.get_artists_info())
                 }
             }
         }
-    }
-}
-
-impl fmt::Display for TrackDescription {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!(
-            "{} {} {}",
-            self.name,
-            self.artists.join(","),
-            self.album
-        ))
-    }
-}
-
-pub fn get_track_description(track: &track::FullTrack) -> TrackDescription {
-    TrackDescription {
-        name: track.name.clone(),
-        album: track.album.name.clone(),
-        artists: track.artists.iter().map(|a| a.name.clone()).collect(),
     }
 }
 
