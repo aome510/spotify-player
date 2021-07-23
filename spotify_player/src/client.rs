@@ -61,18 +61,56 @@ impl Client {
                         return Ok(());
                     }
                 }
+
                 // get the playlist
                 let playlist = self.get_playlist(&playlist_id).await?;
+                // get the playlist's tracks
                 let playlist_tracks = self.get_all_paging_items(playlist.tracks.clone()).await?;
-                state.write().unwrap().current_playlist = Some(playlist);
-                // get the playlist's track
                 // filter tracks that are either unaccessible or deleted from album
                 let tracks: Vec<_> = playlist_tracks
                     .into_iter()
                     .filter(|t| t.track.is_some())
                     .map(|t| t.into())
                     .collect();
-                // update the state (UI) of the `playlist_tracks_widget`
+
+                // update states
+                state.write().unwrap().current_playlist = Some(playlist);
+                if !tracks.is_empty() {
+                    state
+                        .write()
+                        .unwrap()
+                        .ui_context_tracks_table_state
+                        .select(Some(0));
+                }
+                state.write().unwrap().current_context_tracks = tracks;
+            }
+            event::Event::GetAlbum(album_id) => {
+                if let Some(ref album) = state.read().unwrap().current_album {
+                    // avoid getting the same album more than once
+                    if album.id == album_id {
+                        return Ok(());
+                    }
+                }
+
+                // get the album
+                let album = self.get_album(&album_id).await?;
+                // get the album's tracks
+                let album_tracks = self.get_all_paging_items(album.tracks.clone()).await?;
+                let tracks: Vec<_> = album_tracks
+                    .into_iter()
+                    .map(|t| {
+                        let mut track: state::Track = t.into();
+                        track.album = state::Album {
+                            id: Some(album.id.clone()),
+                            uri: Some(album.uri.clone()),
+                            name: album.name.clone(),
+                        };
+                        track
+                    })
+                    .collect();
+
+                // update states
+                state.write().unwrap().current_album = Some(album);
                 if !tracks.is_empty() {
                     state
                         .write()
@@ -189,6 +227,10 @@ impl Client {
     /// Returns a playlist given its id
     pub async fn get_playlist(&self, playlist_id: &str) -> Result<playlist::FullPlaylist> {
         Self::handle_rspotify_result(self.spotify.playlist(playlist_id, None, None).await)
+    }
+
+    pub async fn get_album(&self, album_id: &str) -> Result<album::FullAlbum> {
+        Self::handle_rspotify_result(self.spotify.album(album_id).await)
     }
 
     /// cycles through the repeat state of the current playback

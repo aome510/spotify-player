@@ -12,6 +12,7 @@ pub enum Event {
     Repeat,
     Shuffle,
     GetPlaylist(String),
+    GetAlbum(String),
     SelectNextTrack,
     SelectPreviousTrack,
     PlaySelectedTrack,

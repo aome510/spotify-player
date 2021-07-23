@@ -7,8 +7,10 @@ pub type SharedState = Arc<RwLock<State>>;
 pub struct State {
     pub is_running: bool,
     pub auth_token_expires_at: std::time::SystemTime,
+
     pub current_playback_context: Option<context::CurrentlyPlaybackContext>,
     pub current_playlist: Option<playlist::FullPlaylist>,
+    pub current_album: Option<album::FullAlbum>,
     pub current_context_tracks: Vec<Track>,
 
     // event states
@@ -41,8 +43,9 @@ pub enum EventState {
     ContextSearch,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Default, Debug, Clone)]
 pub struct Track {
+    pub id: Option<String>,
     pub uri: String,
     pub name: String,
     pub artists: Vec<Artist>,
@@ -51,14 +54,16 @@ pub struct Track {
     pub added_at: u64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Default, Debug, Clone)]
 pub struct Album {
+    pub id: Option<String>,
     pub uri: Option<String>,
     pub name: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Default, Debug, Clone)]
 pub struct Artist {
+    pub id: Option<String>,
     pub uri: Option<String>,
     pub name: String,
 }
@@ -69,6 +74,7 @@ impl Default for State {
             is_running: true,
             auth_token_expires_at: std::time::SystemTime::now(),
             current_playlist: None,
+            current_album: None,
             current_context_tracks: vec![],
             current_playback_context: None,
 
@@ -125,22 +131,47 @@ impl From<playlist::PlaylistTrack> for Track {
     fn from(t: playlist::PlaylistTrack) -> Self {
         let track = t.track.unwrap();
         Self {
+            id: track.id,
             uri: track.uri,
             name: track.name,
             artists: track
                 .artists
                 .into_iter()
                 .map(|a| Artist {
+                    id: a.id,
                     uri: a.uri,
                     name: a.name,
                 })
                 .collect(),
             album: Album {
+                id: track.album.id,
                 uri: track.album.uri,
                 name: track.album.name,
             },
             duration: track.duration_ms,
             added_at: t.added_at.timestamp() as u64,
+        }
+    }
+}
+
+impl From<track::SimplifiedTrack> for Track {
+    fn from(track: track::SimplifiedTrack) -> Self {
+        Self {
+            id: track.id,
+            uri: track.uri,
+            name: track.name,
+            artists: track
+                .artists
+                .into_iter()
+                .map(|a| Artist {
+                    id: a.id,
+                    uri: a.uri,
+                    name: a.name,
+                })
+                .collect(),
+            album: Album::default(),
+            duration: track.duration_ms,
+            added_at: 0,
         }
     }
 }

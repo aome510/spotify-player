@@ -135,20 +135,31 @@ pub fn start_ui(state: state::SharedState, send: mpsc::Sender<event::Event>) -> 
                 send.send(event::Event::RefreshToken)?;
             }
 
-            // check if state's current playlist matches the playlist inside the current playback,
-            // if not request a new playlist.
             if let Some(ref playback) = state.current_playback_context {
                 if let Some(ref context) = playback.context {
-                    if let rspotify::senum::Type::Playlist = context._type {
-                        let playlist_id = context.uri.split(':').nth(2).unwrap();
-                        let current_playlist_id = match state.current_playlist {
-                            Some(ref playlist) => &playlist.id,
-                            None => "",
-                        };
-                        if current_playlist_id != playlist_id {
-                            send.send(event::Event::GetPlaylist(playlist_id.to_owned()))?;
+                    match context._type {
+                        Type::Playlist => {
+                            let playlist_id = context.uri.split(':').nth(2).unwrap();
+                            let current_playlist_id = match state.current_playlist {
+                                Some(ref playlist) => &playlist.id,
+                                None => "",
+                            };
+                            if current_playlist_id != playlist_id {
+                                send.send(event::Event::GetPlaylist(playlist_id.to_owned()))?;
+                            }
                         }
-                    }
+                        Type::Album => {
+                            let album_id = context.uri.split(':').nth(2).unwrap();
+                            let current_album_id = match state.current_album {
+                                Some(ref album) => &album.id,
+                                None => "",
+                            };
+                            if current_album_id != album_id {
+                                send.send(event::Event::GetAlbum(album_id.to_owned()))?;
+                            }
+                        }
+                        _ => {}
+                    };
                 }
             };
         }
