@@ -15,12 +15,11 @@ mod utils;
 fn render_current_playback_widget(frame: &mut Frame, state: &state::SharedState, rect: Rect) {
     let playback_info = if let Some(ref context) = state.read().unwrap().current_playback_context {
         if let Some(PlayingItem::Track(ref track)) = context.item {
-            let progress_in_sec: u32 = context.progress_ms.unwrap() / 1000;
             format!(
                 "Current track: {} at {}/{} (playing: {}, repeat: {}, shuffle: {})\n",
                 track.name,
-                progress_in_sec,
-                track.duration_ms / 1000,
+                format_duration(context.progress_ms.unwrap()),
+                format_duration(track.duration_ms),
                 context.is_playing,
                 context.repeat_state.as_str(),
                 context.shuffle_state,
@@ -62,6 +61,7 @@ fn render_playlist_tracks_widget(frame: &mut Frame, state: &state::SharedState, 
                     t.album.name.clone(),
                     config::TRACK_DESC_ITEM_MAX_LEN,
                 )),
+                Cell::from(format_duration(t.duration)),
             ])
         })
         .collect::<Vec<_>>();
@@ -71,6 +71,7 @@ fn render_playlist_tracks_widget(frame: &mut Frame, state: &state::SharedState, 
                 Cell::from("Track"),
                 Cell::from("Artists"),
                 Cell::from("Album"),
+                Cell::from("Duration"),
             ])
             .style(Style::default().fg(Color::Yellow)),
         )
@@ -82,7 +83,8 @@ fn render_playlist_tracks_widget(frame: &mut Frame, state: &state::SharedState, 
         .widths(&[
             Constraint::Percentage(30),
             Constraint::Percentage(30),
-            Constraint::Percentage(40),
+            Constraint::Percentage(30),
+            Constraint::Percentage(10),
         ])
         .highlight_style(Style::default().add_modifier(Modifier::ITALIC))
         .highlight_symbol(">>");
