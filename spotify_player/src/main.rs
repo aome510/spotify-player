@@ -29,7 +29,7 @@ async fn start_client_watcher(
     recv: mpsc::Receiver<event::Event>,
 ) {
     if let Err(err) = client::start_watcher(state, client, recv).await {
-        log::error!("client watcher error: {:#?}", err);
+        panic!("client watcher error: {:#?}", err);
     }
 }
 

@@ -326,6 +326,17 @@ impl Client {
     }
 }
 
+async fn refresh_current_playback_context(state: &state::SharedState, client: &Client) {
+    match client.get_current_playback().await {
+        Ok(context) => {
+            state.write().unwrap().current_playback_context = context;
+        }
+        Err(err) => {
+            log::warn!("{:#?}", err);
+        }
+    }
+}
+
 /// starts the client's event watcher
 pub async fn start_watcher(
     state: state::SharedState,
@@ -333,17 +344,19 @@ pub async fn start_watcher(
     recv: mpsc::Receiver<event::Event>,
 ) -> Result<()> {
     state.write().unwrap().auth_token_expires_at = client.refresh_token().await?;
-    state.write().unwrap().current_playback_context = client.get_current_playback().await?;
+    refresh_current_playback_context(&state, &client).await;
     let mut last_refresh = std::time::SystemTime::now();
     loop {
         if let Ok(event) = recv.try_recv() {
-            client.handle_event(&state, event).await?;
+            if let Err(err) = client.handle_event(&state, event).await {
+                log::warn!("{:#?}", err);
+            }
         }
         if std::time::SystemTime::now() > last_refresh + config::PLAYBACK_REFRESH_DURACTION {
             // `config::REFRESH_DURATION` passes since the last refresh, get the
             // current playback context again
             log::info!("refresh the current playback context...");
-            state.write().unwrap().current_playback_context = client.get_current_playback().await?;
+            refresh_current_playback_context(&state, &client).await;
             last_refresh = std::time::SystemTime::now()
         }
     }
