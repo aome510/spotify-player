@@ -73,31 +73,31 @@ impl Client {
                     state
                         .write()
                         .unwrap()
-                        .ui_context_tracks_list_state
+                        .ui_context_tracks_table_state
                         .select(Some(0));
                 }
                 state.write().unwrap().current_playlist_tracks = tracks;
             }
             event::Event::SelectNextTrack => {
                 let mut state = state.write().unwrap();
-                if let Some(id) = state.ui_context_tracks_list_state.selected() {
+                if let Some(id) = state.ui_context_tracks_table_state.selected() {
                     if id + 1 < state.get_context_filtered_tracks().len() {
-                        state.ui_context_tracks_list_state.select(Some(id + 1));
+                        state.ui_context_tracks_table_state.select(Some(id + 1));
                     }
                 }
             }
             event::Event::SelectPreviousTrack => {
                 let mut state = state.write().unwrap();
-                if let Some(id) = state.ui_context_tracks_list_state.selected() {
+                if let Some(id) = state.ui_context_tracks_table_state.selected() {
                     if id > 0 {
-                        state.ui_context_tracks_list_state.select(Some(id - 1));
+                        state.ui_context_tracks_table_state.select(Some(id - 1));
                     }
                 }
             }
             event::Event::PlaySelectedTrack => {
                 let state = state.read().unwrap();
                 if let (Some(id), Some(playback)) = (
-                    state.ui_context_tracks_list_state.selected(),
+                    state.ui_context_tracks_table_state.selected(),
                     state.current_playback_context.as_ref(),
                 ) {
                     if let Some(ref context) = playback.context {
@@ -132,7 +132,7 @@ impl Client {
                     } else {
                         Some(0)
                     };
-                    state.ui_context_tracks_list_state.select(id);
+                    state.ui_context_tracks_table_state.select(id);
                     log::info!(
                         "after search, context_search_state.tracks = {:?}",
                         state.context_search_state.tracks

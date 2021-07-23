@@ -1,4 +1,4 @@
-use crate::{config, prelude::*};
+use crate::prelude::*;
 
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
@@ -68,7 +68,7 @@ pub struct State {
     pub context_search_state: ContextSearchState,
 
     // UI states
-    pub ui_context_tracks_list_state: ListState,
+    pub ui_context_tracks_table_state: TableState,
 }
 
 pub type SharedState = Arc<RwLock<State>>;
@@ -85,7 +85,7 @@ impl Default for State {
             current_event_state: EventState::Default,
             context_search_state: ContextSearchState::default(),
 
-            ui_context_tracks_list_state: ListState::default(),
+            ui_context_tracks_table_state: TableState::default(),
         }
     }
 }
@@ -170,51 +170,4 @@ pub fn truncate_string(s: String, max_len: usize) -> String {
     } else {
         s
     }
-}
-
-/// formats a given list of track descriptions so that track's `name`,
-/// `artists`, and `album` are aligned.
-pub fn fmt_track_descriptions(
-    tracks: Vec<TrackDescription>,
-    max_horizontal_len: usize,
-) -> Vec<String> {
-    // the row layout in the track description table
-    let layout = [
-        max_horizontal_len / 3,
-        max_horizontal_len / 3,
-        max_horizontal_len - max_horizontal_len / 3 - max_horizontal_len / 3,
-    ];
-    tracks
-        .into_iter()
-        .map(|t| {
-            [
-                truncate_string(
-                    t.name,
-                    std::cmp::min(config::TRACK_DESC_ITEM_MAX_LEN, layout[0] - 1),
-                ),
-                truncate_string(
-                    t.artists.join(","),
-                    std::cmp::min(config::TRACK_DESC_ITEM_MAX_LEN, layout[1] - 1),
-                ),
-                truncate_string(
-                    t.album,
-                    std::cmp::min(config::TRACK_DESC_ITEM_MAX_LEN, layout[2] - 1),
-                ),
-            ]
-        })
-        .map(|mut descs| {
-            descs
-                .iter_mut()
-                .enumerate()
-                .map(|(i, desc)| {
-                    let len = UnicodeWidthStr::width(desc.as_str());
-                    if len < layout[i] {
-                        desc.push_str(&" ".repeat(layout[i] - len));
-                    }
-                    desc.clone()
-                })
-                .collect::<Vec<_>>()
-                .join("")
-        })
-        .collect()
 }

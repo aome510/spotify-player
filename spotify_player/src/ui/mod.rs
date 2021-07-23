@@ -8,6 +8,8 @@ use tui::backend::CrosstermBackend;
 type Terminal = tui::Terminal<CrosstermBackend<Stdout>>;
 type Frame<'a> = tui::Frame<'a, CrosstermBackend<Stdout>>;
 
+mod help;
+
 fn render_current_playback_widget(frame: &mut Frame, state: &state::SharedState, rect: Rect) {
     let playback_info = if let Some(ref context) = state.read().unwrap().current_playback_context {
         if let Some(PlayingItem::Track(ref track)) = context.item {
@@ -27,7 +29,7 @@ fn render_current_playback_widget(frame: &mut Frame, state: &state::SharedState,
     } else {
         "".to_owned()
     };
-    let desc_block = Paragraph::new(playback_info)
+    let widget = Paragraph::new(playback_info)
         .block(
             Block::default()
                 .title("Playback context")
@@ -35,33 +37,58 @@ fn render_current_playback_widget(frame: &mut Frame, state: &state::SharedState,
         )
         .wrap(Wrap { trim: true });
 
-    frame.render_widget(desc_block, rect);
+    frame.render_widget(widget, rect);
 }
 
 fn render_playlist_tracks_widget(frame: &mut Frame, state: &state::SharedState, rect: Rect) {
-    let track_descs = state
+    let rows = state
         .read()
         .unwrap()
         .get_context_filtered_tracks()
         .into_iter()
-        .map(|t| state::get_track_description(t))
+        .map(|t| {
+            let desc = state::get_track_description(t);
+            Row::new(vec![
+                Cell::from(state::truncate_string(
+                    desc.name,
+                    config::TRACK_DESC_ITEM_MAX_LEN,
+                )),
+                Cell::from(state::truncate_string(
+                    desc.artists.join(","),
+                    config::TRACK_DESC_ITEM_MAX_LEN,
+                )),
+                Cell::from(state::truncate_string(
+                    desc.album,
+                    config::TRACK_DESC_ITEM_MAX_LEN,
+                )),
+            ])
+        })
         .collect::<Vec<_>>();
-    let items: Vec<_> = state::fmt_track_descriptions(track_descs, rect.width.into())
-        .into_iter()
-        .map(ListItem::new)
-        .collect();
-    let tracks_block = List::new(items)
+    let widget = Table::new(rows)
+        .header(
+            Row::new(vec![
+                Cell::from("Track"),
+                Cell::from("Artists"),
+                Cell::from("Album"),
+            ])
+            .style(Style::default().fg(Color::Yellow)),
+        )
         .block(
             Block::default()
                 .title("Context tracks")
                 .borders(Borders::ALL),
         )
+        .widths(&[
+            Constraint::Percentage(30),
+            Constraint::Percentage(30),
+            Constraint::Percentage(40),
+        ])
         .highlight_style(Style::default().add_modifier(Modifier::ITALIC))
         .highlight_symbol(">>");
     frame.render_stateful_widget(
-        tracks_block,
+        widget,
         rect,
-        &mut state.write().unwrap().ui_context_tracks_list_state,
+        &mut state.write().unwrap().ui_context_tracks_table_state,
     );
 }
 
