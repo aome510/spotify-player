@@ -13,6 +13,7 @@ pub struct State {
     pub current_playback_context: Option<context::CurrentlyPlaybackContext>,
     pub current_playlist: Option<playlist::FullPlaylist>,
     pub current_album: Option<album::FullAlbum>,
+    pub current_playlists: Vec<playlist::SimplifiedPlaylist>,
     pub current_context_tracks: Vec<Track>,
 
     // event states
@@ -80,6 +81,7 @@ impl Default for State {
             current_playlist: None,
             current_album: None,
             current_context_tracks: vec![],
+            current_playlists: vec![],
             current_playback_context: None,
 
             current_event_state: EventState::Default,

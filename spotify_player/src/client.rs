@@ -212,6 +212,13 @@ impl Client {
         Ok(Self::handle_rspotify_result(self.spotify.device().await)?.devices)
     }
 
+    /// gets all playlists of the current user
+    pub async fn get_current_user_playlists(&self) -> Result<Vec<playlist::SimplifiedPlaylist>> {
+        let first_page =
+            Self::handle_rspotify_result(self.spotify.current_user_playlists(None, None).await)?;
+        Ok(self.get_all_paging_items(first_page).await?)
+    }
+
     /// starts a track given a playback context
     pub async fn play_track_with_context(
         &self,
@@ -395,6 +402,15 @@ pub async fn start_watcher(
     recv: mpsc::Receiver<event::Event>,
 ) {
     refresh_current_playback_context(&state, &client).await;
+    match client.get_current_user_playlists().await {
+        Ok(playlists) => {
+            log::info!("user's playlists: {:#?}", playlists);
+            state.write().unwrap().current_playlists = playlists;
+        }
+        Err(err) => {
+            log::warn!("failed to get user's playlists: {:#?}", err);
+        }
+    }
     let mut last_refresh = std::time::SystemTime::now();
     loop {
         if let Ok(event) = recv.try_recv() {
