@@ -8,6 +8,7 @@ edition = "2018"
 
 [dependencies]
 anyhow = "1.0.42"
+clap = "2.33.3"
 crossterm = { version = "0.20.0", features = ["event-stream"] }
 dirs-next = "2.0.0"
 env_logger = "0.8.4"

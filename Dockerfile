@@ -18,4 +18,4 @@ RUN cargo build --release --bin spotify_player
 FROM scratch
 WORKDIR app
 COPY --from=builder /app/target/release/spotify_player .
-CMD ["./spotify_player"]
+CMD ["./spotify_player", "-c", "/app"]

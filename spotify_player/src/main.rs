@@ -39,7 +39,26 @@ async fn init(client: &mut client::Client, state: &state::SharedState) -> Result
 #[tokio::main]
 async fn main() -> Result<()> {
     env_logger::init();
-    let config_folder = config::get_config_folder_path()?;
+
+    // parse command line arguments
+    let matches = clap::App::new("spotify-player")
+        .version("0.1.0")
+        .author("Thang Pham <phamducthang1234@gmail>")
+        .arg(
+            clap::Arg::with_name("config-folder")
+                .short("c")
+                .long("config-folder")
+                .value_name("FOLDER")
+                .help("Path to the application's config folder (default: $HOME/.config/spotify-player)")
+                .next_line_help(true),
+        )
+        .get_matches();
+
+    let config_folder = match matches.value_of("config-folder") {
+        Some(path) => path.into(),
+        None => config::get_config_folder_path()?,
+    };
+    let token_cache_file = config::get_token_cache_file_path(&config_folder);
 
     let (send, recv) = mpsc::channel::<event::Event>();
     let state = state::State::new();
@@ -52,7 +71,7 @@ async fn main() -> Result<()> {
             .client_id(&client_config.client_id)
             .client_secret(&client_config.client_secret)
             .redirect_uri("http://localhost:8888/callback")
-            .cache_path(config::get_token_cache_file_path()?)
+            .cache_path(token_cache_file)
             .scope(&SCOPES.join(" "))
             .build();
 

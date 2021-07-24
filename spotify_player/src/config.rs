@@ -1,5 +1,5 @@
-const TOKEN_CACHE_FILE: &str = ".spotify_token_cache.json";
 const CONFIG_FOLDER: &str = "spotify-player";
+const TOKEN_CACHE_FILE: &str = ".spotify_token_cache.json";
 const CLIENT_CONFIG_FILE: &str = "client.toml";
 pub const UI_REFRESH_DURATION: Duration = Duration::from_millis(30);
 pub const PLAYBACK_REFRESH_DURACTION: Duration = Duration::from_secs(1);
@@ -31,6 +31,6 @@ pub fn get_config_folder_path() -> Result<PathBuf> {
 }
 
 /// return the token (spotify authentictation token) cache file path
-pub fn get_token_cache_file_path() -> Result<PathBuf> {
-    Ok(get_config_folder_path()?.join(TOKEN_CACHE_FILE))
+pub fn get_token_cache_file_path(config_folder: &PathBuf) -> PathBuf {
+    config_folder.join(TOKEN_CACHE_FILE)
 }
