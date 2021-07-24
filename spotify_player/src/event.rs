@@ -13,8 +13,6 @@ pub enum Event {
     Shuffle,
     GetPlaylist(String),
     GetAlbum(String),
-    SelectNextTrack,
-    SelectPreviousTrack,
     PlaySelectedTrack,
     SearchTrackInContext,
     SortContextTracks(state::ContextSortOrder),
@@ -66,10 +64,20 @@ fn handle_search_mode_event(
                 }
             }
             KeyEvent::Ctrl(KeyCode::Char('j')) => {
-                send.send(Event::SelectNextTrack)?;
+                let mut state = state.write().unwrap();
+                if let Some(id) = state.context_tracks_table_ui_state.selected() {
+                    if id + 1 < state.get_context_filtered_tracks().len() {
+                        state.context_tracks_table_ui_state.select(Some(id + 1));
+                    }
+                }
             }
             KeyEvent::Ctrl(KeyCode::Char('k')) => {
-                send.send(Event::SelectPreviousTrack)?;
+                let mut state = state.write().unwrap();
+                if let Some(id) = state.context_tracks_table_ui_state.selected() {
+                    if id > 0 {
+                        state.context_tracks_table_ui_state.select(Some(id - 1));
+                    }
+                }
             }
             KeyEvent::None(KeyCode::Enter) => {
                 send.send(Event::PlaySelectedTrack)?;
@@ -166,10 +174,20 @@ fn handel_default_mode_event(
                 send.send(Event::Shuffle)?;
             }
             KeyEvent::None(KeyCode::Char('j')) => {
-                send.send(Event::SelectNextTrack)?;
+                let mut state = state.write().unwrap();
+                if let Some(id) = state.context_tracks_table_ui_state.selected() {
+                    if id + 1 < state.get_context_filtered_tracks().len() {
+                        state.context_tracks_table_ui_state.select(Some(id + 1));
+                    }
+                }
             }
             KeyEvent::None(KeyCode::Char('k')) => {
-                send.send(Event::SelectPreviousTrack)?;
+                let mut state = state.write().unwrap();
+                if let Some(id) = state.context_tracks_table_ui_state.selected() {
+                    if id > 0 {
+                        state.context_tracks_table_ui_state.select(Some(id - 1));
+                    }
+                }
             }
             KeyEvent::None(KeyCode::Enter) => {
                 send.send(Event::PlaySelectedTrack)?;
