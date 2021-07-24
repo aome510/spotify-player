@@ -6,7 +6,10 @@ pub const PLAYBACK_REFRESH_DURACTION: Duration = Duration::from_secs(1);
 pub const TRACK_DESC_ITEM_MAX_LEN: usize = 32;
 
 use crate::prelude::*;
-use std::{path::PathBuf, time::Duration};
+use std::{
+    path::{Path, PathBuf},
+    time::Duration,
+};
 
 #[derive(Deserialize)]
 /// Spotify client configurations
@@ -31,6 +34,6 @@ pub fn get_config_folder_path() -> Result<PathBuf> {
 }
 
 /// return the token (spotify authentictation token) cache file path
-pub fn get_token_cache_file_path(config_folder: &PathBuf) -> PathBuf {
+pub fn get_token_cache_file_path(config_folder: &Path) -> PathBuf {
     config_folder.join(TOKEN_CACHE_FILE)
 }
