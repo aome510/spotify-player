@@ -131,10 +131,17 @@ impl Client {
                     if let Some(ref context) = playback.context {
                         self.play_track_with_context(
                             context.uri.clone(),
-                            state.get_context_filtered_tracks()[id].uri.clone(),
+                            Some(state.get_context_filtered_tracks()[id].uri.clone()),
                         )
                         .await?;
                     }
+                }
+            }
+            event::Event::PlaySelectedPlaylist => {
+                let state = state.read().unwrap();
+                if let Some(id) = state.playlists_list_ui_state.selected() {
+                    self.play_track_with_context(state.current_playlists[id].uri.clone(), None)
+                        .await?;
                 }
             }
             event::Event::SearchTrackInContext => {
@@ -207,17 +214,15 @@ impl Client {
     pub async fn play_track_with_context(
         &self,
         context_uri: String,
-        track_uri: String,
+        track_uri: Option<String>,
     ) -> Result<()> {
+        let offset = match track_uri {
+            None => None,
+            Some(uri) => offset::for_uri(uri),
+        };
         Self::handle_rspotify_result(
             self.spotify
-                .start_playback(
-                    None,
-                    Some(context_uri),
-                    None,
-                    offset::for_uri(track_uri),
-                    None,
-                )
+                .start_playback(None, Some(context_uri), None, offset, None)
                 .await,
         )
     }
@@ -390,7 +395,12 @@ pub async fn start_watcher(
     match client.get_current_user_playlists().await {
         Ok(playlists) => {
             log::info!("user's playlists: {:#?}", playlists);
-            state.write().unwrap().current_playlists = playlists;
+            // update the state
+            let mut state = state.write().unwrap();
+            if !playlists.is_empty() {
+                state.playlists_list_ui_state.select(Some(0));
+            }
+            state.current_playlists = playlists;
         }
         Err(err) => {
             log::warn!("failed to get user's playlists: {:#?}", err);

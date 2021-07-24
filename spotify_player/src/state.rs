@@ -21,7 +21,8 @@ pub struct State {
     pub context_search_state: ContextSearchState,
 
     // UI states
-    pub ui_context_tracks_table_state: TableState,
+    pub context_tracks_table_ui_state: TableState,
+    pub playlists_list_ui_state: ListState,
 }
 
 #[derive(Default)]
@@ -88,7 +89,8 @@ impl Default for State {
             current_event_state: EventState::Default,
             context_search_state: ContextSearchState::default(),
 
-            ui_context_tracks_table_state: TableState::default(),
+            context_tracks_table_ui_state: TableState::default(),
+            playlists_list_ui_state: ListState::default(),
         }
     }
 }

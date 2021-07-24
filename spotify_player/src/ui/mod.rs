@@ -41,7 +41,12 @@ fn render_current_playback_widget(frame: &mut Frame, state: &state::SharedState,
     frame.render_widget(widget, rect);
 }
 
-fn render_playlist_tracks_widget(frame: &mut Frame, state: &state::SharedState, rect: Rect) {
+fn render_playlist_tracks_widget(
+    is_active: bool,
+    frame: &mut Frame,
+    state: &state::SharedState,
+    rect: Rect,
+) {
     let rows = state
         .read()
         .unwrap()
@@ -86,12 +91,17 @@ fn render_playlist_tracks_widget(frame: &mut Frame, state: &state::SharedState, 
             Constraint::Percentage(30),
             Constraint::Percentage(10),
         ])
-        .highlight_style(Style::default().add_modifier(Modifier::ITALIC))
-        .highlight_symbol(">>");
+        .highlight_style(if is_active {
+            Style::default().add_modifier(Modifier::ITALIC)
+        } else {
+            Style::default()
+        })
+        // mostly to create a left margin of two
+        .highlight_symbol("  ");
     frame.render_stateful_widget(
         widget,
         rect,
-        &mut state.write().unwrap().ui_context_tracks_table_state,
+        &mut state.write().unwrap().context_tracks_table_ui_state,
     );
 }
 
@@ -105,13 +115,13 @@ fn quit(mut terminal: Terminal) -> Result<()> {
     Ok(())
 }
 
-fn render_main_layout(f: &mut Frame, state: &state::SharedState, rect: Rect) {
+fn render_main_layout(is_active: bool, f: &mut Frame, state: &state::SharedState, rect: Rect) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Percentage(20), Constraint::Percentage(80)].as_ref())
         .split(rect);
     render_current_playback_widget(f, &state, chunks[0]);
-    render_playlist_tracks_widget(f, &state, chunks[1]);
+    render_playlist_tracks_widget(is_active, f, &state, chunks[1]);
 }
 
 fn render_playlists_widget(frame: &mut Frame, state: &state::SharedState, rect: Rect) {
@@ -124,8 +134,15 @@ fn render_playlists_widget(frame: &mut Frame, state: &state::SharedState, rect: 
             .map(|p| ListItem::new(p.name.clone()))
             .collect::<Vec<_>>(),
     )
+    .highlight_style(Style::default().add_modifier(Modifier::ITALIC))
+    // mostly to create a left margin of two
+    .highlight_symbol("  ")
     .block(Block::default().title("Playlists").borders(Borders::ALL));
-    frame.render_widget(list, rect);
+    frame.render_stateful_widget(
+        list,
+        rect,
+        &mut state.write().unwrap().playlists_list_ui_state,
+    );
 }
 
 /// start the application UI as the main thread
@@ -183,17 +200,17 @@ pub fn start_ui(state: state::SharedState, send: mpsc::Sender<event::Event>) -> 
         {
             // draw ui
             terminal.draw(|f| {
-                let main_layout_rect = {
+                let (main_layout_rect, is_active) = {
                     let event_state = state.read().unwrap().current_event_state.clone();
                     match event_state {
-                        state::EventState::Default => f.size(),
+                        state::EventState::Default => (f.size(), true),
                         state::EventState::PlaylistSwitch => {
                             let chunks = Layout::default()
                                 .direction(Direction::Vertical)
                                 .constraints([Constraint::Min(0), Constraint::Length(10)].as_ref())
                                 .split(f.size());
                             render_playlists_widget(f, &state, chunks[1]);
-                            chunks[0]
+                            (chunks[0], false)
                         }
                         state::EventState::ContextSearch => {
                             let chunks = Layout::default()
@@ -211,7 +228,7 @@ pub fn start_ui(state: state::SharedState, send: mpsc::Sender<event::Event>) -> 
                             )
                             .block(Block::default().borders(Borders::ALL).title("Search"));
                             f.render_widget(search_box, chunks[1]);
-                            chunks[0]
+                            (chunks[0], true)
                         }
                         state::EventState::Sort => {
                             let chunks = Layout::default()
@@ -220,12 +237,12 @@ pub fn start_ui(state: state::SharedState, send: mpsc::Sender<event::Event>) -> 
                                 .split(f.size());
                             let table = help::get_shortcut_table(get_sort_shortcuts());
                             f.render_widget(table, chunks[1]);
-                            chunks[0]
+                            (chunks[0], true)
                         }
                     }
                 };
 
-                render_main_layout(f, &state, main_layout_rect);
+                render_main_layout(is_active, f, &state, main_layout_rect);
             })?;
         }
 

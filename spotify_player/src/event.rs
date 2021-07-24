@@ -14,6 +14,7 @@ pub enum Event {
     GetPlaylist(String),
     GetAlbum(String),
     PlaySelectedTrack,
+    PlaySelectedPlaylist,
     SearchTrackInContext,
     SortContextTracks(state::ContextSortOrder),
 }
@@ -139,6 +140,26 @@ fn handle_playlist_switch_mode_event(
 ) -> Result<()> {
     if let term_event::Event::Key(key_event) = event {
         match key_event.into() {
+            KeyEvent::None(KeyCode::Char('j')) => {
+                let mut state = state.write().unwrap();
+                if let Some(id) = state.playlists_list_ui_state.selected() {
+                    if id + 1 < state.current_playlists.len() {
+                        state.playlists_list_ui_state.select(Some(id + 1));
+                    }
+                }
+            }
+            KeyEvent::None(KeyCode::Char('k')) => {
+                let mut state = state.write().unwrap();
+                if let Some(id) = state.playlists_list_ui_state.selected() {
+                    if id > 0 {
+                        state.playlists_list_ui_state.select(Some(id - 1));
+                    }
+                }
+            }
+            KeyEvent::None(KeyCode::Enter) => {
+                send.send(Event::PlaySelectedPlaylist)?;
+                state.write().unwrap().current_event_state = state::EventState::Default;
+            }
             KeyEvent::None(KeyCode::Esc) => {
                 state.write().unwrap().current_event_state = state::EventState::Default;
             }
