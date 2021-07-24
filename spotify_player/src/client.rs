@@ -402,6 +402,7 @@ pub async fn start_watcher(
     recv: mpsc::Receiver<event::Event>,
 ) {
     refresh_current_playback_context(&state, &client).await;
+    // TODO: this should not block.
     match client.get_current_user_playlists().await {
         Ok(playlists) => {
             log::info!("user's playlists: {:#?}", playlists);

@@ -114,6 +114,20 @@ fn render_main_layout(f: &mut Frame, state: &state::SharedState, rect: Rect) {
     render_playlist_tracks_widget(f, &state, chunks[1]);
 }
 
+fn render_playlists_widget(frame: &mut Frame, state: &state::SharedState, rect: Rect) {
+    let list = List::new(
+        state
+            .read()
+            .unwrap()
+            .current_playlists
+            .iter()
+            .map(|p| ListItem::new(p.name.clone()))
+            .collect::<Vec<_>>(),
+    )
+    .block(Block::default().title("Playlists").borders(Borders::ALL));
+    frame.render_widget(list, rect);
+}
+
 /// start the application UI as the main thread
 pub fn start_ui(state: state::SharedState, send: mpsc::Sender<event::Event>) -> Result<()> {
     let mut stdout = std::io::stdout();
@@ -170,17 +184,32 @@ pub fn start_ui(state: state::SharedState, send: mpsc::Sender<event::Event>) -> 
             // draw ui
             terminal.draw(|f| {
                 let main_layout_rect = {
-                    let state = state.read().unwrap();
-                    match state.current_event_state {
+                    let event_state = state.read().unwrap().current_event_state.clone();
+                    match event_state {
                         state::EventState::Default => f.size(),
+                        state::EventState::PlaylistSwitch => {
+                            let chunks = Layout::default()
+                                .direction(Direction::Vertical)
+                                .constraints([Constraint::Min(0), Constraint::Length(10)].as_ref())
+                                .split(f.size());
+                            render_playlists_widget(f, &state, chunks[1]);
+                            chunks[0]
+                        }
                         state::EventState::ContextSearch => {
                             let chunks = Layout::default()
                                 .direction(Direction::Vertical)
                                 .constraints([Constraint::Min(0), Constraint::Length(3)].as_ref())
                                 .split(f.size());
-                            let search_box =
-                                Paragraph::new(state.context_search_state.query.clone().unwrap())
-                                    .block(Block::default().borders(Borders::ALL).title("Search"));
+                            let search_box = Paragraph::new(
+                                state
+                                    .read()
+                                    .unwrap()
+                                    .context_search_state
+                                    .query
+                                    .clone()
+                                    .unwrap(),
+                            )
+                            .block(Block::default().borders(Borders::ALL).title("Search"));
                             f.render_widget(search_box, chunks[1]);
                             chunks[0]
                         }

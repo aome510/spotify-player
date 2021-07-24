@@ -124,6 +124,22 @@ fn handle_sort_mode_event(
     Ok(())
 }
 
+fn handle_playlist_switch_mode_event(
+    event: term_event::Event,
+    send: &mpsc::Sender<Event>,
+    state: &state::SharedState,
+) -> Result<()> {
+    if let term_event::Event::Key(key_event) = event {
+        match key_event.into() {
+            KeyEvent::None(KeyCode::Esc) => {
+                state.write().unwrap().current_event_state = state::EventState::Default;
+            }
+            _ => {}
+        }
+    }
+    Ok(())
+}
+
 fn handel_default_mode_event(
     event: term_event::Event,
     send: &mpsc::Sender<Event>,
@@ -173,6 +189,9 @@ fn handel_default_mode_event(
             KeyEvent::None(KeyCode::Char('s')) => {
                 state.write().unwrap().current_event_state = state::EventState::Sort;
             }
+            KeyEvent::None(KeyCode::Char('P')) => {
+                state.write().unwrap().current_event_state = state::EventState::PlaylistSwitch;
+            }
             _ => {}
         }
     };
@@ -201,6 +220,9 @@ fn handle_event(
         }
         state::EventState::Sort => {
             handle_sort_mode_event(event, send, state)?;
+        }
+        state::EventState::PlaylistSwitch => {
+            handle_playlist_switch_mode_event(event, send, state)?;
         }
     }
     Ok(())

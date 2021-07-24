@@ -44,6 +44,7 @@ pub enum EventState {
     Default,
     Sort,
     ContextSearch,
+    PlaylistSwitch,
 }
 
 #[derive(Default, Debug, Clone)]
