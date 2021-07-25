@@ -2,7 +2,7 @@ const CONFIG_FOLDER: &str = "spotify-player";
 const TOKEN_CACHE_FILE: &str = ".spotify_token_cache.json";
 const CLIENT_CONFIG_FILE: &str = "client.toml";
 pub const UI_REFRESH_DURATION: Duration = Duration::from_millis(30);
-pub const PLAYBACK_REFRESH_DURACTION: Duration = Duration::from_secs(1);
+pub const PLAYBACK_REFRESH_DURACTION: Duration = Duration::from_millis(100);
 pub const TRACK_DESC_ITEM_MAX_LEN: usize = 32;
 
 use crate::prelude::*;

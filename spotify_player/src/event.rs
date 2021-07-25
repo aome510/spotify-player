@@ -158,7 +158,6 @@ fn handle_playlist_switch_mode_event(
             }
             KeyEvent::None(KeyCode::Enter) => {
                 send.send(Event::PlaySelectedPlaylist)?;
-                state.write().unwrap().current_event_state = state::EventState::Default;
             }
             KeyEvent::None(KeyCode::Esc) => {
                 state.write().unwrap().current_event_state = state::EventState::Default;

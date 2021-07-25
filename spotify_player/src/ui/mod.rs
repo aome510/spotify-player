@@ -13,32 +13,52 @@ mod help;
 mod utils;
 
 fn render_current_playback_widget(frame: &mut Frame, state: &state::SharedState, rect: Rect) {
-    let playback_info = if let Some(ref context) = state.read().unwrap().current_playback_context {
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Min(0), Constraint::Length(1)].as_ref())
+        .margin(1)
+        .split(rect);
+
+    let block = Block::default()
+        .title("Current Playback")
+        .borders(Borders::ALL);
+    frame.render_widget(block, rect);
+
+    if let Some(ref context) = state.read().unwrap().current_playback_context {
         if let Some(PlayingItem::Track(ref track)) = context.item {
-            format!(
-                "Current track: {} at {}/{} (playing: {}, repeat: {}, shuffle: {})\n",
+            let playback_info = format!(
+                "{} by {} (repeat: {}, shuffle: {})\n",
                 track.name,
-                format_duration(context.progress_ms.unwrap()),
-                format_duration(track.duration_ms),
-                context.is_playing,
+                track
+                    .artists
+                    .iter()
+                    .map(|a| a.name.clone())
+                    .collect::<Vec<_>>()
+                    .join(","),
                 context.repeat_state.as_str(),
                 context.shuffle_state,
-            )
-        } else {
-            "".to_owned()
+            );
+            let playback_desc = Paragraph::new(playback_info)
+                .wrap(Wrap { trim: true })
+                .block(Block::default());
+            let progress_bar = Gauge::default()
+                .block(Block::default())
+                .gauge_style(
+                    Style::default()
+                        .fg(Color::DarkGray)
+                        .bg(Color::Gray)
+                        .add_modifier(Modifier::ITALIC),
+                )
+                .ratio((context.progress_ms.unwrap() as f64) / (track.duration_ms as f64))
+                .label(format!(
+                    "{}/{}",
+                    format_duration(context.progress_ms.unwrap()),
+                    format_duration(track.duration_ms),
+                ));
+            frame.render_widget(playback_desc, chunks[0]);
+            frame.render_widget(progress_bar, chunks[1]);
         }
-    } else {
-        "".to_owned()
     };
-    let widget = Paragraph::new(playback_info)
-        .block(
-            Block::default()
-                .title("Playback context")
-                .borders(Borders::ALL),
-        )
-        .wrap(Wrap { trim: true });
-
-    frame.render_widget(widget, rect);
 }
 
 fn render_playlist_tracks_widget(
@@ -118,7 +138,7 @@ fn quit(mut terminal: Terminal) -> Result<()> {
 fn render_main_layout(is_active: bool, f: &mut Frame, state: &state::SharedState, rect: Rect) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Percentage(20), Constraint::Percentage(80)].as_ref())
+        .constraints([Constraint::Length(5), Constraint::Min(0)].as_ref())
         .split(rect);
     render_current_playback_widget(f, &state, chunks[0]);
     render_playlist_tracks_widget(is_active, f, &state, chunks[1]);
