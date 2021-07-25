@@ -100,9 +100,49 @@ impl State {
         Arc::new(RwLock::new(State::default()))
     }
 
+    /// sorts tracks in the current playing context given a context sort oder
     pub fn sort_context_tracks(&mut self, sort_oder: ContextSortOrder) {
         self.current_context_tracks
             .sort_by(|x, y| sort_oder.compare(x, y));
+    }
+
+    /// returns the type (Album, Artist, Playlist, etc) of current playing context
+    pub fn get_context_type(&self) -> Option<Type> {
+        match self.current_playback_context {
+            None => None,
+            Some(ref playback_context) => playback_context
+                .context
+                .as_ref()
+                .map(|context| context._type),
+        }
+    }
+
+    /// returns the description of current playing context
+    pub fn get_context_description(&self) -> String {
+        match self.get_context_type() {
+            None => "Cannot infer the playing context from current playback".to_owned(),
+            Some(ty) => match ty {
+                rspotify::senum::Type::Album => {
+                    format!(
+                        "Album: {}",
+                        match self.current_album {
+                            None => "loading...",
+                            Some(ref album) => &album.name,
+                        }
+                    )
+                }
+                rspotify::senum::Type::Playlist => {
+                    format!(
+                        "Playlist: {}",
+                        match self.current_playlist {
+                            None => "loading...",
+                            Some(ref playlist) => &playlist.name,
+                        }
+                    )
+                }
+                _ => "Unknown context type".to_owned(),
+            },
+        }
     }
 
     /// returns the list of tracks in the current playback context (album, playlist, etc)

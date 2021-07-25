@@ -67,6 +67,16 @@ fn render_playlist_tracks_widget(
     state: &state::SharedState,
     rect: Rect,
 ) {
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Length(1), Constraint::Min(0)].as_ref())
+        .margin(1)
+        .split(rect);
+    let block = Block::default()
+        .title("Context Tracks")
+        .borders(Borders::ALL);
+    frame.render_widget(block, rect);
+
     let rows = state
         .read()
         .unwrap()
@@ -90,7 +100,10 @@ fn render_playlist_tracks_widget(
             ])
         })
         .collect::<Vec<_>>();
-    let widget = Table::new(rows)
+
+    let context_desc =
+        Paragraph::new(state.read().unwrap().get_context_description()).block(Block::default());
+    let track_table = Table::new(rows)
         .header(
             Row::new(vec![
                 Cell::from("Track"),
@@ -100,11 +113,7 @@ fn render_playlist_tracks_widget(
             ])
             .style(Style::default().fg(Color::Yellow)),
         )
-        .block(
-            Block::default()
-                .title("Context tracks")
-                .borders(Borders::ALL),
-        )
+        .block(Block::default())
         .widths(&[
             Constraint::Percentage(30),
             Constraint::Percentage(30),
@@ -118,9 +127,11 @@ fn render_playlist_tracks_widget(
         })
         // mostly to create a left margin of two
         .highlight_symbol("  ");
+
+    frame.render_widget(context_desc, chunks[0]);
     frame.render_stateful_widget(
-        widget,
-        rect,
+        track_table,
+        chunks[1],
         &mut state.write().unwrap().context_tracks_table_ui_state,
     );
 }
