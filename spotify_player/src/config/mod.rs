@@ -1,11 +1,16 @@
+mod keymap;
+
 const DEFAULT_CONFIG_FOLDER: &str = ".config/spotify-player";
 const TOKEN_CACHE_FILE: &str = ".spotify_token_cache.json";
 const CLIENT_CONFIG_FILE: &str = "client.toml";
 const APP_CONFIG_FILE: &str = "app.toml";
+const KEYMAP_CONFIG_FILE: &str = "keymap.toml";
 
 use crate::prelude::*;
 use config_parser2::*;
 use std::path::{Path, PathBuf};
+
+pub use keymap::*;
 
 #[derive(Deserialize)]
 /// Spotify client configurations
@@ -44,7 +49,7 @@ impl AppConfig {
         match std::fs::read_to_string(path.join(APP_CONFIG_FILE)) {
             Err(err) => {
                 log::warn!(
-                    "failed to open application config file: {:#?}...\nUse the default configurations instead...",
+                    "failed to open the application config file: {:#?}...\nUse the default configurations instead...",
                     err
                 );
             }

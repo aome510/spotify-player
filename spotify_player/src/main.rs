@@ -22,7 +22,7 @@ const SCOPES: [&str; 10] = [
     "user-library-read",
 ];
 
-async fn init(client: &mut client::Client, state: &state::SharedState) -> Result<()> {
+async fn init_state(client: &mut client::Client, state: &state::SharedState) -> Result<()> {
     state.write().unwrap().auth_token_expires_at = client.refresh_token().await?;
 
     let devices = client.get_devices().await?;
@@ -54,12 +54,14 @@ async fn main() -> Result<()> {
         )
         .get_matches();
 
+    let (send, recv) = mpsc::channel::<event::Event>();
+    let state = state::State::new();
+
+    // parsing config files
     let config_folder = match matches.value_of("config-folder") {
         Some(path) => path.into(),
         None => config::get_config_folder_path()?,
     };
-    let (send, recv) = mpsc::channel::<event::Event>();
-    let state = state::State::new();
     state
         .write()
         .unwrap()
@@ -69,6 +71,10 @@ async fn main() -> Result<()> {
         "app configuartions: {:#?}",
         state.read().unwrap().app_config
     );
+
+    let mut keymap = config::KeymapConfig { keymaps: vec![] };
+    keymap.parse_config_file(&config_folder)?;
+    log::info!("keymap configurations: {:#?}", keymap);
 
     // start application's threads
     thread::spawn({
@@ -83,8 +89,8 @@ async fn main() -> Result<()> {
             .build();
 
         let mut client = client::Client::new(oauth);
-        // init the application
-        init(&mut client, &state).await?;
+        // init the application's state
+        init_state(&mut client, &state).await?;
 
         let cloned_state = state.clone();
         move || {

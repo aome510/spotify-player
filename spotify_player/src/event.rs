@@ -3,6 +3,7 @@ use crossterm::event::{self as term_event, EventStream, KeyCode, KeyModifiers};
 use tokio::stream::StreamExt;
 
 #[derive(Debug)]
+/// Event to communicate with the client
 pub enum Event {
     Quit,
     RefreshToken,
@@ -19,6 +20,7 @@ pub enum Event {
     SortContextTracks(state::ContextSortOrder),
 }
 
+/// KeyEvent received from user's input
 pub enum KeyEvent {
     None(KeyCode),
     Ctrl(KeyCode),
