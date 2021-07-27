@@ -58,20 +58,27 @@ async fn main() -> Result<()> {
         Some(path) => path.into(),
         None => config::get_config_folder_path()?,
     };
-    let token_cache_file = config::get_token_cache_file_path(&config_folder);
-
     let (send, recv) = mpsc::channel::<event::Event>();
     let state = state::State::new();
+    state
+        .write()
+        .unwrap()
+        .app_config
+        .parse_config_file(&config_folder)?;
+    log::info!(
+        "app configuartions: {:#?}",
+        state.read().unwrap().app_config
+    );
 
     // start application's threads
     thread::spawn({
-        let client_config = config::ClientConfig::from_config_file(config_folder)?;
+        let client_config = config::ClientConfig::from_config_file(&config_folder)?;
 
         let oauth = SpotifyOAuth::default()
             .client_id(&client_config.client_id)
             .client_secret(&client_config.client_secret)
             .redirect_uri("http://localhost:8888/callback")
-            .cache_path(token_cache_file)
+            .cache_path(config::get_token_cache_file_path(&config_folder))
             .scope(&SCOPES.join(" "))
             .build();
 

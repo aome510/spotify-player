@@ -1,4 +1,3 @@
-use crate::config;
 use crate::event;
 use crate::prelude::*;
 use crate::state;
@@ -85,7 +84,7 @@ impl Client {
                 self.update_state_current_album(&album_id, state).await?;
             }
             event::Event::SearchTrackInContext => {
-                self.search_tracks_in_current_playing_context(state);
+                self.search_tracks_in_current_playing_context(state).await?;
             }
             event::Event::SortContextTracks(order) => {
                 state.write().unwrap().sort_context_tracks(order);
@@ -429,13 +428,20 @@ pub async fn start_watcher(
         }
     }
 
+    let playback_refresh_duration = std::time::Duration::from_millis(
+        state
+            .read()
+            .unwrap()
+            .app_config
+            .playback_refresh_duration_in_ms,
+    );
     loop {
         if let Ok(event) = recv.try_recv() {
             if let Err(err) = client.handle_event(&state, event).await {
                 log::warn!("{:#?}", err);
             }
         }
-        if std::time::SystemTime::now() > last_refresh + config::PLAYBACK_REFRESH_DURACTION {
+        if std::time::SystemTime::now() > last_refresh + playback_refresh_duration {
             // `config::REFRESH_DURATION` passes since the last refresh, get the
             // current playback context again
             log::info!("refresh the current playback context...");

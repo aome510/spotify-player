@@ -196,6 +196,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "config_parser2"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0984e227370f19bf802e8ff7c66acd7d786239d78832a9ad1e8cbf7d44d4617d"
+dependencies = [
+ "anyhow",
+ "config_parser_derive",
+ "serde",
+ "toml",
+]
+
+[[package]]
+name = "config_parser_derive"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6b9cbca6b8d1885f3006f26699097aaceb6b850f05883f20e0e04c78e2791336"
+dependencies = [
+ "proc-macro2 1.0.27",
+ "quote 1.0.9",
+ "syn 1.0.73",
+]
+
+[[package]]
 name = "core-foundation"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1636,6 +1659,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
+ "config_parser2",
  "crossterm 0.20.0",
  "dirs-next",
  "env_logger 0.8.4",

@@ -1,4 +1,3 @@
-use crate::config;
 use crate::event;
 use crate::prelude::*;
 use crate::state;
@@ -10,7 +9,6 @@ type Terminal = tui::Terminal<CrosstermBackend<Stdout>>;
 type Frame<'a> = tui::Frame<'a, CrosstermBackend<Stdout>>;
 
 mod help;
-mod utils;
 
 fn render_current_playback_widget(frame: &mut Frame, state: &state::SharedState, rect: Rect) {
     let chunks = Layout::default()
@@ -77,6 +75,7 @@ fn render_playlist_tracks_widget(
         .borders(Borders::ALL);
     frame.render_widget(block, rect);
 
+    let item_max_len = state.read().unwrap().app_config.track_table_item_max_len;
     let rows = state
         .read()
         .unwrap()
@@ -84,18 +83,9 @@ fn render_playlist_tracks_widget(
         .into_iter()
         .map(|t| {
             Row::new(vec![
-                Cell::from(state::truncate_string(
-                    t.name.clone(),
-                    config::TRACK_DESC_ITEM_MAX_LEN,
-                )),
-                Cell::from(state::truncate_string(
-                    t.get_artists_info(),
-                    config::TRACK_DESC_ITEM_MAX_LEN,
-                )),
-                Cell::from(state::truncate_string(
-                    t.album.name.clone(),
-                    config::TRACK_DESC_ITEM_MAX_LEN,
-                )),
+                Cell::from(state::truncate_string(t.name.clone(), item_max_len)),
+                Cell::from(state::truncate_string(t.get_artists_info(), item_max_len)),
+                Cell::from(state::truncate_string(t.album.name.clone(), item_max_len)),
                 Cell::from(format_duration(t.duration)),
             ])
         })
@@ -186,6 +176,9 @@ pub fn start_ui(state: state::SharedState, send: mpsc::Sender<event::Event>) -> 
     let mut terminal = tui::Terminal::new(backend)?;
     terminal.clear()?;
 
+    let ui_refresh_duration = std::time::Duration::from_millis(
+        state.read().unwrap().app_config.ui_refresh_duration_in_ms,
+    );
     loop {
         {
             // check application's state to emit events if necessary
@@ -277,6 +270,6 @@ pub fn start_ui(state: state::SharedState, send: mpsc::Sender<event::Event>) -> 
             })?;
         }
 
-        std::thread::sleep(config::UI_REFRESH_DURATION);
+        std::thread::sleep(ui_refresh_duration);
     }
 }

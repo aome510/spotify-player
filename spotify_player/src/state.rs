@@ -1,10 +1,12 @@
-use crate::prelude::*;
+use crate::{config, prelude::*};
 
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 pub type SharedState = Arc<RwLock<State>>;
 
 pub struct State {
+    pub app_config: config::AppConfig,
+
     pub is_running: bool,
     pub auth_token_expires_at: std::time::SystemTime,
 
@@ -76,6 +78,8 @@ pub struct Artist {
 impl Default for State {
     fn default() -> Self {
         State {
+            app_config: config::AppConfig::default(),
+
             is_running: true,
             auth_token_expires_at: std::time::SystemTime::now(),
             devices: vec![],
