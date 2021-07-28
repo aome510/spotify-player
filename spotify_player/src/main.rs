@@ -62,19 +62,13 @@ async fn main() -> Result<()> {
         Some(path) => path.into(),
         None => config::get_config_folder_path()?,
     };
-    state
-        .write()
-        .unwrap()
-        .app_config
-        .parse_config_file(&config_folder)?;
-    log::info!(
-        "app configuartions: {:#?}",
-        state.read().unwrap().app_config
-    );
-
-    let mut keymap = config::KeymapConfig { keymaps: vec![] };
-    keymap.parse_config_file(&config_folder)?;
-    log::info!("keymap configurations: {:#?}", keymap);
+    {
+        let mut state = state.write().unwrap();
+        state.app_config.parse_config_file(&config_folder)?;
+        log::info!("app configuartions: {:#?}", state.app_config);
+        state.keymap_config.parse_config_file(&config_folder)?;
+        log::info!("keymap configuartions: {:#?}", state.keymap_config);
+    }
 
     // start application's threads
     thread::spawn({

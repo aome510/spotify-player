@@ -6,6 +6,7 @@ pub type SharedState = Arc<RwLock<State>>;
 
 pub struct State {
     pub app_config: config::AppConfig,
+    pub keymap_config: config::KeymapConfig,
 
     pub is_running: bool,
     pub auth_token_expires_at: std::time::SystemTime,
@@ -79,6 +80,7 @@ impl Default for State {
     fn default() -> Self {
         State {
             app_config: config::AppConfig::default(),
+            keymap_config: config::KeymapConfig::default(),
 
             is_running: true,
             auth_token_expires_at: std::time::SystemTime::now(),
