@@ -5,3 +5,4 @@ members = ["spotify_player"]
 lto = true
 codegen-units = 1
 panic = "abort"
+# debug = true

@@ -3,6 +3,7 @@ use crate::prelude::*;
 use crate::state;
 
 /// A spotify client
+#[derive(Clone)]
 pub struct Client {
     spotify: Spotify,
     http: reqwest::Client,
@@ -391,14 +392,25 @@ impl Client {
     }
 }
 
-async fn refresh_current_playback_context(state: &state::SharedState, client: &Client) {
-    match client.get_current_playback().await {
-        Ok(context) => {
-            state.write().unwrap().current_playback_context = context;
+/// refreshes the current playback context every `playback_refresh_duration_in_ms` ms
+async fn refresh_current_playback_context(state: state::SharedState, client: Client) {
+    let playback_refresh_duration = std::time::Duration::from_millis(
+        state
+            .read()
+            .unwrap()
+            .app_config
+            .playback_refresh_duration_in_ms,
+    );
+    loop {
+        match client.get_current_playback().await {
+            Ok(context) => {
+                state.write().unwrap().current_playback_context = context;
+            }
+            Err(err) => {
+                log::warn!("{:#?}", err);
+            }
         }
-        Err(err) => {
-            log::warn!("{:#?}", err);
-        }
+        thread::sleep(playback_refresh_duration);
     }
 }
 
@@ -409,9 +421,6 @@ pub async fn start_watcher(
     mut client: Client,
     recv: mpsc::Receiver<event::Event>,
 ) {
-    refresh_current_playback_context(&state, &client).await;
-    let mut last_refresh = std::time::SystemTime::now();
-
     match client.get_current_user_playlists().await {
         Ok(playlists) => {
             log::info!("user's playlists: {:#?}", playlists);
@@ -426,26 +435,16 @@ pub async fn start_watcher(
             log::warn!("failed to get user's playlists: {:#?}", err);
         }
     }
-
-    let playback_refresh_duration = std::time::Duration::from_millis(
-        state
-            .read()
-            .unwrap()
-            .app_config
-            .playback_refresh_duration_in_ms,
-    );
-    loop {
-        if let Ok(event) = recv.try_recv() {
-            if let Err(err) = client.handle_event(&state, event).await {
-                log::warn!("{:#?}", err);
-            }
+    tokio::task::spawn({
+        let client = client.clone();
+        let state = state.clone();
+        async {
+            refresh_current_playback_context(state, client).await;
         }
-        if std::time::SystemTime::now() > last_refresh + playback_refresh_duration {
-            // `config::REFRESH_DURATION` passes since the last refresh, get the
-            // current playback context again
-            log::info!("refresh the current playback context...");
-            refresh_current_playback_context(&state, &client).await;
-            last_refresh = std::time::SystemTime::now()
+    });
+    while let Ok(event) = recv.recv() {
+        if let Err(err) = client.handle_event(&state, event).await {
+            log::warn!("{:#?}", err);
         }
     }
 }

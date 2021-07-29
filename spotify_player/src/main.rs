@@ -86,16 +86,16 @@ async fn main() -> Result<()> {
         // init the application's state
         init_state(&mut client, &state).await?;
 
-        let cloned_state = state.clone();
+        let state = state.clone();
         move || {
-            client::start_watcher(cloned_state, client, recv);
+            client::start_watcher(state, client, recv);
         }
     });
     thread::spawn({
-        let cloned_sender = send.clone();
-        let cloned_state = state.clone();
+        let sender = send.clone();
+        let state = state.clone();
         move || {
-            event::start_event_stream(cloned_sender, cloned_state);
+            event::start_event_stream(sender, state);
         }
     });
     ui::start_ui(state, send)

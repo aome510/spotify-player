@@ -177,7 +177,7 @@ pub fn start_ui(state: state::SharedState, send: mpsc::Sender<event::Event>) -> 
     terminal.clear()?;
 
     let ui_refresh_duration = std::time::Duration::from_millis(
-        state.read().unwrap().app_config.ui_refresh_duration_in_ms,
+        state.read().unwrap().app_config.app_refresh_duration_in_ms,
     );
     loop {
         {

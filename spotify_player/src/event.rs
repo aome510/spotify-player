@@ -309,10 +309,8 @@ fn handle_event(
             .unwrap()
             .keymap_config
             .get_command_from_key(&key);
-        if let Some(command) = command {
-            if let Command::Quit = command {
-                send.send(Event::Quit)?;
-            }
+        if let Some(Command::Quit) = command {
+            send.send(Event::Quit)?;
         }
     }
     Ok(())
