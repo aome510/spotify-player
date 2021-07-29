@@ -4,7 +4,6 @@ use crate::{
     state,
 };
 use crossterm::event::{self as term_event, EventStream, KeyCode, KeyModifiers};
-use serde::de::value::BoolDeserializer;
 use tokio::stream::StreamExt;
 
 #[derive(Debug)]
@@ -22,7 +21,7 @@ pub enum Event {
     PlaySelectedTrack,
     PlaySelectedPlaylist,
     SearchTrackInContext,
-    SortContextTracks(state::ContextSortOrder),
+    // SortContextTracks(state::ContextSortOrder),
 }
 
 impl From<term_event::KeyEvent> for Key {
@@ -93,7 +92,7 @@ fn handle_search_mode_key(
                 }
                 Ok(true)
             }
-            Command::PlaySelectedTrack => {
+            Command::PlaySelected => {
                 send.send(Event::PlaySelectedTrack)?;
                 Ok(true)
             }
@@ -109,91 +108,96 @@ fn handle_search_mode_key(
     }
 }
 
-fn handle_sort_mode_key(
-    key: &Key,
-    send: &mpsc::Sender<Event>,
-    state: &state::SharedState,
-) -> Result<bool> {
-    Ok(false)
+// fn handle_sort_mode_key(
+//     key: &Key,
+//     send: &mpsc::Sender<Event>,
+//     state: &state::SharedState,
+// ) -> Result<bool> {
+//     Ok(false)
 
-    // TODO: handle sort
+//     // TODO: handle sort
 
-    // if let term_event::Event::Key(key_event) = event {
-    //     match key_event.into() {
-    //         Key::None(KeyCode::Char('q')) => send.send(Event::SortContextTracks(
-    //             state::ContextSortOrder::TrackName(true),
-    //         ))?,
-    //         Key::None(KeyCode::Char('Q')) => send.send(Event::SortContextTracks(
-    //             state::ContextSortOrder::TrackName(false),
-    //         ))?,
-    //         Key::None(KeyCode::Char('w')) => send.send(Event::SortContextTracks(
-    //             state::ContextSortOrder::Album(true),
-    //         ))?,
-    //         Key::None(KeyCode::Char('W')) => send.send(Event::SortContextTracks(
-    //             state::ContextSortOrder::Album(false),
-    //         ))?,
-    //         Key::None(KeyCode::Char('e')) => send.send(Event::SortContextTracks(
-    //             state::ContextSortOrder::Artists(true),
-    //         ))?,
-    //         Key::None(KeyCode::Char('E')) => send.send(Event::SortContextTracks(
-    //             state::ContextSortOrder::Artists(false),
-    //         ))?,
-    //         Key::None(KeyCode::Char('r')) => send.send(Event::SortContextTracks(
-    //             state::ContextSortOrder::AddedAt(true),
-    //         ))?,
-    //         Key::None(KeyCode::Char('R')) => send.send(Event::SortContextTracks(
-    //             state::ContextSortOrder::AddedAt(false),
-    //         ))?,
-    //         Key::None(KeyCode::Char('t')) => send.send(Event::SortContextTracks(
-    //             state::ContextSortOrder::Duration(true),
-    //         ))?,
-    //         Key::None(KeyCode::Char('T')) => send.send(Event::SortContextTracks(
-    //             state::ContextSortOrder::Duration(false),
-    //         ))?,
-    //         _ => {}
-    //     }
-    // }
-    // state.write().unwrap().current_event_state = state::EventState::Default;
-    // Ok(())
-}
+//     // if let term_event::Event::Key(key_event) = event {
+//     //     match key_event.into() {
+//     //         Key::None(KeyCode::Char('q')) => send.send(Event::SortContextTracks(
+//     //             state::ContextSortOrder::TrackName(true),
+//     //         ))?,
+//     //         Key::None(KeyCode::Char('Q')) => send.send(Event::SortContextTracks(
+//     //             state::ContextSortOrder::TrackName(false),
+//     //         ))?,
+//     //         Key::None(KeyCode::Char('w')) => send.send(Event::SortContextTracks(
+//     //             state::ContextSortOrder::Album(true),
+//     //         ))?,
+//     //         Key::None(KeyCode::Char('W')) => send.send(Event::SortContextTracks(
+//     //             state::ContextSortOrder::Album(false),
+//     //         ))?,
+//     //         Key::None(KeyCode::Char('e')) => send.send(Event::SortContextTracks(
+//     //             state::ContextSortOrder::Artists(true),
+//     //         ))?,
+//     //         Key::None(KeyCode::Char('E')) => send.send(Event::SortContextTracks(
+//     //             state::ContextSortOrder::Artists(false),
+//     //         ))?,
+//     //         Key::None(KeyCode::Char('r')) => send.send(Event::SortContextTracks(
+//     //             state::ContextSortOrder::AddedAt(true),
+//     //         ))?,
+//     //         Key::None(KeyCode::Char('R')) => send.send(Event::SortContextTracks(
+//     //             state::ContextSortOrder::AddedAt(false),
+//     //         ))?,
+//     //         Key::None(KeyCode::Char('t')) => send.send(Event::SortContextTracks(
+//     //             state::ContextSortOrder::Duration(true),
+//     //         ))?,
+//     //         Key::None(KeyCode::Char('T')) => send.send(Event::SortContextTracks(
+//     //             state::ContextSortOrder::Duration(false),
+//     //         ))?,
+//     //         _ => {}
+//     //     }
+//     // }
+//     // state.write().unwrap().current_event_state = state::EventState::Default;
+//     // Ok(())
+// }
 
 fn handle_playlist_switch_mode_key(
     key: &Key,
     send: &mpsc::Sender<Event>,
     state: &state::SharedState,
 ) -> Result<bool> {
-    Ok(false)
-
-    // TODO: handle switch
-
-    // if let term_event::Event::Key(key_event) = event {
-    //     match key_event.into() {
-    //         Key::None(KeyCode::Char('j')) => {
-    //             let mut state = state.write().unwrap();
-    //             if let Some(id) = state.playlists_list_ui_state.selected() {
-    //                 if id + 1 < state.current_playlists.len() {
-    //                     state.playlists_list_ui_state.select(Some(id + 1));
-    //                 }
-    //             }
-    //         }
-    //         Key::None(KeyCode::Char('k')) => {
-    //             let mut state = state.write().unwrap();
-    //             if let Some(id) = state.playlists_list_ui_state.selected() {
-    //                 if id > 0 {
-    //                     state.playlists_list_ui_state.select(Some(id - 1));
-    //                 }
-    //             }
-    //         }
-    //         Key::None(KeyCode::Enter) => {
-    //             send.send(Event::PlaySelectedPlaylist)?;
-    //         }
-    //         Key::None(KeyCode::Esc) => {
-    //             state.write().unwrap().current_event_state = state::EventState::Default;
-    //         }
-    //         _ => {}
-    //     }
-    // }
-    // Ok(())
+    let command = state
+        .read()
+        .unwrap()
+        .keymap_config
+        .get_command_from_key(key);
+    match command {
+        Some(command) => match command {
+            Command::SelectNext => {
+                let mut state = state.write().unwrap();
+                if let Some(id) = state.playlists_list_ui_state.selected() {
+                    if id + 1 < state.current_playlists.len() {
+                        state.playlists_list_ui_state.select(Some(id + 1));
+                    }
+                }
+                Ok(true)
+            }
+            Command::SelectPrevious => {
+                let mut state = state.write().unwrap();
+                if let Some(id) = state.playlists_list_ui_state.selected() {
+                    if id > 0 {
+                        state.playlists_list_ui_state.select(Some(id - 1));
+                    }
+                }
+                Ok(true)
+            }
+            Command::PlaySelected => {
+                send.send(Event::PlaySelectedPlaylist)?;
+                Ok(true)
+            }
+            Command::ToDefaultMode => {
+                state.write().unwrap().current_event_state = state::EventState::Default;
+                Ok(true)
+            }
+            _ => Ok(false),
+        },
+        None => Ok(false),
+    }
 }
 
 fn handle_default_mode_key(
@@ -246,7 +250,7 @@ fn handle_default_mode_key(
                 }
                 Ok(true)
             }
-            Command::PlaySelectedTrack => {
+            Command::PlaySelected => {
                 send.send(Event::PlaySelectedTrack)?;
                 Ok(true)
             }
@@ -263,10 +267,10 @@ fn handle_default_mode_key(
                 };
                 Ok(true)
             }
-            Command::SortContextTracks => {
-                state.write().unwrap().current_event_state = state::EventState::Sort;
-                Ok(true)
-            }
+            // Command::SortContextTracks => {
+            //     state.write().unwrap().current_event_state = state::EventState::Sort;
+            //     Ok(true)
+            // }
             Command::SwitchPlaylists => {
                 state.write().unwrap().current_event_state = state::EventState::PlaylistSwitch;
                 Ok(true)
@@ -291,7 +295,10 @@ fn handle_event(
     let handled = match current_event_state {
         state::EventState::Default => handle_default_mode_key(&key, send, state)?,
         state::EventState::ContextSearch => handle_search_mode_key(&key, send, state)?,
-        state::EventState::Sort => handle_sort_mode_key(&key, send, state)?,
+        // TODO: handle sort mode after figuring out how to
+        // implement keymaps by mode
+        // state::EventState::Sort => handle_sort_mode_key(&key, send, state)?,
+        state::EventState::Sort => false,
         state::EventState::PlaylistSwitch => handle_playlist_switch_mode_key(&key, send, state)?,
     };
 
@@ -302,14 +309,10 @@ fn handle_event(
             .unwrap()
             .keymap_config
             .get_command_from_key(&key);
-        match command {
-            None => {}
-            Some(command) => match command {
-                Command::Quit => {
-                    send.send(Event::Quit)?;
-                }
-                _ => {}
-            },
+        if let Some(command) = command {
+            if let Command::Quit = command {
+                send.send(Event::Quit)?;
+            }
         }
     }
     Ok(())

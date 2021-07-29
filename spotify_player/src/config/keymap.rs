@@ -10,9 +10,8 @@ pub enum Command {
     ResumePause,
     Repeat,
     Shuffle,
-    PlaySelectedTrack,
     SearchContextTracks,
-    SortContextTracks,
+    // SortContextTracks,
     SwitchPlaylists,
 
     Quit,
@@ -20,6 +19,7 @@ pub enum Command {
 
     SelectNext,
     SelectPrevious,
+    PlaySelected,
 
     None,
 }
@@ -71,16 +71,16 @@ impl Default for KeymapConfig {
                 },
                 Keymap {
                     key: "enter".into(),
-                    command: Command::PlaySelectedTrack,
+                    command: Command::PlaySelected,
                 },
                 Keymap {
                     key: "/".into(),
                     command: Command::SearchContextTracks,
                 },
-                Keymap {
-                    key: "s".into(),
-                    command: Command::SortContextTracks,
-                },
+                // Keymap {
+                //     key: "s".into(),
+                //     command: Command::SortContextTracks,
+                // },
                 Keymap {
                     key: "P".into(),
                     command: Command::SwitchPlaylists,
