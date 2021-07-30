@@ -38,7 +38,7 @@ async fn init_state(client: &mut client::Client, state: &state::SharedState) -> 
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    env_logger::init();
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("off")).init();
 
     // parse command line arguments
     let matches = clap::App::new("spotify-player")
