@@ -122,7 +122,7 @@ impl Default for KeymapConfig {
                 },
                 Keymap {
                     key_sequence: "s t".into(),
-                    command: Command::SortByDuration,
+                    command: Command::SortByAddedDate,
                 },
                 Keymap {
                     key_sequence: "s y".into(),
