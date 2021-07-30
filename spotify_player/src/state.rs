@@ -1,4 +1,4 @@
-use crate::{config, prelude::*};
+use crate::{config, key, prelude::*};
 
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
@@ -18,6 +18,8 @@ pub struct State {
     pub current_album: Option<album::FullAlbum>,
     pub current_playlists: Vec<playlist::SimplifiedPlaylist>,
     pub current_context_tracks: Vec<Track>,
+
+    pub current_key_prefix: key::KeySequence,
 
     // event states
     pub current_event_state: EventState,
@@ -91,6 +93,8 @@ impl Default for State {
             current_context_tracks: vec![],
             current_playlists: vec![],
             current_playback_context: None,
+
+            current_key_prefix: key::KeySequence { keys: vec![] },
 
             current_event_state: EventState::Default,
             context_search_state: ContextSearchState::default(),

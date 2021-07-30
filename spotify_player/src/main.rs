@@ -1,6 +1,7 @@
 mod client;
 mod config;
 mod event;
+mod key;
 pub mod prelude;
 mod state;
 mod ui;

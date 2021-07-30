@@ -1,5 +1,5 @@
+use crate::key::{self, KeySequence};
 use anyhow::Result;
-use crossterm::event::KeyCode;
 use serde::Deserialize;
 
 #[derive(Clone, Debug, Deserialize)]
@@ -11,8 +11,14 @@ pub enum Command {
     Repeat,
     Shuffle,
     SearchContextTracks,
-    // SortContextTracks,
     SwitchPlaylists,
+
+    SortByTrack,
+    SortByArtists,
+    SortByAlbum,
+    SortByDuration,
+    SortByAddedDate,
+    ReverseSort,
 
     Quit,
     ToDefaultMode,
@@ -20,8 +26,6 @@ pub enum Command {
     SelectNext,
     SelectPrevious,
     PlaySelected,
-
-    None,
 }
 
 #[derive(Debug, Deserialize)]
@@ -30,18 +34,9 @@ pub struct KeymapConfig {
     keymaps: Vec<Keymap>,
 }
 
-/// Key denotes a key received from user's input
-#[derive(Debug, PartialEq, Eq)]
-pub enum Key {
-    None(KeyCode),
-    Ctrl(KeyCode),
-    Alt(KeyCode),
-    Unknown,
-}
-
 #[derive(Debug, Deserialize)]
 pub struct Keymap {
-    key: Key,
+    key_sequence: KeySequence,
     command: Command,
 }
 
@@ -50,68 +45,88 @@ impl Default for KeymapConfig {
         KeymapConfig {
             keymaps: vec![
                 Keymap {
-                    key: "n".into(),
+                    key_sequence: "n".into(),
                     command: Command::NextTrack,
                 },
                 Keymap {
-                    key: "p".into(),
+                    key_sequence: "p".into(),
                     command: Command::PreviousTrack,
                 },
                 Keymap {
-                    key: " ".into(),
+                    key_sequence: "space".into(),
                     command: Command::ResumePause,
                 },
                 Keymap {
-                    key: "C-r".into(),
+                    key_sequence: "C-r".into(),
                     command: Command::Repeat,
                 },
                 Keymap {
-                    key: "C-s".into(),
+                    key_sequence: "C-s".into(),
                     command: Command::Shuffle,
                 },
                 Keymap {
-                    key: "enter".into(),
+                    key_sequence: "enter".into(),
                     command: Command::PlaySelected,
                 },
                 Keymap {
-                    key: "/".into(),
+                    key_sequence: "/".into(),
                     command: Command::SearchContextTracks,
                 },
-                // Keymap {
-                //     key: "s".into(),
-                //     command: Command::SortContextTracks,
-                // },
                 Keymap {
-                    key: "P".into(),
+                    key_sequence: "P".into(),
                     command: Command::SwitchPlaylists,
                 },
                 Keymap {
-                    key: "q".into(),
+                    key_sequence: "q".into(),
                     command: Command::Quit,
                 },
                 Keymap {
-                    key: "C-c".into(),
+                    key_sequence: "C-c".into(),
                     command: Command::Quit,
                 },
                 Keymap {
-                    key: "esc".into(),
+                    key_sequence: "esc".into(),
                     command: Command::ToDefaultMode,
                 },
                 Keymap {
-                    key: "j".into(),
+                    key_sequence: "j".into(),
                     command: Command::SelectNext,
                 },
                 Keymap {
-                    key: "C-j".into(),
+                    key_sequence: "C-j".into(),
                     command: Command::SelectNext,
                 },
                 Keymap {
-                    key: "k".into(),
+                    key_sequence: "k".into(),
                     command: Command::SelectPrevious,
                 },
                 Keymap {
-                    key: "C-k".into(),
+                    key_sequence: "C-k".into(),
                     command: Command::SelectPrevious,
+                },
+                Keymap {
+                    key_sequence: "s q".into(),
+                    command: Command::SortByTrack,
+                },
+                Keymap {
+                    key_sequence: "s w".into(),
+                    command: Command::SortByArtists,
+                },
+                Keymap {
+                    key_sequence: "s e".into(),
+                    command: Command::SortByAlbum,
+                },
+                Keymap {
+                    key_sequence: "s r".into(),
+                    command: Command::SortByDuration,
+                },
+                Keymap {
+                    key_sequence: "s t".into(),
+                    command: Command::SortByDuration,
+                },
+                Keymap {
+                    key_sequence: "s y".into(),
+                    command: Command::ReverseSort,
                 },
             ],
         }
@@ -135,7 +150,12 @@ impl KeymapConfig {
                 // a dumb approach (quadratic complexity) to merge two different keymap arrays
                 // while keeping the invariant that each `Key` is mapped to only one `Command`.
                 keymaps.into_iter().for_each(|keymap| {
-                    if self.keymaps.iter().find(|&k| k.key == keymap.key).is_none() {
+                    if self
+                        .keymaps
+                        .iter()
+                        .find(|&k| k.key_sequence == keymap.key_sequence)
+                        .is_none()
+                    {
                         self.keymaps.push(keymap);
                     }
                 });
@@ -144,85 +164,44 @@ impl KeymapConfig {
         Ok(())
     }
 
-    /// gets the command from a key. Returns `None` if
-    /// the given key is not mapped to any commands.
-    pub fn get_command_from_key(&self, key: &Key) -> Option<Command> {
+    /// finds all mapped key sequences that has a given key sequence `prefix` as a prefix
+    pub fn find_matched_prefix_key_sequences(
+        &self,
+        prefix: &key::KeySequence,
+    ) -> Vec<&KeySequence> {
         self.keymaps
             .iter()
-            .find(|&keymap| keymap.key == *key)
+            .map(|keymap| &keymap.key_sequence)
+            .filter(|&key_sequence| prefix.is_prefix(key_sequence))
+            .collect()
+    }
+
+    /// finds a command from a mapped key sequence
+    pub fn find_command_from_key_sequence(
+        &self,
+        key_sequence: &key::KeySequence,
+    ) -> Option<Command> {
+        self.keymaps
+            .iter()
+            .find(|&keymap| keymap.key_sequence == *key_sequence)
             .map(|keymap| keymap.command.clone())
     }
 }
 
-impl Key {
-    pub fn from_str(s: &str) -> Option<Self> {
-        let chars: Vec<char> = s.chars().collect();
-        if chars.len() == 1 {
-            // a single character
-            Some(Key::None(KeyCode::Char(chars[0])))
-        } else if chars.len() > 2 && chars[1] == '-' {
-            // M-<c> for alt-<c> and C-<c> for ctrl-C
-            match chars[0] {
-                'C' => Some(Key::Ctrl(KeyCode::Char(chars[2]))),
-                'M' => Some(Key::Alt(KeyCode::Char(chars[2]))),
-                _ => None,
-            }
-        } else {
-            match s {
-                "enter" => Some(Key::None(KeyCode::Enter)),
-                "tab" => Some(Key::None(KeyCode::Tab)),
-                "backspace" => Some(Key::None(KeyCode::Backspace)),
-                "esc" => Some(Key::None(KeyCode::Esc)),
-
-                "left" => Some(Key::None(KeyCode::Left)),
-                "right" => Some(Key::None(KeyCode::Right)),
-                "up" => Some(Key::None(KeyCode::Up)),
-                "down" => Some(Key::None(KeyCode::Down)),
-
-                "insert" => Some(Key::None(KeyCode::Insert)),
-                "delete" => Some(Key::None(KeyCode::Delete)),
-                "home" => Some(Key::None(KeyCode::Home)),
-                "end" => Some(Key::None(KeyCode::End)),
-                "page_up" => Some(Key::None(KeyCode::PageUp)),
-                "page_down" => Some(Key::None(KeyCode::PageDown)),
-
-                "f1" => Some(Key::None(KeyCode::F(1))),
-                "f2" => Some(Key::None(KeyCode::F(2))),
-                "f3" => Some(Key::None(KeyCode::F(3))),
-                "f4" => Some(Key::None(KeyCode::F(4))),
-                "f5" => Some(Key::None(KeyCode::F(5))),
-                "f6" => Some(Key::None(KeyCode::F(6))),
-                "f7" => Some(Key::None(KeyCode::F(7))),
-                "f8" => Some(Key::None(KeyCode::F(8))),
-                "f9" => Some(Key::None(KeyCode::F(9))),
-                "f10" => Some(Key::None(KeyCode::F(10))),
-                "f11" => Some(Key::None(KeyCode::F(11))),
-                "f12" => Some(Key::None(KeyCode::F(12))),
-
-                _ => None,
-            }
-        }
-    }
-}
-
-impl From<&str> for Key {
+impl From<&str> for key::Key {
+    /// converts a string into a `Key`.
+    /// **Note** this function will panic if the given string is not a valid
+    /// representation of a `Key`.
     fn from(s: &str) -> Self {
         Self::from_str(s).unwrap()
     }
 }
 
-impl<'de> serde::de::Deserialize<'de> for Key {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let s = String::deserialize(deserializer)?;
-        match Self::from_str(&s) {
-            Some(key) => Ok(key),
-            None => Err(serde::de::Error::custom(format!(
-                "failed to parse key: unknown key {}",
-                s
-            ))),
-        }
+impl From<&str> for key::KeySequence {
+    /// converts a string into a `KeySequence`.
+    /// **Note** this function will panic if the given string is not a valid
+    /// representation of a `KeySequence`.
+    fn from(s: &str) -> Self {
+        Self::from_str(s).unwrap()
     }
 }

@@ -1,5 +1,6 @@
 use crate::{
-    config::{Command, Key},
+    config::Command,
+    key::{Key, KeySequence},
     prelude::*,
     state,
 };
@@ -31,46 +32,45 @@ impl From<term_event::KeyEvent> for Key {
             KeyModifiers::ALT => Key::Alt(event.code),
             KeyModifiers::CONTROL => Key::Ctrl(event.code),
             KeyModifiers::SHIFT => Key::None(event.code),
-            _ => Key::Unknown,
+            _ => unreachable!(),
         }
     }
 }
 
 fn handle_search_mode_key(
-    key: &Key,
+    key_sequence: &KeySequence,
     send: &mpsc::Sender<Event>,
     state: &state::SharedState,
 ) -> Result<bool> {
-    let command = match *key {
-        Key::None(c) => match c {
-            KeyCode::Char(c) => {
-                let mut state = state.write().unwrap();
-                state.context_search_state.query.as_mut().unwrap().push(c);
-                send.send(Event::SearchTrackInContext)?;
-                return Ok(true);
-            }
-            KeyCode::Backspace => {
-                let mut state = state.write().unwrap();
-                if let Some(query) = state.context_search_state.query.as_mut() {
-                    if query.len() > 1 {
-                        query.pop().unwrap();
-                        send.send(Event::SearchTrackInContext)?;
-                    }
+    if key_sequence.keys.len() == 1 {
+        match key_sequence.keys[0] {
+            Key::None(c) => match c {
+                KeyCode::Char(c) => {
+                    let mut state = state.write().unwrap();
+                    state.context_search_state.query.as_mut().unwrap().push(c);
+                    send.send(Event::SearchTrackInContext)?;
+                    return Ok(true);
                 }
-                return Ok(true);
-            }
-            _ => state
-                .read()
-                .unwrap()
-                .keymap_config
-                .get_command_from_key(key),
-        },
-        _ => state
-            .read()
-            .unwrap()
-            .keymap_config
-            .get_command_from_key(key),
-    };
+                KeyCode::Backspace => {
+                    let mut state = state.write().unwrap();
+                    if let Some(query) = state.context_search_state.query.as_mut() {
+                        if query.len() > 1 {
+                            query.pop().unwrap();
+                            send.send(Event::SearchTrackInContext)?;
+                        }
+                    }
+                    return Ok(true);
+                }
+                _ => {}
+            },
+            _ => {}
+        }
+    }
+    let command = state
+        .read()
+        .unwrap()
+        .keymap_config
+        .find_command_from_key_sequence(key_sequence);
 
     match command {
         Some(command) => match command {
@@ -110,7 +110,7 @@ fn handle_search_mode_key(
 }
 
 // fn handle_sort_mode_key(
-//     key: &Key,
+//     key_sequence: &KeySequence,
 //     send: &mpsc::Sender<Event>,
 //     state: &state::SharedState,
 // ) -> Result<bool> {
@@ -158,7 +158,7 @@ fn handle_search_mode_key(
 // }
 
 fn handle_playlist_switch_mode_key(
-    key: &Key,
+    key_sequence: &KeySequence,
     send: &mpsc::Sender<Event>,
     state: &state::SharedState,
 ) -> Result<bool> {
@@ -166,7 +166,7 @@ fn handle_playlist_switch_mode_key(
         .read()
         .unwrap()
         .keymap_config
-        .get_command_from_key(key);
+        .find_command_from_key_sequence(key_sequence);
     match command {
         Some(command) => match command {
             Command::SelectNext => {
@@ -202,7 +202,7 @@ fn handle_playlist_switch_mode_key(
 }
 
 fn handle_default_mode_key(
-    key: &Key,
+    key_sequence: &KeySequence,
     send: &mpsc::Sender<Event>,
     state: &state::SharedState,
 ) -> Result<bool> {
@@ -210,7 +210,7 @@ fn handle_default_mode_key(
         .read()
         .unwrap()
         .keymap_config
-        .get_command_from_key(key);
+        .find_command_from_key_sequence(key_sequence);
     match command {
         Some(command) => match command {
             Command::NextTrack => {
@@ -290,18 +290,35 @@ fn handle_event(
 ) -> Result<()> {
     let key: Key = match event {
         crossterm::event::Event::Key(event) => event.into(),
-        _ => Key::Unknown,
+        _ => {
+            return Ok(());
+        }
     };
+
+    let mut key_sequence = state.read().unwrap().current_key_prefix.clone();
+    key_sequence.keys.push(key.clone());
+
+    {
+        let state = state.read().unwrap();
+        let matches = state
+            .keymap_config
+            .find_matched_prefix_key_sequences(&key_sequence);
+        if matches.is_empty() {
+            key_sequence = KeySequence { keys: vec![key] };
+        }
+    }
 
     let current_event_state = state.read().unwrap().current_event_state.clone();
     let handled = match current_event_state {
-        state::EventState::Default => handle_default_mode_key(&key, send, state)?,
-        state::EventState::ContextSearch => handle_search_mode_key(&key, send, state)?,
+        state::EventState::Default => handle_default_mode_key(&key_sequence, send, state)?,
+        state::EventState::ContextSearch => handle_search_mode_key(&key_sequence, send, state)?,
         // TODO: handle sort mode after figuring out how to
         // implement keymaps by mode
-        // state::EventState::Sort => handle_sort_mode_key(&key, send, state)?,
+        // state::EventState::Sort => handle_sort_mode_key(&key_sequence, send, state)?,
         state::EventState::Sort => false,
-        state::EventState::PlaylistSwitch => handle_playlist_switch_mode_key(&key, send, state)?,
+        state::EventState::PlaylistSwitch => {
+            handle_playlist_switch_mode_key(&key_sequence, send, state)?
+        }
     };
 
     // global command handler
@@ -310,7 +327,7 @@ fn handle_event(
             .read()
             .unwrap()
             .keymap_config
-            .get_command_from_key(&key);
+            .find_command_from_key_sequence(&key_sequence);
         if let Some(Command::Quit) = command {
             send.send(Event::Quit)?;
         }
