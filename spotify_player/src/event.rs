@@ -22,7 +22,7 @@ pub enum Event {
     PlaySelectedTrack,
     PlaySelectedPlaylist,
     SearchTrackInContext,
-    // SortContextTracks(state::ContextSortOrder),
+    SortContextTracks(state::ContextSortOrder),
 }
 
 impl From<term_event::KeyEvent> for Key {
@@ -37,14 +37,14 @@ impl From<term_event::KeyEvent> for Key {
     }
 }
 
-fn handle_search_mode_key(
+fn handle_search_mode_event(
     key_sequence: &KeySequence,
     send: &mpsc::Sender<Event>,
     state: &state::SharedState,
 ) -> Result<bool> {
     if key_sequence.keys.len() == 1 {
-        match key_sequence.keys[0] {
-            Key::None(c) => match c {
+        if let Key::None(c) = key_sequence.keys[0] {
+            match c {
                 KeyCode::Char(c) => {
                     let mut state = state.write().unwrap();
                     state.context_search_state.query.as_mut().unwrap().push(c);
@@ -62,8 +62,7 @@ fn handle_search_mode_key(
                     return Ok(true);
                 }
                 _ => {}
-            },
-            _ => {}
+            }
         }
     }
     let command = state
@@ -109,55 +108,7 @@ fn handle_search_mode_key(
     }
 }
 
-// fn handle_sort_mode_key(
-//     key_sequence: &KeySequence,
-//     send: &mpsc::Sender<Event>,
-//     state: &state::SharedState,
-// ) -> Result<bool> {
-//     Ok(false)
-
-//     // TODO: handle sort
-
-//     // if let term_event::Event::Key(key_event) = event {
-//     //     match key_event.into() {
-//     //         Key::None(KeyCode::Char('q')) => send.send(Event::SortContextTracks(
-//     //             state::ContextSortOrder::TrackName(true),
-//     //         ))?,
-//     //         Key::None(KeyCode::Char('Q')) => send.send(Event::SortContextTracks(
-//     //             state::ContextSortOrder::TrackName(false),
-//     //         ))?,
-//     //         Key::None(KeyCode::Char('w')) => send.send(Event::SortContextTracks(
-//     //             state::ContextSortOrder::Album(true),
-//     //         ))?,
-//     //         Key::None(KeyCode::Char('W')) => send.send(Event::SortContextTracks(
-//     //             state::ContextSortOrder::Album(false),
-//     //         ))?,
-//     //         Key::None(KeyCode::Char('e')) => send.send(Event::SortContextTracks(
-//     //             state::ContextSortOrder::Artists(true),
-//     //         ))?,
-//     //         Key::None(KeyCode::Char('E')) => send.send(Event::SortContextTracks(
-//     //             state::ContextSortOrder::Artists(false),
-//     //         ))?,
-//     //         Key::None(KeyCode::Char('r')) => send.send(Event::SortContextTracks(
-//     //             state::ContextSortOrder::AddedAt(true),
-//     //         ))?,
-//     //         Key::None(KeyCode::Char('R')) => send.send(Event::SortContextTracks(
-//     //             state::ContextSortOrder::AddedAt(false),
-//     //         ))?,
-//     //         Key::None(KeyCode::Char('t')) => send.send(Event::SortContextTracks(
-//     //             state::ContextSortOrder::Duration(true),
-//     //         ))?,
-//     //         Key::None(KeyCode::Char('T')) => send.send(Event::SortContextTracks(
-//     //             state::ContextSortOrder::Duration(false),
-//     //         ))?,
-//     //         _ => {}
-//     //     }
-//     // }
-//     // state.write().unwrap().current_event_state = state::EventState::Default;
-//     // Ok(())
-// }
-
-fn handle_playlist_switch_mode_key(
+fn handle_playlist_switch_mode_event(
     key_sequence: &KeySequence,
     send: &mpsc::Sender<Event>,
     state: &state::SharedState,
@@ -201,7 +152,25 @@ fn handle_playlist_switch_mode_key(
     }
 }
 
-fn handle_default_mode_key(
+fn handle_global_mode_event(
+    key_sequence: &KeySequence,
+    send: &mpsc::Sender<Event>,
+    state: &state::SharedState,
+) -> Result<bool> {
+    let command = state
+        .read()
+        .unwrap()
+        .keymap_config
+        .find_command_from_key_sequence(&key_sequence);
+    if let Some(Command::Quit) = command {
+        send.send(Event::Quit)?;
+        Ok(true)
+    } else {
+        Ok(false)
+    }
+}
+
+fn handle_default_mode_event(
     key_sequence: &KeySequence,
     send: &mpsc::Sender<Event>,
     state: &state::SharedState,
@@ -269,10 +238,36 @@ fn handle_default_mode_key(
                 };
                 Ok(true)
             }
-            // Command::SortContextTracks => {
-            //     state.write().unwrap().current_event_state = state::EventState::Sort;
-            //     Ok(true)
-            // }
+            Command::SortByTrack => {
+                send.send(Event::SortContextTracks(
+                    state::ContextSortOrder::TrackName(true),
+                ))?;
+                Ok(true)
+            }
+            Command::SortByAlbum => {
+                send.send(Event::SortContextTracks(state::ContextSortOrder::Album(
+                    true,
+                )))?;
+                Ok(true)
+            }
+            Command::SortByArtists => {
+                send.send(Event::SortContextTracks(state::ContextSortOrder::Artists(
+                    true,
+                )))?;
+                Ok(true)
+            }
+            Command::SortByAddedDate => {
+                send.send(Event::SortContextTracks(state::ContextSortOrder::AddedAt(
+                    true,
+                )))?;
+                Ok(true)
+            }
+            Command::SortByDuration => {
+                send.send(Event::SortContextTracks(state::ContextSortOrder::Duration(
+                    true,
+                )))?;
+                Ok(true)
+            }
             Command::SwitchPlaylists => {
                 state.write().unwrap().current_event_state = state::EventState::PlaylistSwitch;
                 Ok(true)
@@ -309,28 +304,21 @@ fn handle_event(
     }
 
     let current_event_state = state.read().unwrap().current_event_state.clone();
-    let handled = match current_event_state {
-        state::EventState::Default => handle_default_mode_key(&key_sequence, send, state)?,
-        state::EventState::ContextSearch => handle_search_mode_key(&key_sequence, send, state)?,
-        // TODO: handle sort mode after figuring out how to
-        // implement keymaps by mode
-        // state::EventState::Sort => handle_sort_mode_key(&key_sequence, send, state)?,
-        state::EventState::Sort => false,
+    let mut handled = match current_event_state {
+        state::EventState::Default => handle_default_mode_event(&key_sequence, send, state)?,
+        state::EventState::ContextSearch => handle_search_mode_event(&key_sequence, send, state)?,
         state::EventState::PlaylistSwitch => {
-            handle_playlist_switch_mode_key(&key_sequence, send, state)?
+            handle_playlist_switch_mode_event(&key_sequence, send, state)?
         }
     };
-
-    // global command handler
     if !handled {
-        let command = state
-            .read()
-            .unwrap()
-            .keymap_config
-            .find_command_from_key_sequence(&key_sequence);
-        if let Some(Command::Quit) = command {
-            send.send(Event::Quit)?;
-        }
+        handled = handle_global_mode_event(&key_sequence, send, state)?;
+    }
+
+    if handled {
+        state.write().unwrap().current_key_prefix.keys = vec![];
+    } else {
+        state.write().unwrap().current_key_prefix = key_sequence;
     }
     Ok(())
 }

@@ -86,9 +86,10 @@ impl Client {
             }
             event::Event::SearchTrackInContext => {
                 self.search_tracks_in_current_playing_context(state).await?;
-            } // event::Event::SortContextTracks(order) => {
-              //     state.write().unwrap().sort_context_tracks(order);
-              // }
+            }
+            event::Event::SortContextTracks(order) => {
+                state.write().unwrap().sort_context_tracks(order);
+            }
         }
         Ok(())
     }

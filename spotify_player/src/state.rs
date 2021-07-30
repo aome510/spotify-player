@@ -48,7 +48,6 @@ pub enum ContextSortOrder {
 #[derive(Clone)]
 pub enum EventState {
     Default,
-    Sort,
     ContextSearch,
     PlaylistSwitch,
 }
