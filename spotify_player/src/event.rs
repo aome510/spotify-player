@@ -99,6 +99,7 @@ fn handle_search_mode_key(
             Command::ToDefaultMode => {
                 let mut state = state.write().unwrap();
                 state.context_search_state.query = None;
+                state.context_tracks_table_ui_state.select(Some(0));
                 state.current_event_state = state::EventState::Default;
                 Ok(true)
             }
@@ -256,6 +257,7 @@ fn handle_default_mode_key(
             }
             Command::SearchContextTracks => {
                 let mut state = state.write().unwrap();
+                state.context_tracks_table_ui_state.select(Some(0));
                 state.current_event_state = state::EventState::ContextSearch;
                 state.context_search_state = state::ContextSearchState {
                     query: Some("/".to_owned()),
