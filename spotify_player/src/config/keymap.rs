@@ -22,7 +22,7 @@ pub enum Command {
     ReverseOrder,
 
     Quit,
-    ToDefaultMode,
+    ClosePopup,
 
     SelectNext,
     SelectPrevious,
@@ -88,7 +88,7 @@ impl Default for KeymapConfig {
                 },
                 Keymap {
                     key_sequence: "esc".into(),
-                    command: Command::ToDefaultMode,
+                    command: Command::ClosePopup,
                 },
                 Keymap {
                     key_sequence: "j".into(),

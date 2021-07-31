@@ -96,11 +96,11 @@ fn handle_search_mode_event(
                 send.send(Event::PlaySelectedTrack)?;
                 Ok(true)
             }
-            Command::ToDefaultMode => {
+            Command::ClosePopup => {
                 let mut state = state.write().unwrap();
                 state.context_search_state.query = None;
                 state.context_tracks_table_ui_state.select(Some(0));
-                state.current_event_state = state::EventState::Default;
+                state.current_event_state = state::PopupBufferState::None;
                 Ok(true)
             }
             _ => Ok(false),
@@ -144,8 +144,8 @@ fn handle_playlist_switch_mode_event(
                 send.send(Event::PlaySelectedPlaylist)?;
                 Ok(true)
             }
-            Command::ToDefaultMode => {
-                state.write().unwrap().current_event_state = state::EventState::Default;
+            Command::ClosePopup => {
+                state.write().unwrap().current_event_state = state::PopupBufferState::None;
                 Ok(true)
             }
             _ => Ok(false),
@@ -155,24 +155,6 @@ fn handle_playlist_switch_mode_event(
 }
 
 fn handle_global_mode_event(
-    key_sequence: &KeySequence,
-    _send: &mpsc::Sender<Event>,
-    state: &state::SharedState,
-) -> Result<bool> {
-    let command = state
-        .read()
-        .unwrap()
-        .keymap_config
-        .find_command_from_key_sequence(key_sequence);
-    if let Some(Command::Quit) = command {
-        state.write().unwrap().is_running = false;
-        Ok(true)
-    } else {
-        Ok(false)
-    }
-}
-
-fn handle_default_mode_event(
     key_sequence: &KeySequence,
     send: &mpsc::Sender<Event>,
     state: &state::SharedState,
@@ -185,6 +167,10 @@ fn handle_default_mode_event(
 
     match command {
         Some(command) => match command {
+            Command::Quit => {
+                state.write().unwrap().is_running = false;
+                Ok(true)
+            }
             Command::NextTrack => {
                 send.send(Event::NextTrack)?;
                 Ok(true)
@@ -230,7 +216,7 @@ fn handle_default_mode_event(
             Command::SearchContextTracks => {
                 let mut state = state.write().unwrap();
                 state.context_tracks_table_ui_state.select(Some(0));
-                state.current_event_state = state::EventState::ContextSearch;
+                state.current_event_state = state::PopupBufferState::ContextSearch;
                 state.context_search_state = state::ContextSearchState {
                     query: Some("/".to_owned()),
                     tracks: state
@@ -266,7 +252,8 @@ fn handle_default_mode_event(
                 Ok(true)
             }
             Command::SwitchPlaylists => {
-                state.write().unwrap().current_event_state = state::EventState::PlaylistSwitch;
+                state.write().unwrap().current_event_state =
+                    state::PopupBufferState::PlaylistSwitch;
                 Ok(true)
             }
             _ => Ok(false),
@@ -301,9 +288,11 @@ fn handle_event(
 
     let current_event_state = state.read().unwrap().current_event_state.clone();
     let mut handled = match current_event_state {
-        state::EventState::Default => handle_default_mode_event(&key_sequence, send, state)?,
-        state::EventState::ContextSearch => handle_search_mode_event(&key_sequence, send, state)?,
-        state::EventState::PlaylistSwitch => {
+        state::PopupBufferState::None => false,
+        state::PopupBufferState::ContextSearch => {
+            handle_search_mode_event(&key_sequence, send, state)?
+        }
+        state::PopupBufferState::PlaylistSwitch => {
             handle_playlist_switch_mode_event(&key_sequence, send, state)?
         }
     };

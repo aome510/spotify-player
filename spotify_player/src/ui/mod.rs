@@ -110,7 +110,7 @@ fn render_application_layout(frame: &mut Frame, state: &state::SharedState, rect
             } else {
                 let chunks = Layout::default()
                     .direction(Direction::Vertical)
-                    .constraints([Constraint::Min(0), Constraint::Length(5)].as_ref())
+                    .constraints([Constraint::Min(0), Constraint::Length(7)].as_ref())
                     .split(rect);
                 help::render_shortcuts_help_widget(frame, matches, chunks[1]);
                 chunks[0]
@@ -123,8 +123,8 @@ fn render_application_layout(frame: &mut Frame, state: &state::SharedState, rect
     let (player_layout_rect, is_active) = {
         let event_state = state.read().unwrap().current_event_state.clone();
         match event_state {
-            state::EventState::Default => (rect, true),
-            state::EventState::PlaylistSwitch => {
+            state::PopupBufferState::None => (rect, true),
+            state::PopupBufferState::PlaylistSwitch => {
                 let chunks = Layout::default()
                     .direction(Direction::Vertical)
                     .constraints([Constraint::Min(0), Constraint::Length(10)].as_ref())
@@ -132,7 +132,7 @@ fn render_application_layout(frame: &mut Frame, state: &state::SharedState, rect
                 render_playlists_widget(frame, state, chunks[1]);
                 (chunks[0], false)
             }
-            state::EventState::ContextSearch => {
+            state::PopupBufferState::ContextSearch => {
                 let chunks = Layout::default()
                     .direction(Direction::Vertical)
                     .constraints([Constraint::Min(0), Constraint::Length(3)].as_ref())

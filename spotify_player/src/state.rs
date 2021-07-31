@@ -9,6 +9,8 @@ pub struct State {
     pub app_config: config::AppConfig,
     pub keymap_config: config::KeymapConfig,
 
+    pub current_key_prefix: key::KeySequence,
+
     pub is_running: bool,
     pub auth_token_expires_at: std::time::SystemTime,
 
@@ -20,10 +22,7 @@ pub struct State {
     pub current_playlists: Vec<playlist::SimplifiedPlaylist>,
     pub current_context_tracks: Vec<Track>,
 
-    pub current_key_prefix: key::KeySequence,
-
-    // event states
-    pub current_event_state: EventState,
+    pub current_event_state: PopupBufferState,
     pub context_search_state: ContextSearchState,
 
     // UI states
@@ -50,9 +49,9 @@ pub enum ContextSortOrder {
 }
 
 #[derive(Clone)]
-// TODO: change this naming
-pub enum EventState {
-    Default,
+/// Popup buffer state
+pub enum PopupBufferState {
+    None,
     ContextSearch,
     PlaylistSwitch,
 }
@@ -103,7 +102,7 @@ impl Default for State {
 
             current_key_prefix: key::KeySequence { keys: vec![] },
 
-            current_event_state: EventState::Default,
+            current_event_state: PopupBufferState::None,
             context_search_state: ContextSearchState::default(),
 
             context_tracks_table_ui_state: TableState::default(),
