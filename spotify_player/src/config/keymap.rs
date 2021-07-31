@@ -31,13 +31,13 @@ pub enum Command {
 #[derive(Debug, Deserialize)]
 /// Application's key mapping configurations
 pub struct KeymapConfig {
-    keymaps: Vec<Keymap>,
+    pub keymaps: Vec<Keymap>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct Keymap {
-    key_sequence: KeySequence,
-    command: Command,
+    pub key_sequence: KeySequence,
+    pub command: Command,
 }
 
 impl Default for KeymapConfig {
@@ -171,15 +171,11 @@ impl KeymapConfig {
         Ok(())
     }
 
-    /// finds all mapped key sequences that has a given key sequence `prefix` as a prefix
-    pub fn find_matched_prefix_key_sequences(
-        &self,
-        prefix: &key::KeySequence,
-    ) -> Vec<&KeySequence> {
+    /// finds all keymaps whose mapped key sequence has a given `prefix` key sequence as its prefix
+    pub fn find_matched_prefix_keymaps(&self, prefix: &key::KeySequence) -> Vec<&Keymap> {
         self.keymaps
             .iter()
-            .map(|keymap| &keymap.key_sequence)
-            .filter(|&key_sequence| prefix.is_prefix(key_sequence))
+            .filter(|&keymap| prefix.is_prefix(&keymap.key_sequence))
             .collect()
     }
 

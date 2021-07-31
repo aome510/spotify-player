@@ -28,6 +28,7 @@ pub struct State {
     // UI states
     pub context_tracks_table_ui_state: TableState,
     pub playlists_list_ui_state: ListState,
+    pub shortcuts_help_ui_state: bool,
 }
 
 #[derive(Default)]
@@ -100,6 +101,7 @@ impl Default for State {
 
             context_tracks_table_ui_state: TableState::default(),
             playlists_list_ui_state: ListState::default(),
+            shortcuts_help_ui_state: false,
         }
     }
 }

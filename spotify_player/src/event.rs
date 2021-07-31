@@ -291,7 +291,7 @@ fn handle_event(
         let state = state.read().unwrap();
         let matches = state
             .keymap_config
-            .find_matched_prefix_key_sequences(&key_sequence);
+            .find_matched_prefix_keymaps(&key_sequence);
         if matches.is_empty() {
             key_sequence = KeySequence { keys: vec![key] };
         }
@@ -310,8 +310,10 @@ fn handle_event(
     }
 
     if handled {
+        state.write().unwrap().shortcuts_help_ui_state = false;
         state.write().unwrap().current_key_prefix.keys = vec![];
     } else {
+        state.write().unwrap().shortcuts_help_ui_state = true;
         state.write().unwrap().current_key_prefix = key_sequence;
     }
     Ok(())

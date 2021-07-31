@@ -135,7 +135,7 @@ fn quit(mut terminal: Terminal) -> Result<()> {
     Ok(())
 }
 
-fn render_main_layout(is_active: bool, f: &mut Frame, state: &state::SharedState, rect: Rect) {
+fn render_player_layout(is_active: bool, f: &mut Frame, state: &state::SharedState, rect: Rect) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Length(5), Constraint::Min(0)].as_ref())
@@ -163,6 +163,77 @@ fn render_playlists_widget(frame: &mut Frame, state: &state::SharedState, rect: 
         rect,
         &mut state.write().unwrap().playlists_list_ui_state,
     );
+}
+
+fn render_application_layout(frame: &mut Frame, state: &state::SharedState, rect: Rect) {
+    // render the shortcuts help table if needed
+    let rect = {
+        let state = state.read().unwrap();
+        if state.shortcuts_help_ui_state {
+            let matches = {
+                let prefix = &state.current_key_prefix;
+                state
+                    .keymap_config
+                    .find_matched_prefix_keymaps(prefix)
+                    .into_iter()
+                    .map(|keymap| {
+                        let mut keymap = keymap.clone();
+                        keymap.key_sequence.keys.drain(0..prefix.keys.len());
+                        keymap
+                    })
+                    .filter(|keymap| !keymap.key_sequence.keys.is_empty())
+                    .collect::<Vec<_>>()
+            };
+
+            if matches.is_empty() {
+                rect
+            } else {
+                let chunks = Layout::default()
+                    .direction(Direction::Vertical)
+                    .constraints([Constraint::Min(0), Constraint::Length(5)].as_ref())
+                    .split(rect);
+                help::render_shortcuts_help_widget(frame, matches, chunks[1]);
+                chunks[0]
+            }
+        } else {
+            rect
+        }
+    };
+
+    let (player_layout_rect, is_active) = {
+        let event_state = state.read().unwrap().current_event_state.clone();
+        match event_state {
+            state::EventState::Default => (rect, true),
+            state::EventState::PlaylistSwitch => {
+                let chunks = Layout::default()
+                    .direction(Direction::Vertical)
+                    .constraints([Constraint::Min(0), Constraint::Length(10)].as_ref())
+                    .split(rect);
+                render_playlists_widget(frame, state, chunks[1]);
+                (chunks[0], false)
+            }
+            state::EventState::ContextSearch => {
+                let chunks = Layout::default()
+                    .direction(Direction::Vertical)
+                    .constraints([Constraint::Min(0), Constraint::Length(3)].as_ref())
+                    .split(frame.size());
+                let search_box = Paragraph::new(
+                    state
+                        .read()
+                        .unwrap()
+                        .context_search_state
+                        .query
+                        .clone()
+                        .unwrap(),
+                )
+                .block(Block::default().borders(Borders::ALL).title("Search"));
+                frame.render_widget(search_box, chunks[1]);
+                (chunks[0], true)
+            }
+        }
+    };
+
+    render_player_layout(is_active, frame, state, player_layout_rect);
 }
 
 /// start the application UI as the main thread
@@ -220,45 +291,10 @@ pub fn start_ui(state: state::SharedState, send: mpsc::Sender<event::Event>) -> 
             };
         }
 
-        {
-            // draw ui
-            terminal.draw(|f| {
-                let (main_layout_rect, is_active) = {
-                    let event_state = state.read().unwrap().current_event_state.clone();
-                    match event_state {
-                        state::EventState::Default => (f.size(), true),
-                        state::EventState::PlaylistSwitch => {
-                            let chunks = Layout::default()
-                                .direction(Direction::Vertical)
-                                .constraints([Constraint::Min(0), Constraint::Length(10)].as_ref())
-                                .split(f.size());
-                            render_playlists_widget(f, &state, chunks[1]);
-                            (chunks[0], false)
-                        }
-                        state::EventState::ContextSearch => {
-                            let chunks = Layout::default()
-                                .direction(Direction::Vertical)
-                                .constraints([Constraint::Min(0), Constraint::Length(3)].as_ref())
-                                .split(f.size());
-                            let search_box = Paragraph::new(
-                                state
-                                    .read()
-                                    .unwrap()
-                                    .context_search_state
-                                    .query
-                                    .clone()
-                                    .unwrap(),
-                            )
-                            .block(Block::default().borders(Borders::ALL).title("Search"));
-                            f.render_widget(search_box, chunks[1]);
-                            (chunks[0], true)
-                        }
-                    }
-                };
-
-                render_main_layout(is_active, f, &state, main_layout_rect);
-            })?;
-        }
+        // draw ui
+        terminal.draw(|f| {
+            render_application_layout(f, &state, f.size());
+        })?;
 
         std::thread::sleep(ui_refresh_duration);
     }

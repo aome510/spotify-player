@@ -65,6 +65,56 @@ impl Key {
     }
 }
 
+impl std::fmt::Display for Key {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match *self {
+            Key::Ctrl(KeyCode::Char(c)) => write!(f, "C-{}", c),
+            Key::Alt(KeyCode::Char(c)) => write!(f, "M-{}", c),
+            Key::None(k) => match k {
+                KeyCode::Char(c) => {
+                    if c == ' ' {
+                        write!(f, "space")
+                    } else {
+                        write!(f, "{}", c)
+                    }
+                }
+                KeyCode::Enter => write!(f, "enter"),
+                KeyCode::Tab => write!(f, "tab"),
+                KeyCode::Backspace => write!(f, "backspace"),
+                KeyCode::Esc => write!(f, "esc"),
+
+                KeyCode::Left => write!(f, "left"),
+                KeyCode::Right => write!(f, "right"),
+                KeyCode::Up => write!(f, "up"),
+                KeyCode::Down => write!(f, "down"),
+
+                KeyCode::Insert => write!(f, "insert"),
+                KeyCode::Delete => write!(f, "delete"),
+                KeyCode::Home => write!(f, "home"),
+                KeyCode::End => write!(f, "end"),
+                KeyCode::PageUp => write!(f, "page_up"),
+                KeyCode::PageDown => write!(f, "page_down"),
+
+                KeyCode::F(1) => write!(f, "f1"),
+                KeyCode::F(2) => write!(f, "f2"),
+                KeyCode::F(3) => write!(f, "f3"),
+                KeyCode::F(4) => write!(f, "f4"),
+                KeyCode::F(5) => write!(f, "f5"),
+                KeyCode::F(6) => write!(f, "f6"),
+                KeyCode::F(7) => write!(f, "f7"),
+                KeyCode::F(8) => write!(f, "f8"),
+                KeyCode::F(9) => write!(f, "f9"),
+                KeyCode::F(10) => write!(f, "f10"),
+                KeyCode::F(11) => write!(f, "f11"),
+                KeyCode::F(12) => write!(f, "f12"),
+
+                _ => panic!("unknown key: {:?}", self),
+            },
+            _ => panic!("unknown key: {:?}", self),
+        }
+    }
+}
+
 impl<'de> serde::de::Deserialize<'de> for Key {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -100,6 +150,20 @@ impl KeySequence {
             return false;
         }
         (0..self.keys.len()).fold(true, |acc, i| acc & (self.keys[i] == other.keys[i]))
+    }
+}
+
+impl std::fmt::Display for KeySequence {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            self.keys
+                .iter()
+                .map(|k| k.to_string())
+                .collect::<Vec<_>>()
+                .join(" ")
+        )
     }
 }
 
