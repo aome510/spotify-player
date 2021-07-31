@@ -3,8 +3,8 @@ use anyhow::Result;
 use serde::Deserialize;
 
 #[derive(Clone, Debug, Deserialize)]
+/// A command to interact with the application
 pub enum Command {
-    // player commands
     NextTrack,
     PreviousTrack,
     ResumePause,
@@ -18,7 +18,7 @@ pub enum Command {
     SortByAlbum,
     SortByDuration,
     SortByAddedDate,
-    ReverseSort,
+    ReverseOrder,
 
     Quit,
     ToDefaultMode,
@@ -29,7 +29,7 @@ pub enum Command {
 }
 
 #[derive(Debug, Deserialize)]
-/// Application's key mappings
+/// Application's key mapping configurations
 pub struct KeymapConfig {
     keymaps: Vec<Keymap>,
 }
@@ -97,6 +97,10 @@ impl Default for KeymapConfig {
                     command: Command::SelectNext,
                 },
                 Keymap {
+                    key_sequence: "down".into(),
+                    command: Command::SelectNext,
+                },
+                Keymap {
                     key_sequence: "k".into(),
                     command: Command::SelectPrevious,
                 },
@@ -105,28 +109,32 @@ impl Default for KeymapConfig {
                     command: Command::SelectPrevious,
                 },
                 Keymap {
-                    key_sequence: "s q".into(),
-                    command: Command::SortByTrack,
-                },
-                Keymap {
-                    key_sequence: "s w".into(),
-                    command: Command::SortByArtists,
-                },
-                Keymap {
-                    key_sequence: "s e".into(),
-                    command: Command::SortByAlbum,
-                },
-                Keymap {
-                    key_sequence: "s r".into(),
-                    command: Command::SortByDuration,
+                    key_sequence: "up".into(),
+                    command: Command::SelectPrevious,
                 },
                 Keymap {
                     key_sequence: "s t".into(),
+                    command: Command::SortByTrack,
+                },
+                Keymap {
+                    key_sequence: "s a".into(),
+                    command: Command::SortByArtists,
+                },
+                Keymap {
+                    key_sequence: "s A".into(),
+                    command: Command::SortByAlbum,
+                },
+                Keymap {
+                    key_sequence: "s d".into(),
+                    command: Command::SortByDuration,
+                },
+                Keymap {
+                    key_sequence: "s D".into(),
                     command: Command::SortByAddedDate,
                 },
                 Keymap {
-                    key_sequence: "s y".into(),
-                    command: Command::ReverseSort,
+                    key_sequence: "s r".into(),
+                    command: Command::ReverseOrder,
                 },
             ],
         }

@@ -8,7 +8,7 @@ use crossterm::event::{self as term_event, EventStream, KeyCode, KeyModifiers};
 use tokio::stream::StreamExt;
 
 #[derive(Debug)]
-/// Event to communicate with the client
+/// An event to communicate with the client
 pub enum Event {
     Quit,
     RefreshToken,
@@ -239,33 +239,27 @@ fn handle_default_mode_event(
                 Ok(true)
             }
             Command::SortByTrack => {
-                send.send(Event::SortContextTracks(
-                    state::ContextSortOrder::TrackName(true),
-                ))?;
+                send.send(Event::SortContextTracks(state::ContextSortOrder::TrackName))?;
                 Ok(true)
             }
             Command::SortByAlbum => {
-                send.send(Event::SortContextTracks(state::ContextSortOrder::Album(
-                    true,
-                )))?;
+                send.send(Event::SortContextTracks(state::ContextSortOrder::Album))?;
                 Ok(true)
             }
             Command::SortByArtists => {
-                send.send(Event::SortContextTracks(state::ContextSortOrder::Artists(
-                    true,
-                )))?;
+                send.send(Event::SortContextTracks(state::ContextSortOrder::Artists))?;
                 Ok(true)
             }
             Command::SortByAddedDate => {
-                send.send(Event::SortContextTracks(state::ContextSortOrder::AddedAt(
-                    true,
-                )))?;
+                send.send(Event::SortContextTracks(state::ContextSortOrder::AddedAt))?;
                 Ok(true)
             }
             Command::SortByDuration => {
-                send.send(Event::SortContextTracks(state::ContextSortOrder::Duration(
-                    true,
-                )))?;
+                send.send(Event::SortContextTracks(state::ContextSortOrder::Duration))?;
+                Ok(true)
+            }
+            Command::ReverseOrder => {
+                state.write().unwrap().current_context_tracks.reverse();
                 Ok(true)
             }
             Command::SwitchPlaylists => {

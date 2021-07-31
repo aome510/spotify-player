@@ -38,11 +38,11 @@ pub struct ContextSearchState {
 
 #[derive(Debug)]
 pub enum ContextSortOrder {
-    AddedAt(bool),
-    TrackName(bool),
-    Album(bool),
-    Artists(bool),
-    Duration(bool),
+    AddedAt,
+    TrackName,
+    Album,
+    Artists,
+    Duration,
 }
 
 #[derive(Clone)]
@@ -237,41 +237,11 @@ impl From<track::SimplifiedTrack> for Track {
 impl ContextSortOrder {
     pub fn compare(&self, x: &Track, y: &Track) -> std::cmp::Ordering {
         match *self {
-            Self::AddedAt(asc) => {
-                if asc {
-                    x.added_at.cmp(&y.added_at)
-                } else {
-                    y.added_at.cmp(&x.added_at)
-                }
-            }
-            Self::TrackName(asc) => {
-                if asc {
-                    x.name.cmp(&y.name)
-                } else {
-                    y.name.cmp(&x.name)
-                }
-            }
-            Self::Album(asc) => {
-                if asc {
-                    x.album.name.cmp(&y.album.name)
-                } else {
-                    y.album.name.cmp(&x.album.name)
-                }
-            }
-            Self::Duration(asc) => {
-                if asc {
-                    x.duration.cmp(&y.duration)
-                } else {
-                    y.duration.cmp(&x.duration)
-                }
-            }
-            Self::Artists(asc) => {
-                if asc {
-                    x.get_artists_info().cmp(&y.get_artists_info())
-                } else {
-                    y.get_artists_info().cmp(&x.get_artists_info())
-                }
-            }
+            Self::AddedAt => x.added_at.cmp(&y.added_at),
+            Self::TrackName => x.name.cmp(&y.name),
+            Self::Album => x.album.name.cmp(&y.album.name),
+            Self::Duration => x.duration.cmp(&y.duration),
+            Self::Artists => x.get_artists_info().cmp(&y.get_artists_info()),
         }
     }
 }
