@@ -150,11 +150,10 @@ impl KeymapConfig {
                 // a dumb approach (quadratic complexity) to merge two different keymap arrays
                 // while keeping the invariant that each `Key` is mapped to only one `Command`.
                 keymaps.into_iter().for_each(|keymap| {
-                    if self
+                    if !self
                         .keymaps
                         .iter()
-                        .find(|&k| k.key_sequence == keymap.key_sequence)
-                        .is_none()
+                        .any(|k| k.key_sequence == keymap.key_sequence)
                     {
                         self.keymaps.push(keymap);
                     }

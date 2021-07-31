@@ -263,7 +263,7 @@ impl Client {
         }
 
         // get the playlist
-        let playlist = self.get_playlist(&playlist_id).await?;
+        let playlist = self.get_playlist(playlist_id).await?;
         // get the playlist's tracks
         let playlist_tracks = self.get_all_paging_items(playlist.tracks.clone()).await?;
         // filter tracks that are either unaccessible or deleted from album
@@ -297,7 +297,7 @@ impl Client {
         }
 
         // get the album
-        let album = self.get_album(&album_id).await?;
+        let album = self.get_album(album_id).await?;
         // get the album's tracks
         let album_tracks = self.get_all_paging_items(album.tracks.clone()).await?;
         let tracks: Vec<_> = album_tracks

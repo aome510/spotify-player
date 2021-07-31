@@ -161,7 +161,7 @@ fn handle_global_mode_event(
         .read()
         .unwrap()
         .keymap_config
-        .find_command_from_key_sequence(&key_sequence);
+        .find_command_from_key_sequence(key_sequence);
     if let Some(Command::Quit) = command {
         send.send(Event::Quit)?;
         Ok(true)

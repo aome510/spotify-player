@@ -140,8 +140,8 @@ fn render_main_layout(is_active: bool, f: &mut Frame, state: &state::SharedState
         .direction(Direction::Vertical)
         .constraints([Constraint::Length(5), Constraint::Min(0)].as_ref())
         .split(rect);
-    render_current_playback_widget(f, &state, chunks[0]);
-    render_playlist_tracks_widget(is_active, f, &state, chunks[1]);
+    render_current_playback_widget(f, state, chunks[0]);
+    render_playlist_tracks_widget(is_active, f, state, chunks[1]);
 }
 
 fn render_playlists_widget(frame: &mut Frame, state: &state::SharedState, rect: Rect) {
