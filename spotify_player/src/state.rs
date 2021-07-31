@@ -1,9 +1,10 @@
-use crate::{config, key, prelude::*};
-
-use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
-
+use crate::{config, key};
+use rspotify::{model::*, senum::*};
+use std::sync::{Arc, RwLock};
+use tui::widgets::*;
 pub type SharedState = Arc<RwLock<State>>;
 
+/// Application state
 pub struct State {
     pub app_config: config::AppConfig,
     pub keymap_config: config::KeymapConfig,
@@ -32,12 +33,14 @@ pub struct State {
 }
 
 #[derive(Default)]
+/// Context search state
 pub struct ContextSearchState {
     pub query: Option<String>,
     pub tracks: Vec<Track>,
 }
 
 #[derive(Debug)]
+/// Context sort order
 pub enum ContextSortOrder {
     AddedAt,
     TrackName,
@@ -47,6 +50,7 @@ pub enum ContextSortOrder {
 }
 
 #[derive(Clone)]
+// TODO: change this naming
 pub enum EventState {
     Default,
     ContextSearch,
@@ -54,6 +58,7 @@ pub enum EventState {
 }
 
 #[derive(Default, Debug, Clone)]
+/// A simplified version of `rspotify` track
 pub struct Track {
     pub id: Option<String>,
     pub uri: String,
@@ -65,6 +70,7 @@ pub struct Track {
 }
 
 #[derive(Default, Debug, Clone)]
+/// A simplified version of `rspotify` album
 pub struct Album {
     pub id: Option<String>,
     pub uri: Option<String>,
@@ -72,6 +78,7 @@ pub struct Album {
 }
 
 #[derive(Default, Debug, Clone)]
+/// A simplified version of `rspotify` artist
 pub struct Artist {
     pub id: Option<String>,
     pub uri: Option<String>,
@@ -107,6 +114,7 @@ impl Default for State {
 }
 
 impl State {
+    /// creates new state
     pub fn new() -> SharedState {
         Arc::new(RwLock::new(State::default()))
     }
@@ -117,7 +125,7 @@ impl State {
             .sort_by(|x, y| sort_oder.compare(x, y));
     }
 
-    /// returns the type (Album, Artist, Playlist, etc) of current playing context
+    /// gets the type (Album, Artist, Playlist, etc) of current playing context
     pub fn get_context_type(&self) -> Option<Type> {
         match self.current_playback_context {
             None => None,
@@ -128,10 +136,10 @@ impl State {
         }
     }
 
-    /// returns the description of current playing context
+    /// gets the description of current playing context
     pub fn get_context_description(&self) -> String {
         match self.get_context_type() {
-            None => "Cannot infer the playing context from current playback".to_owned(),
+            None => "Cannot infer the playing context from the current playback".to_owned(),
             Some(ty) => match ty {
                 rspotify::senum::Type::Album => {
                     format!(
@@ -169,6 +177,7 @@ impl State {
 }
 
 impl Track {
+    /// gets the track's artists information
     pub fn get_artists_info(&self) -> String {
         self.artists
             .iter()
@@ -177,6 +186,7 @@ impl Track {
             .join(",")
     }
 
+    /// gets the track basic information (track's name, artists' name and album's name)
     pub fn get_basic_info(&self) -> String {
         format!(
             "{} {} {}",
@@ -245,31 +255,5 @@ impl ContextSortOrder {
             Self::Duration => x.duration.cmp(&y.duration),
             Self::Artists => x.get_artists_info().cmp(&y.get_artists_info()),
         }
-    }
-}
-
-/// truncates a string whose length exceeds a given `max_len` length.
-/// Such string will be appended with `...` at the end.
-pub fn truncate_string(s: String, max_len: usize) -> String {
-    let len = UnicodeWidthStr::width(s.as_str());
-    if len > max_len {
-        // get the longest prefix of the string such that its unicode width
-        // is still within the `max_len` limit
-        let mut s: String = s
-            .chars()
-            .fold(("".to_owned(), 0_usize), |(mut cs, cw), c| {
-                let w = UnicodeWidthChar::width(c).unwrap_or(2);
-                if cw + w + 3 > max_len {
-                    (cs, cw)
-                } else {
-                    cs.push(c);
-                    (cs, cw + w)
-                }
-            })
-            .0;
-        s.push_str("...");
-        s
-    } else {
-        s
     }
 }

@@ -1,16 +1,16 @@
 use crate::{
     config::Command,
     key::{Key, KeySequence},
-    prelude::*,
     state,
 };
+use anyhow::Result;
 use crossterm::event::{self as term_event, EventStream, KeyCode, KeyModifiers};
+use std::sync::mpsc;
 use tokio::stream::StreamExt;
 
 #[derive(Debug)]
 /// An event to communicate with the client
 pub enum Event {
-    Quit,
     RefreshToken,
     NextTrack,
     PreviousTrack,
@@ -65,6 +65,7 @@ fn handle_search_mode_event(
             }
         }
     }
+
     let command = state
         .read()
         .unwrap()
@@ -118,6 +119,7 @@ fn handle_playlist_switch_mode_event(
         .unwrap()
         .keymap_config
         .find_command_from_key_sequence(key_sequence);
+
     match command {
         Some(command) => match command {
             Command::SelectNext => {
@@ -154,7 +156,7 @@ fn handle_playlist_switch_mode_event(
 
 fn handle_global_mode_event(
     key_sequence: &KeySequence,
-    send: &mpsc::Sender<Event>,
+    _send: &mpsc::Sender<Event>,
     state: &state::SharedState,
 ) -> Result<bool> {
     let command = state
@@ -163,7 +165,7 @@ fn handle_global_mode_event(
         .keymap_config
         .find_command_from_key_sequence(key_sequence);
     if let Some(Command::Quit) = command {
-        send.send(Event::Quit)?;
+        state.write().unwrap().is_running = false;
         Ok(true)
     } else {
         Ok(false)
@@ -180,6 +182,7 @@ fn handle_default_mode_event(
         .unwrap()
         .keymap_config
         .find_command_from_key_sequence(key_sequence);
+
     match command {
         Some(command) => match command {
             Command::NextTrack => {
@@ -286,15 +289,14 @@ fn handle_event(
 
     let mut key_sequence = state.read().unwrap().current_key_prefix.clone();
     key_sequence.keys.push(key.clone());
-
+    if state
+        .read()
+        .unwrap()
+        .keymap_config
+        .find_matched_prefix_keymaps(&key_sequence)
+        .is_empty()
     {
-        let state = state.read().unwrap();
-        let matches = state
-            .keymap_config
-            .find_matched_prefix_keymaps(&key_sequence);
-        if matches.is_empty() {
-            key_sequence = KeySequence { keys: vec![key] };
-        }
+        key_sequence = KeySequence { keys: vec![key] };
     }
 
     let current_event_state = state.read().unwrap().current_event_state.clone();
@@ -308,7 +310,6 @@ fn handle_event(
     if !handled {
         handled = handle_global_mode_event(&key_sequence, send, state)?;
     }
-
     if handled {
         state.write().unwrap().shortcuts_help_ui_state = false;
         state.write().unwrap().current_key_prefix.keys = vec![];
@@ -320,7 +321,7 @@ fn handle_event(
 }
 
 #[tokio::main]
-/// actively pools events from the terminal using `crossterm::event::EventStream`
+/// starts the application's event stream that actively pools events from the terminal
 pub async fn start_event_stream(send: mpsc::Sender<Event>, state: state::SharedState) {
     let mut event_stream = EventStream::new();
 

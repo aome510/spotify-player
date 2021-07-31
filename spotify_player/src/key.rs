@@ -1,7 +1,7 @@
 use crossterm::event::KeyCode;
 
-/// Key denotes a key received from user's input
 #[derive(Clone, Debug, PartialEq, Eq)]
+/// Key represents a key received from user's input
 pub enum Key {
     None(KeyCode),
     Ctrl(KeyCode),
@@ -9,11 +9,13 @@ pub enum Key {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+/// KeySequence represents a combination of pressed keys
 pub struct KeySequence {
     pub keys: Vec<Key>,
 }
 
 impl Key {
+    /// creates a `Key` from its string representation
     pub fn from_str(s: &str) -> Option<Self> {
         let chars: Vec<char> = s.chars().collect();
         if chars.len() == 1 && chars[0] != ' ' {
@@ -132,8 +134,8 @@ impl<'de> serde::de::Deserialize<'de> for Key {
 }
 
 impl KeySequence {
+    /// creates a `KeySequence` from its string representation
     pub fn from_str(s: &str) -> Option<Self> {
-        log::info!("from str keysequence: {}", s);
         let keys = s.split(' ').collect::<Vec<_>>();
         if keys.is_empty() {
             return None;
@@ -144,7 +146,7 @@ impl KeySequence {
             .map(|keys| Self { keys })
     }
 
-    /// checks a key sequence is a prefix of `other` key sequence
+    /// checks if a key sequence is a prefix of `other` key sequence
     pub fn is_prefix(&self, other: &Self) -> bool {
         if self.keys.len() > other.keys.len() {
             return false;

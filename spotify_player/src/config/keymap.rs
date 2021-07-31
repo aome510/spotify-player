@@ -1,15 +1,16 @@
-use crate::key::{self, KeySequence};
+use crate::key::{Key, KeySequence};
 use anyhow::Result;
 use serde::Deserialize;
 
 #[derive(Clone, Debug, Deserialize)]
-/// A command to interact with the application
+/// Application's command
 pub enum Command {
     NextTrack,
     PreviousTrack,
     ResumePause,
     Repeat,
     Shuffle,
+
     SearchContextTracks,
     SwitchPlaylists,
 
@@ -29,12 +30,13 @@ pub enum Command {
 }
 
 #[derive(Debug, Deserialize)]
-/// Application's key mapping configurations
+/// Application's keymap configurations
 pub struct KeymapConfig {
     pub keymaps: Vec<Keymap>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
+/// A keymap that maps a `KeySequence` to a `Command`
 pub struct Keymap {
     pub key_sequence: KeySequence,
     pub command: Command,
@@ -142,8 +144,8 @@ impl Default for KeymapConfig {
 }
 
 impl KeymapConfig {
-    /// parses the list of keymaps from a config file and updates
-    /// the current keymaps accordingly.
+    /// parses a list of keymaps from the keymap config file in `path` folder
+    /// and updates the current keymaps accordingly.
     pub fn parse_config_file(&mut self, path: &std::path::Path) -> Result<()> {
         match std::fs::read_to_string(path.join(super::KEYMAP_CONFIG_FILE)) {
             Err(err) => {
@@ -155,8 +157,9 @@ impl KeymapConfig {
             Ok(content) => {
                 let mut keymaps = toml::from_str::<Self>(&content)?.keymaps;
                 std::mem::swap(&mut self.keymaps, &mut keymaps);
-                // a dumb approach (quadratic complexity) to merge two different keymap arrays
-                // while keeping the invariant that each `Key` is mapped to only one `Command`.
+                // a dumb approach (with quadratic complexity) to merge two different keymap arrays
+                // while keeping the invariant:
+                // - each `KeySequence` is mapped to only one `Command`.
                 keymaps.into_iter().for_each(|keymap| {
                     if !self
                         .keymaps
@@ -172,7 +175,7 @@ impl KeymapConfig {
     }
 
     /// finds all keymaps whose mapped key sequence has a given `prefix` key sequence as its prefix
-    pub fn find_matched_prefix_keymaps(&self, prefix: &key::KeySequence) -> Vec<&Keymap> {
+    pub fn find_matched_prefix_keymaps(&self, prefix: &KeySequence) -> Vec<&Keymap> {
         self.keymaps
             .iter()
             .filter(|&keymap| prefix.is_prefix(&keymap.key_sequence))
@@ -180,10 +183,7 @@ impl KeymapConfig {
     }
 
     /// finds a command from a mapped key sequence
-    pub fn find_command_from_key_sequence(
-        &self,
-        key_sequence: &key::KeySequence,
-    ) -> Option<Command> {
+    pub fn find_command_from_key_sequence(&self, key_sequence: &KeySequence) -> Option<Command> {
         self.keymaps
             .iter()
             .find(|&keymap| keymap.key_sequence == *key_sequence)
@@ -191,20 +191,20 @@ impl KeymapConfig {
     }
 }
 
-impl From<&str> for key::Key {
+impl From<&str> for Key {
     /// converts a string into a `Key`.
     /// **Note** this function will panic if the given string is not a valid
     /// representation of a `Key`.
     fn from(s: &str) -> Self {
-        Self::from_str(s).unwrap()
+        Self::from_str(s).unwrap_or_else(|| panic!("invalid key {}", s))
     }
 }
 
-impl From<&str> for key::KeySequence {
+impl From<&str> for KeySequence {
     /// converts a string into a `KeySequence`.
     /// **Note** this function will panic if the given string is not a valid
     /// representation of a `KeySequence`.
     fn from(s: &str) -> Self {
-        Self::from_str(s).unwrap()
+        Self::from_str(s).unwrap_or_else(|| panic!("invalid key sequence {}", s))
     }
 }

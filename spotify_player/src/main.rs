@@ -2,12 +2,11 @@ mod client;
 mod config;
 mod event;
 mod key;
-pub mod prelude;
 mod state;
 mod ui;
 pub mod utils;
 
-use prelude::*;
+use anyhow::{anyhow, Result};
 
 // spotify authentication token's scopes for permissions
 const SCOPES: [&str; 10] = [
@@ -55,7 +54,7 @@ async fn main() -> Result<()> {
         )
         .get_matches();
 
-    let (send, recv) = mpsc::channel::<event::Event>();
+    let (send, recv) = std::sync::mpsc::channel::<event::Event>();
     let state = state::State::new();
 
     // parsing config files
@@ -72,10 +71,10 @@ async fn main() -> Result<()> {
     }
 
     // start application's threads
-    thread::spawn({
+    std::thread::spawn({
         let client_config = config::ClientConfig::from_config_file(&config_folder)?;
 
-        let oauth = SpotifyOAuth::default()
+        let oauth = rspotify::oauth2::SpotifyOAuth::default()
             .client_id(&client_config.client_id)
             .client_secret(&client_config.client_secret)
             .redirect_uri("http://localhost:8888/callback")
@@ -92,7 +91,7 @@ async fn main() -> Result<()> {
             client::start_watcher(state, client, recv);
         }
     });
-    thread::spawn({
+    std::thread::spawn({
         let sender = send.clone();
         let state = state.clone();
         move || {

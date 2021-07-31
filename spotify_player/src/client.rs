@@ -1,9 +1,16 @@
 use crate::event;
-use crate::prelude::*;
 use crate::state;
+use anyhow::{anyhow, Result};
+use rspotify::{
+    client::Spotify,
+    model::*,
+    oauth2::{SpotifyClientCredentials, SpotifyOAuth, TokenInfo},
+    senum::*,
+};
+use std::sync::RwLockReadGuard;
 
-/// A spotify client
 #[derive(Clone)]
+/// A spotify client
 pub struct Client {
     spotify: Spotify,
     http: reqwest::Client,
@@ -26,7 +33,7 @@ impl Client {
         state: &state::SharedState,
         event: event::Event,
     ) -> Result<()> {
-        log::info!("handle event: {:?}", event);
+        log::info!("handle the client event {:?}", event);
 
         match event {
             event::Event::RefreshToken => {
@@ -51,9 +58,6 @@ impl Client {
             event::Event::Repeat => {
                 let state = state.read().unwrap();
                 self.cycle_repeat(&state).await?;
-            }
-            event::Event::Quit => {
-                state.write().unwrap().is_running = false;
             }
             event::Event::PlaySelectedTrack => {
                 let state = state.read().unwrap();
@@ -94,10 +98,10 @@ impl Client {
         Ok(())
     }
 
-    /// refreshes the client's authentication token, returns
-    /// the token's `expires_at` time.
+    /// refreshes the client's authentication token.
+    /// Returns the token's `expires_at` time.
     pub async fn refresh_token(&mut self) -> Result<std::time::SystemTime> {
-        let token = match get_token(&mut self.oauth).await {
+        let token = match rspotify::util::get_token(&mut self.oauth).await {
             Some(token) => token,
             None => return Err(anyhow!("auth failed")),
         };
@@ -105,7 +109,7 @@ impl Client {
         let expires_at = token
             .expires_at
             .expect("got `None` for token's `expires_at`");
-        self.spotify = Self::get_spotify_client(token);
+        self.spotify = Self::build_spotify_client(token);
         Ok(
             std::time::SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(expires_at as u64)
                 - std::time::Duration::from_secs(10),
@@ -124,7 +128,7 @@ impl Client {
         Ok(self.get_all_paging_items(first_page).await?)
     }
 
-    /// plays a track given a playing context URI
+    /// plays a track given a context URI
     pub async fn play_track_with_context(
         &self,
         context_uri: String,
@@ -186,7 +190,7 @@ impl Client {
         }
     }
 
-    /// resumes a previously paused/played track
+    /// resumes the previously paused/played track
     pub async fn resume_track(&self, device_id: String) -> Result<()> {
         Self::handle_rspotify_result(
             self.spotify
@@ -195,7 +199,7 @@ impl Client {
         )
     }
 
-    /// pauses currently playing track
+    /// pauses the currently playing track
     pub async fn pause_track(&self, device_id: String) -> Result<()> {
         Self::handle_rspotify_result(self.spotify.pause_playback(Some(device_id)).await)
     }
@@ -224,7 +228,7 @@ impl Client {
         let mut state = state.write().unwrap();
         if let Some(ref query) = state.context_search_state.query {
             let mut query = query.clone();
-            query.remove(0);
+            query.remove(0); // remove the '/' character at the beginning of the query string
 
             log::info!("search tracks in context with query {}", query);
             state.context_search_state.tracks = state
@@ -349,7 +353,7 @@ impl Client {
             .await?)
     }
 
-    /// returns a list of all paging items starting from a pagination object of the first page
+    /// gets all paging items starting from a pagination object of the first page
     async fn get_all_paging_items<T>(&self, first_page: page::Page<T>) -> Result<Vec<T>>
     where
         T: serde::de::DeserializeOwned,
@@ -365,7 +369,7 @@ impl Client {
     }
 
     /// builds a spotify client from an authentication token
-    fn get_spotify_client(token: TokenInfo) -> Spotify {
+    fn build_spotify_client(token: TokenInfo) -> Spotify {
         let client_credential = SpotifyClientCredentials::default()
             .token_info(token)
             .build();
@@ -374,8 +378,10 @@ impl Client {
             .build()
     }
 
-    /// converts a `rspotify` result format into `anyhow` compatible result format
-    fn handle_rspotify_result<T, E: fmt::Display>(result: std::result::Result<T, E>) -> Result<T> {
+    /// handles a `rspotify` client result and converts it into `anyhow` compatible result format
+    fn handle_rspotify_result<T, E: std::fmt::Display>(
+        result: std::result::Result<T, E>,
+    ) -> Result<T> {
         match result {
             Ok(data) => Ok(data),
             Err(err) => Err(anyhow!(format!("{}", err))),
@@ -411,16 +417,16 @@ async fn refresh_current_playback_context(state: state::SharedState, client: Cli
                 log::warn!("{:#?}", err);
             }
         }
-        thread::sleep(playback_refresh_duration);
+        std::thread::sleep(playback_refresh_duration);
     }
 }
 
-/// starts the client's event watcher
 #[tokio::main]
+/// starts the client's event watcher
 pub async fn start_watcher(
     state: state::SharedState,
     mut client: Client,
-    recv: mpsc::Receiver<event::Event>,
+    recv: std::sync::mpsc::Receiver<event::Event>,
 ) {
     match client.get_current_user_playlists().await {
         Ok(playlists) => {

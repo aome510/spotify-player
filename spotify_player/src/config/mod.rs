@@ -6,8 +6,9 @@ const CLIENT_CONFIG_FILE: &str = "client.toml";
 const APP_CONFIG_FILE: &str = "app.toml";
 const KEYMAP_CONFIG_FILE: &str = "keymap.toml";
 
-use crate::prelude::*;
+use anyhow::{anyhow, Result};
 use config_parser2::*;
+use serde::Deserialize;
 use std::path::{Path, PathBuf};
 
 pub use keymap::*;
@@ -20,7 +21,7 @@ pub struct ClientConfig {
 }
 
 #[derive(Debug, Deserialize, ConfigParse)]
-/// Application (general) configurations
+/// Application configurations
 pub struct AppConfig {
     pub app_refresh_duration_in_ms: u64,
     pub playback_refresh_duration_in_ms: u64,
@@ -28,6 +29,7 @@ pub struct AppConfig {
 }
 
 impl ClientConfig {
+    // creates client configurations from a client config file in `path` folder
     pub fn from_config_file(path: &Path) -> Result<Self> {
         let content = std::fs::read_to_string(path.join(CLIENT_CONFIG_FILE))?;
         Ok(toml::from_str::<Self>(&content)?)
@@ -45,6 +47,8 @@ impl Default for AppConfig {
 }
 
 impl AppConfig {
+    // parses configurations from an application config file in `path` folder,
+    // then updates the current configurations accordingly.
     pub fn parse_config_file(&mut self, path: &Path) -> Result<()> {
         match std::fs::read_to_string(path.join(APP_CONFIG_FILE)) {
             Err(err) => {

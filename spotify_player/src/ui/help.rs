@@ -1,6 +1,6 @@
 use super::Frame;
 use crate::config;
-use crate::prelude::*;
+use tui::{layout::*, widgets::*};
 
 const SHORTCUT_TABLE_N_COLUMNS: usize = 4;
 const SHORTCUT_TABLE_CONSTRAINS: [Constraint; SHORTCUT_TABLE_N_COLUMNS] = [
@@ -10,10 +10,11 @@ const SHORTCUT_TABLE_CONSTRAINS: [Constraint; SHORTCUT_TABLE_N_COLUMNS] = [
     Constraint::Percentage(25),
 ];
 
-pub fn render_shortcuts_help_widget(frame: &mut Frame, matches: Vec<config::Keymap>, rect: Rect) {
-    log::info!("{:?}", matches);
+/// renders a shortcuts help widget from a list of keymaps
+pub fn render_shortcuts_help_widget(frame: &mut Frame, keymaps: Vec<config::Keymap>, rect: Rect) {
+    log::info!("{:?}", keymaps);
     let help_table = Table::new(
-        matches
+        keymaps
             .into_iter()
             .map(|km| format!("{}: {:?}", km.key_sequence, km.command))
             .collect::<Vec<_>>()
