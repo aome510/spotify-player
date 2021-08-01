@@ -1,28 +1,24 @@
 use crate::{config, key};
-use rspotify::{model::*, senum::*};
+use rspotify::model::*;
 use std::sync::{Arc, RwLock};
 use tui::widgets::*;
 pub type SharedState = Arc<RwLock<State>>;
-
-// TODO: improve variable naming for the application states
 
 /// Application's state
 pub struct State {
     pub app_config: config::AppConfig,
     pub keymap_config: config::KeymapConfig,
 
-    pub current_key_prefix: key::KeySequence,
+    pub input_key_sequence: key::KeySequence,
 
     pub is_running: bool,
     pub auth_token_expires_at: std::time::SystemTime,
 
     pub devices: Vec<device::Device>,
+    pub user_playlists: Vec<playlist::SimplifiedPlaylist>,
 
-    pub current_playback_context: Option<context::CurrentlyPlaybackContext>,
-    pub current_playlist: Option<playlist::FullPlaylist>,
-    pub current_album: Option<album::FullAlbum>,
-    pub current_playlists: Vec<playlist::SimplifiedPlaylist>,
-    pub current_context_tracks: Vec<Track>,
+    pub playback: Option<context::CurrentlyPlaybackContext>,
+    pub context: PlayingContext,
 
     pub context_search_state: ContextSearchState,
 
@@ -32,15 +28,22 @@ pub struct State {
     pub shortcuts_help_ui_state: bool,
 }
 
+/// Playing context (album, playlist, etc) of the current track
+pub enum PlayingContext {
+    Playlist(playlist::FullPlaylist, Vec<Track>),
+    Album(album::FullAlbum, Vec<Track>),
+    Unknown,
+}
+
 #[derive(Default)]
-/// Context search state
+/// State for searching tracks in a playing context
 pub struct ContextSearchState {
     pub query: Option<String>,
     pub tracks: Vec<Track>,
 }
 
 #[derive(Debug)]
-/// Context sort order
+/// Order of sorting tracks in a playing context
 pub enum ContextSortOrder {
     AddedAt,
     TrackName,
@@ -92,21 +95,20 @@ impl Default for State {
             app_config: config::AppConfig::default(),
             keymap_config: config::KeymapConfig::default(),
 
+            input_key_sequence: key::KeySequence { keys: vec![] },
+
             is_running: true,
             auth_token_expires_at: std::time::SystemTime::now(),
+
             devices: vec![],
+            user_playlists: vec![],
 
-            current_playlist: None,
-            current_album: None,
-            current_context_tracks: vec![],
-            current_playlists: vec![],
-            current_playback_context: None,
+            playback: None,
+            context: PlayingContext::Unknown,
 
-            current_key_prefix: key::KeySequence { keys: vec![] },
-
-            popup_state: PopupState::None,
             context_search_state: ContextSearchState::default(),
 
+            popup_state: PopupState::None,
             context_tracks_table_ui_state: TableState::default(),
             playlists_list_ui_state: ListState::default(),
             shortcuts_help_ui_state: false,
@@ -122,46 +124,51 @@ impl State {
 
     /// sorts tracks in the current playing context given a context sort oder
     pub fn sort_context_tracks(&mut self, sort_oder: ContextSortOrder) {
-        self.current_context_tracks
-            .sort_by(|x, y| sort_oder.compare(x, y));
+        match self.context {
+            PlayingContext::Unknown => {}
+            PlayingContext::Album(_, ref mut tracks) => {
+                tracks.sort_by(|x, y| sort_oder.compare(x, y));
+            }
+            PlayingContext::Playlist(_, ref mut tracks) => {
+                tracks.sort_by(|x, y| sort_oder.compare(x, y));
+            }
+        };
     }
 
-    /// gets the type (Album, Artist, Playlist, etc) of current playing context
-    pub fn get_context_type(&self) -> Option<Type> {
-        match self.current_playback_context {
-            None => None,
-            Some(ref playback_context) => playback_context
-                .context
-                .as_ref()
-                .map(|context| context._type),
+    /// reverses order of tracks in the current playing context
+    pub fn reverse_context_tracks(&mut self) {
+        match self.context {
+            PlayingContext::Unknown => {}
+            PlayingContext::Album(_, ref mut tracks) => {
+                tracks.reverse();
+            }
+            PlayingContext::Playlist(_, ref mut tracks) => {
+                tracks.reverse();
+            }
+        };
+    }
+
+    /// gets all tracks inside the current playing context
+    pub fn get_contex_tracks(&self) -> Vec<&Track> {
+        match self.context {
+            PlayingContext::Unknown => vec![],
+            PlayingContext::Album(_, ref tracks) => tracks.iter().collect(),
+            PlayingContext::Playlist(_, ref tracks) => tracks.iter().collect(),
         }
     }
 
     /// gets the description of current playing context
     pub fn get_context_description(&self) -> String {
-        match self.get_context_type() {
-            None => "Cannot infer the playing context from the current playback".to_owned(),
-            Some(ty) => match ty {
-                rspotify::senum::Type::Album => {
-                    format!(
-                        "Album: {}",
-                        match self.current_album {
-                            None => "loading...",
-                            Some(ref album) => &album.name,
-                        }
-                    )
-                }
-                rspotify::senum::Type::Playlist => {
-                    format!(
-                        "Playlist: {}",
-                        match self.current_playlist {
-                            None => "loading...",
-                            Some(ref playlist) => &playlist.name,
-                        }
-                    )
-                }
-                _ => "Unknown context type".to_owned(),
-            },
+        match self.context {
+            PlayingContext::Unknown => {
+                "Cannot infer the playing context from the current playback".to_owned()
+            }
+            PlayingContext::Album(ref album, _) => {
+                format!("Album: {}", album.name,)
+            }
+            PlayingContext::Playlist(ref playlist, _) => {
+                format!("Playlist: {}", playlist.name)
+            }
         }
     }
 
@@ -172,7 +179,7 @@ impl State {
             // in search mode, return the filtered tracks
             self.context_search_state.tracks.iter().collect()
         } else {
-            self.current_context_tracks.iter().collect()
+            self.get_contex_tracks()
         }
     }
 }

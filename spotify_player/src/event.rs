@@ -17,12 +17,12 @@ pub enum Event {
     ResumePause,
     Repeat,
     Shuffle,
-    GetPlaylist(String),
-    GetAlbum(String),
+    PlaylistAsContext(String),
+    AlbumAsContext(String),
     PlaySelectedTrack,
     PlaySelectedPlaylist,
-    SearchTrackInContext,
-    SortContextTracks(state::ContextSortOrder),
+    SearchTracksInContext,
+    SortTracksInContext(state::ContextSortOrder),
 }
 
 impl From<term_event::KeyEvent> for Key {
@@ -37,7 +37,7 @@ impl From<term_event::KeyEvent> for Key {
     }
 }
 
-fn handle_search_mode_event(
+fn handle_key_sequence_for_context_search_popup(
     key_sequence: &KeySequence,
     send: &mpsc::Sender<Event>,
     state: &state::SharedState,
@@ -48,7 +48,7 @@ fn handle_search_mode_event(
                 KeyCode::Char(c) => {
                     let mut state = state.write().unwrap();
                     state.context_search_state.query.as_mut().unwrap().push(c);
-                    send.send(Event::SearchTrackInContext)?;
+                    send.send(Event::SearchTracksInContext)?;
                     return Ok(true);
                 }
                 KeyCode::Backspace => {
@@ -56,7 +56,7 @@ fn handle_search_mode_event(
                     if let Some(query) = state.context_search_state.query.as_mut() {
                         if query.len() > 1 {
                             query.pop().unwrap();
-                            send.send(Event::SearchTrackInContext)?;
+                            send.send(Event::SearchTracksInContext)?;
                         }
                     }
                     return Ok(true);
@@ -109,7 +109,7 @@ fn handle_search_mode_event(
     }
 }
 
-fn handle_playlist_switch_mode_event(
+fn handle_key_sequence_for_playlists_switch_popup(
     key_sequence: &KeySequence,
     send: &mpsc::Sender<Event>,
     state: &state::SharedState,
@@ -125,7 +125,7 @@ fn handle_playlist_switch_mode_event(
             Command::SelectNext => {
                 let mut state = state.write().unwrap();
                 if let Some(id) = state.playlists_list_ui_state.selected() {
-                    if id + 1 < state.current_playlists.len() {
+                    if id + 1 < state.user_playlists.len() {
                         state.playlists_list_ui_state.select(Some(id + 1));
                     }
                 }
@@ -154,7 +154,7 @@ fn handle_playlist_switch_mode_event(
     }
 }
 
-fn handle_command_help_event(
+fn handle_key_sequence_for_command_help_popup(
     key_sequence: &KeySequence,
     _send: &mpsc::Sender<Event>,
     state: &state::SharedState,
@@ -176,8 +176,7 @@ fn handle_command_help_event(
     }
 }
 
-// TODO: change this naming
-fn handle_default_mode_event(
+fn handle_key_sequence_for_none_popup(
     key_sequence: &KeySequence,
     send: &mpsc::Sender<Event>,
     state: &state::SharedState,
@@ -227,27 +226,31 @@ fn handle_default_mode_event(
                 Ok(true)
             }
             Command::SortByTrack => {
-                send.send(Event::SortContextTracks(state::ContextSortOrder::TrackName))?;
+                send.send(Event::SortTracksInContext(
+                    state::ContextSortOrder::TrackName,
+                ))?;
                 Ok(true)
             }
             Command::SortByAlbum => {
-                send.send(Event::SortContextTracks(state::ContextSortOrder::Album))?;
+                send.send(Event::SortTracksInContext(state::ContextSortOrder::Album))?;
                 Ok(true)
             }
             Command::SortByArtists => {
-                send.send(Event::SortContextTracks(state::ContextSortOrder::Artists))?;
+                send.send(Event::SortTracksInContext(state::ContextSortOrder::Artists))?;
                 Ok(true)
             }
             Command::SortByAddedDate => {
-                send.send(Event::SortContextTracks(state::ContextSortOrder::AddedAt))?;
+                send.send(Event::SortTracksInContext(state::ContextSortOrder::AddedAt))?;
                 Ok(true)
             }
             Command::SortByDuration => {
-                send.send(Event::SortContextTracks(state::ContextSortOrder::Duration))?;
+                send.send(Event::SortTracksInContext(
+                    state::ContextSortOrder::Duration,
+                ))?;
                 Ok(true)
             }
             Command::ReverseOrder => {
-                state.write().unwrap().current_context_tracks.reverse();
+                state.write().unwrap().reverse_context_tracks();
                 Ok(true)
             }
             Command::SwitchPlaylists => {
@@ -260,7 +263,7 @@ fn handle_default_mode_event(
     }
 }
 
-fn handle_global_mode_event(
+fn handle_key_sequence(
     key_sequence: &KeySequence,
     send: &mpsc::Sender<Event>,
     state: &state::SharedState,
@@ -307,7 +310,7 @@ fn handle_global_mode_event(
     }
 }
 
-fn handle_event(
+fn handle_terminal_event(
     event: term_event::Event,
     send: &mpsc::Sender<Event>,
     state: &state::SharedState,
@@ -319,7 +322,7 @@ fn handle_event(
         }
     };
 
-    let mut key_sequence = state.read().unwrap().current_key_prefix.clone();
+    let mut key_sequence = state.read().unwrap().input_key_sequence.clone();
     key_sequence.keys.push(key.clone());
     if state
         .read()
@@ -331,31 +334,36 @@ fn handle_event(
         key_sequence = KeySequence { keys: vec![key] };
     }
 
-    let current_event_state = state.read().unwrap().popup_state.clone();
-    let mut handled = match current_event_state {
-        state::PopupState::None => handle_default_mode_event(&key_sequence, send, state)?,
-        state::PopupState::ContextSearch => handle_search_mode_event(&key_sequence, send, state)?,
-        state::PopupState::PlaylistSwitch => {
-            handle_playlist_switch_mode_event(&key_sequence, send, state)?
+    let popup_state = state.read().unwrap().popup_state.clone();
+    let mut handled = match popup_state {
+        state::PopupState::None => handle_key_sequence_for_none_popup(&key_sequence, send, state)?,
+        state::PopupState::ContextSearch => {
+            handle_key_sequence_for_context_search_popup(&key_sequence, send, state)?
         }
-        state::PopupState::CommandHelp => handle_command_help_event(&key_sequence, send, state)?,
+        state::PopupState::PlaylistSwitch => {
+            handle_key_sequence_for_playlists_switch_popup(&key_sequence, send, state)?
+        }
+        state::PopupState::CommandHelp => {
+            handle_key_sequence_for_command_help_popup(&key_sequence, send, state)?
+        }
     };
     if !handled {
-        handled = handle_global_mode_event(&key_sequence, send, state)?;
+        handled = handle_key_sequence(&key_sequence, send, state)?;
     }
+
     // if no command is handled, open the shortcuts help based on the current key sequence input
     if handled {
         state.write().unwrap().shortcuts_help_ui_state = false;
-        state.write().unwrap().current_key_prefix.keys = vec![];
+        state.write().unwrap().input_key_sequence.keys = vec![];
     } else {
         state.write().unwrap().shortcuts_help_ui_state = true;
-        state.write().unwrap().current_key_prefix = key_sequence;
+        state.write().unwrap().input_key_sequence = key_sequence;
     }
     Ok(())
 }
 
 #[tokio::main]
-/// starts the application's event stream that actively pools events from the terminal
+/// starts the application's event stream that pools and handles events from the terminal
 pub async fn start_event_stream(send: mpsc::Sender<Event>, state: state::SharedState) {
     let mut event_stream = EventStream::new();
 
@@ -363,7 +371,7 @@ pub async fn start_event_stream(send: mpsc::Sender<Event>, state: state::SharedS
         match event {
             Ok(event) => {
                 log::info!("got event: {:?}", event);
-                if let Err(err) = handle_event(event, &send, &state) {
+                if let Err(err) = handle_terminal_event(event, &send, &state) {
                     log::warn!("failed to handle event: {:#}", err);
                 }
             }

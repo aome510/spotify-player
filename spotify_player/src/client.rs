@@ -63,7 +63,7 @@ impl Client {
                 let state = state.read().unwrap();
                 if let (Some(id), Some(playback)) = (
                     state.context_tracks_table_ui_state.selected(),
-                    state.current_playback_context.as_ref(),
+                    state.playback.as_ref(),
                 ) {
                     if let Some(ref context) = playback.context {
                         self.play_track_with_context(
@@ -77,21 +77,20 @@ impl Client {
             event::Event::PlaySelectedPlaylist => {
                 let state = state.read().unwrap();
                 if let Some(id) = state.playlists_list_ui_state.selected() {
-                    self.play_track_with_context(state.current_playlists[id].uri.clone(), None)
+                    self.play_track_with_context(state.user_playlists[id].uri.clone(), None)
                         .await?;
                 }
             }
-            event::Event::GetPlaylist(playlist_id) => {
-                self.update_state_current_playlist(&playlist_id, state)
-                    .await?;
+            event::Event::PlaylistAsContext(playlist_id) => {
+                self.update_context_to_playlist(playlist_id, state).await?;
             }
-            event::Event::GetAlbum(album_id) => {
-                self.update_state_current_album(&album_id, state).await?;
+            event::Event::AlbumAsContext(album_id) => {
+                self.update_context_to_album(album_id, state).await?;
             }
-            event::Event::SearchTrackInContext => {
+            event::Event::SearchTracksInContext => {
                 self.search_tracks_in_current_playing_context(state).await?;
             }
-            event::Event::SortContextTracks(order) => {
+            event::Event::SortTracksInContext(order) => {
                 state.write().unwrap().sort_context_tracks(order);
             }
         }
@@ -178,9 +177,9 @@ impl Client {
         state: &RwLockReadGuard<'_, state::State>,
     ) -> Result<()> {
         let device_id = state.devices[0].id.clone();
-        match state.current_playback_context {
-            Some(ref context) => {
-                if context.is_playing {
+        match state.playback {
+            Some(ref playback) => {
+                if playback.is_playing {
                     self.pause_track(device_id).await
                 } else {
                     self.resume_track(device_id).await
@@ -232,8 +231,8 @@ impl Client {
 
             log::info!("search tracks in context with query {}", query);
             state.context_search_state.tracks = state
-                .current_context_tracks
-                .iter()
+                .get_contex_tracks()
+                .into_iter()
                 .filter(|&t| t.get_basic_info().to_lowercase().contains(&query))
                 .cloned()
                 .collect();
@@ -253,13 +252,13 @@ impl Client {
         Ok(())
     }
 
-    /// updates the current playlist stored inside the application state
-    async fn update_state_current_playlist(
+    /// updates the playing context state to playlist
+    async fn update_context_to_playlist(
         &self,
-        playlist_id: &str,
+        playlist_id: String,
         state: &state::SharedState,
     ) -> Result<()> {
-        if let Some(ref playlist) = state.read().unwrap().current_playlist {
+        if let state::PlayingContext::Playlist(ref playlist, _) = state.read().unwrap().context {
             // avoid getting the same playlist more than once
             if playlist.id == playlist_id {
                 return Ok(());
@@ -267,33 +266,32 @@ impl Client {
         }
 
         // get the playlist
-        let playlist = self.get_playlist(playlist_id).await?;
+        let playlist = self.get_playlist(&playlist_id).await?;
         // get the playlist's tracks
         let playlist_tracks = self.get_all_paging_items(playlist.tracks.clone()).await?;
         // filter tracks that are either unaccessible or deleted from album
-        let tracks: Vec<_> = playlist_tracks
+        let tracks = playlist_tracks
             .into_iter()
             .filter(|t| t.track.is_some())
             .map(|t| t.into())
-            .collect();
+            .collect::<Vec<_>>();
 
         // update states
         let mut state = state.write().unwrap();
-        state.current_playlist = Some(playlist);
         if !tracks.is_empty() {
             state.context_tracks_table_ui_state.select(Some(0));
         }
-        state.current_context_tracks = tracks;
+        state.context = state::PlayingContext::Playlist(playlist, tracks);
         Ok(())
     }
 
-    /// updates the current album stored inside the application state
-    async fn update_state_current_album(
+    /// updates the playing context state to album
+    async fn update_context_to_album(
         &self,
-        album_id: &str,
+        album_id: String,
         state: &state::SharedState,
     ) -> Result<()> {
-        if let Some(ref album) = state.read().unwrap().current_album {
+        if let state::PlayingContext::Album(ref album, _) = state.read().unwrap().context {
             // avoid getting the same album more than once
             if album.id == album_id {
                 return Ok(());
@@ -301,10 +299,10 @@ impl Client {
         }
 
         // get the album
-        let album = self.get_album(album_id).await?;
+        let album = self.get_album(&album_id).await?;
         // get the album's tracks
         let album_tracks = self.get_all_paging_items(album.tracks.clone()).await?;
-        let tracks: Vec<_> = album_tracks
+        let tracks = album_tracks
             .into_iter()
             .map(|t| {
                 let mut track: state::Track = t.into();
@@ -315,15 +313,14 @@ impl Client {
                 };
                 track
             })
-            .collect();
+            .collect::<Vec<_>>();
 
         // update states
         let mut state = state.write().unwrap();
-        state.current_album = Some(album);
         if !tracks.is_empty() {
             state.context_tracks_table_ui_state.select(Some(0));
         }
-        state.current_context_tracks = tracks;
+        state.context = state::PlayingContext::Album(album, tracks);
         Ok(())
     }
 
@@ -392,9 +389,9 @@ impl Client {
     fn get_current_playback_state<'a>(
         state: &'a RwLockReadGuard<'a, state::State>,
     ) -> Result<&'a context::CurrentlyPlaybackContext> {
-        match state.current_playback_context {
-            Some(ref state) => Ok(state),
-            None => Err(anyhow!("unable to get the currently playing context")),
+        match state.playback {
+            Some(ref playback) => Ok(playback),
+            None => Err(anyhow!("failed to get the current playback context")),
         }
     }
 }
@@ -410,8 +407,8 @@ async fn refresh_current_playback_context(state: state::SharedState, client: Cli
     );
     loop {
         match client.get_current_playback().await {
-            Ok(context) => {
-                state.write().unwrap().current_playback_context = context;
+            Ok(playback) => {
+                state.write().unwrap().playback = playback;
             }
             Err(err) => {
                 log::warn!("{:#?}", err);
@@ -436,7 +433,7 @@ pub async fn start_watcher(
             if !playlists.is_empty() {
                 state.playlists_list_ui_state.select(Some(0));
             }
-            state.current_playlists = playlists;
+            state.user_playlists = playlists;
         }
         Err(err) => {
             log::warn!("failed to get user's playlists: {:#?}", err);

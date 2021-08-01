@@ -37,27 +37,33 @@ pub fn start_ui(
             }
 
             // updates the context (album, playlist, etc) tracks based on the current playback
-            if let Some(ref playback) = state.current_playback_context {
+            if let Some(ref playback) = state.playback {
                 if let Some(ref context) = playback.context {
                     match context._type {
                         rspotify::senum::Type::Playlist => {
                             let playlist_id = context.uri.split(':').nth(2).unwrap();
-                            let current_playlist_id = match state.current_playlist {
-                                Some(ref playlist) => &playlist.id,
-                                None => "",
-                            };
+                            let current_playlist_id =
+                                if let state::PlayingContext::Playlist(ref playlist, _) =
+                                    state.context
+                                {
+                                    &playlist.id
+                                } else {
+                                    ""
+                                };
                             if current_playlist_id != playlist_id {
-                                send.send(event::Event::GetPlaylist(playlist_id.to_owned()))?;
+                                send.send(event::Event::PlaylistAsContext(playlist_id.to_owned()))?;
                             }
                         }
                         rspotify::senum::Type::Album => {
                             let album_id = context.uri.split(':').nth(2).unwrap();
-                            let current_album_id = match state.current_album {
-                                Some(ref album) => &album.id,
-                                None => "",
-                            };
+                            let current_album_id =
+                                if let state::PlayingContext::Album(ref album, _) = state.context {
+                                    &album.id
+                                } else {
+                                    ""
+                                };
                             if current_album_id != album_id {
-                                send.send(event::Event::GetAlbum(album_id.to_owned()))?;
+                                send.send(event::Event::AlbumAsContext(album_id.to_owned()))?;
                             }
                         }
                         _ => {}
@@ -91,7 +97,7 @@ fn render_application_layout(frame: &mut Frame, state: &state::SharedState, rect
         let state = state.read().unwrap();
         if state.shortcuts_help_ui_state {
             let matches = {
-                let prefix = &state.current_key_prefix;
+                let prefix = &state.input_key_sequence;
                 state
                     .keymap_config
                     .find_matched_prefix_keymaps(prefix)
@@ -178,7 +184,7 @@ fn render_playlists_widget(frame: &mut Frame, state: &state::SharedState, rect: 
         state
             .read()
             .unwrap()
-            .current_playlists
+            .user_playlists
             .iter()
             .map(|p| ListItem::new(p.name.clone()))
             .collect::<Vec<_>>(),
@@ -206,7 +212,7 @@ fn render_current_playback_widget(frame: &mut Frame, state: &state::SharedState,
         .borders(Borders::ALL);
     frame.render_widget(block, rect);
 
-    if let Some(ref context) = state.read().unwrap().current_playback_context {
+    if let Some(ref context) = state.read().unwrap().playback {
         if let Some(rspotify::model::PlayingItem::Track(ref track)) = context.item {
             let playback_info = format!(
                 "{} by {} (repeat: {}, shuffle: {}, volume: {}%)\n",
