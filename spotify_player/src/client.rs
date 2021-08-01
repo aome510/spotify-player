@@ -98,21 +98,41 @@ impl Client {
     }
 
     /// refreshes the client's authentication token.
-    /// Returns the token's `expires_at` time.
+    /// Returns the token's expired time.
     pub async fn refresh_token(&mut self) -> Result<std::time::SystemTime> {
-        let token = match rspotify::util::get_token(&mut self.oauth).await {
-            Some(token) => token,
-            None => return Err(anyhow!("auth failed")),
-        };
+        log::info!("refresh auth token...");
 
-        let expires_at = token
-            .expires_at
-            .expect("got `None` for token's `expires_at`");
-        self.spotify = Self::build_spotify_client(token);
-        Ok(
-            std::time::SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(expires_at as u64)
-                - std::time::Duration::from_secs(10),
-        )
+        let token = rspotify::util::get_token(&mut self.oauth)
+            .await
+            .expect("failed to get access token");
+        let refresh_token = token
+            .refresh_token
+            .expect("failed to get the refresh token from the access token");
+        let new_token = self
+            .oauth
+            .refresh_access_token(&refresh_token)
+            .await
+            .expect("failed to refresh the access token");
+
+        let expires_at = std::time::SystemTime::UNIX_EPOCH
+            + std::time::Duration::from_secs(
+                new_token
+                    .expires_at
+                    .expect("failed to get token's `expires_at`") as u64,
+            )
+            - std::time::Duration::from_secs(10);
+
+        // build a new spotify client from the new token
+        self.spotify = Self::build_spotify_client(new_token);
+
+        log::info!(
+            "token will expire in {:?} seconds",
+            expires_at
+                .duration_since(std::time::SystemTime::now())
+                .unwrap()
+                .as_secs()
+        );
+        Ok(expires_at)
     }
 
     /// gets all available devices
@@ -330,7 +350,7 @@ impl Client {
             self.spotify
                 .client_credentials_manager
                 .as_ref()
-                .expect("client credentials manager is `None`")
+                .expect("failed to get spotify's client credentials manager")
                 .get_access_token()
                 .await
         )
