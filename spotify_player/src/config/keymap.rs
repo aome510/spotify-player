@@ -11,6 +11,9 @@ pub enum Command {
     Repeat,
     Shuffle,
 
+    Quit,
+    ClosePopup,
+
     SearchContextTracks,
     SwitchPlaylists,
     OpenCommandHelp,
@@ -21,9 +24,6 @@ pub enum Command {
     SortByDuration,
     SortByAddedDate,
     ReverseOrder,
-
-    Quit,
-    ClosePopup,
 
     SelectNext,
     SelectPrevious,

@@ -154,7 +154,7 @@ fn handle_playlist_switch_mode_event(
     }
 }
 
-fn handle_command_help_even(
+fn handle_command_help_event(
     key_sequence: &KeySequence,
     _send: &mpsc::Sender<Event>,
     state: &state::SharedState,
@@ -176,7 +176,8 @@ fn handle_command_help_even(
     }
 }
 
-fn handle_global_mode_event(
+// TODO: change this naming
+fn handle_default_mode_event(
     key_sequence: &KeySequence,
     send: &mpsc::Sender<Event>,
     state: &state::SharedState,
@@ -189,30 +190,6 @@ fn handle_global_mode_event(
 
     match command {
         Some(command) => match command {
-            Command::Quit => {
-                state.write().unwrap().is_running = false;
-                Ok(true)
-            }
-            Command::NextTrack => {
-                send.send(Event::NextTrack)?;
-                Ok(true)
-            }
-            Command::PreviousTrack => {
-                send.send(Event::PreviousTrack)?;
-                Ok(true)
-            }
-            Command::ResumePause => {
-                send.send(Event::ResumePause)?;
-                Ok(true)
-            }
-            Command::Repeat => {
-                send.send(Event::Repeat)?;
-                Ok(true)
-            }
-            Command::Shuffle => {
-                send.send(Event::Shuffle)?;
-                Ok(true)
-            }
             Command::SelectNext => {
                 let mut state = state.write().unwrap();
                 if let Some(id) = state.context_tracks_table_ui_state.selected() {
@@ -277,6 +254,49 @@ fn handle_global_mode_event(
                 state.write().unwrap().popup_state = state::PopupState::PlaylistSwitch;
                 Ok(true)
             }
+            _ => Ok(false),
+        },
+        _ => Ok(false),
+    }
+}
+
+fn handle_global_mode_event(
+    key_sequence: &KeySequence,
+    send: &mpsc::Sender<Event>,
+    state: &state::SharedState,
+) -> Result<bool> {
+    let command = state
+        .read()
+        .unwrap()
+        .keymap_config
+        .find_command_from_key_sequence(key_sequence);
+
+    match command {
+        Some(command) => match command {
+            Command::Quit => {
+                state.write().unwrap().is_running = false;
+                Ok(true)
+            }
+            Command::NextTrack => {
+                send.send(Event::NextTrack)?;
+                Ok(true)
+            }
+            Command::PreviousTrack => {
+                send.send(Event::PreviousTrack)?;
+                Ok(true)
+            }
+            Command::ResumePause => {
+                send.send(Event::ResumePause)?;
+                Ok(true)
+            }
+            Command::Repeat => {
+                send.send(Event::Repeat)?;
+                Ok(true)
+            }
+            Command::Shuffle => {
+                send.send(Event::Shuffle)?;
+                Ok(true)
+            }
             Command::OpenCommandHelp => {
                 state.write().unwrap().popup_state = state::PopupState::CommandHelp;
                 Ok(true)
@@ -313,12 +333,12 @@ fn handle_event(
 
     let current_event_state = state.read().unwrap().popup_state.clone();
     let mut handled = match current_event_state {
-        state::PopupState::None => false,
+        state::PopupState::None => handle_default_mode_event(&key_sequence, send, state)?,
         state::PopupState::ContextSearch => handle_search_mode_event(&key_sequence, send, state)?,
         state::PopupState::PlaylistSwitch => {
             handle_playlist_switch_mode_event(&key_sequence, send, state)?
         }
-        state::PopupState::CommandHelp => handle_command_help_even(&key_sequence, send, state)?,
+        state::PopupState::CommandHelp => handle_command_help_event(&key_sequence, send, state)?,
     };
     if !handled {
         handled = handle_global_mode_event(&key_sequence, send, state)?;
