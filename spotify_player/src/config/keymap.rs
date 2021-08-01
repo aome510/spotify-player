@@ -1,34 +1,7 @@
+use crate::command::Command;
 use crate::key::{Key, KeySequence};
 use anyhow::Result;
 use serde::Deserialize;
-
-#[derive(Clone, Debug, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
-/// Application's command
-pub enum Command {
-    NextTrack,
-    PreviousTrack,
-    ResumePause,
-    Repeat,
-    Shuffle,
-
-    Quit,
-    ClosePopup,
-
-    SearchContextTracks,
-    SwitchPlaylists,
-    OpenCommandHelp,
-
-    SortByTrack,
-    SortByArtists,
-    SortByAlbum,
-    SortByDuration,
-    SortByAddedDate,
-    ReverseOrder,
-
-    SelectNext,
-    SelectPrevious,
-    PlaySelected,
-}
 
 #[derive(Debug, Deserialize)]
 /// Application's keymap configurations

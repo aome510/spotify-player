@@ -1,10 +1,11 @@
 mod client;
+mod command;
 mod config;
 mod event;
 mod key;
 mod state;
 mod ui;
-pub mod utils;
+mod utils;
 
 use anyhow::{anyhow, Result};
 

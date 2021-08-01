@@ -4,6 +4,8 @@ use std::sync::{Arc, RwLock};
 use tui::widgets::*;
 pub type SharedState = Arc<RwLock<State>>;
 
+// TODO: improve variable naming for the application states
+
 /// Application's state
 pub struct State {
     pub app_config: config::AppConfig,

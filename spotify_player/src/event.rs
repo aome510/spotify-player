@@ -1,5 +1,5 @@
 use crate::{
-    config::Command,
+    command::Command,
     key::{Key, KeySequence},
     state,
 };
@@ -343,6 +343,7 @@ fn handle_event(
     if !handled {
         handled = handle_global_mode_event(&key_sequence, send, state)?;
     }
+    // if no command is handled, open the shortcuts help based on the current key sequence input
     if handled {
         state.write().unwrap().shortcuts_help_ui_state = false;
         state.write().unwrap().current_key_prefix.keys = vec![];
