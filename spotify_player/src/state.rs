@@ -4,7 +4,7 @@ use std::sync::{Arc, RwLock};
 use tui::widgets::*;
 pub type SharedState = Arc<RwLock<State>>;
 
-/// Application state
+/// Application's state
 pub struct State {
     pub app_config: config::AppConfig,
     pub keymap_config: config::KeymapConfig,
@@ -22,10 +22,9 @@ pub struct State {
     pub current_playlists: Vec<playlist::SimplifiedPlaylist>,
     pub current_context_tracks: Vec<Track>,
 
-    pub current_event_state: PopupBufferState,
     pub context_search_state: ContextSearchState,
 
-    // UI states
+    pub popup_buffer_state: PopupBufferState,
     pub context_tracks_table_ui_state: TableState,
     pub playlists_list_ui_state: ListState,
     pub shortcuts_help_ui_state: bool,
@@ -54,6 +53,7 @@ pub enum PopupBufferState {
     None,
     ContextSearch,
     PlaylistSwitch,
+    CommandHelp,
 }
 
 #[derive(Default, Debug, Clone)]
@@ -102,7 +102,7 @@ impl Default for State {
 
             current_key_prefix: key::KeySequence { keys: vec![] },
 
-            current_event_state: PopupBufferState::None,
+            popup_buffer_state: PopupBufferState::None,
             context_search_state: ContextSearchState::default(),
 
             context_tracks_table_ui_state: TableState::default(),

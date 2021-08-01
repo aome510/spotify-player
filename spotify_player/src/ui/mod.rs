@@ -121,9 +121,17 @@ fn render_application_layout(frame: &mut Frame, state: &state::SharedState, rect
     };
 
     let (player_layout_rect, is_active) = {
-        let event_state = state.read().unwrap().current_event_state.clone();
+        let event_state = state.read().unwrap().popup_buffer_state.clone();
         match event_state {
             state::PopupBufferState::None => (rect, true),
+            state::PopupBufferState::CommandHelp => {
+                let chunks = Layout::default()
+                    .direction(Direction::Vertical)
+                    .constraints([Constraint::Length(5), Constraint::Min(0)].as_ref())
+                    .split(rect);
+                help::render_commands_help_widget(frame, state, chunks[1]);
+                (chunks[0], false)
+            }
             state::PopupBufferState::PlaylistSwitch => {
                 let chunks = Layout::default()
                     .direction(Direction::Vertical)

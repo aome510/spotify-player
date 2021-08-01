@@ -2,7 +2,7 @@ use crate::key::{Key, KeySequence};
 use anyhow::Result;
 use serde::Deserialize;
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 /// Application's command
 pub enum Command {
     NextTrack,
@@ -13,6 +13,7 @@ pub enum Command {
 
     SearchContextTracks,
     SwitchPlaylists,
+    OpenCommandHelp,
 
     SortByTrack,
     SortByArtists,
@@ -77,6 +78,10 @@ impl Default for KeymapConfig {
                 Keymap {
                     key_sequence: "P".into(),
                     command: Command::SwitchPlaylists,
+                },
+                Keymap {
+                    key_sequence: "?".into(),
+                    command: Command::OpenCommandHelp,
                 },
                 Keymap {
                     key_sequence: "q".into(),
