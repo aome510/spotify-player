@@ -266,6 +266,13 @@ fn render_playlist_tracks_widget(
         .borders(Borders::ALL);
     frame.render_widget(block, rect);
 
+    let mut playing_track_uri = "".to_owned();
+    if let Some(ref context) = state.read().unwrap().playback {
+        if let Some(rspotify::model::PlayingItem::Track(ref track)) = context.item {
+            playing_track_uri = track.uri.clone();
+        }
+    }
+
     let item_max_len = state.read().unwrap().app_config.track_table_item_max_len;
     let rows = state
         .read()
@@ -273,12 +280,21 @@ fn render_playlist_tracks_widget(
         .get_context_filtered_tracks()
         .into_iter()
         .map(|t| {
+            let (name, style) = if playing_track_uri == t.uri {
+                (
+                    format!("▶ {}", t.name),
+                    Style::default().fg(Color::LightGreen),
+                )
+            } else {
+                (t.name.clone(), Style::default())
+            };
             Row::new(vec![
-                Cell::from(utils::truncate_string(t.name.clone(), item_max_len)),
+                Cell::from(utils::truncate_string(name, item_max_len)),
                 Cell::from(utils::truncate_string(t.get_artists_info(), item_max_len)),
                 Cell::from(utils::truncate_string(t.album.name.clone(), item_max_len)),
                 Cell::from(utils::format_duration(t.duration)),
             ])
+            .style(style)
         })
         .collect::<Vec<_>>();
 
