@@ -73,6 +73,10 @@ pub fn start_ui(
         }
 
         terminal.draw(|f| {
+            let block =
+                Block::default().style(state.read().unwrap().app_config.theme_config.app_style());
+            f.render_widget(block, f.size());
+
             render_application_layout(f, &state, f.size());
         })?;
 
@@ -93,37 +97,34 @@ fn clean_up(mut terminal: Terminal) -> Result<()> {
 
 fn render_application_layout(frame: &mut Frame, state: &state::SharedState, rect: Rect) {
     // render the shortcuts help table if needed
-    let rect = {
+    let matches = {
         let state = state.read().unwrap();
         if state.shortcuts_help_ui_state {
-            let matches = {
-                let prefix = &state.input_key_sequence;
-                state
-                    .keymap_config
-                    .find_matched_prefix_keymaps(prefix)
-                    .into_iter()
-                    .map(|keymap| {
-                        let mut keymap = keymap.clone();
-                        keymap.key_sequence.keys.drain(0..prefix.keys.len());
-                        keymap
-                    })
-                    .filter(|keymap| !keymap.key_sequence.keys.is_empty())
-                    .collect::<Vec<_>>()
-            };
-
-            if matches.is_empty() {
-                rect
-            } else {
-                let chunks = Layout::default()
-                    .direction(Direction::Vertical)
-                    .constraints([Constraint::Min(0), Constraint::Length(7)].as_ref())
-                    .split(rect);
-                help::render_shortcuts_help_widget(frame, matches, chunks[1]);
-                chunks[0]
-            }
+            let prefix = &state.input_key_sequence;
+            state
+                .keymap_config
+                .find_matched_prefix_keymaps(prefix)
+                .into_iter()
+                .map(|keymap| {
+                    let mut keymap = keymap.clone();
+                    keymap.key_sequence.keys.drain(0..prefix.keys.len());
+                    keymap
+                })
+                .filter(|keymap| !keymap.key_sequence.keys.is_empty())
+                .collect::<Vec<_>>()
         } else {
-            rect
+            vec![]
         }
+    };
+    let rect = if matches.is_empty() {
+        rect
+    } else {
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Min(0), Constraint::Length(7)].as_ref())
+            .split(rect);
+        help::render_shortcuts_help_widget(matches, frame, state, chunks[1]);
+        chunks[0]
     };
 
     let (player_layout_rect, is_active) = {
@@ -151,17 +152,7 @@ fn render_application_layout(frame: &mut Frame, state: &state::SharedState, rect
                     .direction(Direction::Vertical)
                     .constraints([Constraint::Min(0), Constraint::Length(3)].as_ref())
                     .split(frame.size());
-                let search_box = Paragraph::new(
-                    state
-                        .read()
-                        .unwrap()
-                        .context_search_state
-                        .query
-                        .clone()
-                        .unwrap(),
-                )
-                .block(Block::default().borders(Borders::ALL).title("Search"));
-                frame.render_widget(search_box, chunks[1]);
+                render_search_box_widget(frame, state, chunks[1]);
                 (chunks[0], true)
             }
         }
@@ -173,26 +164,44 @@ fn render_application_layout(frame: &mut Frame, state: &state::SharedState, rect
 fn render_player_layout(is_active: bool, f: &mut Frame, state: &state::SharedState, rect: Rect) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Length(5), Constraint::Min(0)].as_ref())
+        .constraints([Constraint::Length(7), Constraint::Min(0)].as_ref())
         .split(rect);
     render_current_playback_widget(f, state, chunks[0]);
     render_playlist_tracks_widget(is_active, f, state, chunks[1]);
 }
 
+fn render_search_box_widget(frame: &mut Frame, state: &state::SharedState, rect: Rect) {
+    let state = state.read().unwrap();
+    let theme = &state.app_config.theme_config;
+    let search_box = Paragraph::new(state.context_search_state.query.clone().unwrap()).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(theme.block_title_with_style("Search")),
+    );
+    frame.render_widget(search_box, rect);
+}
+
 fn render_playlists_widget(frame: &mut Frame, state: &state::SharedState, rect: Rect) {
-    let list = List::new(
-        state
-            .read()
-            .unwrap()
-            .user_playlists
-            .iter()
-            .map(|p| ListItem::new(p.name.clone()))
-            .collect::<Vec<_>>(),
-    )
-    .highlight_style(Style::default().add_modifier(Modifier::ITALIC))
-    // mostly to create a left margin
-    .highlight_symbol("  ")
-    .block(Block::default().title("Playlists").borders(Borders::ALL));
+    let list = {
+        let state = state.read().unwrap();
+        let theme = &state.app_config.theme_config;
+
+        List::new(
+            state
+                .user_playlists
+                .iter()
+                .map(|p| ListItem::new(p.name.clone()))
+                .collect::<Vec<_>>(),
+        )
+        .highlight_style(theme.selection_style())
+        // mostly to create a left margin
+        .highlight_symbol("  ")
+        .block(
+            Block::default()
+                .title(theme.block_title_with_style("Playlists"))
+                .borders(Borders::ALL),
+        )
+    };
     frame.render_stateful_widget(
         list,
         rect,
@@ -207,12 +216,15 @@ fn render_current_playback_widget(frame: &mut Frame, state: &state::SharedState,
         .margin(1)
         .split(rect);
 
+    let state = state.read().unwrap();
+    let theme = &state.app_config.theme_config;
+
     let block = Block::default()
-        .title("Current Playback")
+        .title(theme.block_title_with_style("Current Playback"))
         .borders(Borders::ALL);
     frame.render_widget(block, rect);
 
-    if let Some(ref context) = state.read().unwrap().playback {
+    if let Some(ref context) = state.playback {
         if let Some(rspotify::model::PlayingItem::Track(ref track)) = context.item {
             let playback_info = format!(
                 "{} by {} (repeat: {}, shuffle: {}, volume: {}%)\n",
@@ -227,17 +239,14 @@ fn render_current_playback_widget(frame: &mut Frame, state: &state::SharedState,
                 context.shuffle_state,
                 context.device.volume_percent,
             );
+
             let playback_desc = Paragraph::new(playback_info)
                 .wrap(Wrap { trim: true })
+                // .style(theme.text_desc_style())
                 .block(Block::default());
             let progress_bar = Gauge::default()
                 .block(Block::default())
-                .gauge_style(
-                    Style::default()
-                        .fg(Color::DarkGray)
-                        .bg(Color::Gray)
-                        .add_modifier(Modifier::ITALIC),
-                )
+                .gauge_style(theme.gauge_style())
                 .ratio((context.progress_ms.unwrap() as f64) / (track.duration_ms as f64))
                 .label(format!(
                     "{}/{}",
@@ -261,69 +270,72 @@ fn render_playlist_tracks_widget(
         .constraints([Constraint::Length(1), Constraint::Min(0)].as_ref())
         .margin(1)
         .split(rect);
-    let block = Block::default()
-        .title("Context Tracks")
-        .borders(Borders::ALL);
-    frame.render_widget(block, rect);
 
-    let mut playing_track_uri = "".to_owned();
-    if let Some(ref context) = state.read().unwrap().playback {
-        if let Some(rspotify::model::PlayingItem::Track(ref track)) = context.item {
-            playing_track_uri = track.uri.clone();
+    let (context_desc, track_table) = {
+        let state = state.read().unwrap();
+        let theme = &state.app_config.theme_config;
+
+        let block = Block::default()
+            .title(theme.block_title_with_style("Context Tracks"))
+            .borders(Borders::ALL);
+        frame.render_widget(block, rect);
+
+        let mut playing_track_uri = "";
+        if let Some(ref context) = state.playback {
+            if let Some(rspotify::model::PlayingItem::Track(ref track)) = context.item {
+                playing_track_uri = &track.uri;
+            }
         }
-    }
 
-    let item_max_len = state.read().unwrap().app_config.track_table_item_max_len;
-    let rows = state
-        .read()
-        .unwrap()
-        .get_context_filtered_tracks()
-        .into_iter()
-        .map(|t| {
-            let (name, style) = if playing_track_uri == t.uri {
-                (
-                    format!("▶ {}", t.name),
-                    Style::default().fg(Color::LightGreen),
-                )
+        let item_max_len = state.app_config.track_table_item_max_len;
+        let rows = state
+            .get_context_filtered_tracks()
+            .into_iter()
+            .map(|t| {
+                let (name, style) = if playing_track_uri == t.uri {
+                    (format!("▶ {}", t.name), theme.current_playing_style())
+                } else {
+                    (t.name.clone(), Style::default())
+                };
+                Row::new(vec![
+                    Cell::from(utils::truncate_string(name, item_max_len)),
+                    Cell::from(utils::truncate_string(t.get_artists_info(), item_max_len)),
+                    Cell::from(utils::truncate_string(t.album.name.clone(), item_max_len)),
+                    Cell::from(utils::format_duration(t.duration)),
+                ])
+                .style(style)
+            })
+            .collect::<Vec<_>>();
+
+        let context_desc = Paragraph::new(state.get_context_description())
+            .block(Block::default().style(theme.text_desc_style()));
+        let track_table = Table::new(rows)
+            .header(
+                Row::new(vec![
+                    Cell::from("Track"),
+                    Cell::from("Artists"),
+                    Cell::from("Album"),
+                    Cell::from("Duration"),
+                ])
+                .style(theme.table_header_style()),
+            )
+            .block(Block::default())
+            .widths(&[
+                Constraint::Percentage(30),
+                Constraint::Percentage(30),
+                Constraint::Percentage(30),
+                Constraint::Percentage(10),
+            ])
+            .highlight_style(if is_active {
+                theme.selection_style()
             } else {
-                (t.name.clone(), Style::default())
-            };
-            Row::new(vec![
-                Cell::from(utils::truncate_string(name, item_max_len)),
-                Cell::from(utils::truncate_string(t.get_artists_info(), item_max_len)),
-                Cell::from(utils::truncate_string(t.album.name.clone(), item_max_len)),
-                Cell::from(utils::format_duration(t.duration)),
-            ])
-            .style(style)
-        })
-        .collect::<Vec<_>>();
+                Style::default()
+            })
+            // mostly to create a left margin
+            .highlight_symbol("  ");
 
-    let context_desc =
-        Paragraph::new(state.read().unwrap().get_context_description()).block(Block::default());
-    let track_table = Table::new(rows)
-        .header(
-            Row::new(vec![
-                Cell::from("Track"),
-                Cell::from("Artists"),
-                Cell::from("Album"),
-                Cell::from("Duration"),
-            ])
-            .style(Style::default().fg(Color::Yellow)),
-        )
-        .block(Block::default())
-        .widths(&[
-            Constraint::Percentage(30),
-            Constraint::Percentage(30),
-            Constraint::Percentage(30),
-            Constraint::Percentage(10),
-        ])
-        .highlight_style(if is_active {
-            Style::default().add_modifier(Modifier::ITALIC)
-        } else {
-            Style::default()
-        })
-        // mostly to create a left margin
-        .highlight_symbol("  ");
+        (context_desc, track_table)
+    };
 
     frame.render_widget(context_desc, chunks[0]);
     frame.render_stateful_widget(

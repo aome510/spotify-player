@@ -1,4 +1,5 @@
 mod keymap;
+mod theme;
 
 const DEFAULT_CONFIG_FOLDER: &str = ".config/spotify-player";
 const TOKEN_CACHE_FILE: &str = ".spotify_token_cache.json";
@@ -26,6 +27,8 @@ pub struct AppConfig {
     pub app_refresh_duration_in_ms: u64,
     pub playback_refresh_duration_in_ms: u64,
     pub track_table_item_max_len: usize,
+
+    pub theme_config: theme::ThemeConfig,
 }
 
 impl ClientConfig {
@@ -42,6 +45,8 @@ impl Default for AppConfig {
             app_refresh_duration_in_ms: 30,
             playback_refresh_duration_in_ms: 1000,
             track_table_item_max_len: 32,
+
+            theme_config: theme::ThemeConfig::default(),
         }
     }
 }

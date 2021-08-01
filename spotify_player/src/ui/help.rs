@@ -2,7 +2,7 @@ use super::Frame;
 use crate::{config, state};
 use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
-use tui::{layout::*, style::*, widgets::*};
+use tui::{layout::*, widgets::*};
 
 const SHORTCUT_TABLE_N_COLUMNS: usize = 4;
 const SHORTCUT_TABLE_CONSTRAINS: [Constraint; SHORTCUT_TABLE_N_COLUMNS] = [
@@ -15,7 +15,15 @@ const COMMAND_TABLE_CONSTRAINTS: [Constraint; 2] =
     [Constraint::Percentage(30), Constraint::Percentage(70)];
 
 /// renders a shortcuts help widget from a list of keymaps
-pub fn render_shortcuts_help_widget(frame: &mut Frame, keymaps: Vec<config::Keymap>, rect: Rect) {
+pub fn render_shortcuts_help_widget(
+    keymaps: Vec<config::Keymap>,
+    frame: &mut Frame,
+    state: &state::SharedState,
+    rect: Rect,
+) {
+    let state = state.read().unwrap();
+    let theme = &state.app_config.theme_config;
+
     let help_table = Table::new(
         keymaps
             .into_iter()
@@ -26,12 +34,18 @@ pub fn render_shortcuts_help_widget(frame: &mut Frame, keymaps: Vec<config::Keym
             .collect::<Vec<_>>(),
     )
     .widths(&SHORTCUT_TABLE_CONSTRAINS)
-    .block(Block::default().title("Shortcuts").borders(Borders::ALL));
+    .block(
+        Block::default()
+            .title(theme.block_title_with_style("Shortcuts"))
+            .borders(Borders::ALL),
+    );
     frame.render_widget(help_table, rect);
 }
 
 pub fn render_commands_help_widget(frame: &mut Frame, state: &state::SharedState, rect: Rect) {
     let state = state.read().unwrap();
+    let theme = &state.app_config.theme_config;
+
     let mut map = BTreeMap::new();
     state.keymap_config.keymaps.iter().for_each(|km| {
         let v = map.entry(km.command.clone());
@@ -56,10 +70,13 @@ pub fn render_commands_help_widget(frame: &mut Frame, state: &state::SharedState
             .collect::<Vec<_>>(),
     )
     .header(
-        Row::new(vec![Cell::from("Command"), Cell::from("Keys")])
-            .style(Style::default().fg(Color::Yellow)),
+        Row::new(vec![Cell::from("Command"), Cell::from("Keys")]).style(theme.table_header_style()),
     )
     .widths(&COMMAND_TABLE_CONSTRAINTS)
-    .block(Block::default().title("Shortcuts").borders(Borders::ALL));
+    .block(
+        Block::default()
+            .title(theme.block_title_with_style("Commands"))
+            .borders(Borders::ALL),
+    );
     frame.render_widget(help_table, rect);
 }
