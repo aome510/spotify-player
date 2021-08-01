@@ -44,8 +44,14 @@ impl ThemeConfig {
             .fg(self.foreground.color)
     }
 
-    pub fn text_desc_style(&self) -> Style {
-        Style::default().fg(self.cyan.color)
+    pub fn primary_text_desc_style(&self) -> Style {
+        Style::default()
+            .fg(self.cyan.color)
+            .add_modifier(Modifier::BOLD)
+    }
+
+    pub fn secondary_text_desc_style(&self) -> Style {
+        Style::default().fg(self.yellow.color)
     }
 
     pub fn gauge_style(&self) -> Style {
@@ -55,16 +61,20 @@ impl ThemeConfig {
             .add_modifier(Modifier::ITALIC)
     }
 
-    pub fn _comment_style(&self) -> Style {
+    pub fn comment_style(&self) -> Style {
         Style::default().fg(self.comment.color)
     }
 
     pub fn current_playing_style(&self) -> Style {
-        Style::default().fg(self.green.color)
+        Style::default()
+            .fg(self.green.color)
+            .add_modifier(Modifier::BOLD)
     }
 
     pub fn selection_style(&self) -> Style {
-        Style::default().bg(self.selection.color)
+        Style::default()
+            .bg(self.selection.color)
+            .add_modifier(Modifier::BOLD)
     }
 
     pub fn table_header_style(&self) -> Style {
@@ -75,12 +85,7 @@ impl ThemeConfig {
     where
         S: Into<String>,
     {
-        Span::styled(
-            content.into(),
-            Style::default()
-                .fg(self.pink.color)
-                .add_modifier(Modifier::BOLD),
-        )
+        Span::styled(content.into(), Style::default().fg(self.pink.color))
     }
 }
 

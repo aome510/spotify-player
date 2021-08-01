@@ -2,7 +2,7 @@ use crate::event;
 use crate::state;
 use crate::utils;
 use anyhow::Result;
-use tui::{layout::*, style::*, widgets::*};
+use tui::{layout::*, style::*, text::*, widgets::*};
 
 type Terminal = tui::Terminal<tui::backend::CrosstermBackend<std::io::Stdout>>;
 type Frame<'a> = tui::Frame<'a, tui::backend::CrosstermBackend<std::io::Stdout>>;
@@ -134,7 +134,7 @@ fn render_application_layout(frame: &mut Frame, state: &state::SharedState, rect
             state::PopupState::CommandHelp => {
                 let chunks = Layout::default()
                     .direction(Direction::Vertical)
-                    .constraints([Constraint::Length(5), Constraint::Min(0)].as_ref())
+                    .constraints([Constraint::Length(7), Constraint::Min(0)].as_ref())
                     .split(rect);
                 help::render_commands_help_widget(frame, state, chunks[1]);
                 (chunks[0], false)
@@ -226,19 +226,37 @@ fn render_current_playback_widget(frame: &mut Frame, state: &state::SharedState,
 
     if let Some(ref context) = state.playback {
         if let Some(rspotify::model::PlayingItem::Track(ref track)) = context.item {
-            let playback_info = format!(
-                "{} by {} (repeat: {}, shuffle: {}, volume: {}%)\n",
-                track.name,
-                track
-                    .artists
-                    .iter()
-                    .map(|a| a.name.clone())
-                    .collect::<Vec<_>>()
-                    .join(","),
-                context.repeat_state.as_str(),
-                context.shuffle_state,
-                context.device.volume_percent,
-            );
+            let playback_info = vec![
+                Span::styled(
+                    format!(
+                        "{} by {}",
+                        track.name,
+                        track
+                            .artists
+                            .iter()
+                            .map(|a| a.name.clone())
+                            .collect::<Vec<_>>()
+                            .join(","),
+                    ),
+                    theme.primary_text_desc_style(),
+                )
+                .into(),
+                Span::styled(
+                    track.album.name.to_string(),
+                    theme.secondary_text_desc_style(),
+                )
+                .into(),
+                Span::styled(
+                    format!(
+                        "repeat: {} | shuffle: {} | volume: {}%",
+                        context.repeat_state.as_str(),
+                        context.shuffle_state,
+                        context.device.volume_percent,
+                    ),
+                    theme.comment_style(),
+                )
+                .into(),
+            ];
 
             let playback_desc = Paragraph::new(playback_info)
                 .wrap(Wrap { trim: true })
@@ -248,10 +266,13 @@ fn render_current_playback_widget(frame: &mut Frame, state: &state::SharedState,
                 .block(Block::default())
                 .gauge_style(theme.gauge_style())
                 .ratio((context.progress_ms.unwrap() as f64) / (track.duration_ms as f64))
-                .label(format!(
-                    "{}/{}",
-                    utils::format_duration(context.progress_ms.unwrap()),
-                    utils::format_duration(track.duration_ms),
+                .label(Span::styled(
+                    format!(
+                        "{}/{}",
+                        utils::format_duration(context.progress_ms.unwrap()),
+                        utils::format_duration(track.duration_ms),
+                    ),
+                    Style::default().add_modifier(Modifier::BOLD),
                 ));
             frame.render_widget(playback_desc, chunks[0]);
             frame.render_widget(progress_bar, chunks[1]);
@@ -308,7 +329,7 @@ fn render_playlist_tracks_widget(
             .collect::<Vec<_>>();
 
         let context_desc = Paragraph::new(state.get_context_description())
-            .block(Block::default().style(theme.text_desc_style()));
+            .block(Block::default().style(theme.primary_text_desc_style()));
         let track_table = Table::new(rows)
             .header(
                 Row::new(vec![

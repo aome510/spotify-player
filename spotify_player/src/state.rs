@@ -191,7 +191,7 @@ impl Track {
             .iter()
             .map(|a| a.name.clone())
             .collect::<Vec<_>>()
-            .join(",")
+            .join(", ")
     }
 
     /// gets the track basic information (track's name, artists' name and album's name)
