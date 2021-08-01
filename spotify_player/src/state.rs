@@ -24,7 +24,7 @@ pub struct State {
 
     pub context_search_state: ContextSearchState,
 
-    pub popup_buffer_state: PopupBufferState,
+    pub popup_state: PopupState,
     pub context_tracks_table_ui_state: TableState,
     pub playlists_list_ui_state: ListState,
     pub shortcuts_help_ui_state: bool,
@@ -48,8 +48,8 @@ pub enum ContextSortOrder {
 }
 
 #[derive(Clone)]
-/// Popup buffer state
-pub enum PopupBufferState {
+/// Popup state
+pub enum PopupState {
     None,
     ContextSearch,
     PlaylistSwitch,
@@ -102,7 +102,7 @@ impl Default for State {
 
             current_key_prefix: key::KeySequence { keys: vec![] },
 
-            popup_buffer_state: PopupBufferState::None,
+            popup_state: PopupState::None,
             context_search_state: ContextSearchState::default(),
 
             context_tracks_table_ui_state: TableState::default(),

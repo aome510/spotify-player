@@ -100,7 +100,7 @@ fn handle_search_mode_event(
                 let mut state = state.write().unwrap();
                 state.context_search_state.query = None;
                 state.context_tracks_table_ui_state.select(Some(0));
-                state.popup_buffer_state = state::PopupBufferState::None;
+                state.popup_state = state::PopupState::None;
                 Ok(true)
             }
             _ => Ok(false),
@@ -145,7 +145,7 @@ fn handle_playlist_switch_mode_event(
                 Ok(true)
             }
             Command::ClosePopup => {
-                state.write().unwrap().popup_buffer_state = state::PopupBufferState::None;
+                state.write().unwrap().popup_state = state::PopupState::None;
                 Ok(true)
             }
             _ => Ok(false),
@@ -169,7 +169,7 @@ fn handle_command_help_even(
         let mut state = state.write().unwrap();
         state.context_search_state.query = None;
         state.context_tracks_table_ui_state.select(Some(0));
-        state.popup_buffer_state = state::PopupBufferState::None;
+        state.popup_state = state::PopupState::None;
         Ok(true)
     } else {
         Ok(false)
@@ -238,7 +238,7 @@ fn handle_global_mode_event(
             Command::SearchContextTracks => {
                 let mut state = state.write().unwrap();
                 state.context_tracks_table_ui_state.select(Some(0));
-                state.popup_buffer_state = state::PopupBufferState::ContextSearch;
+                state.popup_state = state::PopupState::ContextSearch;
                 state.context_search_state = state::ContextSearchState {
                     query: Some("/".to_owned()),
                     tracks: state
@@ -274,11 +274,11 @@ fn handle_global_mode_event(
                 Ok(true)
             }
             Command::SwitchPlaylists => {
-                state.write().unwrap().popup_buffer_state = state::PopupBufferState::PlaylistSwitch;
+                state.write().unwrap().popup_state = state::PopupState::PlaylistSwitch;
                 Ok(true)
             }
             Command::OpenCommandHelp => {
-                state.write().unwrap().popup_buffer_state = state::PopupBufferState::CommandHelp;
+                state.write().unwrap().popup_state = state::PopupState::CommandHelp;
                 Ok(true)
             }
             _ => Ok(false),
@@ -311,18 +311,14 @@ fn handle_event(
         key_sequence = KeySequence { keys: vec![key] };
     }
 
-    let current_event_state = state.read().unwrap().popup_buffer_state.clone();
+    let current_event_state = state.read().unwrap().popup_state.clone();
     let mut handled = match current_event_state {
-        state::PopupBufferState::None => false,
-        state::PopupBufferState::ContextSearch => {
-            handle_search_mode_event(&key_sequence, send, state)?
-        }
-        state::PopupBufferState::PlaylistSwitch => {
+        state::PopupState::None => false,
+        state::PopupState::ContextSearch => handle_search_mode_event(&key_sequence, send, state)?,
+        state::PopupState::PlaylistSwitch => {
             handle_playlist_switch_mode_event(&key_sequence, send, state)?
         }
-        state::PopupBufferState::CommandHelp => {
-            handle_command_help_even(&key_sequence, send, state)?
-        }
+        state::PopupState::CommandHelp => handle_command_help_even(&key_sequence, send, state)?,
     };
     if !handled {
         handled = handle_global_mode_event(&key_sequence, send, state)?;

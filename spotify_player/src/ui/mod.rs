@@ -121,10 +121,10 @@ fn render_application_layout(frame: &mut Frame, state: &state::SharedState, rect
     };
 
     let (player_layout_rect, is_active) = {
-        let event_state = state.read().unwrap().popup_buffer_state.clone();
+        let event_state = state.read().unwrap().popup_state.clone();
         match event_state {
-            state::PopupBufferState::None => (rect, true),
-            state::PopupBufferState::CommandHelp => {
+            state::PopupState::None => (rect, true),
+            state::PopupState::CommandHelp => {
                 let chunks = Layout::default()
                     .direction(Direction::Vertical)
                     .constraints([Constraint::Length(5), Constraint::Min(0)].as_ref())
@@ -132,7 +132,7 @@ fn render_application_layout(frame: &mut Frame, state: &state::SharedState, rect
                 help::render_commands_help_widget(frame, state, chunks[1]);
                 (chunks[0], false)
             }
-            state::PopupBufferState::PlaylistSwitch => {
+            state::PopupState::PlaylistSwitch => {
                 let chunks = Layout::default()
                     .direction(Direction::Vertical)
                     .constraints([Constraint::Min(0), Constraint::Length(10)].as_ref())
@@ -140,7 +140,7 @@ fn render_application_layout(frame: &mut Frame, state: &state::SharedState, rect
                 render_playlists_widget(frame, state, chunks[1]);
                 (chunks[0], false)
             }
-            state::PopupBufferState::ContextSearch => {
+            state::PopupState::ContextSearch => {
                 let chunks = Layout::default()
                     .direction(Direction::Vertical)
                     .constraints([Constraint::Min(0), Constraint::Length(3)].as_ref())
