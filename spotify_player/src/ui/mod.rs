@@ -73,8 +73,7 @@ pub fn start_ui(
         }
 
         terminal.draw(|f| {
-            let block =
-                Block::default().style(state.read().unwrap().app_config.theme_config.app_style());
+            let block = Block::default().style(state.read().unwrap().theme_config.app_style());
             f.render_widget(block, f.size());
 
             render_application_layout(f, &state, f.size());
@@ -172,7 +171,7 @@ fn render_player_layout(is_active: bool, f: &mut Frame, state: &state::SharedSta
 
 fn render_search_box_widget(frame: &mut Frame, state: &state::SharedState, rect: Rect) {
     let state = state.read().unwrap();
-    let theme = &state.app_config.theme_config;
+    let theme = &state.theme_config;
     let search_box = Paragraph::new(state.context_search_state.query.clone().unwrap()).block(
         Block::default()
             .borders(Borders::ALL)
@@ -184,7 +183,7 @@ fn render_search_box_widget(frame: &mut Frame, state: &state::SharedState, rect:
 fn render_playlists_widget(frame: &mut Frame, state: &state::SharedState, rect: Rect) {
     let list = {
         let state = state.read().unwrap();
-        let theme = &state.app_config.theme_config;
+        let theme = &state.theme_config;
 
         List::new(
             state
@@ -217,7 +216,7 @@ fn render_current_playback_widget(frame: &mut Frame, state: &state::SharedState,
         .split(rect);
 
     let state = state.read().unwrap();
-    let theme = &state.app_config.theme_config;
+    let theme = &state.theme_config;
 
     let block = Block::default()
         .title(theme.block_title_with_style("Current Playback"))
@@ -294,7 +293,7 @@ fn render_playlist_tracks_widget(
 
     let (context_desc, track_table) = {
         let state = state.read().unwrap();
-        let theme = &state.app_config.theme_config;
+        let theme = &state.theme_config;
 
         let block = Block::default()
             .title(theme.block_title_with_style("Context Tracks"))

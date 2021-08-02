@@ -5,6 +5,7 @@ const DEFAULT_CONFIG_FOLDER: &str = ".config/spotify-player";
 const TOKEN_CACHE_FILE: &str = ".spotify_token_cache.json";
 const CLIENT_CONFIG_FILE: &str = "client.toml";
 const APP_CONFIG_FILE: &str = "app.toml";
+const THEME_CONFIG_FILE: &str = "theme.toml";
 const KEYMAP_CONFIG_FILE: &str = "keymap.toml";
 
 use anyhow::{anyhow, Result};
@@ -13,6 +14,7 @@ use serde::Deserialize;
 use std::path::{Path, PathBuf};
 
 pub use keymap::*;
+pub use theme::*;
 
 #[derive(Deserialize)]
 /// Spotify client configurations
@@ -27,8 +29,6 @@ pub struct AppConfig {
     pub app_refresh_duration_in_ms: u64,
     pub playback_refresh_duration_in_ms: u64,
     pub track_table_item_max_len: usize,
-
-    pub theme_config: theme::ThemeConfig,
 }
 
 impl ClientConfig {
@@ -43,10 +43,8 @@ impl Default for AppConfig {
     fn default() -> Self {
         AppConfig {
             app_refresh_duration_in_ms: 30,
-            playback_refresh_duration_in_ms: 1000,
+            playback_refresh_duration_in_ms: 1_000,
             track_table_item_max_len: 32,
-
-            theme_config: theme::ThemeConfig::default(),
         }
     }
 }

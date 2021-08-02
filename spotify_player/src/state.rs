@@ -8,6 +8,7 @@ pub type SharedState = Arc<RwLock<State>>;
 pub struct State {
     pub app_config: config::AppConfig,
     pub keymap_config: config::KeymapConfig,
+    pub theme_config: config::ThemeConfig,
 
     pub input_key_sequence: key::KeySequence,
 
@@ -93,6 +94,7 @@ impl Default for State {
     fn default() -> Self {
         State {
             app_config: config::AppConfig::default(),
+            theme_config: config::ThemeConfig::default(),
             keymap_config: config::KeymapConfig::default(),
 
             input_key_sequence: key::KeySequence { keys: vec![] },

@@ -22,7 +22,7 @@ pub fn render_shortcuts_help_widget(
     rect: Rect,
 ) {
     let state = state.read().unwrap();
-    let theme = &state.app_config.theme_config;
+    let theme = &state.theme_config;
 
     let help_table = Table::new(
         keymaps
@@ -44,7 +44,7 @@ pub fn render_shortcuts_help_widget(
 
 pub fn render_commands_help_widget(frame: &mut Frame, state: &state::SharedState, rect: Rect) {
     let state = state.read().unwrap();
-    let theme = &state.app_config.theme_config;
+    let theme = &state.theme_config;
 
     let mut map = BTreeMap::new();
     state.keymap_config.keymaps.iter().for_each(|km| {
