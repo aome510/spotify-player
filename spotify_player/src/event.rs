@@ -11,6 +11,7 @@ use tokio::stream::StreamExt;
 #[derive(Debug)]
 /// An event to communicate with the client
 pub enum Event {
+    GetCurrentPlayback,
     RefreshToken,
     NextTrack,
     PreviousTrack,

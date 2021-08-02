@@ -73,6 +73,8 @@ async fn main() -> Result<()> {
     }
 
     // start application's threads
+
+    // client event watcher/handler thread
     std::thread::spawn({
         let client_config = config::ClientConfig::from_config_file(&config_folder)?;
 
@@ -93,12 +95,33 @@ async fn main() -> Result<()> {
             client::start_watcher(state, client, recv);
         }
     });
+    // terminal event streaming thread
     std::thread::spawn({
-        let sender = send.clone();
+        let send = send.clone();
         let state = state.clone();
         move || {
-            event::start_event_stream(sender, state);
+            event::start_event_stream(send, state);
         }
     });
+    // playback pooling (every `playback_refresh_duration_in_ms` ms) thread
+    std::thread::spawn({
+        let playback_refresh_duration = std::time::Duration::from_millis(
+            state
+                .read()
+                .unwrap()
+                .app_config
+                .playback_refresh_duration_in_ms,
+        );
+        let send = send.clone();
+        move || loop {
+            send.send(event::Event::GetCurrentPlayback)
+                .unwrap_or_else(|err| {
+                    log::warn!("failed to send GetCurrentPlayback event: {:#?}", err);
+                });
+            std::thread::sleep(playback_refresh_duration);
+        }
+    });
+
+    // application's UI rendering as the main thread
     ui::start_ui(state, send)
 }

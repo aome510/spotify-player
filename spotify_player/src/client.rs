@@ -8,8 +8,8 @@ use rspotify::{
     senum::*,
 };
 use std::sync::RwLockReadGuard;
+use std::time::{Duration, SystemTime};
 
-#[derive(Clone)]
 /// A spotify client
 pub struct Client {
     spotify: Spotify,
@@ -36,8 +36,14 @@ impl Client {
         log::info!("handle the client event {:?}", event);
 
         match event {
+            event::Event::GetCurrentPlayback => {
+                state.write().unwrap().playback = self.get_current_playback().await?;
+            }
             event::Event::RefreshToken => {
-                state.write().unwrap().auth_token_expires_at = self.refresh_token().await?;
+                let expires_at = state.read().unwrap().auth_token_expires_at;
+                if SystemTime::now() > expires_at {
+                    state.write().unwrap().auth_token_expires_at = self.refresh_token().await?;
+                }
             }
             event::Event::NextTrack => {
                 self.next_track(state.read().unwrap().devices[0].id.clone())
@@ -99,7 +105,7 @@ impl Client {
 
     /// refreshes the client's authentication token.
     /// Returns the token's expired time.
-    pub async fn refresh_token(&mut self) -> Result<std::time::SystemTime> {
+    pub async fn refresh_token(&mut self) -> Result<SystemTime> {
         log::info!("refresh auth token...");
 
         let token = rspotify::util::get_token(&mut self.oauth)
@@ -114,13 +120,13 @@ impl Client {
             .await
             .expect("failed to refresh the access token");
 
-        let expires_at = std::time::SystemTime::UNIX_EPOCH
-            + std::time::Duration::from_secs(
+        let expires_at = SystemTime::UNIX_EPOCH
+            + Duration::from_secs(
                 new_token
                     .expires_at
                     .expect("failed to get token's `expires_at`") as u64,
             )
-            - std::time::Duration::from_secs(10);
+            - Duration::from_secs(10);
 
         // build a new spotify client from the new token
         self.spotify = Self::build_spotify_client(new_token);
@@ -128,7 +134,7 @@ impl Client {
         log::info!(
             "token will expire in {:?} seconds",
             expires_at
-                .duration_since(std::time::SystemTime::now())
+                .duration_since(SystemTime::now())
                 .unwrap()
                 .as_secs()
         );
@@ -285,6 +291,8 @@ impl Client {
             }
         }
 
+        log::info!("update context as playlist with id {}", playlist_id);
+
         // get the playlist
         let playlist = self.get_playlist(&playlist_id).await?;
         // get the playlist's tracks
@@ -317,6 +325,8 @@ impl Client {
                 return Ok(());
             }
         }
+
+        log::info!("update context as album with id {}", album_id);
 
         // get the album
         let album = self.get_album(&album_id).await?;
@@ -416,28 +426,6 @@ impl Client {
     }
 }
 
-/// refreshes the current playback context every `playback_refresh_duration_in_ms` ms
-async fn refresh_current_playback_context(state: state::SharedState, client: Client) {
-    let playback_refresh_duration = std::time::Duration::from_millis(
-        state
-            .read()
-            .unwrap()
-            .app_config
-            .playback_refresh_duration_in_ms,
-    );
-    loop {
-        match client.get_current_playback().await {
-            Ok(playback) => {
-                state.write().unwrap().playback = playback;
-            }
-            Err(err) => {
-                log::warn!("{:#?}", err);
-            }
-        }
-        std::thread::sleep(playback_refresh_duration);
-    }
-}
-
 #[tokio::main]
 /// starts the client's event watcher
 pub async fn start_watcher(
@@ -459,13 +447,7 @@ pub async fn start_watcher(
             log::warn!("failed to get user's playlists: {:#?}", err);
         }
     }
-    tokio::task::spawn({
-        let client = client.clone();
-        let state = state.clone();
-        async {
-            refresh_current_playback_context(state, client).await;
-        }
-    });
+
     while let Ok(event) = recv.recv() {
         if let Err(err) = client.handle_event(&state, event).await {
             log::warn!("{:#?}", err);
