@@ -22,7 +22,7 @@ pub enum Event {
     PlaylistAsContext(String),
     AlbumAsContext(String),
     PlaySelectedTrack,
-    PlaySelectedPlaylist,
+    PlayContext(String),
     SearchTracksInContext,
     SortTracksInContext(state::ContextSortOrder),
 }
@@ -36,6 +36,50 @@ impl From<term_event::KeyEvent> for Key {
             KeyModifiers::SHIFT => Key::None(event.code),
             _ => unreachable!(),
         }
+    }
+}
+
+fn handle_generic_command_for_context_track_table(
+    command: Command,
+    send: &mpsc::Sender<Event>,
+    state: &state::SharedState,
+) -> Result<bool> {
+    match command {
+        Command::SelectNext => {
+            let mut state = state.write().unwrap();
+            if let Some(id) = state.context_tracks_table_ui_state.selected() {
+                if id + 1 < state.get_context_filtered_tracks().len() {
+                    state.context_tracks_table_ui_state.select(Some(id + 1));
+                }
+            }
+            Ok(true)
+        }
+        Command::SelectPrevious => {
+            let mut state = state.write().unwrap();
+            if let Some(id) = state.context_tracks_table_ui_state.selected() {
+                if id > 0 {
+                    state.context_tracks_table_ui_state.select(Some(id - 1));
+                }
+            }
+            Ok(true)
+        }
+        Command::ChoseSelected => {
+            send.send(Event::PlaySelectedTrack)?;
+            Ok(true)
+        }
+        Command::PlaySelectedTrackAlbum => {
+            let state = state.read().unwrap();
+            if let Some(id) = state.context_tracks_table_ui_state.selected() {
+                let tracks = state.get_context_filtered_tracks();
+                if id < tracks.len() {
+                    if let Some(uri) = tracks[id].album.uri.clone() {
+                        send.send(Event::PlayContext(uri))?;
+                    }
+                }
+            }
+            Ok(true)
+        }
+        _ => Ok(false),
     }
 }
 
@@ -76,28 +120,6 @@ fn handle_key_sequence_for_context_search_popup(
 
     match command {
         Some(command) => match command {
-            Command::SelectNext => {
-                let mut state = state.write().unwrap();
-                if let Some(id) = state.context_tracks_table_ui_state.selected() {
-                    if id + 1 < state.get_context_filtered_tracks().len() {
-                        state.context_tracks_table_ui_state.select(Some(id + 1));
-                    }
-                }
-                Ok(true)
-            }
-            Command::SelectPrevious => {
-                let mut state = state.write().unwrap();
-                if let Some(id) = state.context_tracks_table_ui_state.selected() {
-                    if id > 0 {
-                        state.context_tracks_table_ui_state.select(Some(id - 1));
-                    }
-                }
-                Ok(true)
-            }
-            Command::ChoseSelected => {
-                send.send(Event::PlaySelectedTrack)?;
-                Ok(true)
-            }
             Command::ClosePopup => {
                 let mut state = state.write().unwrap();
                 state.context_search_state.query = None;
@@ -105,7 +127,7 @@ fn handle_key_sequence_for_context_search_popup(
                 state.popup_state = state::PopupState::None;
                 Ok(true)
             }
-            _ => Ok(false),
+            _ => handle_generic_command_for_context_track_table(command, send, state),
         },
         None => Ok(false),
     }
@@ -143,7 +165,10 @@ fn handle_key_sequence_for_playlist_switch_popup(
                 Ok(true)
             }
             Command::ChoseSelected => {
-                send.send(Event::PlaySelectedPlaylist)?;
+                let state = state.read().unwrap();
+                if let Some(id) = state.playlists_list_ui_state.selected() {
+                    send.send(Event::PlayContext(state.user_playlists[id].uri.clone()))?;
+                }
                 Ok(true)
             }
             Command::ClosePopup => {
@@ -247,28 +272,6 @@ fn handle_key_sequence_for_none_popup(
 
     match command {
         Some(command) => match command {
-            Command::SelectNext => {
-                let mut state = state.write().unwrap();
-                if let Some(id) = state.context_tracks_table_ui_state.selected() {
-                    if id + 1 < state.get_context_filtered_tracks().len() {
-                        state.context_tracks_table_ui_state.select(Some(id + 1));
-                    }
-                }
-                Ok(true)
-            }
-            Command::SelectPrevious => {
-                let mut state = state.write().unwrap();
-                if let Some(id) = state.context_tracks_table_ui_state.selected() {
-                    if id > 0 {
-                        state.context_tracks_table_ui_state.select(Some(id - 1));
-                    }
-                }
-                Ok(true)
-            }
-            Command::ChoseSelected => {
-                send.send(Event::PlaySelectedTrack)?;
-                Ok(true)
-            }
             Command::SearchContextTracks => {
                 let mut state = state.write().unwrap();
                 state.context_tracks_table_ui_state.select(Some(0));
@@ -317,7 +320,7 @@ fn handle_key_sequence_for_none_popup(
                 state.playlists_list_ui_state.select(Some(0));
                 Ok(true)
             }
-            _ => Ok(false),
+            _ => handle_generic_command_for_context_track_table(command, send, state),
         },
         _ => Ok(false),
     }

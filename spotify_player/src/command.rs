@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-#[derive(Clone, Debug, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Copy, Clone, Debug, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 /// Application's command
 pub enum Command {
     NextTrack,
@@ -17,10 +17,12 @@ pub enum Command {
     SelectPrevious,
     ChoseSelected,
 
-    SearchContextTracks,
-
     SwitchPlaylist,
     SwitchTheme,
+
+    SearchContextTracks,
+
+    PlaySelectedTrackAlbum,
 
     SortByTrack,
     SortByArtists,

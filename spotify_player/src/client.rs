@@ -80,12 +80,8 @@ impl Client {
                     }
                 }
             }
-            event::Event::PlaySelectedPlaylist => {
-                let state = state.read().unwrap();
-                if let Some(id) = state.playlists_list_ui_state.selected() {
-                    self.play_track_with_context(state.user_playlists[id].uri.clone(), None)
-                        .await?;
-                }
+            event::Event::PlayContext(uri) => {
+                self.play_track_with_context(uri, None).await?;
             }
             event::Event::PlaylistAsContext(playlist_id) => {
                 self.update_context_to_playlist(playlist_id, state).await?;
