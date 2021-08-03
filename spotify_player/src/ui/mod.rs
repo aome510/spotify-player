@@ -373,11 +373,11 @@ fn render_playlist_tracks_widget(
             )
             .block(Block::default())
             .widths(&[
-                Constraint::Length(5),
+                Constraint::Percentage(3),
                 Constraint::Percentage(30),
                 Constraint::Percentage(30),
                 Constraint::Percentage(30),
-                Constraint::Percentage(10),
+                Constraint::Percentage(7),
             ])
             .highlight_style(if is_active {
                 theme.selection_style()
