@@ -93,8 +93,13 @@ impl Color {
 }
 
 impl ThemeConfig {
-    // parses configurations from a theme config file in `path` folder,
-    // then updates the current configurations accordingly.
+    /// finds a theme whose name matches a given `name`
+    pub fn find_theme(&self, name: &str) -> Option<Theme> {
+        self.themes.iter().find(|&t| t.name == name).cloned()
+    }
+
+    /// parses configurations from a theme config file in `path` folder,
+    /// then updates the current configurations accordingly.
     pub fn parse_config_file(&mut self, path: &std::path::Path) -> Result<()> {
         match std::fs::read_to_string(path.join(super::THEME_CONFIG_FILE)) {
             Err(err) => {
@@ -191,12 +196,6 @@ impl Default for ThemeConfig {
 
 impl Default for Theme {
     fn default() -> Self {
-        default_themes()[0].clone()
-    }
-}
-
-fn default_themes() -> Vec<Theme> {
-    vec![
         Theme {
             // Dracula color palette based on https://github.com/mbadolato/iTerm2-Color-Schemes/blob/master/alacritty/Dracula.yml
             name: "dracula".to_owned(),
@@ -222,7 +221,13 @@ fn default_themes() -> Vec<Theme> {
                 bright_white: "#ffffff".into(),
                 bright_yellow: "#f1fa8c".into(),
             },
-        },
+        }
+    }
+}
+
+fn default_themes() -> Vec<Theme> {
+    vec![
+        Theme::default(),
         Theme {
             // Ayu Light color palette based on https://github.com/mbadolato/iTerm2-Color-Schemes/blob/master/alacritty/ayu_light.yml
             name: "ayu_light".to_owned(),

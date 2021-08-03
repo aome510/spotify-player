@@ -68,8 +68,13 @@ async fn main() -> Result<()> {
         let mut state = state.write().unwrap();
         state.app_config.parse_config_file(&config_folder)?;
         log::info!("app configuartions: {:#?}", state.app_config);
+
         state.theme_config.parse_config_file(&config_folder)?;
+        if let Some(theme) = state.theme_config.find_theme(&state.app_config.theme) {
+            state.theme_config.theme = theme;
+        }
         log::info!("theme configuartions: {:#?}", state.theme_config);
+
         state.keymap_config.parse_config_file(&config_folder)?;
         log::info!("keymap configuartions: {:#?}", state.keymap_config);
     }
