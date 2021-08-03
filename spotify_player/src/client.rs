@@ -65,20 +65,9 @@ impl Client {
                 let state = state.read().unwrap();
                 self.cycle_repeat(&state).await?;
             }
-            event::Event::PlaySelectedTrack => {
-                let state = state.read().unwrap();
-                if let (Some(id), Some(playback)) = (
-                    state.context_tracks_table_ui_state.selected(),
-                    state.playback.as_ref(),
-                ) {
-                    if let Some(ref context) = playback.context {
-                        self.play_track_with_context(
-                            context.uri.clone(),
-                            Some(state.get_context_filtered_tracks()[id].uri.clone()),
-                        )
-                        .await?;
-                    }
-                }
+            event::Event::PlayTrack(track_uri, context_uri) => {
+                self.play_track_with_context(context_uri, Some(track_uri))
+                    .await?;
             }
             event::Event::PlayContext(uri) => {
                 self.play_track_with_context(uri, None).await?;

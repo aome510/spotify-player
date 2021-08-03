@@ -21,7 +21,7 @@ pub enum Event {
     Shuffle,
     PlaylistAsContext(String),
     AlbumAsContext(String),
-    PlaySelectedTrack,
+    PlayTrack(String, String),
     PlayContext(String),
     SearchTracksInContext,
     SortTracksInContext(state::ContextSortOrder),
@@ -64,7 +64,19 @@ fn handle_generic_command_for_context_track_table(
             Ok(true)
         }
         Command::ChoseSelected => {
-            send.send(Event::PlaySelectedTrack)?;
+            let state = state.read().unwrap();
+            if let (Some(id), Some(playback)) = (
+                state.context_tracks_table_ui_state.selected(),
+                state.playback.as_ref(),
+            ) {
+                if let Some(ref context) = playback.context {
+                    let tracks = state.get_context_filtered_tracks();
+                    send.send(Event::PlayTrack(
+                        tracks[id].uri.clone(),
+                        context.uri.clone(),
+                    ))?;
+                }
+            }
             Ok(true)
         }
         Command::PlaySelectedTrackAlbum => {
