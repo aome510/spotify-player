@@ -42,7 +42,7 @@ impl Default for KeymapConfig {
                 },
                 Keymap {
                     key_sequence: "enter".into(),
-                    command: Command::PlaySelected,
+                    command: Command::ChoseSelected,
                 },
                 Keymap {
                     key_sequence: "/".into(),
@@ -50,7 +50,11 @@ impl Default for KeymapConfig {
                 },
                 Keymap {
                     key_sequence: "P".into(),
-                    command: Command::SwitchPlaylists,
+                    command: Command::SwitchPlaylist,
+                },
+                Keymap {
+                    key_sequence: "T".into(),
+                    command: Command::SwitchTheme,
                 },
                 Keymap {
                     key_sequence: "?".into(),

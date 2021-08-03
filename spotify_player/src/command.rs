@@ -15,10 +15,12 @@ pub enum Command {
 
     SelectNext,
     SelectPrevious,
-    PlaySelected,
+    ChoseSelected,
 
     SearchContextTracks,
-    SwitchPlaylists,
+
+    SwitchPlaylist,
+    SwitchTheme,
 
     SortByTrack,
     SortByArtists,

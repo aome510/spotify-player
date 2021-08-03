@@ -130,6 +130,14 @@ fn render_application_layout(frame: &mut Frame, state: &state::SharedState, rect
         let event_state = state.read().unwrap().popup_state.clone();
         match event_state {
             state::PopupState::None => (rect, true),
+            state::PopupState::ThemeSwitch(_) => {
+                let chunks = Layout::default()
+                    .direction(Direction::Vertical)
+                    .constraints([Constraint::Min(0), Constraint::Length(7)].as_ref())
+                    .split(rect);
+                render_themes_widget(frame, state, chunks[1]);
+                (chunks[0], false)
+            }
             state::PopupState::CommandHelp => {
                 let chunks = Layout::default()
                     .direction(Direction::Vertical)
@@ -206,6 +214,31 @@ fn render_playlists_widget(frame: &mut Frame, state: &state::SharedState, rect: 
         rect,
         &mut state.write().unwrap().playlists_list_ui_state,
     );
+}
+
+fn render_themes_widget(frame: &mut Frame, state: &state::SharedState, rect: Rect) {
+    let list = {
+        let state = state.read().unwrap();
+        let theme = &state.theme_config;
+
+        List::new(
+            state
+                .theme_config
+                .themes
+                .iter()
+                .map(|t| ListItem::new(t.name.clone()))
+                .collect::<Vec<_>>(),
+        )
+        .highlight_style(theme.selection_style())
+        // mostly to create a left margin
+        .highlight_symbol("  ")
+        .block(
+            Block::default()
+                .title(theme.block_title_with_style("Themes"))
+                .borders(Borders::ALL),
+        )
+    };
+    frame.render_stateful_widget(list, rect, &mut state.write().unwrap().themes_list_ui_state);
 }
 
 fn render_current_playback_widget(frame: &mut Frame, state: &state::SharedState, rect: Rect) {

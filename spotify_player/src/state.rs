@@ -26,6 +26,7 @@ pub struct State {
     pub popup_state: PopupState,
     pub context_tracks_table_ui_state: TableState,
     pub playlists_list_ui_state: ListState,
+    pub themes_list_ui_state: ListState,
     pub shortcuts_help_ui_state: bool,
 }
 
@@ -59,6 +60,7 @@ pub enum PopupState {
     None,
     ContextSearch,
     PlaylistSwitch,
+    ThemeSwitch(config::Theme),
     CommandHelp,
 }
 
@@ -113,6 +115,7 @@ impl Default for State {
             popup_state: PopupState::None,
             context_tracks_table_ui_state: TableState::default(),
             playlists_list_ui_state: ListState::default(),
+            themes_list_ui_state: ListState::default(),
             shortcuts_help_ui_state: false,
         }
     }

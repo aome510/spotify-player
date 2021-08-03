@@ -1,5 +1,6 @@
 use crate::{
     command::Command,
+    config,
     key::{Key, KeySequence},
     state,
 };
@@ -93,7 +94,7 @@ fn handle_key_sequence_for_context_search_popup(
                 }
                 Ok(true)
             }
-            Command::PlaySelected => {
+            Command::ChoseSelected => {
                 send.send(Event::PlaySelectedTrack)?;
                 Ok(true)
             }
@@ -110,7 +111,7 @@ fn handle_key_sequence_for_context_search_popup(
     }
 }
 
-fn handle_key_sequence_for_playlists_switch_popup(
+fn handle_key_sequence_for_playlist_switch_popup(
     key_sequence: &KeySequence,
     send: &mpsc::Sender<Event>,
     state: &state::SharedState,
@@ -141,7 +142,7 @@ fn handle_key_sequence_for_playlists_switch_popup(
                 }
                 Ok(true)
             }
-            Command::PlaySelected => {
+            Command::ChoseSelected => {
                 send.send(Event::PlaySelectedPlaylist)?;
                 Ok(true)
             }
@@ -157,7 +158,6 @@ fn handle_key_sequence_for_playlists_switch_popup(
 
 fn handle_key_sequence_for_command_help_popup(
     key_sequence: &KeySequence,
-    _send: &mpsc::Sender<Event>,
     state: &state::SharedState,
 ) -> Result<bool> {
     let command = state
@@ -174,6 +174,63 @@ fn handle_key_sequence_for_command_help_popup(
         Ok(true)
     } else {
         Ok(false)
+    }
+}
+
+fn handle_key_sequence_for_theme_switch_popup(
+    key_sequence: &KeySequence,
+    state: &state::SharedState,
+    theme: config::Theme,
+) -> Result<bool> {
+    let command = state
+        .read()
+        .unwrap()
+        .keymap_config
+        .find_command_from_key_sequence(key_sequence);
+
+    match command {
+        Some(command) => match command {
+            Command::SelectNext => {
+                let mut state = state.write().unwrap();
+                if let Some(id) = state.themes_list_ui_state.selected() {
+                    if id + 1 < state.theme_config.themes.len() {
+                        state.theme_config.theme = state.theme_config.themes[id + 1].clone();
+                        state.themes_list_ui_state.select(Some(id + 1));
+                    }
+                }
+                Ok(true)
+            }
+            Command::SelectPrevious => {
+                let mut state = state.write().unwrap();
+                if let Some(id) = state.themes_list_ui_state.selected() {
+                    if id > 0 {
+                        state.theme_config.theme = state.theme_config.themes[id - 1].clone();
+                        state.themes_list_ui_state.select(Some(id - 1));
+                    }
+                }
+                Ok(true)
+            }
+            Command::ChoseSelected => {
+                let mut state = state.write().unwrap();
+                if let Some(id) = state.themes_list_ui_state.selected() {
+                    // update the application's theme to the chosen theme, then
+                    // move the chosen theme to the beginning of the theme list
+                    let theme = state.theme_config.themes.remove(id);
+                    state.theme_config.theme = theme.clone();
+                    state.theme_config.themes.insert(0, theme);
+                }
+                state.popup_state = state::PopupState::None;
+                Ok(true)
+            }
+            Command::ClosePopup => {
+                let mut state = state.write().unwrap();
+                state.theme_config.theme = theme;
+                state.popup_state = state::PopupState::None;
+                Ok(true)
+            }
+            _ => Ok(false),
+        },
+        None => Ok(false),
     }
 }
 
@@ -208,7 +265,7 @@ fn handle_key_sequence_for_none_popup(
                 }
                 Ok(true)
             }
-            Command::PlaySelected => {
+            Command::ChoseSelected => {
                 send.send(Event::PlaySelectedTrack)?;
                 Ok(true)
             }
@@ -254,8 +311,10 @@ fn handle_key_sequence_for_none_popup(
                 state.write().unwrap().reverse_context_tracks();
                 Ok(true)
             }
-            Command::SwitchPlaylists => {
-                state.write().unwrap().popup_state = state::PopupState::PlaylistSwitch;
+            Command::SwitchPlaylist => {
+                let mut state = state.write().unwrap();
+                state.popup_state = state::PopupState::PlaylistSwitch;
+                state.playlists_list_ui_state.select(Some(0));
                 Ok(true)
             }
             _ => Ok(false),
@@ -305,6 +364,13 @@ fn handle_key_sequence(
                 state.write().unwrap().popup_state = state::PopupState::CommandHelp;
                 Ok(true)
             }
+            Command::SwitchTheme => {
+                let theme = state.read().unwrap().theme_config.theme.clone();
+                let mut state = state.write().unwrap();
+                state.popup_state = state::PopupState::ThemeSwitch(theme);
+                state.themes_list_ui_state.select(Some(0));
+                Ok(true)
+            }
             _ => Ok(false),
         },
         None => Ok(false),
@@ -338,14 +404,17 @@ fn handle_terminal_event(
     let popup_state = state.read().unwrap().popup_state.clone();
     let mut handled = match popup_state {
         state::PopupState::None => handle_key_sequence_for_none_popup(&key_sequence, send, state)?,
+        state::PopupState::ThemeSwitch(theme) => {
+            handle_key_sequence_for_theme_switch_popup(&key_sequence, state, theme)?
+        }
         state::PopupState::ContextSearch => {
             handle_key_sequence_for_context_search_popup(&key_sequence, send, state)?
         }
         state::PopupState::PlaylistSwitch => {
-            handle_key_sequence_for_playlists_switch_popup(&key_sequence, send, state)?
+            handle_key_sequence_for_playlist_switch_popup(&key_sequence, send, state)?
         }
         state::PopupState::CommandHelp => {
-            handle_key_sequence_for_command_help_popup(&key_sequence, send, state)?
+            handle_key_sequence_for_command_help_popup(&key_sequence, state)?
         }
     };
     if !handled {
