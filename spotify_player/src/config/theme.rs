@@ -108,12 +108,12 @@ impl ThemeConfig {
 
     pub fn primary_text_desc_style(&self) -> Style {
         Style::default()
-            .fg(self.palette.bright_cyan.color)
+            .fg(self.palette.cyan.color)
             .add_modifier(Modifier::BOLD)
     }
 
     pub fn secondary_text_desc_style(&self) -> Style {
-        Style::default().fg(self.palette.bright_yellow.color)
+        Style::default().fg(self.palette.yellow.color)
     }
 
     pub fn gauge_style(&self) -> Style {
@@ -141,7 +141,7 @@ impl ThemeConfig {
     }
 
     pub fn table_header_style(&self) -> Style {
-        Style::default().fg(self.palette.bright_blue.color)
+        Style::default().fg(self.palette.blue.color)
     }
 
     pub fn block_title_with_style<'a, S>(&self, content: S) -> Span<'a>
