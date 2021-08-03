@@ -201,8 +201,6 @@ fn render_playlists_widget(frame: &mut Frame, state: &state::SharedState, rect: 
                 .collect::<Vec<_>>(),
         )
         .highlight_style(theme.selection_style())
-        // mostly to create a left margin
-        .highlight_symbol("  ")
         .block(
             Block::default()
                 .title(theme.block_title_with_style("Playlists"))
@@ -230,8 +228,6 @@ fn render_themes_widget(frame: &mut Frame, state: &state::SharedState, rect: Rec
                 .collect::<Vec<_>>(),
         )
         .highlight_style(theme.selection_style())
-        // mostly to create a left margin
-        .highlight_symbol("  ")
         .block(
             Block::default()
                 .title(theme.block_title_with_style("Themes"))
@@ -344,14 +340,16 @@ fn render_playlist_tracks_widget(
         let rows = state
             .get_context_filtered_tracks()
             .into_iter()
-            .map(|t| {
-                let (name, style) = if playing_track_uri == t.uri {
-                    (format!("▶ {}", t.name), theme.current_playing_style())
+            .enumerate()
+            .map(|(id, t)| {
+                let (id, style) = if playing_track_uri == t.uri {
+                    ("▶".to_string(), theme.current_playing_style())
                 } else {
-                    (t.name.clone(), Style::default())
+                    ((id + 1).to_string(), Style::default())
                 };
                 Row::new(vec![
-                    Cell::from(utils::truncate_string(name, item_max_len)),
+                    Cell::from(id),
+                    Cell::from(utils::truncate_string(t.name.clone(), item_max_len)),
                     Cell::from(utils::truncate_string(t.get_artists_info(), item_max_len)),
                     Cell::from(utils::truncate_string(t.album.name.clone(), item_max_len)),
                     Cell::from(utils::format_duration(t.duration)),
@@ -365,6 +363,7 @@ fn render_playlist_tracks_widget(
         let track_table = Table::new(rows)
             .header(
                 Row::new(vec![
+                    Cell::from("#"),
                     Cell::from("Track"),
                     Cell::from("Artists"),
                     Cell::from("Album"),
@@ -374,6 +373,7 @@ fn render_playlist_tracks_widget(
             )
             .block(Block::default())
             .widths(&[
+                Constraint::Length(5),
                 Constraint::Percentage(30),
                 Constraint::Percentage(30),
                 Constraint::Percentage(30),
@@ -383,9 +383,7 @@ fn render_playlist_tracks_widget(
                 theme.selection_style()
             } else {
                 Style::default()
-            })
-            // mostly to create a left margin
-            .highlight_symbol("  ");
+            });
 
         (context_desc, track_table)
     };
