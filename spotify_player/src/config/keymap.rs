@@ -173,7 +173,7 @@ impl KeymapConfig {
         self.keymaps
             .iter()
             .find(|&keymap| keymap.key_sequence == *key_sequence)
-            .map(|keymap| keymap.command.clone())
+            .map(|keymap| keymap.command)
     }
 }
 

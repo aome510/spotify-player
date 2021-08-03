@@ -48,7 +48,7 @@ pub fn render_commands_help_widget(frame: &mut Frame, state: &state::SharedState
 
     let mut map = BTreeMap::new();
     state.keymap_config.keymaps.iter().for_each(|km| {
-        let v = map.entry(km.command.clone());
+        let v = map.entry(km.command);
         match v {
             Entry::Vacant(v) => {
                 v.insert(format!("\"{}\"", km.key_sequence));
