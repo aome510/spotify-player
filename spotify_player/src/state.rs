@@ -154,7 +154,7 @@ impl State {
     }
 
     /// gets all tracks inside the current playing context
-    pub fn get_contex_tracks(&self) -> Vec<&Track> {
+    pub fn get_context_tracks(&self) -> Vec<&Track> {
         match self.context {
             PlayingContext::Unknown => vec![],
             PlayingContext::Album(_, ref tracks) => tracks.iter().collect(),
@@ -180,11 +180,11 @@ impl State {
     /// returns the list of tracks in the current playback context (album, playlist, etc)
     /// filtered by a search query
     pub fn get_context_filtered_tracks(&self) -> Vec<&Track> {
-        if self.context_search_state.query.is_some() {
+        if let PopupState::ContextSearch = self.popup_state {
             // in search mode, return the filtered tracks
             self.context_search_state.tracks.iter().collect()
         } else {
-            self.get_contex_tracks()
+            self.get_context_tracks()
         }
     }
 }

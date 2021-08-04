@@ -244,7 +244,7 @@ impl Client {
 
             log::info!("search tracks in context with query {}", query);
             state.context_search_state.tracks = state
-                .get_contex_tracks()
+                .get_context_tracks()
                 .into_iter()
                 .filter(|&t| t.get_basic_info().to_lowercase().contains(&query))
                 .cloned()

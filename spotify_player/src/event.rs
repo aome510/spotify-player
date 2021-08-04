@@ -287,11 +287,7 @@ fn handle_key_sequence_for_none_popup(
                 state.popup_state = state::PopupState::ContextSearch;
                 state.context_search_state = state::ContextSearchState {
                     query: Some("/".to_owned()),
-                    tracks: state
-                        .get_context_filtered_tracks()
-                        .into_iter()
-                        .cloned()
-                        .collect(),
+                    tracks: state.get_context_tracks().into_iter().cloned().collect(),
                 };
                 Ok(true)
             }
