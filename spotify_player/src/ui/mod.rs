@@ -130,14 +130,6 @@ fn render_application_layout(frame: &mut Frame, state: &state::SharedState, rect
         let event_state = state.read().unwrap().popup_state.clone();
         match event_state {
             state::PopupState::None => (rect, true),
-            state::PopupState::ThemeSwitch(_) => {
-                let chunks = Layout::default()
-                    .direction(Direction::Vertical)
-                    .constraints([Constraint::Min(0), Constraint::Length(7)].as_ref())
-                    .split(rect);
-                render_themes_widget(frame, state, chunks[1]);
-                (chunks[0], false)
-            }
             state::PopupState::CommandHelp => {
                 let chunks = Layout::default()
                     .direction(Direction::Vertical)
@@ -146,12 +138,47 @@ fn render_application_layout(frame: &mut Frame, state: &state::SharedState, rect
                 help::render_commands_help_widget(frame, state, chunks[1]);
                 (chunks[0], false)
             }
+            state::PopupState::ThemeSwitch(_) => {
+                let chunks = Layout::default()
+                    .direction(Direction::Vertical)
+                    .constraints([Constraint::Min(0), Constraint::Length(7)].as_ref())
+                    .split(rect);
+                frame.render_stateful_widget(
+                    {
+                        let items = state
+                            .read()
+                            .unwrap()
+                            .theme_config
+                            .themes
+                            .iter()
+                            .map(|t| t.name.clone())
+                            .collect();
+                        construct_list_widget(state, items, "Themes")
+                    },
+                    chunks[1],
+                    &mut state.write().unwrap().themes_list_ui_state,
+                );
+                (chunks[0], false)
+            }
             state::PopupState::PlaylistSwitch => {
                 let chunks = Layout::default()
                     .direction(Direction::Vertical)
                     .constraints([Constraint::Min(0), Constraint::Length(10)].as_ref())
                     .split(rect);
-                render_playlists_widget(frame, state, chunks[1]);
+                frame.render_stateful_widget(
+                    {
+                        let items = state
+                            .read()
+                            .unwrap()
+                            .user_playlists
+                            .iter()
+                            .map(|p| p.name.clone())
+                            .collect();
+                        construct_list_widget(state, items, "Playlists")
+                    },
+                    chunks[1],
+                    &mut state.write().unwrap().playlists_list_ui_state,
+                );
                 (chunks[0], false)
             }
             state::PopupState::ContextSearch => {
@@ -186,55 +213,6 @@ fn render_search_box_widget(frame: &mut Frame, state: &state::SharedState, rect:
             .title(theme.block_title_with_style("Search")),
     );
     frame.render_widget(search_box, rect);
-}
-
-fn render_playlists_widget(frame: &mut Frame, state: &state::SharedState, rect: Rect) {
-    let list = {
-        let state = state.read().unwrap();
-        let theme = &state.theme_config;
-
-        List::new(
-            state
-                .user_playlists
-                .iter()
-                .map(|p| ListItem::new(p.name.clone()))
-                .collect::<Vec<_>>(),
-        )
-        .highlight_style(theme.selection_style())
-        .block(
-            Block::default()
-                .title(theme.block_title_with_style("Playlists"))
-                .borders(Borders::ALL),
-        )
-    };
-    frame.render_stateful_widget(
-        list,
-        rect,
-        &mut state.write().unwrap().playlists_list_ui_state,
-    );
-}
-
-fn render_themes_widget(frame: &mut Frame, state: &state::SharedState, rect: Rect) {
-    let list = {
-        let state = state.read().unwrap();
-        let theme = &state.theme_config;
-
-        List::new(
-            state
-                .theme_config
-                .themes
-                .iter()
-                .map(|t| ListItem::new(t.name.clone()))
-                .collect::<Vec<_>>(),
-        )
-        .highlight_style(theme.selection_style())
-        .block(
-            Block::default()
-                .title(theme.block_title_with_style("Themes"))
-                .borders(Borders::ALL),
-        )
-    };
-    frame.render_stateful_widget(list, rect, &mut state.write().unwrap().themes_list_ui_state);
 }
 
 fn render_current_playback_widget(frame: &mut Frame, state: &state::SharedState, rect: Rect) {
@@ -394,4 +372,20 @@ fn render_playlist_tracks_widget(
         chunks[1],
         &mut state.write().unwrap().context_tracks_table_ui_state,
     );
+}
+
+fn construct_list_widget<'a>(
+    state: &state::SharedState,
+    items: Vec<String>,
+    title: &str,
+) -> List<'a> {
+    let state = state.read().unwrap();
+    let theme = &state.theme_config;
+    List::new(items.into_iter().map(ListItem::new).collect::<Vec<_>>())
+        .highlight_style(theme.selection_style())
+        .block(
+            Block::default()
+                .title(theme.block_title_with_style(title))
+                .borders(Borders::ALL),
+        )
 }
