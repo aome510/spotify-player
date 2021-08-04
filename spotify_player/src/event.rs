@@ -205,8 +205,6 @@ fn handle_key_sequence_for_command_help_popup(
 
     if let Some(Command::ClosePopup) = command {
         let mut state = state.write().unwrap();
-        state.context_search_state.query = None;
-        state.context_tracks_table_ui_state.select(Some(0));
         state.popup_state = state::PopupState::None;
         Ok(true)
     } else {
