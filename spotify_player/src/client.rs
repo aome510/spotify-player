@@ -176,6 +176,21 @@ impl Client {
         Self::handle_rspotify_result(self.spotify.album(album_id).await)
     }
 
+    /// gets a list of top tracks of an artist
+    pub async fn get_artist_top_tracks(&self, artist_id: &str) -> Result<track::FullTracks> {
+        Self::handle_rspotify_result(self.spotify.artist_top_tracks(artist_id, None).await)
+    }
+
+    /// gets all albums of an artist
+    pub async fn get_artist_albums(&self, artist_id: &str) -> Result<Vec<album::SimplifiedAlbum>> {
+        let first_page = Self::handle_rspotify_result(
+            self.spotify
+                .artist_albums(artist_id, None, None, None, None)
+                .await,
+        )?;
+        self.get_all_paging_items(first_page).await
+    }
+
     /// cycles through the repeat state of the current playback
     pub async fn cycle_repeat(&self, state: &RwLockReadGuard<'_, state::State>) -> Result<()> {
         let state = Self::get_current_playback_state(state)?;

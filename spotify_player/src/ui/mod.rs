@@ -68,7 +68,12 @@ pub fn start_ui(
                                 send.send(event::Event::AlbumAsContext(album_id.to_owned()))?;
                             }
                         }
-                        _ => {}
+                        _ => {
+                            log::info!(
+                                "encountered not supported context type: {:#?}",
+                                context._type
+                            )
+                        }
                     };
                 }
             };
