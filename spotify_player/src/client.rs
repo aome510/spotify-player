@@ -1,5 +1,6 @@
 use crate::event;
 use crate::state;
+use crate::state::PopupState;
 use anyhow::{anyhow, Result};
 use rspotify::{
     client::Spotify,
@@ -293,6 +294,7 @@ impl Client {
         // update states
         let mut state = state.write().unwrap();
         state.context_tracks_table_ui_state = TableState::default();
+        state.popup_state = PopupState::None;
         if !tracks.is_empty() {
             state.context_tracks_table_ui_state.select(Some(0));
         }
@@ -335,6 +337,7 @@ impl Client {
         // update states
         let mut state = state.write().unwrap();
         state.context_tracks_table_ui_state = TableState::default();
+        state.popup_state = PopupState::None;
         if !tracks.is_empty() {
             state.context_tracks_table_ui_state.select(Some(0));
         }

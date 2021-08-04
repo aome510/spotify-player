@@ -134,7 +134,6 @@ fn handle_key_sequence_for_context_search_popup(
         Some(command) => match command {
             Command::ClosePopup => {
                 let mut state = state.write().unwrap();
-                state.context_search_state.query = None;
                 state.context_tracks_table_ui_state.select(Some(0));
                 state.popup_state = state::PopupState::None;
                 Ok(true)
