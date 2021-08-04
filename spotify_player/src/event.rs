@@ -8,10 +8,12 @@ use anyhow::Result;
 use crossterm::event::{self as term_event, EventStream, KeyCode, KeyModifiers};
 use std::sync::mpsc;
 use tokio::stream::StreamExt;
+use tui::widgets::ListState;
 
 #[derive(Debug)]
 /// An event to communicate with the client
 pub enum Event {
+    GetDevices,
     GetCurrentPlayback,
     RefreshToken,
     NextTrack,
@@ -23,6 +25,7 @@ pub enum Event {
     AlbumAsContext(String),
     PlayTrack(String, String),
     PlayContext(String),
+    TransferPlayback(String),
     SearchTracksInContext,
     SortTracksInContext(state::ContextSortOrder),
 }
@@ -268,6 +271,54 @@ fn handle_key_sequence_for_theme_switch_popup(
     }
 }
 
+fn handle_key_sequence_for_device_switch_popup(
+    key_sequence: &KeySequence,
+    send: &mpsc::Sender<Event>,
+    state: &state::SharedState,
+) -> Result<bool> {
+    let command = state
+        .read()
+        .unwrap()
+        .keymap_config
+        .find_command_from_key_sequence(key_sequence);
+
+    match command {
+        Some(command) => match command {
+            Command::SelectNext => {
+                let mut state = state.write().unwrap();
+                if let Some(id) = state.devices_list_ui_state.selected() {
+                    if id + 1 < state.devices.len() {
+                        state.devices_list_ui_state.select(Some(id + 1));
+                    }
+                }
+                Ok(true)
+            }
+            Command::SelectPrevious => {
+                let mut state = state.write().unwrap();
+                if let Some(id) = state.devices_list_ui_state.selected() {
+                    if id > 0 {
+                        state.devices_list_ui_state.select(Some(id - 1));
+                    }
+                }
+                Ok(true)
+            }
+            Command::ChoseSelected => {
+                let state = state.read().unwrap();
+                if let Some(id) = state.devices_list_ui_state.selected() {
+                    send.send(Event::TransferPlayback(state.devices[id].id.clone()))?;
+                }
+                Ok(true)
+            }
+            Command::ClosePopup => {
+                state.write().unwrap().popup_state = state::PopupState::None;
+                Ok(true)
+            }
+            _ => Ok(false),
+        },
+        None => Ok(false),
+    }
+}
+
 fn handle_key_sequence_for_none_popup(
     key_sequence: &KeySequence,
     send: &mpsc::Sender<Event>,
@@ -322,7 +373,24 @@ fn handle_key_sequence_for_none_popup(
             Command::SwitchPlaylist => {
                 let mut state = state.write().unwrap();
                 state.popup_state = state::PopupState::PlaylistSwitch;
+                state.playlists_list_ui_state = ListState::default();
                 state.playlists_list_ui_state.select(Some(0));
+                Ok(true)
+            }
+            Command::SwitchDevice => {
+                let mut state = state.write().unwrap();
+                state.popup_state = state::PopupState::DeviceSwitch;
+                state.devices_list_ui_state = ListState::default();
+                state.devices_list_ui_state.select(Some(0));
+                send.send(Event::GetDevices)?;
+                Ok(true)
+            }
+            Command::SwitchTheme => {
+                let theme = state.read().unwrap().theme_config.theme.clone();
+                let mut state = state.write().unwrap();
+                state.popup_state = state::PopupState::ThemeSwitch(theme);
+                state.themes_list_ui_state = ListState::default();
+                state.themes_list_ui_state.select(Some(0));
                 Ok(true)
             }
             _ => handle_generic_command_for_context_track_table(command, send, state),
@@ -372,13 +440,6 @@ fn handle_key_sequence(
                 state.write().unwrap().popup_state = state::PopupState::CommandHelp;
                 Ok(true)
             }
-            Command::SwitchTheme => {
-                let theme = state.read().unwrap().theme_config.theme.clone();
-                let mut state = state.write().unwrap();
-                state.popup_state = state::PopupState::ThemeSwitch(theme);
-                state.themes_list_ui_state.select(Some(0));
-                Ok(true)
-            }
             _ => Ok(false),
         },
         None => Ok(false),
@@ -415,11 +476,14 @@ fn handle_terminal_event(
         state::PopupState::ThemeSwitch(theme) => {
             handle_key_sequence_for_theme_switch_popup(&key_sequence, state, theme)?
         }
-        state::PopupState::ContextSearch => {
-            handle_key_sequence_for_context_search_popup(&key_sequence, send, state)?
-        }
         state::PopupState::PlaylistSwitch => {
             handle_key_sequence_for_playlist_switch_popup(&key_sequence, send, state)?
+        }
+        state::PopupState::DeviceSwitch => {
+            handle_key_sequence_for_device_switch_popup(&key_sequence, send, state)?
+        }
+        state::PopupState::ContextSearch => {
+            handle_key_sequence_for_context_search_popup(&key_sequence, send, state)?
         }
         state::PopupState::CommandHelp => {
             handle_key_sequence_for_command_help_popup(&key_sequence, state)?

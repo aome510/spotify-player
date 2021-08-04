@@ -19,6 +19,7 @@ pub enum Command {
 
     SwitchPlaylist,
     SwitchTheme,
+    SwitchDevice,
 
     SearchContextTracks,
 

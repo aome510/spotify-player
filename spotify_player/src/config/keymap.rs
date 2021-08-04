@@ -57,6 +57,10 @@ impl Default for KeymapConfig {
                     command: Command::SwitchTheme,
                 },
                 Keymap {
+                    key_sequence: "D".into(),
+                    command: Command::SwitchDevice,
+                },
+                Keymap {
                     key_sequence: "M-a".into(),
                     command: Command::PlaySelectedTrackAlbum,
                 },

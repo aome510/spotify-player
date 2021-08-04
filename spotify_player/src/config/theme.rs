@@ -150,7 +150,7 @@ impl ThemeConfig {
         Style::default().fg(self.theme.palette.bright_black.color)
     }
 
-    pub fn current_playing_style(&self) -> Style {
+    pub fn current_active_style(&self) -> Style {
         Style::default()
             .fg(self.theme.palette.green.color)
             .add_modifier(Modifier::BOLD)

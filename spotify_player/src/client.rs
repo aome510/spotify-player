@@ -38,6 +38,9 @@ impl Client {
         log::info!("handle the client event {:?}", event);
 
         match event {
+            event::Event::GetDevices => {
+                state.write().unwrap().devices = self.get_devices().await?;
+            }
             event::Event::GetCurrentPlayback => {
                 state.write().unwrap().playback = self.get_current_playback().await?;
             }
@@ -71,6 +74,9 @@ impl Client {
             }
             event::Event::PlayContext(uri) => {
                 self.play_track_with_context(uri, None).await?;
+            }
+            event::Event::TransferPlayback(device_id) => {
+                self.transfer_playback(device_id).await?;
             }
             event::Event::PlaylistAsContext(playlist_id) => {
                 self.update_context_to_playlist(playlist_id, state).await?;
@@ -153,6 +159,11 @@ impl Client {
                 .start_playback(None, Some(context_uri), None, offset, None)
                 .await,
         )
+    }
+
+    /// transfers the current playback to another device
+    pub async fn transfer_playback(&self, device_id: String) -> Result<()> {
+        Self::handle_rspotify_result(self.spotify.transfer_playback(&device_id, None).await)
     }
 
     /// gets a playlist given its id

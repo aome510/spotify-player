@@ -19,7 +19,6 @@ pub struct State {
     pub user_playlists: Vec<playlist::SimplifiedPlaylist>,
 
     pub playback: Option<context::CurrentlyPlaybackContext>,
-    pub device: device::Device,
     pub context: PlayingContext,
 
     pub context_search_state: ContextSearchState,
@@ -28,6 +27,7 @@ pub struct State {
     pub context_tracks_table_ui_state: TableState,
     pub playlists_list_ui_state: ListState,
     pub themes_list_ui_state: ListState,
+    pub devices_list_ui_state: ListState,
     pub shortcuts_help_ui_state: bool,
 }
 
@@ -62,6 +62,7 @@ pub enum PopupState {
     ContextSearch,
     PlaylistSwitch,
     ThemeSwitch(config::Theme),
+    DeviceSwitch,
     CommandHelp,
 }
 
@@ -117,6 +118,7 @@ impl Default for State {
             context_tracks_table_ui_state: TableState::default(),
             playlists_list_ui_state: ListState::default(),
             themes_list_ui_state: ListState::default(),
+            devices_list_ui_state: ListState::default(),
             shortcuts_help_ui_state: false,
         }
     }

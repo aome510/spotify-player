@@ -1,3 +1,5 @@
+use std::sync::RwLockReadGuard;
+
 use crate::event;
 use crate::state;
 use crate::utils;
@@ -138,6 +140,30 @@ fn render_application_layout(frame: &mut Frame, state: &state::SharedState, rect
                 help::render_commands_help_widget(frame, state, chunks[1]);
                 (chunks[0], false)
             }
+            state::PopupState::DeviceSwitch => {
+                let chunks = Layout::default()
+                    .direction(Direction::Vertical)
+                    .constraints([Constraint::Min(0), Constraint::Length(5)].as_ref())
+                    .split(rect);
+                frame.render_stateful_widget(
+                    {
+                        let state = state.read().unwrap();
+                        let current_device_id = match state.playback {
+                            Some(ref playback) => &playback.device.id,
+                            None => "",
+                        };
+                        let items = state
+                            .devices
+                            .iter()
+                            .map(|d| (format!("{} | {}", d.name, d.id), current_device_id == d.id))
+                            .collect();
+                        construct_list_widget(state, items, "Devices")
+                    },
+                    chunks[1],
+                    &mut state.write().unwrap().devices_list_ui_state,
+                );
+                (chunks[0], false)
+            }
             state::PopupState::ThemeSwitch(_) => {
                 let chunks = Layout::default()
                     .direction(Direction::Vertical)
@@ -145,13 +171,12 @@ fn render_application_layout(frame: &mut Frame, state: &state::SharedState, rect
                     .split(rect);
                 frame.render_stateful_widget(
                     {
+                        let state = state.read().unwrap();
                         let items = state
-                            .read()
-                            .unwrap()
                             .theme_config
                             .themes
                             .iter()
-                            .map(|t| t.name.clone())
+                            .map(|t| (t.name.clone(), false))
                             .collect();
                         construct_list_widget(state, items, "Themes")
                     },
@@ -167,12 +192,15 @@ fn render_application_layout(frame: &mut Frame, state: &state::SharedState, rect
                     .split(rect);
                 frame.render_stateful_widget(
                     {
+                        let state = state.read().unwrap();
+                        let current_playlist_name = match state.context {
+                            state::PlayingContext::Playlist(ref playlist, _) => &playlist.name,
+                            _ => "",
+                        };
                         let items = state
-                            .read()
-                            .unwrap()
                             .user_playlists
                             .iter()
-                            .map(|p| p.name.clone())
+                            .map(|p| (p.name.clone(), p.name == current_playlist_name))
                             .collect();
                         construct_list_widget(state, items, "Playlists")
                     },
@@ -321,7 +349,7 @@ fn render_playlist_tracks_widget(
             .enumerate()
             .map(|(id, t)| {
                 let (id, style) = if playing_track_uri == t.uri {
-                    ("▶".to_string(), theme.current_playing_style())
+                    ("▶".to_string(), theme.current_active_style())
                 } else {
                     ((id + 1).to_string(), Style::default())
                 };
@@ -375,17 +403,27 @@ fn render_playlist_tracks_widget(
 }
 
 fn construct_list_widget<'a>(
-    state: &state::SharedState,
-    items: Vec<String>,
+    state: RwLockReadGuard<state::State>,
+    items: Vec<(String, bool)>,
     title: &str,
 ) -> List<'a> {
-    let state = state.read().unwrap();
     let theme = &state.theme_config;
-    List::new(items.into_iter().map(ListItem::new).collect::<Vec<_>>())
-        .highlight_style(theme.selection_style())
-        .block(
-            Block::default()
-                .title(theme.block_title_with_style(title))
-                .borders(Borders::ALL),
-        )
+    List::new(
+        items
+            .into_iter()
+            .map(|(s, is_active)| {
+                ListItem::new(s).style(if is_active {
+                    theme.current_active_style()
+                } else {
+                    Style::default()
+                })
+            })
+            .collect::<Vec<_>>(),
+    )
+    .highlight_style(theme.selection_style())
+    .block(
+        Block::default()
+            .title(theme.block_title_with_style(title))
+            .borders(Borders::ALL),
+    )
 }
