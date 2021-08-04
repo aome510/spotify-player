@@ -48,12 +48,10 @@ impl Client {
                 }
             }
             event::Event::NextTrack => {
-                self.next_track(state.read().unwrap().devices[0].id.clone())
-                    .await?;
+                self.next_track().await?;
             }
             event::Event::PreviousTrack => {
-                self.previous_track(state.read().unwrap().devices[0].id.clone())
-                    .await?;
+                self.previous_track().await?;
             }
             event::Event::ResumePause => {
                 let state = state.read().unwrap();
@@ -189,41 +187,40 @@ impl Client {
         &self,
         state: &RwLockReadGuard<'_, state::State>,
     ) -> Result<()> {
-        let device_id = state.devices[0].id.clone();
         match state.playback {
             Some(ref playback) => {
                 if playback.is_playing {
-                    self.pause_track(device_id).await
+                    self.pause_track().await
                 } else {
-                    self.resume_track(device_id).await
+                    self.resume_track().await
                 }
             }
-            None => self.resume_track(device_id).await,
+            None => self.resume_track().await,
         }
     }
 
     /// resumes the previously paused/played track
-    pub async fn resume_track(&self, device_id: String) -> Result<()> {
+    pub async fn resume_track(&self) -> Result<()> {
         Self::handle_rspotify_result(
             self.spotify
-                .start_playback(Some(device_id), None, None, None, None)
+                .start_playback(None, None, None, None, None)
                 .await,
         )
     }
 
     /// pauses the currently playing track
-    pub async fn pause_track(&self, device_id: String) -> Result<()> {
-        Self::handle_rspotify_result(self.spotify.pause_playback(Some(device_id)).await)
+    pub async fn pause_track(&self) -> Result<()> {
+        Self::handle_rspotify_result(self.spotify.pause_playback(None).await)
     }
 
     /// skips to the next track
-    pub async fn next_track(&self, device_id: String) -> Result<()> {
-        Self::handle_rspotify_result(self.spotify.next_track(Some(device_id)).await)
+    pub async fn next_track(&self) -> Result<()> {
+        Self::handle_rspotify_result(self.spotify.next_track(None).await)
     }
 
     /// skips to the previous track
-    pub async fn previous_track(&self, device_id: String) -> Result<()> {
-        Self::handle_rspotify_result(self.spotify.previous_track(Some(device_id)).await)
+    pub async fn previous_track(&self) -> Result<()> {
+        Self::handle_rspotify_result(self.spotify.previous_track(None).await)
     }
 
     /// gets the current playing context

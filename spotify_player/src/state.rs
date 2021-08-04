@@ -19,6 +19,7 @@ pub struct State {
     pub user_playlists: Vec<playlist::SimplifiedPlaylist>,
 
     pub playback: Option<context::CurrentlyPlaybackContext>,
+    pub device: device::Device,
     pub context: PlayingContext,
 
     pub context_search_state: ContextSearchState,
