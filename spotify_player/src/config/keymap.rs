@@ -6,6 +6,7 @@ use serde::Deserialize;
 #[derive(Debug, Deserialize)]
 /// Application's keymap configurations
 pub struct KeymapConfig {
+    #[serde(default)]
     pub keymaps: Vec<Keymap>,
 }
 
@@ -66,6 +67,10 @@ impl Default for KeymapConfig {
                 },
                 Keymap {
                     key_sequence: "?".into(),
+                    command: Command::OpenCommandHelp,
+                },
+                Keymap {
+                    key_sequence: "C-h".into(),
                     command: Command::OpenCommandHelp,
                 },
                 Keymap {
