@@ -53,7 +53,9 @@ pub fn start_ui(
                                     ""
                                 };
                             if current_playlist_id != playlist_id {
-                                send.send(event::Event::PlaylistAsContext(playlist_id.to_owned()))?;
+                                send.send(event::Event::SwitchContext(event::Context::Playlist(
+                                    playlist_id.to_owned(),
+                                )))?;
                             }
                         }
                         rspotify::senum::Type::Album => {
@@ -65,10 +67,13 @@ pub fn start_ui(
                                     ""
                                 };
                             if current_album_id != album_id {
-                                send.send(event::Event::AlbumAsContext(album_id.to_owned()))?;
+                                send.send(event::Event::SwitchContext(event::Context::Album(
+                                    album_id.to_owned(),
+                                )))?;
                             }
                         }
                         _ => {
+                            send.send(event::Event::SwitchContext(event::Context::Unknown))?;
                             log::info!(
                                 "encountered not supported context type: {:#?}",
                                 context._type
@@ -234,7 +239,7 @@ fn render_player_layout(is_active: bool, f: &mut Frame, state: &state::SharedSta
         .constraints([Constraint::Length(7), Constraint::Min(0)].as_ref())
         .split(rect);
     render_current_playback_widget(f, state, chunks[0]);
-    render_playlist_tracks_widget(is_active, f, state, chunks[1]);
+    render_context_tracks_widget(is_active, f, state, chunks[1]);
 }
 
 fn render_search_box_widget(frame: &mut Frame, state: &state::SharedState, rect: Rect) {
@@ -319,7 +324,7 @@ fn render_current_playback_widget(frame: &mut Frame, state: &state::SharedState,
     };
 }
 
-fn render_playlist_tracks_widget(
+fn render_context_tracks_widget(
     is_active: bool,
     frame: &mut Frame,
     state: &state::SharedState,

@@ -11,6 +11,13 @@ use tokio::stream::StreamExt;
 use tui::widgets::ListState;
 
 #[derive(Debug)]
+pub enum Context {
+    Playlist(String),
+    Album(String),
+    Unknown,
+}
+
+#[derive(Debug)]
 /// An event to communicate with the client
 pub enum Event {
     GetDevices,
@@ -21,8 +28,7 @@ pub enum Event {
     ResumePause,
     Repeat,
     Shuffle,
-    PlaylistAsContext(String),
-    AlbumAsContext(String),
+    SwitchContext(Context),
     PlayTrack(String, String),
     PlayContext(String),
     TransferPlayback(String),

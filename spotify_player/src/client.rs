@@ -78,12 +78,17 @@ impl Client {
             event::Event::TransferPlayback(device_id) => {
                 self.transfer_playback(device_id).await?;
             }
-            event::Event::PlaylistAsContext(playlist_id) => {
-                self.update_context_to_playlist(playlist_id, state).await?;
-            }
-            event::Event::AlbumAsContext(album_id) => {
-                self.update_context_to_album(album_id, state).await?;
-            }
+            event::Event::SwitchContext(context) => match context {
+                event::Context::Playlist(playlist_id) => {
+                    self.update_context_to_playlist(playlist_id, state).await?;
+                }
+                event::Context::Album(album_id) => {
+                    self.update_context_to_album(album_id, state).await?;
+                }
+                event::Context::Unknown => {
+                    state.write().unwrap().context = state::PlayingContext::Unknown;
+                }
+            },
             event::Event::SearchTracksInContext => {
                 self.search_tracks_in_current_playing_context(state).await?;
             }
