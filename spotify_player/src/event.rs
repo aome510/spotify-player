@@ -5,7 +5,7 @@ use crate::{
 };
 use anyhow::Result;
 use crossterm::event::{self as term_event, EventStream, KeyCode, KeyModifiers};
-use std::sync::{mpsc, MutexGuard};
+use std::sync::{mpsc, MutexGuard, RwLockReadGuard};
 use tokio::stream::StreamExt;
 use tui::widgets::ListState;
 
@@ -77,9 +77,9 @@ fn handle_terminal_event(
         }
     };
 
-    let mut state = state.lock().unwrap();
+    let mut ui = state.ui.lock().unwrap();
 
-    let mut key_sequence = state.input_key_sequence.clone();
+    let mut key_sequence = ui.input_key_sequence.clone();
     key_sequence.keys.push(key.clone());
     if state
         .keymap_config
@@ -89,131 +89,150 @@ fn handle_terminal_event(
         key_sequence = KeySequence { keys: vec![key] };
     }
 
-    let mut handled = match state.popup_state {
-        state::PopupState::None => {
-            handle_key_sequence_for_none_popup(&key_sequence, send, &mut state)?
+    let command = state
+        .keymap_config
+        .find_command_from_key_sequence(&key_sequence);
+
+    let handled = match command {
+        None => {
+            if let state::PopupState::ContextSearch(_) = ui.popup_state {
+                handle_key_sequence_for_context_search_popup(&key_sequence, send, state, &mut ui)?
+            } else {
+                false
+            }
         }
-        state::PopupState::ContextSearch(_) => {
-            handle_key_sequence_for_context_search_popup(&key_sequence, send, &mut state)?
-        }
-        state::PopupState::PlaylistSwitch => {
-            handle_key_sequence_for_playlist_switch_popup(&key_sequence, send, &mut state)?
-        }
-        state::PopupState::ThemeSwitch(_) => {
-            handle_key_sequence_for_theme_switch_popup(&key_sequence, &mut state)?
-        }
-        state::PopupState::DeviceSwitch => {
-            handle_key_sequence_for_device_switch_popup(&key_sequence, send, &mut state)?
-        }
-        state::PopupState::CommandHelp => {
-            handle_key_sequence_for_command_help_popup(&key_sequence, &mut state)?
+        Some(command) => {
+            let handled = match ui.popup_state {
+                state::PopupState::None => {
+                    handle_command_for_none_popup(command, send, state, &mut ui)?
+                }
+                state::PopupState::ContextSearch(_) => {
+                    handle_key_sequence_for_context_search_popup(
+                        &key_sequence,
+                        send,
+                        state,
+                        &mut ui,
+                    )?
+                }
+                state::PopupState::PlaylistSwitch => {
+                    handle_command_for_playlist_switch_popup(command, send, state, &mut ui)?
+                }
+                state::PopupState::ThemeSwitch(_) => {
+                    handle_command_for_theme_switch_popup(command, send, state, &mut ui)?
+                }
+                state::PopupState::DeviceSwitch => {
+                    handle_command_for_device_switch_popup(command, send, state, &mut ui)?
+                }
+                state::PopupState::CommandHelp => {
+                    handle_command_for_command_help_popup(command, &mut ui)?
+                }
+            };
+            if handled {
+                true
+            } else {
+                handle_command(command, send, &mut ui)?
+            }
         }
     };
-    if !handled {
-        handled = handle_key_sequence(&key_sequence, send, &mut state)?;
-    }
 
     // if no command is handled, open the shortcuts help based on the current key sequence input
     if handled {
-        state.shortcuts_help_ui_state = false;
-        state.input_key_sequence.keys = vec![];
+        ui.shortcuts_help_ui_state = false;
+        ui.input_key_sequence.keys = vec![];
     } else {
-        state.shortcuts_help_ui_state = true;
-        state.input_key_sequence = key_sequence;
+        ui.shortcuts_help_ui_state = true;
+        ui.input_key_sequence = key_sequence;
     }
     Ok(())
 }
 
-fn handle_key_sequence_for_none_popup(
-    key_sequence: &KeySequence,
+fn handle_command_for_none_popup(
+    command: Command,
     send: &mpsc::Sender<Event>,
-    state: &mut MutexGuard<state::State>,
+    state: &state::SharedState,
+    ui: &mut MutexGuard<state::UIState>,
 ) -> Result<bool> {
-    let command = state
-        .keymap_config
-        .find_command_from_key_sequence(key_sequence);
+    let player = state.player.read().unwrap();
 
     match command {
-        Some(command) => match command {
-            Command::SearchContextTracks => {
-                state.context_tracks_table_ui_state.select(Some(0));
-                state.popup_state = state::PopupState::ContextSearch(state::ContextSearchState {
-                    query: "/".to_owned(),
-                    tracks: state.get_context_tracks().into_iter().cloned().collect(),
-                });
-                Ok(true)
-            }
-            Command::SortByTrack => {
-                state.sort_context_tracks(state::ContextSortOrder::TrackName);
-                Ok(true)
-            }
-            Command::SortByAlbum => {
-                state.sort_context_tracks(state::ContextSortOrder::Album);
-                Ok(true)
-            }
-            Command::SortByArtists => {
-                state.sort_context_tracks(state::ContextSortOrder::Artists);
-                Ok(true)
-            }
-            Command::SortByAddedDate => {
-                state.sort_context_tracks(state::ContextSortOrder::AddedAt);
-                Ok(true)
-            }
-            Command::SortByDuration => {
-                state.sort_context_tracks(state::ContextSortOrder::Duration);
-                Ok(true)
-            }
-            Command::ReverseOrder => {
-                state.reverse_context_tracks();
-                Ok(true)
-            }
-            Command::SwitchPlaylist => {
-                state.popup_state = state::PopupState::PlaylistSwitch;
-                state.playlists_list_ui_state = ListState::default();
-                state.playlists_list_ui_state.select(Some(0));
-                Ok(true)
-            }
-            Command::SwitchDevice => {
-                state.popup_state = state::PopupState::DeviceSwitch;
-                state.devices_list_ui_state = ListState::default();
-                state.devices_list_ui_state.select(Some(0));
-                send.send(Event::GetDevices)?;
-                Ok(true)
-            }
-            Command::SwitchTheme => {
-                let theme = state.theme_config.theme.clone();
-                state.popup_state = state::PopupState::ThemeSwitch(theme);
-                state.themes_list_ui_state = ListState::default();
-                state.themes_list_ui_state.select(Some(0));
-                Ok(true)
-            }
-            _ => handle_generic_command_for_context_track_table(command, send, state),
-        },
-        _ => Ok(false),
+        Command::SearchContextTracks => {
+            ui.context_tracks_table_ui_state.select(Some(0));
+            ui.popup_state = state::PopupState::ContextSearch(state::ContextSearchState {
+                query: "/".to_owned(),
+                tracks: player.get_context_tracks().into_iter().cloned().collect(),
+            });
+            Ok(true)
+        }
+        // Command::SortByTrack => {
+        //     ui.sort_context_tracks(state::ContextSortOrder::TrackName);
+        //     Ok(true)
+        // }
+        // Command::SortByAlbum => {
+        //     ui.sort_context_tracks(state::ContextSortOrder::Album);
+        //     Ok(true)
+        // }
+        // Command::SortByArtists => {
+        //     ui.sort_context_tracks(state::ContextSortOrder::Artists);
+        //     Ok(true)
+        // }
+        // Command::SortByAddedDate => {
+        //     ui.sort_context_tracks(state::ContextSortOrder::AddedAt);
+        //     Ok(true)
+        // }
+        // Command::SortByDuration => {
+        //     ui.sort_context_tracks(state::ContextSortOrder::Duration);
+        //     Ok(true)
+        // }
+        // Command::ReverseOrder => {
+        //     ui.reverse_context_tracks();
+        //     Ok(true)
+        // }
+        Command::SwitchPlaylist => {
+            ui.popup_state = state::PopupState::PlaylistSwitch;
+            ui.playlists_list_ui_state = ListState::default();
+            ui.playlists_list_ui_state.select(Some(0));
+            Ok(true)
+        }
+        Command::SwitchDevice => {
+            ui.popup_state = state::PopupState::DeviceSwitch;
+            ui.devices_list_ui_state = ListState::default();
+            ui.devices_list_ui_state.select(Some(0));
+            send.send(Event::GetDevices)?;
+            Ok(true)
+        }
+        Command::SwitchTheme => {
+            let theme = ui.theme.clone();
+            ui.popup_state = state::PopupState::ThemeSwitch(theme);
+            ui.themes_list_ui_state = ListState::default();
+            ui.themes_list_ui_state.select(Some(0));
+            Ok(true)
+        }
+        _ => handle_generic_command_for_context_track_table(command, send, ui, player),
     }
 }
 
 fn handle_key_sequence_for_context_search_popup(
     key_sequence: &KeySequence,
     send: &mpsc::Sender<Event>,
-    state: &mut MutexGuard<state::State>,
+    state: &state::SharedState,
+    ui: &mut MutexGuard<state::UIState>,
 ) -> Result<bool> {
     if key_sequence.keys.len() == 1 {
         if let Key::None(c) = key_sequence.keys[0] {
-            let search_state = match state.popup_state {
+            let search_state = match ui.popup_state {
                 state::PopupState::ContextSearch(ref mut state) => state,
                 _ => unreachable!(),
             };
             match c {
                 KeyCode::Char(c) => {
                     search_state.query.push(c);
-                    state.search_context_tracks();
+                    // ui.search_context_tracks();
                     return Ok(true);
                 }
                 KeyCode::Backspace => {
                     if search_state.query.len() > 1 {
                         search_state.query.pop().unwrap();
-                        state.search_context_tracks();
+                        // ui.search_context_tracks();
                     }
                     return Ok(true);
                 }
@@ -229,245 +248,221 @@ fn handle_key_sequence_for_context_search_popup(
     match command {
         Some(command) => match command {
             Command::ClosePopup => {
-                state.context_tracks_table_ui_state.select(Some(0));
-                state.popup_state = state::PopupState::None;
+                ui.context_tracks_table_ui_state.select(Some(0));
+                ui.popup_state = state::PopupState::None;
                 Ok(true)
             }
-            _ => handle_generic_command_for_context_track_table(command, send, state),
+            _ => handle_generic_command_for_context_track_table(
+                command,
+                send,
+                ui,
+                state.player.read().unwrap(),
+            ),
         },
         None => Ok(false),
     }
 }
 
-fn handle_key_sequence_for_playlist_switch_popup(
-    key_sequence: &KeySequence,
+fn handle_command_for_playlist_switch_popup(
+    command: Command,
     send: &mpsc::Sender<Event>,
-    state: &mut MutexGuard<state::State>,
+    state: &state::SharedState,
+    ui: &mut MutexGuard<state::UIState>,
 ) -> Result<bool> {
-    let command = state
-        .keymap_config
-        .find_command_from_key_sequence(key_sequence);
+    let player = state.player.read().unwrap();
 
     match command {
-        Some(command) => match command {
-            Command::SelectNext => {
-                if let Some(id) = state.playlists_list_ui_state.selected() {
-                    if id + 1 < state.user_playlists.len() {
-                        state.playlists_list_ui_state.select(Some(id + 1));
-                    }
+        Command::SelectNext => {
+            if let Some(id) = ui.playlists_list_ui_state.selected() {
+                if id + 1 < player.user_playlists.len() {
+                    ui.playlists_list_ui_state.select(Some(id + 1));
                 }
-                Ok(true)
             }
-            Command::SelectPrevious => {
-                if let Some(id) = state.playlists_list_ui_state.selected() {
-                    if id > 0 {
-                        state.playlists_list_ui_state.select(Some(id - 1));
-                    }
+            Ok(true)
+        }
+        Command::SelectPrevious => {
+            if let Some(id) = ui.playlists_list_ui_state.selected() {
+                if id > 0 {
+                    ui.playlists_list_ui_state.select(Some(id - 1));
                 }
-                Ok(true)
             }
-            Command::ChoseSelected => {
-                if let Some(id) = state.playlists_list_ui_state.selected() {
-                    send.send(Event::PlayContext(state.user_playlists[id].uri.clone()))?;
-                }
-                Ok(true)
+            Ok(true)
+        }
+        Command::ChoseSelected => {
+            if let Some(id) = ui.playlists_list_ui_state.selected() {
+                send.send(Event::PlayContext(player.user_playlists[id].uri.clone()))?;
             }
-            Command::ClosePopup => {
-                state.popup_state = state::PopupState::None;
-                Ok(true)
-            }
-            _ => Ok(false),
-        },
-        None => Ok(false),
+            Ok(true)
+        }
+        Command::ClosePopup => {
+            ui.popup_state = state::PopupState::None;
+            Ok(true)
+        }
+        _ => Ok(false),
     }
 }
 
-fn handle_key_sequence_for_theme_switch_popup(
-    key_sequence: &KeySequence,
-    state: &mut MutexGuard<state::State>,
-) -> Result<bool> {
-    let command = state
-        .keymap_config
-        .find_command_from_key_sequence(key_sequence);
-
-    match command {
-        Some(command) => match command {
-            Command::SelectNext => {
-                if let Some(id) = state.themes_list_ui_state.selected() {
-                    if id + 1 < state.theme_config.themes.len() {
-                        state.theme_config.theme = state.theme_config.themes[id + 1].clone();
-                        state.themes_list_ui_state.select(Some(id + 1));
-                    }
-                }
-                Ok(true)
-            }
-            Command::SelectPrevious => {
-                if let Some(id) = state.themes_list_ui_state.selected() {
-                    if id > 0 {
-                        state.theme_config.theme = state.theme_config.themes[id - 1].clone();
-                        state.themes_list_ui_state.select(Some(id - 1));
-                    }
-                }
-                Ok(true)
-            }
-            Command::ChoseSelected => {
-                if let Some(id) = state.themes_list_ui_state.selected() {
-                    // update the application's theme to the chosen theme, then
-                    // move the chosen theme to the beginning of the theme list
-                    let theme = state.theme_config.themes.remove(id);
-                    state.theme_config.theme = theme.clone();
-                    state.theme_config.themes.insert(0, theme);
-                }
-                state.popup_state = state::PopupState::None;
-                Ok(true)
-            }
-            Command::ClosePopup => {
-                state.theme_config.theme = match state.popup_state {
-                    state::PopupState::ThemeSwitch(ref theme) => theme.clone(),
-                    _ => unreachable!(),
-                };
-                state.popup_state = state::PopupState::None;
-                Ok(true)
-            }
-            _ => Ok(false),
-        },
-        None => Ok(false),
-    }
-}
-
-fn handle_key_sequence_for_device_switch_popup(
-    key_sequence: &KeySequence,
+fn handle_command_for_theme_switch_popup(
+    command: Command,
     send: &mpsc::Sender<Event>,
-    state: &mut MutexGuard<state::State>,
+    state: &state::SharedState,
+    ui: &mut MutexGuard<state::UIState>,
 ) -> Result<bool> {
-    let command = state
-        .keymap_config
-        .find_command_from_key_sequence(key_sequence);
-
     match command {
-        Some(command) => match command {
-            Command::SelectNext => {
-                if let Some(id) = state.devices_list_ui_state.selected() {
-                    if id + 1 < state.devices.len() {
-                        state.devices_list_ui_state.select(Some(id + 1));
-                    }
+        Command::SelectNext => {
+            if let Some(id) = ui.themes_list_ui_state.selected() {
+                if id + 1 < state.theme_config.themes.len() {
+                    ui.theme = state.theme_config.themes[id + 1].clone();
+                    ui.themes_list_ui_state.select(Some(id + 1));
                 }
-                Ok(true)
             }
-            Command::SelectPrevious => {
-                if let Some(id) = state.devices_list_ui_state.selected() {
-                    if id > 0 {
-                        state.devices_list_ui_state.select(Some(id - 1));
-                    }
+            Ok(true)
+        }
+        Command::SelectPrevious => {
+            if let Some(id) = ui.themes_list_ui_state.selected() {
+                if id > 0 {
+                    ui.theme = state.theme_config.themes[id - 1].clone();
+                    ui.themes_list_ui_state.select(Some(id - 1));
                 }
-                Ok(true)
             }
-            Command::ChoseSelected => {
-                if let Some(id) = state.devices_list_ui_state.selected() {
-                    send.send(Event::TransferPlayback(state.devices[id].id.clone()))?;
-                }
-                Ok(true)
-            }
-            Command::ClosePopup => {
-                state.popup_state = state::PopupState::None;
-                Ok(true)
-            }
-            _ => Ok(false),
-        },
-        None => Ok(false),
+            Ok(true)
+        }
+        Command::ChoseSelected => {
+            ui.popup_state = state::PopupState::None;
+            Ok(true)
+        }
+        Command::ClosePopup => {
+            ui.theme = match ui.popup_state {
+                state::PopupState::ThemeSwitch(ref theme) => theme.clone(),
+                _ => unreachable!(),
+            };
+            ui.popup_state = state::PopupState::None;
+            Ok(true)
+        }
+        _ => Ok(false),
     }
 }
 
-fn handle_key_sequence_for_command_help_popup(
-    key_sequence: &KeySequence,
-    state: &mut MutexGuard<state::State>,
+fn handle_command_for_device_switch_popup(
+    command: Command,
+    send: &mpsc::Sender<Event>,
+    state: &state::SharedState,
+    ui: &mut MutexGuard<state::UIState>,
 ) -> Result<bool> {
-    let command = state
-        .keymap_config
-        .find_command_from_key_sequence(key_sequence);
+    let player = state.player.read().unwrap();
 
-    if let Some(Command::ClosePopup) = command {
-        state.popup_state = state::PopupState::None;
+    match command {
+        Command::SelectNext => {
+            if let Some(id) = ui.devices_list_ui_state.selected() {
+                if id + 1 < player.devices.len() {
+                    ui.devices_list_ui_state.select(Some(id + 1));
+                }
+            }
+            Ok(true)
+        }
+        Command::SelectPrevious => {
+            if let Some(id) = ui.devices_list_ui_state.selected() {
+                if id > 0 {
+                    ui.devices_list_ui_state.select(Some(id - 1));
+                }
+            }
+            Ok(true)
+        }
+        Command::ChoseSelected => {
+            if let Some(id) = ui.devices_list_ui_state.selected() {
+                send.send(Event::TransferPlayback(player.devices[id].id.clone()))?;
+            }
+            Ok(true)
+        }
+        Command::ClosePopup => {
+            ui.popup_state = state::PopupState::None;
+            Ok(true)
+        }
+        _ => Ok(false),
+    }
+}
+
+fn handle_command_for_command_help_popup(
+    command: Command,
+    ui: &mut MutexGuard<state::UIState>,
+) -> Result<bool> {
+    if let Command::ClosePopup = command {
+        ui.popup_state = state::PopupState::None;
         Ok(true)
     } else {
         Ok(false)
     }
 }
 
-fn handle_key_sequence(
-    key_sequence: &KeySequence,
+fn handle_command(
+    command: Command,
     send: &mpsc::Sender<Event>,
-    state: &mut MutexGuard<state::State>,
+    ui: &mut MutexGuard<state::UIState>,
 ) -> Result<bool> {
-    let command = state
-        .keymap_config
-        .find_command_from_key_sequence(key_sequence);
-
     match command {
-        Some(command) => match command {
-            Command::Quit => {
-                state.is_running = false;
-                Ok(true)
-            }
-            Command::NextTrack => {
-                send.send(Event::NextTrack)?;
-                Ok(true)
-            }
-            Command::PreviousTrack => {
-                send.send(Event::PreviousTrack)?;
-                Ok(true)
-            }
-            Command::ResumePause => {
-                send.send(Event::ResumePause)?;
-                Ok(true)
-            }
-            Command::Repeat => {
-                send.send(Event::Repeat)?;
-                Ok(true)
-            }
-            Command::Shuffle => {
-                send.send(Event::Shuffle)?;
-                Ok(true)
-            }
-            Command::OpenCommandHelp => {
-                state.popup_state = state::PopupState::CommandHelp;
-                Ok(true)
-            }
-            _ => Ok(false),
-        },
-        None => Ok(false),
+        Command::Quit => {
+            ui.is_running = false;
+            Ok(true)
+        }
+        Command::NextTrack => {
+            send.send(Event::NextTrack)?;
+            Ok(true)
+        }
+        Command::PreviousTrack => {
+            send.send(Event::PreviousTrack)?;
+            Ok(true)
+        }
+        Command::ResumePause => {
+            send.send(Event::ResumePause)?;
+            Ok(true)
+        }
+        Command::Repeat => {
+            send.send(Event::Repeat)?;
+            Ok(true)
+        }
+        Command::Shuffle => {
+            send.send(Event::Shuffle)?;
+            Ok(true)
+        }
+        Command::OpenCommandHelp => {
+            ui.popup_state = state::PopupState::CommandHelp;
+            Ok(true)
+        }
+        _ => Ok(false),
     }
 }
 
 fn handle_generic_command_for_context_track_table(
     command: Command,
     send: &mpsc::Sender<Event>,
-    state: &mut MutexGuard<state::State>,
+    ui: &mut MutexGuard<state::UIState>,
+    player: RwLockReadGuard<state::PlayerState>,
 ) -> Result<bool> {
+    let tracks = ui.get_context_tracks(player.get_context_tracks());
+
     match command {
         Command::SelectNext => {
-            if let Some(id) = state.context_tracks_table_ui_state.selected() {
-                if id + 1 < state.get_context_tracks().len() {
-                    state.context_tracks_table_ui_state.select(Some(id + 1));
+            if let Some(id) = ui.context_tracks_table_ui_state.selected() {
+                if id + 1 < tracks.len() {
+                    ui.context_tracks_table_ui_state.select(Some(id + 1));
                 }
             }
             Ok(true)
         }
         Command::SelectPrevious => {
-            if let Some(id) = state.context_tracks_table_ui_state.selected() {
+            if let Some(id) = ui.context_tracks_table_ui_state.selected() {
                 if id > 0 {
-                    state.context_tracks_table_ui_state.select(Some(id - 1));
+                    ui.context_tracks_table_ui_state.select(Some(id - 1));
                 }
             }
             Ok(true)
         }
         Command::ChoseSelected => {
             if let (Some(id), Some(playback)) = (
-                state.context_tracks_table_ui_state.selected(),
-                state.playback.as_ref(),
+                ui.context_tracks_table_ui_state.selected(),
+                player.playback.as_ref(),
             ) {
                 if let Some(ref context) = playback.context {
-                    let tracks = state.get_context_tracks();
                     send.send(Event::PlayTrack(
                         tracks[id].uri.clone(),
                         context.uri.clone(),
@@ -477,8 +472,7 @@ fn handle_generic_command_for_context_track_table(
             Ok(true)
         }
         Command::PlaySelectedTrackAlbum => {
-            if let Some(id) = state.context_tracks_table_ui_state.selected() {
-                let tracks = state.get_context_tracks();
+            if let Some(id) = ui.context_tracks_table_ui_state.selected() {
                 if id < tracks.len() {
                     if let Some(uri) = tracks[id].album.uri.clone() {
                         send.send(Event::PlayContext(uri))?;

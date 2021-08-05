@@ -1,8 +1,8 @@
 use crate::{config, key};
 use rspotify::model::*;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 use tui::widgets::*;
-pub type SharedState = Arc<Mutex<State>>;
+pub type SharedState = Arc<State>;
 
 /// Application's state
 pub struct State {
@@ -10,17 +10,24 @@ pub struct State {
     pub keymap_config: config::KeymapConfig,
     pub theme_config: config::ThemeConfig,
 
-    pub input_key_sequence: key::KeySequence,
+    pub player: RwLock<PlayerState>,
+    pub ui: Mutex<UIState>,
+}
 
-    pub is_running: bool,
-    pub auth_token_expires_at: std::time::SystemTime,
-
-    pub devices: Vec<device::Device>,
+/// Player state
+pub struct PlayerState {
     pub user_playlists: Vec<playlist::SimplifiedPlaylist>,
-
+    pub devices: Vec<device::Device>,
+    pub auth_token_expires_at: std::time::SystemTime,
     pub playback: Option<context::CurrentlyPlaybackContext>,
     pub context: PlayingContext,
+}
 
+/// UI state
+pub struct UIState {
+    pub is_running: bool,
+    pub theme: config::Theme,
+    pub input_key_sequence: key::KeySequence,
     pub popup_state: PopupState,
     pub context_tracks_table_ui_state: TableState,
     pub playlists_list_ui_state: ListState,
@@ -97,17 +104,31 @@ impl Default for State {
             theme_config: config::ThemeConfig::default(),
             keymap_config: config::KeymapConfig::default(),
 
-            input_key_sequence: key::KeySequence { keys: vec![] },
+            player: RwLock::new(PlayerState::default()),
 
-            is_running: true,
+            ui: Mutex::new(UIState::default()),
+        }
+    }
+}
+
+impl Default for PlayerState {
+    fn default() -> Self {
+        Self {
             auth_token_expires_at: std::time::SystemTime::now(),
-
             devices: vec![],
             user_playlists: vec![],
-
             playback: None,
             context: PlayingContext::Unknown,
+        }
+    }
+}
 
+impl Default for UIState {
+    fn default() -> Self {
+        Self {
+            is_running: true,
+            theme: config::Theme::default(),
+            input_key_sequence: key::KeySequence { keys: vec![] },
             popup_state: PopupState::None,
             context_tracks_table_ui_state: TableState::default(),
             playlists_list_ui_state: ListState::default(),
@@ -121,9 +142,11 @@ impl Default for State {
 impl State {
     /// creates new state
     pub fn new() -> SharedState {
-        Arc::new(Mutex::new(State::default()))
+        Arc::new(State::default())
     }
+}
 
+impl PlayerState {
     /// sorts tracks in the current playing context given a context sort oder
     pub fn sort_context_tracks(&mut self, sort_oder: ContextSortOrder) {
         match self.context {
@@ -135,30 +158,6 @@ impl State {
                 tracks.sort_by(|x, y| sort_oder.compare(x, y));
             }
         };
-    }
-
-    /// searchs tracks in the current playing context
-    pub fn search_context_tracks(&mut self) {
-        let mut query = match self.popup_state {
-            PopupState::ContextSearch(ref state) => state.query.clone(),
-            _ => unreachable!(),
-        };
-        query.remove(0); // remove the '/' character at the beginning of the query string
-
-        log::info!("search tracks in context with query {}", query);
-        let tracks = self
-            .get_context_tracks_internal()
-            .into_iter()
-            .filter(|&t| t.get_basic_info().to_lowercase().contains(&query))
-            .cloned()
-            .collect::<Vec<_>>();
-
-        let id = if tracks.is_empty() { None } else { Some(0) };
-        self.context_tracks_table_ui_state.select(id);
-
-        if let PopupState::ContextSearch(ref mut state) = self.popup_state {
-            state.tracks = tracks;
-        }
     }
 
     /// reverses order of tracks in the current playing context
@@ -189,23 +188,39 @@ impl State {
         }
     }
 
-    /// gets all tracks inside the current playing context.
-    /// During the context search mode, it returns tracks filtered by a search query
-    pub fn get_context_tracks(&self) -> Vec<&Track> {
-        if let PopupState::ContextSearch(ref state) = self.popup_state {
-            // in search mode, return the filtered tracks
-            state.tracks.iter().collect()
-        } else {
-            self.get_context_tracks_internal()
-        }
-    }
-
     /// gets all tracks inside the current playing context
-    fn get_context_tracks_internal(&self) -> Vec<&Track> {
+    pub fn get_context_tracks(&self) -> Vec<&Track> {
         match self.context {
             PlayingContext::Unknown => vec![],
             PlayingContext::Album(_, ref tracks) => tracks.iter().collect(),
             PlayingContext::Playlist(_, ref tracks) => tracks.iter().collect(),
+        }
+    }
+}
+
+impl UIState {
+    /// searches tracks in the current playing context
+    pub fn search_context_tracks(&mut self, tracks: Vec<&Track>) {
+        if let PopupState::ContextSearch(ref mut state) = self.popup_state {
+            let query = state.query.clone();
+            query.remove(0); // remove the '/' character at the beginning of the query string
+            log::info!("search tracks in context with query {}", query);
+            let id = if tracks.is_empty() { None } else { Some(0) };
+            self.context_tracks_table_ui_state.select(id);
+            state.tracks = tracks
+                .into_iter()
+                .filter(|&t| t.get_basic_info().to_lowercase().contains(&query))
+                .cloned()
+                .collect();
+        }
+    }
+
+    /// gets all tracks inside the current playing context.
+    /// If in the context search mode, returns tracks filtered by the search query.
+    pub fn get_context_tracks<'a>(&'a self, tracks: Vec<&'a Track>) -> Vec<&'a Track> {
+        match self.popup_state {
+            PopupState::ContextSearch(ref state) => state.tracks.iter().collect(),
+            _ => tracks,
         }
     }
 }
