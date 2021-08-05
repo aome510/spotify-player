@@ -24,7 +24,9 @@ const SCOPES: [&str; 10] = [
 ];
 
 async fn init_state(client: &mut client::Client, state: &state::SharedState) -> Result<()> {
-    state.write().unwrap().auth_token_expires_at = client.refresh_token().await?;
+    let mut state = state.lock().unwrap();
+
+    state.auth_token_expires_at = client.refresh_token().await?;
 
     let devices = client.get_devices().await?;
     if devices.is_empty() {
@@ -32,7 +34,7 @@ async fn init_state(client: &mut client::Client, state: &state::SharedState) -> 
             "no active device available. Please connect to one and try again."
         ));
     }
-    state.write().unwrap().devices = devices;
+    state.devices = devices;
 
     Ok(())
 }
@@ -65,7 +67,7 @@ async fn main() -> Result<()> {
         None => config::get_config_folder_path()?,
     };
     {
-        let mut state = state.write().unwrap();
+        let mut state = state.lock().unwrap();
         state.app_config.parse_config_file(&config_folder)?;
         log::info!("app configuartions: {:#?}", state.app_config);
 
@@ -114,7 +116,7 @@ async fn main() -> Result<()> {
     std::thread::spawn({
         let playback_refresh_duration = std::time::Duration::from_millis(
             state
-                .read()
+                .lock()
                 .unwrap()
                 .app_config
                 .playback_refresh_duration_in_ms,

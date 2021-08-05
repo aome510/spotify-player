@@ -1,8 +1,8 @@
 use crate::{config, key};
 use rspotify::model::*;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex};
 use tui::widgets::*;
-pub type SharedState = Arc<RwLock<State>>;
+pub type SharedState = Arc<Mutex<State>>;
 
 /// Application's state
 pub struct State {
@@ -21,8 +21,6 @@ pub struct State {
     pub playback: Option<context::CurrentlyPlaybackContext>,
     pub context: PlayingContext,
 
-    pub context_search_state: ContextSearchState,
-
     pub popup_state: PopupState,
     pub context_tracks_table_ui_state: TableState,
     pub playlists_list_ui_state: ListState,
@@ -38,10 +36,19 @@ pub enum PlayingContext {
     Unknown,
 }
 
-#[derive(Default)]
+/// Popup state
+pub enum PopupState {
+    None,
+    ContextSearch(ContextSearchState),
+    PlaylistSwitch,
+    ThemeSwitch(config::Theme),
+    DeviceSwitch,
+    CommandHelp,
+}
+
 /// State for searching tracks in a playing context
 pub struct ContextSearchState {
-    pub query: Option<String>,
+    pub query: String,
     pub tracks: Vec<Track>,
 }
 
@@ -53,17 +60,6 @@ pub enum ContextSortOrder {
     Album,
     Artists,
     Duration,
-}
-
-#[derive(Clone)]
-/// Popup state
-pub enum PopupState {
-    None,
-    ContextSearch,
-    PlaylistSwitch,
-    ThemeSwitch(config::Theme),
-    DeviceSwitch,
-    CommandHelp,
 }
 
 #[derive(Default, Debug, Clone)]
@@ -112,8 +108,6 @@ impl Default for State {
             playback: None,
             context: PlayingContext::Unknown,
 
-            context_search_state: ContextSearchState::default(),
-
             popup_state: PopupState::None,
             context_tracks_table_ui_state: TableState::default(),
             playlists_list_ui_state: ListState::default(),
@@ -127,7 +121,7 @@ impl Default for State {
 impl State {
     /// creates new state
     pub fn new() -> SharedState {
-        Arc::new(RwLock::new(State::default()))
+        Arc::new(Mutex::new(State::default()))
     }
 
     /// sorts tracks in the current playing context given a context sort oder
@@ -143,6 +137,30 @@ impl State {
         };
     }
 
+    /// searchs tracks in the current playing context
+    pub fn search_context_tracks(&mut self) {
+        let mut query = match self.popup_state {
+            PopupState::ContextSearch(ref state) => state.query.clone(),
+            _ => unreachable!(),
+        };
+        query.remove(0); // remove the '/' character at the beginning of the query string
+
+        log::info!("search tracks in context with query {}", query);
+        let tracks = self
+            .get_context_tracks_internal()
+            .into_iter()
+            .filter(|&t| t.get_basic_info().to_lowercase().contains(&query))
+            .cloned()
+            .collect::<Vec<_>>();
+
+        let id = if tracks.is_empty() { None } else { Some(0) };
+        self.context_tracks_table_ui_state.select(id);
+
+        if let PopupState::ContextSearch(ref mut state) = self.popup_state {
+            state.tracks = tracks;
+        }
+    }
+
     /// reverses order of tracks in the current playing context
     pub fn reverse_context_tracks(&mut self) {
         match self.context {
@@ -154,15 +172,6 @@ impl State {
                 tracks.reverse();
             }
         };
-    }
-
-    /// gets all tracks inside the current playing context
-    pub fn get_context_tracks(&self) -> Vec<&Track> {
-        match self.context {
-            PlayingContext::Unknown => vec![],
-            PlayingContext::Album(_, ref tracks) => tracks.iter().collect(),
-            PlayingContext::Playlist(_, ref tracks) => tracks.iter().collect(),
-        }
     }
 
     /// gets the description of current playing context
@@ -180,14 +189,23 @@ impl State {
         }
     }
 
-    /// returns the list of tracks in the current playback context (album, playlist, etc)
-    /// filtered by a search query
-    pub fn get_context_filtered_tracks(&self) -> Vec<&Track> {
-        if let PopupState::ContextSearch = self.popup_state {
+    /// gets all tracks inside the current playing context.
+    /// During the context search mode, it returns tracks filtered by a search query
+    pub fn get_context_tracks(&self) -> Vec<&Track> {
+        if let PopupState::ContextSearch(ref state) = self.popup_state {
             // in search mode, return the filtered tracks
-            self.context_search_state.tracks.iter().collect()
+            state.tracks.iter().collect()
         } else {
-            self.get_context_tracks()
+            self.get_context_tracks_internal()
+        }
+    }
+
+    /// gets all tracks inside the current playing context
+    fn get_context_tracks_internal(&self) -> Vec<&Track> {
+        match self.context {
+            PlayingContext::Unknown => vec![],
+            PlayingContext::Album(_, ref tracks) => tracks.iter().collect(),
+            PlayingContext::Playlist(_, ref tracks) => tracks.iter().collect(),
         }
     }
 }

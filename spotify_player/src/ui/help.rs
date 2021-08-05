@@ -1,7 +1,7 @@
 use super::Frame;
 use crate::{config, state};
-use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
+use std::{collections::btree_map::Entry, sync::MutexGuard};
 use tui::{layout::*, widgets::*};
 
 const SHORTCUT_TABLE_N_COLUMNS: usize = 4;
@@ -18,10 +18,9 @@ const COMMAND_TABLE_CONSTRAINTS: [Constraint; 2] =
 pub fn render_shortcuts_help_widget(
     keymaps: Vec<config::Keymap>,
     frame: &mut Frame,
-    state: &state::SharedState,
+    state: &MutexGuard<state::State>,
     rect: Rect,
 ) {
-    let state = state.read().unwrap();
     let theme = &state.theme_config;
 
     let help_table = Table::new(
@@ -42,8 +41,11 @@ pub fn render_shortcuts_help_widget(
     frame.render_widget(help_table, rect);
 }
 
-pub fn render_commands_help_widget(frame: &mut Frame, state: &state::SharedState, rect: Rect) {
-    let state = state.read().unwrap();
+pub fn render_commands_help_widget(
+    frame: &mut Frame,
+    state: &MutexGuard<state::State>,
+    rect: Rect,
+) {
     let theme = &state.theme_config;
 
     let mut map = BTreeMap::new();

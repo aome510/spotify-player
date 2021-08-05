@@ -1,4 +1,4 @@
-use std::sync::RwLockReadGuard;
+use std::sync::MutexGuard;
 
 use crate::event;
 use crate::state;
@@ -25,11 +25,11 @@ pub fn start_ui(
     terminal.clear()?;
 
     let ui_refresh_duration = std::time::Duration::from_millis(
-        state.read().unwrap().app_config.app_refresh_duration_in_ms,
+        state.lock().unwrap().app_config.app_refresh_duration_in_ms,
     );
     loop {
+        let state = state.lock().unwrap();
         {
-            let state = state.read().unwrap();
             if !state.is_running {
                 clean_up(terminal)?;
                 return Ok(());
@@ -85,10 +85,10 @@ pub fn start_ui(
         }
 
         terminal.draw(|f| {
-            let block = Block::default().style(state.read().unwrap().theme_config.app_style());
+            let block = Block::default().style(state.theme_config.app_style());
             f.render_widget(block, f.size());
 
-            render_application_layout(f, &state, f.size());
+            render_application_layout(f, state, f.size());
         })?;
 
         std::thread::sleep(ui_refresh_duration);
@@ -106,10 +106,9 @@ fn clean_up(mut terminal: Terminal) -> Result<()> {
     Ok(())
 }
 
-fn render_application_layout(frame: &mut Frame, state: &state::SharedState, rect: Rect) {
+fn render_application_layout(frame: &mut Frame, mut state: MutexGuard<state::State>, rect: Rect) {
     // render the shortcuts help table if needed
     let matches = {
-        let state = state.read().unwrap();
         if state.shortcuts_help_ui_state {
             let prefix = &state.input_key_sequence;
             state
@@ -134,20 +133,19 @@ fn render_application_layout(frame: &mut Frame, state: &state::SharedState, rect
             .direction(Direction::Vertical)
             .constraints([Constraint::Min(0), Constraint::Length(7)].as_ref())
             .split(rect);
-        help::render_shortcuts_help_widget(matches, frame, state, chunks[1]);
+        help::render_shortcuts_help_widget(matches, frame, &state, chunks[1]);
         chunks[0]
     };
 
     let (player_layout_rect, is_active) = {
-        let event_state = state.read().unwrap().popup_state.clone();
-        match event_state {
+        match state.popup_state {
             state::PopupState::None => (rect, true),
             state::PopupState::CommandHelp => {
                 let chunks = Layout::default()
                     .direction(Direction::Vertical)
                     .constraints([Constraint::Length(7), Constraint::Min(0)].as_ref())
                     .split(rect);
-                help::render_commands_help_widget(frame, state, chunks[1]);
+                help::render_commands_help_widget(frame, &state, chunks[1]);
                 (chunks[0], false)
             }
             state::PopupState::DeviceSwitch => {
@@ -157,7 +155,6 @@ fn render_application_layout(frame: &mut Frame, state: &state::SharedState, rect
                     .split(rect);
                 frame.render_stateful_widget(
                     {
-                        let state = state.read().unwrap();
                         let current_device_id = match state.playback {
                             Some(ref playback) => &playback.device.id,
                             None => "",
@@ -167,10 +164,10 @@ fn render_application_layout(frame: &mut Frame, state: &state::SharedState, rect
                             .iter()
                             .map(|d| (format!("{} | {}", d.name, d.id), current_device_id == d.id))
                             .collect();
-                        construct_list_widget(state, items, "Devices")
+                        construct_list_widget(&state, items, "Devices")
                     },
                     chunks[1],
-                    &mut state.write().unwrap().devices_list_ui_state,
+                    &mut state.devices_list_ui_state,
                 );
                 (chunks[0], false)
             }
@@ -181,17 +178,16 @@ fn render_application_layout(frame: &mut Frame, state: &state::SharedState, rect
                     .split(rect);
                 frame.render_stateful_widget(
                     {
-                        let state = state.read().unwrap();
                         let items = state
                             .theme_config
                             .themes
                             .iter()
                             .map(|t| (t.name.clone(), false))
                             .collect();
-                        construct_list_widget(state, items, "Themes")
+                        construct_list_widget(&state, items, "Themes")
                     },
                     chunks[1],
-                    &mut state.write().unwrap().themes_list_ui_state,
+                    &mut state.themes_list_ui_state,
                 );
                 (chunks[0], false)
             }
@@ -202,7 +198,6 @@ fn render_application_layout(frame: &mut Frame, state: &state::SharedState, rect
                     .split(rect);
                 frame.render_stateful_widget(
                     {
-                        let state = state.read().unwrap();
                         let current_playlist_name = match state.context {
                             state::PlayingContext::Playlist(ref playlist, _) => &playlist.name,
                             _ => "",
@@ -212,28 +207,33 @@ fn render_application_layout(frame: &mut Frame, state: &state::SharedState, rect
                             .iter()
                             .map(|p| (p.name.clone(), p.name == current_playlist_name))
                             .collect();
-                        construct_list_widget(state, items, "Playlists")
+                        construct_list_widget(&state, items, "Playlists")
                     },
                     chunks[1],
-                    &mut state.write().unwrap().playlists_list_ui_state,
+                    &mut state.playlists_list_ui_state,
                 );
                 (chunks[0], false)
             }
-            state::PopupState::ContextSearch => {
+            state::PopupState::ContextSearch(ref search_state) => {
                 let chunks = Layout::default()
                     .direction(Direction::Vertical)
                     .constraints([Constraint::Min(0), Constraint::Length(3)].as_ref())
                     .split(frame.size());
-                render_search_box_widget(frame, state, chunks[1]);
+                render_search_box_widget(frame, &state, chunks[1], search_state.query.clone());
                 (chunks[0], true)
             }
         }
     };
 
-    render_player_layout(is_active, frame, state, player_layout_rect);
+    render_player_layout(is_active, frame, &mut state, player_layout_rect);
 }
 
-fn render_player_layout(is_active: bool, f: &mut Frame, state: &state::SharedState, rect: Rect) {
+fn render_player_layout(
+    is_active: bool,
+    f: &mut Frame,
+    state: &mut MutexGuard<state::State>,
+    rect: Rect,
+) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Length(7), Constraint::Min(0)].as_ref())
@@ -242,10 +242,14 @@ fn render_player_layout(is_active: bool, f: &mut Frame, state: &state::SharedSta
     render_context_tracks_widget(is_active, f, state, chunks[1]);
 }
 
-fn render_search_box_widget(frame: &mut Frame, state: &state::SharedState, rect: Rect) {
-    let state = state.read().unwrap();
+fn render_search_box_widget(
+    frame: &mut Frame,
+    state: &MutexGuard<state::State>,
+    rect: Rect,
+    query: String,
+) {
     let theme = &state.theme_config;
-    let search_box = Paragraph::new(state.context_search_state.query.clone().unwrap()).block(
+    let search_box = Paragraph::new(query).block(
         Block::default()
             .borders(Borders::ALL)
             .title(theme.block_title_with_style("Search")),
@@ -253,14 +257,13 @@ fn render_search_box_widget(frame: &mut Frame, state: &state::SharedState, rect:
     frame.render_widget(search_box, rect);
 }
 
-fn render_current_playback_widget(frame: &mut Frame, state: &state::SharedState, rect: Rect) {
+fn render_current_playback_widget(frame: &mut Frame, state: &MutexGuard<state::State>, rect: Rect) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Min(0), Constraint::Length(1)].as_ref())
         .margin(1)
         .split(rect);
 
-    let state = state.read().unwrap();
     let theme = &state.theme_config;
 
     let block = Block::default()
@@ -327,7 +330,7 @@ fn render_current_playback_widget(frame: &mut Frame, state: &state::SharedState,
 fn render_context_tracks_widget(
     is_active: bool,
     frame: &mut Frame,
-    state: &state::SharedState,
+    state: &mut MutexGuard<state::State>,
     rect: Rect,
 ) {
     let chunks = Layout::default()
@@ -337,7 +340,6 @@ fn render_context_tracks_widget(
         .split(rect);
 
     let (context_desc, track_table) = {
-        let state = state.read().unwrap();
         let theme = &state.theme_config;
 
         let block = Block::default()
@@ -354,7 +356,7 @@ fn render_context_tracks_widget(
 
         let item_max_len = state.app_config.track_table_item_max_len;
         let rows = state
-            .get_context_filtered_tracks()
+            .get_context_tracks()
             .into_iter()
             .enumerate()
             .map(|(id, t)| {
@@ -408,12 +410,12 @@ fn render_context_tracks_widget(
     frame.render_stateful_widget(
         track_table,
         chunks[1],
-        &mut state.write().unwrap().context_tracks_table_ui_state,
+        &mut state.context_tracks_table_ui_state,
     );
 }
 
 fn construct_list_widget<'a>(
-    state: RwLockReadGuard<state::State>,
+    state: &MutexGuard<state::State>,
     items: Vec<(String, bool)>,
     title: &str,
 ) -> List<'a> {
