@@ -27,6 +27,7 @@ pub struct ClientConfig {
 /// Application configurations
 pub struct AppConfig {
     pub theme: String,
+    pub playback_update_delay_in_ms: u64,
     pub app_refresh_duration_in_ms: u64,
     pub playback_refresh_duration_in_ms: u64,
     pub track_table_item_max_len: usize,
@@ -44,8 +45,9 @@ impl Default for AppConfig {
     fn default() -> Self {
         AppConfig {
             theme: "dracula".to_owned(),
+            playback_update_delay_in_ms: 1_000,
             app_refresh_duration_in_ms: 30,
-            playback_refresh_duration_in_ms: 1_000,
+            playback_refresh_duration_in_ms: 0,
             track_table_item_max_len: 32,
         }
     }

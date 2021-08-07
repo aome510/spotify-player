@@ -22,6 +22,7 @@ pub struct PlayerState {
     pub devices: Vec<device::Device>,
     pub auth_token_expires_at: std::time::SystemTime,
     pub playback: Option<context::CurrentlyPlaybackContext>,
+    pub playback_last_updated: Option<std::time::SystemTime>,
     pub context: PlayingContext,
 }
 
@@ -120,6 +121,7 @@ impl Default for PlayerState {
             devices: vec![],
             user_playlists: vec![],
             playback: None,
+            playback_last_updated: None,
             context: PlayingContext::Unknown,
         }
     }
@@ -166,6 +168,32 @@ impl PlayerState {
                 tracks.reverse();
             }
         };
+    }
+
+    /// gets the current playback progress
+    pub fn get_playback_progress(&self) -> Option<u32> {
+        match self.playback {
+            None => None,
+            Some(ref playback) => match playback.item {
+                Some(rspotify::model::PlayingItem::Track(ref track)) => {
+                    let progress_ms = (playback.progress_ms.unwrap() as u128)
+                        + if playback.is_playing {
+                            std::time::SystemTime::now()
+                                .duration_since(self.playback_last_updated.unwrap())
+                                .unwrap()
+                                .as_millis()
+                        } else {
+                            0
+                        };
+                    if progress_ms > (track.duration_ms as u128) {
+                        Some(track.duration_ms)
+                    } else {
+                        Some(progress_ms as u32)
+                    }
+                }
+                _ => None,
+            },
+        }
     }
 
     /// gets the description of current playing context

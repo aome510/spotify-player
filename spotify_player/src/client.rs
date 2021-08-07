@@ -35,12 +35,14 @@ impl Client {
     ) -> Result<()> {
         log::info!("handle the client event {:?}", event);
 
-        match event {
+        let need_update_playback = match event {
             event::Event::GetDevices => {
                 state.player.write().unwrap().devices = self.get_devices().await?;
+                false
             }
             event::Event::GetCurrentPlayback => {
-                state.player.write().unwrap().playback = self.get_current_playback().await?;
+                self.update_current_playback_state(state).await?;
+                false
             }
             event::Event::RefreshToken => {
                 let expires_at = state.player.read().unwrap().auth_token_expires_at;
@@ -48,43 +50,62 @@ impl Client {
                     state.player.write().unwrap().auth_token_expires_at =
                         self.refresh_token().await?;
                 }
+                false
             }
             event::Event::NextTrack => {
                 self.next_track().await?;
+                true
             }
             event::Event::PreviousTrack => {
                 self.previous_track().await?;
+                true
             }
             event::Event::ResumePause => {
                 self.toggle_playing_state(state).await?;
+                true
             }
             event::Event::Shuffle => {
                 self.toggle_shuffle(state).await?;
+                false
             }
             event::Event::Repeat => {
                 self.cycle_repeat(state).await?;
+                false
             }
             event::Event::PlayTrack(track_uri, context_uri) => {
                 self.play_track_with_context(context_uri, Some(track_uri))
                     .await?;
+                true
             }
             event::Event::PlayContext(uri) => {
                 self.play_track_with_context(uri, None).await?;
+                true
             }
             event::Event::TransferPlayback(device_id) => {
                 self.transfer_playback(device_id).await?;
+                true
             }
-            event::Event::SwitchContext(context) => match context {
-                event::Context::Playlist(playlist_id) => {
-                    self.update_context_to_playlist(playlist_id, state).await?;
-                }
-                event::Context::Album(album_id) => {
-                    self.update_context_to_album(album_id, state).await?;
-                }
-                event::Context::Unknown => {
-                    state.player.write().unwrap().context = state::PlayingContext::Unknown;
-                }
-            },
+            event::Event::SwitchContext(context) => {
+                match context {
+                    event::Context::Playlist(playlist_id) => {
+                        self.update_context_to_playlist(playlist_id, state).await?;
+                    }
+                    event::Context::Album(album_id) => {
+                        self.update_context_to_album(album_id, state).await?;
+                    }
+                    event::Context::Unknown => {
+                        state.player.write().unwrap().context = state::PlayingContext::Unknown;
+                    }
+                };
+                false
+            }
+        };
+
+        if need_update_playback {
+            std::thread::sleep(std::time::Duration::from_millis(
+                state.app_config.playback_update_delay_in_ms,
+            ));
+            self.update_current_playback_state(state).await?;
         }
         Ok(())
     }
@@ -394,7 +415,7 @@ impl Client {
         }
     }
 
-    /// gets the current playing state from the application state
+    /// gets the current playback state from the application state
     fn get_current_playback_state<'a>(
         player: &'a std::sync::RwLockReadGuard<'a, state::PlayerState>,
     ) -> Result<&'a context::CurrentlyPlaybackContext> {
@@ -402,6 +423,15 @@ impl Client {
             Some(ref playback) => Ok(playback),
             None => Err(anyhow!("failed to get the current playback context")),
         }
+    }
+
+    /// updates the current playback state by fetching data from the spotify client
+    async fn update_current_playback_state(&self, state: &state::SharedState) -> Result<()> {
+        let mut player = state.player.write().unwrap();
+        let playback = self.get_current_playback().await?;
+        player.playback_last_updated = playback.as_ref().map(|_| std::time::SystemTime::now());
+        player.playback = playback;
+        Ok(())
     }
 }
 

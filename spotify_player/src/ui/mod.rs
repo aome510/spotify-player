@@ -284,8 +284,9 @@ fn render_current_playback_widget(
         .borders(Borders::ALL);
     frame.render_widget(block, rect);
 
-    if let Some(ref context) = state.player.read().unwrap().playback {
-        if let Some(rspotify::model::PlayingItem::Track(ref track)) = context.item {
+    let player = state.player.read().unwrap();
+    if let Some(ref playback) = player.playback {
+        if let Some(rspotify::model::PlayingItem::Track(ref track)) = playback.item {
             let playback_info = vec![
                 Span::styled(
                     format!(
@@ -309,9 +310,9 @@ fn render_current_playback_widget(
                 Span::styled(
                     format!(
                         "repeat: {} | shuffle: {} | volume: {}%",
-                        context.repeat_state.as_str(),
-                        context.shuffle_state,
-                        context.device.volume_percent,
+                        playback.repeat_state.as_str(),
+                        playback.shuffle_state,
+                        playback.device.volume_percent,
                     ),
                     ui.theme.comment_style(),
                 )
@@ -322,14 +323,15 @@ fn render_current_playback_widget(
                 .wrap(Wrap { trim: true })
                 // .style(theme.text_desc_style())
                 .block(Block::default());
+            let progress_ms = player.get_playback_progress().unwrap();
             let progress_bar = Gauge::default()
                 .block(Block::default())
                 .gauge_style(ui.theme.gauge_style())
-                .ratio((context.progress_ms.unwrap() as f64) / (track.duration_ms as f64))
+                .ratio((progress_ms as f64) / (track.duration_ms as f64))
                 .label(Span::styled(
                     format!(
                         "{}/{}",
-                        utils::format_duration(context.progress_ms.unwrap()),
+                        utils::format_duration(progress_ms),
                         utils::format_duration(track.duration_ms),
                     ),
                     Style::default().add_modifier(Modifier::BOLD),

@@ -8,6 +8,7 @@ mod ui;
 mod utils;
 
 use anyhow::{anyhow, Result};
+use rspotify::model::PlayingItem;
 
 // spotify authentication token's scopes for permissions
 const SCOPES: [&str; 10] = [
@@ -111,20 +112,48 @@ async fn main() -> Result<()> {
             event::start_event_stream(send, state);
         }
     });
-    // playback pooling (every `playback_refresh_duration_in_ms` ms) thread
+    if state.app_config.playback_refresh_duration_in_ms > 0 {
+        // playback pooling (every `playback_refresh_duration_in_ms` ms) thread
+        std::thread::spawn({
+            let send = send.clone();
+            let playback_refresh_duration =
+                std::time::Duration::from_millis(state.app_config.playback_refresh_duration_in_ms);
+            move || loop {
+                send.send(event::Event::GetCurrentPlayback)
+                    .unwrap_or_else(|err| {
+                        log::warn!("failed to send GetCurrentPlayback event: {:#?}", err);
+                    });
+                std::thread::sleep(playback_refresh_duration);
+            }
+        });
+    }
     std::thread::spawn({
-        let playback_refresh_duration =
-            std::time::Duration::from_millis(state.app_config.playback_refresh_duration_in_ms);
+        // update the current playback if the currently playing track ends
+        let state = state.clone();
         let send = send.clone();
+        let delay = std::time::Duration::from_millis(state.app_config.playback_update_delay_in_ms);
         move || loop {
-            send.send(event::Event::GetCurrentPlayback)
-                .unwrap_or_else(|err| {
-                    log::warn!("failed to send GetCurrentPlayback event: {:#?}", err);
-                });
-            std::thread::sleep(playback_refresh_duration);
+            let progress_ms = state.player.read().unwrap().get_playback_progress();
+            let duration_ms = match state.player.read().unwrap().playback {
+                Some(ref playback) => match playback.item {
+                    Some(PlayingItem::Track(ref track)) => Some(track.duration_ms),
+                    _ => None,
+                },
+                None => None,
+            };
+            if let Some(progress_ms) = progress_ms {
+                if progress_ms == duration_ms.unwrap() {
+                    send.send(event::Event::GetCurrentPlayback)
+                        .unwrap_or_else(|err| {
+                            log::warn!("failed to send GetCurrentPlayback event: {:#?}", err);
+                        });
+                }
+            }
+            std::thread::sleep(delay);
         }
     });
 
     // application's UI rendering as the main thread
+    send.send(event::Event::GetCurrentPlayback)?;
     ui::start_ui(state, send)
 }
