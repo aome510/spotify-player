@@ -141,13 +141,6 @@ impl Default for UIState {
     }
 }
 
-impl State {
-    /// creates new state
-    pub fn new() -> SharedState {
-        Arc::new(State::default())
-    }
-}
-
 impl PlayerState {
     /// sorts tracks in the current playing context given a context sort oder
     pub fn sort_context_tracks(&mut self, sort_oder: ContextSortOrder) {
@@ -204,7 +197,7 @@ impl UIState {
     /// searches tracks in the current playing context
     pub fn search_context_tracks(&mut self, tracks: Vec<&Track>) {
         if let PopupState::ContextSearch(ref mut state) = self.popup_state {
-            let query = state.query.clone();
+            let mut query = state.query.clone();
             query.remove(0); // remove the '/' character at the beginning of the query string
             log::info!("search tracks in context with query {}", query);
             let id = if tracks.is_empty() { None } else { Some(0) };

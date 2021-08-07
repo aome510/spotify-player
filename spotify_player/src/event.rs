@@ -5,7 +5,7 @@ use crate::{
 };
 use anyhow::Result;
 use crossterm::event::{self as term_event, EventStream, KeyCode, KeyModifiers};
-use std::sync::{mpsc, RwLockReadGuard};
+use std::sync::mpsc;
 use tokio::stream::StreamExt;
 use tui::widgets::ListState;
 
@@ -118,7 +118,7 @@ fn handle_terminal_event(
                     handle_command_for_playlist_switch_popup(command, send, state, &mut ui)?
                 }
                 state::PopupState::ThemeSwitch(_) => {
-                    handle_command_for_theme_switch_popup(command, send, state, &mut ui)?
+                    handle_command_for_theme_switch_popup(command, state, &mut ui)?
                 }
                 state::PopupState::DeviceSwitch => {
                     handle_command_for_device_switch_popup(command, send, state, &mut ui)?
@@ -152,41 +152,66 @@ fn handle_command_for_none_popup(
     state: &state::SharedState,
     ui: &mut state::UIStateGuard,
 ) -> Result<bool> {
-    let player = state.player.read().unwrap();
-
     match command {
         Command::SearchContextTracks => {
             ui.context_tracks_table_ui_state.select(Some(0));
             ui.popup_state = state::PopupState::ContextSearch(state::ContextSearchState {
                 query: "/".to_owned(),
-                tracks: player.get_context_tracks().into_iter().cloned().collect(),
+                tracks: state
+                    .player
+                    .read()
+                    .unwrap()
+                    .get_context_tracks()
+                    .into_iter()
+                    .cloned()
+                    .collect(),
             });
             Ok(true)
         }
-        // Command::SortByTrack => {
-        //     ui.sort_context_tracks(state::ContextSortOrder::TrackName);
-        //     Ok(true)
-        // }
-        // Command::SortByAlbum => {
-        //     ui.sort_context_tracks(state::ContextSortOrder::Album);
-        //     Ok(true)
-        // }
-        // Command::SortByArtists => {
-        //     ui.sort_context_tracks(state::ContextSortOrder::Artists);
-        //     Ok(true)
-        // }
-        // Command::SortByAddedDate => {
-        //     ui.sort_context_tracks(state::ContextSortOrder::AddedAt);
-        //     Ok(true)
-        // }
-        // Command::SortByDuration => {
-        //     ui.sort_context_tracks(state::ContextSortOrder::Duration);
-        //     Ok(true)
-        // }
-        // Command::ReverseOrder => {
-        //     ui.reverse_context_tracks();
-        //     Ok(true)
-        // }
+        Command::SortByTrack => {
+            state
+                .player
+                .write()
+                .unwrap()
+                .sort_context_tracks(state::ContextSortOrder::TrackName);
+            Ok(true)
+        }
+        Command::SortByAlbum => {
+            state
+                .player
+                .write()
+                .unwrap()
+                .sort_context_tracks(state::ContextSortOrder::Album);
+            Ok(true)
+        }
+        Command::SortByArtists => {
+            state
+                .player
+                .write()
+                .unwrap()
+                .sort_context_tracks(state::ContextSortOrder::Artists);
+            Ok(true)
+        }
+        Command::SortByAddedDate => {
+            state
+                .player
+                .write()
+                .unwrap()
+                .sort_context_tracks(state::ContextSortOrder::AddedAt);
+            Ok(true)
+        }
+        Command::SortByDuration => {
+            state
+                .player
+                .write()
+                .unwrap()
+                .sort_context_tracks(state::ContextSortOrder::Duration);
+            Ok(true)
+        }
+        Command::ReverseOrder => {
+            state.player.write().unwrap().reverse_context_tracks();
+            Ok(true)
+        }
         Command::SwitchPlaylist => {
             ui.popup_state = state::PopupState::PlaylistSwitch;
             ui.playlists_list_ui_state = ListState::default();
@@ -207,7 +232,7 @@ fn handle_command_for_none_popup(
             ui.themes_list_ui_state.select(Some(0));
             Ok(true)
         }
-        _ => handle_generic_command_for_context_track_table(command, send, ui, player),
+        _ => handle_generic_command_for_context_track_table(command, send, ui, state),
     }
 }
 
@@ -226,13 +251,13 @@ fn handle_key_sequence_for_context_search_popup(
             match c {
                 KeyCode::Char(c) => {
                     search_state.query.push(c);
-                    // ui.search_context_tracks();
+                    ui.search_context_tracks(state.player.read().unwrap().get_context_tracks());
                     return Ok(true);
                 }
                 KeyCode::Backspace => {
                     if search_state.query.len() > 1 {
                         search_state.query.pop().unwrap();
-                        // ui.search_context_tracks();
+                        ui.search_context_tracks(state.player.read().unwrap().get_context_tracks());
                     }
                     return Ok(true);
                 }
@@ -252,12 +277,7 @@ fn handle_key_sequence_for_context_search_popup(
                 ui.popup_state = state::PopupState::None;
                 Ok(true)
             }
-            _ => handle_generic_command_for_context_track_table(
-                command,
-                send,
-                ui,
-                state.player.read().unwrap(),
-            ),
+            _ => handle_generic_command_for_context_track_table(command, send, ui, state),
         },
         None => Ok(false),
     }
@@ -304,7 +324,6 @@ fn handle_command_for_playlist_switch_popup(
 
 fn handle_command_for_theme_switch_popup(
     command: Command,
-    send: &mpsc::Sender<Event>,
     state: &state::SharedState,
     ui: &mut state::UIStateGuard,
 ) -> Result<bool> {
@@ -436,8 +455,9 @@ fn handle_generic_command_for_context_track_table(
     command: Command,
     send: &mpsc::Sender<Event>,
     ui: &mut state::UIStateGuard,
-    player: RwLockReadGuard<state::PlayerState>,
+    state: &state::SharedState,
 ) -> Result<bool> {
+    let player = state.player.read().unwrap();
     let tracks = ui.get_context_tracks(player.get_context_tracks());
 
     match command {

@@ -86,7 +86,7 @@ pub fn start_ui(
         }
 
         terminal.draw(|f| {
-            let mut ui = state.ui.lock().unwrap();
+            let ui = state.ui.lock().unwrap();
 
             let block = Block::default().style(ui.theme.app_style());
             f.render_widget(block, f.size());
@@ -111,7 +111,7 @@ fn clean_up(mut terminal: Terminal) -> Result<()> {
 
 fn render_application_layout(
     frame: &mut Frame,
-    ui: state::UIStateGuard,
+    mut ui: state::UIStateGuard,
     state: &state::SharedState,
     rect: Rect,
 ) {

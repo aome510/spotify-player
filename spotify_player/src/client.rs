@@ -1,6 +1,5 @@
 use crate::event;
 use crate::state;
-use crate::state::PopupState;
 use anyhow::{anyhow, Result};
 use rspotify::{
     client::Spotify,
@@ -8,7 +7,6 @@ use rspotify::{
     oauth2::{SpotifyClientCredentials, SpotifyOAuth, TokenInfo},
     senum::*,
 };
-use std::sync::MutexGuard;
 use std::time::{Duration, SystemTime};
 use tui::widgets::TableState;
 
@@ -32,22 +30,23 @@ impl Client {
     /// handles a client event
     pub async fn handle_event(
         &mut self,
-        mut state: MutexGuard<'_, state::State>,
+        state: &state::SharedState,
         event: event::Event,
     ) -> Result<()> {
         log::info!("handle the client event {:?}", event);
 
         match event {
             event::Event::GetDevices => {
-                state.devices = self.get_devices().await?;
+                state.player.write().unwrap().devices = self.get_devices().await?;
             }
             event::Event::GetCurrentPlayback => {
-                state.playback = self.get_current_playback().await?;
+                state.player.write().unwrap().playback = self.get_current_playback().await?;
             }
             event::Event::RefreshToken => {
-                let expires_at = state.auth_token_expires_at;
+                let expires_at = state.player.read().unwrap().auth_token_expires_at;
                 if SystemTime::now() > expires_at {
-                    state.auth_token_expires_at = self.refresh_token().await?;
+                    state.player.write().unwrap().auth_token_expires_at =
+                        self.refresh_token().await?;
                 }
             }
             event::Event::NextTrack => {
@@ -83,7 +82,7 @@ impl Client {
                     self.update_context_to_album(album_id, state).await?;
                 }
                 event::Context::Unknown => {
-                    state.context = state::PlayingContext::Unknown;
+                    state.player.write().unwrap().context = state::PlayingContext::Unknown;
                 }
             },
         }
@@ -172,13 +171,15 @@ impl Client {
         Self::handle_rspotify_result(self.spotify.album(album_id).await)
     }
 
+    // TODO: implement artist as context integration
+
     /// gets a list of top tracks of an artist
-    pub async fn get_artist_top_tracks(&self, artist_id: &str) -> Result<track::FullTracks> {
+    pub async fn _get_artist_top_tracks(&self, artist_id: &str) -> Result<track::FullTracks> {
         Self::handle_rspotify_result(self.spotify.artist_top_tracks(artist_id, None).await)
     }
 
     /// gets all albums of an artist
-    pub async fn get_artist_albums(&self, artist_id: &str) -> Result<Vec<album::SimplifiedAlbum>> {
+    pub async fn _get_artist_albums(&self, artist_id: &str) -> Result<Vec<album::SimplifiedAlbum>> {
         let first_page = Self::handle_rspotify_result(
             self.spotify
                 .artist_albums(artist_id, None, None, None, None)
@@ -188,8 +189,9 @@ impl Client {
     }
 
     /// cycles through the repeat state of the current playback
-    pub async fn cycle_repeat(&self, state: MutexGuard<'_, state::State>) -> Result<()> {
-        let state = Self::get_current_playback_state(&state)?;
+    pub async fn cycle_repeat(&self, state: &state::SharedState) -> Result<()> {
+        let player = state.player.read().unwrap();
+        let state = Self::get_current_playback_state(&player)?;
         let next_repeat_state = match state.repeat_state {
             RepeatState::Off => RepeatState::Track,
             RepeatState::Track => RepeatState::Context,
@@ -199,14 +201,15 @@ impl Client {
     }
 
     /// toggles the shuffle state of the current playback
-    pub async fn toggle_shuffle(&self, state: MutexGuard<'_, state::State>) -> Result<()> {
-        let state = Self::get_current_playback_state(&state)?;
+    pub async fn toggle_shuffle(&self, state: &state::SharedState) -> Result<()> {
+        let player = state.player.read().unwrap();
+        let state = Self::get_current_playback_state(&player)?;
         Self::handle_rspotify_result(self.spotify.shuffle(!state.shuffle_state, None).await)
     }
 
     /// toggles the current playing state (pause/resume a track)
-    pub async fn toggle_playing_state(&self, state: MutexGuard<'_, state::State>) -> Result<()> {
-        match state.playback {
+    pub async fn toggle_playing_state(&self, state: &state::SharedState) -> Result<()> {
+        match state.player.read().unwrap().playback {
             Some(ref playback) => {
                 if playback.is_playing {
                     self.pause_track().await
@@ -214,6 +217,7 @@ impl Client {
                     self.resume_track().await
                 }
             }
+            // TODO: find out if this works
             None => self.resume_track().await,
         }
     }
@@ -251,9 +255,11 @@ impl Client {
     async fn update_context_to_playlist(
         &self,
         playlist_id: String,
-        mut state: MutexGuard<'_, state::State>,
+        state: &state::SharedState,
     ) -> Result<()> {
-        if let state::PlayingContext::Playlist(ref playlist, _) = state.context {
+        if let state::PlayingContext::Playlist(ref playlist, _) =
+            state.player.read().unwrap().context
+        {
             // avoid getting the same playlist more than once
             if playlist.id == playlist_id {
                 return Ok(());
@@ -274,12 +280,13 @@ impl Client {
             .collect::<Vec<_>>();
 
         // update states
-        state.context_tracks_table_ui_state = TableState::default();
-        state.popup_state = PopupState::None;
+        let mut ui = state.ui.lock().unwrap();
+        ui.context_tracks_table_ui_state = TableState::default();
+        ui.popup_state = state::PopupState::None;
         if !tracks.is_empty() {
-            state.context_tracks_table_ui_state.select(Some(0));
+            ui.context_tracks_table_ui_state.select(Some(0));
         }
-        state.context = state::PlayingContext::Playlist(playlist, tracks);
+        state.player.write().unwrap().context = state::PlayingContext::Playlist(playlist, tracks);
         Ok(())
     }
 
@@ -287,9 +294,9 @@ impl Client {
     async fn update_context_to_album(
         &self,
         album_id: String,
-        mut state: MutexGuard<'_, state::State>,
+        state: &state::SharedState,
     ) -> Result<()> {
-        if let state::PlayingContext::Album(ref album, _) = state.context {
+        if let state::PlayingContext::Album(ref album, _) = state.player.read().unwrap().context {
             // avoid getting the same album more than once
             if album.id == album_id {
                 return Ok(());
@@ -316,12 +323,13 @@ impl Client {
             .collect::<Vec<_>>();
 
         // update states
-        state.context_tracks_table_ui_state = TableState::default();
-        state.popup_state = PopupState::None;
+        let mut ui = state.ui.lock().unwrap();
+        ui.context_tracks_table_ui_state = TableState::default();
+        ui.popup_state = state::PopupState::None;
         if !tracks.is_empty() {
-            state.context_tracks_table_ui_state.select(Some(0));
+            ui.context_tracks_table_ui_state.select(Some(0));
         }
-        state.context = state::PlayingContext::Album(album, tracks);
+        state.player.write().unwrap().context = state::PlayingContext::Album(album, tracks);
         Ok(())
     }
 
@@ -388,9 +396,9 @@ impl Client {
 
     /// gets the current playing state from the application state
     fn get_current_playback_state<'a>(
-        state: &'a MutexGuard<'a, state::State>,
+        player: &'a std::sync::RwLockReadGuard<'a, state::PlayerState>,
     ) -> Result<&'a context::CurrentlyPlaybackContext> {
-        match state.playback {
+        match player.playback {
             Some(ref playback) => Ok(playback),
             None => Err(anyhow!("failed to get the current playback context")),
         }
@@ -408,11 +416,15 @@ pub async fn start_watcher(
         Ok(playlists) => {
             log::info!("user's playlists: {:#?}", playlists);
             // update the state
-            let mut state = state.lock().unwrap();
             if !playlists.is_empty() {
-                state.playlists_list_ui_state.select(Some(0));
+                state
+                    .ui
+                    .lock()
+                    .unwrap()
+                    .playlists_list_ui_state
+                    .select(Some(0));
             }
-            state.user_playlists = playlists;
+            state.player.write().unwrap().user_playlists = playlists;
         }
         Err(err) => {
             log::warn!("failed to get user's playlists: {:#?}", err);
@@ -420,8 +432,7 @@ pub async fn start_watcher(
     }
 
     while let Ok(event) = recv.recv() {
-        let state = state.lock().unwrap();
-        if let Err(err) = client.handle_event(state, event).await {
+        if let Err(err) = client.handle_event(&state, event).await {
             log::warn!("{:#?}", err);
         }
     }

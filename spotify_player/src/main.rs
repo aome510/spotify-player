@@ -24,9 +24,7 @@ const SCOPES: [&str; 10] = [
 ];
 
 async fn init_state(client: &mut client::Client, state: &state::SharedState) -> Result<()> {
-    let mut state = state.lock().unwrap();
-
-    state.auth_token_expires_at = client.refresh_token().await?;
+    state.player.write().unwrap().auth_token_expires_at = client.refresh_token().await?;
 
     let devices = client.get_devices().await?;
     if devices.is_empty() {
@@ -34,7 +32,7 @@ async fn init_state(client: &mut client::Client, state: &state::SharedState) -> 
             "no active device available. Please connect to one and try again."
         ));
     }
-    state.devices = devices;
+    state.player.write().unwrap().devices = devices;
 
     Ok(())
 }
@@ -58,22 +56,19 @@ async fn main() -> Result<()> {
         )
         .get_matches();
 
-    let (send, recv) = std::sync::mpsc::channel::<event::Event>();
-    let state = state::State::new();
-
     // parsing config files
+    let mut state = state::State::default();
     let config_folder = match matches.value_of("config-folder") {
         Some(path) => path.into(),
         None => config::get_config_folder_path()?,
     };
     {
-        let mut state = state.lock().unwrap();
         state.app_config.parse_config_file(&config_folder)?;
         log::info!("app configuartions: {:#?}", state.app_config);
 
         state.theme_config.parse_config_file(&config_folder)?;
         if let Some(theme) = state.theme_config.find_theme(&state.app_config.theme) {
-            state.theme_config.theme = theme;
+            state.ui.lock().unwrap().theme = theme;
         }
         log::info!("theme configuartions: {:#?}", state.theme_config);
 
@@ -81,7 +76,11 @@ async fn main() -> Result<()> {
         log::info!("keymap configuartions: {:#?}", state.keymap_config);
     }
 
+    // init the shared state
+    let state = std::sync::Arc::new(state);
+
     // start application's threads
+    let (send, recv) = std::sync::mpsc::channel::<event::Event>();
 
     // client event watcher/handler thread
     std::thread::spawn({
@@ -114,13 +113,8 @@ async fn main() -> Result<()> {
     });
     // playback pooling (every `playback_refresh_duration_in_ms` ms) thread
     std::thread::spawn({
-        let playback_refresh_duration = std::time::Duration::from_millis(
-            state
-                .lock()
-                .unwrap()
-                .app_config
-                .playback_refresh_duration_in_ms,
-        );
+        let playback_refresh_duration =
+            std::time::Duration::from_millis(state.app_config.playback_refresh_duration_in_ms);
         let send = send.clone();
         move || loop {
             send.send(event::Event::GetCurrentPlayback)
