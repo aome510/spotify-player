@@ -371,8 +371,8 @@ fn render_context_tracks_widget(
         }
 
         let item_max_len = state.app_config.track_table_item_max_len;
-        let rows = player
-            .get_context_tracks()
+        let rows = ui
+            .get_context_tracks(&player)
             .into_iter()
             .enumerate()
             .map(|(id, t)| {

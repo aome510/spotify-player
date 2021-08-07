@@ -243,6 +243,7 @@ fn handle_key_sequence_for_context_search_popup(
     ui: &mut state::UIStateGuard,
 ) -> Result<bool> {
     if key_sequence.keys.len() == 1 {
+        let player = state.player.read().unwrap();
         if let Key::None(c) = key_sequence.keys[0] {
             let search_state = match ui.popup_state {
                 state::PopupState::ContextSearch(ref mut state) => state,
@@ -251,13 +252,13 @@ fn handle_key_sequence_for_context_search_popup(
             match c {
                 KeyCode::Char(c) => {
                     search_state.query.push(c);
-                    ui.search_context_tracks(state.player.read().unwrap().get_context_tracks());
+                    ui.search_context_tracks(&player);
                     return Ok(true);
                 }
                 KeyCode::Backspace => {
                     if search_state.query.len() > 1 {
                         search_state.query.pop().unwrap();
-                        ui.search_context_tracks(state.player.read().unwrap().get_context_tracks());
+                        ui.search_context_tracks(&player);
                     }
                     return Ok(true);
                 }
@@ -458,7 +459,7 @@ fn handle_generic_command_for_context_track_table(
     state: &state::SharedState,
 ) -> Result<bool> {
     let player = state.player.read().unwrap();
-    let tracks = ui.get_context_tracks(player.get_context_tracks());
+    let tracks = ui.get_context_tracks(&player);
 
     match command {
         Command::SelectNext => {

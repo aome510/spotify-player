@@ -1,6 +1,6 @@
 use crate::{config, key};
 use rspotify::model::*;
-use std::sync::{Arc, Mutex, MutexGuard, RwLock};
+use std::sync::{Arc, Mutex, MutexGuard, RwLock, RwLockReadGuard};
 use tui::widgets::*;
 
 pub type SharedState = Arc<State>;
@@ -223,11 +223,12 @@ impl PlayerState {
 
 impl UIState {
     /// searches tracks in the current playing context
-    pub fn search_context_tracks(&mut self, tracks: Vec<&Track>) {
+    pub fn search_context_tracks(&mut self, player: &RwLockReadGuard<PlayerState>) {
         if let PopupState::ContextSearch(ref mut state) = self.popup_state {
             let mut query = state.query.clone();
             query.remove(0); // remove the '/' character at the beginning of the query string
             log::info!("search tracks in context with query {}", query);
+            let tracks = player.get_context_tracks();
             let id = if tracks.is_empty() { None } else { Some(0) };
             self.context_tracks_table_ui_state.select(id);
             state.tracks = tracks
@@ -240,10 +241,13 @@ impl UIState {
 
     /// gets all tracks inside the current playing context.
     /// If in the context search mode, returns tracks filtered by the search query.
-    pub fn get_context_tracks<'a>(&'a self, tracks: Vec<&'a Track>) -> Vec<&'a Track> {
+    pub fn get_context_tracks<'a>(
+        &'a self,
+        player: &'a RwLockReadGuard<'a, PlayerState>,
+    ) -> Vec<&'a Track> {
         match self.popup_state {
             PopupState::ContextSearch(ref state) => state.tracks.iter().collect(),
-            _ => tracks,
+            _ => player.get_context_tracks(),
         }
     }
 }
