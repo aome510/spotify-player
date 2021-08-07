@@ -1,7 +1,6 @@
 use super::Frame;
 use crate::{config, state};
-use std::collections::BTreeMap;
-use std::{collections::btree_map::Entry, sync::MutexGuard};
+use std::collections::{btree_map::Entry, BTreeMap};
 use tui::{layout::*, widgets::*};
 
 const SHORTCUT_TABLE_N_COLUMNS: usize = 4;
@@ -18,11 +17,9 @@ const COMMAND_TABLE_CONSTRAINTS: [Constraint; 2] =
 pub fn render_shortcuts_help_widget(
     keymaps: Vec<config::Keymap>,
     frame: &mut Frame,
-    state: &MutexGuard<state::State>,
+    ui: &state::UIStateGuard,
     rect: Rect,
 ) {
-    let theme = &state.theme_config;
-
     let help_table = Table::new(
         keymaps
             .into_iter()
@@ -35,7 +32,7 @@ pub fn render_shortcuts_help_widget(
     .widths(&SHORTCUT_TABLE_CONSTRAINS)
     .block(
         Block::default()
-            .title(theme.block_title_with_style("Shortcuts"))
+            .title(ui.theme.block_title_with_style("Shortcuts"))
             .borders(Borders::ALL),
     );
     frame.render_widget(help_table, rect);
@@ -43,11 +40,10 @@ pub fn render_shortcuts_help_widget(
 
 pub fn render_commands_help_widget(
     frame: &mut Frame,
-    state: &MutexGuard<state::State>,
+    ui: &state::UIStateGuard,
+    state: &state::SharedState,
     rect: Rect,
 ) {
-    let theme = &state.theme_config;
-
     let mut map = BTreeMap::new();
     state.keymap_config.keymaps.iter().for_each(|km| {
         let v = map.entry(km.command);
@@ -72,12 +68,13 @@ pub fn render_commands_help_widget(
             .collect::<Vec<_>>(),
     )
     .header(
-        Row::new(vec![Cell::from("Command"), Cell::from("Keys")]).style(theme.table_header_style()),
+        Row::new(vec![Cell::from("Command"), Cell::from("Keys")])
+            .style(ui.theme.table_header_style()),
     )
     .widths(&COMMAND_TABLE_CONSTRAINTS)
     .block(
         Block::default()
-            .title(theme.block_title_with_style("Commands"))
+            .title(ui.theme.block_title_with_style("Commands"))
             .borders(Borders::ALL),
     );
     frame.render_widget(help_table, rect);

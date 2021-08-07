@@ -1,8 +1,10 @@
 use crate::{config, key};
 use rspotify::model::*;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, Mutex, MutexGuard, RwLock};
 use tui::widgets::*;
+
 pub type SharedState = Arc<State>;
+pub type UIStateGuard<'a> = MutexGuard<'a, UIState>;
 
 /// Application's state
 pub struct State {

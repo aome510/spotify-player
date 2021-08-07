@@ -1,5 +1,3 @@
-use std::sync::MutexGuard;
-
 use crate::event;
 use crate::state;
 use crate::utils;
@@ -24,29 +22,29 @@ pub fn start_ui(
     let mut terminal = tui::Terminal::new(backend)?;
     terminal.clear()?;
 
-    let ui_refresh_duration = std::time::Duration::from_millis(
-        state.lock().unwrap().app_config.app_refresh_duration_in_ms,
-    );
+    let ui_refresh_duration =
+        std::time::Duration::from_millis(state.app_config.app_refresh_duration_in_ms);
     loop {
-        let state = state.lock().unwrap();
+        if !state.ui.lock().unwrap().is_running {
+            clean_up(terminal)?;
+            return Ok(());
+        }
+
         {
-            if !state.is_running {
-                clean_up(terminal)?;
-                return Ok(());
-            }
-            if std::time::SystemTime::now() > state.auth_token_expires_at {
+            let player = state.player.read().unwrap();
+            if std::time::SystemTime::now() > player.auth_token_expires_at {
                 send.send(event::Event::RefreshToken)?;
             }
 
             // updates the context (album, playlist, etc) tracks based on the current playback
-            if let Some(ref playback) = state.playback {
+            if let Some(ref playback) = player.playback {
                 if let Some(ref context) = playback.context {
                     match context._type {
                         rspotify::senum::Type::Playlist => {
                             let playlist_id = context.uri.split(':').nth(2).unwrap();
                             let current_playlist_id =
                                 if let state::PlayingContext::Playlist(ref playlist, _) =
-                                    state.context
+                                    player.context
                                 {
                                     &playlist.id
                                 } else {
@@ -60,12 +58,15 @@ pub fn start_ui(
                         }
                         rspotify::senum::Type::Album => {
                             let album_id = context.uri.split(':').nth(2).unwrap();
-                            let current_album_id =
-                                if let state::PlayingContext::Album(ref album, _) = state.context {
-                                    &album.id
-                                } else {
-                                    ""
-                                };
+                            let current_album_id = if let state::PlayingContext::Album(
+                                ref album,
+                                _,
+                            ) = player.context
+                            {
+                                &album.id
+                            } else {
+                                ""
+                            };
                             if current_album_id != album_id {
                                 send.send(event::Event::SwitchContext(event::Context::Album(
                                     album_id.to_owned(),
@@ -85,10 +86,12 @@ pub fn start_ui(
         }
 
         terminal.draw(|f| {
-            let block = Block::default().style(state.theme_config.app_style());
+            let mut ui = state.ui.lock().unwrap();
+
+            let block = Block::default().style(ui.theme.app_style());
             f.render_widget(block, f.size());
 
-            render_application_layout(f, state, f.size());
+            render_application_layout(f, ui, &state, f.size());
         })?;
 
         std::thread::sleep(ui_refresh_duration);
@@ -106,11 +109,16 @@ fn clean_up(mut terminal: Terminal) -> Result<()> {
     Ok(())
 }
 
-fn render_application_layout(frame: &mut Frame, mut state: MutexGuard<state::State>, rect: Rect) {
+fn render_application_layout(
+    frame: &mut Frame,
+    ui: state::UIStateGuard,
+    state: &state::SharedState,
+    rect: Rect,
+) {
     // render the shortcuts help table if needed
     let matches = {
-        if state.shortcuts_help_ui_state {
-            let prefix = &state.input_key_sequence;
+        if ui.shortcuts_help_ui_state {
+            let prefix = &ui.input_key_sequence;
             state
                 .keymap_config
                 .find_matched_prefix_keymaps(prefix)
@@ -133,19 +141,19 @@ fn render_application_layout(frame: &mut Frame, mut state: MutexGuard<state::Sta
             .direction(Direction::Vertical)
             .constraints([Constraint::Min(0), Constraint::Length(7)].as_ref())
             .split(rect);
-        help::render_shortcuts_help_widget(matches, frame, &state, chunks[1]);
+        help::render_shortcuts_help_widget(matches, frame, &ui, chunks[1]);
         chunks[0]
     };
 
     let (player_layout_rect, is_active) = {
-        match state.popup_state {
+        match ui.popup_state {
             state::PopupState::None => (rect, true),
             state::PopupState::CommandHelp => {
                 let chunks = Layout::default()
                     .direction(Direction::Vertical)
                     .constraints([Constraint::Length(7), Constraint::Min(0)].as_ref())
                     .split(rect);
-                help::render_commands_help_widget(frame, &state, chunks[1]);
+                help::render_commands_help_widget(frame, &ui, state, chunks[1]);
                 (chunks[0], false)
             }
             state::PopupState::DeviceSwitch => {
@@ -155,19 +163,20 @@ fn render_application_layout(frame: &mut Frame, mut state: MutexGuard<state::Sta
                     .split(rect);
                 frame.render_stateful_widget(
                     {
-                        let current_device_id = match state.playback {
+                        let player = state.player.read().unwrap();
+                        let current_device_id = match player.playback {
                             Some(ref playback) => &playback.device.id,
                             None => "",
                         };
-                        let items = state
+                        let items = player
                             .devices
                             .iter()
                             .map(|d| (format!("{} | {}", d.name, d.id), current_device_id == d.id))
                             .collect();
-                        construct_list_widget(&state, items, "Devices")
+                        construct_list_widget(&ui, items, "Devices")
                     },
                     chunks[1],
-                    &mut state.devices_list_ui_state,
+                    &mut ui.devices_list_ui_state,
                 );
                 (chunks[0], false)
             }
@@ -184,10 +193,10 @@ fn render_application_layout(frame: &mut Frame, mut state: MutexGuard<state::Sta
                             .iter()
                             .map(|t| (t.name.clone(), false))
                             .collect();
-                        construct_list_widget(&state, items, "Themes")
+                        construct_list_widget(&ui, items, "Themes")
                     },
                     chunks[1],
-                    &mut state.themes_list_ui_state,
+                    &mut ui.themes_list_ui_state,
                 );
                 (chunks[0], false)
             }
@@ -198,19 +207,20 @@ fn render_application_layout(frame: &mut Frame, mut state: MutexGuard<state::Sta
                     .split(rect);
                 frame.render_stateful_widget(
                     {
-                        let current_playlist_name = match state.context {
+                        let player = state.player.read().unwrap();
+                        let current_playlist_name = match player.context {
                             state::PlayingContext::Playlist(ref playlist, _) => &playlist.name,
                             _ => "",
                         };
-                        let items = state
+                        let items = player
                             .user_playlists
                             .iter()
                             .map(|p| (p.name.clone(), p.name == current_playlist_name))
                             .collect();
-                        construct_list_widget(&state, items, "Playlists")
+                        construct_list_widget(&ui, items, "Playlists")
                     },
                     chunks[1],
-                    &mut state.playlists_list_ui_state,
+                    &mut ui.playlists_list_ui_state,
                 );
                 (chunks[0], false)
             }
@@ -219,59 +229,62 @@ fn render_application_layout(frame: &mut Frame, mut state: MutexGuard<state::Sta
                     .direction(Direction::Vertical)
                     .constraints([Constraint::Min(0), Constraint::Length(3)].as_ref())
                     .split(frame.size());
-                render_search_box_widget(frame, &state, chunks[1], search_state.query.clone());
+                render_search_box_widget(frame, &ui, chunks[1], search_state.query.clone());
                 (chunks[0], true)
             }
         }
     };
 
-    render_player_layout(is_active, frame, &mut state, player_layout_rect);
+    render_player_layout(is_active, frame, &mut ui, state, player_layout_rect);
 }
 
 fn render_player_layout(
     is_active: bool,
     f: &mut Frame,
-    state: &mut MutexGuard<state::State>,
+    ui: &mut state::UIStateGuard,
+    state: &state::SharedState,
     rect: Rect,
 ) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Length(7), Constraint::Min(0)].as_ref())
         .split(rect);
-    render_current_playback_widget(f, state, chunks[0]);
-    render_context_tracks_widget(is_active, f, state, chunks[1]);
+    render_current_playback_widget(f, ui, state, chunks[0]);
+    render_context_tracks_widget(is_active, f, ui, state, chunks[1]);
 }
 
 fn render_search_box_widget(
     frame: &mut Frame,
-    state: &MutexGuard<state::State>,
+    ui: &state::UIStateGuard,
     rect: Rect,
     query: String,
 ) {
-    let theme = &state.theme_config;
     let search_box = Paragraph::new(query).block(
         Block::default()
             .borders(Borders::ALL)
-            .title(theme.block_title_with_style("Search")),
+            .title(ui.theme.block_title_with_style("Search")),
     );
     frame.render_widget(search_box, rect);
 }
 
-fn render_current_playback_widget(frame: &mut Frame, state: &MutexGuard<state::State>, rect: Rect) {
+fn render_current_playback_widget(
+    frame: &mut Frame,
+    ui: &state::UIStateGuard,
+    state: &state::SharedState,
+    rect: Rect,
+) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Min(0), Constraint::Length(1)].as_ref())
         .margin(1)
         .split(rect);
 
-    let theme = &state.theme_config;
-
     let block = Block::default()
-        .title(theme.block_title_with_style("Current Playback"))
+        .title(ui.theme.block_title_with_style("Current Playback"))
         .borders(Borders::ALL);
     frame.render_widget(block, rect);
 
-    if let Some(ref context) = state.playback {
+    if let Some(ref context) = state.player.read().unwrap().playback {
         if let Some(rspotify::model::PlayingItem::Track(ref track)) = context.item {
             let playback_info = vec![
                 Span::styled(
@@ -285,12 +298,12 @@ fn render_current_playback_widget(frame: &mut Frame, state: &MutexGuard<state::S
                             .collect::<Vec<_>>()
                             .join(","),
                     ),
-                    theme.primary_text_desc_style(),
+                    ui.theme.primary_text_desc_style(),
                 )
                 .into(),
                 Span::styled(
                     track.album.name.to_string(),
-                    theme.secondary_text_desc_style(),
+                    ui.theme.secondary_text_desc_style(),
                 )
                 .into(),
                 Span::styled(
@@ -300,7 +313,7 @@ fn render_current_playback_widget(frame: &mut Frame, state: &MutexGuard<state::S
                         context.shuffle_state,
                         context.device.volume_percent,
                     ),
-                    theme.comment_style(),
+                    ui.theme.comment_style(),
                 )
                 .into(),
             ];
@@ -311,7 +324,7 @@ fn render_current_playback_widget(frame: &mut Frame, state: &MutexGuard<state::S
                 .block(Block::default());
             let progress_bar = Gauge::default()
                 .block(Block::default())
-                .gauge_style(theme.gauge_style())
+                .gauge_style(ui.theme.gauge_style())
                 .ratio((context.progress_ms.unwrap() as f64) / (track.duration_ms as f64))
                 .label(Span::styled(
                     format!(
@@ -330,7 +343,8 @@ fn render_current_playback_widget(frame: &mut Frame, state: &MutexGuard<state::S
 fn render_context_tracks_widget(
     is_active: bool,
     frame: &mut Frame,
-    state: &mut MutexGuard<state::State>,
+    ui: &mut state::UIStateGuard,
+    state: &state::SharedState,
     rect: Rect,
 ) {
     let chunks = Layout::default()
@@ -340,28 +354,28 @@ fn render_context_tracks_widget(
         .split(rect);
 
     let (context_desc, track_table) = {
-        let theme = &state.theme_config;
-
         let block = Block::default()
-            .title(theme.block_title_with_style("Context Tracks"))
+            .title(ui.theme.block_title_with_style("Context Tracks"))
             .borders(Borders::ALL);
         frame.render_widget(block, rect);
 
+        let player = state.player.read().unwrap();
+
         let mut playing_track_uri = "";
-        if let Some(ref context) = state.playback {
+        if let Some(ref context) = player.playback {
             if let Some(rspotify::model::PlayingItem::Track(ref track)) = context.item {
                 playing_track_uri = &track.uri;
             }
         }
 
         let item_max_len = state.app_config.track_table_item_max_len;
-        let rows = state
+        let rows = player
             .get_context_tracks()
             .into_iter()
             .enumerate()
             .map(|(id, t)| {
                 let (id, style) = if playing_track_uri == t.uri {
-                    ("▶".to_string(), theme.current_active_style())
+                    ("▶".to_string(), ui.theme.current_active_style())
                 } else {
                     ((id + 1).to_string(), Style::default())
                 };
@@ -376,8 +390,8 @@ fn render_context_tracks_widget(
             })
             .collect::<Vec<_>>();
 
-        let context_desc = Paragraph::new(state.get_context_description())
-            .block(Block::default().style(theme.primary_text_desc_style()));
+        let context_desc = Paragraph::new(player.get_context_description())
+            .block(Block::default().style(ui.theme.primary_text_desc_style()));
         let track_table = Table::new(rows)
             .header(
                 Row::new(vec![
@@ -387,7 +401,7 @@ fn render_context_tracks_widget(
                     Cell::from("Album"),
                     Cell::from("Duration"),
                 ])
-                .style(theme.table_header_style()),
+                .style(ui.theme.table_header_style()),
             )
             .block(Block::default())
             .widths(&[
@@ -398,7 +412,7 @@ fn render_context_tracks_widget(
                 Constraint::Percentage(7),
             ])
             .highlight_style(if is_active {
-                theme.selection_style()
+                ui.theme.selection_style()
             } else {
                 Style::default()
             });
@@ -410,32 +424,31 @@ fn render_context_tracks_widget(
     frame.render_stateful_widget(
         track_table,
         chunks[1],
-        &mut state.context_tracks_table_ui_state,
+        &mut ui.context_tracks_table_ui_state,
     );
 }
 
 fn construct_list_widget<'a>(
-    state: &MutexGuard<state::State>,
+    ui: &state::UIStateGuard,
     items: Vec<(String, bool)>,
     title: &str,
 ) -> List<'a> {
-    let theme = &state.theme_config;
     List::new(
         items
             .into_iter()
             .map(|(s, is_active)| {
                 ListItem::new(s).style(if is_active {
-                    theme.current_active_style()
+                    ui.theme.current_active_style()
                 } else {
                     Style::default()
                 })
             })
             .collect::<Vec<_>>(),
     )
-    .highlight_style(theme.selection_style())
+    .highlight_style(ui.theme.selection_style())
     .block(
         Block::default()
-            .title(theme.block_title_with_style(title))
+            .title(ui.theme.block_title_with_style(title))
             .borders(Borders::ALL),
     )
 }

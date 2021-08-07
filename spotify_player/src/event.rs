@@ -5,7 +5,7 @@ use crate::{
 };
 use anyhow::Result;
 use crossterm::event::{self as term_event, EventStream, KeyCode, KeyModifiers};
-use std::sync::{mpsc, MutexGuard, RwLockReadGuard};
+use std::sync::{mpsc, RwLockReadGuard};
 use tokio::stream::StreamExt;
 use tui::widgets::ListState;
 
@@ -150,7 +150,7 @@ fn handle_command_for_none_popup(
     command: Command,
     send: &mpsc::Sender<Event>,
     state: &state::SharedState,
-    ui: &mut MutexGuard<state::UIState>,
+    ui: &mut state::UIStateGuard,
 ) -> Result<bool> {
     let player = state.player.read().unwrap();
 
@@ -215,7 +215,7 @@ fn handle_key_sequence_for_context_search_popup(
     key_sequence: &KeySequence,
     send: &mpsc::Sender<Event>,
     state: &state::SharedState,
-    ui: &mut MutexGuard<state::UIState>,
+    ui: &mut state::UIStateGuard,
 ) -> Result<bool> {
     if key_sequence.keys.len() == 1 {
         if let Key::None(c) = key_sequence.keys[0] {
@@ -267,7 +267,7 @@ fn handle_command_for_playlist_switch_popup(
     command: Command,
     send: &mpsc::Sender<Event>,
     state: &state::SharedState,
-    ui: &mut MutexGuard<state::UIState>,
+    ui: &mut state::UIStateGuard,
 ) -> Result<bool> {
     let player = state.player.read().unwrap();
 
@@ -306,7 +306,7 @@ fn handle_command_for_theme_switch_popup(
     command: Command,
     send: &mpsc::Sender<Event>,
     state: &state::SharedState,
-    ui: &mut MutexGuard<state::UIState>,
+    ui: &mut state::UIStateGuard,
 ) -> Result<bool> {
     match command {
         Command::SelectNext => {
@@ -347,7 +347,7 @@ fn handle_command_for_device_switch_popup(
     command: Command,
     send: &mpsc::Sender<Event>,
     state: &state::SharedState,
-    ui: &mut MutexGuard<state::UIState>,
+    ui: &mut state::UIStateGuard,
 ) -> Result<bool> {
     let player = state.player.read().unwrap();
 
@@ -384,7 +384,7 @@ fn handle_command_for_device_switch_popup(
 
 fn handle_command_for_command_help_popup(
     command: Command,
-    ui: &mut MutexGuard<state::UIState>,
+    ui: &mut state::UIStateGuard,
 ) -> Result<bool> {
     if let Command::ClosePopup = command {
         ui.popup_state = state::PopupState::None;
@@ -397,7 +397,7 @@ fn handle_command_for_command_help_popup(
 fn handle_command(
     command: Command,
     send: &mpsc::Sender<Event>,
-    ui: &mut MutexGuard<state::UIState>,
+    ui: &mut state::UIStateGuard,
 ) -> Result<bool> {
     match command {
         Command::Quit => {
@@ -435,7 +435,7 @@ fn handle_command(
 fn handle_generic_command_for_context_track_table(
     command: Command,
     send: &mpsc::Sender<Event>,
-    ui: &mut MutexGuard<state::UIState>,
+    ui: &mut state::UIStateGuard,
     player: RwLockReadGuard<state::PlayerState>,
 ) -> Result<bool> {
     let tracks = ui.get_context_tracks(player.get_context_tracks());
