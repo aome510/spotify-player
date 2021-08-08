@@ -13,6 +13,7 @@ use tui::widgets::ListState;
 pub enum Context {
     Playlist(String),
     Album(String),
+    Artist(String),
     Unknown,
 }
 
@@ -28,7 +29,7 @@ pub enum Event {
     SeekTrack(u32),
     Repeat,
     Shuffle,
-    SwitchContext(Context),
+    GetContext(Context),
     PlayTrack(String, String),
     PlayContext(String),
     TransferPlayback(String),
@@ -187,9 +188,8 @@ fn handle_command_for_none_popup(
                     .read()
                     .unwrap()
                     .get_context_tracks()
-                    .into_iter()
                     .cloned()
-                    .collect(),
+                    .unwrap_or_default(),
             });
             Ok(true)
         }

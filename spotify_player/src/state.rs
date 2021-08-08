@@ -46,6 +46,7 @@ pub struct UIState {
 pub enum PlayingContext {
     Playlist(playlist::FullPlaylist, Vec<Track>),
     Album(album::FullAlbum, Vec<Track>),
+    Artist(artist::FullArtist, Vec<Track>, Vec<Album>),
     Unknown,
 }
 
@@ -165,28 +166,18 @@ impl Default for UIState {
 impl PlayerState {
     /// sorts tracks in the current playing context given a context sort oder
     pub fn sort_context_tracks(&mut self, sort_oder: ContextSortOrder) {
-        match self.context {
-            PlayingContext::Unknown => {}
-            PlayingContext::Album(_, ref mut tracks) => {
-                tracks.sort_by(|x, y| sort_oder.compare(x, y));
-            }
-            PlayingContext::Playlist(_, ref mut tracks) => {
-                tracks.sort_by(|x, y| sort_oder.compare(x, y));
-            }
-        };
+        let tracks = self.get_context_tracks_mut();
+        if let Some(tracks) = tracks {
+            tracks.sort_by(|x, y| sort_oder.compare(x, y));
+        }
     }
 
     /// reverses order of tracks in the current playing context
     pub fn reverse_context_tracks(&mut self) {
-        match self.context {
-            PlayingContext::Unknown => {}
-            PlayingContext::Album(_, ref mut tracks) => {
-                tracks.reverse();
-            }
-            PlayingContext::Playlist(_, ref mut tracks) => {
-                tracks.reverse();
-            }
-        };
+        let tracks = self.get_context_tracks_mut();
+        if let Some(tracks) = tracks {
+            tracks.reverse();
+        }
     }
 
     /// gets the current playing track
@@ -233,20 +224,34 @@ impl PlayerState {
                 "Cannot infer the playing context from the current playback".to_owned()
             }
             PlayingContext::Album(ref album, _) => {
-                format!("Album: {}", album.name,)
+                format!("Album: {}", album.name)
             }
             PlayingContext::Playlist(ref playlist, _) => {
                 format!("Playlist: {}", playlist.name)
+            }
+            PlayingContext::Artist(ref artist, _, _) => {
+                format!("Artist: {}", artist.name)
             }
         }
     }
 
     /// gets all tracks inside the current playing context
-    pub fn get_context_tracks(&self) -> Vec<&Track> {
+    pub fn get_context_tracks(&self) -> Option<&Vec<Track>> {
         match self.context {
-            PlayingContext::Unknown => vec![],
-            PlayingContext::Album(_, ref tracks) => tracks.iter().collect(),
-            PlayingContext::Playlist(_, ref tracks) => tracks.iter().collect(),
+            PlayingContext::Unknown => None,
+            PlayingContext::Album(_, ref tracks) => Some(tracks),
+            PlayingContext::Playlist(_, ref tracks) => Some(tracks),
+            PlayingContext::Artist(_, ref tracks, _) => Some(tracks),
+        }
+    }
+
+    /// gets all tracks inside the current playing context (mutable)
+    pub fn get_context_tracks_mut(&mut self) -> Option<&mut Vec<Track>> {
+        match self.context {
+            PlayingContext::Unknown => None,
+            PlayingContext::Album(_, ref mut tracks) => Some(tracks),
+            PlayingContext::Playlist(_, ref mut tracks) => Some(tracks),
+            PlayingContext::Artist(_, ref mut tracks, _) => Some(tracks),
         }
     }
 }
@@ -259,13 +264,15 @@ impl UIState {
             query.remove(0); // remove the '/' character at the beginning of the query string
             log::info!("search tracks in context with query {}", query);
             let tracks = player.get_context_tracks();
-            let id = if tracks.is_empty() { None } else { Some(0) };
-            self.context_tracks_table_ui_state.select(id);
-            state.tracks = tracks
-                .into_iter()
-                .filter(|&t| t.get_basic_info().to_lowercase().contains(&query))
-                .cloned()
-                .collect();
+            if let Some(tracks) = tracks {
+                let id = if tracks.is_empty() { None } else { Some(0) };
+                self.context_tracks_table_ui_state.select(id);
+                state.tracks = tracks
+                    .iter()
+                    .filter(|&t| t.get_basic_info().to_lowercase().contains(&query))
+                    .cloned()
+                    .collect();
+            }
         }
     }
 
@@ -277,7 +284,10 @@ impl UIState {
     ) -> Vec<&'a Track> {
         match self.popup_state {
             PopupState::ContextSearch(ref state) => state.tracks.iter().collect(),
-            _ => player.get_context_tracks(),
+            _ => player
+                .get_context_tracks()
+                .map(|tracks| tracks.iter().collect::<Vec<_>>())
+                .unwrap_or_default(),
         }
     }
 }
@@ -346,6 +356,32 @@ impl From<track::SimplifiedTrack> for Track {
                 })
                 .collect(),
             album: Album::default(),
+            duration: track.duration_ms,
+            added_at: 0,
+        }
+    }
+}
+
+impl From<track::FullTrack> for Track {
+    fn from(track: track::FullTrack) -> Self {
+        Self {
+            id: track.id,
+            uri: track.uri,
+            name: track.name,
+            artists: track
+                .artists
+                .into_iter()
+                .map(|a| Artist {
+                    id: a.id,
+                    uri: a.uri,
+                    name: a.name,
+                })
+                .collect(),
+            album: Album {
+                name: track.album.name,
+                id: track.album.id,
+                uri: track.album.uri,
+            },
             duration: track.duration_ms,
             added_at: 0,
         }

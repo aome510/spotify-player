@@ -46,39 +46,42 @@ pub fn start_ui(
                     match context._type {
                         rspotify::senum::Type::Playlist => {
                             let playlist_id = context.uri.split(':').nth(2).unwrap();
-                            let current_playlist_id =
-                                if let state::PlayingContext::Playlist(ref playlist, _) =
-                                    player.context
-                                {
-                                    &playlist.id
-                                } else {
-                                    ""
-                                };
+                            let current_playlist_id = match player.context {
+                                state::PlayingContext::Playlist(ref playlist, _) => &playlist.id,
+                                _ => "",
+                            };
                             if current_playlist_id != playlist_id {
-                                send.send(event::Event::SwitchContext(event::Context::Playlist(
+                                send.send(event::Event::GetContext(event::Context::Playlist(
                                     playlist_id.to_owned(),
                                 )))?;
                             }
                         }
                         rspotify::senum::Type::Album => {
                             let album_id = context.uri.split(':').nth(2).unwrap();
-                            let current_album_id = if let state::PlayingContext::Album(
-                                ref album,
-                                _,
-                            ) = player.context
-                            {
-                                &album.id
-                            } else {
-                                ""
+                            let current_album_id = match player.context {
+                                state::PlayingContext::Album(ref album, _) => &album.id,
+                                _ => "",
                             };
                             if current_album_id != album_id {
-                                send.send(event::Event::SwitchContext(event::Context::Album(
+                                send.send(event::Event::GetContext(event::Context::Album(
                                     album_id.to_owned(),
                                 )))?;
                             }
                         }
+                        rspotify::senum::Type::Artist => {
+                            let artist_id = context.uri.split(':').nth(2).unwrap();
+                            let current_artist_id = match player.context {
+                                state::PlayingContext::Artist(ref artist, _, _) => &artist.id,
+                                _ => "",
+                            };
+                            if current_artist_id != artist_id {
+                                send.send(event::Event::GetContext(event::Context::Artist(
+                                    artist_id.to_owned(),
+                                )))?;
+                            }
+                        }
                         _ => {
-                            send.send(event::Event::SwitchContext(event::Context::Unknown))?;
+                            send.send(event::Event::GetContext(event::Context::Unknown))?;
                             log::info!(
                                 "encountered not supported context type: {:#?}",
                                 context._type

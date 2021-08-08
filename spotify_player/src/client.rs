@@ -91,13 +91,16 @@ impl Client {
                 self.transfer_playback(device_id).await?;
                 true
             }
-            event::Event::SwitchContext(context) => {
+            event::Event::GetContext(context) => {
                 match context {
                     event::Context::Playlist(playlist_id) => {
-                        self.update_context_to_playlist(playlist_id, state).await?;
+                        self.update_playlist_context(playlist_id, state).await?;
                     }
                     event::Context::Album(album_id) => {
-                        self.update_context_to_album(album_id, state).await?;
+                        self.update_album_context(album_id, state).await?;
+                    }
+                    event::Context::Artist(artist_id) => {
+                        self.update_artist_context(artist_id, state).await?;
                     }
                     event::Context::Unknown => {
                         state.player.write().unwrap().context = state::PlayingContext::Unknown;
@@ -195,15 +198,18 @@ impl Client {
         Self::handle_rspotify_result(self.spotify.album(album_id).await)
     }
 
-    // TODO: implement artist as context integration
+    /// gets an artist given id
+    pub async fn get_artist(&self, artist_id: &str) -> Result<artist::FullArtist> {
+        Self::handle_rspotify_result(self.spotify.artist(artist_id).await)
+    }
 
     /// gets a list of top tracks of an artist
-    pub async fn _get_artist_top_tracks(&self, artist_id: &str) -> Result<track::FullTracks> {
+    pub async fn get_artist_top_tracks(&self, artist_id: &str) -> Result<track::FullTracks> {
         Self::handle_rspotify_result(self.spotify.artist_top_tracks(artist_id, None).await)
     }
 
     /// gets all albums of an artist
-    pub async fn _get_artist_albums(&self, artist_id: &str) -> Result<Vec<album::SimplifiedAlbum>> {
+    pub async fn get_artist_albums(&self, artist_id: &str) -> Result<Vec<album::SimplifiedAlbum>> {
         let first_page = Self::handle_rspotify_result(
             self.spotify
                 .artist_albums(artist_id, None, None, None, None)
@@ -281,7 +287,7 @@ impl Client {
     }
 
     /// updates the playing context state to playlist
-    async fn update_context_to_playlist(
+    async fn update_playlist_context(
         &self,
         playlist_id: String,
         state: &state::SharedState,
@@ -320,7 +326,7 @@ impl Client {
     }
 
     /// updates the playing context state to album
-    async fn update_context_to_album(
+    async fn update_album_context(
         &self,
         album_id: String,
         state: &state::SharedState,
@@ -359,6 +365,52 @@ impl Client {
             ui.context_tracks_table_ui_state.select(Some(0));
         }
         state.player.write().unwrap().context = state::PlayingContext::Album(album, tracks);
+        Ok(())
+    }
+
+    async fn update_artist_context(
+        &self,
+        artist_id: String,
+        state: &state::SharedState,
+    ) -> Result<()> {
+        if let state::PlayingContext::Artist(ref artist, _, _) =
+            state.player.read().unwrap().context
+        {
+            // avoid getting the same album more than once
+            if artist.id == artist_id {
+                return Ok(());
+            }
+        }
+
+        // get artist's information, top tracks and all albums
+        let artist = self.get_artist(&artist_id).await?;
+        let top_tracks = self
+            .get_artist_top_tracks(&artist_id)
+            .await?
+            .tracks
+            .into_iter()
+            .map(|t| t.into())
+            .collect::<Vec<_>>();
+        let albums = self
+            .get_artist_albums(&artist_id)
+            .await?
+            .into_iter()
+            .map(|a| state::Album {
+                name: a.name,
+                uri: a.uri,
+                id: a.id,
+            })
+            .collect::<Vec<_>>();
+
+        // update states
+        let mut ui = state.ui.lock().unwrap();
+        ui.context_tracks_table_ui_state = TableState::default();
+        ui.popup_state = state::PopupState::None;
+        if !top_tracks.is_empty() {
+            ui.context_tracks_table_ui_state.select(Some(0));
+        }
+        state.player.write().unwrap().context =
+            state::PlayingContext::Artist(artist, top_tracks, albums);
         Ok(())
     }
 
