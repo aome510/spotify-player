@@ -185,19 +185,14 @@ fn render_application_layout(
                 );
                 (chunks[0], false)
             }
-            state::PopupState::ThemeSwitch(_) => {
+            state::PopupState::ThemeSwitch(ref themes) => {
                 let chunks = Layout::default()
                     .direction(Direction::Vertical)
                     .constraints([Constraint::Min(0), Constraint::Length(7)].as_ref())
                     .split(rect);
                 frame.render_stateful_widget(
                     {
-                        let items = state
-                            .theme_config
-                            .themes
-                            .iter()
-                            .map(|t| (t.name.clone(), false))
-                            .collect();
+                        let items = themes.iter().map(|t| (t.name.clone(), false)).collect();
                         construct_list_widget(&ui, items, "Themes")
                     },
                     chunks[1],

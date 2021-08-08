@@ -54,7 +54,7 @@ pub enum PopupState {
     None,
     ContextSearch(ContextSearchState),
     PlaylistSwitch,
-    ThemeSwitch(config::Theme),
+    ThemeSwitch(Vec<config::Theme>),
     DeviceSwitch,
     CommandHelp,
 }
@@ -101,6 +101,19 @@ pub struct Artist {
     pub id: Option<String>,
     pub uri: Option<String>,
     pub name: String,
+}
+
+impl State {
+    /// get a list of application themes with the current theme as the first element
+    pub fn get_themes(&self, ui: &MutexGuard<UIState>) -> Vec<config::Theme> {
+        let mut themes = self.theme_config.themes.clone();
+        let id = themes.iter().position(|t| t.name == ui.theme.name);
+        if let Some(id) = id {
+            let theme = themes.remove(id);
+            themes.insert(0, theme);
+        }
+        themes
+    }
 }
 
 impl Default for State {

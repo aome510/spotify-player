@@ -122,7 +122,7 @@ fn handle_terminal_event(
                     handle_command_for_playlist_switch_popup(command, send, state, &mut ui)?
                 }
                 state::PopupState::ThemeSwitch(_) => {
-                    handle_command_for_theme_switch_popup(command, state, &mut ui)?
+                    handle_command_for_theme_switch_popup(command, &mut ui)?
                 }
                 state::PopupState::DeviceSwitch => {
                     handle_command_for_device_switch_popup(command, send, state, &mut ui)?
@@ -251,8 +251,7 @@ fn handle_command_for_none_popup(
             Ok(true)
         }
         Command::SwitchTheme => {
-            let theme = ui.theme.clone();
-            ui.popup_state = state::PopupState::ThemeSwitch(theme);
+            ui.popup_state = state::PopupState::ThemeSwitch(state.get_themes(ui));
             ui.themes_list_ui_state = ListState::default();
             ui.themes_list_ui_state.select(Some(0));
             Ok(true)
@@ -350,14 +349,17 @@ fn handle_command_for_playlist_switch_popup(
 
 fn handle_command_for_theme_switch_popup(
     command: Command,
-    state: &state::SharedState,
     ui: &mut state::UIStateGuard,
 ) -> Result<bool> {
+    let themes = match ui.popup_state {
+        state::PopupState::ThemeSwitch(ref themes) => themes,
+        _ => unreachable!(),
+    };
     match command {
         Command::SelectNext => {
             if let Some(id) = ui.themes_list_ui_state.selected() {
-                if id + 1 < state.theme_config.themes.len() {
-                    ui.theme = state.theme_config.themes[id + 1].clone();
+                if id + 1 < themes.len() {
+                    ui.theme = themes[id + 1].clone();
                     ui.themes_list_ui_state.select(Some(id + 1));
                 }
             }
@@ -366,7 +368,7 @@ fn handle_command_for_theme_switch_popup(
         Command::SelectPrevious => {
             if let Some(id) = ui.themes_list_ui_state.selected() {
                 if id > 0 {
-                    ui.theme = state.theme_config.themes[id - 1].clone();
+                    ui.theme = themes[id - 1].clone();
                     ui.themes_list_ui_state.select(Some(id - 1));
                 }
             }
@@ -377,10 +379,7 @@ fn handle_command_for_theme_switch_popup(
             Ok(true)
         }
         Command::ClosePopup => {
-            ui.theme = match ui.popup_state {
-                state::PopupState::ThemeSwitch(ref theme) => theme.clone(),
-                _ => unreachable!(),
-            };
+            ui.theme = themes[0].clone();
             ui.popup_state = state::PopupState::None;
             Ok(true)
         }
