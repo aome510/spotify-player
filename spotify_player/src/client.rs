@@ -72,19 +72,18 @@ impl Client {
             }
             event::Event::Shuffle => {
                 self.toggle_shuffle(state).await?;
-                false
+                true
             }
             event::Event::Repeat => {
                 self.cycle_repeat(state).await?;
-                false
+                true
             }
-            event::Event::PlayTrack(track_uri, context_uri) => {
-                self.play_track_with_context(context_uri, Some(track_uri))
-                    .await?;
+            event::Event::PlayTrack(context_uri, uris, offset) => {
+                self.start_playback(context_uri, uris, offset).await?;
                 true
             }
             event::Event::PlayContext(uri) => {
-                self.play_track_with_context(uri, None).await?;
+                self.start_playback(Some(uri), None, None).await?;
                 true
             }
             event::Event::TransferPlayback(device_id) => {
@@ -167,18 +166,15 @@ impl Client {
     }
 
     /// plays a track given a context URI
-    pub async fn play_track_with_context(
+    pub async fn start_playback(
         &self,
-        context_uri: String,
-        track_uri: Option<String>,
+        context_uri: Option<String>,
+        uris: Option<Vec<String>>,
+        offset: Option<offset::Offset>,
     ) -> Result<()> {
-        let offset = match track_uri {
-            None => None,
-            Some(uri) => offset::for_uri(uri),
-        };
         Self::handle_rspotify_result(
             self.spotify
-                .start_playback(None, Some(context_uri), None, offset, None)
+                .start_playback(None, context_uri, uris, offset, None)
                 .await,
         )
     }

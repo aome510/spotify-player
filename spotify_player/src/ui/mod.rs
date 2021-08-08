@@ -366,8 +366,8 @@ fn render_context_tracks_widget(
         let player = state.player.read().unwrap();
 
         let mut playing_track_uri = "";
-        if let Some(ref context) = player.playback {
-            if let Some(rspotify::model::PlayingItem::Track(ref track)) = context.item {
+        if let Some(ref playback) = player.playback {
+            if let Some(rspotify::model::PlayingItem::Track(ref track)) = playback.item {
                 playing_track_uri = &track.uri;
             }
         }

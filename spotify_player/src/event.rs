@@ -5,6 +5,7 @@ use crate::{
 };
 use anyhow::Result;
 use crossterm::event::{self, EventStream, KeyCode, KeyModifiers};
+use rspotify::{model::offset, senum};
 use std::sync::mpsc;
 use tokio::stream::StreamExt;
 use tui::widgets::ListState;
@@ -30,7 +31,7 @@ pub enum Event {
     Repeat,
     Shuffle,
     GetContext(Context),
-    PlayTrack(String, String),
+    PlayTrack(Option<String>, Option<Vec<String>>, Option<offset::Offset>),
     PlayContext(String),
     TransferPlayback(String),
 }
@@ -512,10 +513,24 @@ fn handle_generic_command_for_context_track_table(
                 player.playback.as_ref(),
             ) {
                 if let Some(ref context) = playback.context {
-                    send.send(Event::PlayTrack(
-                        tracks[id].uri.clone(),
-                        context.uri.clone(),
-                    ))?;
+                    match context._type {
+                        senum::Type::Artist => {
+                            // cannot use artist context uri with a track uri
+                            let tracks = tracks.iter().map(|t| t.uri.clone()).collect::<Vec<_>>();
+                            send.send(Event::PlayTrack(
+                                None,
+                                Some(tracks),
+                                offset::for_position(id as u32),
+                            ))?;
+                        }
+                        _ => {
+                            send.send(Event::PlayTrack(
+                                Some(context.uri.clone()),
+                                None,
+                                offset::for_uri(tracks[id].uri.clone()),
+                            ))?;
+                        }
+                    }
                 }
             }
             Ok(true)
