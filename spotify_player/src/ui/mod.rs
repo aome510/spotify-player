@@ -253,7 +253,35 @@ fn render_player_layout(
         .constraints([Constraint::Length(7), Constraint::Min(0)].as_ref())
         .split(rect);
     render_current_playback_widget(f, ui, state, chunks[0]);
-    render_context_tracks_widget(is_active, f, ui, state, chunks[1]);
+    let rect = {
+        let player = state.player.read().unwrap();
+        match player.context {
+            state::PlayingContext::Artist(_, _, ref albums) => {
+                let chunks = Layout::default()
+                    .direction(Direction::Vertical)
+                    .constraints([Constraint::Percentage(40), Constraint::Min(60)].as_ref())
+                    .split(chunks[1]);
+                let current_album = player
+                    .get_current_playing_track()
+                    .map(|t| t.album.name.clone())
+                    .unwrap_or_default();
+                f.render_widget(
+                    construct_list_widget(
+                        ui,
+                        albums
+                            .iter()
+                            .map(|a| (a.name.clone(), a.name == current_album))
+                            .collect::<Vec<_>>(),
+                        "Albums",
+                    ),
+                    chunks[1],
+                );
+                chunks[0]
+            }
+            _ => chunks[1],
+        }
+    };
+    render_context_tracks_widget(is_active, f, ui, state, rect);
 }
 
 fn render_search_box_widget(

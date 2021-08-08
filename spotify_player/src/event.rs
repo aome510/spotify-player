@@ -5,7 +5,7 @@ use crate::{
 };
 use anyhow::Result;
 use crossterm::event::{self, EventStream, KeyCode, KeyModifiers};
-use rspotify::{model::offset, senum};
+use rspotify::model::offset;
 use std::sync::mpsc;
 use tokio::stream::StreamExt;
 use tui::widgets::ListState;
@@ -508,29 +508,32 @@ fn handle_generic_command_for_context_track_table(
             Ok(true)
         }
         Command::ChoseSelected => {
-            if let (Some(id), Some(playback)) = (
-                ui.context_tracks_table_ui_state.selected(),
-                player.playback.as_ref(),
-            ) {
-                if let Some(ref context) = playback.context {
-                    match context._type {
-                        senum::Type::Artist => {
-                            // cannot use artist context uri with a track uri
-                            let tracks = tracks.iter().map(|t| t.uri.clone()).collect::<Vec<_>>();
-                            send.send(Event::PlayTrack(
-                                None,
-                                Some(tracks),
-                                offset::for_position(id as u32),
-                            ))?;
-                        }
-                        _ => {
-                            send.send(Event::PlayTrack(
-                                Some(context.uri.clone()),
-                                None,
-                                offset::for_uri(tracks[id].uri.clone()),
-                            ))?;
-                        }
+            if let Some(id) = ui.context_tracks_table_ui_state.selected() {
+                match player.context {
+                    state::PlayingContext::Artist(_, _, _) => {
+                        // cannot use artist context uri with a track uri
+                        let tracks = tracks.iter().map(|t| t.uri.clone()).collect::<Vec<_>>();
+                        send.send(Event::PlayTrack(
+                            None,
+                            Some(tracks),
+                            offset::for_position(id as u32),
+                        ))?;
                     }
+                    state::PlayingContext::Playlist(ref playlist, _) => {
+                        send.send(Event::PlayTrack(
+                            Some(playlist.uri.clone()),
+                            None,
+                            offset::for_uri(tracks[id].uri.clone()),
+                        ))?;
+                    }
+                    state::PlayingContext::Album(ref album, _) => {
+                        send.send(Event::PlayTrack(
+                            Some(album.uri.clone()),
+                            None,
+                            offset::for_uri(tracks[id].uri.clone()),
+                        ))?;
+                    }
+                    state::PlayingContext::Unknown => {}
                 }
             }
             Ok(true)
