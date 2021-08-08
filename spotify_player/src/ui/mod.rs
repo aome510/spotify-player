@@ -17,7 +17,11 @@ pub fn start_ui(
     // terminal UI initializations
     let mut stdout = std::io::stdout();
     crossterm::terminal::enable_raw_mode()?;
-    crossterm::execute!(stdout, crossterm::terminal::EnterAlternateScreen)?;
+    crossterm::execute!(
+        stdout,
+        crossterm::terminal::EnterAlternateScreen,
+        crossterm::event::EnableMouseCapture
+    )?;
     let backend = tui::backend::CrosstermBackend::new(stdout);
     let mut terminal = tui::Terminal::new(backend)?;
     terminal.clear()?;
@@ -103,7 +107,8 @@ fn clean_up(mut terminal: Terminal) -> Result<()> {
     crossterm::terminal::disable_raw_mode()?;
     crossterm::execute!(
         terminal.backend_mut(),
-        crossterm::terminal::LeaveAlternateScreen
+        crossterm::terminal::LeaveAlternateScreen,
+        crossterm::event::DisableMouseCapture,
     )?;
     terminal.show_cursor()?;
     Ok(())
@@ -269,7 +274,7 @@ fn render_search_box_widget(
 
 fn render_current_playback_widget(
     frame: &mut Frame,
-    ui: &state::UIStateGuard,
+    ui: &mut state::UIStateGuard,
     state: &state::SharedState,
     rect: Rect,
 ) {
@@ -336,6 +341,9 @@ fn render_current_playback_widget(
                     ),
                     Style::default().add_modifier(Modifier::BOLD),
                 ));
+
+            ui.progress_bar_rect = chunks[1];
+
             frame.render_widget(playback_desc, chunks[0]);
             frame.render_widget(progress_bar, chunks[1]);
         }

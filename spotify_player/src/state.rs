@@ -32,6 +32,9 @@ pub struct UIState {
     pub theme: config::Theme,
     pub input_key_sequence: key::KeySequence,
     pub popup_state: PopupState,
+
+    pub progress_bar_rect: tui::layout::Rect,
+
     pub context_tracks_table_ui_state: TableState,
     pub playlists_list_ui_state: ListState,
     pub themes_list_ui_state: ListState,
@@ -134,6 +137,9 @@ impl Default for UIState {
             theme: config::Theme::default(),
             input_key_sequence: key::KeySequence { keys: vec![] },
             popup_state: PopupState::None,
+
+            progress_bar_rect: tui::layout::Rect::default(),
+
             context_tracks_table_ui_state: TableState::default(),
             playlists_list_ui_state: ListState::default(),
             themes_list_ui_state: ListState::default(),
@@ -168,6 +174,17 @@ impl PlayerState {
                 tracks.reverse();
             }
         };
+    }
+
+    /// gets the current playing track
+    pub fn get_current_playing_track(&self) -> Option<&track::FullTrack> {
+        match self.playback {
+            None => None,
+            Some(ref playback) => match playback.item {
+                Some(rspotify::model::PlayingItem::Track(ref track)) => Some(track),
+                _ => None,
+            },
+        }
     }
 
     /// gets the current playback progress

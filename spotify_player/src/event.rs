@@ -4,7 +4,7 @@ use crate::{
     state,
 };
 use anyhow::Result;
-use crossterm::event::{self as term_event, EventStream, KeyCode, KeyModifiers};
+use crossterm::event::{self, EventStream, KeyCode, KeyModifiers};
 use std::sync::mpsc;
 use tokio::stream::StreamExt;
 use tui::widgets::ListState;
@@ -25,6 +25,7 @@ pub enum Event {
     NextTrack,
     PreviousTrack,
     ResumePause,
+    SeekTrack(u32),
     Repeat,
     Shuffle,
     SwitchContext(Context),
@@ -33,8 +34,8 @@ pub enum Event {
     TransferPlayback(String),
 }
 
-impl From<term_event::KeyEvent> for Key {
-    fn from(event: term_event::KeyEvent) -> Self {
+impl From<event::KeyEvent> for Key {
+    fn from(event: event::KeyEvent) -> Self {
         match event.modifiers {
             KeyModifiers::NONE => Key::None(event.code),
             KeyModifiers::ALT => Key::Alt(event.code),
@@ -66,12 +67,15 @@ pub async fn start_event_stream(send: mpsc::Sender<Event>, state: state::SharedS
 }
 
 fn handle_terminal_event(
-    event: term_event::Event,
+    event: event::Event,
     send: &mpsc::Sender<Event>,
     state: &state::SharedState,
 ) -> Result<()> {
     let key: Key = match event {
-        crossterm::event::Event::Key(event) => event.into(),
+        event::Event::Key(event) => event.into(),
+        event::Event::Mouse(event) => {
+            return handle_mouse_event(event, send, state);
+        }
         _ => {
             return Ok(());
         }
@@ -142,6 +146,27 @@ fn handle_terminal_event(
     } else {
         ui.shortcuts_help_ui_state = true;
         ui.input_key_sequence = key_sequence;
+    }
+    Ok(())
+}
+
+fn handle_mouse_event(
+    event: event::MouseEvent,
+    send: &mpsc::Sender<Event>,
+    state: &state::SharedState,
+) -> Result<()> {
+    let ui = state.ui.lock().unwrap();
+    // a left click event
+    if let event::MouseEventKind::Down(event::MouseButton::Left) = event.kind {
+        if event.row == ui.progress_bar_rect.y {
+            let player = state.player.read().unwrap();
+            let track = player.get_current_playing_track();
+            if let Some(track) = track {
+                let position_ms =
+                    track.duration_ms * (event.column as u32) / (ui.progress_bar_rect.width as u32);
+                send.send(Event::SeekTrack(position_ms))?;
+            }
+        }
     }
     Ok(())
 }

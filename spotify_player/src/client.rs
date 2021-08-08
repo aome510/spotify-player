@@ -64,6 +64,10 @@ impl Client {
                 self.toggle_playing_state(state).await?;
                 true
             }
+            event::Event::SeekTrack(position_ms) => {
+                self.seek_track(position_ms).await?;
+                true
+            }
             event::Event::Shuffle => {
                 self.toggle_shuffle(state).await?;
                 false
@@ -241,6 +245,11 @@ impl Client {
             // TODO: find out if this works
             None => self.resume_track().await,
         }
+    }
+
+    /// seeks to a position in the current playing track
+    pub async fn seek_track(&self, position_ms: u32) -> Result<()> {
+        Self::handle_rspotify_result(self.spotify.seek_track(position_ms, None).await)
     }
 
     /// resumes the previously paused/played track
