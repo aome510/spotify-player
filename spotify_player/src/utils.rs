@@ -34,13 +34,18 @@ pub fn truncate_string(s: String, max_len: usize) -> String {
 }
 
 /// updates the current playback by fetching playback data from spotify every
-/// `AppConfig::refresh_delay_in_ms_each_playback_update`, repeated `AppConfig::n_refreshes_each_playback_update` times
-pub fn update_playback(state: &state::SharedState, send: &std::sync::mpsc::Sender<event::Event>) {
-    let send = send.clone();
+/// `AppConfig::refresh_delay_in_ms_each_playback_update`, repeated `AppConfig::n_refreshes_each_playback_update` times.
+/// Parameter `new_thread` is used to determine whether this progress should be in a new thread.
+pub fn update_playback(
+    state: &state::SharedState,
+    send: &std::sync::mpsc::Sender<event::Event>,
+    new_thread: bool,
+) {
     let n_refreshes = state.app_config.n_refreshes_each_playback_update;
     let delay_duration =
         std::time::Duration::from_millis(state.app_config.refresh_delay_in_ms_each_playback_update);
-    std::thread::spawn(move || {
+
+    let update = move |send: &std::sync::mpsc::Sender<event::Event>| {
         (0..n_refreshes).for_each(|_| {
             std::thread::sleep(delay_duration);
             send.send(event::Event::GetCurrentPlayback)
@@ -48,5 +53,14 @@ pub fn update_playback(state: &state::SharedState, send: &std::sync::mpsc::Sende
                     log::warn!("failed to send GetCurrentPlayback event: {:#?}", err);
                 });
         });
-    });
+    };
+
+    if new_thread {
+        std::thread::spawn({
+            let send = send.clone();
+            move || update(&send)
+        });
+    } else {
+        update(send);
+    }
 }

@@ -139,7 +139,7 @@ async fn main() -> Result<()> {
             let duration_ms = player.get_current_playing_track().map(|t| t.duration_ms);
             if let Some(progress_ms) = progress_ms {
                 if progress_ms == duration_ms.unwrap() {
-                    utils::update_playback(&state, &send);
+                    utils::update_playback(&state, &send, false);
                 }
             }
             std::thread::sleep(refresh_duration);
