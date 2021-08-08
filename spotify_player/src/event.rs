@@ -472,6 +472,10 @@ fn handle_command(
             ui.popup_state = state::PopupState::CommandHelp;
             Ok(true)
         }
+        Command::RefreshPlayback => {
+            send.send(Event::GetCurrentPlayback)?;
+            Ok(true)
+        }
         _ => Ok(false),
     }
 }

@@ -17,6 +17,8 @@ pub enum Command {
     SelectPrevious,
     ChoseSelected,
 
+    RefreshPlayback,
+
     SwitchPlaylist,
     SwitchTheme,
     SwitchDevice,

@@ -50,6 +50,10 @@ impl Default for KeymapConfig {
                     command: Command::SearchContextTracks,
                 },
                 Keymap {
+                    key_sequence: "r".into(),
+                    command: Command::RefreshPlayback,
+                },
+                Keymap {
                     key_sequence: "P".into(),
                     command: Command::SwitchPlaylist,
                 },
