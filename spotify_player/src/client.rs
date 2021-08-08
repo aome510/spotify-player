@@ -1,5 +1,6 @@
 use crate::event;
 use crate::state;
+use crate::utils;
 use anyhow::{anyhow, Result};
 use rspotify::{
     client::Spotify,
@@ -31,6 +32,7 @@ impl Client {
     pub async fn handle_event(
         &mut self,
         state: &state::SharedState,
+        send: &std::sync::mpsc::Sender<event::Event>,
         event: event::Event,
     ) -> Result<()> {
         log::info!("handle the client event {:?}", event);
@@ -106,10 +108,7 @@ impl Client {
         };
 
         if need_update_playback {
-            std::thread::sleep(std::time::Duration::from_millis(
-                state.app_config.playback_update_delay_in_ms,
-            ));
-            self.update_current_playback_state(state).await?;
+            utils::update_playback(state, send);
         }
         Ok(())
     }
@@ -437,8 +436,8 @@ impl Client {
     /// updates the current playback state by fetching data from the spotify client
     async fn update_current_playback_state(&self, state: &state::SharedState) -> Result<()> {
         let mut player = state.player.write().unwrap();
+        player.playback_last_updated = Some(std::time::SystemTime::now());
         let playback = self.get_current_playback().await?;
-        player.playback_last_updated = playback.as_ref().map(|_| std::time::SystemTime::now());
         player.playback = playback;
         Ok(())
     }
@@ -449,6 +448,7 @@ impl Client {
 pub async fn start_watcher(
     state: state::SharedState,
     mut client: Client,
+    send: std::sync::mpsc::Sender<event::Event>,
     recv: std::sync::mpsc::Receiver<event::Event>,
 ) {
     match client.get_current_user_playlists().await {
@@ -471,7 +471,7 @@ pub async fn start_watcher(
     }
 
     while let Ok(event) = recv.recv() {
-        if let Err(err) = client.handle_event(&state, event).await {
+        if let Err(err) = client.handle_event(&state, &send, event).await {
             log::warn!("{:#?}", err);
         }
     }

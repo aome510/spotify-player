@@ -1,5 +1,7 @@
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
+use crate::{event, state};
+
 /// formats a time duration (in ms) into a "{minutes}:{seconds}" format
 pub fn format_duration(duration: u32) -> String {
     format!("{}:{:02}", duration / 60000, (duration / 1000) % 60)
@@ -29,4 +31,22 @@ pub fn truncate_string(s: String, max_len: usize) -> String {
     } else {
         s
     }
+}
+
+/// updates the current playback by fetching playback data from spotify every
+/// `AppConfig::refresh_delay_in_ms_each_playback_update`, repeated `AppConfig::n_refreshes_each_playback_update` times
+pub fn update_playback(state: &state::SharedState, send: &std::sync::mpsc::Sender<event::Event>) {
+    let send = send.clone();
+    let n_refreshes = state.app_config.n_refreshes_each_playback_update;
+    let delay_duration =
+        std::time::Duration::from_millis(state.app_config.refresh_delay_in_ms_each_playback_update);
+    std::thread::spawn(move || {
+        (0..n_refreshes).for_each(|_| {
+            std::thread::sleep(delay_duration);
+            send.send(event::Event::GetCurrentPlayback)
+                .unwrap_or_else(|err| {
+                    log::warn!("failed to send GetCurrentPlayback event: {:#?}", err);
+                });
+        });
+    });
 }

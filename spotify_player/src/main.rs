@@ -99,8 +99,9 @@ async fn main() -> Result<()> {
         init_state(&mut client, &state).await?;
 
         let state = state.clone();
+        let send = send.clone();
         move || {
-            client::start_watcher(state, client, recv);
+            client::start_watcher(state, client, send, recv);
         }
     });
     // terminal event streaming thread
@@ -130,20 +131,18 @@ async fn main() -> Result<()> {
         // update the current playback if the currently playing track ends
         let state = state.clone();
         let send = send.clone();
-        let delay = std::time::Duration::from_millis(state.app_config.playback_update_delay_in_ms);
+        let refresh_duration =
+            std::time::Duration::from_millis(state.app_config.app_refresh_duration_in_ms);
         move || loop {
             let player = state.player.read().unwrap();
             let progress_ms = player.get_playback_progress();
             let duration_ms = player.get_current_playing_track().map(|t| t.duration_ms);
             if let Some(progress_ms) = progress_ms {
                 if progress_ms == duration_ms.unwrap() {
-                    send.send(event::Event::GetCurrentPlayback)
-                        .unwrap_or_else(|err| {
-                            log::warn!("failed to send GetCurrentPlayback event: {:#?}", err);
-                        });
+                    utils::update_playback(&state, &send);
                 }
             }
-            std::thread::sleep(delay);
+            std::thread::sleep(refresh_duration);
         }
     });
 
