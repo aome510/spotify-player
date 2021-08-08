@@ -304,14 +304,10 @@ fn render_current_playback_widget(
                             .collect::<Vec<_>>()
                             .join(","),
                     ),
-                    ui.theme.primary_text_desc_style(),
+                    ui.theme.playback_track(),
                 )
                 .into(),
-                Span::styled(
-                    track.album.name.to_string(),
-                    ui.theme.secondary_text_desc_style(),
-                )
-                .into(),
+                Span::styled(track.album.name.to_string(), ui.theme.playback_album()).into(),
                 Span::styled(
                     format!(
                         "repeat: {} | shuffle: {} | volume: {}%",
@@ -319,7 +315,7 @@ fn render_current_playback_widget(
                         playback.shuffle_state,
                         playback.device.volume_percent,
                     ),
-                    ui.theme.comment_style(),
+                    ui.theme.playback_metadata(),
                 )
                 .into(),
             ];
@@ -331,7 +327,7 @@ fn render_current_playback_widget(
             let progress_ms = player.get_playback_progress().unwrap();
             let progress_bar = Gauge::default()
                 .block(Block::default())
-                .gauge_style(ui.theme.gauge_style())
+                .gauge_style(ui.theme.playback_progress_bar())
                 .ratio((progress_ms as f64) / (track.duration_ms as f64))
                 .label(Span::styled(
                     format!(
@@ -385,7 +381,7 @@ fn render_context_tracks_widget(
             .enumerate()
             .map(|(id, t)| {
                 let (id, style) = if playing_track_uri == t.uri {
-                    ("▶".to_string(), ui.theme.current_active_style())
+                    ("▶".to_string(), ui.theme.current_active())
                 } else {
                     ((id + 1).to_string(), Style::default())
                 };
@@ -401,7 +397,7 @@ fn render_context_tracks_widget(
             .collect::<Vec<_>>();
 
         let context_desc = Paragraph::new(player.get_context_description())
-            .block(Block::default().style(ui.theme.primary_text_desc_style()));
+            .block(Block::default().style(ui.theme.context_desc()));
         let track_table = Table::new(rows)
             .header(
                 Row::new(vec![
@@ -411,7 +407,7 @@ fn render_context_tracks_widget(
                     Cell::from("Album"),
                     Cell::from("Duration"),
                 ])
-                .style(ui.theme.table_header_style()),
+                .style(ui.theme.context_tracks_table_header()),
             )
             .block(Block::default())
             .widths(&[
@@ -448,7 +444,7 @@ fn construct_list_widget<'a>(
             .into_iter()
             .map(|(s, is_active)| {
                 ListItem::new(s).style(if is_active {
-                    ui.theme.current_active_style()
+                    ui.theme.current_active()
                 } else {
                     Style::default()
                 })

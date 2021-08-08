@@ -69,7 +69,7 @@ pub fn render_commands_help_widget(
     )
     .header(
         Row::new(vec![Cell::from("Command"), Cell::from("Keys")])
-            .style(ui.theme.table_header_style()),
+            .style(ui.theme.context_tracks_table_header()),
     )
     .widths(&COMMAND_TABLE_CONSTRAINTS)
     .block(
