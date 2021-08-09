@@ -182,16 +182,7 @@ fn handle_command_for_none_popup(
     match command {
         Command::SearchContextTracks => {
             ui.context_tracks_table_ui_state.select(Some(0));
-            ui.popup_state = state::PopupState::ContextSearch(state::ContextSearchState {
-                query: "/".to_owned(),
-                tracks: state
-                    .player
-                    .read()
-                    .unwrap()
-                    .get_context_tracks()
-                    .cloned()
-                    .unwrap_or_default(),
-            });
+            ui.popup_state = state::PopupState::ContextSearch("".to_owned());
             Ok(true)
         }
         Command::SortByTrack => {
@@ -268,22 +259,19 @@ fn handle_key_sequence_for_context_search_popup(
     ui: &mut state::UIStateGuard,
 ) -> Result<bool> {
     if key_sequence.keys.len() == 1 {
-        let player = state.player.read().unwrap();
         if let Key::None(c) = key_sequence.keys[0] {
-            let search_state = match ui.popup_state {
-                state::PopupState::ContextSearch(ref mut state) => state,
+            let query = match ui.popup_state {
+                state::PopupState::ContextSearch(ref mut query) => query,
                 _ => unreachable!(),
             };
             match c {
                 KeyCode::Char(c) => {
-                    search_state.query.push(c);
-                    ui.search_context_tracks(&player);
+                    query.push(c);
                     return Ok(true);
                 }
                 KeyCode::Backspace => {
-                    if search_state.query.len() > 1 {
-                        search_state.query.pop().unwrap();
-                        ui.search_context_tracks(&player);
+                    if !query.is_empty() {
+                        query.pop().unwrap();
                     }
                     return Ok(true);
                 }

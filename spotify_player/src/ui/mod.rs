@@ -219,12 +219,12 @@ fn render_application_layout(
                 );
                 (chunks[0], false)
             }
-            state::PopupState::ContextSearch(ref search_state) => {
+            state::PopupState::ContextSearch(ref query) => {
                 let chunks = Layout::default()
                     .direction(Direction::Vertical)
                     .constraints([Constraint::Min(0), Constraint::Length(3)].as_ref())
                     .split(frame.size());
-                render_search_box_widget(frame, &ui, chunks[1], search_state.query.clone());
+                render_search_box_widget(frame, &ui, chunks[1], format!("/{}", query));
                 (chunks[0], true)
             }
         }

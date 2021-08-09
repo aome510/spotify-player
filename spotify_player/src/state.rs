@@ -56,17 +56,11 @@ pub enum PlayingContext {
 /// Popup state
 pub enum PopupState {
     None,
-    ContextSearch(ContextSearchState),
+    ContextSearch(String),
     PlaylistSwitch,
     ThemeSwitch(Vec<config::Theme>),
     DeviceSwitch,
     CommandHelp,
-}
-
-/// State for searching tracks in a playing context
-pub struct ContextSearchState {
-    pub query: String,
-    pub tracks: Vec<Track>,
 }
 
 #[derive(Debug)]
@@ -271,25 +265,6 @@ impl PlayerState {
 }
 
 impl UIState {
-    /// searches tracks in the current playing context
-    pub fn search_context_tracks(&mut self, player: &RwLockReadGuard<PlayerState>) {
-        if let PopupState::ContextSearch(ref mut state) = self.popup_state {
-            let mut query = state.query.clone();
-            query.remove(0); // remove the '/' character at the beginning of the query string
-            log::info!("search tracks in context with query {}", query);
-            let tracks = player.get_context_tracks();
-            if let Some(tracks) = tracks {
-                let id = if tracks.is_empty() { None } else { Some(0) };
-                self.context_tracks_table_ui_state.select(id);
-                state.tracks = tracks
-                    .iter()
-                    .filter(|&t| t.get_basic_info().to_lowercase().contains(&query))
-                    .cloned()
-                    .collect();
-            }
-        }
-    }
-
     /// gets all tracks inside the current playing context.
     /// If in the context search mode, returns tracks filtered by the search query.
     pub fn get_context_tracks<'a>(
@@ -297,7 +272,15 @@ impl UIState {
         player: &'a RwLockReadGuard<'a, PlayerState>,
     ) -> Vec<&'a Track> {
         match self.popup_state {
-            PopupState::ContextSearch(ref state) => state.tracks.iter().collect(),
+            PopupState::ContextSearch(ref query) => player
+                .get_context_tracks()
+                .map(|tracks| {
+                    tracks
+                        .iter()
+                        .filter(|t| t.get_basic_info().to_lowercase().contains(query))
+                        .collect::<Vec<_>>()
+                })
+                .unwrap_or_default(),
             _ => player
                 .get_context_tracks()
                 .map(|tracks| tracks.iter().collect::<Vec<_>>())
