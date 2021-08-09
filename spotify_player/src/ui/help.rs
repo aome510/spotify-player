@@ -3,12 +3,11 @@ use crate::{config, state};
 use std::collections::{btree_map::Entry, BTreeMap};
 use tui::{layout::*, widgets::*};
 
-const SHORTCUT_TABLE_N_COLUMNS: usize = 4;
+const SHORTCUT_TABLE_N_COLUMNS: usize = 3;
 const SHORTCUT_TABLE_CONSTRAINS: [Constraint; SHORTCUT_TABLE_N_COLUMNS] = [
-    Constraint::Percentage(25),
-    Constraint::Percentage(25),
-    Constraint::Percentage(25),
-    Constraint::Percentage(25),
+    Constraint::Percentage(33),
+    Constraint::Percentage(33),
+    Constraint::Percentage(33),
 ];
 const COMMAND_TABLE_CONSTRAINTS: [Constraint; 2] =
     [Constraint::Percentage(30), Constraint::Percentage(70)];

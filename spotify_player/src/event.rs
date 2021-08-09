@@ -458,6 +458,11 @@ fn handle_command(
             send.send(Event::GetCurrentPlayback)?;
             Ok(true)
         }
+        Command::BrowsePlayingContext => {
+            ui.frame_state = state::FrameState::Default;
+            ui.frame_history.push(state::FrameState::Default);
+            Ok(true)
+        }
         Command::BrowseUserPlaylist => {
             ui.popup_state = state::PopupState::PlaylistSwitch;
             ui.playlists_list_ui_state = ListState::default();

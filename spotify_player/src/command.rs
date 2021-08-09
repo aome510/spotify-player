@@ -27,6 +27,7 @@ pub enum Command {
 
     PreviousFrame,
     BrowseUserPlaylist,
+    BrowsePlayingContext,
     BrowseSelectedTrackAlbum,
 
     SortByTrack,

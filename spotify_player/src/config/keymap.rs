@@ -66,11 +66,15 @@ impl Default for KeymapConfig {
                     command: Command::SwitchDevice,
                 },
                 Keymap {
-                    key_sequence: "P".into(),
+                    key_sequence: "g space".into(),
+                    command: Command::BrowsePlayingContext,
+                },
+                Keymap {
+                    key_sequence: "g p".into(),
                     command: Command::BrowseUserPlaylist,
                 },
                 Keymap {
-                    key_sequence: "M-a".into(),
+                    key_sequence: "g a".into(),
                     command: Command::BrowseSelectedTrackAlbum,
                 },
                 Keymap {
