@@ -262,7 +262,7 @@ impl PlayerState {
     /// gets current playing context's uri
     pub fn get_context_uri(&self) -> &str {
         match self.context {
-            PlayingContext::Unknown(ref uri) => &uri,
+            PlayingContext::Unknown(ref uri) => uri,
             PlayingContext::Album(ref album, _) => &album.uri,
             PlayingContext::Playlist(ref playlist, _) => &playlist.uri,
             PlayingContext::Artist(ref artist, _, _) => &artist.uri,

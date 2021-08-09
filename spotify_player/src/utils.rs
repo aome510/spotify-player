@@ -86,6 +86,6 @@ pub fn update_context(
             move || update(&state)
         });
     } else {
-        update(&state);
+        update(state);
     }
 }
