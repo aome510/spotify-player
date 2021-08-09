@@ -131,7 +131,7 @@ fn handle_terminal_event(
             if handled {
                 true
             } else {
-                handle_command(command, send, &mut ui)?
+                handle_command(command, send, state, &mut ui)?
             }
         }
     };
@@ -229,25 +229,6 @@ fn handle_command_for_none_popup(
             state.player.write().unwrap().context.reverse_tracks();
             Ok(true)
         }
-        Command::SwitchPlaylist => {
-            ui.popup_state = state::PopupState::PlaylistSwitch;
-            ui.playlists_list_ui_state = ListState::default();
-            ui.playlists_list_ui_state.select(Some(0));
-            Ok(true)
-        }
-        Command::SwitchDevice => {
-            ui.popup_state = state::PopupState::DeviceSwitch;
-            ui.devices_list_ui_state = ListState::default();
-            ui.devices_list_ui_state.select(Some(0));
-            send.send(Event::GetDevices)?;
-            Ok(true)
-        }
-        Command::SwitchTheme => {
-            ui.popup_state = state::PopupState::ThemeSwitch(state.get_themes(ui));
-            ui.themes_list_ui_state = ListState::default();
-            ui.themes_list_ui_state.select(Some(0));
-            Ok(true)
-        }
         _ => handle_generic_command_for_track_table(command, send, ui, state),
     }
 }
@@ -326,9 +307,11 @@ fn handle_command_for_playlist_switch_popup(
             if let Some(id) = ui.playlists_list_ui_state.selected() {
                 let uri = player.user_playlists[id].uri.clone();
                 send.send(Event::GetContext(Context::Playlist(uri.clone())))?;
+
                 let frame_state = state::FrameState::Browse(uri);
                 ui.frame_history.push(frame_state.clone());
                 ui.frame_state = frame_state;
+                ui.popup_state = state::PopupState::None;
             }
             Ok(true)
         }
@@ -434,6 +417,7 @@ fn handle_command_for_command_help_popup(
 fn handle_command(
     command: Command,
     send: &mpsc::Sender<Event>,
+    state: &state::SharedState,
     ui: &mut state::UIStateGuard,
 ) -> Result<bool> {
     match command {
@@ -467,6 +451,32 @@ fn handle_command(
         }
         Command::RefreshPlayback => {
             send.send(Event::GetCurrentPlayback)?;
+            Ok(true)
+        }
+        Command::BrowseUserPlaylist => {
+            ui.popup_state = state::PopupState::PlaylistSwitch;
+            ui.playlists_list_ui_state = ListState::default();
+            ui.playlists_list_ui_state.select(Some(0));
+            Ok(true)
+        }
+        Command::PreviousFrame => {
+            if ui.frame_history.len() > 1 {
+                ui.frame_history.pop();
+                ui.frame_state = ui.frame_history.last().unwrap().clone();
+            }
+            Ok(true)
+        }
+        Command::SwitchDevice => {
+            ui.popup_state = state::PopupState::DeviceSwitch;
+            ui.devices_list_ui_state = ListState::default();
+            ui.devices_list_ui_state.select(Some(0));
+            send.send(Event::GetDevices)?;
+            Ok(true)
+        }
+        Command::SwitchTheme => {
+            ui.popup_state = state::PopupState::ThemeSwitch(state.get_themes(ui));
+            ui.themes_list_ui_state = ListState::default();
+            ui.themes_list_ui_state.select(Some(0));
             Ok(true)
         }
         _ => Ok(false),

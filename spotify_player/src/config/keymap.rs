@@ -54,16 +54,20 @@ impl Default for KeymapConfig {
                     command: Command::RefreshPlayback,
                 },
                 Keymap {
-                    key_sequence: "P".into(),
-                    command: Command::SwitchPlaylist,
-                },
-                Keymap {
                     key_sequence: "T".into(),
                     command: Command::SwitchTheme,
                 },
                 Keymap {
                     key_sequence: "D".into(),
                     command: Command::SwitchDevice,
+                },
+                Keymap {
+                    key_sequence: "backspace".into(),
+                    command: Command::PreviousFrame,
+                },
+                Keymap {
+                    key_sequence: "P".into(),
+                    command: Command::BrowseUserPlaylist,
                 },
                 Keymap {
                     key_sequence: "M-a".into(),

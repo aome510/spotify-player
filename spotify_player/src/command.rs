@@ -19,12 +19,13 @@ pub enum Command {
 
     RefreshPlayback,
 
-    SwitchPlaylist,
     SwitchTheme,
     SwitchDevice,
 
     SearchContextTracks,
 
+    PreviousFrame,
+    BrowseUserPlaylist,
     BrowseSelectedTrackAlbum,
 
     SortByTrack,
