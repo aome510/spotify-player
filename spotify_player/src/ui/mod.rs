@@ -69,42 +69,59 @@ fn update_player_state(
         }
     }
 
-    // updates the context (album, playlist, etc) tracks based on the current playback
-    if let Some(ref playback) = player.playback {
-        if let Some(ref playback) = playback.context {
-            let uri = playback.uri.clone();
-            let context_uri = player.context.get_uri();
+    let ui = state.ui.lock().unwrap();
 
-            if uri != context_uri {
-                let context = player.context_cache.peek(&uri);
-                match context {
-                    Some(context) => {
-                        utils::update_context(state, context.clone());
-                    }
-                    None => {
-                        match playback._type {
-                            rspotify::senum::Type::Playlist => {
-                                send.send(event::Event::GetContext(event::Context::Playlist(uri)))?
-                            }
-                            rspotify::senum::Type::Album => {
-                                send.send(event::Event::GetContext(event::Context::Album(uri)))?
-                            }
-                            rspotify::senum::Type::Artist => {
-                                send.send(event::Event::GetContext(event::Context::Artist(uri)))?
-                            }
-                            _ => {
-                                send.send(event::Event::GetContext(event::Context::Unknown(uri)))?;
-                                log::info!(
-                                    "encountered not supported context type: {:#?}",
-                                    playback._type
-                                )
-                            }
-                        };
-                    }
+    match ui.frame_state {
+        state::FrameState::Browse(ref uri) => {
+            let context_uri = player.context.get_uri();
+            if context_uri != uri {
+                let context = player.context_cache.peek(uri);
+                if let Some(context) = context {
+                    utils::update_context(state, context.clone());
                 }
             }
         }
-    };
+        state::FrameState::Default => {
+            // updates the context (album, playlist, etc) tracks based on the current playback
+            if let Some(ref playback) = player.playback {
+                if let Some(ref playback) = playback.context {
+                    let uri = playback.uri.clone();
+                    let context_uri = player.context.get_uri();
+
+                    if uri != context_uri {
+                        let context = player.context_cache.peek(&uri);
+                        match context {
+                            Some(context) => {
+                                utils::update_context(state, context.clone());
+                            }
+                            None => {
+                                match playback._type {
+                                    rspotify::senum::Type::Playlist => send.send(
+                                        event::Event::GetContext(event::Context::Playlist(uri)),
+                                    )?,
+                                    rspotify::senum::Type::Album => send.send(
+                                        event::Event::GetContext(event::Context::Album(uri)),
+                                    )?,
+                                    rspotify::senum::Type::Artist => send.send(
+                                        event::Event::GetContext(event::Context::Artist(uri)),
+                                    )?,
+                                    _ => {
+                                        send.send(event::Event::GetContext(
+                                            event::Context::Unknown(uri),
+                                        ))?;
+                                        log::info!(
+                                            "encountered not supported context type: {:#?}",
+                                            playback._type
+                                        )
+                                    }
+                                };
+                            }
+                        }
+                    }
+                }
+            };
+        }
+    }
 
     Ok(())
 }

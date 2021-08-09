@@ -15,7 +15,7 @@ pub enum Command {
 
     SelectNext,
     SelectPrevious,
-    ChoseSelected,
+    ChooseSelected,
 
     RefreshPlayback,
 

@@ -43,7 +43,7 @@ impl Default for KeymapConfig {
                 },
                 Keymap {
                     key_sequence: "enter".into(),
-                    command: Command::ChoseSelected,
+                    command: Command::ChooseSelected,
                 },
                 Keymap {
                     key_sequence: "/".into(),

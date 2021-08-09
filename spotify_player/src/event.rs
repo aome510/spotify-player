@@ -299,7 +299,7 @@ fn handle_key_sequence_for_search_popup(
 
 fn handle_command_for_playlist_switch_popup(
     command: Command,
-    _send: &mpsc::Sender<Event>,
+    send: &mpsc::Sender<Event>,
     state: &state::SharedState,
     ui: &mut state::UIStateGuard,
 ) -> Result<bool> {
@@ -322,9 +322,11 @@ fn handle_command_for_playlist_switch_popup(
             }
             Ok(true)
         }
-        Command::ChoseSelected => {
+        Command::ChooseSelected => {
             if let Some(id) = ui.playlists_list_ui_state.selected() {
-                let frame_state = state::FrameState::Browse(player.user_playlists[id].uri.clone());
+                let uri = player.user_playlists[id].uri.clone();
+                send.send(Event::GetContext(Context::Playlist(uri.clone())))?;
+                let frame_state = state::FrameState::Browse(uri);
                 ui.frame_history.push(frame_state.clone());
                 ui.frame_state = frame_state;
             }
@@ -365,7 +367,7 @@ fn handle_command_for_theme_switch_popup(
             }
             Ok(true)
         }
-        Command::ChoseSelected => {
+        Command::ChooseSelected => {
             ui.popup_state = state::PopupState::None;
             Ok(true)
         }
@@ -403,7 +405,7 @@ fn handle_command_for_device_switch_popup(
             }
             Ok(true)
         }
-        Command::ChoseSelected => {
+        Command::ChooseSelected => {
             if let Some(id) = ui.devices_list_ui_state.selected() {
                 send.send(Event::TransferPlayback(player.devices[id].id.clone()))?;
             }
@@ -497,7 +499,7 @@ fn handle_generic_command_for_track_table(
             }
             Ok(true)
         }
-        Command::ChoseSelected => {
+        Command::ChooseSelected => {
             if let Some(id) = ui.context_tracks_table_ui_state.selected() {
                 match player.context {
                     state::Context::Artist(_, _, _) => {
@@ -532,6 +534,7 @@ fn handle_generic_command_for_track_table(
             if let Some(id) = ui.context_tracks_table_ui_state.selected() {
                 if id < tracks.len() {
                     if let Some(ref uri) = tracks[id].album.uri {
+                        send.send(Event::GetContext(Context::Album(uri.clone())))?;
                         let frame_state = state::FrameState::Browse(uri.clone());
                         ui.frame_history.push(frame_state.clone());
                         ui.frame_state = frame_state;
