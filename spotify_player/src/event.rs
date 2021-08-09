@@ -498,7 +498,7 @@ fn handle_generic_command_for_context_track_table(
         Command::ChoseSelected => {
             if let Some(id) = ui.context_tracks_table_ui_state.selected() {
                 match player.context {
-                    state::PlayingContext::Artist(_, _, _) => {
+                    state::Context::Artist(_, _, _) => {
                         // cannot use artist context uri with a track uri
                         let tracks = tracks.iter().map(|t| t.uri.clone()).collect::<Vec<_>>();
                         send.send(Event::PlayTrack(
@@ -507,21 +507,21 @@ fn handle_generic_command_for_context_track_table(
                             offset::for_position(id as u32),
                         ))?;
                     }
-                    state::PlayingContext::Playlist(ref playlist, _) => {
+                    state::Context::Playlist(ref playlist, _) => {
                         send.send(Event::PlayTrack(
                             Some(playlist.uri.clone()),
                             None,
                             offset::for_uri(tracks[id].uri.clone()),
                         ))?;
                     }
-                    state::PlayingContext::Album(ref album, _) => {
+                    state::Context::Album(ref album, _) => {
                         send.send(Event::PlayTrack(
                             Some(album.uri.clone()),
                             None,
                             offset::for_uri(tracks[id].uri.clone()),
                         ))?;
                     }
-                    state::PlayingContext::Unknown(_) => {}
+                    state::Context::Unknown(_) => {}
                 }
             }
             Ok(true)

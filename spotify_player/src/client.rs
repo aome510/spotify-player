@@ -106,7 +106,7 @@ impl Client {
                             .write()
                             .unwrap()
                             .context_cache
-                            .put(uri.clone(), state::PlayingContext::Unknown(uri));
+                            .put(uri.clone(), state::Context::Unknown(uri));
                     }
                 };
                 false
@@ -306,10 +306,9 @@ impl Client {
                 .filter(|t| t.track.is_some())
                 .map(|t| t.into())
                 .collect::<Vec<_>>();
-            player.context_cache.put(
-                playlist_uri,
-                state::PlayingContext::Playlist(playlist, tracks),
-            );
+            player
+                .context_cache
+                .put(playlist_uri, state::Context::Playlist(playlist, tracks));
         }
 
         Ok(())
@@ -332,7 +331,7 @@ impl Client {
                 .collect::<Vec<_>>();
             player
                 .context_cache
-                .put(album_uri, state::PlayingContext::Album(album, tracks));
+                .put(album_uri, state::Context::Album(album, tracks));
         }
 
         Ok(())
@@ -370,7 +369,7 @@ impl Client {
 
             player.context_cache.put(
                 artist_uri,
-                state::PlayingContext::Artist(artist, top_tracks, albums),
+                state::Context::Artist(artist, top_tracks, albums),
             );
         }
         Ok(())

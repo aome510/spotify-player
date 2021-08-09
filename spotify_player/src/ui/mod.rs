@@ -215,15 +215,12 @@ fn render_application_layout(
                 frame.render_stateful_widget(
                     {
                         let player = state.player.read().unwrap();
-                        let current_playlist_name = if let state::PlayingContext::Playlist(
-                            ref playlist,
-                            _,
-                        ) = player.context
-                        {
-                            &playlist.name
-                        } else {
-                            ""
-                        };
+                        let current_playlist_name =
+                            if let state::Context::Playlist(ref playlist, _) = player.context {
+                                &playlist.name
+                            } else {
+                                ""
+                            };
                         let items = player
                             .user_playlists
                             .iter()
@@ -265,7 +262,7 @@ fn render_player_layout(
     let rect = {
         let player = state.player.read().unwrap();
         match player.context {
-            state::PlayingContext::Artist(_, _, ref albums) => {
+            state::Context::Artist(_, _, ref albums) => {
                 let chunks = Layout::default()
                     .direction(Direction::Vertical)
                     .constraints([Constraint::Percentage(40), Constraint::Min(60)].as_ref())

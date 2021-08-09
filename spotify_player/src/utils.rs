@@ -55,7 +55,7 @@ pub fn update_playback(state: &state::SharedState, send: &std::sync::mpsc::Sende
 }
 
 /// updates the current playing context
-pub fn update_context(state: &state::SharedState, context: state::PlayingContext) {
+pub fn update_context(state: &state::SharedState, context: state::Context) {
     std::thread::spawn({
         let state = state.clone();
         move || {
