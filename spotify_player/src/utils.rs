@@ -64,3 +64,28 @@ pub fn update_playback(
         update(send);
     }
 }
+
+/// updates the current playing context
+pub fn update_context(
+    state: &state::SharedState,
+    context: state::PlayingContext,
+    new_thread: bool,
+) {
+    let update = |state: &state::SharedState| {
+        state.player.write().unwrap().context = context;
+        // reset UI states upon context switching
+        let mut ui = state.ui.lock().unwrap();
+        ui.popup_state = state::PopupState::None;
+        ui.context_tracks_table_ui_state = tui::widgets::TableState::default();
+        ui.context_tracks_table_ui_state.select(Some(0));
+    };
+
+    if new_thread {
+        std::thread::spawn({
+            let state = state.clone();
+            move || update(&state)
+        });
+    } else {
+        update(&state);
+    }
+}

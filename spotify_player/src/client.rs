@@ -111,10 +111,6 @@ impl Client {
                 };
                 false
             }
-            event::Event::UpdateContext(context) => {
-                state.player.write().unwrap().context = context;
-                false
-            }
         };
 
         if need_update_playback {

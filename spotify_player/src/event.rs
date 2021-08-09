@@ -31,7 +31,6 @@ pub enum Event {
     Repeat,
     Shuffle,
     GetContext(Context),
-    UpdateContext(state::PlayingContext),
     PlayTrack(Option<String>, Option<Vec<String>>, Option<offset::Offset>),
     PlayContext(String),
     TransferPlayback(String),

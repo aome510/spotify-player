@@ -49,7 +49,7 @@ pub fn start_ui(
                         let context = player.context_cache.peek(&uri);
                         match context {
                             Some(context) => {
-                                send.send(event::Event::UpdateContext(context.clone()))?
+                                utils::update_context(&state, context.clone(), true);
                             }
                             None => {
                                 match playback_context._type {
