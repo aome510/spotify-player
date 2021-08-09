@@ -294,8 +294,13 @@ impl Client {
     ) -> Result<()> {
         log::info!("get playlist context: {}", playlist_uri);
 
-        let mut player = state.player.write().unwrap();
-        if !player.context_cache.contains(&playlist_uri) {
+        if !state
+            .player
+            .read()
+            .unwrap()
+            .context_cache
+            .contains(&playlist_uri)
+        {
             // get the playlist
             let playlist = self.get_playlist(&playlist_uri).await?;
             // get the playlist's tracks
@@ -306,7 +311,10 @@ impl Client {
                 .filter(|t| t.track.is_some())
                 .map(|t| t.into())
                 .collect::<Vec<_>>();
-            player
+            state
+                .player
+                .write()
+                .unwrap()
                 .context_cache
                 .put(playlist_uri, state::Context::Playlist(playlist, tracks));
         }
@@ -318,8 +326,13 @@ impl Client {
     async fn get_album_context(&self, album_uri: String, state: &state::SharedState) -> Result<()> {
         log::info!("get album context: {}", album_uri);
 
-        let mut player = state.player.write().unwrap();
-        if !player.context_cache.contains(&album_uri) {
+        if !state
+            .player
+            .read()
+            .unwrap()
+            .context_cache
+            .contains(&album_uri)
+        {
             // get the album
             let album = self.get_album(&album_uri).await?;
             // get the album's tracks
@@ -337,7 +350,10 @@ impl Client {
                     track
                 })
                 .collect::<Vec<_>>();
-            player
+            state
+                .player
+                .write()
+                .unwrap()
                 .context_cache
                 .put(album_uri, state::Context::Album(album, tracks));
         }
@@ -353,8 +369,13 @@ impl Client {
     ) -> Result<()> {
         log::info!("get artist context: {}", artist_uri);
 
-        let mut player = state.player.write().unwrap();
-        if !player.context_cache.contains(&artist_uri) {
+        if !state
+            .player
+            .read()
+            .unwrap()
+            .context_cache
+            .contains(&artist_uri)
+        {
             // get a information, top tracks and all albums
             let artist = self.get_artist(&artist_uri).await?;
             let top_tracks = self
@@ -375,7 +396,7 @@ impl Client {
                 })
                 .collect::<Vec<_>>();
 
-            player.context_cache.put(
+            state.player.write().unwrap().context_cache.put(
                 artist_uri,
                 state::Context::Artist(artist, top_tracks, albums),
             );
