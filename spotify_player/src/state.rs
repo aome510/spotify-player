@@ -23,6 +23,7 @@ pub struct PlayerState {
     pub user_playlists: Vec<playlist::SimplifiedPlaylist>,
     pub devices: Vec<device::Device>,
     pub auth_token_expires_at: std::time::SystemTime,
+    pub context: PlayingContext,
     pub playback: Option<context::CurrentlyPlaybackContext>,
     pub playback_last_updated: Option<std::time::SystemTime>,
 }
@@ -44,11 +45,12 @@ pub struct UIState {
 }
 
 /// Playing context (album, playlist, etc) of the current track
+#[derive(Clone, Debug)]
 pub enum PlayingContext {
     Playlist(playlist::FullPlaylist, Vec<Track>),
     Album(album::FullAlbum, Vec<Track>),
     Artist(artist::FullArtist, Vec<Track>, Vec<Album>),
-    Unknown,
+    Unknown(String),
 }
 
 /// Popup state
@@ -139,6 +141,7 @@ impl Default for PlayerState {
             auth_token_expires_at: std::time::SystemTime::now(),
             devices: vec![],
             user_playlists: vec![],
+            context: PlayingContext::Unknown("".to_owned()),
             playback: None,
             playback_last_updated: None,
         }
@@ -220,70 +223,49 @@ impl PlayerState {
 
     /// gets the description of current playing context
     pub fn get_context_description(&self) -> String {
-        match self.get_context() {
-            Some(context) => match context {
-                PlayingContext::Unknown => {
-                    "Cannot infer the playing context from the current playback".to_owned()
-                }
-                PlayingContext::Album(ref album, _) => {
-                    format!("Album: {}", album.name)
-                }
-                PlayingContext::Playlist(ref playlist, _) => {
-                    format!("Playlist: {}", playlist.name)
-                }
-                PlayingContext::Artist(ref artist, _, _) => {
-                    format!("Artist: {}", artist.name)
-                }
-            },
-            None => "Loading context...".to_owned(),
+        match self.context {
+            PlayingContext::Unknown(_) => {
+                "Cannot infer the playing context from the current playback".to_owned()
+            }
+            PlayingContext::Album(ref album, _) => {
+                format!("Album: {}", album.name)
+            }
+            PlayingContext::Playlist(ref playlist, _) => {
+                format!("Playlist: {}", playlist.name)
+            }
+            PlayingContext::Artist(ref artist, _, _) => {
+                format!("Artist: {}", artist.name)
+            }
         }
     }
 
     /// gets all tracks inside the current playing context
     pub fn get_context_tracks(&self) -> Option<&Vec<Track>> {
-        match self.get_context() {
-            Some(context) => match context {
-                PlayingContext::Unknown => None,
-                PlayingContext::Album(_, ref tracks) => Some(tracks),
-                PlayingContext::Playlist(_, ref tracks) => Some(tracks),
-                PlayingContext::Artist(_, ref tracks, _) => Some(tracks),
-            },
-            None => None,
+        match self.context {
+            PlayingContext::Unknown(_) => None,
+            PlayingContext::Album(_, ref tracks) => Some(tracks),
+            PlayingContext::Playlist(_, ref tracks) => Some(tracks),
+            PlayingContext::Artist(_, ref tracks, _) => Some(tracks),
         }
     }
 
     /// gets all tracks inside the current playing context (mutable)
     pub fn get_context_tracks_mut(&mut self) -> Option<&mut Vec<Track>> {
-        match self.get_context_mut() {
-            Some(context) => match context {
-                PlayingContext::Unknown => None,
-                PlayingContext::Album(_, ref mut tracks) => Some(tracks),
-                PlayingContext::Playlist(_, ref mut tracks) => Some(tracks),
-                PlayingContext::Artist(_, ref mut tracks, _) => Some(tracks),
-            },
-            None => None,
+        match self.context {
+            PlayingContext::Unknown(_) => None,
+            PlayingContext::Album(_, ref mut tracks) => Some(tracks),
+            PlayingContext::Playlist(_, ref mut tracks) => Some(tracks),
+            PlayingContext::Artist(_, ref mut tracks, _) => Some(tracks),
         }
     }
 
-    /// gets the current playing context from the context cache
-    pub fn get_context(&self) -> Option<&PlayingContext> {
-        match self.playback {
-            Some(ref playback) => match playback.context {
-                Some(ref context) => self.context_cache.peek(&context.uri),
-                None => None,
-            },
-            None => None,
-        }
-    }
-
-    /// gets the mutable current playing context from the context cache
-    pub fn get_context_mut(&mut self) -> Option<&mut PlayingContext> {
-        match self.playback {
-            Some(ref playback) => match playback.context {
-                Some(ref context) => self.context_cache.get_mut(&context.uri),
-                None => None,
-            },
-            None => None,
+    /// gets current playing context's uri
+    pub fn get_context_uri(&self) -> &str {
+        match self.context {
+            PlayingContext::Unknown(ref uri) => &uri,
+            PlayingContext::Album(ref album, _) => &album.uri,
+            PlayingContext::Playlist(ref playlist, _) => &playlist.uri,
+            PlayingContext::Artist(ref artist, _, _) => &artist.uri,
         }
     }
 }

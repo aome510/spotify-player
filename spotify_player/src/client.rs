@@ -106,9 +106,13 @@ impl Client {
                             .write()
                             .unwrap()
                             .context_cache
-                            .put(uri, state::PlayingContext::Unknown);
+                            .put(uri.clone(), state::PlayingContext::Unknown(uri));
                     }
                 };
+                false
+            }
+            event::Event::UpdateContext(context) => {
+                state.player.write().unwrap().context = context;
                 false
             }
         };

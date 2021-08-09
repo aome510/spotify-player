@@ -42,35 +42,39 @@ pub fn start_ui(
 
             // updates the context (album, playlist, etc) tracks based on the current playback
             if let Some(ref playback) = player.playback {
-                if let Some(ref context) = playback.context {
-                    let uri = context.uri.clone();
-                    let cache_hit = player.context_cache.contains(&uri);
-                    match context._type {
-                        rspotify::senum::Type::Playlist => {
-                            if !cache_hit {
-                                send.send(event::Event::GetContext(event::Context::Playlist(uri)))?;
+                if let Some(ref playback_context) = playback.context {
+                    let uri = playback_context.uri.clone();
+                    let context_uri = player.get_context_uri();
+                    if uri != context_uri {
+                        let context = player.context_cache.peek(&uri);
+                        match context {
+                            Some(context) => {
+                                send.send(event::Event::UpdateContext(context.clone()))?
+                            }
+                            None => {
+                                match playback_context._type {
+                                    rspotify::senum::Type::Playlist => send.send(
+                                        event::Event::GetContext(event::Context::Playlist(uri)),
+                                    )?,
+                                    rspotify::senum::Type::Album => send.send(
+                                        event::Event::GetContext(event::Context::Album(uri)),
+                                    )?,
+                                    rspotify::senum::Type::Artist => send.send(
+                                        event::Event::GetContext(event::Context::Artist(uri)),
+                                    )?,
+                                    _ => {
+                                        send.send(event::Event::GetContext(
+                                            event::Context::Unknown(uri),
+                                        ))?;
+                                        log::info!(
+                                            "encountered not supported context type: {:#?}",
+                                            playback_context._type
+                                        )
+                                    }
+                                };
                             }
                         }
-                        rspotify::senum::Type::Album => {
-                            if !cache_hit {
-                                send.send(event::Event::GetContext(event::Context::Album(uri)))?;
-                            }
-                        }
-                        rspotify::senum::Type::Artist => {
-                            if !cache_hit {
-                                send.send(event::Event::GetContext(event::Context::Artist(uri)))?;
-                            }
-                        }
-                        _ => {
-                            if !cache_hit {
-                                send.send(event::Event::GetContext(event::Context::Unknown(uri)))?;
-                            }
-                            log::info!(
-                                "encountered not supported context type: {:#?}",
-                                context._type
-                            )
-                        }
-                    };
+                    }
                 }
             };
         }
@@ -194,14 +198,15 @@ fn render_application_layout(
                 frame.render_stateful_widget(
                     {
                         let player = state.player.read().unwrap();
-                        let current_playlist_name =
-                            if let Some(state::PlayingContext::Playlist(ref playlist, _)) =
-                                player.get_context()
-                            {
-                                &playlist.name
-                            } else {
-                                ""
-                            };
+                        let current_playlist_name = if let state::PlayingContext::Playlist(
+                            ref playlist,
+                            _,
+                        ) = player.context
+                        {
+                            &playlist.name
+                        } else {
+                            ""
+                        };
                         let items = player
                             .user_playlists
                             .iter()
@@ -242,34 +247,30 @@ fn render_player_layout(
     render_current_playback_widget(f, ui, state, chunks[0]);
     let rect = {
         let player = state.player.read().unwrap();
-        if let Some(context) = player.get_context() {
-            match context {
-                state::PlayingContext::Artist(_, _, ref albums) => {
-                    let chunks = Layout::default()
-                        .direction(Direction::Vertical)
-                        .constraints([Constraint::Percentage(40), Constraint::Min(60)].as_ref())
-                        .split(chunks[1]);
-                    let current_album = player
-                        .get_current_playing_track()
-                        .map(|t| t.album.name.clone())
-                        .unwrap_or_default();
-                    f.render_widget(
-                        construct_list_widget(
-                            ui,
-                            albums
-                                .iter()
-                                .map(|a| (a.name.clone(), a.name == current_album))
-                                .collect::<Vec<_>>(),
-                            "Albums",
-                        ),
-                        chunks[1],
-                    );
-                    chunks[0]
-                }
-                _ => chunks[1],
+        match player.context {
+            state::PlayingContext::Artist(_, _, ref albums) => {
+                let chunks = Layout::default()
+                    .direction(Direction::Vertical)
+                    .constraints([Constraint::Percentage(40), Constraint::Min(60)].as_ref())
+                    .split(chunks[1]);
+                let current_album = player
+                    .get_current_playing_track()
+                    .map(|t| t.album.name.clone())
+                    .unwrap_or_default();
+                f.render_widget(
+                    construct_list_widget(
+                        ui,
+                        albums
+                            .iter()
+                            .map(|a| (a.name.clone(), a.name == current_album))
+                            .collect::<Vec<_>>(),
+                        "Albums",
+                    ),
+                    chunks[1],
+                );
+                chunks[0]
             }
-        } else {
-            chunks[1]
+            _ => chunks[1],
         }
     };
     render_context_tracks_widget(is_active, f, ui, state, rect);
