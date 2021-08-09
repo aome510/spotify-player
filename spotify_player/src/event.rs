@@ -229,6 +229,11 @@ fn handle_command_for_none_popup(
             state.player.write().unwrap().context.reverse_tracks();
             Ok(true)
         }
+        Command::PlayContext => {
+            let uri = state.player.read().unwrap().context.get_uri().to_owned();
+            send.send(Event::PlayContext(uri))?;
+            Ok(true)
+        }
         _ => handle_generic_command_for_track_table(command, send, ui, state),
     }
 }

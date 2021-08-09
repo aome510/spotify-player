@@ -6,6 +6,7 @@ pub enum Command {
     NextTrack,
     PreviousTrack,
     ResumePause,
+    PlayContext,
     Repeat,
     Shuffle,
 

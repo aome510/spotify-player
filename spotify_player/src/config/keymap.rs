@@ -30,6 +30,10 @@ impl Default for KeymapConfig {
                     command: Command::PreviousTrack,
                 },
                 Keymap {
+                    key_sequence: ".".into(),
+                    command: Command::PlayContext,
+                },
+                Keymap {
                     key_sequence: "space".into(),
                     command: Command::ResumePause,
                 },
@@ -46,12 +50,12 @@ impl Default for KeymapConfig {
                     command: Command::ChooseSelected,
                 },
                 Keymap {
-                    key_sequence: "/".into(),
-                    command: Command::SearchContextTracks,
-                },
-                Keymap {
                     key_sequence: "r".into(),
                     command: Command::RefreshPlayback,
+                },
+                Keymap {
+                    key_sequence: "/".into(),
+                    command: Command::SearchContextTracks,
                 },
                 Keymap {
                     key_sequence: "T".into(),
@@ -62,16 +66,16 @@ impl Default for KeymapConfig {
                     command: Command::SwitchDevice,
                 },
                 Keymap {
-                    key_sequence: "backspace".into(),
-                    command: Command::PreviousFrame,
-                },
-                Keymap {
                     key_sequence: "P".into(),
                     command: Command::BrowseUserPlaylist,
                 },
                 Keymap {
                     key_sequence: "M-a".into(),
                     command: Command::BrowseSelectedTrackAlbum,
+                },
+                Keymap {
+                    key_sequence: "backspace".into(),
+                    command: Command::PreviousFrame,
                 },
                 Keymap {
                     key_sequence: "?".into(),
