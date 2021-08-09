@@ -38,6 +38,7 @@ pub struct UIState {
     pub input_key_sequence: key::KeySequence,
 
     pub frame_state: FrameState,
+    pub frame_history: Vec<FrameState>,
     pub popup_state: PopupState,
 
     pub progress_bar_rect: tui::layout::Rect,
@@ -50,10 +51,10 @@ pub struct UIState {
 }
 
 /// Frame state
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum FrameState {
     Default,
-    Discover(String),
+    Browse(String),
 }
 
 /// Popup state
@@ -163,6 +164,7 @@ impl Default for UIState {
             input_key_sequence: key::KeySequence { keys: vec![] },
 
             frame_state: FrameState::Default,
+            frame_history: vec![FrameState::Default],
             popup_state: PopupState::None,
 
             progress_bar_rect: tui::layout::Rect::default(),
@@ -177,22 +179,6 @@ impl Default for UIState {
 }
 
 impl PlayerState {
-    /// sorts tracks in the current playing context given a context sort oder
-    pub fn sort_context_tracks(&mut self, sort_oder: ContextSortOrder) {
-        let tracks = self.get_context_tracks_mut();
-        if let Some(tracks) = tracks {
-            tracks.sort_by(|x, y| sort_oder.compare(x, y));
-        }
-    }
-
-    /// reverses order of tracks in the current playing context
-    pub fn reverse_context_tracks(&mut self) {
-        let tracks = self.get_context_tracks_mut();
-        if let Some(tracks) = tracks {
-            tracks.reverse();
-        }
-    }
-
     /// gets the current playing track
     pub fn get_current_playing_track(&self) -> Option<&track::FullTrack> {
         match self.playback {
@@ -229,10 +215,55 @@ impl PlayerState {
             },
         }
     }
+}
+
+impl UIState {
+    /// gets all tracks inside the current playing context.
+    /// If in the context search mode, returns tracks filtered by the search query.
+    pub fn get_context_tracks<'a>(
+        &'a self,
+        player: &'a RwLockReadGuard<'a, PlayerState>,
+    ) -> Vec<&'a Track> {
+        match self.popup_state {
+            PopupState::ContextSearch(ref query) => player
+                .context
+                .get_tracks()
+                .map(|tracks| {
+                    tracks
+                        .iter()
+                        .filter(|t| t.get_basic_info().to_lowercase().contains(query))
+                        .collect::<Vec<_>>()
+                })
+                .unwrap_or_default(),
+            _ => player
+                .context
+                .get_tracks()
+                .map(|tracks| tracks.iter().collect::<Vec<_>>())
+                .unwrap_or_default(),
+        }
+    }
+}
+
+impl Context {
+    /// sorts tracks in the current playing context given a context sort oder
+    pub fn sort_tracks(&mut self, sort_oder: ContextSortOrder) {
+        let tracks = self.get_tracks_mut();
+        if let Some(tracks) = tracks {
+            tracks.sort_by(|x, y| sort_oder.compare(x, y));
+        }
+    }
+
+    /// reverses order of tracks in the current playing context
+    pub fn reverse_tracks(&mut self) {
+        let tracks = self.get_tracks_mut();
+        if let Some(tracks) = tracks {
+            tracks.reverse();
+        }
+    }
 
     /// gets the description of current playing context
-    pub fn get_context_description(&self) -> String {
-        match self.context {
+    pub fn get_description(&self) -> String {
+        match self {
             Context::Unknown(_) => {
                 "Cannot infer the playing context from the current playback".to_owned()
             }
@@ -249,8 +280,8 @@ impl PlayerState {
     }
 
     /// gets all tracks inside the current playing context
-    pub fn get_context_tracks(&self) -> Option<&Vec<Track>> {
-        match self.context {
+    pub fn get_tracks(&self) -> Option<&Vec<Track>> {
+        match self {
             Context::Unknown(_) => None,
             Context::Album(_, ref tracks) => Some(tracks),
             Context::Playlist(_, ref tracks) => Some(tracks),
@@ -259,8 +290,8 @@ impl PlayerState {
     }
 
     /// gets all tracks inside the current playing context (mutable)
-    pub fn get_context_tracks_mut(&mut self) -> Option<&mut Vec<Track>> {
-        match self.context {
+    pub fn get_tracks_mut(&mut self) -> Option<&mut Vec<Track>> {
+        match self {
             Context::Unknown(_) => None,
             Context::Album(_, ref mut tracks) => Some(tracks),
             Context::Playlist(_, ref mut tracks) => Some(tracks),
@@ -269,37 +300,12 @@ impl PlayerState {
     }
 
     /// gets current playing context's uri
-    pub fn get_context_uri(&self) -> &str {
-        match self.context {
+    pub fn get_uri(&self) -> &str {
+        match self {
             Context::Unknown(ref uri) => uri,
             Context::Album(ref album, _) => &album.uri,
             Context::Playlist(ref playlist, _) => &playlist.uri,
             Context::Artist(ref artist, _, _) => &artist.uri,
-        }
-    }
-}
-
-impl UIState {
-    /// gets all tracks inside the current playing context.
-    /// If in the context search mode, returns tracks filtered by the search query.
-    pub fn get_context_tracks<'a>(
-        &'a self,
-        player: &'a RwLockReadGuard<'a, PlayerState>,
-    ) -> Vec<&'a Track> {
-        match self.popup_state {
-            PopupState::ContextSearch(ref query) => player
-                .get_context_tracks()
-                .map(|tracks| {
-                    tracks
-                        .iter()
-                        .filter(|t| t.get_basic_info().to_lowercase().contains(query))
-                        .collect::<Vec<_>>()
-                })
-                .unwrap_or_default(),
-            _ => player
-                .get_context_tracks()
-                .map(|tracks| tracks.iter().collect::<Vec<_>>())
-                .unwrap_or_default(),
         }
     }
 }

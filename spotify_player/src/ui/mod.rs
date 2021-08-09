@@ -71,9 +71,9 @@ fn update_player_state(
 
     // updates the context (album, playlist, etc) tracks based on the current playback
     if let Some(ref playback) = player.playback {
-        if let Some(ref playback_context) = playback.context {
-            let uri = playback_context.uri.clone();
-            let context_uri = player.get_context_uri();
+        if let Some(ref playback) = playback.context {
+            let uri = playback.uri.clone();
+            let context_uri = player.context.get_uri();
 
             if uri != context_uri {
                 let context = player.context_cache.peek(&uri);
@@ -82,7 +82,7 @@ fn update_player_state(
                         utils::update_context(state, context.clone());
                     }
                     None => {
-                        match playback_context._type {
+                        match playback._type {
                             rspotify::senum::Type::Playlist => {
                                 send.send(event::Event::GetContext(event::Context::Playlist(uri)))?
                             }
@@ -96,7 +96,7 @@ fn update_player_state(
                                 send.send(event::Event::GetContext(event::Context::Unknown(uri)))?;
                                 log::info!(
                                     "encountered not supported context type: {:#?}",
-                                    playback_context._type
+                                    playback._type
                                 )
                             }
                         };
@@ -260,10 +260,10 @@ fn render_player_layout(
         .constraints([Constraint::Length(7), Constraint::Min(0)].as_ref())
         .split(rect);
     render_current_playback_widget(frame, ui, state, chunks[0]);
-    render_context_widget(is_active, frame, ui, state, chunks[1]);
+    render_widget(is_active, frame, ui, state, chunks[1]);
 }
 
-fn render_context_widget(
+fn render_widget(
     is_active: bool,
     frame: &mut Frame,
     ui: &mut state::UIStateGuard,
@@ -282,7 +282,7 @@ fn render_context_widget(
         .constraints([Constraint::Length(1), Constraint::Min(0)].as_ref())
         .margin(1)
         .split(rect);
-    let context_desc = Paragraph::new(state.player.read().unwrap().get_context_description())
+    let context_desc = Paragraph::new(state.player.read().unwrap().context.get_description())
         .block(Block::default().style(ui.theme.context_desc()));
     frame.render_widget(context_desc, chunks[0]);
 

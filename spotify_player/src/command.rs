@@ -25,7 +25,7 @@ pub enum Command {
 
     SearchContextTracks,
 
-    PlaySelectedTrackAlbum,
+    BrowseSelectedTrackAlbum,
 
     SortByTrack,
     SortByArtists,

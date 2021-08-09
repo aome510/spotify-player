@@ -67,7 +67,7 @@ impl Default for KeymapConfig {
                 },
                 Keymap {
                     key_sequence: "M-a".into(),
-                    command: Command::PlaySelectedTrackAlbum,
+                    command: Command::BrowseSelectedTrackAlbum,
                 },
                 Keymap {
                     key_sequence: "?".into(),

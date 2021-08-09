@@ -102,7 +102,7 @@ fn handle_terminal_event(
     let handled = match command {
         None => {
             if let state::PopupState::ContextSearch(_) = ui.popup_state {
-                handle_key_sequence_for_context_search_popup(&key_sequence, send, state, &mut ui)?
+                handle_key_sequence_for_search_popup(&key_sequence, send, state, &mut ui)?
             } else {
                 false
             }
@@ -113,12 +113,7 @@ fn handle_terminal_event(
                     handle_command_for_none_popup(command, send, state, &mut ui)?
                 }
                 state::PopupState::ContextSearch(_) => {
-                    handle_key_sequence_for_context_search_popup(
-                        &key_sequence,
-                        send,
-                        state,
-                        &mut ui,
-                    )?
+                    handle_key_sequence_for_search_popup(&key_sequence, send, state, &mut ui)?
                 }
                 state::PopupState::PlaylistSwitch => {
                     handle_command_for_playlist_switch_popup(command, send, state, &mut ui)?
@@ -190,7 +185,8 @@ fn handle_command_for_none_popup(
                 .player
                 .write()
                 .unwrap()
-                .sort_context_tracks(state::ContextSortOrder::TrackName);
+                .context
+                .sort_tracks(state::ContextSortOrder::TrackName);
             Ok(true)
         }
         Command::SortByAlbum => {
@@ -198,7 +194,8 @@ fn handle_command_for_none_popup(
                 .player
                 .write()
                 .unwrap()
-                .sort_context_tracks(state::ContextSortOrder::Album);
+                .context
+                .sort_tracks(state::ContextSortOrder::Album);
             Ok(true)
         }
         Command::SortByArtists => {
@@ -206,7 +203,8 @@ fn handle_command_for_none_popup(
                 .player
                 .write()
                 .unwrap()
-                .sort_context_tracks(state::ContextSortOrder::Artists);
+                .context
+                .sort_tracks(state::ContextSortOrder::Artists);
             Ok(true)
         }
         Command::SortByAddedDate => {
@@ -214,7 +212,8 @@ fn handle_command_for_none_popup(
                 .player
                 .write()
                 .unwrap()
-                .sort_context_tracks(state::ContextSortOrder::AddedAt);
+                .context
+                .sort_tracks(state::ContextSortOrder::AddedAt);
             Ok(true)
         }
         Command::SortByDuration => {
@@ -222,11 +221,12 @@ fn handle_command_for_none_popup(
                 .player
                 .write()
                 .unwrap()
-                .sort_context_tracks(state::ContextSortOrder::Duration);
+                .context
+                .sort_tracks(state::ContextSortOrder::Duration);
             Ok(true)
         }
         Command::ReverseOrder => {
-            state.player.write().unwrap().reverse_context_tracks();
+            state.player.write().unwrap().context.reverse_tracks();
             Ok(true)
         }
         Command::SwitchPlaylist => {
@@ -248,11 +248,11 @@ fn handle_command_for_none_popup(
             ui.themes_list_ui_state.select(Some(0));
             Ok(true)
         }
-        _ => handle_generic_command_for_context_track_table(command, send, ui, state),
+        _ => handle_generic_command_for_track_table(command, send, ui, state),
     }
 }
 
-fn handle_key_sequence_for_context_search_popup(
+fn handle_key_sequence_for_search_popup(
     key_sequence: &KeySequence,
     send: &mpsc::Sender<Event>,
     state: &state::SharedState,
@@ -291,7 +291,7 @@ fn handle_key_sequence_for_context_search_popup(
                 ui.popup_state = state::PopupState::None;
                 Ok(true)
             }
-            _ => handle_generic_command_for_context_track_table(command, send, ui, state),
+            _ => handle_generic_command_for_track_table(command, send, ui, state),
         },
         None => Ok(false),
     }
@@ -299,7 +299,7 @@ fn handle_key_sequence_for_context_search_popup(
 
 fn handle_command_for_playlist_switch_popup(
     command: Command,
-    send: &mpsc::Sender<Event>,
+    _send: &mpsc::Sender<Event>,
     state: &state::SharedState,
     ui: &mut state::UIStateGuard,
 ) -> Result<bool> {
@@ -324,7 +324,9 @@ fn handle_command_for_playlist_switch_popup(
         }
         Command::ChoseSelected => {
             if let Some(id) = ui.playlists_list_ui_state.selected() {
-                send.send(Event::PlayContext(player.user_playlists[id].uri.clone()))?;
+                let frame_state = state::FrameState::Browse(player.user_playlists[id].uri.clone());
+                ui.frame_history.push(frame_state.clone());
+                ui.frame_state = frame_state;
             }
             Ok(true)
         }
@@ -469,7 +471,7 @@ fn handle_command(
     }
 }
 
-fn handle_generic_command_for_context_track_table(
+fn handle_generic_command_for_track_table(
     command: Command,
     send: &mpsc::Sender<Event>,
     ui: &mut state::UIStateGuard,
@@ -526,11 +528,13 @@ fn handle_generic_command_for_context_track_table(
             }
             Ok(true)
         }
-        Command::PlaySelectedTrackAlbum => {
+        Command::BrowseSelectedTrackAlbum => {
             if let Some(id) = ui.context_tracks_table_ui_state.selected() {
                 if id < tracks.len() {
-                    if let Some(uri) = tracks[id].album.uri.clone() {
-                        send.send(Event::PlayContext(uri))?;
+                    if let Some(ref uri) = tracks[id].album.uri {
+                        let frame_state = state::FrameState::Browse(uri.clone());
+                        ui.frame_history.push(frame_state.clone());
+                        ui.frame_state = frame_state;
                     }
                 }
             }
