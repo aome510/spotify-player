@@ -75,7 +75,6 @@ pub fn update_context(
         state.player.write().unwrap().context = context;
         // reset UI states upon context switching
         let mut ui = state.ui.lock().unwrap();
-        ui.popup_state = state::PopupState::None;
         ui.context_tracks_table_ui_state = tui::widgets::TableState::default();
         ui.context_tracks_table_ui_state.select(Some(0));
     };
