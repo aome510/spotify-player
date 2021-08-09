@@ -36,13 +36,13 @@ pub fn start_ui(
 
         update_player_state(&state, &send)?;
 
-        terminal.draw(|f| {
+        terminal.draw(|frame| {
             let ui = state.ui.lock().unwrap();
 
             let block = Block::default().style(ui.theme.app_style());
-            f.render_widget(block, f.size());
+            frame.render_widget(block, frame.size());
 
-            render_application_layout(f, ui, &state, f.size());
+            render_application_layout(frame, ui, &state, frame.size());
         })?;
 
         std::thread::sleep(ui_refresh_duration);
@@ -158,6 +158,7 @@ fn render_application_layout(
     };
 
     let (player_layout_rect, is_active) = {
+        // handle popup windows
         match ui.popup_state {
             state::PopupState::None => (rect, true),
             state::PopupState::CommandHelp => {
@@ -249,7 +250,7 @@ fn render_application_layout(
 
 fn render_player_layout(
     is_active: bool,
-    f: &mut Frame,
+    frame: &mut Frame,
     ui: &mut state::UIStateGuard,
     state: &state::SharedState,
     rect: Rect,
@@ -258,36 +259,77 @@ fn render_player_layout(
         .direction(Direction::Vertical)
         .constraints([Constraint::Length(7), Constraint::Min(0)].as_ref())
         .split(rect);
-    render_current_playback_widget(f, ui, state, chunks[0]);
+    render_current_playback_widget(frame, ui, state, chunks[0]);
+    render_context_widget(is_active, frame, ui, state, chunks[1]);
+}
+
+fn render_context_widget(
+    is_active: bool,
+    frame: &mut Frame,
+    ui: &mut state::UIStateGuard,
+    state: &state::SharedState,
+    rect: Rect,
+) {
+    // context widget box border
+    let block = Block::default()
+        .title(ui.theme.block_title_with_style("Context"))
+        .borders(Borders::ALL);
+    frame.render_widget(block, rect);
+
+    // context description
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Length(1), Constraint::Min(0)].as_ref())
+        .margin(1)
+        .split(rect);
+    let context_desc = Paragraph::new(state.player.read().unwrap().get_context_description())
+        .block(Block::default().style(ui.theme.context_desc()));
+    frame.render_widget(context_desc, chunks[0]);
+
+    // context data widget(s)
+    //
+    // TODO: improve UI for artist context
     let rect = {
         let player = state.player.read().unwrap();
         match player.context {
             state::Context::Artist(_, _, ref albums) => {
                 let chunks = Layout::default()
                     .direction(Direction::Vertical)
-                    .constraints([Constraint::Percentage(40), Constraint::Min(60)].as_ref())
+                    .constraints([Constraint::Length(12), Constraint::Min(1)].as_ref())
                     .split(chunks[1]);
+
                 let current_album = player
                     .get_current_playing_track()
                     .map(|t| t.album.name.clone())
                     .unwrap_or_default();
-                f.render_widget(
-                    construct_list_widget(
-                        ui,
-                        albums
-                            .iter()
-                            .map(|a| (a.name.clone(), a.name == current_album))
-                            .collect::<Vec<_>>(),
-                        "Albums",
-                    ),
-                    chunks[1],
+
+                let list = List::new(
+                    albums
+                        .iter()
+                        .map(|a| {
+                            ListItem::new(a.name.clone()).style(if a.name == current_album {
+                                ui.theme.current_active()
+                            } else {
+                                Style::default()
+                            })
+                        })
+                        .collect::<Vec<_>>(),
+                )
+                .highlight_style(ui.theme.selection_style())
+                .block(
+                    Block::default()
+                        .borders(Borders::TOP)
+                        .title(ui.theme.block_title_with_style("Albums")),
                 );
+
+                frame.render_widget(list, chunks[1]);
                 chunks[0]
             }
             _ => chunks[1],
         }
     };
-    render_context_tracks_widget(is_active, f, ui, state, rect);
+
+    render_context_tracks_widget(is_active, frame, ui, state, rect);
 }
 
 fn render_search_box_widget(
@@ -317,7 +359,7 @@ fn render_current_playback_widget(
         .split(rect);
 
     let block = Block::default()
-        .title(ui.theme.block_title_with_style("Current Playback"))
+        .title(ui.theme.block_title_with_style("Playback"))
         .borders(Borders::ALL);
     frame.render_widget(block, rect);
 
@@ -385,18 +427,7 @@ fn render_context_tracks_widget(
     state: &state::SharedState,
     rect: Rect,
 ) {
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Length(1), Constraint::Min(0)].as_ref())
-        .margin(1)
-        .split(rect);
-
-    let (context_desc, track_table) = {
-        let block = Block::default()
-            .title(ui.theme.block_title_with_style("Context Tracks"))
-            .borders(Borders::ALL);
-        frame.render_widget(block, rect);
-
+    let track_table = {
         let player = state.player.read().unwrap();
 
         let mut playing_track_uri = "";
@@ -428,9 +459,7 @@ fn render_context_tracks_widget(
             })
             .collect::<Vec<_>>();
 
-        let context_desc = Paragraph::new(player.get_context_description())
-            .block(Block::default().style(ui.theme.context_desc()));
-        let track_table = Table::new(rows)
+        Table::new(rows)
             .header(
                 Row::new(vec![
                     Cell::from("#"),
@@ -453,17 +482,10 @@ fn render_context_tracks_widget(
                 ui.theme.selection_style()
             } else {
                 Style::default()
-            });
-
-        (context_desc, track_table)
+            })
     };
 
-    frame.render_widget(context_desc, chunks[0]);
-    frame.render_stateful_widget(
-        track_table,
-        chunks[1],
-        &mut ui.context_tracks_table_ui_state,
-    );
+    frame.render_stateful_widget(track_table, rect, &mut ui.context_tracks_table_ui_state);
 }
 
 fn construct_list_widget<'a>(

@@ -327,7 +327,15 @@ impl Client {
             // filter tracks that are either unaccessible or deleted from album
             let tracks = album_tracks
                 .into_iter()
-                .map(|t| t.into())
+                .map(|t| {
+                    let mut track: state::Track = t.into();
+                    track.album = state::Album {
+                        name: album.name.clone(),
+                        id: Some(album.id.clone()),
+                        uri: Some(album.uri.clone()),
+                    };
+                    track
+                })
                 .collect::<Vec<_>>();
             player
                 .context_cache

@@ -159,6 +159,17 @@ impl Theme {
             .add_modifier(style::Modifier::BOLD)
     }
 
+    pub fn _text_with_style<'a, S>(
+        &self,
+        content: S,
+        style: tui::style::Style,
+    ) -> tui::text::Span<'a>
+    where
+        S: Into<String>,
+    {
+        tui::text::Span::styled(content.into(), style)
+    }
+
     pub fn block_title_with_style<'a, S>(&self, content: S) -> tui::text::Span<'a>
     where
         S: Into<String>,

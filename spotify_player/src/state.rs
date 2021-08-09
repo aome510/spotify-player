@@ -36,6 +36,8 @@ pub struct UIState {
     pub is_running: bool,
     pub theme: config::Theme,
     pub input_key_sequence: key::KeySequence,
+
+    pub frame_state: FrameState,
     pub popup_state: PopupState,
 
     pub progress_bar_rect: tui::layout::Rect,
@@ -47,6 +49,7 @@ pub struct UIState {
     pub shortcuts_help_ui_state: bool,
 }
 
+/// Frame state
 #[derive(Debug)]
 pub enum FrameState {
     Default,
@@ -158,6 +161,8 @@ impl Default for UIState {
             is_running: true,
             theme: config::Theme::default(),
             input_key_sequence: key::KeySequence { keys: vec![] },
+
+            frame_state: FrameState::Default,
             popup_state: PopupState::None,
 
             progress_bar_rect: tui::layout::Rect::default(),
