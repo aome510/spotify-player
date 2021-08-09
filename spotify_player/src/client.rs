@@ -9,7 +9,6 @@ use rspotify::{
     senum::*,
 };
 use std::time::{Duration, SystemTime};
-use tui::widgets::TableState;
 
 /// A spotify client
 pub struct Client {
@@ -92,17 +91,22 @@ impl Client {
             }
             event::Event::GetContext(context) => {
                 match context {
-                    event::Context::Playlist(playlist_id) => {
-                        self.update_playlist_context(playlist_id, state).await?;
+                    event::Context::Playlist(playlist_uri) => {
+                        self.get_playlist_context(playlist_uri, state).await?;
                     }
-                    event::Context::Album(album_id) => {
-                        self.update_album_context(album_id, state).await?;
+                    event::Context::Album(album_uri) => {
+                        self.get_album_context(album_uri, state).await?;
                     }
-                    event::Context::Artist(artist_id) => {
-                        self.update_artist_context(artist_id, state).await?;
+                    event::Context::Artist(artist_uri) => {
+                        self.get_artist_context(artist_uri, state).await?;
                     }
-                    event::Context::Unknown => {
-                        state.player.write().unwrap().context = state::PlayingContext::Unknown;
+                    event::Context::Unknown(uri) => {
+                        state
+                            .player
+                            .write()
+                            .unwrap()
+                            .context_cache
+                            .put(uri, state::PlayingContext::Unknown);
                     }
                 };
                 false
@@ -185,30 +189,30 @@ impl Client {
     }
 
     /// gets a playlist given its id
-    pub async fn get_playlist(&self, playlist_id: &str) -> Result<playlist::FullPlaylist> {
-        Self::handle_rspotify_result(self.spotify.playlist(playlist_id, None, None).await)
+    pub async fn get_playlist(&self, playlist_uri: &str) -> Result<playlist::FullPlaylist> {
+        Self::handle_rspotify_result(self.spotify.playlist(playlist_uri, None, None).await)
     }
 
     /// gets an album given its id
-    pub async fn get_album(&self, album_id: &str) -> Result<album::FullAlbum> {
-        Self::handle_rspotify_result(self.spotify.album(album_id).await)
+    pub async fn get_album(&self, album_uri: &str) -> Result<album::FullAlbum> {
+        Self::handle_rspotify_result(self.spotify.album(album_uri).await)
     }
 
     /// gets an artist given id
-    pub async fn get_artist(&self, artist_id: &str) -> Result<artist::FullArtist> {
-        Self::handle_rspotify_result(self.spotify.artist(artist_id).await)
+    pub async fn get_artist(&self, artist_uri: &str) -> Result<artist::FullArtist> {
+        Self::handle_rspotify_result(self.spotify.artist(artist_uri).await)
     }
 
     /// gets a list of top tracks of an artist
-    pub async fn get_artist_top_tracks(&self, artist_id: &str) -> Result<track::FullTracks> {
-        Self::handle_rspotify_result(self.spotify.artist_top_tracks(artist_id, None).await)
+    pub async fn get_artist_top_tracks(&self, artist_uri: &str) -> Result<track::FullTracks> {
+        Self::handle_rspotify_result(self.spotify.artist_top_tracks(artist_uri, None).await)
     }
 
     /// gets all albums of an artist
-    pub async fn get_artist_albums(&self, artist_id: &str) -> Result<Vec<album::SimplifiedAlbum>> {
+    pub async fn get_artist_albums(&self, artist_uri: &str) -> Result<Vec<album::SimplifiedAlbum>> {
         let first_page = Self::handle_rspotify_result(
             self.spotify
-                .artist_albums(artist_id, None, None, None, None)
+                .artist_albums(artist_uri, None, None, None, None)
                 .await,
         )?;
         self.get_all_paging_items(first_page).await
@@ -282,131 +286,93 @@ impl Client {
         Self::handle_rspotify_result(self.spotify.current_playback(None, None).await)
     }
 
-    /// updates the playing context state to playlist
-    async fn update_playlist_context(
+    /// gets a playlist context data
+    async fn get_playlist_context(
         &self,
-        playlist_id: String,
+        playlist_uri: String,
         state: &state::SharedState,
     ) -> Result<()> {
-        if let state::PlayingContext::Playlist(ref playlist, _) =
-            state.player.read().unwrap().context
-        {
-            // avoid getting the same playlist more than once
-            if playlist.id == playlist_id {
-                return Ok(());
-            }
+        log::info!("get playlist context: {}", playlist_uri);
+
+        let mut player = state.player.write().unwrap();
+        if !player.context_cache.contains(&playlist_uri) {
+            // get the playlist
+            let playlist = self.get_playlist(&playlist_uri).await?;
+            // get the playlist's tracks
+            let playlist_tracks = self.get_all_paging_items(playlist.tracks.clone()).await?;
+            // filter tracks that are either unaccessible or deleted from album
+            let tracks = playlist_tracks
+                .into_iter()
+                .filter(|t| t.track.is_some())
+                .map(|t| t.into())
+                .collect::<Vec<_>>();
+            player.context_cache.put(
+                playlist_uri,
+                state::PlayingContext::Playlist(playlist, tracks),
+            );
         }
 
-        log::info!("update context as playlist with id {}", playlist_id);
-
-        // get the playlist
-        let playlist = self.get_playlist(&playlist_id).await?;
-        // get the playlist's tracks
-        let playlist_tracks = self.get_all_paging_items(playlist.tracks.clone()).await?;
-        // filter tracks that are either unaccessible or deleted from album
-        let tracks = playlist_tracks
-            .into_iter()
-            .filter(|t| t.track.is_some())
-            .map(|t| t.into())
-            .collect::<Vec<_>>();
-
-        // update states
-        let mut ui = state.ui.lock().unwrap();
-        ui.context_tracks_table_ui_state = TableState::default();
-        ui.popup_state = state::PopupState::None;
-        if !tracks.is_empty() {
-            ui.context_tracks_table_ui_state.select(Some(0));
-        }
-        state.player.write().unwrap().context = state::PlayingContext::Playlist(playlist, tracks);
         Ok(())
     }
 
-    /// updates the playing context state to album
-    async fn update_album_context(
-        &self,
-        album_id: String,
-        state: &state::SharedState,
-    ) -> Result<()> {
-        if let state::PlayingContext::Album(ref album, _) = state.player.read().unwrap().context {
-            // avoid getting the same album more than once
-            if album.id == album_id {
-                return Ok(());
-            }
+    /// gets an album context data
+    async fn get_album_context(&self, album_uri: String, state: &state::SharedState) -> Result<()> {
+        log::info!("get album context: {}", album_uri);
+
+        let mut player = state.player.write().unwrap();
+        if !player.context_cache.contains(&album_uri) {
+            // get the album
+            let album = self.get_album(&album_uri).await?;
+            // get the album's tracks
+            let album_tracks = self.get_all_paging_items(album.tracks.clone()).await?;
+            // filter tracks that are either unaccessible or deleted from album
+            let tracks = album_tracks
+                .into_iter()
+                .map(|t| t.into())
+                .collect::<Vec<_>>();
+            player
+                .context_cache
+                .put(album_uri, state::PlayingContext::Album(album, tracks));
         }
 
-        log::info!("update context as album with id {}", album_id);
-
-        // get the album
-        let album = self.get_album(&album_id).await?;
-        // get the album's tracks
-        let album_tracks = self.get_all_paging_items(album.tracks.clone()).await?;
-        let tracks = album_tracks
-            .into_iter()
-            .map(|t| {
-                let mut track: state::Track = t.into();
-                track.album = state::Album {
-                    id: Some(album.id.clone()),
-                    uri: Some(album.uri.clone()),
-                    name: album.name.clone(),
-                };
-                track
-            })
-            .collect::<Vec<_>>();
-
-        // update states
-        let mut ui = state.ui.lock().unwrap();
-        ui.context_tracks_table_ui_state = TableState::default();
-        ui.popup_state = state::PopupState::None;
-        if !tracks.is_empty() {
-            ui.context_tracks_table_ui_state.select(Some(0));
-        }
-        state.player.write().unwrap().context = state::PlayingContext::Album(album, tracks);
         Ok(())
     }
 
-    async fn update_artist_context(
+    /// gets an artist context data
+    async fn get_artist_context(
         &self,
-        artist_id: String,
+        artist_uri: String,
         state: &state::SharedState,
     ) -> Result<()> {
-        if let state::PlayingContext::Artist(ref artist, _, _) =
-            state.player.read().unwrap().context
-        {
-            // avoid getting the same album more than once
-            if artist.id == artist_id {
-                return Ok(());
-            }
-        }
+        log::info!("get artist context: {}", artist_uri);
 
-        // get artist's information, top tracks and all albums
-        let artist = self.get_artist(&artist_id).await?;
-        let top_tracks = self
-            .get_artist_top_tracks(&artist_id)
-            .await?
-            .tracks
-            .into_iter()
-            .map(|t| t.into())
-            .collect::<Vec<_>>();
-        let albums = self
-            .get_artist_albums(&artist_id)
-            .await?
-            .into_iter()
-            .map(|a| state::Album {
-                name: a.name,
-                uri: a.uri,
-                id: a.id,
-            })
-            .collect::<Vec<_>>();
+        let mut player = state.player.write().unwrap();
+        if !player.context_cache.contains(&artist_uri) {
+            // get a information, top tracks and all albums
+            let artist = self.get_artist(&artist_uri).await?;
+            let top_tracks = self
+                .get_artist_top_tracks(&artist_uri)
+                .await?
+                .tracks
+                .into_iter()
+                .map(|t| t.into())
+                .collect::<Vec<_>>();
+            let albums = self
+                .get_artist_albums(&artist_uri)
+                .await?
+                .into_iter()
+                .map(|a| state::Album {
+                    name: a.name,
+                    uri: a.uri,
+                    id: a.id,
+                })
+                .collect::<Vec<_>>();
 
-        // update states
-        let mut ui = state.ui.lock().unwrap();
-        ui.context_tracks_table_ui_state = TableState::default();
-        ui.popup_state = state::PopupState::None;
-        if !top_tracks.is_empty() {
-            ui.context_tracks_table_ui_state.select(Some(0));
+            player.context_cache.put(
+                artist_uri,
+                state::PlayingContext::Artist(artist, top_tracks, albums),
+            );
         }
-        state.player.write().unwrap().context =
-            state::PlayingContext::Artist(artist, top_tracks, albums);
         Ok(())
     }
 
