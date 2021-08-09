@@ -35,56 +35,35 @@ pub fn truncate_string(s: String, max_len: usize) -> String {
 
 /// updates the current playback by fetching playback data from spotify every
 /// `AppConfig::refresh_delay_in_ms_each_playback_update`, repeated `AppConfig::n_refreshes_each_playback_update` times.
-/// Parameter `new_thread` is used to determine whether this progress should be in a new thread.
-pub fn update_playback(
-    state: &state::SharedState,
-    send: &std::sync::mpsc::Sender<event::Event>,
-    new_thread: bool,
-) {
+pub fn update_playback(state: &state::SharedState, send: &std::sync::mpsc::Sender<event::Event>) {
     let n_refreshes = state.app_config.n_refreshes_each_playback_update;
     let delay_duration =
         std::time::Duration::from_millis(state.app_config.refresh_delay_in_ms_each_playback_update);
 
-    let update = move |send: &std::sync::mpsc::Sender<event::Event>| {
-        (0..n_refreshes).for_each(|_| {
-            std::thread::sleep(delay_duration);
-            send.send(event::Event::GetCurrentPlayback)
-                .unwrap_or_else(|err| {
-                    log::warn!("failed to send GetCurrentPlayback event: {:#?}", err);
-                });
-        });
-    };
-
-    if new_thread {
-        std::thread::spawn({
-            let send = send.clone();
-            move || update(&send)
-        });
-    } else {
-        update(send);
-    }
+    std::thread::spawn({
+        let send = send.clone();
+        move || {
+            (0..n_refreshes).for_each(|_| {
+                std::thread::sleep(delay_duration);
+                send.send(event::Event::GetCurrentPlayback)
+                    .unwrap_or_else(|err| {
+                        log::warn!("failed to send GetCurrentPlayback event: {:#?}", err);
+                    });
+            });
+        }
+    });
 }
 
 /// updates the current playing context
-pub fn update_context(
-    state: &state::SharedState,
-    context: state::PlayingContext,
-    new_thread: bool,
-) {
-    let update = |state: &state::SharedState| {
-        state.player.write().unwrap().context = context;
-        // reset UI states upon context switching
-        let mut ui = state.ui.lock().unwrap();
-        ui.context_tracks_table_ui_state = tui::widgets::TableState::default();
-        ui.context_tracks_table_ui_state.select(Some(0));
-    };
-
-    if new_thread {
-        std::thread::spawn({
-            let state = state.clone();
-            move || update(&state)
-        });
-    } else {
-        update(state);
-    }
+pub fn update_context(state: &state::SharedState, context: state::PlayingContext) {
+    std::thread::spawn({
+        let state = state.clone();
+        move || {
+            state.player.write().unwrap().context = context;
+            // reset UI states upon context switching
+            let mut ui = state.ui.lock().unwrap();
+            ui.context_tracks_table_ui_state = tui::widgets::TableState::default();
+            ui.context_tracks_table_ui_state.select(Some(0));
+        }
+    });
 }

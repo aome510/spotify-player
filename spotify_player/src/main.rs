@@ -104,6 +104,7 @@ async fn main() -> Result<()> {
             client::start_watcher(state, client, send, recv);
         }
     });
+
     // terminal event streaming thread
     std::thread::spawn({
         let send = send.clone();
@@ -112,6 +113,7 @@ async fn main() -> Result<()> {
             event::start_event_stream(send, state);
         }
     });
+
     if state.app_config.playback_refresh_duration_in_ms > 0 {
         // playback pooling (every `playback_refresh_duration_in_ms` ms) thread
         std::thread::spawn({
@@ -127,24 +129,6 @@ async fn main() -> Result<()> {
             }
         });
     }
-    std::thread::spawn({
-        // update the current playback if the currently playing track ends
-        let state = state.clone();
-        let send = send.clone();
-        let refresh_duration =
-            std::time::Duration::from_millis(state.app_config.app_refresh_duration_in_ms);
-        move || loop {
-            let player = state.player.read().unwrap();
-            let progress_ms = player.get_playback_progress();
-            let duration_ms = player.get_current_playing_track().map(|t| t.duration_ms);
-            if let Some(progress_ms) = progress_ms {
-                if progress_ms == duration_ms.unwrap() {
-                    utils::update_playback(&state, &send, false);
-                }
-            }
-            std::thread::sleep(refresh_duration);
-        }
-    });
 
     // application's UI rendering as the main thread
     send.send(event::Event::GetCurrentPlayback)?;

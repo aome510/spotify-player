@@ -34,50 +34,7 @@ pub fn start_ui(
             return Ok(());
         }
 
-        {
-            let player = state.player.read().unwrap();
-            if std::time::SystemTime::now() > player.auth_token_expires_at {
-                send.send(event::Event::RefreshToken)?;
-            }
-
-            // updates the context (album, playlist, etc) tracks based on the current playback
-            if let Some(ref playback) = player.playback {
-                if let Some(ref playback_context) = playback.context {
-                    let uri = playback_context.uri.clone();
-                    let context_uri = player.get_context_uri();
-                    if uri != context_uri {
-                        let context = player.context_cache.peek(&uri);
-                        match context {
-                            Some(context) => {
-                                utils::update_context(&state, context.clone(), true);
-                            }
-                            None => {
-                                match playback_context._type {
-                                    rspotify::senum::Type::Playlist => send.send(
-                                        event::Event::GetContext(event::Context::Playlist(uri)),
-                                    )?,
-                                    rspotify::senum::Type::Album => send.send(
-                                        event::Event::GetContext(event::Context::Album(uri)),
-                                    )?,
-                                    rspotify::senum::Type::Artist => send.send(
-                                        event::Event::GetContext(event::Context::Artist(uri)),
-                                    )?,
-                                    _ => {
-                                        send.send(event::Event::GetContext(
-                                            event::Context::Unknown(uri),
-                                        ))?;
-                                        log::info!(
-                                            "encountered not supported context type: {:#?}",
-                                            playback_context._type
-                                        )
-                                    }
-                                };
-                            }
-                        }
-                    }
-                }
-            };
-        }
+        update_player_state(&state, &send)?;
 
         terminal.draw(|f| {
             let ui = state.ui.lock().unwrap();
@@ -90,6 +47,66 @@ pub fn start_ui(
 
         std::thread::sleep(ui_refresh_duration);
     }
+}
+
+fn update_player_state(
+    state: &state::SharedState,
+    send: &std::sync::mpsc::Sender<event::Event>,
+) -> Result<()> {
+    let player = state.player.read().unwrap();
+
+    // updates the auth token if expired
+    if std::time::SystemTime::now() > player.auth_token_expires_at {
+        send.send(event::Event::RefreshToken)?;
+    }
+
+    // updates the playback when the current playing song ends
+    let progress_ms = player.get_playback_progress();
+    let duration_ms = player.get_current_playing_track().map(|t| t.duration_ms);
+    if let Some(progress_ms) = progress_ms {
+        if progress_ms == duration_ms.unwrap() {
+            send.send(event::Event::GetCurrentPlayback)?;
+        }
+    }
+
+    // updates the context (album, playlist, etc) tracks based on the current playback
+    if let Some(ref playback) = player.playback {
+        if let Some(ref playback_context) = playback.context {
+            let uri = playback_context.uri.clone();
+            let context_uri = player.get_context_uri();
+
+            if uri != context_uri {
+                let context = player.context_cache.peek(&uri);
+                match context {
+                    Some(context) => {
+                        utils::update_context(state, context.clone());
+                    }
+                    None => {
+                        match playback_context._type {
+                            rspotify::senum::Type::Playlist => {
+                                send.send(event::Event::GetContext(event::Context::Playlist(uri)))?
+                            }
+                            rspotify::senum::Type::Album => {
+                                send.send(event::Event::GetContext(event::Context::Album(uri)))?
+                            }
+                            rspotify::senum::Type::Artist => {
+                                send.send(event::Event::GetContext(event::Context::Artist(uri)))?
+                            }
+                            _ => {
+                                send.send(event::Event::GetContext(event::Context::Unknown(uri)))?;
+                                log::info!(
+                                    "encountered not supported context type: {:#?}",
+                                    playback_context._type
+                                )
+                            }
+                        };
+                    }
+                }
+            }
+        }
+    };
+
+    Ok(())
 }
 
 /// cleans up the resources before quitting the application

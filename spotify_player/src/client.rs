@@ -114,7 +114,7 @@ impl Client {
         };
 
         if need_update_playback {
-            utils::update_playback(state, send, true);
+            utils::update_playback(state, send);
         }
         Ok(())
     }
