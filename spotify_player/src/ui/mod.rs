@@ -272,7 +272,7 @@ fn render_popup(
                     construct_list_widget(ui, items, "Artists")
                 },
                 chunks[1],
-                &mut ui.artist_list_ui_state,
+                &mut ui.artists_list_ui_state,
             );
             (chunks[0], false)
         }
