@@ -59,11 +59,11 @@ pub fn update_context(state: &state::SharedState, context: state::Context) {
     std::thread::spawn({
         let state = state.clone();
         move || {
-            state.player.write().unwrap().context = context;
             // reset UI states upon context switching
             let mut ui = state.ui.lock().unwrap();
             ui.context_tracks_table_ui_state = tui::widgets::TableState::default();
             ui.context_tracks_table_ui_state.select(Some(0));
+            state.player.write().unwrap().context = context;
         }
     });
 }
