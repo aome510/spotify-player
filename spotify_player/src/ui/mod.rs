@@ -174,95 +174,117 @@ fn render_application_layout(
         chunks[0]
     };
 
-    let (player_layout_rect, is_active) = {
-        // handle popup windows
-        match ui.popup_state {
-            state::PopupState::None => (rect, true),
-            state::PopupState::CommandHelp => {
-                let chunks = Layout::default()
-                    .direction(Direction::Vertical)
-                    .constraints([Constraint::Length(7), Constraint::Min(0)].as_ref())
-                    .split(rect);
-                help::render_commands_help_widget(frame, &ui, state, chunks[1]);
-                (chunks[0], false)
-            }
-            state::PopupState::DeviceSwitch => {
-                let chunks = Layout::default()
-                    .direction(Direction::Vertical)
-                    .constraints([Constraint::Min(0), Constraint::Length(5)].as_ref())
-                    .split(rect);
-                frame.render_stateful_widget(
-                    {
-                        let player = state.player.read().unwrap();
-                        let current_device_id = match player.playback {
-                            Some(ref playback) => &playback.device.id,
-                            None => "",
-                        };
-                        let items = player
-                            .devices
-                            .iter()
-                            .map(|d| (format!("{} | {}", d.name, d.id), current_device_id == d.id))
-                            .collect();
-                        construct_list_widget(&ui, items, "Devices")
-                    },
-                    chunks[1],
-                    &mut ui.devices_list_ui_state,
-                );
-                (chunks[0], false)
-            }
-            state::PopupState::ThemeSwitch(ref themes) => {
-                let chunks = Layout::default()
-                    .direction(Direction::Vertical)
-                    .constraints([Constraint::Min(0), Constraint::Length(7)].as_ref())
-                    .split(rect);
-                frame.render_stateful_widget(
-                    {
-                        let items = themes.iter().map(|t| (t.name.clone(), false)).collect();
-                        construct_list_widget(&ui, items, "Themes")
-                    },
-                    chunks[1],
-                    &mut ui.themes_list_ui_state,
-                );
-                (chunks[0], false)
-            }
-            state::PopupState::PlaylistSwitch => {
-                let chunks = Layout::default()
-                    .direction(Direction::Vertical)
-                    .constraints([Constraint::Min(0), Constraint::Length(10)].as_ref())
-                    .split(rect);
-                frame.render_stateful_widget(
-                    {
-                        let player = state.player.read().unwrap();
-                        let current_playlist_name =
-                            if let state::Context::Playlist(ref playlist, _) = player.context {
-                                &playlist.name
-                            } else {
-                                ""
-                            };
-                        let items = player
-                            .user_playlists
-                            .iter()
-                            .map(|p| (p.name.clone(), p.name == current_playlist_name))
-                            .collect();
-                        construct_list_widget(&ui, items, "Playlists")
-                    },
-                    chunks[1],
-                    &mut ui.playlists_list_ui_state,
-                );
-                (chunks[0], false)
-            }
-            state::PopupState::ContextSearch(ref query) => {
-                let chunks = Layout::default()
-                    .direction(Direction::Vertical)
-                    .constraints([Constraint::Min(0), Constraint::Length(3)].as_ref())
-                    .split(frame.size());
-                render_search_box_widget(frame, &ui, chunks[1], format!("/{}", query));
-                (chunks[0], true)
-            }
-        }
-    };
+    let (player_layout_rect, is_active) = render_popup(frame, &mut ui, state, rect);
 
     render_player_layout(is_active, frame, &mut ui, state, player_layout_rect);
+}
+
+fn render_popup(
+    frame: &mut Frame,
+    ui: &mut state::UIStateGuard,
+    state: &state::SharedState,
+    rect: Rect,
+) -> (Rect, bool) {
+    // handle popup windows
+    match ui.popup_state {
+        state::PopupState::None => (rect, true),
+        state::PopupState::CommandHelp => {
+            let chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([Constraint::Length(7), Constraint::Min(0)].as_ref())
+                .split(rect);
+            help::render_commands_help_widget(frame, ui, state, chunks[1]);
+            (chunks[0], false)
+        }
+        state::PopupState::DeviceList => {
+            let chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([Constraint::Min(0), Constraint::Length(5)].as_ref())
+                .split(rect);
+            frame.render_stateful_widget(
+                {
+                    let player = state.player.read().unwrap();
+                    let current_device_id = match player.playback {
+                        Some(ref playback) => &playback.device.id,
+                        None => "",
+                    };
+                    let items = player
+                        .devices
+                        .iter()
+                        .map(|d| (format!("{} | {}", d.name, d.id), current_device_id == d.id))
+                        .collect();
+                    construct_list_widget(ui, items, "Devices")
+                },
+                chunks[1],
+                &mut ui.devices_list_ui_state,
+            );
+            (chunks[0], false)
+        }
+        state::PopupState::ThemeList(ref themes) => {
+            let chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([Constraint::Min(0), Constraint::Length(7)].as_ref())
+                .split(rect);
+            frame.render_stateful_widget(
+                {
+                    let items = themes.iter().map(|t| (t.name.clone(), false)).collect();
+                    construct_list_widget(ui, items, "Themes")
+                },
+                chunks[1],
+                &mut ui.themes_list_ui_state,
+            );
+            (chunks[0], false)
+        }
+        state::PopupState::PlaylistList => {
+            let chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([Constraint::Min(0), Constraint::Length(10)].as_ref())
+                .split(rect);
+            frame.render_stateful_widget(
+                {
+                    let player = state.player.read().unwrap();
+                    let current_playlist_name =
+                        if let state::Context::Playlist(ref playlist, _) = player.context {
+                            &playlist.name
+                        } else {
+                            ""
+                        };
+                    let items = player
+                        .user_playlists
+                        .iter()
+                        .map(|p| (p.name.clone(), p.name == current_playlist_name))
+                        .collect();
+                    construct_list_widget(ui, items, "Playlists")
+                },
+                chunks[1],
+                &mut ui.playlists_list_ui_state,
+            );
+            (chunks[0], false)
+        }
+        state::PopupState::ArtistList(ref artists) => {
+            let chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([Constraint::Min(0), Constraint::Length(5)].as_ref())
+                .split(rect);
+            frame.render_stateful_widget(
+                {
+                    let items = artists.iter().map(|a| (a.name.clone(), false)).collect();
+                    construct_list_widget(ui, items, "Artists")
+                },
+                chunks[1],
+                &mut ui.artist_list_ui_state,
+            );
+            (chunks[0], false)
+        }
+        state::PopupState::ContextSearch(ref query) => {
+            let chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([Constraint::Min(0), Constraint::Length(3)].as_ref())
+                .split(frame.size());
+            render_search_box_widget(frame, ui, chunks[1], format!("/{}", query));
+            (chunks[0], true)
+        }
+    }
 }
 
 fn render_player_layout(

@@ -45,6 +45,7 @@ pub struct UIState {
 
     pub context_tracks_table_ui_state: TableState,
     pub playlists_list_ui_state: ListState,
+    pub artist_list_ui_state: ListState,
     pub themes_list_ui_state: ListState,
     pub devices_list_ui_state: ListState,
     pub shortcuts_help_ui_state: bool,
@@ -61,11 +62,12 @@ pub enum FrameState {
 #[derive(Debug)]
 pub enum PopupState {
     None,
-    ContextSearch(String),
-    PlaylistSwitch,
-    ThemeSwitch(Vec<config::Theme>),
-    DeviceSwitch,
     CommandHelp,
+    ContextSearch(String),
+    PlaylistList,
+    DeviceList,
+    ArtistList(Vec<Artist>),
+    ThemeList(Vec<config::Theme>),
 }
 
 #[derive(Debug)]
@@ -171,6 +173,7 @@ impl Default for UIState {
 
             context_tracks_table_ui_state: TableState::default(),
             playlists_list_ui_state: ListState::default(),
+            artist_list_ui_state: ListState::default(),
             themes_list_ui_state: ListState::default(),
             devices_list_ui_state: ListState::default(),
             shortcuts_help_ui_state: false,
