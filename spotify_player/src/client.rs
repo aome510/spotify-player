@@ -210,12 +210,24 @@ impl Client {
 
     /// gets all albums of an artist
     pub async fn get_artist_albums(&self, artist_uri: &str) -> Result<Vec<album::SimplifiedAlbum>> {
-        let first_page = Self::handle_rspotify_result(
-            self.spotify
-                .artist_albums(artist_uri, None, None, None, None)
-                .await,
-        )?;
-        self.get_all_paging_items(first_page).await
+        let mut singles = {
+            let first_page = Self::handle_rspotify_result(
+                self.spotify
+                    .artist_albums(artist_uri, Some(AlbumType::Single), None, Some(50), None)
+                    .await,
+            )?;
+            self.get_all_paging_items(first_page).await
+        }?;
+        let mut albums = {
+            let first_page = Self::handle_rspotify_result(
+                self.spotify
+                    .artist_albums(artist_uri, Some(AlbumType::Album), None, Some(50), None)
+                    .await,
+            )?;
+            self.get_all_paging_items(first_page).await
+        }?;
+        albums.append(&mut singles);
+        Ok(self.clean_up_artist_albums(albums))
     }
 
     /// cycles through the repeat state of the current playback
@@ -482,6 +494,32 @@ impl Client {
         let playback = self.get_current_playback().await?;
         player.playback = playback;
         Ok(())
+    }
+
+    /// cleans up a list of albums (sort by date, remove duplicated entries, etc)
+    fn clean_up_artist_albums(
+        &self,
+        albums: Vec<album::SimplifiedAlbum>,
+    ) -> Vec<album::SimplifiedAlbum> {
+        let mut albums = albums
+            .into_iter()
+            .filter(|a| a.release_date.is_some())
+            .collect::<Vec<_>>();
+
+        albums.sort_by(|x, y| {
+            let date_x = x.release_date.clone().unwrap();
+            let date_y = y.release_date.clone().unwrap();
+            date_x.partial_cmp(&date_y).unwrap()
+        });
+
+        let mut visits = std::collections::HashSet::new();
+        albums.into_iter().rfold(vec![], |mut acc, a| {
+            if !visits.contains(&a.name) {
+                visits.insert(a.name.clone());
+                acc.push(a);
+            }
+            acc
+        })
     }
 }
 
