@@ -74,19 +74,27 @@ impl Default for KeymapConfig {
                     command: Command::BrowsePlayingContext,
                 },
                 Keymap {
-                    key_sequence: "g c a".into(),
+                    key_sequence: "g a".into(),
                     command: Command::BrowsePlayingTrackArtist,
                 },
                 Keymap {
-                    key_sequence: "g c A".into(),
-                    command: Command::BrowseSelectedTrackAlbum,
+                    key_sequence: "g A".into(),
+                    command: Command::BrowsePlayingTrackAlbum,
                 },
                 Keymap {
-                    key_sequence: "g a".into(),
+                    key_sequence: "C-g a".into(),
                     command: Command::BrowseSelectedTrackArtist,
                 },
                 Keymap {
-                    key_sequence: "g A".into(),
+                    key_sequence: "C-g A".into(),
+                    command: Command::BrowseSelectedTrackAlbum,
+                },
+                Keymap {
+                    key_sequence: "g s a".into(),
+                    command: Command::BrowseSelectedTrackArtist,
+                },
+                Keymap {
+                    key_sequence: "g s A".into(),
                     command: Command::BrowseSelectedTrackAlbum,
                 },
                 Keymap {

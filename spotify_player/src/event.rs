@@ -476,6 +476,7 @@ fn handle_command(
         Command::BrowsePlayingTrackAlbum => {
             if let Some(track) = state.player.read().unwrap().get_current_playing_track() {
                 if let Some(ref uri) = track.album.uri {
+                    send.send(Event::GetContext(Context::Album(uri.clone())))?;
                     let frame_state = state::FrameState::Browse(uri.clone());
                     ui.frame_history.push(frame_state.clone());
                     ui.frame_state = frame_state;
