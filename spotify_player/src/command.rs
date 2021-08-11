@@ -20,6 +20,9 @@ pub enum Command {
 
     RefreshPlayback,
 
+    FocusNextWindow,
+    FocusPreviousWindow,
+
     SwitchTheme,
     SwitchDevice,
 

@@ -13,6 +13,7 @@ pub struct UIState {
 
     pub frame_state: FrameState,
     pub frame_history: Vec<FrameState>,
+    pub focus_state: FocusState,
     pub popup_state: PopupState,
 
     pub progress_bar_rect: tui::layout::Rect,
@@ -30,6 +31,27 @@ pub struct UIState {
 pub enum FrameState {
     Default,
     Browse(String),
+}
+
+/// A trait representing a focusable state
+pub trait Focusable {
+    fn next(&mut self);
+    fn previous(&mut self);
+}
+
+/// Artist Focus state
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ArtistFocusState {
+    TopTracks,
+    Albums,
+    RelatedArtists,
+}
+
+/// Focus state
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum FocusState {
+    Artist(ArtistFocusState),
+    Default,
 }
 
 /// Popup state
@@ -80,6 +102,7 @@ impl Default for UIState {
 
             frame_state: FrameState::Default,
             frame_history: vec![FrameState::Default],
+            focus_state: FocusState::Default,
             popup_state: PopupState::None,
 
             progress_bar_rect: tui::layout::Rect::default(),
@@ -93,3 +116,48 @@ impl Default for UIState {
         }
     }
 }
+
+impl Focusable for FocusState {
+    fn next(&mut self) {
+        match self {
+            Self::Default => {}
+            Self::Artist(artist) => artist.next(),
+        };
+    }
+
+    fn previous(&mut self) {
+        match self {
+            Self::Default => {}
+            Self::Artist(artist) => artist.previous(),
+        };
+    }
+}
+
+macro_rules! impl_focusable {
+	($struct:ty, $([$field:ident, $next_field:ident]),+) => {
+		impl Focusable for $struct {
+            fn next(&mut self) {
+                *self = match self {
+                    $(
+                        Self::$field => Self::$next_field,
+                    )+
+                };
+            }
+
+            fn previous(&mut self) {
+                *self = match self {
+                    $(
+                        Self::$next_field => Self::$field,
+                    )+
+                };
+            }
+        }
+	};
+}
+
+impl_focusable!(
+    ArtistFocusState,
+    [TopTracks, Albums],
+    [Albums, RelatedArtists],
+    [RelatedArtists, TopTracks]
+);

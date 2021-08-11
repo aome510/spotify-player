@@ -60,6 +60,14 @@ impl Default for KeymapConfig {
                     command: Command::SearchContextTracks,
                 },
                 Keymap {
+                    key_sequence: "tab".into(),
+                    command: Command::FocusNextWindow,
+                },
+                Keymap {
+                    key_sequence: "backtab".into(),
+                    command: Command::FocusPreviousWindow,
+                },
+                Keymap {
                     key_sequence: "T".into(),
                     command: Command::SwitchTheme,
                 },

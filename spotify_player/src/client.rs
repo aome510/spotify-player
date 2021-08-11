@@ -91,16 +91,16 @@ impl Client {
             }
             event::Event::GetContext(context) => {
                 match context {
-                    event::Context::Playlist(playlist_uri) => {
+                    event::ContextURI::Playlist(playlist_uri) => {
                         self.get_playlist_context(playlist_uri, state).await?;
                     }
-                    event::Context::Album(album_uri) => {
+                    event::ContextURI::Album(album_uri) => {
                         self.get_album_context(album_uri, state).await?;
                     }
-                    event::Context::Artist(artist_uri) => {
+                    event::ContextURI::Artist(artist_uri) => {
                         self.get_artist_context(artist_uri, state).await?;
                     }
-                    event::Context::Unknown(uri) => {
+                    event::ContextURI::Unknown(uri) => {
                         state
                             .player
                             .write()

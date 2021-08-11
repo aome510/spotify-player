@@ -1,4 +1,4 @@
-use crate::{event, state, utils};
+use crate::{event, state::*, utils};
 use anyhow::Result;
 use tui::{layout::*, style::*, text::*, widgets::*};
 
@@ -8,10 +8,7 @@ type Frame<'a> = tui::Frame<'a, tui::backend::CrosstermBackend<std::io::Stdout>>
 mod help;
 
 /// starts the application UI as the main thread
-pub fn start_ui(
-    state: state::SharedState,
-    send: std::sync::mpsc::Sender<event::Event>,
-) -> Result<()> {
+pub fn start_ui(state: SharedState, send: std::sync::mpsc::Sender<event::Event>) -> Result<()> {
     // terminal UI initializations
     let mut stdout = std::io::stdout();
     crossterm::terminal::enable_raw_mode()?;
@@ -48,7 +45,7 @@ pub fn start_ui(
 }
 
 fn update_player_state(
-    state: &state::SharedState,
+    state: &SharedState,
     send: &std::sync::mpsc::Sender<event::Event>,
 ) -> Result<()> {
     let player = state.player.read().unwrap();
@@ -70,7 +67,7 @@ fn update_player_state(
     let ui = state.ui.lock().unwrap();
 
     match ui.frame_state {
-        state::FrameState::Browse(ref uri) => {
+        FrameState::Browse(ref uri) => {
             let context_uri = player.context.get_uri();
             if context_uri != uri {
                 let context = player.context_cache.peek(uri);
@@ -79,7 +76,7 @@ fn update_player_state(
                 }
             }
         }
-        state::FrameState::Default => {
+        FrameState::Default => {
             // updates the context (album, playlist, etc) tracks based on the current playback
             if let Some(ref playback) = player.playback {
                 if let Some(ref playback) = playback.context {
@@ -95,17 +92,17 @@ fn update_player_state(
                             None => {
                                 match playback._type {
                                     rspotify::senum::Type::Playlist => send.send(
-                                        event::Event::GetContext(event::Context::Playlist(uri)),
+                                        event::Event::GetContext(event::ContextURI::Playlist(uri)),
                                     )?,
                                     rspotify::senum::Type::Album => send.send(
-                                        event::Event::GetContext(event::Context::Album(uri)),
+                                        event::Event::GetContext(event::ContextURI::Album(uri)),
                                     )?,
                                     rspotify::senum::Type::Artist => send.send(
-                                        event::Event::GetContext(event::Context::Artist(uri)),
+                                        event::Event::GetContext(event::ContextURI::Artist(uri)),
                                     )?,
                                     _ => {
                                         send.send(event::Event::GetContext(
-                                            event::Context::Unknown(uri),
+                                            event::ContextURI::Unknown(uri),
                                         ))?;
                                         log::info!(
                                             "encountered not supported context type: {:#?}",
@@ -138,8 +135,8 @@ fn clean_up(mut terminal: Terminal) -> Result<()> {
 
 fn render_application_layout(
     frame: &mut Frame,
-    mut ui: state::UIStateGuard,
-    state: &state::SharedState,
+    mut ui: UIStateGuard,
+    state: &SharedState,
     rect: Rect,
 ) {
     // render the shortcuts help table if needed
@@ -179,14 +176,14 @@ fn render_application_layout(
 
 fn render_popup(
     frame: &mut Frame,
-    ui: &mut state::UIStateGuard,
-    state: &state::SharedState,
+    ui: &mut UIStateGuard,
+    state: &SharedState,
     rect: Rect,
 ) -> (Rect, bool) {
     // handle popup windows
     match ui.popup_state {
-        state::PopupState::None => (rect, true),
-        state::PopupState::CommandHelp => {
+        PopupState::None => (rect, true),
+        PopupState::CommandHelp => {
             let chunks = Layout::default()
                 .direction(Direction::Vertical)
                 .constraints([Constraint::Length(7), Constraint::Min(0)].as_ref())
@@ -194,7 +191,7 @@ fn render_popup(
             help::render_commands_help_widget(frame, ui, state, chunks[1]);
             (chunks[0], false)
         }
-        state::PopupState::DeviceList => {
+        PopupState::DeviceList => {
             let chunks = Layout::default()
                 .direction(Direction::Vertical)
                 .constraints([Constraint::Min(0), Constraint::Length(5)].as_ref())
@@ -218,7 +215,7 @@ fn render_popup(
             );
             (chunks[0], false)
         }
-        state::PopupState::ThemeList(ref themes) => {
+        PopupState::ThemeList(ref themes) => {
             let chunks = Layout::default()
                 .direction(Direction::Vertical)
                 .constraints([Constraint::Min(0), Constraint::Length(7)].as_ref())
@@ -233,7 +230,7 @@ fn render_popup(
             );
             (chunks[0], false)
         }
-        state::PopupState::PlaylistList => {
+        PopupState::PlaylistList => {
             let chunks = Layout::default()
                 .direction(Direction::Vertical)
                 .constraints([Constraint::Min(0), Constraint::Length(10)].as_ref())
@@ -242,7 +239,7 @@ fn render_popup(
                 {
                     let player = state.player.read().unwrap();
                     let current_playlist_name =
-                        if let state::Context::Playlist(ref playlist, _) = player.context {
+                        if let Context::Playlist(ref playlist, _) = player.context {
                             &playlist.name
                         } else {
                             ""
@@ -259,7 +256,7 @@ fn render_popup(
             );
             (chunks[0], false)
         }
-        state::PopupState::ArtistList(ref artists) => {
+        PopupState::ArtistList(ref artists) => {
             let chunks = Layout::default()
                 .direction(Direction::Vertical)
                 .constraints([Constraint::Min(0), Constraint::Length(5)].as_ref())
@@ -274,7 +271,7 @@ fn render_popup(
             );
             (chunks[0], false)
         }
-        state::PopupState::ContextSearch(ref query) => {
+        PopupState::ContextSearch(ref query) => {
             let chunks = Layout::default()
                 .direction(Direction::Vertical)
                 .constraints([Constraint::Min(0), Constraint::Length(3)].as_ref())
@@ -288,8 +285,8 @@ fn render_popup(
 fn render_player_layout(
     is_active: bool,
     frame: &mut Frame,
-    ui: &mut state::UIStateGuard,
-    state: &state::SharedState,
+    ui: &mut UIStateGuard,
+    state: &SharedState,
     rect: Rect,
 ) {
     let chunks = Layout::default()
@@ -303,8 +300,8 @@ fn render_player_layout(
 fn render_widget(
     is_active: bool,
     frame: &mut Frame,
-    ui: &mut state::UIStateGuard,
-    state: &state::SharedState,
+    ui: &mut UIStateGuard,
+    state: &SharedState,
     rect: Rect,
 ) {
     // context widget box border
@@ -326,10 +323,10 @@ fn render_widget(
     // context data widget(s)
     //
     // TODO: improve UI for artist context
-    let rect = {
+    let (is_active, rect) = {
         let player = state.player.read().unwrap();
         match player.context {
-            state::Context::Artist(_, _, ref albums) => {
+            Context::Artist(_, _, ref albums) => {
                 let chunks = Layout::default()
                     .direction(Direction::Vertical)
                     .constraints([Constraint::Length(12), Constraint::Min(1)].as_ref())
@@ -360,21 +357,18 @@ fn render_widget(
                 );
 
                 frame.render_widget(list, chunks[1]);
-                chunks[0]
+                let is_active =
+                    is_active && ui.focus_state == FocusState::Artist(ArtistFocusState::TopTracks);
+                (is_active, chunks[0])
             }
-            _ => chunks[1],
+            _ => (is_active, chunks[1]),
         }
     };
 
     render_context_tracks_widget(is_active, frame, ui, state, rect);
 }
 
-fn render_search_box_widget(
-    frame: &mut Frame,
-    ui: &state::UIStateGuard,
-    rect: Rect,
-    query: String,
-) {
+fn render_search_box_widget(frame: &mut Frame, ui: &UIStateGuard, rect: Rect, query: String) {
     let search_box = Paragraph::new(query).block(
         Block::default()
             .borders(Borders::ALL)
@@ -385,8 +379,8 @@ fn render_search_box_widget(
 
 fn render_current_playback_widget(
     frame: &mut Frame,
-    ui: &mut state::UIStateGuard,
-    state: &state::SharedState,
+    ui: &mut UIStateGuard,
+    state: &SharedState,
     rect: Rect,
 ) {
     let chunks = Layout::default()
@@ -460,8 +454,8 @@ fn render_current_playback_widget(
 fn render_context_tracks_widget(
     is_active: bool,
     frame: &mut Frame,
-    ui: &mut state::UIStateGuard,
-    state: &state::SharedState,
+    ui: &mut UIStateGuard,
+    state: &SharedState,
     rect: Rect,
 ) {
     let track_table = {
@@ -526,7 +520,7 @@ fn render_context_tracks_widget(
 }
 
 fn construct_list_widget<'a>(
-    ui: &state::UIStateGuard,
+    ui: &UIStateGuard,
     items: Vec<(String, bool)>,
     title: &str,
 ) -> List<'a> {
