@@ -15,104 +15,121 @@ pub struct KeySequence {
 }
 
 impl Key {
+    fn parse_key_code(s: &str) -> Option<KeyCode> {
+        Some(match s {
+            "enter" => KeyCode::Enter,
+            "space" => KeyCode::Char(' '),
+            "tab" => KeyCode::Tab,
+            "backtab" => KeyCode::BackTab,
+            "backspace" => KeyCode::Backspace,
+            "esc" => KeyCode::Esc,
+
+            "left" => KeyCode::Left,
+            "right" => KeyCode::Right,
+            "up" => KeyCode::Up,
+            "down" => KeyCode::Down,
+
+            "insert" => KeyCode::Insert,
+            "delete" => KeyCode::Delete,
+            "home" => KeyCode::Home,
+            "end" => KeyCode::End,
+            "page_up" => KeyCode::PageUp,
+            "page_down" => KeyCode::PageDown,
+
+            "f1" => KeyCode::F(1),
+            "f2" => KeyCode::F(2),
+            "f3" => KeyCode::F(3),
+            "f4" => KeyCode::F(4),
+            "f5" => KeyCode::F(5),
+            "f6" => KeyCode::F(6),
+            "f7" => KeyCode::F(7),
+            "f8" => KeyCode::F(8),
+            "f9" => KeyCode::F(9),
+            "f10" => KeyCode::F(10),
+            "f11" => KeyCode::F(11),
+            "f12" => KeyCode::F(12),
+
+            _ => {
+                let chars = s.chars().collect::<Vec<_>>();
+                if chars.len() == 1 && chars[0] != ' ' {
+                    KeyCode::Char(chars[0])
+                } else {
+                    return None;
+                }
+            }
+        })
+    }
+
     /// creates a `Key` from its string representation
     pub fn from_str(s: &str) -> Option<Self> {
-        let chars: Vec<char> = s.chars().collect();
-        if chars.len() == 1 && chars[0] != ' ' {
-            // a single character
-            Some(Key::None(KeyCode::Char(chars[0])))
-        } else if chars.len() == 3 && chars[1] == '-' && chars[2] != ' ' {
+        let chars = s.chars().collect::<Vec<_>>();
+        if chars.len() > 2 && chars[1] == '-' && chars[2] != ' ' {
             // M-<c> for alt-<c> and C-<c> for ctrl-<c>
-            match chars[0] {
-                'C' => Some(Key::Ctrl(KeyCode::Char(chars[2]))),
-                'M' => Some(Key::Alt(KeyCode::Char(chars[2]))),
+            let mut chars = chars.into_iter();
+            let c = chars.next().unwrap();
+            chars.next();
+            let key = Self::parse_key_code(&chars.collect::<String>());
+            match c {
+                'C' => key.map(Key::Ctrl),
+                'M' => key.map(Key::Alt),
                 _ => None,
             }
         } else {
-            match s {
-                "enter" => Some(Key::None(KeyCode::Enter)),
-                "space" => Some(Key::None(KeyCode::Char(' '))),
-                "tab" => Some(Key::None(KeyCode::Tab)),
-                "backspace" => Some(Key::None(KeyCode::Backspace)),
-                "esc" => Some(Key::None(KeyCode::Esc)),
+            Self::parse_key_code(s).map(Key::None)
+        }
+    }
+}
 
-                "left" => Some(Key::None(KeyCode::Left)),
-                "right" => Some(Key::None(KeyCode::Right)),
-                "up" => Some(Key::None(KeyCode::Up)),
-                "down" => Some(Key::None(KeyCode::Down)),
-
-                "insert" => Some(Key::None(KeyCode::Insert)),
-                "delete" => Some(Key::None(KeyCode::Delete)),
-                "home" => Some(Key::None(KeyCode::Home)),
-                "end" => Some(Key::None(KeyCode::End)),
-                "page_up" => Some(Key::None(KeyCode::PageUp)),
-                "page_down" => Some(Key::None(KeyCode::PageDown)),
-
-                "f1" => Some(Key::None(KeyCode::F(1))),
-                "f2" => Some(Key::None(KeyCode::F(2))),
-                "f3" => Some(Key::None(KeyCode::F(3))),
-                "f4" => Some(Key::None(KeyCode::F(4))),
-                "f5" => Some(Key::None(KeyCode::F(5))),
-                "f6" => Some(Key::None(KeyCode::F(6))),
-                "f7" => Some(Key::None(KeyCode::F(7))),
-                "f8" => Some(Key::None(KeyCode::F(8))),
-                "f9" => Some(Key::None(KeyCode::F(9))),
-                "f10" => Some(Key::None(KeyCode::F(10))),
-                "f11" => Some(Key::None(KeyCode::F(11))),
-                "f12" => Some(Key::None(KeyCode::F(12))),
-
-                _ => None,
+fn key_code_to_string(k: KeyCode) -> String {
+    match k {
+        KeyCode::Char(c) => {
+            if c == ' ' {
+                "space".to_string()
+            } else {
+                c.to_string()
             }
         }
+        KeyCode::Enter => "enter".to_string(),
+        KeyCode::Tab => "tab".to_string(),
+        KeyCode::BackTab => "backtab".to_string(),
+        KeyCode::Backspace => "backspace".to_string(),
+        KeyCode::Esc => "esc".to_string(),
+
+        KeyCode::Left => "left".to_string(),
+        KeyCode::Right => "right".to_string(),
+        KeyCode::Up => "up".to_string(),
+        KeyCode::Down => "down".to_string(),
+
+        KeyCode::Insert => "insert".to_string(),
+        KeyCode::Delete => "delete".to_string(),
+        KeyCode::Home => "home".to_string(),
+        KeyCode::End => "end".to_string(),
+        KeyCode::PageUp => "page_up".to_string(),
+        KeyCode::PageDown => "page_down".to_string(),
+
+        KeyCode::F(1) => "f1".to_string(),
+        KeyCode::F(2) => "f2".to_string(),
+        KeyCode::F(3) => "f3".to_string(),
+        KeyCode::F(4) => "f4".to_string(),
+        KeyCode::F(5) => "f5".to_string(),
+        KeyCode::F(6) => "f6".to_string(),
+        KeyCode::F(7) => "f7".to_string(),
+        KeyCode::F(8) => "f8".to_string(),
+        KeyCode::F(9) => "f9".to_string(),
+        KeyCode::F(10) => "f10".to_string(),
+        KeyCode::F(11) => "f11".to_string(),
+        KeyCode::F(12) => "f12".to_string(),
+
+        _ => panic!("unknown key: {:?}", k),
     }
 }
 
 impl std::fmt::Display for Key {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match *self {
-            Key::Ctrl(KeyCode::Char(c)) => write!(f, "C-{}", c),
-            Key::Alt(KeyCode::Char(c)) => write!(f, "M-{}", c),
-            Key::None(k) => match k {
-                KeyCode::Char(c) => {
-                    if c == ' ' {
-                        write!(f, "space")
-                    } else {
-                        write!(f, "{}", c)
-                    }
-                }
-                KeyCode::Enter => write!(f, "enter"),
-                KeyCode::Tab => write!(f, "tab"),
-                KeyCode::Backspace => write!(f, "backspace"),
-                KeyCode::Esc => write!(f, "esc"),
-
-                KeyCode::Left => write!(f, "left"),
-                KeyCode::Right => write!(f, "right"),
-                KeyCode::Up => write!(f, "up"),
-                KeyCode::Down => write!(f, "down"),
-
-                KeyCode::Insert => write!(f, "insert"),
-                KeyCode::Delete => write!(f, "delete"),
-                KeyCode::Home => write!(f, "home"),
-                KeyCode::End => write!(f, "end"),
-                KeyCode::PageUp => write!(f, "page_up"),
-                KeyCode::PageDown => write!(f, "page_down"),
-
-                KeyCode::F(1) => write!(f, "f1"),
-                KeyCode::F(2) => write!(f, "f2"),
-                KeyCode::F(3) => write!(f, "f3"),
-                KeyCode::F(4) => write!(f, "f4"),
-                KeyCode::F(5) => write!(f, "f5"),
-                KeyCode::F(6) => write!(f, "f6"),
-                KeyCode::F(7) => write!(f, "f7"),
-                KeyCode::F(8) => write!(f, "f8"),
-                KeyCode::F(9) => write!(f, "f9"),
-                KeyCode::F(10) => write!(f, "f10"),
-                KeyCode::F(11) => write!(f, "f11"),
-                KeyCode::F(12) => write!(f, "f12"),
-
-                _ => panic!("unknown key: {:?}", self),
-            },
-            _ => panic!("unknown key: {:?}", self),
+            Key::Ctrl(k) => write!(f, "C-{}", key_code_to_string(k)),
+            Key::Alt(k) => write!(f, "M-{}", key_code_to_string(k)),
+            Key::None(k) => write!(f, "{}", key_code_to_string(k)),
         }
     }
 }
