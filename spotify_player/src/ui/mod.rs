@@ -1,6 +1,4 @@
-use crate::event;
-use crate::state;
-use crate::utils;
+use crate::{event, state, utils};
 use anyhow::Result;
 use tui::{layout::*, style::*, text::*, widgets::*};
 

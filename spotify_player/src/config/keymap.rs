@@ -1,5 +1,7 @@
-use crate::command::Command;
-use crate::key::{Key, KeySequence};
+use crate::{
+    command::Command,
+    key::{Key, KeySequence},
+};
 use anyhow::Result;
 use serde::Deserialize;
 
