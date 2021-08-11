@@ -63,6 +63,16 @@ pub fn update_context(state: &state::SharedState, context: state::Context) {
             let mut ui = state.ui.lock().unwrap();
             ui.context_tracks_table_ui_state = tui::widgets::TableState::default();
             ui.context_tracks_table_ui_state.select(Some(0));
+            match context {
+                state::Context::Artist(_, _, _) => {
+                    ui.focus_state = state::FocusState::Artist(state::ArtistFocusState::TopTracks);
+                    ui.artist_albums_list_ui_state = tui::widgets::ListState::default();
+                    ui.artist_albums_list_ui_state.select(Some(0));
+                }
+                _ => {
+                    ui.focus_state = state::FocusState::Default;
+                }
+            }
             state.player.write().unwrap().context = context;
         }
     });

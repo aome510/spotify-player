@@ -152,11 +152,15 @@ impl Theme {
             .fg(self.palette.foreground.color)
     }
 
-    pub fn selection_style(&self) -> style::Style {
-        style::Style::default()
-            .bg(self.palette.selection_background.color)
-            .fg(self.palette.selection_foreground.color)
-            .add_modifier(style::Modifier::BOLD)
+    pub fn selection_style(&self, is_active: bool) -> style::Style {
+        if is_active {
+            style::Style::default()
+                .bg(self.palette.selection_background.color)
+                .fg(self.palette.selection_foreground.color)
+                .add_modifier(style::Modifier::BOLD)
+        } else {
+            style::Style::default()
+        }
     }
 
     pub fn _text_with_style<'a, S>(

@@ -19,6 +19,10 @@ pub struct UIState {
     pub progress_bar_rect: tui::layout::Rect,
 
     pub context_tracks_table_ui_state: TableState,
+    // TODO: should wrap this list state inside a context ui state
+    pub artist_albums_list_ui_state: ListState,
+
+    // TODO: should wrap the below popup list states inside the popup_state
     pub playlists_list_ui_state: ListState,
     pub artists_list_ui_state: ListState,
     pub themes_list_ui_state: ListState,
@@ -108,6 +112,8 @@ impl Default for UIState {
             progress_bar_rect: tui::layout::Rect::default(),
 
             context_tracks_table_ui_state: TableState::default(),
+            artist_albums_list_ui_state: ListState::default(),
+
             playlists_list_ui_state: ListState::default(),
             artists_list_ui_state: ListState::default(),
             themes_list_ui_state: ListState::default(),

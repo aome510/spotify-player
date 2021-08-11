@@ -294,10 +294,10 @@ fn render_player_layout(
         .constraints([Constraint::Length(7), Constraint::Min(0)].as_ref())
         .split(rect);
     render_current_playback_widget(frame, ui, state, chunks[0]);
-    render_widget(is_active, frame, ui, state, chunks[1]);
+    render_context_widget(is_active, frame, ui, state, chunks[1]);
 }
 
-fn render_widget(
+fn render_context_widget(
     is_active: bool,
     frame: &mut Frame,
     ui: &mut UIStateGuard,
@@ -337,6 +337,8 @@ fn render_widget(
                     .map(|t| t.album.name.clone())
                     .unwrap_or_default();
 
+                let is_active_albums =
+                    is_active && ui.focus_state == FocusState::Artist(ArtistFocusState::Albums);
                 let list = List::new(
                     albums
                         .iter()
@@ -349,17 +351,17 @@ fn render_widget(
                         })
                         .collect::<Vec<_>>(),
                 )
-                .highlight_style(ui.theme.selection_style())
+                .highlight_style(ui.theme.selection_style(is_active_albums))
                 .block(
                     Block::default()
                         .borders(Borders::TOP)
                         .title(ui.theme.block_title_with_style("Albums")),
                 );
 
-                frame.render_widget(list, chunks[1]);
-                let is_active =
+                frame.render_stateful_widget(list, chunks[1], &mut ui.artist_albums_list_ui_state);
+                let is_active_tracks =
                     is_active && ui.focus_state == FocusState::Artist(ArtistFocusState::TopTracks);
-                (is_active, chunks[0])
+                (is_active_tracks, chunks[0])
             }
             _ => (is_active, chunks[1]),
         }
@@ -509,11 +511,7 @@ fn render_context_tracks_widget(
                 Constraint::Percentage(30),
                 Constraint::Percentage(7),
             ])
-            .highlight_style(if is_active {
-                ui.theme.selection_style()
-            } else {
-                Style::default()
-            })
+            .highlight_style(ui.theme.selection_style(is_active))
     };
 
     frame.render_stateful_widget(track_table, rect, &mut ui.context_tracks_table_ui_state);
@@ -536,7 +534,7 @@ fn construct_list_widget<'a>(
             })
             .collect::<Vec<_>>(),
     )
-    .highlight_style(ui.theme.selection_style())
+    .highlight_style(ui.theme.selection_style(true))
     .block(
         Block::default()
             .title(ui.theme.block_title_with_style(title))
