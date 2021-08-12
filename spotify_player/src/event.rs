@@ -549,20 +549,59 @@ fn handle_command_for_focused_context_window(
 ) -> Result<bool> {
     if let ContextState::Artist(_, _, _, focus_state) = ui.context {
         let player = state.player.read().unwrap();
-        let albums = match player.context {
-            Context::Artist(_, _, ref albums, _) => albums,
+        let (albums, artists) = match player.context {
+            Context::Artist(_, _, ref albums, ref artists) => (albums, artists),
             _ => unreachable!(),
         };
         match focus_state {
             ArtistFocusState::Albums => {
                 return handle_command_for_album_list(command, send, ui, albums);
             }
-            ArtistFocusState::RelatedArtists => {}
+            ArtistFocusState::RelatedArtists => {
+                return handle_command_for_artist_list(command, send, ui, artists);
+            }
             ArtistFocusState::TopTracks => {}
         }
     }
 
     handle_command_for_track_table(command, send, ui, state)
+}
+
+fn handle_command_for_artist_list(
+    command: Command,
+    send: &mpsc::Sender<Event>,
+    ui: &mut UIStateGuard,
+    artists: &[Artist],
+) -> Result<bool> {
+    match command {
+        Command::SelectNext => {
+            if let Some(id) = ui.context.selected() {
+                if id + 1 < artists.len() {
+                    ui.context.select(Some(id + 1));
+                }
+            }
+            Ok(true)
+        }
+        Command::SelectPrevious => {
+            if let Some(id) = ui.context.selected() {
+                if id > 0 {
+                    ui.context.select(Some(id - 1));
+                }
+            }
+            Ok(true)
+        }
+        Command::ChooseSelected => {
+            if let Some(id) = ui.context.selected() {
+                let uri = artists[id].uri.clone().unwrap();
+                send.send(Event::GetContext(ContextURI::Artist(uri.clone())))?;
+                let frame_state = FrameState::Browse(uri);
+                ui.frame_history.push(frame_state.clone());
+                ui.frame = frame_state;
+            }
+            Ok(true)
+        }
+        _ => Ok(false),
+    }
 }
 
 fn handle_command_for_album_list(
