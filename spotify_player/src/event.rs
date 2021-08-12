@@ -547,24 +547,32 @@ fn handle_command_for_focused_context_window(
     ui: &mut UIStateGuard,
     state: &SharedState,
 ) -> Result<bool> {
-    if let ContextState::Artist(_, _, _, focus_state) = ui.context {
-        let player = state.player.read().unwrap();
-        let (albums, artists) = match player.context {
-            Context::Artist(_, _, ref albums, ref artists) => (albums, artists),
-            _ => unreachable!(),
-        };
-        match focus_state {
-            ArtistFocusState::Albums => {
-                return handle_command_for_album_list(command, send, ui, albums);
+    match state.player.read().unwrap().context {
+        Context::Artist(_, ref tracks, ref albums, ref artists) => {
+            let focus_state = match ui.context {
+                ContextState::Artist(_, _, _, state) => state,
+                _ => unreachable!(),
+            };
+            match focus_state {
+                ArtistFocusState::Albums => {
+                    handle_command_for_album_list(command, send, ui, albums)
+                }
+                ArtistFocusState::RelatedArtists => {
+                    handle_command_for_artist_list(command, send, ui, artists)
+                }
+                ArtistFocusState::TopTracks => {
+                    handle_command_for_track_table(command, send, ui, state, tracks)
+                }
             }
-            ArtistFocusState::RelatedArtists => {
-                return handle_command_for_artist_list(command, send, ui, artists);
-            }
-            ArtistFocusState::TopTracks => {}
         }
+        Context::Album(_, ref tracks) => {
+            handle_command_for_track_table(command, send, ui, state, tracks)
+        }
+        Context::Playlist(_, ref tracks) => {
+            handle_command_for_track_table(command, send, ui, state, tracks)
+        }
+        Context::Unknown(_) => Ok(false),
     }
-
-    handle_command_for_track_table(command, send, ui, state)
 }
 
 fn handle_command_for_artist_list(
@@ -646,9 +654,9 @@ fn handle_command_for_track_table(
     send: &mpsc::Sender<Event>,
     ui: &mut UIStateGuard,
     state: &SharedState,
+    tracks: &[Track],
 ) -> Result<bool> {
-    let player = state.player.read().unwrap();
-    let tracks = ui.get_context_tracks(&player);
+    let tracks = ui.get_search_filtered_items(tracks);
 
     match command {
         Command::SelectNext => {
@@ -669,7 +677,7 @@ fn handle_command_for_track_table(
         }
         Command::ChooseSelected => {
             if let Some(id) = ui.context.selected() {
-                match player.context {
+                match state.player.read().unwrap().context {
                     Context::Artist(_, _, _, _) => {
                         // cannot use artist context uri with a track uri
                         let tracks = tracks.iter().map(|t| t.uri.clone()).collect::<Vec<_>>();

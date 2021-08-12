@@ -75,28 +75,16 @@ pub enum PopupState {
 }
 
 impl UIState {
-    /// gets all tracks inside the current playing context.
-    /// If in the context search mode, returns tracks filtered by the search query.
-    pub fn get_context_tracks<'a>(
-        &'a self,
-        player: &'a std::sync::RwLockReadGuard<'a, PlayerState>,
-    ) -> Vec<&'a Track> {
+    pub fn get_search_filtered_items<'a, T: std::fmt::Display>(
+        &self,
+        items: &'a [T],
+    ) -> Vec<&'a T> {
         match self.popup_state {
-            PopupState::ContextSearch(ref query) => player
-                .context
-                .get_tracks()
-                .map(|tracks| {
-                    tracks
-                        .iter()
-                        .filter(|t| t.get_basic_info().to_lowercase().contains(query))
-                        .collect::<Vec<_>>()
-                })
-                .unwrap_or_default(),
-            _ => player
-                .context
-                .get_tracks()
-                .map(|tracks| tracks.iter().collect::<Vec<_>>())
-                .unwrap_or_default(),
+            PopupState::ContextSearch(ref query) => items
+                .iter()
+                .filter(|t| t.to_string().to_lowercase().contains(query))
+                .collect::<Vec<_>>(),
+            _ => items.iter().collect::<Vec<_>>(),
         }
     }
 }

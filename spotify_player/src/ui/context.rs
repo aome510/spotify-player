@@ -37,10 +37,24 @@ pub fn render_context_widget(
             );
         }
         Context::Playlist(_, ref tracks) => {
-            render_context_track_table_widget(is_active, frame, ui, state, chunks[1], tracks);
+            render_context_track_table_widget(
+                is_active,
+                frame,
+                ui,
+                state,
+                chunks[1],
+                ui.get_search_filtered_items(tracks),
+            );
         }
         Context::Album(_, ref tracks) => {
-            render_context_track_table_widget(is_active, frame, ui, state, chunks[1], tracks);
+            render_context_track_table_widget(
+                is_active,
+                frame,
+                ui,
+                state,
+                chunks[1],
+                ui.get_search_filtered_items(tracks),
+            );
         }
         Context::Unknown(_) => {}
     }
@@ -58,6 +72,11 @@ fn render_context_album_widget(
         ContextState::Artist(_, _, _, focus_state) => focus_state,
         _ => unreachable!(),
     };
+    let (tracks, albums, artists) = (
+        ui.get_search_filtered_items(data.0),
+        ui.get_search_filtered_items(data.1),
+        ui.get_search_filtered_items(data.2),
+    );
 
     let chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -69,7 +88,7 @@ fn render_context_album_widget(
         ui,
         state,
         chunks[0],
-        data.0,
+        tracks,
     );
 
     let chunks = Layout::default()
@@ -86,8 +105,8 @@ fn render_context_album_widget(
         .unwrap_or_default();
 
     let albums_list = List::new(
-        data.1
-            .iter()
+        albums
+            .into_iter()
             .map(|a| {
                 ListItem::new(a.name.clone()).style(if a.name == current_album {
                     ui.theme.current_active()
@@ -107,8 +126,8 @@ fn render_context_album_widget(
             .title(ui.theme.block_title_with_style("Albums")),
     );
     let artists_list = List::new(
-        data.2
-            .iter()
+        artists
+            .into_iter()
             .map(|a| ListItem::new(a.name.clone()))
             .collect::<Vec<_>>(),
     )
@@ -138,7 +157,7 @@ fn render_context_track_table_widget(
     ui: &mut UIStateGuard,
     state: &SharedState,
     rect: Rect,
-    tracks: &[Track],
+    tracks: Vec<&Track>,
 ) {
     let track_table = {
         let mut playing_track_uri = "".to_string();
@@ -150,7 +169,7 @@ fn render_context_track_table_widget(
 
         let item_max_len = state.app_config.track_table_item_max_len;
         let rows = tracks
-            .iter()
+            .into_iter()
             .enumerate()
             .map(|(id, t)| {
                 let (id, style) = if playing_track_uri == t.uri {
