@@ -18,7 +18,7 @@ pub struct PlayerState {
 pub enum Context {
     Playlist(playlist::FullPlaylist, Vec<Track>),
     Album(album::FullAlbum, Vec<Track>),
-    Artist(artist::FullArtist, Vec<Track>, Vec<Album>),
+    Artist(artist::FullArtist, Vec<Track>, Vec<Album>, Vec<Artist>),
     Unknown(String),
 }
 
@@ -142,7 +142,7 @@ impl Context {
             Context::Playlist(ref playlist, _) => {
                 format!("Playlist: {}", playlist.name)
             }
-            Context::Artist(ref artist, _, _) => {
+            Context::Artist(ref artist, _, _, _) => {
                 format!("Artist: {}", artist.name)
             }
         }
@@ -154,7 +154,7 @@ impl Context {
             Context::Unknown(_) => None,
             Context::Album(_, ref tracks) => Some(tracks),
             Context::Playlist(_, ref tracks) => Some(tracks),
-            Context::Artist(_, ref tracks, _) => Some(tracks),
+            Context::Artist(_, ref tracks, _, _) => Some(tracks),
         }
     }
 
@@ -164,7 +164,7 @@ impl Context {
             Context::Unknown(_) => None,
             Context::Album(_, ref mut tracks) => Some(tracks),
             Context::Playlist(_, ref mut tracks) => Some(tracks),
-            Context::Artist(_, ref mut tracks, _) => Some(tracks),
+            Context::Artist(_, ref mut tracks, _, _) => Some(tracks),
         }
     }
 
@@ -174,7 +174,7 @@ impl Context {
             Context::Unknown(ref uri) => uri,
             Context::Album(ref album, _) => &album.uri,
             Context::Playlist(ref playlist, _) => &playlist.uri,
-            Context::Artist(ref artist, _, _) => &artist.uri,
+            Context::Artist(ref artist, _, _, _) => &artist.uri,
         }
     }
 }

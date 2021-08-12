@@ -230,6 +230,11 @@ impl Client {
         Ok(self.clean_up_artist_albums(albums))
     }
 
+    /// gets related artists from a given artist
+    pub async fn get_related_artists(&self, artist_uri: &str) -> Result<artist::FullArtists> {
+        Self::handle_rspotify_result(self.spotify.artist_related_artists(artist_uri).await)
+    }
+
     /// cycles through the repeat state of the current playback
     pub async fn cycle_repeat(&self, state: &state::SharedState) -> Result<()> {
         let player = state.player.read().unwrap();
@@ -407,10 +412,21 @@ impl Client {
                     id: a.id,
                 })
                 .collect::<Vec<_>>();
+            let related_artists = self
+                .get_related_artists(&artist_uri)
+                .await?
+                .artists
+                .into_iter()
+                .map(|a| state::Artist {
+                    name: a.name,
+                    uri: Some(a.uri),
+                    id: Some(a.id),
+                })
+                .collect::<Vec<_>>();
 
             state.player.write().unwrap().context_cache.put(
                 artist_uri,
-                state::Context::Artist(artist, top_tracks, albums),
+                state::Context::Artist(artist, top_tracks, albums, related_artists),
             );
         }
         Ok(())

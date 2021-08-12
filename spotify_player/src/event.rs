@@ -550,7 +550,7 @@ fn handle_command_for_focused_context_window(
     if let ContextState::Artist(_, _, _, focus_state) = ui.context {
         let player = state.player.read().unwrap();
         let albums = match player.context {
-            Context::Artist(_, _, ref albums) => albums,
+            Context::Artist(_, _, ref albums, _) => albums,
             _ => unreachable!(),
         };
         match focus_state {
@@ -631,7 +631,7 @@ fn handle_command_for_track_table(
         Command::ChooseSelected => {
             if let Some(id) = ui.context.selected() {
                 match player.context {
-                    Context::Artist(_, _, _) => {
+                    Context::Artist(_, _, _, _) => {
                         // cannot use artist context uri with a track uri
                         let tracks = tracks.iter().map(|t| t.uri.clone()).collect::<Vec<_>>();
                         send.send(Event::PlayTrack(

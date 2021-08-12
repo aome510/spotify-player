@@ -78,7 +78,7 @@ pub fn update_context(state: &state::SharedState, context: state::Context) {
             // reset UI states upon context switching
             let mut ui = state.ui.lock().unwrap();
             match context {
-                state::Context::Artist(_, _, _) => {
+                state::Context::Artist(_, _, _, _) => {
                     ui.context = ContextState::Artist(
                         new_table_state(),
                         new_list_state(),
