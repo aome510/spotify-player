@@ -285,8 +285,7 @@ fn handle_command_for_none_popup(
         }
         _ => {
             let handled = {
-                let mut player = state.player.write().unwrap();
-                match player.get_context_mut() {
+                match state.player.write().unwrap().get_context_mut() {
                     Some(context) => match command {
                         Command::SortByTrack => {
                             context.sort_tracks(ContextSortOrder::TrackName);
