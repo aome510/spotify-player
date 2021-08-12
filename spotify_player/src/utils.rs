@@ -3,7 +3,7 @@ use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 use crate::{
     event,
-    state::{self, ArtistFocusState, ContextState},
+    state::{self, ArtistFocusState, ContextState, PopupState},
 };
 
 /// formats a time duration (in ms) into a "{minutes}:{seconds}" format
@@ -85,12 +85,15 @@ pub fn update_context(state: &state::SharedState, context: state::Context) {
                         new_list_state(),
                         ArtistFocusState::TopTracks,
                     );
+                    ui.popup_state = PopupState::None;
                 }
                 state::Context::Album(_, _) => {
                     ui.context = ContextState::Album(new_table_state());
+                    ui.popup_state = PopupState::None;
                 }
                 state::Context::Playlist(_, _) => {
                     ui.context = ContextState::Playlist(new_table_state());
+                    ui.popup_state = PopupState::None;
                 }
                 state::Context::Unknown(_) => {}
             }
