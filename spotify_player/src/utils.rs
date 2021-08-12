@@ -1,6 +1,10 @@
+use tui::widgets::{ListState, TableState};
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
-use crate::{event, state};
+use crate::{
+    event,
+    state::{self, ArtistFocusState, ContextState},
+};
 
 /// formats a time duration (in ms) into a "{minutes}:{seconds}" format
 pub fn format_duration(duration: u32) -> String {
@@ -54,6 +58,18 @@ pub fn update_playback(state: &state::SharedState, send: &std::sync::mpsc::Sende
     });
 }
 
+fn new_list_state() -> ListState {
+    let mut state = ListState::default();
+    state.select(Some(0));
+    state
+}
+
+fn new_table_state() -> TableState {
+    let mut state = TableState::default();
+    state.select(Some(0));
+    state
+}
+
 /// updates the current playing context
 pub fn update_context(state: &state::SharedState, context: state::Context) {
     std::thread::spawn({
@@ -61,17 +77,22 @@ pub fn update_context(state: &state::SharedState, context: state::Context) {
         move || {
             // reset UI states upon context switching
             let mut ui = state.ui.lock().unwrap();
-            ui.context_tracks_table_ui_state = tui::widgets::TableState::default();
-            ui.context_tracks_table_ui_state.select(Some(0));
             match context {
                 state::Context::Artist(_, _, _) => {
-                    ui.focus_state = state::FocusState::Artist(state::ArtistFocusState::TopTracks);
-                    ui.artist_albums_list_ui_state = tui::widgets::ListState::default();
-                    ui.artist_albums_list_ui_state.select(Some(0));
+                    ui.context = ContextState::Artist(
+                        new_table_state(),
+                        new_list_state(),
+                        new_list_state(),
+                        ArtistFocusState::TopTracks,
+                    );
                 }
-                _ => {
-                    ui.focus_state = state::FocusState::Default;
+                state::Context::Album(_, _) => {
+                    ui.context = ContextState::Album(new_table_state());
                 }
+                state::Context::Playlist(_, _) => {
+                    ui.context = ContextState::Playlist(new_table_state());
+                }
+                state::Context::Unknown(_) => {}
             }
             state.player.write().unwrap().context = context;
         }

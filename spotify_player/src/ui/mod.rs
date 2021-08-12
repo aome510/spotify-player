@@ -66,7 +66,7 @@ fn update_player_state(
 
     let ui = state.ui.lock().unwrap();
 
-    match ui.frame_state {
+    match ui.frame {
         FrameState::Browse(ref uri) => {
             let context_uri = player.context.get_uri();
             if context_uri != uri {
@@ -337,8 +337,11 @@ fn render_context_widget(
                     .map(|t| t.album.name.clone())
                     .unwrap_or_default();
 
-                let is_active_albums =
-                    is_active && ui.focus_state == FocusState::Artist(ArtistFocusState::Albums);
+                let focus_state = match ui.context {
+                    ContextState::Artist(_, _, _, focus_state) => focus_state,
+                    _ => unreachable!(),
+                };
+
                 let list = List::new(
                     albums
                         .iter()
@@ -351,17 +354,25 @@ fn render_context_widget(
                         })
                         .collect::<Vec<_>>(),
                 )
-                .highlight_style(ui.theme.selection_style(is_active_albums))
+                .highlight_style(
+                    ui.theme
+                        .selection_style(is_active && focus_state == ArtistFocusState::Albums),
+                )
                 .block(
                     Block::default()
                         .borders(Borders::TOP)
                         .title(ui.theme.block_title_with_style("Albums")),
                 );
 
-                frame.render_stateful_widget(list, chunks[1], &mut ui.artist_albums_list_ui_state);
-                let is_active_tracks =
-                    is_active && ui.focus_state == FocusState::Artist(ArtistFocusState::TopTracks);
-                (is_active_tracks, chunks[0])
+                let albums_list_state = match ui.context {
+                    ContextState::Artist(_, ref mut albums_list_state, _, _) => albums_list_state,
+                    _ => unreachable!(),
+                };
+                frame.render_stateful_widget(list, chunks[1], albums_list_state);
+                (
+                    is_active && focus_state == ArtistFocusState::TopTracks,
+                    chunks[0],
+                )
             }
             _ => (is_active, chunks[1]),
         }
@@ -514,7 +525,9 @@ fn render_context_tracks_widget(
             .highlight_style(ui.theme.selection_style(is_active))
     };
 
-    frame.render_stateful_widget(track_table, rect, &mut ui.context_tracks_table_ui_state);
+    if let Some(state) = ui.context.get_track_table_state() {
+        frame.render_stateful_widget(track_table, rect, state)
+    }
 }
 
 fn construct_list_widget<'a>(

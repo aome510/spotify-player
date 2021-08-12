@@ -134,7 +134,7 @@ fn handle_terminal_event(
 
                         let frame_state = FrameState::Browse(uri);
                         ui.frame_history.push(frame_state.clone());
-                        ui.frame_state = frame_state;
+                        ui.frame = frame_state;
                         ui.popup_state = PopupState::None;
                         Ok(())
                     },
@@ -158,7 +158,7 @@ fn handle_terminal_event(
 
                             let frame_state = FrameState::Browse(uri);
                             ui.frame_history.push(frame_state.clone());
-                            ui.frame_state = frame_state;
+                            ui.frame = frame_state;
                             ui.popup_state = PopupState::None;
                             Ok(())
                         },
@@ -266,7 +266,7 @@ fn handle_command_for_none_popup(
 ) -> Result<bool> {
     match command {
         Command::SearchContextTracks => {
-            ui.context_tracks_table_ui_state.select(Some(0));
+            ui.context.select(Some(0));
             ui.popup_state = PopupState::ContextSearch("".to_owned());
             Ok(true)
         }
@@ -325,14 +325,14 @@ fn handle_command_for_none_popup(
             Ok(true)
         }
         Command::FocusNextWindow => {
-            ui.focus_state.next();
+            ui.context.next();
             Ok(true)
         }
         Command::FocusPreviousWindow => {
-            ui.focus_state.previous();
+            ui.context.previous();
             Ok(true)
         }
-        _ => handle_generic_command_for_track_table(command, send, ui, state),
+        _ => handle_command_for_focused_context_window(command, send, ui, state),
     }
 }
 
@@ -371,19 +371,19 @@ fn handle_key_sequence_for_search_popup(
     match command {
         Some(command) => match command {
             Command::ClosePopup => {
-                ui.context_tracks_table_ui_state.select(Some(0));
+                ui.context.select(Some(0));
                 ui.popup_state = PopupState::None;
                 Ok(true)
             }
             Command::FocusNextWindow => {
-                ui.focus_state.next();
+                ui.context.next();
                 Ok(true)
             }
             Command::FocusPreviousWindow => {
-                ui.focus_state.previous();
+                ui.context.previous();
                 Ok(true)
             }
-            _ => handle_generic_command_for_track_table(command, send, ui, state),
+            _ => handle_command_for_focused_context_window(command, send, ui, state),
         },
         None => Ok(false),
     }
@@ -478,7 +478,7 @@ fn handle_command(
             Ok(true)
         }
         Command::BrowsePlayingContext => {
-            ui.frame_state = FrameState::Default;
+            ui.frame = FrameState::Default;
             ui.frame_history.push(FrameState::Default);
             Ok(true)
         }
@@ -488,7 +488,7 @@ fn handle_command(
                     send.send(Event::GetContext(ContextURI::Album(uri.clone())))?;
                     let frame_state = FrameState::Browse(uri.clone());
                     ui.frame_history.push(frame_state.clone());
-                    ui.frame_state = frame_state;
+                    ui.frame = frame_state;
                 }
             }
             Ok(true)
@@ -520,7 +520,7 @@ fn handle_command(
         Command::PreviousFrame => {
             if ui.frame_history.len() > 1 {
                 ui.frame_history.pop();
-                ui.frame_state = ui.frame_history.last().unwrap().clone();
+                ui.frame = ui.frame_history.last().unwrap().clone();
             }
             Ok(true)
         }
@@ -541,7 +541,68 @@ fn handle_command(
     }
 }
 
-fn handle_generic_command_for_track_table(
+fn handle_command_for_focused_context_window(
+    command: Command,
+    send: &mpsc::Sender<Event>,
+    ui: &mut UIStateGuard,
+    state: &SharedState,
+) -> Result<bool> {
+    if let ContextState::Artist(_, _, _, focus_state) = ui.context {
+        let player = state.player.read().unwrap();
+        let albums = match player.context {
+            Context::Artist(_, _, ref albums) => albums,
+            _ => unreachable!(),
+        };
+        match focus_state {
+            ArtistFocusState::Albums => {
+                return handle_command_for_album_list(command, send, ui, albums);
+            }
+            ArtistFocusState::RelatedArtists => {}
+            ArtistFocusState::TopTracks => {}
+        }
+    }
+
+    handle_command_for_track_table(command, send, ui, state)
+}
+
+fn handle_command_for_album_list(
+    command: Command,
+    send: &mpsc::Sender<Event>,
+    ui: &mut UIStateGuard,
+    albums: &[Album],
+) -> Result<bool> {
+    match command {
+        Command::SelectNext => {
+            if let Some(id) = ui.context.selected() {
+                if id + 1 < albums.len() {
+                    ui.context.select(Some(id + 1));
+                }
+            }
+            Ok(true)
+        }
+        Command::SelectPrevious => {
+            if let Some(id) = ui.context.selected() {
+                if id > 0 {
+                    ui.context.select(Some(id - 1));
+                }
+            }
+            Ok(true)
+        }
+        Command::ChooseSelected => {
+            if let Some(id) = ui.context.selected() {
+                let uri = albums[id].uri.clone().unwrap();
+                send.send(Event::GetContext(ContextURI::Album(uri.clone())))?;
+                let frame_state = FrameState::Browse(uri);
+                ui.frame_history.push(frame_state.clone());
+                ui.frame = frame_state;
+            }
+            Ok(true)
+        }
+        _ => Ok(false),
+    }
+}
+
+fn handle_command_for_track_table(
     command: Command,
     send: &mpsc::Sender<Event>,
     ui: &mut UIStateGuard,
@@ -552,23 +613,23 @@ fn handle_generic_command_for_track_table(
 
     match command {
         Command::SelectNext => {
-            if let Some(id) = ui.context_tracks_table_ui_state.selected() {
+            if let Some(id) = ui.context.selected() {
                 if id + 1 < tracks.len() {
-                    ui.context_tracks_table_ui_state.select(Some(id + 1));
+                    ui.context.select(Some(id + 1));
                 }
             }
             Ok(true)
         }
         Command::SelectPrevious => {
-            if let Some(id) = ui.context_tracks_table_ui_state.selected() {
+            if let Some(id) = ui.context.selected() {
                 if id > 0 {
-                    ui.context_tracks_table_ui_state.select(Some(id - 1));
+                    ui.context.select(Some(id - 1));
                 }
             }
             Ok(true)
         }
         Command::ChooseSelected => {
-            if let Some(id) = ui.context_tracks_table_ui_state.selected() {
+            if let Some(id) = ui.context.selected() {
                 match player.context {
                     Context::Artist(_, _, _) => {
                         // cannot use artist context uri with a track uri
@@ -599,18 +660,18 @@ fn handle_generic_command_for_track_table(
             Ok(true)
         }
         Command::BrowseSelectedTrackAlbum => {
-            if let Some(id) = ui.context_tracks_table_ui_state.selected() {
+            if let Some(id) = ui.context.selected() {
                 if let Some(ref uri) = tracks[id].album.uri {
                     send.send(Event::GetContext(ContextURI::Album(uri.clone())))?;
                     let frame_state = FrameState::Browse(uri.clone());
                     ui.frame_history.push(frame_state.clone());
-                    ui.frame_state = frame_state;
+                    ui.frame = frame_state;
                 }
             }
             Ok(true)
         }
         Command::BrowseSelectedTrackArtist => {
-            if let Some(id) = ui.context_tracks_table_ui_state.selected() {
+            if let Some(id) = ui.context.selected() {
                 let artists = tracks[id]
                     .artists
                     .iter()

@@ -4,6 +4,8 @@ use crate::{config, key};
 use tui::widgets::{ListState, TableState};
 pub type UIStateGuard<'a> = std::sync::MutexGuard<'a, UIState>;
 
+// TODO: improve the documentation for UI states' struct
+
 /// UI state
 #[derive(Debug)]
 pub struct UIState {
@@ -11,23 +13,32 @@ pub struct UIState {
     pub theme: config::Theme,
     pub input_key_sequence: key::KeySequence,
 
-    pub frame_state: FrameState,
+    pub frame: FrameState,
     pub frame_history: Vec<FrameState>,
-    pub focus_state: FocusState,
     pub popup_state: PopupState,
+    pub context: ContextState,
 
     pub progress_bar_rect: tui::layout::Rect,
-
-    pub context_tracks_table_ui_state: TableState,
-    // TODO: should wrap this list state inside a context ui state
-    pub artist_albums_list_ui_state: ListState,
 
     // TODO: should wrap the below popup list states inside the popup_state
     pub playlists_list_ui_state: ListState,
     pub artists_list_ui_state: ListState,
     pub themes_list_ui_state: ListState,
     pub devices_list_ui_state: ListState,
+    // TODO: find out if this is needed
     pub shortcuts_help_ui_state: bool,
+}
+
+/// Context state
+#[derive(Debug)]
+pub enum ContextState {
+    Unknown,
+    // tracks
+    Playlist(TableState),
+    // tracks
+    Album(TableState),
+    // top tracks, albums, related artists
+    Artist(TableState, ListState, ListState, ArtistFocusState),
 }
 
 /// Frame state
@@ -44,18 +55,11 @@ pub trait Focusable {
 }
 
 /// Artist Focus state
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ArtistFocusState {
     TopTracks,
     Albums,
     RelatedArtists,
-}
-
-/// Focus state
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum FocusState {
-    Artist(ArtistFocusState),
-    Default,
 }
 
 /// Popup state
@@ -104,15 +108,12 @@ impl Default for UIState {
             theme: config::Theme::default(),
             input_key_sequence: key::KeySequence { keys: vec![] },
 
-            frame_state: FrameState::Default,
+            frame: FrameState::Default,
             frame_history: vec![FrameState::Default],
-            focus_state: FocusState::Default,
             popup_state: PopupState::None,
+            context: ContextState::Unknown,
 
             progress_bar_rect: tui::layout::Rect::default(),
-
-            context_tracks_table_ui_state: TableState::default(),
-            artist_albums_list_ui_state: ListState::default(),
 
             playlists_list_ui_state: ListState::default(),
             artists_list_ui_state: ListState::default(),
@@ -123,18 +124,59 @@ impl Default for UIState {
     }
 }
 
-impl Focusable for FocusState {
-    fn next(&mut self) {
+impl ContextState {
+    pub fn get_track_table_state(&mut self) -> Option<&mut TableState> {
         match self {
-            Self::Default => {}
-            Self::Artist(artist) => artist.next(),
+            Self::Unknown => None,
+            Self::Playlist(ref mut state) => Some(state),
+            Self::Album(ref mut state) => Some(state),
+            Self::Artist(ref mut top_tracks, _, _, _) => Some(top_tracks),
+        }
+    }
+
+    pub fn select(&mut self, id: Option<usize>) {
+        match self {
+            Self::Unknown => {}
+            Self::Playlist(ref mut state) => state.select(id),
+            Self::Album(ref mut state) => state.select(id),
+            Self::Artist(
+                ref mut top_tracks,
+                ref mut albums,
+                ref mut related_artists,
+                ref focus,
+            ) => match focus {
+                ArtistFocusState::TopTracks => top_tracks.select(id),
+                ArtistFocusState::Albums => albums.select(id),
+                ArtistFocusState::RelatedArtists => related_artists.select(id),
+            },
+        }
+    }
+
+    pub fn selected(&self) -> Option<usize> {
+        match self {
+            Self::Unknown => None,
+            Self::Playlist(ref state) => state.selected(),
+            Self::Album(ref state) => state.selected(),
+            Self::Artist(ref top_tracks, ref albums, ref related_artists, ref focus) => match focus
+            {
+                ArtistFocusState::TopTracks => top_tracks.selected(),
+                ArtistFocusState::Albums => albums.selected(),
+                ArtistFocusState::RelatedArtists => related_artists.selected(),
+            },
+        }
+    }
+}
+
+impl Focusable for ContextState {
+    fn next(&mut self) {
+        if let Self::Artist(_, _, _, artist) = self {
+            artist.next()
         };
     }
 
     fn previous(&mut self) {
-        match self {
-            Self::Default => {}
-            Self::Artist(artist) => artist.previous(),
+        if let Self::Artist(_, _, _, artist) = self {
+            artist.previous()
         };
     }
 }
