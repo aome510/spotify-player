@@ -8,7 +8,7 @@ pub struct PlayerState {
     pub user_playlists: Vec<playlist::SimplifiedPlaylist>,
     pub devices: Vec<device::Device>,
     pub auth_token_expires_at: std::time::SystemTime,
-    pub context: Context,
+    pub context_uri: String,
     pub playback: Option<context::CurrentlyPlaybackContext>,
     pub playback_last_updated: Option<std::time::SystemTime>,
 }
@@ -97,6 +97,16 @@ impl PlayerState {
             },
         }
     }
+
+    /// gets the current context
+    pub fn get_context(&self) -> Option<&Context> {
+        self.context_cache.peek(&self.context_uri)
+    }
+
+    /// gets the current context (mutable)
+    pub fn get_context_mut(&mut self) -> Option<&mut Context> {
+        self.context_cache.get_mut(&self.context_uri)
+    }
 }
 
 impl Default for PlayerState {
@@ -106,7 +116,7 @@ impl Default for PlayerState {
             auth_token_expires_at: std::time::SystemTime::now(),
             devices: vec![],
             user_playlists: vec![],
-            context: Context::Unknown("".to_owned()),
+            context_uri: "".to_owned(),
             playback: None,
             playback_last_updated: None,
         }
@@ -155,16 +165,6 @@ impl Context {
             Context::Album(_, ref mut tracks) => Some(tracks),
             Context::Playlist(_, ref mut tracks) => Some(tracks),
             Context::Artist(_, ref mut tracks, _, _) => Some(tracks),
-        }
-    }
-
-    /// gets current playing context's uri
-    pub fn get_uri(&self) -> &str {
-        match self {
-            Context::Unknown(ref uri) => uri,
-            Context::Album(ref album, _) => &album.uri,
-            Context::Playlist(ref playlist, _) => &playlist.uri,
-            Context::Artist(ref artist, _, _, _) => &artist.uri,
         }
     }
 }

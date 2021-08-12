@@ -67,7 +67,7 @@ pub fn render_popup(
                 {
                     let player = state.player.read().unwrap();
                     let current_playlist_name =
-                        if let Context::Playlist(ref playlist, _) = player.context {
+                        if let Some(Context::Playlist(ref playlist, _)) = player.get_context() {
                             &playlist.name
                         } else {
                             ""

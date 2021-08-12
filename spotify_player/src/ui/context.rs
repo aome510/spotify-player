@@ -9,54 +9,64 @@ pub fn render_context_widget(
     state: &SharedState,
     rect: Rect,
 ) {
+    let player = state.player.read().unwrap();
     // context widget box border
     let block = Block::default()
         .title(ui.theme.block_title_with_style("Context"))
         .borders(Borders::ALL);
-    frame.render_widget(block, rect);
 
-    // context description
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .margin(1)
-        .constraints([Constraint::Length(1), Constraint::Min(0)].as_ref())
-        .split(rect);
-    let context_desc = Paragraph::new(state.player.read().unwrap().context.get_description())
-        .block(Block::default().style(ui.theme.context_desc()));
-    frame.render_widget(context_desc, chunks[0]);
+    match player.get_context() {
+        Some(context) => {
+            frame.render_widget(block, rect);
 
-    match state.player.read().unwrap().context {
-        Context::Artist(_, ref tracks, ref albums, ref artists) => {
-            render_context_album_widget(
-                is_active,
-                frame,
-                ui,
-                state,
-                chunks[1],
-                (tracks, albums, artists),
-            );
+            // context description
+            let chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .margin(1)
+                .constraints([Constraint::Length(1), Constraint::Min(0)].as_ref())
+                .split(rect);
+            let context_desc = Paragraph::new(context.get_description())
+                .block(Block::default().style(ui.theme.context_desc()));
+            frame.render_widget(context_desc, chunks[0]);
+
+            match context {
+                Context::Artist(_, ref tracks, ref albums, ref artists) => {
+                    render_context_album_widget(
+                        is_active,
+                        frame,
+                        ui,
+                        state,
+                        chunks[1],
+                        (tracks, albums, artists),
+                    );
+                }
+                Context::Playlist(_, ref tracks) => {
+                    render_context_track_table_widget(
+                        is_active,
+                        frame,
+                        ui,
+                        state,
+                        chunks[1],
+                        ui.get_search_filtered_items(tracks),
+                    );
+                }
+                Context::Album(_, ref tracks) => {
+                    render_context_track_table_widget(
+                        is_active,
+                        frame,
+                        ui,
+                        state,
+                        chunks[1],
+                        ui.get_search_filtered_items(tracks),
+                    );
+                }
+                Context::Unknown(_) => {}
+            }
         }
-        Context::Playlist(_, ref tracks) => {
-            render_context_track_table_widget(
-                is_active,
-                frame,
-                ui,
-                state,
-                chunks[1],
-                ui.get_search_filtered_items(tracks),
-            );
+        None => {
+            let loading_desc = Paragraph::new("Loading...").block(block);
+            frame.render_widget(loading_desc, rect);
         }
-        Context::Album(_, ref tracks) => {
-            render_context_track_table_widget(
-                is_active,
-                frame,
-                ui,
-                state,
-                chunks[1],
-                ui.get_search_filtered_items(tracks),
-            );
-        }
-        Context::Unknown(_) => {}
     }
 }
 

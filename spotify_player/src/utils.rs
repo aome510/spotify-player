@@ -71,34 +71,45 @@ fn new_table_state() -> TableState {
 }
 
 /// updates the current playing context
-pub fn update_context(state: &state::SharedState, context: state::Context) {
+pub fn update_context(state: &state::SharedState, context_uri: String) {
     std::thread::spawn({
         let state = state.clone();
         move || {
-            log::info!("update state context: {:#?}", context);
-            // reset UI states upon context switching
-            let mut ui = state.ui.lock().unwrap();
-            match context {
-                state::Context::Artist(_, _, _, _) => {
-                    ui.context = ContextState::Artist(
-                        new_table_state(),
-                        new_list_state(),
-                        new_list_state(),
-                        ArtistFocusState::TopTracks,
-                    );
+            log::info!("update state context uri: {}", context_uri);
+            state.player.write().unwrap().context_uri = context_uri;
+
+            let refresh_duration =
+                std::time::Duration::from_millis(state.app_config.app_refresh_duration_in_ms);
+
+            // spawn a pooling job to check when the context is updated inside the player state
+            loop {
+                if let Some(context) = state.player.read().unwrap().get_context() {
+                    let mut ui = state.ui.lock().unwrap();
+                    // update the UI's context state based on the player's context state
+                    match context {
+                        state::Context::Artist(_, _, _, _) => {
+                            ui.context = ContextState::Artist(
+                                new_table_state(),
+                                new_list_state(),
+                                new_list_state(),
+                                ArtistFocusState::TopTracks,
+                            );
+                        }
+                        state::Context::Album(_, _) => {
+                            ui.context = ContextState::Album(new_table_state());
+                        }
+                        state::Context::Playlist(_, _) => {
+                            ui.context = ContextState::Playlist(new_table_state());
+                        }
+                        state::Context::Unknown(_) => {
+                            ui.context = ContextState::Unknown;
+                        }
+                    }
+                    ui.popup_state = PopupState::None;
+                    break;
                 }
-                state::Context::Album(_, _) => {
-                    ui.context = ContextState::Album(new_table_state());
-                }
-                state::Context::Playlist(_, _) => {
-                    ui.context = ContextState::Playlist(new_table_state());
-                }
-                state::Context::Unknown(_) => {
-                    ui.context = ContextState::Unknown;
-                }
+                std::thread::sleep(refresh_duration);
             }
-            ui.popup_state = PopupState::None;
-            state.player.write().unwrap().context = context;
         }
     });
 }

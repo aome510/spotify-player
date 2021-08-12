@@ -270,57 +270,8 @@ fn handle_command_for_none_popup(
             ui.popup_state = PopupState::ContextSearch("".to_owned());
             Ok(true)
         }
-        Command::SortByTrack => {
-            state
-                .player
-                .write()
-                .unwrap()
-                .context
-                .sort_tracks(ContextSortOrder::TrackName);
-            Ok(true)
-        }
-        Command::SortByAlbum => {
-            state
-                .player
-                .write()
-                .unwrap()
-                .context
-                .sort_tracks(ContextSortOrder::Album);
-            Ok(true)
-        }
-        Command::SortByArtists => {
-            state
-                .player
-                .write()
-                .unwrap()
-                .context
-                .sort_tracks(ContextSortOrder::Artists);
-            Ok(true)
-        }
-        Command::SortByAddedDate => {
-            state
-                .player
-                .write()
-                .unwrap()
-                .context
-                .sort_tracks(ContextSortOrder::AddedAt);
-            Ok(true)
-        }
-        Command::SortByDuration => {
-            state
-                .player
-                .write()
-                .unwrap()
-                .context
-                .sort_tracks(ContextSortOrder::Duration);
-            Ok(true)
-        }
-        Command::ReverseOrder => {
-            state.player.write().unwrap().context.reverse_tracks();
-            Ok(true)
-        }
         Command::PlayContext => {
-            let uri = state.player.read().unwrap().context.get_uri().to_owned();
+            let uri = state.player.read().unwrap().context_uri.clone();
             send.send(Event::PlayContext(uri))?;
             Ok(true)
         }
@@ -332,7 +283,47 @@ fn handle_command_for_none_popup(
             ui.context.previous();
             Ok(true)
         }
-        _ => handle_command_for_focused_context_window(command, send, ui, state),
+        _ => {
+            let handled = {
+                let mut player = state.player.write().unwrap();
+                match player.get_context_mut() {
+                    Some(context) => match command {
+                        Command::SortByTrack => {
+                            context.sort_tracks(ContextSortOrder::TrackName);
+                            true
+                        }
+                        Command::SortByAlbum => {
+                            context.sort_tracks(ContextSortOrder::Album);
+                            true
+                        }
+                        Command::SortByArtists => {
+                            context.sort_tracks(ContextSortOrder::Artists);
+                            true
+                        }
+                        Command::SortByAddedDate => {
+                            context.sort_tracks(ContextSortOrder::AddedAt);
+                            true
+                        }
+                        Command::SortByDuration => {
+                            context.sort_tracks(ContextSortOrder::Duration);
+                            true
+                        }
+                        Command::ReverseOrder => {
+                            context.reverse_tracks();
+                            true
+                        }
+
+                        _ => false,
+                    },
+                    None => false,
+                }
+            };
+            if handled {
+                Ok(true)
+            } else {
+                handle_command_for_focused_context_window(command, send, ui, state)
+            }
+        }
     }
 }
 
@@ -547,31 +538,34 @@ fn handle_command_for_focused_context_window(
     ui: &mut UIStateGuard,
     state: &SharedState,
 ) -> Result<bool> {
-    match state.player.read().unwrap().context {
-        Context::Artist(_, ref tracks, ref albums, ref artists) => {
-            let focus_state = match ui.context {
-                ContextState::Artist(_, _, _, state) => state,
-                _ => unreachable!(),
-            };
-            match focus_state {
-                ArtistFocusState::Albums => {
-                    handle_command_for_album_list(command, send, ui, albums)
-                }
-                ArtistFocusState::RelatedArtists => {
-                    handle_command_for_artist_list(command, send, ui, artists)
-                }
-                ArtistFocusState::TopTracks => {
-                    handle_command_for_track_table(command, send, ui, state, tracks)
+    match state.player.read().unwrap().get_context() {
+        Some(context) => match context {
+            Context::Artist(_, ref tracks, ref albums, ref artists) => {
+                let focus_state = match ui.context {
+                    ContextState::Artist(_, _, _, state) => state,
+                    _ => unreachable!(),
+                };
+                match focus_state {
+                    ArtistFocusState::Albums => {
+                        handle_command_for_album_list(command, send, ui, albums)
+                    }
+                    ArtistFocusState::RelatedArtists => {
+                        handle_command_for_artist_list(command, send, ui, artists)
+                    }
+                    ArtistFocusState::TopTracks => {
+                        handle_command_for_track_table(command, send, ui, state, tracks)
+                    }
                 }
             }
-        }
-        Context::Album(_, ref tracks) => {
-            handle_command_for_track_table(command, send, ui, state, tracks)
-        }
-        Context::Playlist(_, ref tracks) => {
-            handle_command_for_track_table(command, send, ui, state, tracks)
-        }
-        Context::Unknown(_) => Ok(false),
+            Context::Album(_, ref tracks) => {
+                handle_command_for_track_table(command, send, ui, state, tracks)
+            }
+            Context::Playlist(_, ref tracks) => {
+                handle_command_for_track_table(command, send, ui, state, tracks)
+            }
+            Context::Unknown(_) => Ok(false),
+        },
+        None => Ok(false),
     }
 }
 
@@ -677,7 +671,7 @@ fn handle_command_for_track_table(
         }
         Command::ChooseSelected => {
             if let Some(id) = ui.context.selected() {
-                match state.player.read().unwrap().context {
+                match state.player.read().unwrap().get_context().unwrap() {
                     Context::Artist(_, _, _, _) => {
                         // cannot use artist context uri with a track uri
                         let tracks = tracks.iter().map(|t| t.uri.clone()).collect::<Vec<_>>();
