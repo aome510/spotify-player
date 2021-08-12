@@ -75,6 +75,7 @@ pub fn update_context(state: &state::SharedState, context: state::Context) {
     std::thread::spawn({
         let state = state.clone();
         move || {
+            log::info!("update state context: {:#?}", context);
             // reset UI states upon context switching
             let mut ui = state.ui.lock().unwrap();
             match context {
@@ -85,18 +86,18 @@ pub fn update_context(state: &state::SharedState, context: state::Context) {
                         new_list_state(),
                         ArtistFocusState::TopTracks,
                     );
-                    ui.popup_state = PopupState::None;
                 }
                 state::Context::Album(_, _) => {
                     ui.context = ContextState::Album(new_table_state());
-                    ui.popup_state = PopupState::None;
                 }
                 state::Context::Playlist(_, _) => {
                     ui.context = ContextState::Playlist(new_table_state());
-                    ui.popup_state = PopupState::None;
                 }
-                state::Context::Unknown(_) => {}
+                state::Context::Unknown(_) => {
+                    ui.context = ContextState::Unknown;
+                }
             }
+            ui.popup_state = PopupState::None;
             state.player.write().unwrap().context = context;
         }
     });
