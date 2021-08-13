@@ -64,8 +64,12 @@ pub fn render_context_widget(
             }
         }
         None => {
-            let loading_desc = Paragraph::new("Loading...").block(block);
-            frame.render_widget(loading_desc, rect);
+            let desc = if player.context_uri.is_empty() {
+                "Cannot infer the playing context from the current playback"
+            } else {
+                "Loading..."
+            };
+            frame.render_widget(Paragraph::new(desc).block(block), rect);
         }
     }
 }
