@@ -3,7 +3,7 @@ use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 use crate::{
     event,
-    state::{self, ArtistFocusState, ContextState, PopupState},
+    state::{self, ArtistFocusState, PopupState, WindowState},
 };
 
 /// formats a time duration (in ms) into a "{minutes}:{seconds}" format
@@ -78,7 +78,7 @@ pub fn update_context(state: &state::SharedState, context_uri: String) {
             log::info!("update state context uri: {}", context_uri);
             state.player.write().unwrap().context_uri = context_uri;
 
-            state.ui.lock().unwrap().context = state::ContextState::Unknown;
+            state.ui.lock().unwrap().window = state::WindowState::Unknown;
 
             let refresh_duration =
                 std::time::Duration::from_millis(state.app_config.app_refresh_duration_in_ms);
@@ -90,7 +90,7 @@ pub fn update_context(state: &state::SharedState, context_uri: String) {
                     // update the UI's context state based on the player's context state
                     match context {
                         state::Context::Artist(_, _, _, _) => {
-                            ui.context = ContextState::Artist(
+                            ui.window = WindowState::Artist(
                                 new_table_state(),
                                 new_list_state(),
                                 new_list_state(),
@@ -98,13 +98,13 @@ pub fn update_context(state: &state::SharedState, context_uri: String) {
                             );
                         }
                         state::Context::Album(_, _) => {
-                            ui.context = ContextState::Album(new_table_state());
+                            ui.window = WindowState::Album(new_table_state());
                         }
                         state::Context::Playlist(_, _) => {
-                            ui.context = ContextState::Playlist(new_table_state());
+                            ui.window = WindowState::Playlist(new_table_state());
                         }
                         state::Context::Unknown(_) => {
-                            ui.context = ContextState::Unknown;
+                            ui.window = WindowState::Unknown;
                         }
                     }
                     ui.popup = PopupState::None;

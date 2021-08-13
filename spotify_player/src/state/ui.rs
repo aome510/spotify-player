@@ -13,17 +13,17 @@ pub struct UIState {
     pub theme: config::Theme,
     pub input_key_sequence: key::KeySequence,
 
-    pub frame: FrameState,
-    pub frame_history: Vec<FrameState>,
+    pub page: PageState,
+    pub history: Vec<PageState>,
     pub popup: PopupState,
-    pub context: ContextState,
+    pub window: WindowState,
 
     pub progress_bar_rect: tui::layout::Rect,
 }
 
 /// Context state
 #[derive(Debug)]
-pub enum ContextState {
+pub enum WindowState {
     Unknown,
     // tracks
     Playlist(TableState),
@@ -35,7 +35,7 @@ pub enum ContextState {
 
 /// Frame state
 #[derive(Clone, Debug)]
-pub enum FrameState {
+pub enum PageState {
     Default,
     Browse(String),
 }
@@ -95,10 +95,10 @@ impl Default for UIState {
             theme: config::Theme::default(),
             input_key_sequence: key::KeySequence { keys: vec![] },
 
-            frame: FrameState::Default,
-            frame_history: vec![FrameState::Default],
+            page: PageState::Default,
+            history: vec![PageState::Default],
             popup: PopupState::None,
-            context: ContextState::Unknown,
+            window: WindowState::Unknown,
 
             progress_bar_rect: tui::layout::Rect::default(),
         }
@@ -145,7 +145,7 @@ impl PopupState {
     }
 }
 
-impl ContextState {
+impl WindowState {
     /// gets the state of the context track table
     pub fn get_track_table_state(&mut self) -> Option<&mut TableState> {
         match self {
@@ -191,7 +191,7 @@ impl ContextState {
     }
 }
 
-impl Focusable for ContextState {
+impl Focusable for WindowState {
     fn next(&mut self) {
         if let Self::Artist(_, _, _, artist) = self {
             artist.next()

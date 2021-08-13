@@ -78,8 +78,8 @@ fn render_context_album_widget(
     rect: Rect,
     data: (&[Track], &[Album], &[Artist]),
 ) {
-    let focus_state = match ui.context {
-        ContextState::Artist(_, _, _, focus_state) => focus_state,
+    let focus_state = match ui.window {
+        WindowState::Artist(_, _, _, focus_state) => focus_state,
         _ => {
             return;
         }
@@ -153,8 +153,8 @@ fn render_context_album_widget(
             .title(ui.theme.block_title_with_style("Related Artists")),
     );
 
-    let (albums_list_state, artists_list_state) = match ui.context {
-        ContextState::Artist(_, ref mut albums_list_state, ref mut artists_list_state, _) => {
+    let (albums_list_state, artists_list_state) = match ui.window {
+        WindowState::Artist(_, ref mut albums_list_state, ref mut artists_list_state, _) => {
             (albums_list_state, artists_list_state)
         }
         _ => unreachable!(),
@@ -222,7 +222,7 @@ fn render_context_track_table_widget(
             .highlight_style(ui.theme.selection_style(is_active))
     };
 
-    if let Some(state) = ui.context.get_track_table_state() {
+    if let Some(state) = ui.window.get_track_table_state() {
         frame.render_stateful_widget(track_table, rect, state)
     }
 }

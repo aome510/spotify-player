@@ -129,9 +129,9 @@ fn handle_terminal_event(
                         let uri = artists[id].uri.clone().unwrap();
                         send.send(Event::GetContext(ContextURI::Artist(uri.clone())))?;
 
-                        let frame_state = FrameState::Browse(uri);
-                        ui.frame_history.push(frame_state.clone());
-                        ui.frame = frame_state;
+                        let frame_state = PageState::Browse(uri);
+                        ui.history.push(frame_state.clone());
+                        ui.page = frame_state;
                         ui.popup = PopupState::None;
                         Ok(())
                     },
@@ -150,9 +150,9 @@ fn handle_terminal_event(
                             let uri = player.user_playlists[id].uri.clone();
                             send.send(Event::GetContext(ContextURI::Playlist(uri.clone())))?;
 
-                            let frame_state = FrameState::Browse(uri);
-                            ui.frame_history.push(frame_state.clone());
-                            ui.frame = frame_state;
+                            let frame_state = PageState::Browse(uri);
+                            ui.history.push(frame_state.clone());
+                            ui.page = frame_state;
                             ui.popup = PopupState::None;
                             Ok(())
                         },
@@ -252,7 +252,7 @@ fn handle_command_for_none_popup(
 ) -> Result<bool> {
     match command {
         Command::SearchContext => {
-            ui.context.select(Some(0));
+            ui.window.select(Some(0));
             ui.popup = PopupState::ContextSearch("".to_owned());
             Ok(true)
         }
@@ -262,11 +262,11 @@ fn handle_command_for_none_popup(
             Ok(true)
         }
         Command::FocusNextWindow => {
-            ui.context.next();
+            ui.window.next();
             Ok(true)
         }
         Command::FocusPreviousWindow => {
-            ui.context.previous();
+            ui.window.previous();
             Ok(true)
         }
         _ => {
@@ -347,16 +347,16 @@ fn handle_key_sequence_for_search_popup(
     match command {
         Some(command) => match command {
             Command::ClosePopup => {
-                ui.context.select(Some(0));
+                ui.window.select(Some(0));
                 ui.popup = PopupState::None;
                 Ok(true)
             }
             Command::FocusNextWindow => {
-                ui.context.next();
+                ui.window.next();
                 Ok(true)
             }
             Command::FocusPreviousWindow => {
-                ui.context.previous();
+                ui.window.previous();
                 Ok(true)
             }
             _ => handle_command_for_focused_context_window(command, send, ui, state),
@@ -455,17 +455,17 @@ fn handle_command(
             Ok(true)
         }
         Command::BrowsePlayingContext => {
-            ui.frame = FrameState::Default;
-            ui.frame_history.push(FrameState::Default);
+            ui.page = PageState::Default;
+            ui.history.push(PageState::Default);
             Ok(true)
         }
         Command::BrowsePlayingTrackAlbum => {
             if let Some(track) = state.player.read().unwrap().get_current_playing_track() {
                 if let Some(ref uri) = track.album.uri {
                     send.send(Event::GetContext(ContextURI::Album(uri.clone())))?;
-                    let frame_state = FrameState::Browse(uri.clone());
-                    ui.frame_history.push(frame_state.clone());
-                    ui.frame = frame_state;
+                    let frame_state = PageState::Browse(uri.clone());
+                    ui.history.push(frame_state.clone());
+                    ui.page = frame_state;
                 }
             }
             Ok(true)
@@ -491,9 +491,9 @@ fn handle_command(
             Ok(true)
         }
         Command::PreviousFrame => {
-            if ui.frame_history.len() > 1 {
-                ui.frame_history.pop();
-                ui.frame = ui.frame_history.last().unwrap().clone();
+            if ui.history.len() > 1 {
+                ui.history.pop();
+                ui.page = ui.history.last().unwrap().clone();
             }
             Ok(true)
         }
@@ -519,8 +519,8 @@ fn handle_command_for_focused_context_window(
     match state.player.read().unwrap().get_context() {
         Some(context) => match context {
             Context::Artist(_, ref tracks, ref albums, ref artists) => {
-                let focus_state = match ui.context {
-                    ContextState::Artist(_, _, _, state) => state,
+                let focus_state = match ui.window {
+                    WindowState::Artist(_, _, _, state) => state,
                     _ => unreachable!(),
                 };
                 match focus_state {
@@ -555,28 +555,28 @@ fn handle_command_for_artist_list(
 ) -> Result<bool> {
     match command {
         Command::SelectNext => {
-            if let Some(id) = ui.context.selected() {
+            if let Some(id) = ui.window.selected() {
                 if id + 1 < artists.len() {
-                    ui.context.select(Some(id + 1));
+                    ui.window.select(Some(id + 1));
                 }
             }
             Ok(true)
         }
         Command::SelectPrevious => {
-            if let Some(id) = ui.context.selected() {
+            if let Some(id) = ui.window.selected() {
                 if id > 0 {
-                    ui.context.select(Some(id - 1));
+                    ui.window.select(Some(id - 1));
                 }
             }
             Ok(true)
         }
         Command::ChooseSelected => {
-            if let Some(id) = ui.context.selected() {
+            if let Some(id) = ui.window.selected() {
                 let uri = artists[id].uri.clone().unwrap();
                 send.send(Event::GetContext(ContextURI::Artist(uri.clone())))?;
-                let frame_state = FrameState::Browse(uri);
-                ui.frame_history.push(frame_state.clone());
-                ui.frame = frame_state;
+                let frame_state = PageState::Browse(uri);
+                ui.history.push(frame_state.clone());
+                ui.page = frame_state;
             }
             Ok(true)
         }
@@ -592,28 +592,28 @@ fn handle_command_for_album_list(
 ) -> Result<bool> {
     match command {
         Command::SelectNext => {
-            if let Some(id) = ui.context.selected() {
+            if let Some(id) = ui.window.selected() {
                 if id + 1 < albums.len() {
-                    ui.context.select(Some(id + 1));
+                    ui.window.select(Some(id + 1));
                 }
             }
             Ok(true)
         }
         Command::SelectPrevious => {
-            if let Some(id) = ui.context.selected() {
+            if let Some(id) = ui.window.selected() {
                 if id > 0 {
-                    ui.context.select(Some(id - 1));
+                    ui.window.select(Some(id - 1));
                 }
             }
             Ok(true)
         }
         Command::ChooseSelected => {
-            if let Some(id) = ui.context.selected() {
+            if let Some(id) = ui.window.selected() {
                 let uri = albums[id].uri.clone().unwrap();
                 send.send(Event::GetContext(ContextURI::Album(uri.clone())))?;
-                let frame_state = FrameState::Browse(uri);
-                ui.frame_history.push(frame_state.clone());
-                ui.frame = frame_state;
+                let frame_state = PageState::Browse(uri);
+                ui.history.push(frame_state.clone());
+                ui.page = frame_state;
             }
             Ok(true)
         }
@@ -632,23 +632,23 @@ fn handle_command_for_track_table(
 
     match command {
         Command::SelectNext => {
-            if let Some(id) = ui.context.selected() {
+            if let Some(id) = ui.window.selected() {
                 if id + 1 < tracks.len() {
-                    ui.context.select(Some(id + 1));
+                    ui.window.select(Some(id + 1));
                 }
             }
             Ok(true)
         }
         Command::SelectPrevious => {
-            if let Some(id) = ui.context.selected() {
+            if let Some(id) = ui.window.selected() {
                 if id > 0 {
-                    ui.context.select(Some(id - 1));
+                    ui.window.select(Some(id - 1));
                 }
             }
             Ok(true)
         }
         Command::ChooseSelected => {
-            if let Some(id) = ui.context.selected() {
+            if let Some(id) = ui.window.selected() {
                 match state.player.read().unwrap().get_context().unwrap() {
                     Context::Artist(_, _, _, _) => {
                         // cannot use artist context uri with a track uri
@@ -679,18 +679,18 @@ fn handle_command_for_track_table(
             Ok(true)
         }
         Command::BrowseSelectedTrackAlbum => {
-            if let Some(id) = ui.context.selected() {
+            if let Some(id) = ui.window.selected() {
                 if let Some(ref uri) = tracks[id].album.uri {
                     send.send(Event::GetContext(ContextURI::Album(uri.clone())))?;
-                    let frame_state = FrameState::Browse(uri.clone());
-                    ui.frame_history.push(frame_state.clone());
-                    ui.frame = frame_state;
+                    let frame_state = PageState::Browse(uri.clone());
+                    ui.history.push(frame_state.clone());
+                    ui.page = frame_state;
                 }
             }
             Ok(true)
         }
         Command::BrowseSelectedTrackArtist => {
-            if let Some(id) = ui.context.selected() {
+            if let Some(id) = ui.window.selected() {
                 let artists = tracks[id]
                     .artists
                     .iter()
