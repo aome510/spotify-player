@@ -28,7 +28,7 @@ pub enum Command {
 
     SearchContext,
 
-    PreviousFrame,
+    PreviousPage,
     BrowseUserPlaylist,
     BrowsePlayingContext,
     BrowsePlayingTrackAlbum,

@@ -490,7 +490,7 @@ fn handle_command(
             ui.popup = PopupState::PlaylistList(utils::new_list_state());
             Ok(true)
         }
-        Command::PreviousFrame => {
+        Command::PreviousPage => {
             if ui.history.len() > 1 {
                 ui.history.pop();
                 ui.page = ui.history.last().unwrap().clone();

@@ -77,32 +77,43 @@ fn update_player_state(
         PageState::Default => {
             // updates the context (album, playlist, etc) tracks based on the current playback
             if let Some(ref playback) = player.playback {
-                if let Some(ref playback) = playback.context {
-                    let uri = playback.uri.clone();
+                match playback.context {
+                    Some(ref context) => {
+                        let uri = context.uri.clone();
 
-                    if uri != player.context_uri {
-                        utils::update_context(state, uri.clone());
-                        if player.context_cache.peek(&uri).is_none() {
-                            match playback._type {
-                                rspotify::senum::Type::Playlist => send.send(
-                                    event::Event::GetContext(event::ContextURI::Playlist(uri)),
-                                )?,
-                                rspotify::senum::Type::Album => send.send(
-                                    event::Event::GetContext(event::ContextURI::Album(uri)),
-                                )?,
-                                rspotify::senum::Type::Artist => send.send(
-                                    event::Event::GetContext(event::ContextURI::Artist(uri)),
-                                )?,
-                                _ => {
-                                    send.send(event::Event::GetContext(
-                                        event::ContextURI::Unknown(uri),
-                                    ))?;
-                                    log::info!(
-                                        "encountered not supported context type: {:#?}",
-                                        playback._type
-                                    )
-                                }
-                            };
+                        if uri != player.context_uri {
+                            utils::update_context(state, uri.clone());
+                            if player.context_cache.peek(&uri).is_none() {
+                                match context._type {
+                                    rspotify::senum::Type::Playlist => send.send(
+                                        event::Event::GetContext(event::ContextURI::Playlist(uri)),
+                                    )?,
+                                    rspotify::senum::Type::Album => send.send(
+                                        event::Event::GetContext(event::ContextURI::Album(uri)),
+                                    )?,
+                                    rspotify::senum::Type::Artist => send.send(
+                                        event::Event::GetContext(event::ContextURI::Artist(uri)),
+                                    )?,
+                                    _ => {
+                                        send.send(event::Event::GetContext(
+                                            event::ContextURI::Unknown(uri),
+                                        ))?;
+                                        log::info!(
+                                            "encountered not supported context type: {:#?}",
+                                            context._type
+                                        )
+                                    }
+                                };
+                            }
+                        }
+                    }
+                    None => {
+                        if !player.context_uri.is_empty() {
+                            utils::update_context(state, "".to_string());
+                            send.send(event::Event::GetContext(event::ContextURI::Unknown(
+                                "".to_string(),
+                            )))?;
+                            log::info!("current playback doesn't have a playing context");
                         }
                     }
                 }

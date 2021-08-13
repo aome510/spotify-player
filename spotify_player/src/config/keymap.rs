@@ -109,7 +109,7 @@ impl Default for KeymapConfig {
                 },
                 Keymap {
                     key_sequence: "backspace".into(),
-                    command: Command::PreviousFrame,
+                    command: Command::PreviousPage,
                 },
                 Keymap {
                     key_sequence: "?".into(),
