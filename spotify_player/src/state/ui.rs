@@ -15,16 +15,10 @@ pub struct UIState {
 
     pub frame: FrameState,
     pub frame_history: Vec<FrameState>,
-    pub popup_state: PopupState,
+    pub popup: PopupState,
     pub context: ContextState,
 
     pub progress_bar_rect: tui::layout::Rect,
-
-    // TODO: should wrap the below popup list states inside the popup_state
-    pub playlists_list_ui_state: ListState,
-    pub artists_list_ui_state: ListState,
-    pub themes_list_ui_state: ListState,
-    pub devices_list_ui_state: ListState,
 }
 
 /// Context state
@@ -66,10 +60,10 @@ pub enum PopupState {
     None,
     CommandHelp,
     ContextSearch(String),
-    PlaylistList,
-    DeviceList,
-    ArtistList(Vec<Artist>),
-    ThemeList(Vec<config::Theme>),
+    PlaylistList(ListState),
+    DeviceList(ListState),
+    ArtistList(Vec<Artist>, ListState),
+    ThemeList(Vec<config::Theme>, ListState),
 }
 
 impl UIState {
@@ -79,11 +73,12 @@ impl UIState {
             .fold(true, |acc, cur| acc & s.contains(cur))
     }
 
+    /// gets a list of items possibly filtered by a search query if currently inside a search state
     pub fn get_search_filtered_items<'a, T: std::fmt::Display>(
         &self,
         items: &'a [T],
     ) -> Vec<&'a T> {
-        match self.popup_state {
+        match self.popup {
             PopupState::ContextSearch(ref query) => items
                 .iter()
                 .filter(|t| Self::query_match(&t.to_string().to_lowercase(), query))
@@ -102,20 +97,56 @@ impl Default for UIState {
 
             frame: FrameState::Default,
             frame_history: vec![FrameState::Default],
-            popup_state: PopupState::None,
+            popup: PopupState::None,
             context: ContextState::Unknown,
 
             progress_bar_rect: tui::layout::Rect::default(),
+        }
+    }
+}
 
-            playlists_list_ui_state: ListState::default(),
-            artists_list_ui_state: ListState::default(),
-            themes_list_ui_state: ListState::default(),
-            devices_list_ui_state: ListState::default(),
+impl PopupState {
+    /// gets the state of the current list popup
+    pub fn get_list_state(&self) -> Option<&ListState> {
+        match self {
+            Self::DeviceList(ref state) => Some(state),
+            Self::PlaylistList(ref state) => Some(state),
+            Self::ArtistList(_, ref state) => Some(state),
+            Self::ThemeList(_, ref state) => Some(state),
+            _ => None,
+        }
+    }
+
+    /// gets the (mutable) state of the current list popup
+    pub fn get_list_state_mut(&mut self) -> Option<&mut ListState> {
+        match self {
+            Self::DeviceList(ref mut state) => Some(state),
+            Self::PlaylistList(ref mut state) => Some(state),
+            Self::ArtistList(_, ref mut state) => Some(state),
+            Self::ThemeList(_, ref mut state) => Some(state),
+            _ => None,
+        }
+    }
+
+    /// returns the selected position in the current list popup
+    pub fn list_selected(&self) -> Option<usize> {
+        match self.get_list_state() {
+            None => None,
+            Some(state) => state.selected(),
+        }
+    }
+
+    /// selects a position in the current list popup
+    pub fn list_select(&mut self, id: Option<usize>) {
+        match self.get_list_state_mut() {
+            None => {}
+            Some(state) => state.select(id),
         }
     }
 }
 
 impl ContextState {
+    /// gets the state of the context track table
     pub fn get_track_table_state(&mut self) -> Option<&mut TableState> {
         match self {
             Self::Unknown => None,
@@ -125,6 +156,7 @@ impl ContextState {
         }
     }
 
+    /// selects a position in the context track table
     pub fn select(&mut self, id: Option<usize>) {
         match self {
             Self::Unknown => {}
@@ -143,6 +175,7 @@ impl ContextState {
         }
     }
 
+    /// gets the selected position in the context track table
     pub fn selected(&self) -> Option<usize> {
         match self {
             Self::Unknown => None,

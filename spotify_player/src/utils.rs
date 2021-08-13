@@ -58,13 +58,13 @@ pub fn update_playback(state: &state::SharedState, send: &std::sync::mpsc::Sende
     });
 }
 
-fn new_list_state() -> ListState {
+pub fn new_list_state() -> ListState {
     let mut state = ListState::default();
     state.select(Some(0));
     state
 }
 
-fn new_table_state() -> TableState {
+pub fn new_table_state() -> TableState {
     let mut state = TableState::default();
     state.select(Some(0));
     state
@@ -107,7 +107,7 @@ pub fn update_context(state: &state::SharedState, context_uri: String) {
                             ui.context = ContextState::Unknown;
                         }
                     }
-                    ui.popup_state = PopupState::None;
+                    ui.popup = PopupState::None;
                     break;
                 }
                 std::thread::sleep(refresh_duration);

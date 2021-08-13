@@ -2,13 +2,13 @@ use crate::{
     command::Command,
     key::{Key, KeySequence},
     state::*,
+    utils,
 };
 use anyhow::Result;
 use crossterm::event::{self, EventStream, KeyCode, KeyModifiers};
 use rspotify::model::offset;
 use std::sync::mpsc;
 use tokio::stream::StreamExt;
-use tui::widgets::ListState;
 
 #[derive(Debug)]
 pub enum ContextURI {
@@ -101,7 +101,7 @@ fn handle_terminal_event(
 
     let handled = match command {
         None => {
-            if let PopupState::ContextSearch(_) = ui.popup_state {
+            if let PopupState::ContextSearch(_) = ui.popup {
                 handle_key_sequence_for_search_popup(&key_sequence, send, state, &mut ui)?
             } else {
                 false
@@ -109,24 +109,21 @@ fn handle_terminal_event(
         }
         Some(command) => {
             // handle commands specifically for a popup window
-            let handled = match ui.popup_state {
+            let handled = match ui.popup {
                 PopupState::None => handle_command_for_none_popup(command, send, state, &mut ui)?,
                 PopupState::ContextSearch(_) => {
                     handle_key_sequence_for_search_popup(&key_sequence, send, state, &mut ui)?
                 }
-                PopupState::ArtistList(_) => handle_command_for_generic_list_popup(
+                PopupState::ArtistList(_, _) => handle_command_for_generic_list_popup(
                     command,
-                    match ui.popup_state {
-                        PopupState::ArtistList(ref artists) => artists.len(),
+                    match ui.popup {
+                        PopupState::ArtistList(ref artists, _) => artists.len(),
                         _ => unreachable!(),
                     },
-                    |ui: &mut UIStateGuard| ui.artists_list_ui_state.selected(),
-                    |ui: &mut UIStateGuard, id: usize| {
-                        ui.artists_list_ui_state.select(Some(id));
-                    },
+                    |_: &mut UIStateGuard, _: usize| {},
                     |ui: &mut UIStateGuard, id: usize| -> Result<()> {
-                        let artists = match ui.popup_state {
-                            PopupState::ArtistList(ref artists) => artists,
+                        let artists = match ui.popup {
+                            PopupState::ArtistList(ref artists, _) => artists,
                             _ => unreachable!(),
                         };
                         let uri = artists[id].uri.clone().unwrap();
@@ -135,23 +132,20 @@ fn handle_terminal_event(
                         let frame_state = FrameState::Browse(uri);
                         ui.frame_history.push(frame_state.clone());
                         ui.frame = frame_state;
-                        ui.popup_state = PopupState::None;
+                        ui.popup = PopupState::None;
                         Ok(())
                     },
                     |ui: &mut UIStateGuard| {
-                        ui.popup_state = PopupState::None;
+                        ui.popup = PopupState::None;
                     },
                     &mut ui,
                 )?,
-                PopupState::PlaylistList => {
+                PopupState::PlaylistList(_) => {
                     let player = state.player.read().unwrap();
                     handle_command_for_generic_list_popup(
                         command,
                         player.user_playlists.len(),
-                        |ui: &mut UIStateGuard| ui.playlists_list_ui_state.selected(),
-                        |ui: &mut UIStateGuard, id: usize| {
-                            ui.playlists_list_ui_state.select(Some(id));
-                        },
+                        |_: &mut UIStateGuard, _: usize| {},
                         |ui: &mut UIStateGuard, id: usize| -> Result<()> {
                             let uri = player.user_playlists[id].uri.clone();
                             send.send(Event::GetContext(ContextURI::Playlist(uri.clone())))?;
@@ -159,58 +153,53 @@ fn handle_terminal_event(
                             let frame_state = FrameState::Browse(uri);
                             ui.frame_history.push(frame_state.clone());
                             ui.frame = frame_state;
-                            ui.popup_state = PopupState::None;
+                            ui.popup = PopupState::None;
                             Ok(())
                         },
                         |ui: &mut UIStateGuard| {
-                            ui.popup_state = PopupState::None;
+                            ui.popup = PopupState::None;
                         },
                         &mut ui,
                     )?
                 }
-                PopupState::ThemeList(_) => handle_command_for_generic_list_popup(
+                PopupState::ThemeList(_, _) => handle_command_for_generic_list_popup(
                     command,
-                    match ui.popup_state {
-                        PopupState::ThemeList(ref themes) => themes.len(),
+                    match ui.popup {
+                        PopupState::ThemeList(ref themes, _) => themes.len(),
                         _ => unreachable!(),
                     },
-                    |ui: &mut UIStateGuard| ui.themes_list_ui_state.selected(),
                     |ui: &mut UIStateGuard, id: usize| {
-                        ui.theme = match ui.popup_state {
-                            PopupState::ThemeList(ref themes) => themes[id].clone(),
+                        ui.theme = match ui.popup {
+                            PopupState::ThemeList(ref themes, _) => themes[id].clone(),
                             _ => unreachable!(),
                         };
-                        ui.themes_list_ui_state.select(Some(id));
                     },
                     |ui: &mut UIStateGuard, _: usize| -> Result<()> {
-                        ui.popup_state = PopupState::None;
+                        ui.popup = PopupState::None;
                         Ok(())
                     },
                     |ui: &mut UIStateGuard| {
-                        ui.theme = match ui.popup_state {
-                            PopupState::ThemeList(ref themes) => themes[0].clone(),
+                        ui.theme = match ui.popup {
+                            PopupState::ThemeList(ref themes, _) => themes[0].clone(),
                             _ => unreachable!(),
                         };
-                        ui.popup_state = PopupState::None;
+                        ui.popup = PopupState::None;
                     },
                     &mut ui,
                 )?,
-                PopupState::DeviceList => {
+                PopupState::DeviceList(_) => {
                     let player = state.player.read().unwrap();
 
                     handle_command_for_generic_list_popup(
                         command,
                         player.devices.len(),
-                        |ui: &mut UIStateGuard| ui.devices_list_ui_state.selected(),
-                        |ui: &mut UIStateGuard, id: usize| {
-                            ui.devices_list_ui_state.select(Some(id));
-                        },
+                        |_: &mut UIStateGuard, _: usize| {},
                         |_: &mut UIStateGuard, id: usize| -> Result<()> {
                             send.send(Event::TransferPlayback(player.devices[id].id.clone()))?;
                             Ok(())
                         },
                         |ui: &mut UIStateGuard| {
-                            ui.popup_state = PopupState::None;
+                            ui.popup = PopupState::None;
                         },
                         &mut ui,
                     )?
@@ -264,7 +253,7 @@ fn handle_command_for_none_popup(
     match command {
         Command::SearchContext => {
             ui.context.select(Some(0));
-            ui.popup_state = PopupState::ContextSearch("".to_owned());
+            ui.popup = PopupState::ContextSearch("".to_owned());
             Ok(true)
         }
         Command::PlayContext => {
@@ -331,7 +320,7 @@ fn handle_key_sequence_for_search_popup(
 ) -> Result<bool> {
     if key_sequence.keys.len() == 1 {
         if let Key::None(c) = key_sequence.keys[0] {
-            let query = match ui.popup_state {
+            let query = match ui.popup {
                 PopupState::ContextSearch(ref mut query) => query,
                 _ => unreachable!(),
             };
@@ -359,7 +348,7 @@ fn handle_key_sequence_for_search_popup(
         Some(command) => match command {
             Command::ClosePopup => {
                 ui.context.select(Some(0));
-                ui.popup_state = PopupState::None;
+                ui.popup = PopupState::None;
                 Ok(true)
             }
             Command::FocusNextWindow => {
@@ -379,31 +368,32 @@ fn handle_key_sequence_for_search_popup(
 fn handle_command_for_generic_list_popup(
     command: Command,
     list_len: usize,
-    get: impl Fn(&mut UIStateGuard) -> Option<usize>,
-    set: impl Fn(&mut UIStateGuard, usize),
+    on_select_func: impl Fn(&mut UIStateGuard, usize),
     choose_handle_func: impl Fn(&mut UIStateGuard, usize) -> Result<()>,
     close_handle_func: impl Fn(&mut UIStateGuard),
     ui: &mut UIStateGuard,
 ) -> Result<bool> {
     match command {
         Command::SelectNext => {
-            if let Some(id) = get(ui) {
+            if let Some(id) = ui.popup.list_selected() {
                 if id + 1 < list_len {
-                    set(ui, id + 1);
+                    ui.popup.list_select(Some(id + 1));
+                    on_select_func(ui, id + 1);
                 }
             }
             Ok(true)
         }
         Command::SelectPrevious => {
-            if let Some(id) = get(ui) {
+            if let Some(id) = ui.popup.list_selected() {
                 if id > 0 {
-                    set(ui, id - 1);
+                    ui.popup.list_select(Some(id - 1));
+                    on_select_func(ui, id - 1);
                 }
             }
             Ok(true)
         }
         Command::ChooseSelected => {
-            if let Some(id) = get(ui) {
+            if let Some(id) = ui.popup.list_selected() {
                 choose_handle_func(ui, id)?;
             }
             Ok(true)
@@ -418,7 +408,7 @@ fn handle_command_for_generic_list_popup(
 
 fn handle_command_for_command_help_popup(command: Command, ui: &mut UIStateGuard) -> Result<bool> {
     if let Command::ClosePopup = command {
-        ui.popup_state = PopupState::None;
+        ui.popup = PopupState::None;
         Ok(true)
     } else {
         Ok(false)
@@ -457,7 +447,7 @@ fn handle_command(
             Ok(true)
         }
         Command::OpenCommandHelp => {
-            ui.popup_state = PopupState::CommandHelp;
+            ui.popup = PopupState::CommandHelp;
             Ok(true)
         }
         Command::RefreshPlayback => {
@@ -492,16 +482,12 @@ fn handle_command(
                     })
                     .filter(|a| a.uri.is_some())
                     .collect::<Vec<_>>();
-                ui.popup_state = PopupState::ArtistList(artists);
-                ui.artists_list_ui_state = ListState::default();
-                ui.artists_list_ui_state.select(Some(0));
+                ui.popup = PopupState::ArtistList(artists, utils::new_list_state());
             }
             Ok(true)
         }
         Command::BrowseUserPlaylist => {
-            ui.popup_state = PopupState::PlaylistList;
-            ui.playlists_list_ui_state = ListState::default();
-            ui.playlists_list_ui_state.select(Some(0));
+            ui.popup = PopupState::PlaylistList(utils::new_list_state());
             Ok(true)
         }
         Command::PreviousFrame => {
@@ -512,16 +498,12 @@ fn handle_command(
             Ok(true)
         }
         Command::SwitchDevice => {
-            ui.popup_state = PopupState::DeviceList;
-            ui.devices_list_ui_state = ListState::default();
-            ui.devices_list_ui_state.select(Some(0));
+            ui.popup = PopupState::DeviceList(utils::new_list_state());
             send.send(Event::GetDevices)?;
             Ok(true)
         }
         Command::SwitchTheme => {
-            ui.popup_state = PopupState::ThemeList(state.get_themes(ui));
-            ui.themes_list_ui_state = ListState::default();
-            ui.themes_list_ui_state.select(Some(0));
+            ui.popup = PopupState::ThemeList(state.get_themes(ui), utils::new_list_state());
             Ok(true)
         }
         _ => Ok(false),
@@ -719,9 +701,7 @@ fn handle_command_for_track_table(
                     })
                     .filter(|a| a.uri.is_some())
                     .collect::<Vec<_>>();
-                ui.popup_state = PopupState::ArtistList(artists);
-                ui.artists_list_ui_state = ListState::default();
-                ui.artists_list_ui_state.select(Some(0));
+                ui.popup = PopupState::ArtistList(artists, utils::new_list_state());
             }
             Ok(true)
         }

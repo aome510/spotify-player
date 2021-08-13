@@ -9,7 +9,7 @@ pub fn render_popup(
     rect: Rect,
 ) -> (Rect, bool) {
     // handle popup windows
-    match ui.popup_state {
+    match ui.popup {
         PopupState::None => (rect, true),
         PopupState::CommandHelp => {
             let chunks = Layout::default()
@@ -19,7 +19,7 @@ pub fn render_popup(
             help::render_commands_help_widget(frame, ui, state, chunks[1]);
             (chunks[0], false)
         }
-        PopupState::DeviceList => {
+        PopupState::DeviceList(_) => {
             let chunks = Layout::default()
                 .direction(Direction::Vertical)
                 .constraints([Constraint::Min(0), Constraint::Length(5)].as_ref())
@@ -39,11 +39,11 @@ pub fn render_popup(
                     construct_list_widget(ui, items, "Devices")
                 },
                 chunks[1],
-                &mut ui.devices_list_ui_state,
+                ui.popup.get_list_state_mut().unwrap(),
             );
             (chunks[0], false)
         }
-        PopupState::ThemeList(ref themes) => {
+        PopupState::ThemeList(ref themes, _) => {
             let chunks = Layout::default()
                 .direction(Direction::Vertical)
                 .constraints([Constraint::Min(0), Constraint::Length(7)].as_ref())
@@ -54,11 +54,11 @@ pub fn render_popup(
                     construct_list_widget(ui, items, "Themes")
                 },
                 chunks[1],
-                &mut ui.themes_list_ui_state,
+                ui.popup.get_list_state_mut().unwrap(),
             );
             (chunks[0], false)
         }
-        PopupState::PlaylistList => {
+        PopupState::PlaylistList(_) => {
             let chunks = Layout::default()
                 .direction(Direction::Vertical)
                 .constraints([Constraint::Min(0), Constraint::Length(10)].as_ref())
@@ -80,11 +80,11 @@ pub fn render_popup(
                     construct_list_widget(ui, items, "Playlists")
                 },
                 chunks[1],
-                &mut ui.playlists_list_ui_state,
+                ui.popup.get_list_state_mut().unwrap(),
             );
             (chunks[0], false)
         }
-        PopupState::ArtistList(ref artists) => {
+        PopupState::ArtistList(ref artists, _) => {
             let chunks = Layout::default()
                 .direction(Direction::Vertical)
                 .constraints([Constraint::Min(0), Constraint::Length(5)].as_ref())
@@ -95,7 +95,7 @@ pub fn render_popup(
                     construct_list_widget(ui, items, "Artists")
                 },
                 chunks[1],
-                &mut ui.artists_list_ui_state,
+                ui.popup.get_list_state_mut().unwrap(),
             );
             (chunks[0], false)
         }

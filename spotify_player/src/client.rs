@@ -581,15 +581,6 @@ pub async fn start_watcher(
     match client.get_current_user_playlists().await {
         Ok(playlists) => {
             log::info!("user's playlists: {:#?}", playlists);
-            // update the state
-            if !playlists.is_empty() {
-                state
-                    .ui
-                    .lock()
-                    .unwrap()
-                    .playlists_list_ui_state
-                    .select(Some(0));
-            }
             state.player.write().unwrap().user_playlists = playlists;
         }
         Err(err) => {
