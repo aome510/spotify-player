@@ -320,20 +320,42 @@ impl Client {
         {
             // get the playlist
             let playlist = self.get_playlist(&playlist_uri).await?;
+            let first_page = playlist.tracks.clone();
             // get the playlist's tracks
-            let playlist_tracks = self.get_all_paging_items(playlist.tracks.clone()).await?;
-            // filter tracks that are either unaccessible or deleted from album
+            state.player.write().unwrap().context_cache.put(
+                playlist_uri.clone(),
+                state::Context::Playlist(
+                    playlist,
+                    first_page
+                        .items
+                        .clone()
+                        .into_iter()
+                        .filter(|t| t.track.is_some())
+                        .map(|t| t.into())
+                        .collect::<Vec<_>>(),
+                ),
+            );
+
+            let playlist_tracks = self.get_all_paging_items(first_page).await?;
+
+            // delay the request for getting playlist tracks to not block the UI
+
+            // filter tracks that are either unaccessible or deleted from the playlist
             let tracks = playlist_tracks
                 .into_iter()
                 .filter(|t| t.track.is_some())
                 .map(|t| t.into())
                 .collect::<Vec<_>>();
-            state
+
+            if let Some(state::Context::Playlist(_, ref mut old)) = state
                 .player
                 .write()
                 .unwrap()
                 .context_cache
-                .put(playlist_uri, state::Context::Playlist(playlist, tracks));
+                .peek_mut(&playlist_uri)
+            {
+                *old = tracks;
+            }
         }
 
         Ok(())
@@ -354,7 +376,6 @@ impl Client {
             let album = self.get_album(&album_uri).await?;
             // get the album's tracks
             let album_tracks = self.get_all_paging_items(album.tracks.clone()).await?;
-            // filter tracks that are either unaccessible or deleted from album
             let tracks = album_tracks
                 .into_iter()
                 .map(|t| {
@@ -402,16 +423,6 @@ impl Client {
                 .into_iter()
                 .map(|t| t.into())
                 .collect::<Vec<_>>();
-            let albums = self
-                .get_artist_albums(&artist_uri)
-                .await?
-                .into_iter()
-                .map(|a| state::Album {
-                    name: a.name,
-                    uri: a.uri,
-                    id: a.id,
-                })
-                .collect::<Vec<_>>();
             let related_artists = self
                 .get_related_artists(&artist_uri)
                 .await?
@@ -425,9 +436,31 @@ impl Client {
                 .collect::<Vec<_>>();
 
             state.player.write().unwrap().context_cache.put(
-                artist_uri,
-                state::Context::Artist(artist, top_tracks, albums, related_artists),
+                artist_uri.clone(),
+                state::Context::Artist(artist, top_tracks, vec![], related_artists),
             );
+
+            // delay the request for getting artist's albums to not block the UI
+            let albums = self
+                .get_artist_albums(&artist_uri)
+                .await?
+                .into_iter()
+                .map(|a| state::Album {
+                    name: a.name,
+                    uri: a.uri,
+                    id: a.id,
+                })
+                .collect::<Vec<_>>();
+
+            if let Some(state::Context::Artist(_, _, ref mut old, _)) = state
+                .player
+                .write()
+                .unwrap()
+                .context_cache
+                .peek_mut(&artist_uri)
+            {
+                *old = albums;
+            }
         }
         Ok(())
     }

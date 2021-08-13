@@ -78,6 +78,8 @@ pub fn update_context(state: &state::SharedState, context_uri: String) {
             log::info!("update state context uri: {}", context_uri);
             state.player.write().unwrap().context_uri = context_uri;
 
+            state.ui.lock().unwrap().context = state::ContextState::Unknown;
+
             let refresh_duration =
                 std::time::Duration::from_millis(state.app_config.app_refresh_duration_in_ms);
 

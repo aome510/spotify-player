@@ -105,7 +105,7 @@ impl PlayerState {
 
     /// gets the current context (mutable)
     pub fn get_context_mut(&mut self) -> Option<&mut Context> {
-        self.context_cache.get_mut(&self.context_uri)
+        self.context_cache.peek_mut(&self.context_uri)
     }
 }
 
