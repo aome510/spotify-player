@@ -24,8 +24,8 @@ pub struct UIState {
 /// Page state
 #[derive(Clone, Debug)]
 pub enum PageState {
-    Default,
-    Browse(String),
+    CurrentPlaying,
+    Browsing(String),
 }
 
 /// Window state
@@ -95,8 +95,8 @@ impl Default for UIState {
             theme: config::Theme::default(),
             input_key_sequence: key::KeySequence { keys: vec![] },
 
-            page: PageState::Default,
-            history: vec![PageState::Default],
+            page: PageState::CurrentPlaying,
+            history: vec![PageState::CurrentPlaying],
             popup: PopupState::None,
             window: WindowState::Unknown,
 

@@ -69,12 +69,12 @@ fn update_player_state(
     let ui = state.ui.lock().unwrap();
 
     match ui.page {
-        PageState::Browse(ref uri) => {
+        PageState::Browsing(ref uri) => {
             if player.context_uri != *uri {
                 utils::update_context(state, uri.clone());
             }
         }
-        PageState::Default => {
+        PageState::CurrentPlaying => {
             // updates the context (album, playlist, etc) tracks based on the current playback
             if let Some(ref playback) = player.playback {
                 match playback.context {

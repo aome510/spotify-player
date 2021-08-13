@@ -11,8 +11,12 @@ pub fn render_context_widget(
 ) {
     let player = state.player.read().unwrap();
     // context widget box border
+    let context_block_title = match ui.page {
+        PageState::CurrentPlaying => "Context (Current Playing)",
+        PageState::Browsing(_) => "Context (Browsing)",
+    };
     let block = Block::default()
-        .title(ui.theme.block_title_with_style("Context"))
+        .title(ui.theme.block_title_with_style(context_block_title))
         .borders(Borders::ALL);
 
     match player.get_context() {

@@ -129,7 +129,7 @@ fn handle_terminal_event(
                         let uri = artists[id].uri.clone().unwrap();
                         send.send(Event::GetContext(ContextURI::Artist(uri.clone())))?;
 
-                        let frame_state = PageState::Browse(uri);
+                        let frame_state = PageState::Browsing(uri);
                         ui.history.push(frame_state.clone());
                         ui.page = frame_state;
                         ui.popup = PopupState::None;
@@ -150,7 +150,7 @@ fn handle_terminal_event(
                             let uri = player.user_playlists[id].uri.clone();
                             send.send(Event::GetContext(ContextURI::Playlist(uri.clone())))?;
 
-                            let frame_state = PageState::Browse(uri);
+                            let frame_state = PageState::Browsing(uri);
                             ui.history.push(frame_state.clone());
                             ui.page = frame_state;
                             ui.popup = PopupState::None;
@@ -455,15 +455,15 @@ fn handle_command(
             Ok(true)
         }
         Command::BrowsePlayingContext => {
-            ui.page = PageState::Default;
-            ui.history.push(PageState::Default);
+            ui.page = PageState::CurrentPlaying;
+            ui.history.push(PageState::CurrentPlaying);
             Ok(true)
         }
         Command::BrowsePlayingTrackAlbum => {
             if let Some(track) = state.player.read().unwrap().get_current_playing_track() {
                 if let Some(ref uri) = track.album.uri {
                     send.send(Event::GetContext(ContextURI::Album(uri.clone())))?;
-                    let frame_state = PageState::Browse(uri.clone());
+                    let frame_state = PageState::Browsing(uri.clone());
                     ui.history.push(frame_state.clone());
                     ui.page = frame_state;
                 }
@@ -574,7 +574,7 @@ fn handle_command_for_artist_list(
             if let Some(id) = ui.window.selected() {
                 let uri = artists[id].uri.clone().unwrap();
                 send.send(Event::GetContext(ContextURI::Artist(uri.clone())))?;
-                let frame_state = PageState::Browse(uri);
+                let frame_state = PageState::Browsing(uri);
                 ui.history.push(frame_state.clone());
                 ui.page = frame_state;
             }
@@ -611,7 +611,7 @@ fn handle_command_for_album_list(
             if let Some(id) = ui.window.selected() {
                 let uri = albums[id].uri.clone().unwrap();
                 send.send(Event::GetContext(ContextURI::Album(uri.clone())))?;
-                let frame_state = PageState::Browse(uri);
+                let frame_state = PageState::Browsing(uri);
                 ui.history.push(frame_state.clone());
                 ui.page = frame_state;
             }
@@ -682,7 +682,7 @@ fn handle_command_for_track_table(
             if let Some(id) = ui.window.selected() {
                 if let Some(ref uri) = tracks[id].album.uri {
                     send.send(Event::GetContext(ContextURI::Album(uri.clone())))?;
-                    let frame_state = PageState::Browse(uri.clone());
+                    let frame_state = PageState::Browsing(uri.clone());
                     ui.history.push(frame_state.clone());
                     ui.page = frame_state;
                 }
