@@ -21,7 +21,14 @@ pub struct UIState {
     pub progress_bar_rect: tui::layout::Rect,
 }
 
-/// Context state
+/// Page state
+#[derive(Clone, Debug)]
+pub enum PageState {
+    Default,
+    Browse(String),
+}
+
+/// Window state
 #[derive(Debug)]
 pub enum WindowState {
     Unknown,
@@ -33,11 +40,16 @@ pub enum WindowState {
     Artist(TableState, ListState, ListState, ArtistFocusState),
 }
 
-/// Frame state
-#[derive(Clone, Debug)]
-pub enum PageState {
-    Default,
-    Browse(String),
+/// Popup state
+#[derive(Debug)]
+pub enum PopupState {
+    None,
+    CommandHelp,
+    ContextSearch(String),
+    PlaylistList(ListState),
+    DeviceList(ListState),
+    ArtistList(Vec<Artist>, ListState),
+    ThemeList(Vec<config::Theme>, ListState),
 }
 
 /// A trait representing a focusable state
@@ -52,18 +64,6 @@ pub enum ArtistFocusState {
     TopTracks,
     Albums,
     RelatedArtists,
-}
-
-/// Popup state
-#[derive(Debug)]
-pub enum PopupState {
-    None,
-    CommandHelp,
-    ContextSearch(String),
-    PlaylistList(ListState),
-    DeviceList(ListState),
-    ArtistList(Vec<Artist>, ListState),
-    ThemeList(Vec<config::Theme>, ListState),
 }
 
 impl UIState {
