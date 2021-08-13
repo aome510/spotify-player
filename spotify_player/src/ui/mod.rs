@@ -131,39 +131,45 @@ fn render_application_layout(
     state: &SharedState,
     rect: Rect,
 ) {
+    let rect = render_shortcut_helps(frame, &ui, state, rect);
+    let (rect, is_active) = popup::render_popup(frame, &mut ui, state, rect);
+    render_player_layout(is_active, frame, &mut ui, state, rect);
+}
+
+fn render_shortcut_helps(
+    frame: &mut Frame,
+    ui: &UIStateGuard,
+    state: &SharedState,
+    rect: Rect,
+) -> Rect {
+    let input = &ui.input_key_sequence;
     // render the shortcuts help table if needed
-    let matches = {
-        if ui.shortcuts_help_ui_state {
-            let prefix = &ui.input_key_sequence;
-            state
-                .keymap_config
-                .find_matched_prefix_keymaps(prefix)
-                .into_iter()
-                .map(|keymap| {
-                    let mut keymap = keymap.clone();
-                    keymap.key_sequence.keys.drain(0..prefix.keys.len());
-                    keymap
-                })
-                .filter(|keymap| !keymap.key_sequence.keys.is_empty())
-                .collect::<Vec<_>>()
-        } else {
-            vec![]
-        }
+    let matches = if input.keys.is_empty() {
+        vec![]
+    } else {
+        state
+            .keymap_config
+            .find_matched_prefix_keymaps(input)
+            .into_iter()
+            .map(|keymap| {
+                let mut keymap = keymap.clone();
+                keymap.key_sequence.keys.drain(0..input.keys.len());
+                keymap
+            })
+            .filter(|keymap| !keymap.key_sequence.keys.is_empty())
+            .collect::<Vec<_>>()
     };
-    let rect = if matches.is_empty() {
+
+    if matches.is_empty() {
         rect
     } else {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([Constraint::Min(0), Constraint::Length(7)].as_ref())
             .split(rect);
-        help::render_shortcuts_help_widget(matches, frame, &ui, chunks[1]);
+        help::render_shortcuts_help_widget(matches, frame, ui, chunks[1]);
         chunks[0]
-    };
-
-    let (player_layout_rect, is_active) = popup::render_popup(frame, &mut ui, state, rect);
-
-    render_player_layout(is_active, frame, &mut ui, state, player_layout_rect);
+    }
 }
 
 fn render_player_layout(

@@ -226,12 +226,9 @@ fn handle_terminal_event(
         }
     };
 
-    // if no command is handled, open the shortcuts help based on the current key sequence input
     if handled {
-        ui.shortcuts_help_ui_state = false;
         ui.input_key_sequence.keys = vec![];
     } else {
-        ui.shortcuts_help_ui_state = true;
         ui.input_key_sequence = key_sequence;
     }
     Ok(())

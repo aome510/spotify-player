@@ -103,7 +103,7 @@ pub fn render_popup(
             let chunks = Layout::default()
                 .direction(Direction::Vertical)
                 .constraints([Constraint::Min(0), Constraint::Length(3)].as_ref())
-                .split(frame.size());
+                .split(rect);
             render_search_box_widget(frame, ui, chunks[1], format!("/{}", query));
             (chunks[0], true)
         }

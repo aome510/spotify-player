@@ -25,8 +25,6 @@ pub struct UIState {
     pub artists_list_ui_state: ListState,
     pub themes_list_ui_state: ListState,
     pub devices_list_ui_state: ListState,
-    // TODO: find out if this is needed
-    pub shortcuts_help_ui_state: bool,
 }
 
 /// Context state
@@ -113,7 +111,6 @@ impl Default for UIState {
             artists_list_ui_state: ListState::default(),
             themes_list_ui_state: ListState::default(),
             devices_list_ui_state: ListState::default(),
-            shortcuts_help_ui_state: false,
         }
     }
 }
