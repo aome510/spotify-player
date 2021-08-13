@@ -265,7 +265,7 @@ fn handle_command_for_none_popup(
     ui: &mut UIStateGuard,
 ) -> Result<bool> {
     match command {
-        Command::SearchContextTracks => {
+        Command::SearchContext => {
             ui.context.select(Some(0));
             ui.popup_state = PopupState::ContextSearch("".to_owned());
             Ok(true)

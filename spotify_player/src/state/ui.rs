@@ -75,6 +75,12 @@ pub enum PopupState {
 }
 
 impl UIState {
+    fn query_match(s: &str, query: &str) -> bool {
+        query
+            .split(' ')
+            .fold(true, |acc, cur| acc & s.contains(cur))
+    }
+
     pub fn get_search_filtered_items<'a, T: std::fmt::Display>(
         &self,
         items: &'a [T],
@@ -82,7 +88,7 @@ impl UIState {
         match self.popup_state {
             PopupState::ContextSearch(ref query) => items
                 .iter()
-                .filter(|t| t.to_string().to_lowercase().contains(query))
+                .filter(|t| Self::query_match(&t.to_string().to_lowercase(), query))
                 .collect::<Vec<_>>(),
             _ => items.iter().collect::<Vec<_>>(),
         }

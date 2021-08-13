@@ -26,7 +26,7 @@ pub enum Command {
     SwitchTheme,
     SwitchDevice,
 
-    SearchContextTracks,
+    SearchContext,
 
     PreviousFrame,
     BrowseUserPlaylist,

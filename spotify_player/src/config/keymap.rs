@@ -57,7 +57,7 @@ impl Default for KeymapConfig {
                 },
                 Keymap {
                     key_sequence: "/".into(),
-                    command: Command::SearchContextTracks,
+                    command: Command::SearchContext,
                 },
                 Keymap {
                     key_sequence: "tab".into(),
