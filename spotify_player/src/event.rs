@@ -327,11 +327,13 @@ fn handle_key_sequence_for_search_popup(
             match c {
                 KeyCode::Char(c) => {
                     query.push(c);
+                    ui.window.select(Some(0));
                     return Ok(true);
                 }
                 KeyCode::Backspace => {
                     if !query.is_empty() {
                         query.pop().unwrap();
+                        ui.window.select(Some(0));
                     }
                     return Ok(true);
                 }

@@ -81,7 +81,7 @@ impl UIState {
         match self.popup {
             PopupState::ContextSearch(ref query) => items
                 .iter()
-                .filter(|t| Self::query_match(&t.to_string().to_lowercase(), query))
+                .filter(|t| Self::query_match(&t.to_string().to_lowercase(), &query.to_lowercase()))
                 .collect::<Vec<_>>(),
             _ => items.iter().collect::<Vec<_>>(),
         }
