@@ -80,7 +80,9 @@ fn render_context_album_widget(
 ) {
     let focus_state = match ui.context {
         ContextState::Artist(_, _, _, focus_state) => focus_state,
-        _ => unreachable!(),
+        _ => {
+            return;
+        }
     };
     let (tracks, albums, artists) = (
         ui.get_search_filtered_items(data.0),
