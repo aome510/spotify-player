@@ -234,7 +234,8 @@ impl KeymapConfig {
 
 impl From<&str> for Key {
     /// converts a string into a `Key`.
-    /// **Note** this function will panic if the given string is not a valid
+    /// # Panics
+    /// This function will panic if the given string is not a valid
     /// representation of a `Key`.
     fn from(s: &str) -> Self {
         Self::from_str(s).unwrap_or_else(|| panic!("invalid key {}", s))
@@ -243,7 +244,8 @@ impl From<&str> for Key {
 
 impl From<&str> for KeySequence {
     /// converts a string into a `KeySequence`.
-    /// **Note** this function will panic if the given string is not a valid
+    /// # Panics
+    /// This function will panic if the given string is not a valid
     /// representation of a `KeySequence`.
     fn from(s: &str) -> Self {
         Self::from_str(s).unwrap_or_else(|| panic!("invalid key sequence {}", s))
