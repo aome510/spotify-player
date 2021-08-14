@@ -10,7 +10,7 @@ mod utils;
 use anyhow::{anyhow, Result};
 
 // spotify authentication token's scopes for permissions
-const SCOPES: [&str; 10] = [
+const SCOPES: [&str; 11] = [
     "user-read-recently-played",
     "user-top-read",
     "user-read-playback-position",
@@ -20,6 +20,7 @@ const SCOPES: [&str; 10] = [
     "streaming",
     "playlist-read-private",
     "playlist-read-collaborative",
+    "user-follow-read",
     "user-library-read",
 ];
 
