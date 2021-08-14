@@ -7,6 +7,9 @@ My custom Spotify Player
 - [Installation](#installation)
 - [Examples](#examples)
   - [Demo](#demo)
+  - [Playlist](#playlist)
+  - [Artist](#artist)
+  - [Album](#album)
 - [Command table](#commands)
 - [Mouse support](#mouse-support)
 - [Roadmap](#roadmap)
@@ -21,15 +24,15 @@ My custom Spotify Player
 
 ### Playlist
 
-![Playlist context example](https://raw.githubusercontent.com/aome510/spotify-player/main/examples/playlist.png)
+![Playlist context example](https://raw.githubusercontent.com/aome510/spotify-player/master/examples/playlist.png)
 
 ### Artist
 
-![Artist context example](https://raw.githubusercontent.com/aome510/spotify-player/main/examples/artist.png)
+![Artist context example](https://raw.githubusercontent.com/aome510/spotify-player/master/examples/artist.png)
 
 ### Album
 
-![Album context example](https://raw.githubusercontent.com/aome510/spotify-player/main/examples/album.png)
+![Album context example](https://raw.githubusercontent.com/aome510/spotify-player/master/examples/album.png)
 
 ## Commands
 
