@@ -157,27 +157,27 @@ impl Default for KeymapConfig {
                 },
                 Keymap {
                     key_sequence: "s t".into(),
-                    command: Command::SortByTrack,
+                    command: Command::SortTrackByTitle,
                 },
                 Keymap {
                     key_sequence: "s a".into(),
-                    command: Command::SortByArtists,
+                    command: Command::SortTrackByArtists,
                 },
                 Keymap {
                     key_sequence: "s A".into(),
-                    command: Command::SortByAlbum,
+                    command: Command::SortTrackByAlbum,
                 },
                 Keymap {
                     key_sequence: "s d".into(),
-                    command: Command::SortByDuration,
+                    command: Command::SortTrackByDuration,
                 },
                 Keymap {
                     key_sequence: "s D".into(),
-                    command: Command::SortByAddedDate,
+                    command: Command::SortTrackByAddedDate,
                 },
                 Keymap {
                     key_sequence: "s r".into(),
-                    command: Command::ReverseOrder,
+                    command: Command::ReverseTrackOrder,
                 },
             ],
         }

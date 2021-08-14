@@ -9,8 +9,11 @@ const SHORTCUT_TABLE_CONSTRAINS: [Constraint; SHORTCUT_TABLE_N_COLUMNS] = [
     Constraint::Percentage(33),
     Constraint::Percentage(33),
 ];
-const COMMAND_TABLE_CONSTRAINTS: [Constraint; 2] =
-    [Constraint::Percentage(30), Constraint::Percentage(70)];
+const COMMAND_TABLE_CONSTRAINTS: [Constraint; 3] = [
+    Constraint::Percentage(25),
+    Constraint::Percentage(25),
+    Constraint::Percentage(50),
+];
 
 /// renders a shortcuts help widget from a list of keymaps
 pub fn render_shortcuts_help_widget(
@@ -62,13 +65,18 @@ pub fn render_commands_help_widget(
                 Row::new(vec![
                     Cell::from(format!("{:?}", c)),
                     Cell::from(format!("[{}]", k)),
+                    Cell::from(c.desc()),
                 ])
             })
             .collect::<Vec<_>>(),
     )
     .header(
-        Row::new(vec![Cell::from("Command"), Cell::from("Keys")])
-            .style(ui.theme.context_tracks_table_header()),
+        Row::new(vec![
+            Cell::from("Command"),
+            Cell::from("Shortcuts"),
+            Cell::from("Description"),
+        ])
+        .style(ui.theme.context_tracks_table_header()),
     )
     .widths(&COMMAND_TABLE_CONSTRAINTS)
     .block(

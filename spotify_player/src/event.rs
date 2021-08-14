@@ -273,27 +273,27 @@ fn handle_command_for_none_popup(
             let handled = {
                 match state.player.write().unwrap().get_context_mut() {
                     Some(context) => match command {
-                        Command::SortByTrack => {
+                        Command::SortTrackByTitle => {
                             context.sort_tracks(ContextSortOrder::TrackName);
                             true
                         }
-                        Command::SortByAlbum => {
+                        Command::SortTrackByAlbum => {
                             context.sort_tracks(ContextSortOrder::Album);
                             true
                         }
-                        Command::SortByArtists => {
+                        Command::SortTrackByArtists => {
                             context.sort_tracks(ContextSortOrder::Artists);
                             true
                         }
-                        Command::SortByAddedDate => {
+                        Command::SortTrackByAddedDate => {
                             context.sort_tracks(ContextSortOrder::AddedAt);
                             true
                         }
-                        Command::SortByDuration => {
+                        Command::SortTrackByDuration => {
                             context.sort_tracks(ContextSortOrder::Duration);
                             true
                         }
-                        Command::ReverseOrder => {
+                        Command::ReverseTrackOrder => {
                             context.reverse_tracks();
                             true
                         }
