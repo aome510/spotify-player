@@ -81,11 +81,11 @@ impl Default for KeymapConfig {
                 },
                 Keymap {
                     key_sequence: "u a".into(),
-                    command: Command::BrowseUserPlaylists,
+                    command: Command::BrowseUserFollowedArtists,
                 },
                 Keymap {
                     key_sequence: "u A".into(),
-                    command: Command::BrowseUserPlaylists,
+                    command: Command::BrowseUserSavedAlbums,
                 },
                 Keymap {
                     key_sequence: "a".into(),
