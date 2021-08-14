@@ -11,6 +11,6 @@
 
 - [ ] add new entries to the `Command` enum defined in `command.rs` and to the `Command::desc` function
 - [ ] add a new default key mapping for the command in `config/keymap.rs`
-- [ ] update the command table in `doc/config.md`
+- [ ] update the command table in `readme.md`
 
 **Note**: should follow a similar checklist when modifying a command

@@ -28,13 +28,13 @@ pub enum Command {
 
     SearchContext,
 
-    PreviousPage,
     BrowseUserPlaylist,
     BrowsePlayingContext,
     BrowsePlayingTrackArtist,
     BrowsePlayingTrackAlbum,
     BrowseSelectedTrackArtist,
     BrowseSelectedTrackAlbum,
+    PreviousPage,
 
     SortTrackByTitle,
     SortTrackByArtists,
