@@ -32,11 +32,11 @@ My custom Spotify Player
   client_secret = <APP CLIENT SECRET>
   ```
 
-- When running the application for the first time, you will be directed to a Spotify page that asks for the application's permissions. If you run the application via docker, you will need to open the Spotify page by yourself using your favorite browser.
+- When running the application for the first time, you will be directed to an official Spotify page that asks for the application's permissions. If you run the application using [docker](#docker), you will need to open the Spotify page in browser by yourself.
 
 ![Callback docker example](https://raw.githubusercontent.com/aome510/spotify-player/master/examples/callback_docker.png)
 
-- After accepting the permissions, you will be redirected to a URL as follows `localhost:8888/callback?code=AQAn75sPSJIg...`. Copy the URL then paste it into the application's prompt, then the application should be running given that there exists a Spotify client running:
+- After accepting the permissions, you will be redirected to a URL as follows `localhost:8888/callback?code=AQAn75sPSJIg...`. Copy the URL then paste it into the terminal prompt, then the application should be running given that there exists a Spotify client running:
 
 ![Callback example](https://raw.githubusercontent.com/aome510/spotify-player/master/examples/callback.png)
 
@@ -58,7 +58,7 @@ then run
 docker run --rm -v ${APP_CONFIG_FOLDER_PATH}:/app/config/ -it aome510/spotify_player:latest
 ```
 
-with `${APP_CONFIG_FOLDER_PATH}` is your local folder to store the application's configuration.
+with `${APP_CONFIG_FOLDER_PATH}` is the application's configuration folder.
 
 ## Examples
 
