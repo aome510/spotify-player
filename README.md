@@ -2,7 +2,20 @@
 
 My custom Spotify Player
 
-## Demo
+## Table of Contents
+
+- [Installation](#installation)
+- [Examples](#examples)
+  - [Demo](#demo)
+- [Command table](#commands)
+- [Mouse support](#mouse-support)
+- [Roadmap](#roadmap)
+
+## Installation
+
+## Examples
+
+### Demo
 
 [![asciicast](https://asciinema.org/a/430335.svg)](https://asciinema.org/a/430335)
 
@@ -43,3 +56,9 @@ List of supported commands:
 | `SortTrackByDuration`       | sort the track table (if any) by track's duration                  | `s d`              |
 | `SortTrackByAddedDate`      | sort the track table (if any) by track's added date                | `s D`              |
 | `ReverseOrder`              | reverse the order of the track table (if any)                      | `s r`              |
+
+## Mouse support
+
+Currently, the only use case of mouse is to seek to a position of the current playback by right-clicking to such position in the playback's progress bar.
+
+## Roadmap
