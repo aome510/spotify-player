@@ -41,6 +41,16 @@ impl Client {
                 state.player.write().unwrap().devices = self.get_devices().await?;
                 false
             }
+            event::Event::GetUserPlaylists => {
+                let needs_update = state.player.read().unwrap().user_playlists.is_none();
+                if needs_update {
+                    state.player.write().unwrap().user_playlists =
+                        Some(self.get_current_user_playlists().await?);
+                }
+                false
+            }
+            event::Event::GetUserSavedArtists => false,
+            event::Event::GetUserSavedAlbums => false,
             event::Event::GetCurrentPlayback => {
                 self.update_current_playback_state(state).await?;
                 false
@@ -380,11 +390,7 @@ impl Client {
                 .into_iter()
                 .map(|t| {
                     let mut track: state::Track = t.into();
-                    track.album = state::Album {
-                        name: album.name.clone(),
-                        id: Some(album.id.clone()),
-                        uri: Some(album.uri.clone()),
-                    };
+                    track.album = album.clone().into();
                     track
                 })
                 .collect::<Vec<_>>();
@@ -428,11 +434,7 @@ impl Client {
                 .await?
                 .artists
                 .into_iter()
-                .map(|a| state::Artist {
-                    name: a.name,
-                    uri: Some(a.uri),
-                    id: Some(a.id),
-                })
+                .map(|a| a.into())
                 .collect::<Vec<_>>();
 
             state.player.write().unwrap().context_cache.put(
@@ -445,11 +447,7 @@ impl Client {
                 .get_artist_albums(&artist_uri)
                 .await?
                 .into_iter()
-                .map(|a| state::Album {
-                    name: a.name,
-                    uri: a.uri,
-                    id: a.id,
-                })
+                .map(|a| a.into())
                 .collect::<Vec<_>>();
 
             if let Some(state::Context::Artist(_, _, ref mut old, _)) = state

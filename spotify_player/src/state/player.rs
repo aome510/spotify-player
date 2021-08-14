@@ -218,20 +218,8 @@ impl From<playlist::PlaylistTrack> for Track {
             id: track.id,
             uri: track.uri,
             name: track.name,
-            artists: track
-                .artists
-                .into_iter()
-                .map(|a| Artist {
-                    id: a.id,
-                    uri: a.uri,
-                    name: a.name,
-                })
-                .collect(),
-            album: Album {
-                id: track.album.id,
-                uri: track.album.uri,
-                name: track.album.name,
-            },
+            artists: track.artists.into_iter().map(|a| a.into()).collect(),
+            album: track.album.into(),
             duration: track.duration_ms,
             added_at: t.added_at.timestamp() as u64,
         }
@@ -244,15 +232,7 @@ impl From<track::SimplifiedTrack> for Track {
             id: track.id,
             uri: track.uri,
             name: track.name,
-            artists: track
-                .artists
-                .into_iter()
-                .map(|a| Artist {
-                    id: a.id,
-                    uri: a.uri,
-                    name: a.name,
-                })
-                .collect(),
+            artists: track.artists.into_iter().map(|a| a.into()).collect(),
             album: Album::default(),
             duration: track.duration_ms,
             added_at: 0,
@@ -266,22 +246,50 @@ impl From<track::FullTrack> for Track {
             id: track.id,
             uri: track.uri,
             name: track.name,
-            artists: track
-                .artists
-                .into_iter()
-                .map(|a| Artist {
-                    id: a.id,
-                    uri: a.uri,
-                    name: a.name,
-                })
-                .collect(),
-            album: Album {
-                name: track.album.name,
-                id: track.album.id,
-                uri: track.album.uri,
-            },
+            artists: track.artists.into_iter().map(|a| a.into()).collect(),
+            album: track.album.into(),
             duration: track.duration_ms,
             added_at: 0,
+        }
+    }
+}
+
+impl From<album::SimplifiedAlbum> for Album {
+    fn from(album: album::SimplifiedAlbum) -> Self {
+        Self {
+            name: album.name,
+            id: album.id,
+            uri: album.uri,
+        }
+    }
+}
+
+impl From<album::FullAlbum> for Album {
+    fn from(album: album::FullAlbum) -> Self {
+        Self {
+            name: album.name,
+            id: Some(album.id),
+            uri: Some(album.uri),
+        }
+    }
+}
+
+impl From<artist::SimplifiedArtist> for Artist {
+    fn from(artist: artist::SimplifiedArtist) -> Self {
+        Self {
+            name: artist.name,
+            id: artist.id,
+            uri: artist.uri,
+        }
+    }
+}
+
+impl From<artist::FullArtist> for Artist {
+    fn from(artist: artist::FullArtist) -> Self {
+        Self {
+            name: artist.name,
+            id: Some(artist.id),
+            uri: Some(artist.uri),
         }
     }
 }
