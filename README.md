@@ -4,6 +4,7 @@ My custom Spotify Player
 
 ## Table of Contents
 
+- [Prerequisites](#prerequisites)
 - [Installation](#installation)
 - [Examples](#examples)
   - [Demo](#demo)
@@ -14,7 +15,50 @@ My custom Spotify Player
 - [Mouse support](#mouse-support)
 - [Roadmap](#roadmap)
 
+## Prerequisites
+
+- A running Spotify client
+- A premium Spotify account for full functionalities
+
+### Setup
+
+- Create a configuration folder to store application's configuration files and authentication token cache. By default, the application will look into `$HOME/.config/spotify-player`. You can specify another path by adding the `-c <FOLDER_PATH>` option.
+- Follow the steps described in [Spotify documentation](https://developer.spotify.com/documentation/general/guides/app-settings/) to register an application with `client_id` and `client_secret` as well as to whitelist the application's redirect URI.
+- For the redirect URI, specify `http://localhost:8888/callback`.
+- Create a new `client.toml` file in the application's configuration folder with `client_id` and `client_secret` entries as follow
+
+  ```toml
+  client_id = <APP CLIENT ID>
+  client_secret = <APP CLIENT SECRET>
+  ```
+
+- When running the application for the first time, you will be directed to a Spotify page that asks for the application's permissions. If you run the application via docker, you will need to open the Spotify page by yourself using your favorite browser.
+
+![Callback docker example](https://raw.githubusercontent.com/aome510/spotify-player/master/examples/callback_docker.png)
+
+- After accepting the permissions, you will be redirected to a URL as follows `localhost:8888/callback?code=AQAn75sPSJIg...`. Copy the URL then paste it into the application's prompt, then the application should be running given that there exists a Spotify client running:
+
+![Callback example](https://raw.githubusercontent.com/aome510/spotify-player/master/examples/callback.png)
+
 ## Installation
+
+Before following those below steps, please read the [setup instructions](#setup) first.
+
+### Docker
+
+You can download the binary image of the latest build from the `master` branch by running
+
+```
+# docker pull aome510/spotify_player:latest
+```
+
+then run
+
+```
+docker run --rm -v ${APP_CONFIG_FOLDER_PATH}:/app/config/ -it aome510/spotify_player:latest
+```
+
+with `${APP_CONFIG_FOLDER_PATH}` is your local folder to store the application's configuration.
 
 ## Examples
 
