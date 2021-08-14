@@ -578,16 +578,6 @@ pub async fn start_watcher(
     send: std::sync::mpsc::Sender<event::Event>,
     recv: std::sync::mpsc::Receiver<event::Event>,
 ) {
-    match client.get_current_user_playlists().await {
-        Ok(playlists) => {
-            log::info!("user's playlists: {:#?}", playlists);
-            state.player.write().unwrap().user_playlists = playlists;
-        }
-        Err(err) => {
-            log::warn!("failed to get user's playlists: {:#?}", err);
-        }
-    }
-
     while let Ok(event) = recv.recv() {
         if let Err(err) = client.handle_event(&state, &send, event).await {
             log::warn!("{:#?}", err);

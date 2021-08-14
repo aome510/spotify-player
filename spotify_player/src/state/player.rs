@@ -3,12 +3,13 @@ use rspotify::model::*;
 /// Player state
 #[derive(Debug)]
 pub struct PlayerState {
-    pub context_cache: lru::LruCache<String, Context>,
-
-    pub user_playlists: Vec<playlist::SimplifiedPlaylist>,
     pub devices: Vec<device::Device>,
     pub auth_token_expires_at: std::time::SystemTime,
+    pub user_playlists: Option<Vec<playlist::SimplifiedPlaylist>>,
+    pub user_saved_albums: Option<Vec<Album>>,
+    pub user_saved_artists: Option<Vec<Artist>>,
     pub context_uri: String,
+    pub context_cache: lru::LruCache<String, Context>,
     pub playback: Option<context::CurrentlyPlaybackContext>,
     pub playback_last_updated: Option<std::time::SystemTime>,
 }
@@ -112,11 +113,13 @@ impl PlayerState {
 impl Default for PlayerState {
     fn default() -> Self {
         Self {
-            context_cache: lru::LruCache::new(64),
             auth_token_expires_at: std::time::SystemTime::now(),
             devices: vec![],
-            user_playlists: vec![],
+            user_playlists: None,
+            user_saved_albums: None,
+            user_saved_artists: None,
             context_uri: "".to_owned(),
+            context_cache: lru::LruCache::new(64),
             playback: None,
             playback_last_updated: None,
         }

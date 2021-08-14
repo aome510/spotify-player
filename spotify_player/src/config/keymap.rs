@@ -76,35 +76,43 @@ impl Default for KeymapConfig {
                     command: Command::SwitchDevice,
                 },
                 Keymap {
-                    key_sequence: "g p".into(),
-                    command: Command::BrowseUserPlaylist,
+                    key_sequence: "u p".into(),
+                    command: Command::BrowseUserPlaylists,
+                },
+                Keymap {
+                    key_sequence: "u a".into(),
+                    command: Command::BrowseUserPlaylists,
+                },
+                Keymap {
+                    key_sequence: "u A".into(),
+                    command: Command::BrowseUserPlaylists,
+                },
+                Keymap {
+                    key_sequence: "a".into(),
+                    command: Command::BrowsePlayingTrackArtists,
+                },
+                Keymap {
+                    key_sequence: "A".into(),
+                    command: Command::BrowsePlayingTrackAlbum,
                 },
                 Keymap {
                     key_sequence: "g space".into(),
                     command: Command::BrowsePlayingContext,
                 },
                 Keymap {
-                    key_sequence: "g a".into(),
-                    command: Command::BrowsePlayingTrackArtist,
-                },
-                Keymap {
-                    key_sequence: "g A".into(),
-                    command: Command::BrowsePlayingTrackAlbum,
-                },
-                Keymap {
                     key_sequence: "C-g a".into(),
-                    command: Command::BrowseSelectedTrackArtist,
+                    command: Command::BrowseSelectedTrackArtists,
                 },
                 Keymap {
                     key_sequence: "C-g A".into(),
                     command: Command::BrowseSelectedTrackAlbum,
                 },
                 Keymap {
-                    key_sequence: "g s a".into(),
-                    command: Command::BrowseSelectedTrackArtist,
+                    key_sequence: "g a".into(),
+                    command: Command::BrowseSelectedTrackArtists,
                 },
                 Keymap {
-                    key_sequence: "g s A".into(),
+                    key_sequence: "g A".into(),
                     command: Command::BrowseSelectedTrackAlbum,
                 },
                 Keymap {

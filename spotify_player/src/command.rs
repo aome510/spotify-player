@@ -28,11 +28,13 @@ pub enum Command {
 
     SearchContext,
 
-    BrowseUserPlaylist,
-    BrowsePlayingContext,
-    BrowsePlayingTrackArtist,
+    BrowseUserPlaylists,
+    BrowseUserSavedAlbums,
+    BrowseUserSavedArtists,
+    BrowsePlayingTrackArtists,
     BrowsePlayingTrackAlbum,
-    BrowseSelectedTrackArtist,
+    BrowsePlayingContext,
+    BrowseSelectedTrackArtists,
     BrowseSelectedTrackAlbum,
     PreviousPage,
 
@@ -62,18 +64,20 @@ impl Command {
             Self::RefreshPlayback => "refresh the current playback",
             Self::FocusNextWindow => "focus the next focusable window (if any)",
             Self::FocusPreviousWindow => "focus the previous focusable window (if any)",
-            Self::SwitchTheme => "open a theme switch popup",
-            Self::SwitchDevice => "open a device switch popup",
+            Self::SwitchTheme => "open a popup for switching theme",
+            Self::SwitchDevice => "open a popup for switching device",
             Self::SearchContext => "open a search popup for searching in context",
             Self::PreviousPage => "go to the previous page",
-            Self::BrowseUserPlaylist => "open a playlist popup for browsing user's playlists",
+            Self::BrowseUserPlaylists => "open a popup for browsing user's playlists",
+            Self::BrowseUserSavedAlbums => "open a popup for browsing user's saved albums",
+            Self::BrowseUserSavedArtists => "open a popup for browsing user's saved artists",
             Self::BrowsePlayingContext => "browse the current playing context",
-            Self::BrowsePlayingTrackArtist => {
-                "open an artist popup for browsing current playing track's artists"
+            Self::BrowsePlayingTrackArtists => {
+                "open a popup for browsing current playing track's artists"
             }
             Self::BrowsePlayingTrackAlbum => "browse to the current playing track's album page",
-            Self::BrowseSelectedTrackArtist => {
-                "open an artist popup for browsing current selected track's artists"
+            Self::BrowseSelectedTrackArtists => {
+                "open a popup for browsing current selected track's artists"
             }
             Self::BrowseSelectedTrackAlbum => "browse to the current selected track's album page",
             Self::SortTrackByTitle => "sort the track table (if any) by track's title",

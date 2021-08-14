@@ -22,6 +22,9 @@ pub enum ContextURI {
 /// An event to communicate with the client
 pub enum Event {
     GetDevices,
+    GetUserPlaylists,
+    GetUserSavedAlbums,
+    GetUserSavedArtists,
     GetCurrentPlayback,
     RefreshToken,
     NextTrack,
@@ -472,7 +475,7 @@ fn handle_command(
             }
             Ok(true)
         }
-        Command::BrowsePlayingTrackArtist => {
+        Command::BrowsePlayingTrackArtists => {
             if let Some(track) = state.player.read().unwrap().get_current_playing_track() {
                 let artists = track
                     .artists
@@ -488,7 +491,7 @@ fn handle_command(
             }
             Ok(true)
         }
-        Command::BrowseUserPlaylist => {
+        Command::BrowseUserPlaylists => {
             ui.popup = PopupState::PlaylistList(utils::new_list_state());
             Ok(true)
         }
@@ -691,7 +694,7 @@ fn handle_command_for_track_table(
             }
             Ok(true)
         }
-        Command::BrowseSelectedTrackArtist => {
+        Command::BrowseSelectedTrackArtists => {
             if let Some(id) = ui.window.selected() {
                 let artists = tracks[id]
                     .artists
