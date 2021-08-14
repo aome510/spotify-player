@@ -35,7 +35,7 @@ pub fn render_context_widget(
 
             match context {
                 Context::Artist(_, ref tracks, ref albums, ref artists) => {
-                    render_context_album_widget(
+                    render_context_artist_widget(
                         is_active,
                         frame,
                         ui,
@@ -78,7 +78,7 @@ pub fn render_context_widget(
     }
 }
 
-fn render_context_album_widget(
+fn render_context_artist_widget(
     is_active: bool,
     frame: &mut Frame,
     ui: &mut UIStateGuard,
@@ -116,24 +116,10 @@ fn render_context_album_widget(
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
         .split(chunks[1]);
 
-    let current_album = state
-        .player
-        .read()
-        .unwrap()
-        .get_current_playing_track()
-        .map(|t| t.album.name.clone())
-        .unwrap_or_default();
-
     let albums_list = List::new(
         albums
             .into_iter()
-            .map(|a| {
-                ListItem::new(a.name.clone()).style(if a.name == current_album {
-                    ui.theme.current_active()
-                } else {
-                    Style::default()
-                })
-            })
+            .map(|a| ListItem::new(a.name.clone()))
             .collect::<Vec<_>>(),
     )
     .highlight_style(

@@ -58,7 +58,8 @@ pub fn render_popup(
             );
             (chunks[0], false)
         }
-        PopupState::PlaylistList(_) => {
+        // TODO: reduce the code duplication between handlers for `UserPlaylists`, `UserSavedAlbums`, and `UserFollowedArtists`
+        PopupState::UserPlaylistList(_) => {
             let chunks = Layout::default()
                 .direction(Direction::Vertical)
                 .constraints([Constraint::Min(0), Constraint::Length(10)].as_ref())
@@ -66,18 +67,54 @@ pub fn render_popup(
             frame.render_stateful_widget(
                 {
                     let player = state.player.read().unwrap();
-                    let current_playlist_name =
-                        if let Some(Context::Playlist(ref playlist, _)) = player.get_context() {
-                            &playlist.name
-                        } else {
-                            ""
-                        };
                     let items = player
                         .user_playlists
-                        .iter()
-                        .map(|p| (p.name.clone(), p.name == current_playlist_name))
-                        .collect();
-                    construct_list_widget(ui, items, "Playlists")
+                        .as_ref()
+                        .map(|playlists| {
+                            playlists.iter().map(|p| (p.name.clone(), false)).collect()
+                        })
+                        .unwrap_or_default();
+                    construct_list_widget(ui, items, "User Playlists")
+                },
+                chunks[1],
+                ui.popup.get_list_state_mut().unwrap(),
+            );
+            (chunks[0], false)
+        }
+        PopupState::UserFollowedArtistList(_) => {
+            let chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([Constraint::Min(0), Constraint::Length(10)].as_ref())
+                .split(rect);
+            frame.render_stateful_widget(
+                {
+                    let player = state.player.read().unwrap();
+                    let items = player
+                        .user_followed_artists
+                        .as_ref()
+                        .map(|artists| artists.iter().map(|a| (a.name.clone(), false)).collect())
+                        .unwrap_or_default();
+                    construct_list_widget(ui, items, "User Followed Artists")
+                },
+                chunks[1],
+                ui.popup.get_list_state_mut().unwrap(),
+            );
+            (chunks[0], false)
+        }
+        PopupState::UserSavedAlbumList(_) => {
+            let chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([Constraint::Min(0), Constraint::Length(10)].as_ref())
+                .split(rect);
+            frame.render_stateful_widget(
+                {
+                    let player = state.player.read().unwrap();
+                    let items = player
+                        .user_saved_albums
+                        .as_ref()
+                        .map(|albums| albums.iter().map(|a| (a.name.clone(), false)).collect())
+                        .unwrap_or_default();
+                    construct_list_widget(ui, items, "User Saved Albums")
                 },
                 chunks[1],
                 ui.popup.get_list_state_mut().unwrap(),

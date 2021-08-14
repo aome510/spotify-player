@@ -115,7 +115,7 @@ List of supported commands:
 | `SwitchDevice`              | open a popup for switching device                          | `D`                |
 | `SearchContext`             | open a search popup for searching in context               | `/`                |
 | `BrowseUserPlaylist`        | open a popup for browsing user's playlists                 | `u p`              |
-| `BrowseUserSavedArtists`    | "open a popup for browsing user's saved artists            | `u a`              |
+| `BrowseUserFollowedArtists` | "open a popup for browsing user's followed artists         | `u a`              |
 | `BrowseUserSavedAlbums`     | open a popup for browsing user's saved albums              | `u A`              |
 | `BrowsePlayingTrackArtist`  | open a popup for browsing current playing track's artists  | `a`                |
 | `BrowsePlayingTrackAlbum`   | browse to the current playing track's album page           | `A`                |

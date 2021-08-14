@@ -30,7 +30,7 @@ pub enum Command {
 
     BrowseUserPlaylists,
     BrowseUserSavedAlbums,
-    BrowseUserSavedArtists,
+    BrowseUserFollowedArtists,
     BrowsePlayingTrackArtists,
     BrowsePlayingTrackAlbum,
     BrowsePlayingContext,
@@ -70,7 +70,7 @@ impl Command {
             Self::PreviousPage => "go to the previous page",
             Self::BrowseUserPlaylists => "open a popup for browsing user's playlists",
             Self::BrowseUserSavedAlbums => "open a popup for browsing user's saved albums",
-            Self::BrowseUserSavedArtists => "open a popup for browsing user's saved artists",
+            Self::BrowseUserFollowedArtists => "open a popup for browsing user's followed artists",
             Self::BrowsePlayingContext => "browse the current playing context",
             Self::BrowsePlayingTrackArtists => {
                 "open a popup for browsing current playing track's artists"

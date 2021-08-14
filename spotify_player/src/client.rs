@@ -49,8 +49,32 @@ impl Client {
                 }
                 false
             }
-            event::Event::GetUserSavedArtists => false,
-            event::Event::GetUserSavedAlbums => false,
+            event::Event::GetUserFollowedArtists => {
+                let needs_update = state.player.read().unwrap().user_followed_artists.is_none();
+                if needs_update {
+                    state.player.write().unwrap().user_followed_artists = Some(
+                        self.get_current_user_followed_artists()
+                            .await?
+                            .into_iter()
+                            .map(|a| a.into())
+                            .collect::<Vec<_>>(),
+                    );
+                }
+                false
+            }
+            event::Event::GetUserSavedAlbums => {
+                let needs_update = state.player.read().unwrap().user_saved_albums.is_none();
+                if needs_update {
+                    state.player.write().unwrap().user_saved_albums = Some(
+                        self.get_current_user_saved_albums()
+                            .await?
+                            .into_iter()
+                            .map(|a| a.album.into())
+                            .collect::<Vec<_>>(),
+                    );
+                }
+                false
+            }
             event::Event::GetCurrentPlayback => {
                 self.update_current_playback_state(state).await?;
                 false
@@ -175,7 +199,33 @@ impl Client {
     /// gets all playlists of the current user
     pub async fn get_current_user_playlists(&self) -> Result<Vec<playlist::SimplifiedPlaylist>> {
         let first_page =
-            Self::handle_rspotify_result(self.spotify.current_user_playlists(None, None).await)?;
+            Self::handle_rspotify_result(self.spotify.current_user_playlists(50, None).await)?;
+        Ok(self.get_all_paging_items(first_page).await?)
+    }
+
+    /// gets all followed artists of the current user
+    pub async fn get_current_user_followed_artists(&self) -> Result<Vec<artist::FullArtist>> {
+        let first_page = Self::handle_rspotify_result(
+            self.spotify.current_user_followed_artists(50, None).await,
+        )?
+        .artists;
+        let mut items = first_page.items;
+        let mut maybe_next = first_page.next.clone();
+        while let Some(url) = maybe_next {
+            let mut next_page = self
+                .internal_call::<artist::CursorPageFullArtists>(&url)
+                .await?
+                .artists;
+            items.append(&mut next_page.items);
+            maybe_next = next_page.next;
+        }
+        Ok(items)
+    }
+
+    /// gets all saved albums of the current user
+    pub async fn get_current_user_saved_albums(&self) -> Result<Vec<album::SavedAlbum>> {
+        let first_page =
+            Self::handle_rspotify_result(self.spotify.current_user_saved_albums(50, None).await)?;
         Ok(self.get_all_paging_items(first_page).await?)
     }
 
@@ -495,7 +545,7 @@ impl Client {
         T: serde::de::DeserializeOwned,
     {
         let mut items = first_page.items;
-        let mut maybe_next = first_page.next.clone();
+        let mut maybe_next = first_page.next;
         while let Some(url) = maybe_next {
             let mut next_page = self.internal_call::<page::Page<T>>(&url).await?;
             items.append(&mut next_page.items);
