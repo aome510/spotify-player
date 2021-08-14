@@ -1,10 +1,10 @@
 # spotify-player
 
-My custom Spotify Player
-
 ## Table of Contents
 
+- [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
+  - [Setup](#setup)
 - [Installation](#installation)
 - [Examples](#examples)
   - [Demo](#demo)
@@ -15,9 +15,19 @@ My custom Spotify Player
 - [Mouse support](#mouse-support)
 - [Roadmap](#roadmap)
 
+## Introduction
+
+- `spotify-player` is a custom Spotify player that I built and tweaked based on my personal preferences. It is fast, easy to use, and [configurable](https://github.com/aome510/spotify-player/blob/master/doc/config.md).
+- `spotify-player` is designed to be a player, not a fully-fledged Spotify application, so it does not aim to support all possible Spotify features. Its main goal is to provide an easy and intuitive way to quickly change your current playback.
+- `spotify-player`, similar to other TUI applications, is keyboard driven, so user will interact with the application using a set of [commands with shortcuts](#commands).
+- `spotify-player` has a simple UI with three main components:
+  - a playback window displaying the current playing track's data
+  - a context window displaying a playing context's data (playlist, album, artist)
+  - popup windows for using some commands (switch theme, browser playlists, etc) or displaying additional information
+
 ## Prerequisites
 
-- A running Spotify client
+- A running Spotify client (official Spotify application or [third-party clients](https://wiki.archlinux.org/title/Spotify#Third-party_clients))
 - A premium Spotify account for full functionalities
 
 ### Setup
@@ -121,3 +131,5 @@ List of supported commands:
 Currently, the only use case of mouse is to seek to a position of the current playback by right-clicking to such position in the playback's progress bar.
 
 ## Roadmap
+
+- [ ] integrating Spotify's [search APIs](https://developer.spotify.com/documentation/web-api/reference/#category-search)
