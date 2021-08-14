@@ -19,6 +19,18 @@ My custom Spotify Player
 
 [![asciicast](https://asciinema.org/a/430335.svg)](https://asciinema.org/a/430335)
 
+### Playlist
+
+![Playlist context example](https://raw.githubusercontent.com/aome510/spotify-player/main/examples/playlist.png)
+
+### Artist
+
+![Artist context example](https://raw.githubusercontent.com/aome510/spotify-player/main/examples/artist.png)
+
+### Album
+
+![Album context example](https://raw.githubusercontent.com/aome510/spotify-player/main/examples/album.png)
+
 ## Commands
 
 List of supported commands:
