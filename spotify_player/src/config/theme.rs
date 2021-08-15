@@ -64,6 +64,7 @@ pub struct ComponentStyle {
 pub struct Style {
     pub fg: Option<StyleColor>,
     pub bg: Option<StyleColor>,
+    #[serde(default)]
     pub modifiers: Vec<StyleModifier>,
 }
 

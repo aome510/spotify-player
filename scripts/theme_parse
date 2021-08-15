@@ -1,0 +1,52 @@
+#!/bin/python
+
+import sys
+import requests
+import yaml
+
+if len(sys.argv) > 1:
+    name = sys.argv[1]
+else:
+    name = 'Dracula'
+
+url = f'https://raw.githubusercontent.com/mbadolato/iTerm2-Color-Schemes/master/alacritty/{name}.yml'
+
+content = requests.get(url).content
+
+data = yaml.safe_load(content)
+
+print(
+    f'''[[themes]]
+name = "{name}"
+[themes.palette]
+background = "{data["colors"]["primary"]["background"]}"
+foreground = "{data["colors"]["primary"]["foreground"]}"
+black = "{data["colors"]["normal"]["black"]}"
+blue = "{data["colors"]["normal"]["blue"]}"
+cyan = "{data["colors"]["normal"]["cyan"]}"
+green = "{data["colors"]["normal"]["green"]}"
+magenta = "{data["colors"]["normal"]["magenta"]}"
+red = "{data["colors"]["normal"]["red"]}"
+white = "{data["colors"]["normal"]["white"]}"
+yellow = "{data["colors"]["normal"]["yellow"]}"
+bright_black = "{data["colors"]["bright"]["black"]}"
+bright_blue = "{data["colors"]["bright"]["blue"]}"
+bright_cyan = "{data["colors"]["bright"]["cyan"]}"
+bright_green = "{data["colors"]["bright"]["green"]}"
+bright_magenta = "{data["colors"]["bright"]["magenta"]}"
+bright_red = "{data["colors"]["bright"]["red"]}"
+bright_white = "{data["colors"]["bright"]["white"]}"
+bright_yellow = "{data["colors"]["bright"]["yellow"]}"
+selection_background = "{data["colors"]["selection"]["background"]}"
+selection_foreground =  "{data["colors"]["selection"]["text"]}"
+[themes.component_style]
+block_title = {{ fg = "Magenta"  }}
+playback_track = {{ fg = "Cyan", modifiers = ["Bold"] }}
+playback_album = {{ fg = "Yellow" }}
+playback_metadata = {{ fg = "BrightBlack" }}
+playback_progress_bar = {{ fg = "SelectionBackground", bg = "Green", modifiers = ["Italic"] }}
+current_active = {{ fg = "Green", modifiers = ["Bold"] }}
+context_desc = {{ fg = "Cyan", modifiers = ["Bold"] }}
+context_tracks_table_header = {{ fg = "Blue" }}
+    '''
+)
