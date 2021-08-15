@@ -4,12 +4,12 @@
 
 - [General](#general)
 - [Themes](#themes)
-  - [Use script to add theme](use-script-to-add-theme)
+  - [Use script to add theme](#use-script-to-add-theme)
   - [Palette](#palette)
   - [Component Styles](#component-styles)
 - [Keymaps](#keymaps)
 
-All application configurations are stored inside the application's configuration folder (default to be `$HOME/.config/spotify-player`).
+All configurations are stored inside the application's configuration folder (default to be `$HOME/.config/spotify-player`).
 
 ## General
 
@@ -28,7 +28,7 @@ All application configurations are stored inside the application's configuration
 
 - Positive-value `app_refresh_duration_in_ms` is used to refresh the current playback (making a Spotify API call) every `app_refresh_duration_in_ms` ms. This can result in hitting Spotify's rate limit if the player is running for a long period of time.
 - To prevent the rate limit, `spotify-player` sets `playback_refresh_duration_in_ms=0` by default and relies on `n_refreshes_each_playback_update` and `refresh_delay_in_ms_each_playback_update` to refresh the playback each time user triggers a command that updates the player's playback.
-- List of commands that updates the player's playback:
+- List of commands that triggers a playback update:
   - `NextTrack`
   - `PreviousTrack`
   - `ResumePause`
@@ -37,16 +37,17 @@ All application configurations are stored inside the application's configuration
   - `Shuffle`
   - `SeekTrack` (right-clicking the playback's progress bar)
   - `ChooseSelected` (for a track, a device, etc)
+- The playback is also updated when the current track ends (using a timer based on the track duration).
 
 ## Themes
 
-`spotify-player` uses `theme.toml` to define additional themes in addition to the default themes (`dracula`, `ayu_light`, `gruvbox_dark`, `solarized_light`). The application's theme then can be set using the `theme` configuration option in the [`app.toml`](#general) file.
+`spotify-player` uses `theme.toml` to define additional themes in addition to the default themes (`dracula`, `ayu_light`, `gruvbox_dark`, `solarized_light`). The new theme can then be used by setting the `theme` option in the [`app.toml`](#general) file.
 
 A theme has three main components: `name` (the theme's name), `palette` (the theme's color palette), `component_style` (a list of predefined style for application's components). `name` and `palette` are required when defining a new theme. If `component_style` is not specified, a default value will be used.
 
 ### Use script to add theme
 
-I have created [a `theme_parse` python script](../scripts/theme_parse) to parse an [Iterm2 alacritty's color schemes](https://github.com/mbadolato/iTerm2-Color-Schemes/tree/master/alacritty) into a `spotify-player` compatible theme configurations.
+I have created [a `theme_parse` python script](../scripts/theme_parse) (require `pyaml` library) to parse an [Iterm2 alacritty's color schemes](https://github.com/mbadolato/iTerm2-Color-Schemes/tree/master/alacritty) into a `spotify-player` compatible theme configurations.
 
 For example, you can run
 
@@ -54,7 +55,7 @@ For example, you can run
 ./theme_parse "Builtin Solarized Dark" "solarized_dark"  >> ~/.config/spotify-player/theme.toml
 ```
 
-to parse [Builtin Solarized Dark](https://github.com/mbadolato/iTerm2-Color-Schemes/blob/master/alacritty/Builtin%20Solarized%20Dark.yml) color scheme and add it as a new theme with `name = "solarized_dark"`.
+to parse [Builtin Solarized Dark](https://github.com/mbadolato/iTerm2-Color-Schemes/blob/master/alacritty/Builtin%20Solarized%20Dark.yml) color scheme into a new theme with `name = "solarized_dark"`.
 
 ### Palette
 
@@ -85,7 +86,7 @@ A field in the color palette must be set to the hex representation of a RGB colo
 
 ### Component Styles
 
-To define a application's component styles, user needs to specify **all** the below fields:
+To define application's component styles, user needs to specify **all** the below fields:
 
 - `block_title`
 - `playback_track`
