@@ -6,6 +6,9 @@
 - [Prerequisites](#prerequisites)
   - [Setup](#setup)
 - [Installation](#installation)
+  - [Arch Linux AUR](#arch-linux-aur)
+  - [Cargo](#cargo)
+  - [Docker](#docker)
 - [Examples](#examples)
   - [Demo](#demo)
   - [Playlist](#playlist)
@@ -55,6 +58,14 @@
 ## Installation
 
 Before following the steps below, please read the [setup instructions](#setup) first.
+
+### Arch Linux AUR
+
+Run `yay -S spotify-player` to install the application as an AUR package.
+
+### Cargo
+
+Run `cargo install spotify_player` to install the application from [crates.io](https://crates.io/crates/spotify_player).
 
 ### Docker
 
