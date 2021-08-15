@@ -9,6 +9,7 @@ pub fn render_popup(
     rect: Rect,
 ) -> (Rect, bool) {
     // handle popup windows
+    let player = state.player.read().unwrap();
     match ui.popup {
         PopupState::None => (rect, true),
         PopupState::CommandHelp => {
@@ -26,7 +27,6 @@ pub fn render_popup(
                 .split(rect);
             frame.render_stateful_widget(
                 {
-                    let player = state.player.read().unwrap();
                     let current_device_id = match player.playback {
                         Some(ref playback) => &playback.device.id,
                         None => "",
@@ -58,7 +58,6 @@ pub fn render_popup(
             );
             (chunks[0], false)
         }
-        // TODO: reduce the code duplication between handlers for `UserPlaylists`, `UserSavedAlbums`, and `UserFollowedArtists`
         PopupState::UserPlaylistList(_) => {
             let chunks = Layout::default()
                 .direction(Direction::Vertical)
@@ -66,7 +65,6 @@ pub fn render_popup(
                 .split(rect);
             frame.render_stateful_widget(
                 {
-                    let player = state.player.read().unwrap();
                     let items = player
                         .user_playlists
                         .as_ref()
@@ -88,7 +86,6 @@ pub fn render_popup(
                 .split(rect);
             frame.render_stateful_widget(
                 {
-                    let player = state.player.read().unwrap();
                     let items = player
                         .user_followed_artists
                         .as_ref()
@@ -108,7 +105,6 @@ pub fn render_popup(
                 .split(rect);
             frame.render_stateful_widget(
                 {
-                    let player = state.player.read().unwrap();
                     let items = player
                         .user_saved_albums
                         .as_ref()

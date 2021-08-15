@@ -18,11 +18,11 @@
 ## Introduction
 
 - `spotify-player` is a custom Spotify player that I built and tweaked based on my personal preferences. It is fast, easy to use, and [configurable](https://github.com/aome510/spotify-player/blob/master/doc/config.md).
-- `spotify-player` is designed to be a player, not a fully-fledged Spotify application, so it does not aim to support all possible Spotify features. Its main goal is to provide an easy and intuitive way to quickly change your current playback.
-- `spotify-player`, similar to other TUI applications, is keyboard driven, so user will interact with the application using a set of [commands with shortcuts](#commands).
+- `spotify-player` is designed to be a player, not a fully-fledged Spotify clone, so it does not aim to support all possible Spotify features. Its main goal is to provide a quick, easy and intuitive way to modify your current playback.
+- `spotify-player`, similar to other TUI applications, is keyboard driven, so user will interact with the application using a set of [pre-defined commands with shortcuts](#commands).
 - `spotify-player` has a simple UI with three main components:
-  - a playback window displaying the current playing track's data
-  - a context window displaying a playing context's data (playlist, album, artist)
+  - a playback window displaying the current playback
+  - a context window displaying a context (playlist, album, artist)
   - popup windows for using some commands (switch theme, browser playlists, etc) or displaying additional information
 
 ## Prerequisites
@@ -33,7 +33,7 @@
 ### Setup
 
 - Create a configuration folder to store application's configuration files and authentication token cache. By default, the application will look into `$HOME/.config/spotify-player`. You can specify another path by adding the `-c <FOLDER_PATH>` option.
-- Follow the steps described in [Spotify documentation](https://developer.spotify.com/documentation/general/guides/app-settings/) to register an application with `client_id` and `client_secret` as well as to whitelist the application's redirect URI.
+- Follow the steps described in [Spotify documentation](https://developer.spotify.com/documentation/general/guides/app-settings/) to register an application with `client_id` and `client_secret` as well as to whitelist a redirect URI.
 - For the redirect URI, specify `http://localhost:8888/callback`.
 - Create a new `client.toml` file in the application's configuration folder with `client_id` and `client_secret` entries as follow
 
@@ -42,17 +42,17 @@
   client_secret = ${APP CLIENT SECRET}
   ```
 
-- When running the application for the first time, you will be directed to an official Spotify page that asks for the application's permissions. If you run the application using [docker](#docker), you will need to open the Spotify page in browser by yourself.
+- When running the application for the first time, you will be directed to an official Spotify page that asks for the application's permissions. If you run the application using [docker](#docker), you will need to open the page in browser by yourself.
 
 ![Callback docker example](https://raw.githubusercontent.com/aome510/spotify-player/master/examples/callback_docker.png)
 
-- After accepting the permissions, you will be redirected to a URL as follows `localhost:8888/callback?code=AQAn75sPSJIg...`. Copy the URL then paste it into the terminal prompt, then the application should be running given that there exists a Spotify client running:
+- After accepting the permissions, you will be redirected to a URL as follows `localhost:8888/callback?code=AQAn75sPSJIg...`. Copy the URL and paste it into the terminal prompt, then the application should run successfully, given that there is a running Spotify client:
 
 ![Callback example](https://raw.githubusercontent.com/aome510/spotify-player/master/examples/callback.png)
 
 ## Installation
 
-Before following those below steps, please read the [setup instructions](#setup) first.
+Before following the steps below, please read the [setup instructions](#setup) first.
 
 ### Docker
 
@@ -113,9 +113,9 @@ List of supported commands:
 | `FocusPreviousWindow`       | focus the previous focusable window (if any)               | `backtab`          |
 | `SwitchTheme`               | open a popup for switching theme                           | `T`                |
 | `SwitchDevice`              | open a popup for switching device                          | `D`                |
-| `SearchContext`             | open a search popup for searching in context               | `/`                |
+| `SearchContext`             | open a popup for searching in context                      | `/`                |
 | `BrowseUserPlaylist`        | open a popup for browsing user's playlists                 | `u p`              |
-| `BrowseUserFollowedArtists` | "open a popup for browsing user's followed artists         | `u a`              |
+| `BrowseUserFollowedArtists` | open a popup for browsing user's followed artists          | `u a`              |
 | `BrowseUserSavedAlbums`     | open a popup for browsing user's saved albums              | `u A`              |
 | `BrowsePlayingTrackArtist`  | open a popup for browsing current playing track's artists  | `a`                |
 | `BrowsePlayingTrackAlbum`   | browse to the current playing track's album page           | `A`                |

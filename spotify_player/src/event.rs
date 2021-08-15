@@ -117,7 +117,7 @@ fn handle_terminal_event(
                 PopupState::ContextSearch(_) => {
                     handle_key_sequence_for_search_popup(&key_sequence, send, state, &mut ui)?
                 }
-                PopupState::ArtistList(_, _) => handle_command_for_generic_list_popup(
+                PopupState::ArtistList(_, _) => handle_command_for_list_popup(
                     command,
                     match ui.popup {
                         PopupState::ArtistList(ref artists, _) => artists.len(),
@@ -143,92 +143,65 @@ fn handle_terminal_event(
                     },
                     &mut ui,
                 )?,
-                // TODO: reduce the code duplication between handlers for `UserPlaylists`, `UserSavedAlbums`, and `UserFollowedArtists`
                 PopupState::UserPlaylistList(_) => {
                     let player = state.player.read().unwrap();
-                    handle_command_for_generic_list_popup(
+                    let playlist_uris = player
+                        .user_playlists
+                        .as_ref()
+                        .map(|playlists| {
+                            playlists.iter().map(|p| p.uri.clone()).collect::<Vec<_>>()
+                        })
+                        .unwrap_or_default();
+                    handle_command_for_uri_list_popup(
                         command,
-                        player
-                            .user_playlists
-                            .as_ref()
-                            .map(|p| p.len())
-                            .unwrap_or_default(),
-                        |_: &mut UIStateGuard, _: usize| {},
-                        |ui: &mut UIStateGuard, id: usize| -> Result<()> {
-                            let uri = player.user_playlists.as_ref().unwrap()[id].uri.clone();
-                            send.send(Event::GetContext(ContextURI::Playlist(uri.clone())))?;
-
-                            let frame_state = PageState::Browsing(uri);
-                            ui.history.push(frame_state.clone());
-                            ui.page = frame_state;
-                            ui.popup = PopupState::None;
-                            Ok(())
-                        },
-                        |ui: &mut UIStateGuard| {
-                            ui.popup = PopupState::None;
-                        },
+                        send,
                         &mut ui,
+                        playlist_uris,
+                        ContextURI::Artist("".to_owned()),
                     )?
                 }
                 PopupState::UserFollowedArtistList(_) => {
                     let player = state.player.read().unwrap();
-                    handle_command_for_generic_list_popup(
+                    let artist_uris = player
+                        .user_followed_artists
+                        .as_ref()
+                        .map(|artists| {
+                            artists
+                                .iter()
+                                .map(|a| a.uri.clone().unwrap())
+                                .collect::<Vec<_>>()
+                        })
+                        .unwrap_or_default();
+                    handle_command_for_uri_list_popup(
                         command,
-                        player
-                            .user_followed_artists
-                            .as_ref()
-                            .map(|a| a.len())
-                            .unwrap_or_default(),
-                        |_: &mut UIStateGuard, _: usize| {},
-                        |ui: &mut UIStateGuard, id: usize| -> Result<()> {
-                            let uri = player.user_followed_artists.as_ref().unwrap()[id]
-                                .uri
-                                .clone()
-                                .unwrap();
-                            send.send(Event::GetContext(ContextURI::Artist(uri.clone())))?;
-
-                            let frame_state = PageState::Browsing(uri);
-                            ui.history.push(frame_state.clone());
-                            ui.page = frame_state;
-                            ui.popup = PopupState::None;
-                            Ok(())
-                        },
-                        |ui: &mut UIStateGuard| {
-                            ui.popup = PopupState::None;
-                        },
+                        send,
                         &mut ui,
+                        artist_uris,
+                        ContextURI::Artist("".to_owned()),
                     )?
                 }
                 PopupState::UserSavedAlbumList(_) => {
                     let player = state.player.read().unwrap();
-                    handle_command_for_generic_list_popup(
-                        command,
-                        player
-                            .user_saved_albums
-                            .as_ref()
-                            .map(|a| a.len())
-                            .unwrap_or_default(),
-                        |_: &mut UIStateGuard, _: usize| {},
-                        |ui: &mut UIStateGuard, id: usize| -> Result<()> {
-                            let uri = player.user_saved_albums.as_ref().unwrap()[id]
-                                .uri
-                                .clone()
-                                .unwrap();
-                            send.send(Event::GetContext(ContextURI::Album(uri.clone())))?;
+                    let album_uris = player
+                        .user_saved_albums
+                        .as_ref()
+                        .map(|albums| {
+                            albums
+                                .iter()
+                                .map(|a| a.uri.clone().unwrap())
+                                .collect::<Vec<_>>()
+                        })
+                        .unwrap_or_default();
 
-                            let frame_state = PageState::Browsing(uri);
-                            ui.history.push(frame_state.clone());
-                            ui.page = frame_state;
-                            ui.popup = PopupState::None;
-                            Ok(())
-                        },
-                        |ui: &mut UIStateGuard| {
-                            ui.popup = PopupState::None;
-                        },
+                    handle_command_for_uri_list_popup(
+                        command,
+                        send,
                         &mut ui,
+                        album_uris,
+                        ContextURI::Album("".to_owned()),
                     )?
                 }
-                PopupState::ThemeList(_, _) => handle_command_for_generic_list_popup(
+                PopupState::ThemeList(_, _) => handle_command_for_list_popup(
                     command,
                     match ui.popup {
                         PopupState::ThemeList(ref themes, _) => themes.len(),
@@ -256,7 +229,7 @@ fn handle_terminal_event(
                 PopupState::DeviceList(_) => {
                     let player = state.player.read().unwrap();
 
-                    handle_command_for_generic_list_popup(
+                    handle_command_for_list_popup(
                         command,
                         player.devices.len(),
                         |_: &mut UIStateGuard, _: usize| {},
@@ -433,7 +406,41 @@ fn handle_key_sequence_for_search_popup(
     }
 }
 
-fn handle_command_for_generic_list_popup(
+fn handle_command_for_uri_list_popup(
+    command: Command,
+    send: &mpsc::Sender<Event>,
+    ui: &mut UIStateGuard,
+    uris: Vec<String>,
+    base_uri: ContextURI,
+) -> Result<bool> {
+    handle_command_for_list_popup(
+        command,
+        uris.len(),
+        |_: &mut UIStateGuard, _: usize| {},
+        |ui: &mut UIStateGuard, id: usize| -> Result<()> {
+            let uri = uris[id].clone();
+            let context_uri = match base_uri {
+                ContextURI::Playlist(_) => ContextURI::Playlist(uri),
+                ContextURI::Artist(_) => ContextURI::Artist(uri),
+                ContextURI::Album(_) => ContextURI::Album(uri),
+                ContextURI::Unknown(_) => ContextURI::Unknown(uri),
+            };
+            send.send(Event::GetContext(context_uri))?;
+
+            let frame_state = PageState::Browsing(uris[id].clone());
+            ui.history.push(frame_state.clone());
+            ui.page = frame_state;
+            ui.popup = PopupState::None;
+            Ok(())
+        },
+        |ui: &mut UIStateGuard| {
+            ui.popup = PopupState::None;
+        },
+        ui,
+    )
+}
+
+fn handle_command_for_list_popup(
     command: Command,
     list_len: usize,
     on_select_func: impl Fn(&mut UIStateGuard, usize),
