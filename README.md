@@ -18,7 +18,7 @@
 
 ## Introduction
 
-- `spotify-player` is a custom Spotify player that I built and tweaked based on my personal preferences. It is fast, easy to use, and [configurable](https://raw.githubusercontent.com/aome510/spotify-player/master/doc/config.md).
+- `spotify-player` is a custom Spotify player that I built and tweaked based on my personal preferences. It is fast, easy to use, and [configurable](https://github.com/aome510/spotify-player/blob/master/doc/config.md).
 - `spotify-player` is designed to be a player, not a fully-fledged Spotify clone, so it does not aim to support all possible Spotify features. Its main goal is to provide a quick, easy, and intuitive way to modify current playback by either using player commands or navigating between different contexts.
 - `spotify-player`, similar to other TUI applications, is keyboard driven. User will use a set of [predefined commands with shortcuts](#commands) to interact with the player.
 - `spotify-player` has a simple UI with three main components:
@@ -138,7 +138,7 @@ Currently, the only use case of mouse is to seek to a position of the current pl
 
 ## Configurations
 
-By default, `spotify-player` will look into `$HOME/.config/spotify-player` for application's configuration files. This can be changed by either specifying `-c <FOLDER_PATH>` or `--config-folder <FOLDER_PATH>` option. Please refer to [the configuration documentation](https://raw.githubusercontent.com/aome510/spotify-player/master/doc/config.md) for more details.
+By default, `spotify-player` will look into `$HOME/.config/spotify-player` for application's configuration files. This can be changed by either specifying `-c <FOLDER_PATH>` or `--config-folder <FOLDER_PATH>` option. Please refer to [the configuration documentation](https://github.com/aome510/spotify-player/blob/master/doc/config.md) for more details.
 
 ## Roadmap
 
