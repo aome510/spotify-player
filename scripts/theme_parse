@@ -6,8 +6,14 @@ import yaml
 
 if len(sys.argv) > 1:
     name = sys.argv[1]
+
+    if len(sys.argv) > 2:
+        saved_name = sys.argv[2]
+    else:
+        saved_name = name
 else:
     name = 'Dracula'
+    saved_name = 'dracula'
 
 url = f'https://raw.githubusercontent.com/mbadolato/iTerm2-Color-Schemes/master/alacritty/{name}.yml'
 
@@ -17,7 +23,7 @@ data = yaml.safe_load(content)
 
 print(
     f'''[[themes]]
-name = "{name}"
+name = "{saved_name}"
 [themes.palette]
 background = "{data["colors"]["primary"]["background"]}"
 foreground = "{data["colors"]["primary"]["foreground"]}"

@@ -90,7 +90,7 @@ pub enum StyleColor {
     BrightCyan,
     BrightBlue,
     BrightYellow,
-    Rgb(u8, u8, u8),
+    Rgb { r: u8, g: u8, b: u8 },
 }
 
 #[derive(Copy, Clone, Debug, Deserialize)]
@@ -248,7 +248,7 @@ impl StyleColor {
             Self::BrightCyan => palette.bright_cyan.color,
             Self::BrightBlue => palette.bright_blue.color,
             Self::BrightYellow => palette.bright_yellow.color,
-            Self::Rgb(r, g, b) => style::Color::Rgb(r, g, b),
+            Self::Rgb { r, g, b } => style::Color::Rgb(r, g, b),
         }
     }
 }
