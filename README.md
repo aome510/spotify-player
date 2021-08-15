@@ -17,13 +17,14 @@
 
 ## Introduction
 
-- `spotify-player` is a custom Spotify player that I built and tweaked based on my personal preferences. It is fast, easy to use, and [configurable](https://github.com/aome510/spotify-player/blob/master/doc/config.md).
-- `spotify-player` is designed to be a player, not a fully-fledged Spotify clone, so it does not aim to support all possible Spotify features. Its main goal is to provide a quick, easy and intuitive way to modify your current playback.
-- `spotify-player`, similar to other TUI applications, is keyboard driven, so user will interact with the application using a set of [pre-defined commands with shortcuts](#commands).
+- `spotify-player` is a custom Spotify player that I built and tweaked based on my personal preferences. It is fast, easy to use, and [configurable](doc/config.md).
+- `spotify-player` is designed to be a player, not a fully-fledged Spotify clone, so it does not aim to support all possible Spotify features. Its main goal is to provide a quick, easy, and intuitive way to modify current playback by either using player commands or navigating between different contexts.
+- `spotify-player`, similar to other TUI applications, is keyboard driven. User will use a set of [pre-defined commands with shortcuts](#commands) to interact with the player.
 - `spotify-player` has a simple UI with three main components:
   - a playback window displaying the current playback
   - a context window displaying a context (playlist, album, artist)
   - popup windows for using some commands (switch theme, browser playlists, etc) or displaying additional information
+- `spotify-player` is built on top of [tui](https://github.com/fdehau/tui-rs) and [rspotify](https://github.com/ramsayleung/rspotify) libraries. It's also inspired by [spotify-tui](https://github.com/Rigellute/spotify-tui).
 
 ## Prerequisites
 

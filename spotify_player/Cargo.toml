@@ -3,8 +3,12 @@ name = "spotify_player"
 version = "0.1.0"
 authors = ["Thang Pham <phamducthang1234@gmail.com>"]
 edition = "2018"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+license = "MIT"
+description = "My custom spotify player"
+repository = "https://github.com/aome510/spotify-player"
+keywords = ["spotify", "tui", "player"]
+readme = "../README.md"
+include = ["src/**/*", "LICENSE", "../README.*"]
 
 [dependencies]
 anyhow = "1.0.42"
