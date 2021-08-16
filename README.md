@@ -22,7 +22,7 @@
 ## Introduction
 
 - `spotify-player` is a custom Spotify player that I built and tweaked based on my personal preferences. It is fast, easy to use, and [configurable](https://github.com/aome510/spotify-player/blob/master/doc/config.md).
-- `spotify-player` is designed to be a player, not a fully-fledged Spotify clone, so it does not aim to support all possible Spotify features. Its main goal is to provide a quick, easy, and intuitive way to modify current playback by either using player commands or navigating between different contexts.
+- `spotify-player` is designed to be a player, not a fully-fledged Spotify clone, so it does not aim to support all possible Spotify features. Its main goal is to provide a quick and intuitive way to modify the current playback by either using player commands or navigating between different contexts.
 - `spotify-player`, similar to other TUI applications, is keyboard driven. User will use a set of [predefined commands with shortcuts](#commands) to interact with the player.
 - `spotify-player` has a simple UI with three main components:
   - a playback window displaying the current playback
@@ -57,7 +57,7 @@
 
 ## Installation
 
-Before following the steps below, please read the [setup instructions](#setup) first.
+Before running the application, make sure you have read the [setup instructions](#setup).
 
 ### Arch Linux AUR
 
@@ -145,11 +145,13 @@ List of supported commands:
 
 ## Mouse support
 
-Currently, the only use case of mouse is to seek to a position of the current playback by right-clicking to such position in the playback's progress bar.
+Currently, the only use case of mouse is to seek to a position of the current playback by left-clicking to such position in the playback's progress bar.
 
 ## Configurations
 
-By default, `spotify-player` will look into `$HOME/.config/spotify-player` for application's configuration files. This can be changed by either specifying `-c <FOLDER_PATH>` or `--config-folder <FOLDER_PATH>` option. Please refer to [the configuration documentation](https://github.com/aome510/spotify-player/blob/master/doc/config.md) for more details.
+By default, `spotify-player` will look into `$HOME/.config/spotify-player` for application's configuration files. This can be changed by either specifying `-c <FOLDER_PATH>` or `--config-folder <FOLDER_PATH>` option.
+
+Please refer to [the configuration documentation](https://github.com/aome510/spotify-player/blob/master/doc/config.md) for more details on the configuration options.
 
 ## Roadmap
 
