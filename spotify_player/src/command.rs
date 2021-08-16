@@ -29,13 +29,15 @@ pub enum Command {
     SearchContext,
 
     BrowseUserPlaylists,
-    BrowseUserSavedAlbums,
     BrowseUserFollowedArtists,
+    BrowseUserSavedAlbums,
+
     BrowsePlayingTrackArtists,
     BrowsePlayingTrackAlbum,
     BrowsePlayingContext,
     BrowseSelectedTrackArtists,
     BrowseSelectedTrackAlbum,
+
     PreviousPage,
 
     SortTrackByTitle,
@@ -51,35 +53,35 @@ impl Command {
         match self {
             Self::NextTrack => "next track",
             Self::PreviousTrack => "previous track",
-            Self::ResumePause => "resume/pause based on the playback",
+            Self::ResumePause => "resume/pause based on the current playback",
             Self::PlayContext => "play a random track in the current context",
             Self::Repeat => "cycle the repeat mode",
             Self::Shuffle => "toggle the shuffle mode",
             Self::Quit => "quit the application",
-            Self::OpenCommandHelp => "open the help a command help popup",
+            Self::OpenCommandHelp => "open a command help popup",
             Self::ClosePopup => "close a popup",
-            Self::SelectNext => "select the next item in the focused list or a table",
-            Self::SelectPrevious => "select the previous item in the focused list or a table",
+            Self::SelectNext => "select the next item in the focused list or table",
+            Self::SelectPrevious => "select the previous item in the focused list or table",
             Self::ChooseSelected => "choose the selected item and act on it",
-            Self::RefreshPlayback => "refresh the current playback",
+            Self::RefreshPlayback => "manually refresh the current playback",
             Self::FocusNextWindow => "focus the next focusable window (if any)",
             Self::FocusPreviousWindow => "focus the previous focusable window (if any)",
             Self::SwitchTheme => "open a popup for switching theme",
             Self::SwitchDevice => "open a popup for switching device",
-            Self::SearchContext => "open a search popup for searching in context",
-            Self::PreviousPage => "go to the previous page",
+            Self::SearchContext => "open a popup for searching the current context",
             Self::BrowseUserPlaylists => "open a popup for browsing user's playlists",
-            Self::BrowseUserSavedAlbums => "open a popup for browsing user's saved albums",
             Self::BrowseUserFollowedArtists => "open a popup for browsing user's followed artists",
-            Self::BrowsePlayingContext => "browse the current playing context",
+            Self::BrowseUserSavedAlbums => "open a popup for browsing user's saved albums",
             Self::BrowsePlayingTrackArtists => {
                 "open a popup for browsing current playing track's artists"
             }
-            Self::BrowsePlayingTrackAlbum => "browse to the current playing track's album page",
+            Self::BrowsePlayingTrackAlbum => "browse the current playing track's album",
+            Self::BrowsePlayingContext => "browse the current playing context",
             Self::BrowseSelectedTrackArtists => {
-                "open a popup for browsing current selected track's artists"
+                "open a popup for browsing the selected track's artists"
             }
-            Self::BrowseSelectedTrackAlbum => "browse to the current selected track's album page",
+            Self::BrowseSelectedTrackAlbum => "browse to the selected track's album",
+            Self::PreviousPage => "go to the previous page",
             Self::SortTrackByTitle => "sort the track table (if any) by track's title",
             Self::SortTrackByArtists => "sort the track table (if any) by track's artists",
             Self::SortTrackByAlbum => "sort the track table (if any) by track's album",
