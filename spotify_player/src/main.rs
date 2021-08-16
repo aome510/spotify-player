@@ -45,7 +45,7 @@ async fn main() -> Result<()> {
 
     // parse command line arguments
     let matches = clap::App::new("spotify-player")
-        .version("0.1.0")
+        .version("0.1.1")
         .author("Thang Pham <phamducthang1234@gmail>")
         .arg(
             clap::Arg::with_name("config-folder")
@@ -53,7 +53,13 @@ async fn main() -> Result<()> {
                 .long("config-folder")
                 .value_name("FOLDER")
                 .help("Path to the application's config folder (default: $HOME/.config/spotify-player)")
-                .next_line_help(true),
+                .next_line_help(true)
+        ).arg(
+            clap::Arg::with_name("theme")
+                .short("t")
+                .long("theme")
+                .value_name("THEME")
+                .help("Application theme")
         )
         .get_matches();
 
@@ -65,6 +71,10 @@ async fn main() -> Result<()> {
     };
     {
         state.app_config.parse_config_file(&config_folder)?;
+        state.app_config.theme = match matches.value_of("theme") {
+            Some(theme) => theme.to_owned(),
+            None => state.app_config.theme,
+        };
         log::info!("app configuartions: {:#?}", state.app_config);
 
         state.theme_config.parse_config_file(&config_folder)?;

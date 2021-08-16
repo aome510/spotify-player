@@ -157,7 +157,7 @@ fn handle_terminal_event(
                         send,
                         &mut ui,
                         playlist_uris,
-                        ContextURI::Artist("".to_owned()),
+                        ContextURI::Playlist("".to_owned()),
                     )?
                 }
                 PopupState::UserFollowedArtistList(_) => {
