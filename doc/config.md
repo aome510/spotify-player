@@ -41,7 +41,9 @@ All configurations are stored inside the application's configuration folder (def
 
 ## Themes
 
-`spotify-player` uses `theme.toml` to define additional themes in addition to the default themes (`dracula`, `ayu_light`, `gruvbox_dark`, `solarized_light`). The new theme can then be used by setting the `theme` option in the [`app.toml`](#general) file.
+`spotify-player` uses `theme.toml` to define additional themes in addition to the default themes (`dracula`, `ayu_light`, `gruvbox_dark`, `solarized_light`).
+
+The new theme can then be used by setting the `theme` option in the [`app.toml`](#general) file or specifying the `-t <THEME>` (`--theme <THEME>`) option when running the player.
 
 A theme has three main components: `name` (the theme's name), `palette` (the theme's color palette), `component_style` (a list of predefined style for application's components). `name` and `palette` are required when defining a new theme. If `component_style` is not specified, a default value will be used.
 

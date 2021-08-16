@@ -59,7 +59,7 @@ async fn main() -> Result<()> {
                 .short("t")
                 .long("theme")
                 .value_name("THEME")
-                .help("Application theme")
+                .help("Application theme (default: dracula)")
         )
         .get_matches();
 
