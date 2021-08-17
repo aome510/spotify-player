@@ -155,4 +155,7 @@ Please refer to [the configuration documentation](https://github.com/aome510/spo
 
 ## Roadmap
 
-- [ ] integrating Spotify's [search APIs](https://developer.spotify.com/documentation/web-api/reference/#category-search)
+- [ ] integrate Spotify's [search APIs](https://developer.spotify.com/documentation/web-api/reference/#category-search)
+- [ ] implement add track to playlist, save album, and follow artist.
+- [ ] add a (optional?) spotify client ([librespot](https://github.com/librespot-org/librespot))
+- [ ] add mpris (dbus) support
