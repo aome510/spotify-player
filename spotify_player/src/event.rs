@@ -147,11 +147,9 @@ fn handle_terminal_event(
                     let player = state.player.read().unwrap();
                     let playlist_uris = player
                         .user_playlists
-                        .as_ref()
-                        .map(|playlists| {
-                            playlists.iter().map(|p| p.uri.clone()).collect::<Vec<_>>()
-                        })
-                        .unwrap_or_default();
+                        .iter()
+                        .map(|p| p.uri.clone())
+                        .collect::<Vec<_>>();
                     handle_command_for_uri_list_popup(
                         command,
                         send,
@@ -164,14 +162,9 @@ fn handle_terminal_event(
                     let player = state.player.read().unwrap();
                     let artist_uris = player
                         .user_followed_artists
-                        .as_ref()
-                        .map(|artists| {
-                            artists
-                                .iter()
-                                .map(|a| a.uri.clone().unwrap())
-                                .collect::<Vec<_>>()
-                        })
-                        .unwrap_or_default();
+                        .iter()
+                        .map(|a| a.uri.clone().unwrap())
+                        .collect::<Vec<_>>();
                     handle_command_for_uri_list_popup(
                         command,
                         send,
@@ -184,14 +177,9 @@ fn handle_terminal_event(
                     let player = state.player.read().unwrap();
                     let album_uris = player
                         .user_saved_albums
-                        .as_ref()
-                        .map(|albums| {
-                            albums
-                                .iter()
-                                .map(|a| a.uri.clone().unwrap())
-                                .collect::<Vec<_>>()
-                        })
-                        .unwrap_or_default();
+                        .iter()
+                        .map(|a| a.uri.clone().unwrap())
+                        .collect::<Vec<_>>();
 
                     handle_command_for_uri_list_popup(
                         command,

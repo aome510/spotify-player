@@ -42,37 +42,26 @@ impl Client {
                 false
             }
             event::Event::GetUserPlaylists => {
-                let needs_update = state.player.read().unwrap().user_playlists.is_none();
-                if needs_update {
-                    state.player.write().unwrap().user_playlists =
-                        Some(self.get_current_user_playlists().await?);
-                }
+                state.player.write().unwrap().user_playlists =
+                    self.get_current_user_playlists().await?;
                 false
             }
             event::Event::GetUserFollowedArtists => {
-                let needs_update = state.player.read().unwrap().user_followed_artists.is_none();
-                if needs_update {
-                    state.player.write().unwrap().user_followed_artists = Some(
-                        self.get_current_user_followed_artists()
-                            .await?
-                            .into_iter()
-                            .map(|a| a.into())
-                            .collect::<Vec<_>>(),
-                    );
-                }
+                state.player.write().unwrap().user_followed_artists = self
+                    .get_current_user_followed_artists()
+                    .await?
+                    .into_iter()
+                    .map(|a| a.into())
+                    .collect::<Vec<_>>();
                 false
             }
             event::Event::GetUserSavedAlbums => {
-                let needs_update = state.player.read().unwrap().user_saved_albums.is_none();
-                if needs_update {
-                    state.player.write().unwrap().user_saved_albums = Some(
-                        self.get_current_user_saved_albums()
-                            .await?
-                            .into_iter()
-                            .map(|a| a.album.into())
-                            .collect::<Vec<_>>(),
-                    );
-                }
+                state.player.write().unwrap().user_saved_albums = self
+                    .get_current_user_saved_albums()
+                    .await?
+                    .into_iter()
+                    .map(|a| a.album.into())
+                    .collect::<Vec<_>>();
                 false
             }
             event::Event::GetCurrentPlayback => {

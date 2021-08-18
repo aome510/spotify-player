@@ -67,11 +67,9 @@ pub fn render_popup(
                 {
                     let items = player
                         .user_playlists
-                        .as_ref()
-                        .map(|playlists| {
-                            playlists.iter().map(|p| (p.name.clone(), false)).collect()
-                        })
-                        .unwrap_or_default();
+                        .iter()
+                        .map(|p| (p.name.clone(), false))
+                        .collect();
                     construct_list_widget(ui, items, "User Playlists")
                 },
                 chunks[1],
@@ -88,9 +86,9 @@ pub fn render_popup(
                 {
                     let items = player
                         .user_followed_artists
-                        .as_ref()
-                        .map(|artists| artists.iter().map(|a| (a.name.clone(), false)).collect())
-                        .unwrap_or_default();
+                        .iter()
+                        .map(|a| (a.name.clone(), false))
+                        .collect();
                     construct_list_widget(ui, items, "User Followed Artists")
                 },
                 chunks[1],
@@ -107,9 +105,9 @@ pub fn render_popup(
                 {
                     let items = player
                         .user_saved_albums
-                        .as_ref()
-                        .map(|albums| albums.iter().map(|a| (a.name.clone(), false)).collect())
-                        .unwrap_or_default();
+                        .iter()
+                        .map(|a| (a.name.clone(), false))
+                        .collect();
                     construct_list_widget(ui, items, "User Saved Albums")
                 },
                 chunks[1],
