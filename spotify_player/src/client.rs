@@ -77,35 +77,52 @@ impl Client {
                 false
             }
             event::Event::NextTrack => {
-                self.next_track().await?;
+                let player = state.player.read().unwrap();
+                let playback = Self::get_state_current_playback(&player)?;
+                self.next_track(playback).await?;
                 true
             }
             event::Event::PreviousTrack => {
-                self.previous_track().await?;
+                let player = state.player.read().unwrap();
+                let playback = Self::get_state_current_playback(&player)?;
+                self.previous_track(playback).await?;
                 true
             }
             event::Event::ResumePause => {
-                self.toggle_playing_state(state).await?;
+                let player = state.player.read().unwrap();
+                let playback = Self::get_state_current_playback(&player)?;
+                self.toggle_playing_state(playback).await?;
                 true
             }
             event::Event::SeekTrack(position_ms) => {
-                self.seek_track(position_ms).await?;
+                let player = state.player.read().unwrap();
+                let playback = Self::get_state_current_playback(&player)?;
+                self.seek_track(playback, position_ms).await?;
                 true
             }
             event::Event::Shuffle => {
-                self.toggle_shuffle(state).await?;
+                let player = state.player.read().unwrap();
+                let playback = Self::get_state_current_playback(&player)?;
+                self.toggle_shuffle(playback).await?;
                 true
             }
             event::Event::Repeat => {
-                self.cycle_repeat(state).await?;
+                let player = state.player.read().unwrap();
+                let playback = Self::get_state_current_playback(&player)?;
+                self.cycle_repeat(playback).await?;
                 true
             }
             event::Event::PlayTrack(context_uri, uris, offset) => {
-                self.start_playback(context_uri, uris, offset).await?;
+                let player = state.player.read().unwrap();
+                let playback = Self::get_state_current_playback(&player)?;
+                self.start_playback(playback, context_uri, uris, offset)
+                    .await?;
                 true
             }
             event::Event::PlayContext(uri) => {
-                self.start_playback(Some(uri), None, None).await?;
+                let player = state.player.read().unwrap();
+                let playback = Self::get_state_current_playback(&player)?;
+                self.start_playback(playback, Some(uri), None, None).await?;
                 true
             }
             event::Event::TransferPlayback(device_id) => {
@@ -217,26 +234,6 @@ impl Client {
             Self::handle_rspotify_result(self.spotify.current_user_saved_albums(50, None).await)?;
         Ok(self.get_all_paging_items(first_page).await?)
     }
-
-    /// plays a track given a context URI
-    pub async fn start_playback(
-        &self,
-        context_uri: Option<String>,
-        uris: Option<Vec<String>>,
-        offset: Option<offset::Offset>,
-    ) -> Result<()> {
-        Self::handle_rspotify_result(
-            self.spotify
-                .start_playback(None, context_uri, uris, offset, None)
-                .await,
-        )
-    }
-
-    /// transfers the current playback to another device
-    pub async fn transfer_playback(&self, device_id: String) -> Result<()> {
-        Self::handle_rspotify_result(self.spotify.transfer_playback(&device_id, None).await)
-    }
-
     /// gets a playlist given its id
     pub async fn get_playlist(&self, playlist_uri: &str) -> Result<playlist::FullPlaylist> {
         Self::handle_rspotify_result(self.spotify.playlist(playlist_uri, None, None).await)
@@ -284,67 +281,114 @@ impl Client {
         Self::handle_rspotify_result(self.spotify.artist_related_artists(artist_uri).await)
     }
 
+    /// plays a track given a context URI
+    pub async fn start_playback(
+        &self,
+        playback: &context::CurrentlyPlaybackContext,
+        context_uri: Option<String>,
+        uris: Option<Vec<String>>,
+        offset: Option<offset::Offset>,
+    ) -> Result<()> {
+        Self::handle_rspotify_result(
+            self.spotify
+                .start_playback(
+                    Some(playback.device.id.clone()),
+                    context_uri,
+                    uris,
+                    offset,
+                    None,
+                )
+                .await,
+        )
+    }
+
+    /// transfers the current playback to another device
+    pub async fn transfer_playback(&self, device_id: String) -> Result<()> {
+        Self::handle_rspotify_result(self.spotify.transfer_playback(&device_id, None).await)
+    }
+
     /// cycles through the repeat state of the current playback
-    pub async fn cycle_repeat(&self, state: &state::SharedState) -> Result<()> {
-        let player = state.player.read().unwrap();
-        let state = Self::get_current_playback_state(&player)?;
-        let next_repeat_state = match state.repeat_state {
+    pub async fn cycle_repeat(&self, playback: &context::CurrentlyPlaybackContext) -> Result<()> {
+        let next_repeat_state = match playback.repeat_state {
             RepeatState::Off => RepeatState::Track,
             RepeatState::Track => RepeatState::Context,
             RepeatState::Context => RepeatState::Off,
         };
-        Self::handle_rspotify_result(self.spotify.repeat(next_repeat_state, None).await)
-    }
-
-    /// toggles the shuffle state of the current playback
-    pub async fn toggle_shuffle(&self, state: &state::SharedState) -> Result<()> {
-        let player = state.player.read().unwrap();
-        let state = Self::get_current_playback_state(&player)?;
-        Self::handle_rspotify_result(self.spotify.shuffle(!state.shuffle_state, None).await)
+        Self::handle_rspotify_result(
+            self.spotify
+                .repeat(next_repeat_state, Some(playback.device.id.clone()))
+                .await,
+        )
     }
 
     /// toggles the current playing state (pause/resume a track)
-    pub async fn toggle_playing_state(&self, state: &state::SharedState) -> Result<()> {
-        match state.player.read().unwrap().playback {
-            Some(ref playback) => {
-                if playback.is_playing {
-                    self.pause_track().await
-                } else {
-                    self.resume_track().await
-                }
-            }
-            // TODO: find out if this works
-            None => self.resume_track().await,
+    pub async fn toggle_playing_state(
+        &self,
+        playback: &context::CurrentlyPlaybackContext,
+    ) -> Result<()> {
+        if playback.is_playing {
+            self.pause_track(playback).await
+        } else {
+            self.resume_track(playback).await
         }
     }
 
     /// seeks to a position in the current playing track
-    pub async fn seek_track(&self, position_ms: u32) -> Result<()> {
-        Self::handle_rspotify_result(self.spotify.seek_track(position_ms, None).await)
+    pub async fn seek_track(
+        &self,
+        playback: &context::CurrentlyPlaybackContext,
+        position_ms: u32,
+    ) -> Result<()> {
+        Self::handle_rspotify_result(
+            self.spotify
+                .seek_track(position_ms, Some(playback.device.id.clone()))
+                .await,
+        )
     }
 
     /// resumes the previously paused/played track
-    pub async fn resume_track(&self) -> Result<()> {
+    pub async fn resume_track(&self, playback: &context::CurrentlyPlaybackContext) -> Result<()> {
         Self::handle_rspotify_result(
             self.spotify
-                .start_playback(None, None, None, None, None)
+                .start_playback(Some(playback.device.id.clone()), None, None, None, None)
                 .await,
         )
     }
 
     /// pauses the currently playing track
-    pub async fn pause_track(&self) -> Result<()> {
-        Self::handle_rspotify_result(self.spotify.pause_playback(None).await)
+    pub async fn pause_track(&self, playback: &context::CurrentlyPlaybackContext) -> Result<()> {
+        Self::handle_rspotify_result(
+            self.spotify
+                .pause_playback(Some(playback.device.id.clone()))
+                .await,
+        )
     }
 
     /// skips to the next track
-    pub async fn next_track(&self) -> Result<()> {
-        Self::handle_rspotify_result(self.spotify.next_track(None).await)
+    pub async fn next_track(&self, playback: &context::CurrentlyPlaybackContext) -> Result<()> {
+        Self::handle_rspotify_result(
+            self.spotify
+                .next_track(Some(playback.device.id.clone()))
+                .await,
+        )
     }
 
     /// skips to the previous track
-    pub async fn previous_track(&self) -> Result<()> {
-        Self::handle_rspotify_result(self.spotify.previous_track(None).await)
+    pub async fn previous_track(&self, playback: &context::CurrentlyPlaybackContext) -> Result<()> {
+        Self::handle_rspotify_result(
+            self.spotify
+                .previous_track(Some(playback.device.id.clone()))
+                .await,
+        )
+    }
+
+    /// toggles the shuffle state of the current playback
+    pub async fn toggle_shuffle(&self, playback: &context::CurrentlyPlaybackContext) -> Result<()> {
+        Self::handle_rspotify_result(
+            self.spotify
+                .shuffle(!playback.shuffle_state, Some(playback.device.id.clone()))
+                .await,
+        )
     }
 
     /// gets the current playing context
@@ -564,7 +608,7 @@ impl Client {
     }
 
     /// gets the current playback state from the application state
-    fn get_current_playback_state<'a>(
+    fn get_state_current_playback<'a>(
         player: &'a std::sync::RwLockReadGuard<'a, state::PlayerState>,
     ) -> Result<&'a context::CurrentlyPlaybackContext> {
         match player.playback {
