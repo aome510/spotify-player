@@ -6,7 +6,7 @@
 - [Prerequisites](#prerequisites)
   - [Setup](#setup)
 - [Installation](#installation)
-  - [Arch Linux AUR](#arch-linux-aur)
+  - [AUR](#aur)
   - [Cargo](#cargo)
   - [Docker](#docker)
 - [Examples](#examples)
@@ -59,7 +59,7 @@
 
 Before running the application, make sure you have read the [setup instructions](#setup).
 
-### Arch Linux AUR
+### AUR
 
 Run `yay -S spotify-player` to install the application as an AUR package.
 

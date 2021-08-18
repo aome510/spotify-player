@@ -46,8 +46,8 @@ impl Default for AppConfig {
     fn default() -> Self {
         AppConfig {
             theme: "dracula".to_owned(),
-            n_refreshes_each_playback_update: 10,
-            refresh_delay_in_ms_each_playback_update: 200,
+            n_refreshes_each_playback_update: 5,
+            refresh_delay_in_ms_each_playback_update: 500,
             app_refresh_duration_in_ms: 30,
             playback_refresh_duration_in_ms: 0,
             track_table_item_max_len: 32,
