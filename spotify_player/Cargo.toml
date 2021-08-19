@@ -17,6 +17,8 @@ config_parser2 = "0.1.2"
 crossterm = { version = "0.20.0", features = ["event-stream"] }
 dirs-next = "2.0.0"
 env_logger = "0.9.0"
+librespot-core = "0.2.0"
+librespot-playback = "0.2.0"
 log = "0.4.14"
 lru = "0.6.6"
 reqwest = { version = "0.10.0", features = ["json"] }
