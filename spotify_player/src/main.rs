@@ -24,10 +24,10 @@ const SCOPES: [&str; 11] = [
     "user-library-read",
 ];
 
-async fn init_state(client: &mut client::Client, state: &state::SharedState) -> Result<()> {
-    state.player.write().unwrap().auth_token_expires_at = client.refresh_token().await?;
+fn init_state(client: &mut client::Client, state: &state::SharedState) -> Result<()> {
+    state.player.write().unwrap().auth_token_expires_at = client.refresh_token()?;
 
-    let devices = client.get_devices().await?;
+    let devices = client.get_devices()?;
     if devices.is_empty() {
         return Err(anyhow!(
             "no active device available. Please connect to one and try again."
@@ -38,8 +38,7 @@ async fn init_state(client: &mut client::Client, state: &state::SharedState) -> 
     Ok(())
 }
 
-#[tokio::main]
-async fn main() -> Result<()> {
+fn main() -> Result<()> {
     // disable logging by default
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("off")).init();
 
@@ -97,7 +96,7 @@ async fn main() -> Result<()> {
     std::thread::spawn({
         let client_config = config::ClientConfig::from_config_file(&config_folder)?;
 
-        let oauth = rspotify::oauth2::SpotifyOAuth::default()
+        let oauth = rspotify::blocking::oauth2::SpotifyOAuth::default()
             .client_id(&client_config.client_id)
             .client_secret(&client_config.client_secret)
             .redirect_uri("http://localhost:8888/callback")
@@ -107,7 +106,7 @@ async fn main() -> Result<()> {
 
         let mut client = client::Client::new(oauth);
         // init the application's state
-        init_state(&mut client, &state).await?;
+        init_state(&mut client, &state)?;
 
         let state = state.clone();
         let send = send.clone();
