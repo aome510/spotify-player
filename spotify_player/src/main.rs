@@ -46,6 +46,7 @@ async fn main() -> Result<()> {
     // parse command line arguments
     let matches = clap::App::new("spotify-player")
         .version("0.1.1")
+        .about("A command driven spotify player")
         .author("Thang Pham <phamducthang1234@gmail>")
         .arg(
             clap::Arg::with_name("config-folder")
