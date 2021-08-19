@@ -164,17 +164,23 @@ impl Client {
     pub async fn refresh_token(&mut self) -> Result<SystemTime> {
         log::info!("refresh auth token...");
 
-        let token = rspotify::util::get_token(&mut self.oauth)
-            .await
-            .expect("failed to get access token");
-        let refresh_token = token
-            .refresh_token
-            .expect("failed to get the refresh token from the access token");
-        let new_token = self
-            .oauth
-            .refresh_access_token(&refresh_token)
-            .await
-            .expect("failed to refresh the access token");
+        let new_token = {
+            match rspotify::util::get_token(&mut self.oauth).await {
+                Some(token) => match token.refresh_token {
+                    Some(refresh_token) => self.oauth.refresh_access_token(&refresh_token).await,
+                    None => None,
+                },
+                None => None,
+            }
+        };
+
+        let new_token = match new_token {
+            Some(token) => token,
+            None => {
+                log::warn!("failed to refresh the authentication token. Retry in 1 minute.");
+                return Ok(SystemTime::now() + Duration::from_secs(60));
+            }
+        };
 
         let expires_at = SystemTime::UNIX_EPOCH
             + Duration::from_secs(
