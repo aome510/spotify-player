@@ -21,7 +21,7 @@ pub enum ContextURI {
 #[derive(Debug)]
 /// An event to communicate with the client
 pub enum Event {
-    GetDevices,
+    // GetDevices,
     GetUserPlaylists,
     GetUserSavedAlbums,
     GetUserFollowedArtists,
@@ -36,7 +36,7 @@ pub enum Event {
     GetContext(ContextURI),
     PlayTrack(Option<String>, Option<Vec<String>>, Option<offset::Offset>),
     PlayContext(String),
-    TransferPlayback(String),
+    // TransferPlayback(String),
 }
 
 impl From<event::KeyEvent> for Key {
@@ -214,23 +214,23 @@ fn handle_terminal_event(
                     },
                     &mut ui,
                 )?,
-                PopupState::DeviceList(_) => {
-                    let player = state.player.read().unwrap();
+                // PopupState::DeviceList(_) => {
+                //     let player = state.player.read().unwrap();
 
-                    handle_command_for_list_popup(
-                        command,
-                        player.devices.len(),
-                        |_: &mut UIStateGuard, _: usize| {},
-                        |_: &mut UIStateGuard, id: usize| -> Result<()> {
-                            send.send(Event::TransferPlayback(player.devices[id].id.clone()))?;
-                            Ok(())
-                        },
-                        |ui: &mut UIStateGuard| {
-                            ui.popup = PopupState::None;
-                        },
-                        &mut ui,
-                    )?
-                }
+                //     handle_command_for_list_popup(
+                //         command,
+                //         player.devices.len(),
+                //         |_: &mut UIStateGuard, _: usize| {},
+                //         |_: &mut UIStateGuard, id: usize| -> Result<()> {
+                //             send.send(Event::TransferPlayback(player.devices[id].id.clone()))?;
+                //             Ok(())
+                //         },
+                //         |ui: &mut UIStateGuard| {
+                //             ui.popup = PopupState::None;
+                //         },
+                //         &mut ui,
+                //     )?
+                // }
                 PopupState::CommandHelp => handle_command_for_command_help_popup(command, &mut ui)?,
             };
 
@@ -571,11 +571,11 @@ fn handle_command(
             }
             Ok(true)
         }
-        Command::SwitchDevice => {
-            ui.popup = PopupState::DeviceList(utils::new_list_state());
-            send.send(Event::GetDevices)?;
-            Ok(true)
-        }
+        // Command::SwitchDevice => {
+        //     ui.popup = PopupState::DeviceList(utils::new_list_state());
+        //     send.send(Event::GetDevices)?;
+        //     Ok(true)
+        // }
         Command::SwitchTheme => {
             ui.popup = PopupState::ThemeList(state.get_themes(ui), utils::new_list_state());
             Ok(true)

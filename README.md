@@ -125,7 +125,6 @@ List of supported commands:
 | `FocusNextWindow`            | focus the next focusable window (if any)                  | `tab`              |
 | `FocusPreviousWindow`        | focus the previous focusable window (if any)              | `backtab`          |
 | `SwitchTheme`                | open a popup for switching theme                          | `T`                |
-| `SwitchDevice`               | open a popup for switching device                         | `D`                |
 | `SearchContext`              | open a popup for searching the current context            | `/`                |
 | `BrowseUserPlaylists`        | open a popup for browsing user's playlists                | `u p`              |
 | `BrowseUserFollowedArtists`  | open a popup for browsing user's followed artists         | `u a`              |
