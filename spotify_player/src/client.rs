@@ -2,28 +2,23 @@ use crate::event;
 use crate::state;
 use crate::utils;
 use anyhow::{anyhow, Result};
-use rspotify::{
-    client::Spotify,
-    model::*,
-    oauth2::{SpotifyClientCredentials, SpotifyOAuth, TokenInfo},
-    senum::*,
-};
-use std::time::{Duration, SystemTime};
+use librespot_core::session::Session;
+use rspotify::{client::Spotify, model::*, senum::*};
 
 /// A spotify client
 pub struct Client {
+    session: Session,
     spotify: Spotify,
     http: reqwest::Client,
-    oauth: SpotifyOAuth,
 }
 
 impl Client {
     /// creates the new `Client` given a spotify authorization
-    pub fn new(oauth: SpotifyOAuth) -> Self {
+    pub fn new(session: Session, spotify: Spotify) -> Self {
         Self {
-            spotify: Spotify::default(),
+            session,
+            spotify,
             http: reqwest::Client::new(),
-            oauth,
         }
     }
 
@@ -69,12 +64,13 @@ impl Client {
                 false
             }
             event::Event::RefreshToken => {
-                let expires_at = state.player.read().unwrap().auth_token_expires_at;
-                if SystemTime::now() > expires_at {
-                    state.player.write().unwrap().auth_token_expires_at =
-                        self.refresh_token().await?;
-                }
                 false
+                // let expires_at = state.player.read().unwrap().auth_token_expires_at;
+                // if SystemTime::now() > expires_at {
+                //     state.player.write().unwrap().auth_token_expires_at =
+                //         self.refresh_token().await?;
+                // }
+                // false
             }
             event::Event::NextTrack => {
                 let player = state.player.read().unwrap();
@@ -157,50 +153,6 @@ impl Client {
             utils::update_playback(state, send);
         }
         Ok(())
-    }
-
-    /// refreshes the client's authentication token.
-    /// Returns the token's expired time.
-    pub async fn refresh_token(&mut self) -> Result<SystemTime> {
-        log::info!("refresh auth token...");
-
-        let new_token = {
-            match rspotify::util::get_token(&mut self.oauth).await {
-                Some(token) => match token.refresh_token {
-                    Some(refresh_token) => self.oauth.refresh_access_token(&refresh_token).await,
-                    None => None,
-                },
-                None => None,
-            }
-        };
-
-        let new_token = match new_token {
-            Some(token) => token,
-            None => {
-                log::warn!("failed to refresh the authentication token. Retry in 1 minute.");
-                return Ok(SystemTime::now() + Duration::from_secs(60));
-            }
-        };
-
-        let expires_at = SystemTime::UNIX_EPOCH
-            + Duration::from_secs(
-                new_token
-                    .expires_at
-                    .expect("failed to get token's `expires_at`") as u64,
-            )
-            - Duration::from_secs(10);
-
-        // build a new spotify client from the new token
-        self.spotify = Self::build_spotify_client(new_token);
-
-        log::info!(
-            "token will expire in {:?} seconds",
-            expires_at
-                .duration_since(SystemTime::now())
-                .unwrap()
-                .as_secs()
-        );
-        Ok(expires_at)
     }
 
     /// gets all available devices
@@ -593,16 +545,6 @@ impl Client {
         Ok(items)
     }
 
-    /// builds a spotify client from an authentication token
-    fn build_spotify_client(token: TokenInfo) -> Spotify {
-        let client_credential = SpotifyClientCredentials::default()
-            .token_info(token)
-            .build();
-        Spotify::default()
-            .client_credentials_manager(client_credential)
-            .build()
-    }
-
     /// handles a `rspotify` client result and converts it into `anyhow` compatible result format
     fn handle_rspotify_result<T, E: std::fmt::Display>(
         result: std::result::Result<T, E>,
@@ -626,7 +568,7 @@ impl Client {
     /// updates the current playback state by fetching data from the spotify client
     async fn update_current_playback_state(&self, state: &state::SharedState) -> Result<()> {
         state.player.write().unwrap().playback = self.get_current_playback().await?;
-        state.player.write().unwrap().playback_last_updated = Some(std::time::SystemTime::now());
+        state.player.write().unwrap().playback_last_updated = Some(std::time::Instant::now());
         Ok(())
     }
 

@@ -4,39 +4,13 @@ mod config;
 mod event;
 mod key;
 mod state;
+mod token;
 mod ui;
 mod utils;
 
-use anyhow::{anyhow, Result};
-
-// spotify authentication token's scopes for permissions
-const SCOPES: [&str; 11] = [
-    "user-read-recently-played",
-    "user-top-read",
-    "user-read-playback-position",
-    "user-read-playback-state",
-    "user-modify-playback-state",
-    "user-read-currently-playing",
-    "streaming",
-    "playlist-read-private",
-    "playlist-read-collaborative",
-    "user-follow-read",
-    "user-library-read",
-];
-
-async fn init_state(client: &mut client::Client, state: &state::SharedState) -> Result<()> {
-    state.player.write().unwrap().auth_token_expires_at = client.refresh_token().await?;
-
-    let devices = client.get_devices().await?;
-    if devices.is_empty() {
-        return Err(anyhow!(
-            "no active device available. Please connect to one and try again."
-        ));
-    }
-    state.player.write().unwrap().devices = devices;
-
-    Ok(())
-}
+use anyhow::Result;
+use librespot_core::{authentication::Credentials, config::SessionConfig, session::Session};
+use rspotify::client::Spotify;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -96,19 +70,17 @@ async fn main() -> Result<()> {
 
     // client event watcher/handler thread
     std::thread::spawn({
-        let client_config = config::ClientConfig::from_config_file(&config_folder)?;
-
-        let oauth = rspotify::oauth2::SpotifyOAuth::default()
-            .client_id(&client_config.client_id)
-            .client_secret(&client_config.client_secret)
-            .redirect_uri("http://localhost:8888/callback")
-            .cache_path(config::get_token_cache_file_path(&config_folder))
-            .scope(&SCOPES.join(" "))
-            .build();
-
-        let mut client = client::Client::new(oauth);
-        // init the application's state
-        init_state(&mut client, &state).await?;
+        let auth = config::AuthConfig::from_config_file(&config_folder)?;
+        let session = Session::connect(
+            SessionConfig::default(),
+            Credentials::with_password(auth.username, auth.password),
+            None,
+        )
+        .await?;
+        let token = token::get_token(&session).await?;
+        let spotify = Spotify::default().access_token(&token.access_token);
+        state.player.write().unwrap().token = token;
+        let client = client::Client::new(session, spotify);
 
         let state = state.clone();
         let send = send.clone();

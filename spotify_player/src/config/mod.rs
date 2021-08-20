@@ -2,8 +2,7 @@ mod keymap;
 mod theme;
 
 const DEFAULT_CONFIG_FOLDER: &str = ".config/spotify-player";
-const TOKEN_CACHE_FILE: &str = ".spotify_token_cache.json";
-const CLIENT_CONFIG_FILE: &str = "client.toml";
+const AUTH_CONFIG_FILE: &str = "auth.toml";
 const APP_CONFIG_FILE: &str = "app.toml";
 const THEME_CONFIG_FILE: &str = "theme.toml";
 const KEYMAP_CONFIG_FILE: &str = "keymap.toml";
@@ -17,10 +16,10 @@ pub use keymap::*;
 pub use theme::*;
 
 #[derive(Deserialize)]
-/// Spotify client configurations
-pub struct ClientConfig {
-    pub client_id: String,
-    pub client_secret: String,
+/// Spotify auth configurations
+pub struct AuthConfig {
+    pub username: String,
+    pub password: String,
 }
 
 #[derive(Debug, Deserialize, ConfigParse)]
@@ -34,10 +33,10 @@ pub struct AppConfig {
     pub track_table_item_max_len: usize,
 }
 
-impl ClientConfig {
-    // creates client configurations from a client config file in `path` folder
+impl AuthConfig {
+    // creates auth configurations from a auth config file in `path` folder
     pub fn from_config_file(path: &Path) -> Result<Self> {
-        let content = std::fs::read_to_string(path.join(CLIENT_CONFIG_FILE))?;
+        let content = std::fs::read_to_string(path.join(AUTH_CONFIG_FILE))?;
         Ok(toml::from_str::<Self>(&content)?)
     }
 }
@@ -80,9 +79,4 @@ pub fn get_config_folder_path() -> Result<PathBuf> {
         Some(home) => Ok(home.join(DEFAULT_CONFIG_FOLDER)),
         None => Err(anyhow!("cannot find the $HOME folder")),
     }
-}
-
-/// gets the token (spotify authentictation token) cache file path
-pub fn get_token_cache_file_path(config_folder: &Path) -> PathBuf {
-    config_folder.join(TOKEN_CACHE_FILE)
 }
