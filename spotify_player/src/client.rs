@@ -1,11 +1,8 @@
-use crate::config;
 use crate::event;
 use crate::state;
 use crate::token;
 use crate::utils;
 use anyhow::{anyhow, Result};
-use librespot_core::authentication::Credentials;
-use librespot_core::config::SessionConfig;
 use librespot_core::session::Session;
 use rspotify::{blocking::client::Spotify, model::*, senum::*};
 
@@ -18,22 +15,10 @@ pub struct Client {
 
 impl Client {
     /// creates the new `Client` given a spotify authorization
-    pub async fn new(
-        config_folder: &std::path::Path,
-        cache_folder: &std::path::Path,
-        state: &state::SharedState,
-    ) -> Result<Self> {
-        let auth = config::AuthConfig::from_config_file(config_folder)?;
-        let session = Session::connect(
-            SessionConfig::default(),
-            Credentials::with_password(auth.username, auth.password),
-            None,
-        )
-        .await?;
+    pub async fn new(session: Session, state: &state::SharedState) -> Result<Self> {
         let token = token::get_token(&session).await?;
         let spotify = Spotify::default().access_token(&token.access_token);
         state.player.write().unwrap().token = token;
-
         Ok(Self {
             session,
             spotify,

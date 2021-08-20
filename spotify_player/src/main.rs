@@ -1,3 +1,8 @@
+use anyhow::Result;
+use librespot_core::{
+    authentication::Credentials, cache::Cache, config::SessionConfig, session::Session,
+};
+
 mod client;
 mod command;
 mod config;
@@ -8,8 +13,46 @@ mod token;
 mod ui;
 mod utils;
 
+async fn new_session_with_new_creds(
+    config_folder: &std::path::Path,
+    cache: Cache,
+) -> Result<Session> {
+    log::info!("creating a new session with new credentials");
+
+    let auth = config::AuthConfig::from_config_file(config_folder)?;
+    Ok(Session::connect(
+        SessionConfig::default(),
+        Credentials::with_password(auth.username, auth.password),
+        Some(cache),
+    )
+    .await?)
+}
+
+async fn new_session(
+    config_folder: &std::path::Path,
+    cache_folder: &std::path::Path,
+) -> Result<Session> {
+    let cache = Cache::new(Some(cache_folder), Some(&cache_folder.join("audio")), None)?;
+
+    // create a new session if either
+    // - there is no cached credentials or
+    // - the cached credentials are expired or invalid
+    match cache.credentials() {
+        None => new_session_with_new_creds(config_folder, cache).await,
+        Some(creds) => {
+            match Session::connect(SessionConfig::default(), creds, Some(cache.clone())).await {
+                Ok(session) => {
+                    log::info!("use the cached credentials");
+                    Ok(session)
+                }
+                Err(_) => new_session_with_new_creds(config_folder, cache).await,
+            }
+        }
+    }
+}
+
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> Result<()> {
     // disable logging by default
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("off")).init();
 
@@ -54,8 +97,9 @@ async fn main() -> anyhow::Result<()> {
     if !config_folder.exists() {
         std::fs::create_dir_all(&config_folder)?;
     }
-    if !cache_folder.exists() {
-        std::fs::create_dir_all(&cache_folder)?;
+    let cache_audio_folder = cache_folder.join("audio");
+    if !cache_audio_folder.exists() {
+        std::fs::create_dir_all(&cache_audio_folder)?;
     }
 
     // init the shared application state
@@ -70,7 +114,8 @@ async fn main() -> anyhow::Result<()> {
     std::thread::spawn({
         let state = state.clone();
         let send = send.clone();
-        let client = client::Client::new(&config_folder, &cache_folder, &state).await?;
+        let session = new_session(&config_folder, &cache_folder).await?;
+        let client = client::Client::new(session, &state).await?;
         move || {
             client::start_watcher(state, client, send, recv);
         }
