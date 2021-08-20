@@ -12,8 +12,7 @@ use anyhow::Result;
 use librespot_core::{authentication::Credentials, config::SessionConfig, session::Session};
 use rspotify::client::Spotify;
 
-#[tokio::main]
-async fn main() -> Result<()> {
+fn main() -> Result<()> {
     // disable logging by default
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("off")).init();
 

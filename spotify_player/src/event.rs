@@ -8,7 +8,7 @@ use anyhow::Result;
 use crossterm::event::{self, EventStream, KeyCode, KeyModifiers};
 use rspotify::model::offset;
 use std::sync::mpsc;
-use tokio::stream::StreamExt;
+use tokio_stream::StreamExt;
 
 #[derive(Debug)]
 pub enum ContextURI {
