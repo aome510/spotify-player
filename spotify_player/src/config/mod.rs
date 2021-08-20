@@ -2,6 +2,7 @@ mod keymap;
 mod theme;
 
 const DEFAULT_CONFIG_FOLDER: &str = ".config/spotify-player";
+const DEFAULT_CACHE_FOLDER: &str = ".cache/spotify-player";
 const AUTH_CONFIG_FILE: &str = "auth.toml";
 const APP_CONFIG_FILE: &str = "app.toml";
 const THEME_CONFIG_FILE: &str = "theme.toml";
@@ -77,6 +78,14 @@ impl AppConfig {
 pub fn get_config_folder_path() -> Result<PathBuf> {
     match dirs_next::home_dir() {
         Some(home) => Ok(home.join(DEFAULT_CONFIG_FOLDER)),
+        None => Err(anyhow!("cannot find the $HOME folder")),
+    }
+}
+
+/// gets the application's cache folder path
+pub fn get_cache_folder_path() -> Result<PathBuf> {
+    match dirs_next::home_dir() {
+        Some(home) => Ok(home.join(DEFAULT_CACHE_FOLDER)),
         None => Err(anyhow!("cannot find the $HOME folder")),
     }
 }

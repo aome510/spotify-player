@@ -8,12 +8,8 @@ mod token;
 mod ui;
 mod utils;
 
-use anyhow::Result;
-use librespot_core::{authentication::Credentials, config::SessionConfig, session::Session};
-use rspotify::blocking::client::Spotify;
-
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> anyhow::Result<()> {
     // disable logging by default
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("off")).init();
 
@@ -30,6 +26,14 @@ async fn main() -> Result<()> {
                 .help("Path to the application's config folder (default: $HOME/.config/spotify-player)")
                 .next_line_help(true)
         ).arg(
+            clap::Arg::with_name("cache-folder")
+                .short("C")
+                .long("cache-folder")
+                .value_name("FOLDER")
+                .help("Path to the application's cache folder (default: $HOME/.cache/spotify-player)")
+                .next_line_help(true)
+        )
+        .arg(
             clap::Arg::with_name("theme")
                 .short("t")
                 .long("theme")
@@ -38,31 +42,25 @@ async fn main() -> Result<()> {
         )
         .get_matches();
 
-    // parsing config files
-    let mut state = state::State::default();
     let config_folder = match matches.value_of("config-folder") {
         Some(path) => path.into(),
         None => config::get_config_folder_path()?,
     };
-    {
-        state.app_config.parse_config_file(&config_folder)?;
-        state.app_config.theme = match matches.value_of("theme") {
-            Some(theme) => theme.to_owned(),
-            None => state.app_config.theme,
-        };
-        log::info!("app configuartions: {:#?}", state.app_config);
+    let cache_folder = match matches.value_of("cache-folder") {
+        Some(path) => path.into(),
+        None => config::get_cache_folder_path()?,
+    };
 
-        state.theme_config.parse_config_file(&config_folder)?;
-        if let Some(theme) = state.theme_config.find_theme(&state.app_config.theme) {
-            state.ui.lock().unwrap().theme = theme;
-        }
-        log::info!("theme configuartions: {:#?}", state.theme_config);
-
-        state.keymap_config.parse_config_file(&config_folder)?;
-        log::info!("keymap configuartions: {:#?}", state.keymap_config);
+    if !config_folder.exists() {
+        std::fs::create_dir_all(&config_folder)?;
+    }
+    if !cache_folder.exists() {
+        std::fs::create_dir_all(&cache_folder)?;
     }
 
-    // init the shared state
+    // init the shared application state
+    let mut state = state::State::default();
+    state.parse_config_files(&config_folder, matches.value_of("theme"))?;
     let state = std::sync::Arc::new(state);
 
     // start application's threads
@@ -70,20 +68,9 @@ async fn main() -> Result<()> {
 
     // client event watcher/handler thread
     std::thread::spawn({
-        let auth = config::AuthConfig::from_config_file(&config_folder)?;
-        let session = Session::connect(
-            SessionConfig::default(),
-            Credentials::with_password(auth.username, auth.password),
-            None,
-        )
-        .await?;
-        let token = token::get_token(&session).await?;
-        let spotify = Spotify::default().access_token(&token.access_token);
-        state.player.write().unwrap().token = token;
-        let client = client::Client::new(session, spotify);
-
         let state = state.clone();
         let send = send.clone();
+        let client = client::Client::new(&config_folder, &cache_folder, &state).await?;
         move || {
             client::start_watcher(state, client, send, recv);
         }
