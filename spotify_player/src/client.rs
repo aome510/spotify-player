@@ -3,7 +3,7 @@ use crate::state;
 use crate::utils;
 use anyhow::{anyhow, Result};
 use librespot_core::session::Session;
-use rspotify::{client::Spotify, model::*, senum::*};
+use rspotify::{blocking::client::Spotify, model::*, senum::*};
 
 /// A spotify client
 pub struct Client {
@@ -23,7 +23,7 @@ impl Client {
     }
 
     /// handles a client event
-    pub fn handle_event(
+    pub async fn handle_event(
         &mut self,
         state: &state::SharedState,
         send: &std::sync::mpsc::Sender<event::Event>,
@@ -37,12 +37,14 @@ impl Client {
                 false
             }
             event::Event::GetUserPlaylists => {
-                state.player.write().unwrap().user_playlists = self.get_current_user_playlists()?;
+                state.player.write().unwrap().user_playlists =
+                    self.get_current_user_playlists().await?;
                 false
             }
             event::Event::GetUserFollowedArtists => {
                 state.player.write().unwrap().user_followed_artists = self
-                    .get_current_user_followed_artists()?
+                    .get_current_user_followed_artists()
+                    .await?
                     .into_iter()
                     .map(|a| a.into())
                     .collect::<Vec<_>>();
@@ -50,7 +52,8 @@ impl Client {
             }
             event::Event::GetUserSavedAlbums => {
                 state.player.write().unwrap().user_saved_albums = self
-                    .get_current_user_saved_albums()?
+                    .get_current_user_saved_albums()
+                    .await?
                     .into_iter()
                     .map(|a| a.album.into())
                     .collect::<Vec<_>>();
@@ -124,13 +127,13 @@ impl Client {
             event::Event::GetContext(context) => {
                 match context {
                     event::ContextURI::Playlist(playlist_uri) => {
-                        self.get_playlist_context(playlist_uri, state)?;
+                        self.get_playlist_context(playlist_uri, state).await?;
                     }
                     event::ContextURI::Album(album_uri) => {
-                        self.get_album_context(album_uri, state)?;
+                        self.get_album_context(album_uri, state).await?;
                     }
                     event::ContextURI::Artist(artist_uri) => {
-                        self.get_artist_context(artist_uri, state)?;
+                        self.get_artist_context(artist_uri, state).await?;
                     }
                     event::ContextURI::Unknown(uri) => {
                         state
@@ -157,14 +160,14 @@ impl Client {
     }
 
     /// gets all playlists of the current user
-    pub fn get_current_user_playlists(&self) -> Result<Vec<playlist::SimplifiedPlaylist>> {
+    pub async fn get_current_user_playlists(&self) -> Result<Vec<playlist::SimplifiedPlaylist>> {
         let first_page =
             Self::handle_rspotify_result(self.spotify.current_user_playlists(50, None))?;
-        self.get_all_paging_items(first_page)
+        self.get_all_paging_items(first_page).await
     }
 
     /// gets all followed artists of the current user
-    pub fn get_current_user_followed_artists(&self) -> Result<Vec<artist::FullArtist>> {
+    pub async fn get_current_user_followed_artists(&self) -> Result<Vec<artist::FullArtist>> {
         let first_page =
             Self::handle_rspotify_result(self.spotify.current_user_followed_artists(50, None))?
                 .artists;
@@ -172,7 +175,8 @@ impl Client {
         let mut maybe_next = first_page.next;
         while let Some(url) = maybe_next {
             let mut next_page = self
-                .internal_call::<artist::CursorPageFullArtists>(&url)?
+                .internal_call::<artist::CursorPageFullArtists>(&url)
+                .await?
                 .artists;
             items.append(&mut next_page.items);
             maybe_next = next_page.next;
@@ -181,10 +185,10 @@ impl Client {
     }
 
     /// gets all saved albums of the current user
-    pub fn get_current_user_saved_albums(&self) -> Result<Vec<album::SavedAlbum>> {
+    pub async fn get_current_user_saved_albums(&self) -> Result<Vec<album::SavedAlbum>> {
         let first_page =
             Self::handle_rspotify_result(self.spotify.current_user_saved_albums(50, None))?;
-        self.get_all_paging_items(first_page)
+        self.get_all_paging_items(first_page).await
     }
     /// gets a playlist given its id
     pub fn get_playlist(&self, playlist_uri: &str) -> Result<playlist::FullPlaylist> {
@@ -207,7 +211,7 @@ impl Client {
     }
 
     /// gets all albums of an artist
-    pub fn get_artist_albums(&self, artist_uri: &str) -> Result<Vec<album::SimplifiedAlbum>> {
+    pub async fn get_artist_albums(&self, artist_uri: &str) -> Result<Vec<album::SimplifiedAlbum>> {
         let mut singles = {
             let first_page = Self::handle_rspotify_result(self.spotify.artist_albums(
                 artist_uri,
@@ -216,7 +220,7 @@ impl Client {
                 Some(50),
                 None,
             ))?;
-            self.get_all_paging_items(first_page)
+            self.get_all_paging_items(first_page).await
         }?;
         let mut albums = {
             let first_page = Self::handle_rspotify_result(self.spotify.artist_albums(
@@ -226,7 +230,7 @@ impl Client {
                 Some(50),
                 None,
             ))?;
-            self.get_all_paging_items(first_page)
+            self.get_all_paging_items(first_page).await
         }?;
         albums.append(&mut singles);
         Ok(self.clean_up_artist_albums(albums))
@@ -339,7 +343,11 @@ impl Client {
     }
 
     /// gets a playlist context data
-    fn get_playlist_context(&self, playlist_uri: String, state: &state::SharedState) -> Result<()> {
+    async fn get_playlist_context(
+        &self,
+        playlist_uri: String,
+        state: &state::SharedState,
+    ) -> Result<()> {
         log::info!("get playlist context: {}", playlist_uri);
 
         if !state
@@ -367,7 +375,7 @@ impl Client {
                 ),
             );
 
-            let playlist_tracks = self.get_all_paging_items(first_page)?;
+            let playlist_tracks = self.get_all_paging_items(first_page).await?;
 
             // delay the request for getting playlist tracks to not block the UI
 
@@ -393,7 +401,7 @@ impl Client {
     }
 
     /// gets an album context data
-    fn get_album_context(&self, album_uri: String, state: &state::SharedState) -> Result<()> {
+    async fn get_album_context(&self, album_uri: String, state: &state::SharedState) -> Result<()> {
         log::info!("get album context: {}", album_uri);
 
         if !state
@@ -406,7 +414,7 @@ impl Client {
             // get the album
             let album = self.get_album(&album_uri)?;
             // get the album's tracks
-            let album_tracks = self.get_all_paging_items(album.tracks.clone())?;
+            let album_tracks = self.get_all_paging_items(album.tracks.clone()).await?;
             let tracks = album_tracks
                 .into_iter()
                 .map(|t| {
@@ -427,7 +435,11 @@ impl Client {
     }
 
     /// gets an artist context data
-    fn get_artist_context(&self, artist_uri: String, state: &state::SharedState) -> Result<()> {
+    async fn get_artist_context(
+        &self,
+        artist_uri: String,
+        state: &state::SharedState,
+    ) -> Result<()> {
         log::info!("get artist context: {}", artist_uri);
 
         if !state
@@ -459,7 +471,8 @@ impl Client {
 
             // delay the request for getting artist's albums to not block the UI
             let albums = self
-                .get_artist_albums(&artist_uri)?
+                .get_artist_albums(&artist_uri)
+                .await?
                 .into_iter()
                 .map(|a| a.into())
                 .collect::<Vec<_>>();
@@ -477,38 +490,38 @@ impl Client {
         Ok(())
     }
 
-    fn get_auth_token(&self) -> String {
-        format!(
-            "Bearer {}",
-            self.spotify
-                .client_credentials_manager
-                .as_ref()
-                .expect("failed to get spotify's client credentials manager")
-                .get_access_token()
-        )
-    }
-
-    fn internal_call<T>(&self, url: &str) -> Result<T>
+    async fn internal_call<T>(&self, url: &str) -> Result<T>
     where
         T: serde::de::DeserializeOwned,
     {
         Ok(self
             .http
             .get(url)
-            .header(reqwest::header::AUTHORIZATION, self.get_auth_token())
-            .send()?
-            .json::<T>()?)
+            .header(
+                reqwest::header::AUTHORIZATION,
+                format!(
+                    "Bearer {}",
+                    self.spotify.access_token.clone().unwrap_or_else(|| {
+                        log::warn!("failed to get spotify client's access token");
+                        "".to_string()
+                    })
+                ),
+            )
+            .send()
+            .await?
+            .json::<T>()
+            .await?)
     }
 
     /// gets all paging items starting from a pagination object of the first page
-    fn get_all_paging_items<T>(&self, first_page: page::Page<T>) -> Result<Vec<T>>
+    async fn get_all_paging_items<T>(&self, first_page: page::Page<T>) -> Result<Vec<T>>
     where
         T: serde::de::DeserializeOwned,
     {
         let mut items = first_page.items;
         let mut maybe_next = first_page.next;
         while let Some(url) = maybe_next {
-            let mut next_page = self.internal_call::<page::Page<T>>(&url)?;
+            let mut next_page = self.internal_call::<page::Page<T>>(&url).await?;
             items.append(&mut next_page.items);
             maybe_next = next_page.next;
         }
@@ -536,8 +549,8 @@ impl Client {
     }
 
     /// updates the current playback state by fetching data from the spotify client
-    async fn update_current_playback_state(&self, state: &state::SharedState) -> Result<()> {
-        state.player.write().unwrap().playback = self.get_current_playback().await?;
+    fn update_current_playback_state(&self, state: &state::SharedState) -> Result<()> {
+        state.player.write().unwrap().playback = self.get_current_playback()?;
         state.player.write().unwrap().playback_last_updated = Some(std::time::Instant::now());
         Ok(())
     }
@@ -570,14 +583,15 @@ impl Client {
 }
 
 /// starts the client's event watcher
-pub fn start_watcher(
+#[tokio::main]
+pub async fn start_watcher(
     state: state::SharedState,
     mut client: Client,
     send: std::sync::mpsc::Sender<event::Event>,
     recv: std::sync::mpsc::Receiver<event::Event>,
 ) {
     while let Ok(event) = recv.recv() {
-        if let Err(err) = client.handle_event(&state, &send, event) {
+        if let Err(err) = client.handle_event(&state, &send, event).await {
             log::warn!("{:#?}", err);
         }
     }

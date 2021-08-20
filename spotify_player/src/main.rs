@@ -10,9 +10,10 @@ mod utils;
 
 use anyhow::Result;
 use librespot_core::{authentication::Credentials, config::SessionConfig, session::Session};
-use rspotify::client::Spotify;
+use rspotify::blocking::client::Spotify;
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     // disable logging by default
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("off")).init();
 
@@ -106,7 +107,7 @@ fn main() -> Result<()> {
             move || loop {
                 send.send(event::Event::GetCurrentPlayback)
                     .unwrap_or_else(|err| {
-                        log::warn!("failed to send GetCurrentPlayback event: {:#?}", err);
+                        log::warn!("failed to send GetCurrentPlayback event: {}", err);
                     });
                 std::thread::sleep(playback_refresh_duration);
             }
