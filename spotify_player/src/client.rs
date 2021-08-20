@@ -1,5 +1,6 @@
 use crate::event;
 use crate::state;
+use crate::token;
 use crate::utils;
 use anyhow::{anyhow, Result};
 use librespot_core::session::Session;
@@ -64,13 +65,11 @@ impl Client {
                 false
             }
             event::Event::RefreshToken => {
+                let expires_at = state.player.read().unwrap().token.expires_at;
+                if std::time::Instant::now() > expires_at {
+                    state.player.write().unwrap().token = token::get_token(&self.session).await?;
+                }
                 false
-                // let expires_at = state.player.read().unwrap().auth_token_expires_at;
-                // if SystemTime::now() > expires_at {
-                //     state.player.write().unwrap().auth_token_expires_at =
-                //         self.refresh_token().await?;
-                // }
-                // false
             }
             event::Event::NextTrack => {
                 let player = state.player.read().unwrap();
