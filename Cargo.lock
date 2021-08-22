@@ -1895,6 +1895,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "rpassword"
+version = "5.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ffc936cf8a7ea60c58f030fd36a612a48f440610214dc54bc36431f9ea0c3efb"
+dependencies = [
+ "libc",
+ "winapi 0.3.9",
+]
+
+[[package]]
 name = "rspotify"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2152,6 +2162,7 @@ dependencies = [
  "log",
  "lru",
  "reqwest 0.11.4",
+ "rpassword",
  "rspotify",
  "serde",
  "tokio 1.10.0",

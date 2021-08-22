@@ -3,7 +3,6 @@ mod theme;
 
 const DEFAULT_CONFIG_FOLDER: &str = ".config/spotify-player";
 const DEFAULT_CACHE_FOLDER: &str = ".cache/spotify-player";
-const AUTH_CONFIG_FILE: &str = "auth.toml";
 const APP_CONFIG_FILE: &str = "app.toml";
 const THEME_CONFIG_FILE: &str = "theme.toml";
 const KEYMAP_CONFIG_FILE: &str = "keymap.toml";
@@ -16,13 +15,6 @@ use std::path::{Path, PathBuf};
 pub use keymap::*;
 pub use theme::*;
 
-#[derive(Deserialize)]
-/// Spotify auth configurations
-pub struct AuthConfig {
-    pub username: String,
-    pub password: String,
-}
-
 #[derive(Debug, Deserialize, ConfigParse)]
 /// Application configurations
 pub struct AppConfig {
@@ -32,14 +24,6 @@ pub struct AppConfig {
     pub app_refresh_duration_in_ms: u64,
     pub playback_refresh_duration_in_ms: u64,
     pub track_table_item_max_len: usize,
-}
-
-impl AuthConfig {
-    // creates auth configurations from a auth config file in `path` folder
-    pub fn from_config_file(path: &Path) -> Result<Self> {
-        let content = std::fs::read_to_string(path.join(AUTH_CONFIG_FILE))?;
-        Ok(toml::from_str::<Self>(&content)?)
-    }
 }
 
 impl Default for AppConfig {
