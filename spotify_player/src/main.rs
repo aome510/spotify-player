@@ -78,10 +78,16 @@ async fn main() -> anyhow::Result<()> {
         let state = state.clone();
         let send = send.clone();
         let session = auth::new_session(&cache_folder).await?;
-        let player = player::Player::new(matches.is_present("remote"));
-        let client = client::Client::new(player, session, &state).await?;
+        let player = {
+            if matches.is_present("remote") {
+                player::Player::Remote(player::RemotePlayer::new())
+            } else {
+                player::Player::Local(player::LocalPlayer::new(session.clone()))
+            }
+        };
+        let client = client::Client::new(session, &state).await?;
         move || {
-            client::start_watcher(state, client, send, recv);
+            client::start_watcher(player, state, client, send, recv);
         }
     });
 

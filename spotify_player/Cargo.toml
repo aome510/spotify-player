@@ -30,3 +30,10 @@ tokio-stream = "0.1.7"
 toml = "0.5.8"
 tui = { version = "0.15.0", default-features = false, features = ["crossterm", "serde"] }
 unicode-width = "0.1.8"
+
+[features]
+alsa_backend = ["librespot-playback/alsa-backend"]
+pulseaudio_backend = ["librespot-playback/pulseaudio-backend"]
+rodio_backend = ["librespot-playback/rodio-backend"]
+portaudio_backend = ["librespot-playback/portaudio-backend"]
+default = ["pulseaudio_backend"]

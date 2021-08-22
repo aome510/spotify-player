@@ -11,22 +11,15 @@ pub struct Client {
     pub session: Session,
     pub spotify: Spotify,
     pub http: reqwest::Client,
-
-    pub player: player::Player,
 }
 
 impl Client {
     /// creates the new client
-    pub async fn new(
-        player: player::Player,
-        session: Session,
-        state: &state::SharedState,
-    ) -> Result<Self> {
+    pub async fn new(session: Session, state: &state::SharedState) -> Result<Self> {
         let token = token::get_token(&session).await?;
         let spotify = Spotify::default().access_token(&token.access_token);
         state.player.write().unwrap().token = token;
         Ok(Self {
-            player,
             session,
             spotify,
             http: reqwest::Client::new(),
@@ -34,10 +27,15 @@ impl Client {
     }
 
     /// handles a player event
-    fn handle_player_event(&self, state: &state::SharedState, event: PlayerEvent) -> Result<()> {
+    fn handle_player_event(
+        &self,
+        player: &mut player::Player,
+        state: &state::SharedState,
+        event: PlayerEvent,
+    ) -> Result<()> {
         log::info!("handle player event: {:?}", event);
 
-        let player = self.player.get_player();
+        let player = player.get_player();
         match event {
             PlayerEvent::NextTrack => player.next_track(self, state),
             PlayerEvent::PreviousTrack => player.previous_track(self, state),
@@ -55,6 +53,7 @@ impl Client {
     /// handles a client event
     pub async fn handle_event(
         &mut self,
+        player: &mut player::Player,
         state: &state::SharedState,
         send: &std::sync::mpsc::Sender<Event>,
         event: Event,
@@ -63,7 +62,7 @@ impl Client {
 
         match event {
             Event::Player(event) => {
-                self.handle_player_event(state, event)?;
+                self.handle_player_event(player, state, event)?;
                 utils::update_playback(state, send);
             }
             // Event::GetDevices => {
@@ -95,7 +94,9 @@ impl Client {
             Event::RefreshToken => {
                 let expires_at = state.player.read().unwrap().token.expires_at;
                 if std::time::Instant::now() > expires_at {
-                    state.player.write().unwrap().token = token::get_token(&self.session).await?;
+                    let token = token::get_token(&self.session).await?;
+                    self.spotify = Spotify::default().access_token(&token.access_token);
+                    state.player.write().unwrap().token = token;
                 }
             }
             Event::GetContext(context) => {
@@ -546,13 +547,14 @@ impl Client {
 /// starts the client's event watcher
 #[tokio::main]
 pub async fn start_watcher(
+    mut player: player::Player,
     state: state::SharedState,
     mut client: Client,
     send: std::sync::mpsc::Sender<Event>,
     recv: std::sync::mpsc::Receiver<Event>,
 ) {
     while let Ok(event) = recv.recv() {
-        if let Err(err) = client.handle_event(&state, &send, event).await {
+        if let Err(err) = client.handle_event(&mut player, &state, &send, event).await {
             log::warn!("{:#?}", err);
         }
     }
