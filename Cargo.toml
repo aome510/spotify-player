@@ -5,4 +5,5 @@ members = ["spotify_player"]
 lto = true
 codegen-units = 1
 panic = "abort"
+incremental = true
 # debug = true
