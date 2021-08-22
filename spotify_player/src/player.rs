@@ -9,6 +9,15 @@ pub enum Player {
 }
 
 impl Player {
+    pub fn new(remote: bool) -> Self {
+        log::info!("create new player, remote={}", remote);
+        if remote {
+            Self::Remote(RemotePlayer {})
+        } else {
+            Self::Local(LocalPlayer {})
+        }
+    }
+
     pub fn get_player(&self) -> &dyn Playable {
         match self {
             Self::Remote(ref player) => player,

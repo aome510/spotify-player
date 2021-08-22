@@ -41,6 +41,10 @@ async fn main() -> anyhow::Result<()> {
                 .long("theme")
                 .value_name("THEME")
                 .help("Application theme (default: dracula)")
+        ).arg(
+            clap::Arg::with_name("remote")
+                .long("remote")
+                .help("Use the player as a remote player")
         )
         .get_matches();
 
@@ -74,7 +78,8 @@ async fn main() -> anyhow::Result<()> {
         let state = state.clone();
         let send = send.clone();
         let session = auth::new_session(&cache_folder).await?;
-        let client = client::Client::new(session, &state).await?;
+        let player = player::Player::new(matches.is_present("remote"));
+        let client = client::Client::new(player, session, &state).await?;
         move || {
             client::start_watcher(state, client, send, recv);
         }

@@ -17,15 +17,19 @@ pub struct Client {
 
 impl Client {
     /// creates the new client
-    pub async fn new(session: Session, state: &state::SharedState) -> Result<Self> {
+    pub async fn new(
+        player: player::Player,
+        session: Session,
+        state: &state::SharedState,
+    ) -> Result<Self> {
         let token = token::get_token(&session).await?;
         let spotify = Spotify::default().access_token(&token.access_token);
         state.player.write().unwrap().token = token;
         Ok(Self {
+            player,
             session,
             spotify,
             http: reqwest::Client::new(),
-            player: player::Player::Remote(player::RemotePlayer {}),
         })
     }
 
