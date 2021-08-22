@@ -49,7 +49,7 @@ pub enum PopupState {
     UserPlaylistList(ListState),
     UserFollowedArtistList(ListState),
     UserSavedAlbumList(ListState),
-    DeviceList(ListState),
+    // DeviceList(ListState),
     ArtistList(Vec<Artist>, ListState),
     ThemeList(Vec<config::Theme>, ListState),
 }
@@ -111,7 +111,7 @@ impl PopupState {
     /// gets the state of the current list popup
     pub fn get_list_state(&self) -> Option<&ListState> {
         match self {
-            Self::DeviceList(ref state) => Some(state),
+            // Self::DeviceList(ref state) => Some(state),
             Self::UserPlaylistList(ref state) => Some(state),
             Self::UserFollowedArtistList(ref state) => Some(state),
             Self::UserSavedAlbumList(ref state) => Some(state),
@@ -124,7 +124,7 @@ impl PopupState {
     /// gets the (mutable) state of the current list popup
     pub fn get_list_state_mut(&mut self) -> Option<&mut ListState> {
         match self {
-            Self::DeviceList(ref mut state) => Some(state),
+            // Self::DeviceList(ref mut state) => Some(state),
             Self::UserPlaylistList(ref mut state) => Some(state),
             Self::UserFollowedArtistList(ref mut state) => Some(state),
             Self::UserSavedAlbumList(ref mut state) => Some(state),

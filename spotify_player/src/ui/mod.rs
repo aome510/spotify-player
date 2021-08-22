@@ -53,7 +53,7 @@ fn update_player_state(
     let player = state.player.read().unwrap();
 
     // updates the auth token if expired
-    if std::time::SystemTime::now() > player.auth_token_expires_at {
+    if std::time::Instant::now() > player.token.expires_at {
         send.send(event::Event::RefreshToken)?;
     }
 

@@ -20,29 +20,29 @@ pub fn render_popup(
             help::render_commands_help_widget(frame, ui, state, chunks[1]);
             (chunks[0], false)
         }
-        PopupState::DeviceList(_) => {
-            let chunks = Layout::default()
-                .direction(Direction::Vertical)
-                .constraints([Constraint::Min(0), Constraint::Length(5)].as_ref())
-                .split(rect);
-            frame.render_stateful_widget(
-                {
-                    let current_device_id = match player.playback {
-                        Some(ref playback) => &playback.device.id,
-                        None => "",
-                    };
-                    let items = player
-                        .devices
-                        .iter()
-                        .map(|d| (format!("{} | {}", d.name, d.id), current_device_id == d.id))
-                        .collect();
-                    construct_list_widget(ui, items, "Devices")
-                },
-                chunks[1],
-                ui.popup.get_list_state_mut().unwrap(),
-            );
-            (chunks[0], false)
-        }
+        // PopupState::DeviceList(_) => {
+        //     let chunks = Layout::default()
+        //         .direction(Direction::Vertical)
+        //         .constraints([Constraint::Min(0), Constraint::Length(5)].as_ref())
+        //         .split(rect);
+        //     frame.render_stateful_widget(
+        //         {
+        //             let current_device_id = match player.playback {
+        //                 Some(ref playback) => &playback.device.id,
+        //                 None => "",
+        //             };
+        //             let items = player
+        //                 .devices
+        //                 .iter()
+        //                 .map(|d| (format!("{} | {}", d.name, d.id), current_device_id == d.id))
+        //                 .collect();
+        //             construct_list_widget(ui, items, "Devices")
+        //         },
+        //         chunks[1],
+        //         ui.popup.get_list_state_mut().unwrap(),
+        //     );
+        //     (chunks[0], false)
+        // }
         PopupState::ThemeList(ref themes, _) => {
             let chunks = Layout::default()
                 .direction(Direction::Vertical)

@@ -3,8 +3,6 @@
 ## Table of Contents
 
 - [Introduction](#introduction)
-- [Prerequisites](#prerequisites)
-  - [Setup](#setup)
 - [Installation](#installation)
   - [AUR](#aur)
   - [Cargo](#cargo)
@@ -28,36 +26,9 @@
   - a playback window displaying the current playback
   - a context window displaying a context (playlist, album, artist)
   - popup windows for using some commands (switch theme, browser playlists, etc) or displaying additional information
-- `spotify-player` is built on top of [tui](https://github.com/fdehau/tui-rs) and [rspotify](https://github.com/ramsayleung/rspotify) libraries. It's also inspired by [spotify-tui](https://github.com/Rigellute/spotify-tui).
-
-## Prerequisites
-
-- A running Spotify client (official Spotify application or [third-party clients](https://wiki.archlinux.org/title/Spotify#Third-party_clients))
-- A premium Spotify account for full functionalities
-
-### Setup
-
-- Create a configuration folder to store application's configuration files and authentication token cache. By default, the application will look into `$HOME/.config/spotify-player`. You can specify another path by adding the `-c <FOLDER_PATH>` option.
-- Follow the steps described in [Spotify documentation](https://developer.spotify.com/documentation/general/guides/app-settings/) to register an application with `client_id` and `client_secret` as well as to whitelist a redirect URI.
-- For the redirect URI, specify `http://localhost:8888/callback`.
-- Create a new `client.toml` file in the application's configuration folder with `client_id` and `client_secret` entries as follow
-
-  ```toml
-  client_id = ${APP CLIENT ID}
-  client_secret = ${APP CLIENT SECRET}
-  ```
-
-- When running the application for the first time, you will be directed to an official Spotify page that asks for the application's permissions. If you run the application using [docker](#docker), you will need to open the page in browser by yourself.
-
-![Callback docker example](https://raw.githubusercontent.com/aome510/spotify-player/master/examples/callback_docker.png)
-
-- After accepting the permissions, you will be redirected to a URL as follows `localhost:8888/callback?code=AQAn75sPSJIg...`. Copy the URL and paste it into the terminal prompt, then the application should run successfully, given that there is a running Spotify client:
-
-![Callback example](https://raw.githubusercontent.com/aome510/spotify-player/master/examples/callback.png)
+- `spotify-player` is built on top of [tui](https://github.com/fdehau/tui-rs), [rspotify](https://github.com/ramsayleung/rspotify), and [librespot](https://github.com/librespot-org/librespot) libraries. It's inspired by [spotify-tui](https://github.com/Rigellute/spotify-tui) and [ncspot](https://github.com/hrkfdn/ncspot).
 
 ## Installation
-
-Before running the application, make sure you have read the [setup instructions](#setup).
 
 ### AUR
 
@@ -125,7 +96,6 @@ List of supported commands:
 | `FocusNextWindow`            | focus the next focusable window (if any)                  | `tab`              |
 | `FocusPreviousWindow`        | focus the previous focusable window (if any)              | `backtab`          |
 | `SwitchTheme`                | open a popup for switching theme                          | `T`                |
-| `SwitchDevice`               | open a popup for switching device                         | `D`                |
 | `SearchContext`              | open a popup for searching the current context            | `/`                |
 | `BrowseUserPlaylists`        | open a popup for browsing user's playlists                | `u p`              |
 | `BrowseUserFollowedArtists`  | open a popup for browsing user's followed artists         | `u a`              |

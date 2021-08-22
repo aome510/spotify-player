@@ -1,17 +1,18 @@
+use crate::token::Token;
 use rspotify::model::*;
 
 /// Player state
 #[derive(Debug)]
 pub struct PlayerState {
     pub devices: Vec<device::Device>,
-    pub auth_token_expires_at: std::time::SystemTime,
+    pub token: Token,
     pub user_playlists: Vec<playlist::SimplifiedPlaylist>,
     pub user_followed_artists: Vec<Artist>,
     pub user_saved_albums: Vec<Album>,
     pub context_uri: String,
     pub context_cache: lru::LruCache<String, Context>,
     pub playback: Option<context::CurrentlyPlaybackContext>,
-    pub playback_last_updated: Option<std::time::SystemTime>,
+    pub playback_last_updated: Option<std::time::Instant>,
 }
 
 /// Playing context (album, playlist, etc) of the current track
@@ -81,9 +82,8 @@ impl PlayerState {
                 Some(rspotify::model::PlayingItem::Track(ref track)) => {
                     let progress_ms = (playback.progress_ms.unwrap() as u128)
                         + if playback.is_playing {
-                            std::time::SystemTime::now()
-                                .duration_since(self.playback_last_updated.unwrap())
-                                .unwrap()
+                            std::time::Instant::now()
+                                .saturating_duration_since(self.playback_last_updated.unwrap())
                                 .as_millis()
                         } else {
                             0
@@ -113,7 +113,7 @@ impl PlayerState {
 impl Default for PlayerState {
     fn default() -> Self {
         Self {
-            auth_token_expires_at: std::time::SystemTime::now(),
+            token: Token::new(),
             devices: vec![],
             user_playlists: vec![],
             user_saved_albums: vec![],
