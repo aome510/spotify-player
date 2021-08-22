@@ -1,16 +1,19 @@
-use crate::token::Token;
+use crate::{player, token::Token};
 use rspotify::model::*;
 
 /// Player state
 #[derive(Debug)]
 pub struct PlayerState {
-    pub devices: Vec<device::Device>,
+    // pub devices: Vec<device::Device>,
     pub token: Token,
+
     pub user_playlists: Vec<playlist::SimplifiedPlaylist>,
     pub user_followed_artists: Vec<Artist>,
     pub user_saved_albums: Vec<Album>,
+
     pub context_uri: String,
     pub context_cache: lru::LruCache<String, Context>,
+
     pub playback: Option<context::CurrentlyPlaybackContext>,
     pub playback_last_updated: Option<std::time::Instant>,
 }
@@ -114,7 +117,7 @@ impl Default for PlayerState {
     fn default() -> Self {
         Self {
             token: Token::new(),
-            devices: vec![],
+            // devices: vec![],
             user_playlists: vec![],
             user_saved_albums: vec![],
             user_followed_artists: vec![],

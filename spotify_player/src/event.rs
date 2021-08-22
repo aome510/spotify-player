@@ -19,6 +19,20 @@ pub enum ContextURI {
 }
 
 #[derive(Debug)]
+/// An event that modifies the player's playback
+pub enum PlayerEvent {
+    NextTrack,
+    PreviousTrack,
+    ResumePause,
+    SeekTrack(u32),
+    Repeat,
+    Shuffle,
+    PlayTrack(Option<String>, Option<Vec<String>>, Option<offset::Offset>),
+    PlayContext(String),
+    // TransferPlayback(String),
+}
+
+#[derive(Debug)]
 /// An event to communicate with the client
 pub enum Event {
     // GetDevices,
@@ -27,16 +41,8 @@ pub enum Event {
     GetUserFollowedArtists,
     GetCurrentPlayback,
     RefreshToken,
-    NextTrack,
-    PreviousTrack,
-    ResumePause,
-    SeekTrack(u32),
-    Repeat,
-    Shuffle,
     GetContext(ContextURI),
-    PlayTrack(Option<String>, Option<Vec<String>>, Option<offset::Offset>),
-    PlayContext(String),
-    // TransferPlayback(String),
+    Player(PlayerEvent),
 }
 
 impl From<event::KeyEvent> for Key {
@@ -264,7 +270,7 @@ fn handle_mouse_event(
             if let Some(track) = track {
                 let position_ms =
                     track.duration_ms * (event.column as u32) / (ui.progress_bar_rect.width as u32);
-                send.send(Event::SeekTrack(position_ms))?;
+                send.send(Event::Player(PlayerEvent::SeekTrack(position_ms)))?;
             }
         }
     }
@@ -285,7 +291,7 @@ fn handle_command_for_none_popup(
         }
         Command::PlayContext => {
             let uri = state.player.read().unwrap().context_uri.clone();
-            send.send(Event::PlayContext(uri))?;
+            send.send(Event::Player(PlayerEvent::PlayContext(uri)))?;
             Ok(true)
         }
         Command::FocusNextWindow => {
@@ -490,23 +496,23 @@ fn handle_command(
             Ok(true)
         }
         Command::NextTrack => {
-            send.send(Event::NextTrack)?;
+            send.send(Event::Player(PlayerEvent::NextTrack))?;
             Ok(true)
         }
         Command::PreviousTrack => {
-            send.send(Event::PreviousTrack)?;
+            send.send(Event::Player(PlayerEvent::PreviousTrack))?;
             Ok(true)
         }
         Command::ResumePause => {
-            send.send(Event::ResumePause)?;
+            send.send(Event::Player(PlayerEvent::ResumePause))?;
             Ok(true)
         }
         Command::Repeat => {
-            send.send(Event::Repeat)?;
+            send.send(Event::Player(PlayerEvent::Repeat))?;
             Ok(true)
         }
         Command::Shuffle => {
-            send.send(Event::Shuffle)?;
+            send.send(Event::Player(PlayerEvent::Shuffle))?;
             Ok(true)
         }
         Command::OpenCommandHelp => {
@@ -727,25 +733,25 @@ fn handle_command_for_track_table(
                     Context::Artist(_, _, _, _) => {
                         // cannot use artist context uri with a track uri
                         let tracks = tracks.iter().map(|t| t.uri.clone()).collect::<Vec<_>>();
-                        send.send(Event::PlayTrack(
+                        send.send(Event::Player(PlayerEvent::PlayTrack(
                             None,
                             Some(tracks),
                             offset::for_position(id as u32),
-                        ))?;
+                        )))?;
                     }
                     Context::Playlist(ref playlist, _) => {
-                        send.send(Event::PlayTrack(
+                        send.send(Event::Player(PlayerEvent::PlayTrack(
                             Some(playlist.uri.clone()),
                             None,
                             offset::for_uri(tracks[id].uri.clone()),
-                        ))?;
+                        )))?;
                     }
                     Context::Album(ref album, _) => {
-                        send.send(Event::PlayTrack(
+                        send.send(Event::Player(PlayerEvent::PlayTrack(
                             Some(album.uri.clone()),
                             None,
                             offset::for_uri(tracks[id].uri.clone()),
-                        ))?;
+                        )))?;
                     }
                     Context::Unknown(_) => {}
                 }

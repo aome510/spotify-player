@@ -4,6 +4,7 @@ mod command;
 mod config;
 mod event;
 mod key;
+mod player;
 mod state;
 mod token;
 mod ui;
