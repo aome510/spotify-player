@@ -58,6 +58,7 @@ async fn new_session_with_new_creds(cache: &Cache) -> Result<Session> {
     Err(anyhow!("authentication failed!"))
 }
 
+/// creates new Librespot session
 pub async fn new_session(cache_folder: &std::path::Path) -> Result<Session> {
     let cache = Cache::new(Some(cache_folder), Some(&cache_folder.join("audio")), None)?;
 

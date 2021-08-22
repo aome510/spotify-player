@@ -14,7 +14,7 @@ pub struct Client {
 }
 
 impl Client {
-    /// creates the new `Client` given a spotify authorization
+    /// creates the new client
     pub async fn new(session: Session, state: &state::SharedState) -> Result<Self> {
         let token = token::get_token(&session).await?;
         let spotify = Spotify::default().access_token(&token.access_token);

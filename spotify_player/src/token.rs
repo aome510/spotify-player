@@ -19,9 +19,10 @@ const SCOPES: [&str; 11] = [
     "user-library-read",
 ];
 
-// official spotify web app's client id
+/// official spotify web app's client id
 const CLIENT_ID: &str = "65b708073fc0480ea92a077233ca87bd";
 
+/// gets an authentication using the current Librespot session
 pub async fn get_token(session: &Session) -> Result<Token> {
     Ok(keymaster::get_token(session, CLIENT_ID, &SCOPES.join(","))
         .await
@@ -49,7 +50,7 @@ impl From<keymaster::Token> for Token {
     fn from(token: keymaster::Token) -> Self {
         Self {
             access_token: token.access_token,
-            // `expires_at` time but earlier 5 min
+            // `expires_at` but earlier 5 min
             expires_at: Instant::now() + Duration::from_secs(token.expires_in as u64)
                 - Duration::from_secs(5 * 60),
         }
