@@ -27,26 +27,21 @@ impl Client {
     }
 
     /// handles a player event
-    fn handle_player_event(
-        &self,
-        player: &mut player::Player,
-        state: &state::SharedState,
-        event: PlayerEvent,
-    ) -> Result<()> {
+    fn handle_player_event(&self, player: &mut player::Player, event: PlayerEvent) -> Result<()> {
         log::info!("handle player event: {:?}", event);
 
         let player = player.get_player();
         match event {
-            PlayerEvent::NextTrack => player.next_track(self, state),
-            PlayerEvent::PreviousTrack => player.previous_track(self, state),
-            PlayerEvent::ResumePause => player.resume_pause(self, state),
-            PlayerEvent::SeekTrack(position_ms) => player.seek_track(self, state, position_ms),
-            PlayerEvent::Repeat => player.repeat(self, state),
-            PlayerEvent::Shuffle => player.shuffle(self, state),
+            PlayerEvent::NextTrack => player.next_track(self),
+            PlayerEvent::PreviousTrack => player.previous_track(self),
+            PlayerEvent::ResumePause => player.resume_pause(self),
+            PlayerEvent::SeekTrack(position_ms) => player.seek_track(self, position_ms),
+            PlayerEvent::Repeat => player.repeat(self),
+            PlayerEvent::Shuffle => player.shuffle(self),
             PlayerEvent::PlayTrack(context_uri, track_uris, offset) => {
-                player.play_track(self, state, context_uri, track_uris, offset)
+                player.play_track(self, context_uri, track_uris, offset)
             }
-            PlayerEvent::PlayContext(context_uri) => player.play_context(self, state, context_uri),
+            PlayerEvent::PlayContext(context_uri) => player.play_context(self, context_uri),
         }
     }
 
@@ -62,7 +57,7 @@ impl Client {
 
         match event {
             Event::Player(event) => {
-                self.handle_player_event(player, state, event)?;
+                self.handle_player_event(player, event)?;
                 utils::update_playback(state, send);
             }
             // Event::GetDevices => {

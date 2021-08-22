@@ -80,9 +80,9 @@ async fn main() -> anyhow::Result<()> {
         let session = auth::new_session(&cache_folder).await?;
         let player = {
             if matches.is_present("remote") {
-                player::Player::Remote(player::RemotePlayer::new())
+                player::Player::Remote(player::RemotePlayer::new(state.clone()))
             } else {
-                player::Player::Local(player::LocalPlayer::new(session.clone()))
+                player::Player::Local(player::LocalPlayer::new(session.clone(), state.clone()))
             }
         };
         let client = client::Client::new(session, &state).await?;
