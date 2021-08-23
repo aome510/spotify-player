@@ -9,7 +9,6 @@ const KEYMAP_CONFIG_FILE: &str = "keymap.toml";
 
 use anyhow::{anyhow, Result};
 use config_parser2::*;
-use librespot_core::config::DeviceType;
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
 
@@ -39,7 +38,6 @@ pub struct DeviceConfig {
     pub volume_ctrl: String,
     pub autoplay: bool,
     pub port: u16,
-    pub normalisation: bool,
 }
 
 impl Default for AppConfig {
@@ -64,11 +62,10 @@ impl Default for DeviceConfig {
         Self {
             name: "spotify-player".to_string(),
             device_type: "speaker".to_string(),
-            volume: 80,
-            volume_ctrl: "log".to_string(),
+            volume: 100,
+            volume_ctrl: "linear".to_string(),
             autoplay: true,
             port: 3000,
-            normalisation: false,
         }
     }
 }
