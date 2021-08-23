@@ -71,10 +71,10 @@ impl Default for KeymapConfig {
                     key_sequence: "T".into(),
                     command: Command::SwitchTheme,
                 },
-                // Keymap {
-                //     key_sequence: "D".into(),
-                //     command: Command::SwitchDevice,
-                // },
+                Keymap {
+                    key_sequence: "D".into(),
+                    command: Command::SwitchDevice,
+                },
                 Keymap {
                     key_sequence: "u p".into(),
                     command: Command::BrowseUserPlaylists,

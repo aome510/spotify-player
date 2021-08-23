@@ -24,7 +24,7 @@ pub enum Command {
     FocusPreviousWindow,
 
     SwitchTheme,
-    // SwitchDevice,
+    SwitchDevice,
     SearchContext,
 
     BrowseUserPlaylists,
@@ -66,7 +66,7 @@ impl Command {
             Self::FocusNextWindow => "focus the next focusable window (if any)",
             Self::FocusPreviousWindow => "focus the previous focusable window (if any)",
             Self::SwitchTheme => "open a popup for switching theme",
-            // Self::SwitchDevice => "open a popup for switching device",
+            Self::SwitchDevice => "open a popup for switching device",
             Self::SearchContext => "open a popup for searching the current context",
             Self::BrowseUserPlaylists => "open a popup for browsing user's playlists",
             Self::BrowseUserFollowedArtists => "open a popup for browsing user's followed artists",

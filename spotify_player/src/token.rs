@@ -19,12 +19,9 @@ const SCOPES: [&str; 11] = [
     "user-library-read",
 ];
 
-/// official spotify web app's client id
-const CLIENT_ID: &str = "65b708073fc0480ea92a077233ca87bd";
-
 /// gets an authentication using the current Librespot session
-pub async fn get_token(session: &Session) -> Result<Token> {
-    Ok(keymaster::get_token(session, CLIENT_ID, &SCOPES.join(","))
+pub async fn get_token(session: &Session, client_id: &str) -> Result<Token> {
+    Ok(keymaster::get_token(session, client_id, &SCOPES.join(","))
         .await
         .map_err(|err| anyhow!(format!("failed to get token: {:#?}", err)))?
         .into())
