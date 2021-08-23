@@ -1,7 +1,7 @@
-use crate::event::{ContextURI, Event, PlayerEvent};
-use crate::token;
-use crate::utils;
-use crate::{player, state};
+use crate::{
+    event::{ContextURI, Event, PlayerEvent},
+    state, token, utils,
+};
 use anyhow::{anyhow, Result};
 use librespot_core::session::Session;
 use rspotify::{blocking::client::Spotify, model::*, senum::*};
@@ -27,29 +27,36 @@ impl Client {
     }
 
     /// handles a player event
-    fn handle_player_event(&self, player: &mut player::Player, event: PlayerEvent) -> Result<()> {
+    fn handle_player_event(&self, state: &state::SharedState, event: PlayerEvent) -> Result<()> {
         log::info!("handle player event: {:?}", event);
 
-        let player = player.get_player();
-        match event {
-            PlayerEvent::NextTrack => player.next_track(self),
-            PlayerEvent::PreviousTrack => player.previous_track(self),
-            PlayerEvent::ResumePause => player.resume_pause(self),
-            PlayerEvent::SeekTrack(position_ms) => player.seek_track(self, position_ms),
-            PlayerEvent::Repeat => player.repeat(self),
-            PlayerEvent::Shuffle => player.shuffle(self),
-            PlayerEvent::PlayTrack(context_uri, track_uris, offset) => {
-                player.play_track(self, context_uri, track_uris, offset)
+        let player = state.player.read().unwrap();
+        let playback = match player.playback {
+            Some(ref playback) => playback,
+            None => {
+                return Err(anyhow!("failed to get the current playback context"));
             }
-            PlayerEvent::PlayContext(context_uri) => player.play_context(self, context_uri),
-            PlayerEvent::TransferPlayback(device_id) => player.transfer_playback(self, device_id),
+        };
+        match event {
+            PlayerEvent::NextTrack => self.next_track(playback),
+            PlayerEvent::PreviousTrack => self.previous_track(playback),
+            PlayerEvent::ResumePause => self.resume_pause(playback),
+            PlayerEvent::SeekTrack(position_ms) => self.seek_track(playback, position_ms),
+            PlayerEvent::Repeat => self.repeat(playback),
+            PlayerEvent::Shuffle => self.shuffle(playback),
+            PlayerEvent::PlayTrack(context_uri, track_uris, offset) => {
+                self.start_playback(playback, context_uri, track_uris, offset)
+            }
+            PlayerEvent::PlayContext(context_uri) => {
+                self.start_playback(playback, Some(context_uri), None, None)
+            }
+            PlayerEvent::TransferPlayback(device_id) => self.transfer_playback(device_id),
         }
     }
 
     /// handles a client event
     pub async fn handle_event(
         &mut self,
-        player: &mut player::Player,
         state: &state::SharedState,
         send: &std::sync::mpsc::Sender<Event>,
         event: Event,
@@ -58,7 +65,7 @@ impl Client {
 
         match event {
             Event::Player(event) => {
-                self.handle_player_event(player, event)?;
+                self.handle_player_event(state, event)?;
                 utils::update_playback(state, send);
             }
             Event::GetDevices => {
@@ -233,7 +240,7 @@ impl Client {
     }
 
     /// cycles through the repeat state of the current playback
-    pub fn cycle_repeat(&self, playback: &context::CurrentlyPlaybackContext) -> Result<()> {
+    pub fn repeat(&self, playback: &context::CurrentlyPlaybackContext) -> Result<()> {
         let next_repeat_state = match playback.repeat_state {
             RepeatState::Off => RepeatState::Track,
             RepeatState::Track => RepeatState::Context,
@@ -246,7 +253,7 @@ impl Client {
     }
 
     /// toggles the current playing state (pause/resume a track)
-    pub fn toggle_playing_state(&self, playback: &context::CurrentlyPlaybackContext) -> Result<()> {
+    pub fn resume_pause(&self, playback: &context::CurrentlyPlaybackContext) -> Result<()> {
         if playback.is_playing {
             self.pause_track(playback)
         } else {
@@ -299,7 +306,7 @@ impl Client {
     }
 
     /// toggles the shuffle state of the current playback
-    pub fn toggle_shuffle(&self, playback: &context::CurrentlyPlaybackContext) -> Result<()> {
+    pub fn shuffle(&self, playback: &context::CurrentlyPlaybackContext) -> Result<()> {
         Self::handle_rspotify_result(
             self.spotify
                 .shuffle(!playback.shuffle_state, Some(playback.device.id.clone())),
@@ -544,14 +551,13 @@ impl Client {
 /// starts the client's event watcher
 #[tokio::main]
 pub async fn start_watcher(
-    mut player: player::Player,
     state: state::SharedState,
     mut client: Client,
     send: std::sync::mpsc::Sender<Event>,
     recv: std::sync::mpsc::Receiver<Event>,
 ) {
     while let Ok(event) = recv.recv() {
-        if let Err(err) = client.handle_event(&mut player, &state, &send, event).await {
+        if let Err(err) = client.handle_event(&state, &send, event).await {
             log::warn!("{:#?}", err);
         }
     }

@@ -4,7 +4,6 @@ mod command;
 mod config;
 mod event;
 mod key;
-mod player;
 mod state;
 mod token;
 mod ui;
@@ -78,16 +77,9 @@ async fn main() -> anyhow::Result<()> {
         let state = state.clone();
         let send = send.clone();
         let session = auth::new_session(&cache_folder).await?;
-        let player = {
-            if matches.is_present("remote") {
-                player::Player::Remote(player::RemotePlayer::new(state.clone()))
-            } else {
-                player::Player::Local(player::LocalPlayer::new(session.clone(), state.clone()))
-            }
-        };
         let client = client::Client::new(session, &state).await?;
         move || {
-            client::start_watcher(player, state, client, send, recv);
+            client::start_watcher(state, client, send, recv);
         }
     });
 
