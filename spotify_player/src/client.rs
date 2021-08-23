@@ -50,7 +50,6 @@ impl Client {
             PlayerEvent::PlayContext(context_uri) => {
                 self.start_playback(playback, Some(context_uri), None, None)
             }
-            PlayerEvent::TransferPlayback(device_id) => self.transfer_playback(device_id),
         }
     }
 
@@ -66,6 +65,22 @@ impl Client {
         match event {
             Event::Player(event) => {
                 self.handle_player_event(state, event)?;
+                utils::update_playback(state, send);
+            }
+            Event::RefreshToken => {
+                let expires_at = state.player.read().unwrap().token.expires_at;
+                if std::time::Instant::now() > expires_at {
+                    let token =
+                        token::get_token(&self.session, &state.app_config.client_id).await?;
+                    self.spotify = Spotify::default().access_token(&token.access_token);
+                    state.player.write().unwrap().token = token;
+                }
+            }
+            Event::GetCurrentPlayback => {
+                self.update_current_playback_state(state)?;
+            }
+            Event::TransferPlayback(device_id) => {
+                self.transfer_playback(device_id)?;
                 utils::update_playback(state, send);
             }
             Event::GetDevices => {
@@ -90,18 +105,6 @@ impl Client {
                     .into_iter()
                     .map(|a| a.album.into())
                     .collect::<Vec<_>>();
-            }
-            Event::GetCurrentPlayback => {
-                self.update_current_playback_state(state)?;
-            }
-            Event::RefreshToken => {
-                let expires_at = state.player.read().unwrap().token.expires_at;
-                if std::time::Instant::now() > expires_at {
-                    let token =
-                        token::get_token(&self.session, &state.app_config.client_id).await?;
-                    self.spotify = Spotify::default().access_token(&token.access_token);
-                    state.player.write().unwrap().token = token;
-                }
             }
             Event::GetContext(context) => {
                 match context {

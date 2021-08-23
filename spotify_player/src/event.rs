@@ -29,7 +29,6 @@ pub enum PlayerEvent {
     Shuffle,
     PlayTrack(Option<String>, Option<Vec<String>>, Option<offset::Offset>),
     PlayContext(String),
-    TransferPlayback(String),
 }
 
 #[derive(Debug)]
@@ -41,8 +40,9 @@ pub enum Event {
     GetUserPlaylists,
     GetUserSavedAlbums,
     GetUserFollowedArtists,
-    GetCurrentPlayback,
     GetContext(ContextURI),
+    GetCurrentPlayback,
+    TransferPlayback(String),
     Player(PlayerEvent),
 }
 
@@ -229,9 +229,7 @@ fn handle_terminal_event(
                         player.devices.len(),
                         |_: &mut UIStateGuard, _: usize| {},
                         |ui: &mut UIStateGuard, id: usize| -> Result<()> {
-                            send.send(Event::Player(PlayerEvent::TransferPlayback(
-                                player.devices[id].id.clone(),
-                            )))?;
+                            send.send(Event::TransferPlayback(player.devices[id].id.clone()))?;
                             ui.popup = PopupState::None;
                             Ok(())
                         },

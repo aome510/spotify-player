@@ -980,6 +980,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "hostname"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3c731c3e10504cc8ed35cfe2f1db4c9274c3d35fa486e3b31df46f068ef3e867"
+dependencies = [
+ "libc",
+ "match_cfg",
+ "winapi 0.3.9",
+]
+
+[[package]]
 name = "http"
 version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1147,6 +1158,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "if-addrs"
+version = "0.6.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "28538916eb3f3976311f5dfbe67b5362d0add1293d0a9cad17debf86f8e3aa48"
+dependencies = [
+ "if-addrs-sys",
+ "libc",
+ "winapi 0.3.9",
+]
+
+[[package]]
+name = "if-addrs-sys"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "de74b9dd780476e837e5eb5ab7c88b49ed304126e412030a0adba99c8efe79ea"
+dependencies = [
+ "cc",
+ "libc",
+]
+
+[[package]]
 name = "indexmap"
 version = "1.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1283,6 +1315,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "libmdns"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "98477a6781ae1d6a1c2aeabfd2e23353a75fe8eb7c2545f6ed282ac8f3e2fc53"
+dependencies = [
+ "byteorder",
+ "futures-util",
+ "hostname",
+ "if-addrs",
+ "log",
+ "multimap",
+ "rand 0.8.4",
+ "socket2 0.4.1",
+ "thiserror",
+ "tokio 1.10.0",
+]
+
+[[package]]
 name = "libpulse-binding"
 version = "2.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1348,6 +1398,34 @@ dependencies = [
  "tempfile",
  "tokio 1.10.0",
  "zerocopy",
+]
+
+[[package]]
+name = "librespot-connect"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "69425fd6c8d74779f1ec86b16e6b3114df50c8a0d94db5a5601ef634bfb5e288"
+dependencies = [
+ "aes-ctr",
+ "base64 0.13.0",
+ "form_urlencoded",
+ "futures-core",
+ "futures-util",
+ "hmac",
+ "hyper 0.14.11",
+ "libmdns",
+ "librespot-core",
+ "librespot-playback",
+ "librespot-protocol",
+ "log",
+ "protobuf",
+ "rand 0.8.4",
+ "serde",
+ "serde_json",
+ "sha-1",
+ "tokio 1.10.0",
+ "tokio-stream",
+ "url 2.2.2",
 ]
 
 [[package]]
@@ -1477,6 +1555,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "match_cfg"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ffbee8634e0d45d258acb448e7eaab3fce7a0a467395d4d9f228e3c1f01fb2e4"
+
+[[package]]
 name = "matches"
 version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1565,6 +1649,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b9f1c5b025cda876f66ef43a113f91ebc9f4ccef34843000e0adf6ebbab84e21"
 dependencies = [
  "winapi 0.3.9",
+]
+
+[[package]]
+name = "multimap"
+version = "0.8.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e5ce46fe64a9d73be07dcbe690a38ce1b293be448fd8ce1e6c1b8062c9f72c6a"
+dependencies = [
+ "serde",
 ]
 
 [[package]]
@@ -2662,6 +2755,7 @@ dependencies = [
  "crossterm 0.20.0",
  "dirs-next",
  "env_logger 0.9.0",
+ "librespot-connect",
  "librespot-core",
  "librespot-playback",
  "log",

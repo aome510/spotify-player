@@ -66,6 +66,7 @@ fn update_player_state(
     };
     if let Some(progress_ms) = progress_ms {
         if progress_ms == duration_ms.unwrap() && is_playing {
+            log::info!("{}", is_playing);
             send.send(event::Event::GetCurrentPlayback)?;
         }
     }

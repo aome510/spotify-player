@@ -2,6 +2,7 @@ mod auth;
 mod client;
 mod command;
 mod config;
+mod connect;
 mod event;
 mod key;
 mod state;
@@ -40,10 +41,6 @@ async fn main() -> anyhow::Result<()> {
                 .long("theme")
                 .value_name("THEME")
                 .help("Application theme (default: dracula)")
-        ).arg(
-            clap::Arg::with_name("remote")
-                .long("remote")
-                .help("Use the player as a remote player")
         )
         .get_matches();
 
@@ -72,11 +69,21 @@ async fn main() -> anyhow::Result<()> {
     // start application's threads
     let (send, recv) = std::sync::mpsc::channel::<event::Event>();
 
+    let session = auth::new_session(&cache_folder).await?;
+
+    // connection thread
+    std::thread::spawn({
+        let session = session.clone();
+        let device = state.app_config.device.clone();
+        move || {
+            connect::new_connection(session, device);
+        }
+    });
+
     // client event watcher/handler thread
     std::thread::spawn({
         let state = state.clone();
         let send = send.clone();
-        let session = auth::new_session(&cache_folder).await?;
         let client = client::Client::new(session, &state).await?;
         move || {
             client::start_watcher(state, client, send, recv);
