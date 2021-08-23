@@ -16,7 +16,7 @@ pub struct Client {
 impl Client {
     /// creates the new client
     pub async fn new(session: Session, state: &state::SharedState) -> Result<Self> {
-        let token = token::get_token(&session).await?;
+        let token = token::get_token(&session, &state.app_config.client_id).await?;
         let spotify = Spotify::default().access_token(&token.access_token);
         state.player.write().unwrap().token = token;
         Ok(Self {
@@ -70,7 +70,8 @@ impl Client {
             event::Event::RefreshToken => {
                 let expires_at = state.player.read().unwrap().token.expires_at;
                 if std::time::Instant::now() > expires_at {
-                    state.player.write().unwrap().token = token::get_token(&self.session).await?;
+                    state.player.write().unwrap().token =
+                        token::get_token(&self.session, &state.app_config.client_id).await?;
                 }
                 false
             }
