@@ -15,17 +15,19 @@ All configurations are stored inside the application's configuration folder (def
 
 `spotify-player` uses `app.toml` to store general application configurations:
 
-| Option                                     | Description                                                      | Default   |
-| ------------------------------------------ | ---------------------------------------------------------------- | --------- |
-| `theme`                                    | application's theme                                              | `dracula` |
-| `n_refreshes_each_playback_update`         | number of refresh requests in each playback update               | `5`       |
-| `refresh_delay_in_ms_each_playback_update` | delay in ms between two refresh requests in each playback update | `500`     |
-| `app_refresh_duration_in_ms`               | duration in ms for re-rendering the application's UI             | `30`      |
-| `playback_refresh_duration_in_ms`          | duration in ms for refreshing the player's playback periodically | `0`       |
-| `track_table_item_max_len`                 | maximum length for a column in a track table                     | `32`      |
+| Option                                     | Description                                                      | Default                            |
+| ------------------------------------------ | ---------------------------------------------------------------- | ---------------------------------- |
+| `client_id`                                | the application's client ID for getting authentication token     | `65b708073fc0480ea92a077233ca87bd` |
+| `theme`                                    | application's theme                                              | `dracula`                          |
+| `n_refreshes_each_playback_update`         | number of refresh requests in each playback update               | `5`                                |
+| `refresh_delay_in_ms_each_playback_update` | delay in ms between two refresh requests in each playback update | `500`                              |
+| `app_refresh_duration_in_ms`               | duration in ms for re-rendering the application's UI             | `30`                               |
+| `playback_refresh_duration_in_ms`          | duration in ms for refreshing the player's playback periodically | `0`                                |
+| `track_table_item_max_len`                 | maximum length for a column in a track table                     | `32`                               |
 
 **Note**:
 
+- By default, the application uses the official Spotify Web app's client ID (`65b708073fc0480ea92a077233ca87bd`). It's recommended to create [your own Client ID](https://developer.spotify.com/documentation/general/guides/app-settings/) to avoid possible rate limit and to allow full remote control (Spotify connect) support.
 - Positive-value `app_refresh_duration_in_ms` is used to refresh the current playback (making a Spotify API call) every `app_refresh_duration_in_ms` ms. This can result in hitting Spotify rate limit if the player is running for a long period of time.
 - To prevent the rate limit, `spotify-player` sets `playback_refresh_duration_in_ms=0` by default and relies on `n_refreshes_each_playback_update` and `refresh_delay_in_ms_each_playback_update` for refreshing the playback each time a command or event updates the player's playback.
 - List of commands that triggers a playback update:

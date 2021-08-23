@@ -16,7 +16,7 @@ pub struct Client {
 impl Client {
     /// creates the new client
     pub async fn new(session: Session, state: &state::SharedState) -> Result<Self> {
-        let token = token::get_token(&session).await?;
+        let token = token::get_token(&session, &state.app_config.client_id).await?;
         let spotify = Spotify::default().access_token(&token.access_token);
         state.player.write().unwrap().token = token;
         Ok(Self {
@@ -42,6 +42,7 @@ impl Client {
                 player.play_track(self, context_uri, track_uris, offset)
             }
             PlayerEvent::PlayContext(context_uri) => player.play_context(self, context_uri),
+            PlayerEvent::TransferPlayback(device_id) => player.transfer_playback(self, device_id),
         }
     }
 
@@ -60,9 +61,9 @@ impl Client {
                 self.handle_player_event(player, event)?;
                 utils::update_playback(state, send);
             }
-            // Event::GetDevices => {
-            //     state.player.write().unwrap().devices = self.get_devices()?;
-            // }
+            Event::GetDevices => {
+                state.player.write().unwrap().devices = self.get_devices()?;
+            }
             Event::GetUserPlaylists => {
                 state.player.write().unwrap().user_playlists =
                     self.get_current_user_playlists().await?;
@@ -89,7 +90,8 @@ impl Client {
             Event::RefreshToken => {
                 let expires_at = state.player.read().unwrap().token.expires_at;
                 if std::time::Instant::now() > expires_at {
-                    let token = token::get_token(&self.session).await?;
+                    let token =
+                        token::get_token(&self.session, &state.app_config.client_id).await?;
                     self.spotify = Spotify::default().access_token(&token.access_token);
                     state.player.write().unwrap().token = token;
                 }
@@ -121,9 +123,9 @@ impl Client {
     }
 
     /// gets all available devices
-    // pub fn get_devices(&self) -> Result<Vec<device::Device>> {
-    //     Ok(Self::handle_rspotify_result(self.spotify.device())?.devices)
-    // }
+    pub fn get_devices(&self) -> Result<Vec<device::Device>> {
+        Ok(Self::handle_rspotify_result(self.spotify.device())?.devices)
+    }
 
     /// gets all playlists of the current user
     pub async fn get_current_user_playlists(&self) -> Result<Vec<playlist::SimplifiedPlaylist>> {
@@ -226,9 +228,9 @@ impl Client {
     }
 
     /// transfers the current playback to another device
-    // pub fn transfer_playback(&self, device_id: String) -> Result<()> {
-    //     Self::handle_rspotify_result(self.spotify.transfer_playback(&device_id, None))
-    // }
+    pub fn transfer_playback(&self, device_id: String) -> Result<()> {
+        Self::handle_rspotify_result(self.spotify.transfer_playback(&device_id, None))
+    }
 
     /// cycles through the repeat state of the current playback
     pub fn cycle_repeat(&self, playback: &context::CurrentlyPlaybackContext) -> Result<()> {

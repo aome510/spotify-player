@@ -67,6 +67,7 @@ pub trait Playable {
         offset: Option<offset::Offset>,
     ) -> Result<()>;
     fn play_context(&mut self, client: &client::Client, context_uri: String) -> Result<()>;
+    fn transfer_playback(&mut self, client: &client::Client, device_id: String) -> Result<()>;
 }
 
 impl RemotePlayer {
@@ -125,31 +126,35 @@ impl Playable for RemotePlayer {
         let playback = self.get_current_playback()?;
         client.start_playback(&playback, Some(context_uri), None, None)
     }
+
+    fn transfer_playback(&mut self, client: &client::Client, device_id: String) -> Result<()> {
+        client.transfer_playback(device_id)
+    }
 }
 
 impl Playable for LocalPlayer {
     fn next_track(&mut self, client: &client::Client) -> Result<()> {
-        Ok(())
+        todo!()
     }
 
     fn previous_track(&mut self, client: &client::Client) -> Result<()> {
-        Ok(())
+        todo!()
     }
 
     fn resume_pause(&mut self, client: &client::Client) -> Result<()> {
-        Ok(())
+        todo!()
     }
 
     fn seek_track(&mut self, client: &client::Client, position_ms: u32) -> Result<()> {
-        Ok(())
+        todo!()
     }
 
     fn shuffle(&mut self, client: &client::Client) -> Result<()> {
-        Ok(())
+        todo!()
     }
 
     fn repeat(&mut self, client: &client::Client) -> Result<()> {
-        Ok(())
+        todo!()
     }
 
     fn play_track(
@@ -172,7 +177,11 @@ impl Playable for LocalPlayer {
     }
 
     fn play_context(&mut self, client: &client::Client, context_uri: String) -> Result<()> {
-        Ok(())
+        todo!()
+    }
+
+    fn transfer_playback(&mut self, client: &client::Client, device_id: String) -> Result<()> {
+        todo!()
     }
 }
 
