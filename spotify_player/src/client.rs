@@ -36,10 +36,10 @@ impl Client {
         log::info!("handle the client event {:?}", event);
 
         let need_update_playback = match event {
-            // event::Event::GetDevices => {
-            //     state.player.write().unwrap().devices = self.get_devices()?;
-            //     false
-            // }
+            event::Event::GetDevices => {
+                state.player.write().unwrap().devices = self.get_devices()?;
+                false
+            }
             event::Event::GetUserPlaylists => {
                 state.player.write().unwrap().user_playlists =
                     self.get_current_user_playlists().await?;
@@ -123,10 +123,10 @@ impl Client {
                 self.start_playback(playback, Some(uri), None, None)?;
                 true
             }
-            // event::Event::TransferPlayback(device_id) => {
-            //     self.transfer_playback(device_id)?;
-            //     true
-            // }
+            event::Event::TransferPlayback(device_id) => {
+                self.transfer_playback(device_id)?;
+                true
+            }
             event::Event::GetContext(context) => {
                 match context {
                     event::ContextURI::Playlist(playlist_uri) => {
@@ -158,9 +158,9 @@ impl Client {
     }
 
     /// gets all available devices
-    // pub fn get_devices(&self) -> Result<Vec<device::Device>> {
-    //     Ok(Self::handle_rspotify_result(self.spotify.device())?.devices)
-    // }
+    pub fn get_devices(&self) -> Result<Vec<device::Device>> {
+        Ok(Self::handle_rspotify_result(self.spotify.device())?.devices)
+    }
 
     /// gets all playlists of the current user
     pub async fn get_current_user_playlists(&self) -> Result<Vec<playlist::SimplifiedPlaylist>> {
@@ -262,9 +262,9 @@ impl Client {
     }
 
     /// transfers the current playback to another device
-    // pub fn transfer_playback(&self, device_id: String) -> Result<()> {
-    //     Self::handle_rspotify_result(self.spotify.transfer_playback(&device_id, None))
-    // }
+    pub fn transfer_playback(&self, device_id: String) -> Result<()> {
+        Self::handle_rspotify_result(self.spotify.transfer_playback(&device_id, None))
+    }
 
     /// cycles through the repeat state of the current playback
     pub fn cycle_repeat(&self, playback: &context::CurrentlyPlaybackContext) -> Result<()> {
