@@ -34,13 +34,14 @@ pub enum PlayerEvent {
 
 #[derive(Debug)]
 /// An event to communicate with the client
+/// TODO: renaming this enum (e.g to `ClientRequest`)
 pub enum Event {
+    RefreshToken,
     GetDevices,
     GetUserPlaylists,
     GetUserSavedAlbums,
     GetUserFollowedArtists,
     GetCurrentPlayback,
-    RefreshToken,
     GetContext(ContextURI),
     Player(PlayerEvent),
 }
@@ -58,8 +59,8 @@ impl From<event::KeyEvent> for Key {
 }
 
 #[tokio::main]
-/// starts the application's event stream that pools and handles events from the terminal
-pub async fn start_event_stream(send: mpsc::Sender<Event>, state: SharedState) {
+/// starts a terminal event handler
+pub async fn start_event_handler(send: mpsc::Sender<Event>, state: SharedState) {
     let mut event_stream = EventStream::new();
 
     while let Some(event) = event_stream.next().await {

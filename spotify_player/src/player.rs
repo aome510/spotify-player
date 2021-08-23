@@ -29,6 +29,7 @@ pub struct RemotePlayer {
 pub struct LocalPlayer {
     player: player::Player,
     state: state::SharedState,
+    context: state::Context,
 }
 
 impl RemotePlayer {
@@ -48,7 +49,11 @@ impl LocalPlayer {
             let state = state.clone();
             move || handle_local_player_event(channel, state)
         });
-        Self { player, state }
+        Self {
+            player,
+            state,
+            context: state::Context::Unknown("".to_string()),
+        }
     }
 }
 

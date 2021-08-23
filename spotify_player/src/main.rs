@@ -91,12 +91,12 @@ async fn main() -> anyhow::Result<()> {
         }
     });
 
-    // terminal event streaming thread
+    // terminal event handling thread
     std::thread::spawn({
         let send = send.clone();
         let state = state.clone();
         move || {
-            event::start_event_stream(send, state);
+            event::start_event_handler(send, state);
         }
     });
 
