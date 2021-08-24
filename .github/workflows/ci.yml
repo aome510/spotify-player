@@ -1,4 +1,4 @@
-name: Rust
+name: CI
 
 on:
   push:
@@ -14,6 +14,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
 
 jobs:
   linux-test:
@@ -27,7 +28,9 @@ jobs:
         with:
           toolchain: stable
           override: true
-          components: clippy, rustfmt
+          components:
+            - clippy
+            - rustfmt
       - uses: actions-rs/cargo@v1
         name: Cargo Test
         with:
