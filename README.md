@@ -43,7 +43,7 @@ Run `cargo install spotify_player` to install the application from [crates.io](h
 You can download the binary image of the latest build from the `master` branch by running
 
 ```
-# docker pull aome510/spotify_player:latest
+docker pull aome510/spotify_player:latest
 ```
 
 then run
