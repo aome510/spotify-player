@@ -49,7 +49,7 @@ All configurations are stored inside the application's configuration folder (def
 | ------------- | -------------------------------------------------------- | ---------------- |
 | `name`        | The librespot device's name                              | `spotify-player` |
 | `device_type` | The librespot device's type displayed in Spotify clients | `speaker`        |
-| `volume`      | Initial volume (in percentage) of the device             | `90`             |
+| `volume`      | Initial volume (in percentage) of the device             | `50`             |
 | `bitrate`     | Bitrate in kbps (`96`, `160`, `320`)                     | `160`            |
 
 More details on the above configuration options can be found under the [Librespot wiki page](https://github.com/librespot-org/librespot/wiki/Options).

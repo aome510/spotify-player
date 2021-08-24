@@ -60,7 +60,7 @@ impl Default for DeviceConfig {
         Self {
             name: "spotify-player".to_string(),
             device_type: "speaker".to_string(),
-            volume: 90,
+            volume: 50,
             bitrate: 160,
         }
     }
