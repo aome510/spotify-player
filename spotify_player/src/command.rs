@@ -9,6 +9,8 @@ pub enum Command {
     PlayContext,
     Repeat,
     Shuffle,
+    VolumeUp,
+    VolumeDown,
 
     Quit,
     OpenCommandHelp,
@@ -56,6 +58,8 @@ impl Command {
             Self::PlayContext => "play a random track in the current context",
             Self::Repeat => "cycle the repeat mode",
             Self::Shuffle => "toggle the shuffle mode",
+            Self::VolumeUp => "increase playback volume",
+            Self::VolumeDown => "decrease playback volume",
             Self::Quit => "quit the application",
             Self::OpenCommandHelp => "open a command help popup",
             Self::ClosePopup => "close a popup",

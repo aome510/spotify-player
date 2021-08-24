@@ -48,6 +48,14 @@ impl Default for KeymapConfig {
                     command: Command::Shuffle,
                 },
                 Keymap {
+                    key_sequence: "+".into(),
+                    command: Command::VolumeUp,
+                },
+                Keymap {
+                    key_sequence: "-".into(),
+                    command: Command::VolumeDown,
+                },
+                Keymap {
                     key_sequence: "enter".into(),
                     command: Command::ChooseSelected,
                 },

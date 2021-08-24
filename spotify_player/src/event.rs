@@ -521,6 +521,20 @@ fn handle_command(
             send.send(Event::Player(PlayerEvent::Shuffle))?;
             Ok(true)
         }
+        Command::VolumeUp => {
+            if let Some(ref playback) = state.player.read().unwrap().playback {
+                let volume = std::cmp::min(playback.device.volume_percent + 5, 100_u32);
+                send.send(Event::Player(PlayerEvent::Volume(volume as u8)))?;
+            }
+            Ok(true)
+        }
+        Command::VolumeDown => {
+            if let Some(ref playback) = state.player.read().unwrap().playback {
+                let volume = std::cmp::max(playback.device.volume_percent as i32 - 5, 0_i32);
+                send.send(Event::Player(PlayerEvent::Volume(volume as u8)))?;
+            }
+            Ok(true)
+        }
         Command::OpenCommandHelp => {
             ui.popup = PopupState::CommandHelp;
             Ok(true)
