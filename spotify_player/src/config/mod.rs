@@ -34,10 +34,8 @@ pub struct AppConfig {
 pub struct DeviceConfig {
     pub name: String,
     pub device_type: String,
-    pub volume: u16,
-    pub volume_ctrl: String,
-    pub autoplay: bool,
-    pub port: u16,
+    pub volume: u8,
+    pub bitrate: u16,
 }
 
 impl Default for AppConfig {
@@ -63,9 +61,7 @@ impl Default for DeviceConfig {
             name: "spotify-player".to_string(),
             device_type: "speaker".to_string(),
             volume: 90,
-            volume_ctrl: "log".to_string(),
-            autoplay: true,
-            port: 3000,
+            bitrate: 160,
         }
     }
 }
