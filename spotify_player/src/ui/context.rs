@@ -167,9 +167,11 @@ fn render_context_track_table_widget(
 ) {
     let track_table = {
         let mut playing_track_uri = "".to_string();
+        let mut active_desc = "";
         if let Some(ref playback) = state.player.read().unwrap().playback {
             if let Some(rspotify::model::PlayingItem::Track(ref track)) = playback.item {
                 playing_track_uri = track.uri.clone();
+                active_desc = if !playback.is_playing { "⏸" } else { "▶" };
             }
         }
 
@@ -179,7 +181,7 @@ fn render_context_track_table_widget(
             .enumerate()
             .map(|(id, t)| {
                 let (id, style) = if playing_track_uri == t.uri {
-                    ("▶".to_string(), ui.theme.current_active())
+                    (active_desc.to_string(), ui.theme.current_active())
                 } else {
                     ((id + 1).to_string(), Style::default())
                 };

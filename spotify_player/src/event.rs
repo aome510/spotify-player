@@ -27,6 +27,7 @@ pub enum PlayerEvent {
     SeekTrack(u32),
     Repeat,
     Shuffle,
+    Volume(u8),
     PlayTrack(Option<String>, Option<Vec<String>>, Option<offset::Offset>),
     PlayContext(String),
 }
@@ -42,7 +43,7 @@ pub enum Event {
     GetUserFollowedArtists,
     GetContext(ContextURI),
     GetCurrentPlayback,
-    TransferPlayback(String),
+    TransferPlayback(String, bool),
     Player(PlayerEvent),
 }
 
@@ -229,7 +230,10 @@ fn handle_terminal_event(
                         player.devices.len(),
                         |_: &mut UIStateGuard, _: usize| {},
                         |ui: &mut UIStateGuard, id: usize| -> Result<()> {
-                            send.send(Event::TransferPlayback(player.devices[id].id.clone()))?;
+                            send.send(Event::TransferPlayback(
+                                player.devices[id].id.clone(),
+                                true,
+                            ))?;
                             ui.popup = PopupState::None;
                             Ok(())
                         },

@@ -8,9 +8,9 @@ use rspotify::{blocking::client::Spotify, model::*, senum::*};
 
 /// A spotify client
 pub struct Client {
-    pub session: Session,
-    pub spotify: Spotify,
-    pub http: reqwest::Client,
+    session: Session,
+    spotify: Spotify,
+    http: reqwest::Client,
 }
 
 impl Client {
@@ -44,6 +44,7 @@ impl Client {
             PlayerEvent::SeekTrack(position_ms) => self.seek_track(playback, position_ms),
             PlayerEvent::Repeat => self.repeat(playback),
             PlayerEvent::Shuffle => self.shuffle(playback),
+            PlayerEvent::Volume(volume) => self.volume(playback, volume),
             PlayerEvent::PlayTrack(context_uri, track_uris, offset) => {
                 self.start_playback(playback, context_uri, track_uris, offset)
             }
@@ -79,8 +80,8 @@ impl Client {
             Event::GetCurrentPlayback => {
                 self.update_current_playback_state(state)?;
             }
-            Event::TransferPlayback(device_id) => {
-                self.transfer_playback(device_id)?;
+            Event::TransferPlayback(device_id, force_play) => {
+                self.transfer_playback(device_id, force_play)?;
                 utils::update_playback(state, send);
             }
             Event::GetDevices => {
@@ -238,8 +239,8 @@ impl Client {
     }
 
     /// transfers the current playback to another device
-    pub fn transfer_playback(&self, device_id: String) -> Result<()> {
-        Self::handle_rspotify_result(self.spotify.transfer_playback(&device_id, None))
+    pub fn transfer_playback(&self, device_id: String, force_play: bool) -> Result<()> {
+        Self::handle_rspotify_result(self.spotify.transfer_playback(&device_id, Some(force_play)))
     }
 
     /// cycles through the repeat state of the current playback
@@ -313,6 +314,14 @@ impl Client {
         Self::handle_rspotify_result(
             self.spotify
                 .shuffle(!playback.shuffle_state, Some(playback.device.id.clone())),
+        )
+    }
+
+    /// sets volume of the current playback
+    pub fn volume(&self, playback: &context::CurrentlyPlaybackContext, volume: u8) -> Result<()> {
+        Self::handle_rspotify_result(
+            self.spotify
+                .volume(volume, Some(playback.device.id.clone())),
         )
     }
 

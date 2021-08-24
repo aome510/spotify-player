@@ -62,8 +62,8 @@ impl Default for DeviceConfig {
         Self {
             name: "spotify-player".to_string(),
             device_type: "speaker".to_string(),
-            volume: 100,
-            volume_ctrl: "linear".to_string(),
+            volume: 90,
+            volume_ctrl: "log".to_string(),
             autoplay: true,
             port: 3000,
         }
