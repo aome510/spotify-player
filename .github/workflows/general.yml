@@ -10,6 +10,8 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     steps:
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install libasound2-dev
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
         with:
@@ -19,7 +21,6 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: test
-
   fmt:
     name: Rustfmt
     runs-on: ubuntu-latest
