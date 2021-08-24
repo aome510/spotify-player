@@ -25,11 +25,22 @@ pub struct AppConfig {
     pub app_refresh_duration_in_ms: u64,
     pub playback_refresh_duration_in_ms: u64,
     pub track_table_item_max_len: usize,
+
+    pub device: DeviceConfig,
+}
+
+#[derive(Debug, Deserialize, ConfigParse, Clone)]
+/// Application device configurations
+pub struct DeviceConfig {
+    pub name: String,
+    pub device_type: String,
+    pub volume: u8,
+    pub bitrate: u16,
 }
 
 impl Default for AppConfig {
     fn default() -> Self {
-        AppConfig {
+        Self {
             theme: "dracula".to_owned(),
             // official spotify web app's client id
             client_id: "65b708073fc0480ea92a077233ca87bd".to_string(),
@@ -38,6 +49,19 @@ impl Default for AppConfig {
             app_refresh_duration_in_ms: 30,
             playback_refresh_duration_in_ms: 0,
             track_table_item_max_len: 32,
+
+            device: DeviceConfig::default(),
+        }
+    }
+}
+
+impl Default for DeviceConfig {
+    fn default() -> Self {
+        Self {
+            name: "spotify-player".to_string(),
+            device_type: "speaker".to_string(),
+            volume: 90,
+            bitrate: 160,
         }
     }
 }

@@ -2,6 +2,7 @@ mod auth;
 mod client;
 mod command;
 mod config;
+mod connect;
 mod event;
 mod key;
 mod state;
@@ -68,23 +69,37 @@ async fn main() -> anyhow::Result<()> {
     // start application's threads
     let (send, recv) = std::sync::mpsc::channel::<event::Event>();
 
+    let session = auth::new_session(&cache_folder).await?;
+
+    // connection thread
+    std::thread::spawn({
+        let session = session.clone();
+        let device = state.app_config.device.clone();
+        send.send(event::Event::TransferPlayback(
+            session.device_id().to_string(),
+            false,
+        ))?;
+        move || {
+            connect::new_connection(session, device);
+        }
+    });
+
     // client event watcher/handler thread
     std::thread::spawn({
         let state = state.clone();
         let send = send.clone();
-        let session = auth::new_session(&cache_folder).await?;
         let client = client::Client::new(session, &state).await?;
         move || {
             client::start_watcher(state, client, send, recv);
         }
     });
 
-    // terminal event streaming thread
+    // terminal event handling thread
     std::thread::spawn({
         let send = send.clone();
         let state = state.clone();
         move || {
-            event::start_event_stream(send, state);
+            event::start_event_handler(send, state);
         }
     });
 

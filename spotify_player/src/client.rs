@@ -1,7 +1,7 @@
-use crate::event;
-use crate::state;
-use crate::token;
-use crate::utils;
+use crate::{
+    event::{ContextURI, Event, PlayerEvent},
+    state, token, utils,
+};
 use anyhow::{anyhow, Result};
 use librespot_core::session::Session;
 use rspotify::{blocking::client::Spotify, model::*, senum::*};
@@ -26,119 +26,102 @@ impl Client {
         })
     }
 
+    /// handles a player event
+    fn handle_player_event(&self, state: &state::SharedState, event: PlayerEvent) -> Result<()> {
+        log::info!("handle player event: {:?}", event);
+
+        let player = state.player.read().unwrap();
+        let playback = match player.playback {
+            Some(ref playback) => playback,
+            None => {
+                return Err(anyhow!("failed to get the current playback context"));
+            }
+        };
+        match event {
+            PlayerEvent::NextTrack => self.next_track(playback),
+            PlayerEvent::PreviousTrack => self.previous_track(playback),
+            PlayerEvent::ResumePause => self.resume_pause(playback),
+            PlayerEvent::SeekTrack(position_ms) => self.seek_track(playback, position_ms),
+            PlayerEvent::Repeat => self.repeat(playback),
+            PlayerEvent::Shuffle => self.shuffle(playback),
+            PlayerEvent::Volume(volume) => self.volume(playback, volume),
+            PlayerEvent::PlayTrack(context_uri, track_uris, offset) => {
+                self.start_playback(playback, context_uri, track_uris, offset)
+            }
+            PlayerEvent::PlayContext(context_uri) => {
+                self.start_playback(playback, Some(context_uri), None, None)
+            }
+        }
+    }
+
     /// handles a client event
     pub async fn handle_event(
         &mut self,
         state: &state::SharedState,
-        send: &std::sync::mpsc::Sender<event::Event>,
-        event: event::Event,
+        send: &std::sync::mpsc::Sender<Event>,
+        event: Event,
     ) -> Result<()> {
         log::info!("handle the client event {:?}", event);
 
-        let need_update_playback = match event {
-            event::Event::GetDevices => {
-                state.player.write().unwrap().devices = self.get_devices()?;
-                false
+        match event {
+            Event::Player(event) => {
+                self.handle_player_event(state, event)?;
+                utils::update_playback(state, send);
             }
-            event::Event::GetUserPlaylists => {
-                state.player.write().unwrap().user_playlists =
-                    self.get_current_user_playlists().await?;
-                false
+            Event::RefreshToken => {
+                let expires_at = state.player.read().unwrap().token.expires_at;
+                if std::time::Instant::now() > expires_at {
+                    let token =
+                        token::get_token(&self.session, &state.app_config.client_id).await?;
+                    self.spotify = Spotify::default().access_token(&token.access_token);
+                    state.player.write().unwrap().token = token;
+                }
             }
-            event::Event::GetUserFollowedArtists => {
-                state.player.write().unwrap().user_followed_artists = self
+            Event::GetCurrentPlayback => {
+                self.update_current_playback_state(state)?;
+            }
+            Event::TransferPlayback(device_id, force_play) => {
+                self.transfer_playback(device_id, force_play)?;
+                utils::update_playback(state, send);
+            }
+            Event::GetDevices => {
+                let devices = self.get_devices()?;
+                state.player.write().unwrap().devices = devices;
+            }
+            Event::GetUserPlaylists => {
+                let playlists = self.get_current_user_playlists().await?;
+                state.player.write().unwrap().user_playlists = playlists;
+            }
+            Event::GetUserFollowedArtists => {
+                let artists = self
                     .get_current_user_followed_artists()
                     .await?
                     .into_iter()
                     .map(|a| a.into())
                     .collect::<Vec<_>>();
-                false
+                state.player.write().unwrap().user_followed_artists = artists;
             }
-            event::Event::GetUserSavedAlbums => {
-                state.player.write().unwrap().user_saved_albums = self
+            Event::GetUserSavedAlbums => {
+                let albums = self
                     .get_current_user_saved_albums()
                     .await?
                     .into_iter()
                     .map(|a| a.album.into())
                     .collect::<Vec<_>>();
-                false
+                state.player.write().unwrap().user_saved_albums = albums;
             }
-            event::Event::GetCurrentPlayback => {
-                self.update_current_playback_state(state)?;
-                false
-            }
-            event::Event::RefreshToken => {
-                let expires_at = state.player.read().unwrap().token.expires_at;
-                if std::time::Instant::now() > expires_at {
-                    state.player.write().unwrap().token =
-                        token::get_token(&self.session, &state.app_config.client_id).await?;
-                }
-                false
-            }
-            event::Event::NextTrack => {
-                let player = state.player.read().unwrap();
-                let playback = Self::get_state_current_playback(&player)?;
-                self.next_track(playback)?;
-                true
-            }
-            event::Event::PreviousTrack => {
-                let player = state.player.read().unwrap();
-                let playback = Self::get_state_current_playback(&player)?;
-                self.previous_track(playback)?;
-                true
-            }
-            event::Event::ResumePause => {
-                let player = state.player.read().unwrap();
-                let playback = Self::get_state_current_playback(&player)?;
-                self.toggle_playing_state(playback)?;
-                true
-            }
-            event::Event::SeekTrack(position_ms) => {
-                let player = state.player.read().unwrap();
-                let playback = Self::get_state_current_playback(&player)?;
-                self.seek_track(playback, position_ms)?;
-                true
-            }
-            event::Event::Shuffle => {
-                let player = state.player.read().unwrap();
-                let playback = Self::get_state_current_playback(&player)?;
-                self.toggle_shuffle(playback)?;
-                true
-            }
-            event::Event::Repeat => {
-                let player = state.player.read().unwrap();
-                let playback = Self::get_state_current_playback(&player)?;
-                self.cycle_repeat(playback)?;
-                true
-            }
-            event::Event::PlayTrack(context_uri, uris, offset) => {
-                let player = state.player.read().unwrap();
-                let playback = Self::get_state_current_playback(&player)?;
-                self.start_playback(playback, context_uri, uris, offset)?;
-                true
-            }
-            event::Event::PlayContext(uri) => {
-                let player = state.player.read().unwrap();
-                let playback = Self::get_state_current_playback(&player)?;
-                self.start_playback(playback, Some(uri), None, None)?;
-                true
-            }
-            event::Event::TransferPlayback(device_id) => {
-                self.transfer_playback(device_id)?;
-                true
-            }
-            event::Event::GetContext(context) => {
+            Event::GetContext(context) => {
                 match context {
-                    event::ContextURI::Playlist(playlist_uri) => {
+                    ContextURI::Playlist(playlist_uri) => {
                         self.get_playlist_context(playlist_uri, state).await?;
                     }
-                    event::ContextURI::Album(album_uri) => {
+                    ContextURI::Album(album_uri) => {
                         self.get_album_context(album_uri, state).await?;
                     }
-                    event::ContextURI::Artist(artist_uri) => {
+                    ContextURI::Artist(artist_uri) => {
                         self.get_artist_context(artist_uri, state).await?;
                     }
-                    event::ContextURI::Unknown(uri) => {
+                    ContextURI::Unknown(uri) => {
                         state
                             .player
                             .write()
@@ -147,13 +130,9 @@ impl Client {
                             .put(uri.clone(), state::Context::Unknown(uri));
                     }
                 };
-                false
             }
         };
 
-        if need_update_playback {
-            utils::update_playback(state, send);
-        }
         Ok(())
     }
 
@@ -193,6 +172,7 @@ impl Client {
             Self::handle_rspotify_result(self.spotify.current_user_saved_albums(50, None))?;
         self.get_all_paging_items(first_page).await
     }
+
     /// gets a playlist given its id
     pub fn get_playlist(&self, playlist_uri: &str) -> Result<playlist::FullPlaylist> {
         Self::handle_rspotify_result(self.spotify.playlist(playlist_uri, None, None))
@@ -262,12 +242,12 @@ impl Client {
     }
 
     /// transfers the current playback to another device
-    pub fn transfer_playback(&self, device_id: String) -> Result<()> {
-        Self::handle_rspotify_result(self.spotify.transfer_playback(&device_id, None))
+    pub fn transfer_playback(&self, device_id: String, force_play: bool) -> Result<()> {
+        Self::handle_rspotify_result(self.spotify.transfer_playback(&device_id, Some(force_play)))
     }
 
     /// cycles through the repeat state of the current playback
-    pub fn cycle_repeat(&self, playback: &context::CurrentlyPlaybackContext) -> Result<()> {
+    pub fn repeat(&self, playback: &context::CurrentlyPlaybackContext) -> Result<()> {
         let next_repeat_state = match playback.repeat_state {
             RepeatState::Off => RepeatState::Track,
             RepeatState::Track => RepeatState::Context,
@@ -280,7 +260,7 @@ impl Client {
     }
 
     /// toggles the current playing state (pause/resume a track)
-    pub fn toggle_playing_state(&self, playback: &context::CurrentlyPlaybackContext) -> Result<()> {
+    pub fn resume_pause(&self, playback: &context::CurrentlyPlaybackContext) -> Result<()> {
         if playback.is_playing {
             self.pause_track(playback)
         } else {
@@ -333,16 +313,34 @@ impl Client {
     }
 
     /// toggles the shuffle state of the current playback
-    pub fn toggle_shuffle(&self, playback: &context::CurrentlyPlaybackContext) -> Result<()> {
+    pub fn shuffle(&self, playback: &context::CurrentlyPlaybackContext) -> Result<()> {
         Self::handle_rspotify_result(
             self.spotify
                 .shuffle(!playback.shuffle_state, Some(playback.device.id.clone())),
         )
     }
 
+    /// sets volume of the current playback
+    pub fn volume(&self, playback: &context::CurrentlyPlaybackContext, volume: u8) -> Result<()> {
+        Self::handle_rspotify_result(
+            self.spotify
+                .volume(volume, Some(playback.device.id.clone())),
+        )
+    }
+
     /// gets the current playing context
     pub fn get_current_playback(&self) -> Result<Option<context::CurrentlyPlaybackContext>> {
         Self::handle_rspotify_result(self.spotify.current_playback(None, None))
+    }
+
+    /// handles a `rspotify` client result and converts it into `anyhow` compatible result format
+    fn handle_rspotify_result<T, E: std::fmt::Display>(
+        result: std::result::Result<T, E>,
+    ) -> Result<T> {
+        match result {
+            Ok(data) => Ok(data),
+            Err(err) => Err(anyhow!(format!("{}", err))),
+        }
     }
 
     /// gets a playlist context data
@@ -531,29 +529,10 @@ impl Client {
         Ok(items)
     }
 
-    /// handles a `rspotify` client result and converts it into `anyhow` compatible result format
-    fn handle_rspotify_result<T, E: std::fmt::Display>(
-        result: std::result::Result<T, E>,
-    ) -> Result<T> {
-        match result {
-            Ok(data) => Ok(data),
-            Err(err) => Err(anyhow!(format!("{}", err))),
-        }
-    }
-
-    /// gets the current playback state from the application state
-    fn get_state_current_playback<'a>(
-        player: &'a std::sync::RwLockReadGuard<'a, state::PlayerState>,
-    ) -> Result<&'a context::CurrentlyPlaybackContext> {
-        match player.playback {
-            Some(ref playback) => Ok(playback),
-            None => Err(anyhow!("failed to get the current playback context")),
-        }
-    }
-
     /// updates the current playback state by fetching data from the spotify client
     fn update_current_playback_state(&self, state: &state::SharedState) -> Result<()> {
-        state.player.write().unwrap().playback = self.get_current_playback()?;
+        let playback = self.get_current_playback()?;
+        state.player.write().unwrap().playback = playback;
         state.player.write().unwrap().playback_last_updated = Some(std::time::Instant::now());
         Ok(())
     }
@@ -590,8 +569,8 @@ impl Client {
 pub async fn start_watcher(
     state: state::SharedState,
     mut client: Client,
-    send: std::sync::mpsc::Sender<event::Event>,
-    recv: std::sync::mpsc::Receiver<event::Event>,
+    send: std::sync::mpsc::Sender<Event>,
+    recv: std::sync::mpsc::Receiver<Event>,
 ) {
     while let Ok(event) = recv.recv() {
         if let Err(err) = client.handle_event(&state, &send, event).await {

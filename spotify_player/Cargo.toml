@@ -17,6 +17,7 @@ config_parser2 = "0.1.2"
 crossterm = { version = "0.20.0", features = ["event-stream"] }
 dirs-next = "2.0.0"
 env_logger = "0.9.0"
+librespot-connect = "0.2.0"
 librespot-core = "0.2.0"
 librespot-playback = "0.2.0"
 log = "0.4.14"
@@ -30,3 +31,10 @@ tokio-stream = "0.1.7"
 toml = "0.5.8"
 tui = { version = "0.15.0", default-features = false, features = ["crossterm", "serde"] }
 unicode-width = "0.1.8"
+
+[features]
+alsa_backend = ["librespot-playback/alsa-backend"]
+pulseaudio_backend = ["librespot-playback/pulseaudio-backend"]
+rodio_backend = ["librespot-playback/rodio-backend"]
+portaudio_backend = ["librespot-playback/portaudio-backend"]
+default = ["pulseaudio_backend"]

@@ -86,6 +86,8 @@ List of supported commands:
 | `PlayContext`                | play a random track in the current context                | `.`                |
 | `Repeat`                     | cycle the repeat mode                                     | `C-r`              |
 | `Shuffle`                    | toggle the shuffle mode                                   | `C-s`              |
+| `VolumeUp`                   | increase playback volume                                  | `+`                |
+| `VolumeDown`                 | decrease playback volume                                  | `-`                |
 | `Quit`                       | quit the application                                      | `C-c`, `q`         |
 | `OpenCommandHelp`            | open a command help popup                                 | `?`, `C-h`         |
 | `ClosePopup`                 | close a popup                                             | `esc`              |

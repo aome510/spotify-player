@@ -60,8 +60,13 @@ fn update_player_state(
     // updates the playback when the current playing song ends
     let progress_ms = player.get_playback_progress();
     let duration_ms = player.get_current_playing_track().map(|t| t.duration_ms);
+    let is_playing = match player.playback {
+        Some(ref playback) => playback.is_playing,
+        None => false,
+    };
     if let Some(progress_ms) = progress_ms {
-        if progress_ms == duration_ms.unwrap() {
+        if progress_ms == duration_ms.unwrap() && is_playing {
+            log::info!("{}", is_playing);
             send.send(event::Event::GetCurrentPlayback)?;
         }
     }

@@ -41,6 +41,19 @@ All configurations are stored inside the application's configuration folder (def
   - `ChooseSelected` (for a track, a device, etc)
 - The playback is also updated when the current track ends (using a timer based on the track's duration).
 
+### Device configurations
+
+[Librespot](https://github.com/librespot-org/librespot) device configuration options are configured under the `[device]` section in the `app.toml` file:
+
+| Option        | Description                                              | Default          |
+| ------------- | -------------------------------------------------------- | ---------------- |
+| `name`        | The librespot device's name                              | `spotify-player` |
+| `device_type` | The librespot device's type displayed in Spotify clients | `speaker`        |
+| `volume`      | Initial volume (in percentage) of the device             | `90`             |
+| `bitrate`     | Bitrate in kbps (`96`, `160`, `320`)                     | `160`            |
+
+More details on the above configuration options can be found under the [Librespot wiki page](https://github.com/librespot-org/librespot/wiki/Options).
+
 ## Themes
 
 `spotify-player` uses `theme.toml` to define additional themes in addition to the default themes (`dracula`, `ayu_light`, `gruvbox_dark`, `solarized_light`).

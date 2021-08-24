@@ -19,24 +19,32 @@ pub enum ContextURI {
 }
 
 #[derive(Debug)]
-/// An event to communicate with the client
-pub enum Event {
-    GetDevices,
-    GetUserPlaylists,
-    GetUserSavedAlbums,
-    GetUserFollowedArtists,
-    GetCurrentPlayback,
-    RefreshToken,
+/// An event that modifies the player's playback
+pub enum PlayerEvent {
     NextTrack,
     PreviousTrack,
     ResumePause,
     SeekTrack(u32),
     Repeat,
     Shuffle,
-    GetContext(ContextURI),
+    Volume(u8),
     PlayTrack(Option<String>, Option<Vec<String>>, Option<offset::Offset>),
     PlayContext(String),
-    TransferPlayback(String),
+}
+
+#[derive(Debug)]
+/// An event to communicate with the client
+/// TODO: renaming this enum (e.g to `ClientRequest`)
+pub enum Event {
+    RefreshToken,
+    GetDevices,
+    GetUserPlaylists,
+    GetUserSavedAlbums,
+    GetUserFollowedArtists,
+    GetContext(ContextURI),
+    GetCurrentPlayback,
+    TransferPlayback(String, bool),
+    Player(PlayerEvent),
 }
 
 impl From<event::KeyEvent> for Key {
@@ -52,8 +60,8 @@ impl From<event::KeyEvent> for Key {
 }
 
 #[tokio::main]
-/// starts the application's event stream that pools and handles events from the terminal
-pub async fn start_event_stream(send: mpsc::Sender<Event>, state: SharedState) {
+/// starts a terminal event handler
+pub async fn start_event_handler(send: mpsc::Sender<Event>, state: SharedState) {
     let mut event_stream = EventStream::new();
 
     while let Some(event) = event_stream.next().await {
@@ -222,7 +230,10 @@ fn handle_terminal_event(
                         player.devices.len(),
                         |_: &mut UIStateGuard, _: usize| {},
                         |ui: &mut UIStateGuard, id: usize| -> Result<()> {
-                            send.send(Event::TransferPlayback(player.devices[id].id.clone()))?;
+                            send.send(Event::TransferPlayback(
+                                player.devices[id].id.clone(),
+                                true,
+                            ))?;
                             ui.popup = PopupState::None;
                             Ok(())
                         },
@@ -265,7 +276,7 @@ fn handle_mouse_event(
             if let Some(track) = track {
                 let position_ms =
                     track.duration_ms * (event.column as u32) / (ui.progress_bar_rect.width as u32);
-                send.send(Event::SeekTrack(position_ms))?;
+                send.send(Event::Player(PlayerEvent::SeekTrack(position_ms)))?;
             }
         }
     }
@@ -286,7 +297,7 @@ fn handle_command_for_none_popup(
         }
         Command::PlayContext => {
             let uri = state.player.read().unwrap().context_uri.clone();
-            send.send(Event::PlayContext(uri))?;
+            send.send(Event::Player(PlayerEvent::PlayContext(uri)))?;
             Ok(true)
         }
         Command::FocusNextWindow => {
@@ -491,23 +502,37 @@ fn handle_command(
             Ok(true)
         }
         Command::NextTrack => {
-            send.send(Event::NextTrack)?;
+            send.send(Event::Player(PlayerEvent::NextTrack))?;
             Ok(true)
         }
         Command::PreviousTrack => {
-            send.send(Event::PreviousTrack)?;
+            send.send(Event::Player(PlayerEvent::PreviousTrack))?;
             Ok(true)
         }
         Command::ResumePause => {
-            send.send(Event::ResumePause)?;
+            send.send(Event::Player(PlayerEvent::ResumePause))?;
             Ok(true)
         }
         Command::Repeat => {
-            send.send(Event::Repeat)?;
+            send.send(Event::Player(PlayerEvent::Repeat))?;
             Ok(true)
         }
         Command::Shuffle => {
-            send.send(Event::Shuffle)?;
+            send.send(Event::Player(PlayerEvent::Shuffle))?;
+            Ok(true)
+        }
+        Command::VolumeUp => {
+            if let Some(ref playback) = state.player.read().unwrap().playback {
+                let volume = std::cmp::min(playback.device.volume_percent + 5, 100_u32);
+                send.send(Event::Player(PlayerEvent::Volume(volume as u8)))?;
+            }
+            Ok(true)
+        }
+        Command::VolumeDown => {
+            if let Some(ref playback) = state.player.read().unwrap().playback {
+                let volume = std::cmp::max(playback.device.volume_percent as i32 - 5, 0_i32);
+                send.send(Event::Player(PlayerEvent::Volume(volume as u8)))?;
+            }
             Ok(true)
         }
         Command::OpenCommandHelp => {
@@ -728,25 +753,25 @@ fn handle_command_for_track_table(
                     Context::Artist(_, _, _, _) => {
                         // cannot use artist context uri with a track uri
                         let tracks = tracks.iter().map(|t| t.uri.clone()).collect::<Vec<_>>();
-                        send.send(Event::PlayTrack(
+                        send.send(Event::Player(PlayerEvent::PlayTrack(
                             None,
                             Some(tracks),
                             offset::for_position(id as u32),
-                        ))?;
+                        )))?;
                     }
                     Context::Playlist(ref playlist, _) => {
-                        send.send(Event::PlayTrack(
+                        send.send(Event::Player(PlayerEvent::PlayTrack(
                             Some(playlist.uri.clone()),
                             None,
                             offset::for_uri(tracks[id].uri.clone()),
-                        ))?;
+                        )))?;
                     }
                     Context::Album(ref album, _) => {
-                        send.send(Event::PlayTrack(
+                        send.send(Event::Player(PlayerEvent::PlayTrack(
                             Some(album.uri.clone()),
                             None,
                             offset::for_uri(tracks[id].uri.clone()),
-                        ))?;
+                        )))?;
                     }
                     Context::Unknown(_) => {}
                 }

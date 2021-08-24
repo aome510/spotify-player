@@ -6,11 +6,14 @@ use rspotify::model::*;
 pub struct PlayerState {
     pub devices: Vec<device::Device>,
     pub token: Token,
+
     pub user_playlists: Vec<playlist::SimplifiedPlaylist>,
     pub user_followed_artists: Vec<Artist>,
     pub user_saved_albums: Vec<Album>,
+
     pub context_uri: String,
     pub context_cache: lru::LruCache<String, Context>,
+
     pub playback: Option<context::CurrentlyPlaybackContext>,
     pub playback_last_updated: Option<std::time::Instant>,
 }
