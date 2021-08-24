@@ -85,27 +85,30 @@ impl Client {
                 utils::update_playback(state, send);
             }
             Event::GetDevices => {
-                state.player.write().unwrap().devices = self.get_devices()?;
+                let devices = self.get_devices()?;
+                state.player.write().unwrap().devices = devices;
             }
             Event::GetUserPlaylists => {
-                state.player.write().unwrap().user_playlists =
-                    self.get_current_user_playlists().await?;
+                let playlists = self.get_current_user_playlists().await?;
+                state.player.write().unwrap().user_playlists = playlists;
             }
             Event::GetUserFollowedArtists => {
-                state.player.write().unwrap().user_followed_artists = self
+                let artists = self
                     .get_current_user_followed_artists()
                     .await?
                     .into_iter()
                     .map(|a| a.into())
                     .collect::<Vec<_>>();
+                state.player.write().unwrap().user_followed_artists = artists;
             }
             Event::GetUserSavedAlbums => {
-                state.player.write().unwrap().user_saved_albums = self
+                let albums = self
                     .get_current_user_saved_albums()
                     .await?
                     .into_iter()
                     .map(|a| a.album.into())
                     .collect::<Vec<_>>();
+                state.player.write().unwrap().user_saved_albums = albums;
             }
             Event::GetContext(context) => {
                 match context {
@@ -528,7 +531,8 @@ impl Client {
 
     /// updates the current playback state by fetching data from the spotify client
     fn update_current_playback_state(&self, state: &state::SharedState) -> Result<()> {
-        state.player.write().unwrap().playback = self.get_current_playback()?;
+        let playback = self.get_current_playback()?;
+        state.player.write().unwrap().playback = playback;
         state.player.write().unwrap().playback_last_updated = Some(std::time::Instant::now());
         Ok(())
     }
