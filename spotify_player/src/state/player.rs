@@ -81,24 +81,17 @@ impl PlayerState {
     pub fn get_playback_progress(&self) -> Option<u32> {
         match self.playback {
             None => None,
-            Some(ref playback) => match playback.item {
-                Some(rspotify::model::PlayingItem::Track(ref track)) => {
-                    let progress_ms = (playback.progress_ms.unwrap() as u128)
-                        + if playback.is_playing {
-                            std::time::Instant::now()
-                                .saturating_duration_since(self.playback_last_updated.unwrap())
-                                .as_millis()
-                        } else {
-                            0
-                        };
-                    if progress_ms > (track.duration_ms as u128) {
-                        Some(track.duration_ms)
+            Some(ref playback) => {
+                let progress_ms = (playback.progress_ms.unwrap() as u128)
+                    + if playback.is_playing {
+                        std::time::Instant::now()
+                            .saturating_duration_since(self.playback_last_updated.unwrap())
+                            .as_millis()
                     } else {
-                        Some(progress_ms as u32)
-                    }
-                }
-                _ => None,
-            },
+                        0
+                    };
+                Some(progress_ms as u32)
+            }
         }
     }
 

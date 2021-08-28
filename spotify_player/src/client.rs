@@ -1,6 +1,7 @@
 use crate::{
     event::{ContextURI, Event, PlayerEvent},
-    state, token, utils,
+    state::{Context, PageState, SharedState, Track},
+    token, utils,
 };
 use anyhow::{anyhow, Result};
 use librespot_core::session::Session;
@@ -15,7 +16,7 @@ pub struct Client {
 
 impl Client {
     /// creates the new client
-    pub async fn new(session: Session, state: &state::SharedState) -> Result<Self> {
+    pub async fn new(session: Session, state: &SharedState) -> Result<Self> {
         let token = token::get_token(&session, &state.app_config.client_id).await?;
         let spotify = Spotify::default().access_token(&token.access_token);
         state.player.write().unwrap().token = token;
@@ -27,7 +28,7 @@ impl Client {
     }
 
     /// handles a player event
-    fn handle_player_event(&self, state: &state::SharedState, event: PlayerEvent) -> Result<()> {
+    fn handle_player_event(&self, state: &SharedState, event: PlayerEvent) -> Result<()> {
         log::info!("handle player event: {:?}", event);
 
         let player = state.player.read().unwrap();
@@ -57,7 +58,7 @@ impl Client {
     /// handles a client event
     pub async fn handle_event(
         &mut self,
-        state: &state::SharedState,
+        state: &SharedState,
         send: &std::sync::mpsc::Sender<Event>,
         event: Event,
     ) -> Result<()> {
@@ -127,7 +128,7 @@ impl Client {
                             .write()
                             .unwrap()
                             .context_cache
-                            .put(uri.clone(), state::Context::Unknown(uri));
+                            .put(uri.clone(), Context::Unknown(uri));
                     }
                 };
             }
@@ -344,11 +345,7 @@ impl Client {
     }
 
     /// gets a playlist context data
-    async fn get_playlist_context(
-        &self,
-        playlist_uri: String,
-        state: &state::SharedState,
-    ) -> Result<()> {
+    async fn get_playlist_context(&self, playlist_uri: String, state: &SharedState) -> Result<()> {
         log::info!("get playlist context: {}", playlist_uri);
 
         if !state
@@ -364,7 +361,7 @@ impl Client {
             // get the playlist's tracks
             state.player.write().unwrap().context_cache.put(
                 playlist_uri.clone(),
-                state::Context::Playlist(
+                Context::Playlist(
                     playlist,
                     first_page
                         .items
@@ -387,7 +384,7 @@ impl Client {
                 .map(|t| t.into())
                 .collect::<Vec<_>>();
 
-            if let Some(state::Context::Playlist(_, ref mut old)) = state
+            if let Some(Context::Playlist(_, ref mut old)) = state
                 .player
                 .write()
                 .unwrap()
@@ -402,7 +399,7 @@ impl Client {
     }
 
     /// gets an album context data
-    async fn get_album_context(&self, album_uri: String, state: &state::SharedState) -> Result<()> {
+    async fn get_album_context(&self, album_uri: String, state: &SharedState) -> Result<()> {
         log::info!("get album context: {}", album_uri);
 
         if !state
@@ -419,7 +416,7 @@ impl Client {
             let tracks = album_tracks
                 .into_iter()
                 .map(|t| {
-                    let mut track: state::Track = t.into();
+                    let mut track: Track = t.into();
                     track.album = album.clone().into();
                     track
                 })
@@ -429,18 +426,14 @@ impl Client {
                 .write()
                 .unwrap()
                 .context_cache
-                .put(album_uri, state::Context::Album(album, tracks));
+                .put(album_uri, Context::Album(album, tracks));
         }
 
         Ok(())
     }
 
     /// gets an artist context data
-    async fn get_artist_context(
-        &self,
-        artist_uri: String,
-        state: &state::SharedState,
-    ) -> Result<()> {
+    async fn get_artist_context(&self, artist_uri: String, state: &SharedState) -> Result<()> {
         log::info!("get artist context: {}", artist_uri);
 
         if !state
@@ -467,7 +460,7 @@ impl Client {
 
             state.player.write().unwrap().context_cache.put(
                 artist_uri.clone(),
-                state::Context::Artist(artist, top_tracks, vec![], related_artists),
+                Context::Artist(artist, top_tracks, vec![], related_artists),
             );
 
             // delay the request for getting artist's albums to not block the UI
@@ -478,7 +471,7 @@ impl Client {
                 .map(|a| a.into())
                 .collect::<Vec<_>>();
 
-            if let Some(state::Context::Artist(_, _, ref mut old, _)) = state
+            if let Some(Context::Artist(_, _, ref mut old, _)) = state
                 .player
                 .write()
                 .unwrap()
@@ -530,7 +523,7 @@ impl Client {
     }
 
     /// updates the current playback state by fetching data from the spotify client
-    fn update_current_playback_state(&self, state: &state::SharedState) -> Result<()> {
+    fn update_current_playback_state(&self, state: &SharedState) -> Result<()> {
         let playback = self.get_current_playback()?;
         let mut player = state.player.write().unwrap();
         player.playback = playback;
@@ -565,10 +558,10 @@ impl Client {
     }
 }
 
-/// starts the client's event watcher
+/// starts the client's event handler
 #[tokio::main]
-pub async fn start_watcher(
-    state: state::SharedState,
+pub async fn start_client_handler(
+    state: SharedState,
     mut client: Client,
     send: std::sync::mpsc::Sender<Event>,
     recv: std::sync::mpsc::Receiver<Event>,
@@ -578,4 +571,114 @@ pub async fn start_watcher(
             log::warn!("{:#?}", err);
         }
     }
+}
+
+// starts multiple threads watching for player events then
+// notify the client to make update requests when needed
+pub fn start_player_event_watchers(state: SharedState, send: std::sync::mpsc::Sender<Event>) {
+    // start a playback pooling (every `playback_refresh_duration_in_ms` ms) thread
+    if state.app_config.playback_refresh_duration_in_ms > 0 {
+        std::thread::spawn({
+            let send = send.clone();
+            let playback_refresh_duration =
+                std::time::Duration::from_millis(state.app_config.playback_refresh_duration_in_ms);
+            move || -> Result<()> {
+                loop {
+                    send.send(Event::GetCurrentPlayback)?;
+                    std::thread::sleep(playback_refresh_duration);
+                }
+            }
+        });
+    }
+
+    // start the main player event watcher thread
+    std::thread::spawn(move || -> Result<()> {
+        let refresh_duration = std::time::Duration::from_millis(
+            state.app_config.refresh_delay_in_ms_each_playback_update,
+        );
+        loop {
+            {
+                let player = state.player.read().unwrap();
+
+                // update the auth token if expired
+                if std::time::Instant::now() > player.token.expires_at {
+                    send.send(Event::RefreshToken)?;
+                }
+
+                {
+                    // refresh the playback when the current song ends
+                    let progress_ms = player.get_playback_progress();
+                    let duration_ms = player.get_current_playing_track().map(|t| t.duration_ms);
+                    let is_playing = match player.playback {
+                        Some(ref playback) => playback.is_playing,
+                        None => false,
+                    };
+                    if let (Some(progress_ms), Some(duration_ms)) = (progress_ms, duration_ms) {
+                        if progress_ms >= duration_ms && is_playing {
+                            send.send(Event::GetCurrentPlayback)?;
+                        }
+                    }
+                }
+
+                // update the player's context based on the UI's page state
+                let page = state.ui.lock().unwrap().page.clone();
+                match page {
+                    PageState::Browsing(uri) => {
+                        if player.context_uri != uri {
+                            utils::update_context(&state, uri);
+                        }
+                    }
+                    PageState::CurrentPlaying => {
+                        // updates the context (album, playlist, etc) tracks based on the current playback
+                        if let Some(ref playback) = player.playback {
+                            match playback.context {
+                                Some(ref context) => {
+                                    let uri = context.uri.clone();
+
+                                    if uri != player.context_uri {
+                                        utils::update_context(&state, uri.clone());
+                                        if player.context_cache.peek(&uri).is_none() {
+                                            match context._type {
+                                                rspotify::senum::Type::Playlist => send.send(
+                                                    Event::GetContext(ContextURI::Playlist(uri)),
+                                                )?,
+                                                rspotify::senum::Type::Album => send.send(
+                                                    Event::GetContext(ContextURI::Album(uri)),
+                                                )?,
+                                                rspotify::senum::Type::Artist => send.send(
+                                                    Event::GetContext(ContextURI::Artist(uri)),
+                                                )?,
+                                                _ => {
+                                                    send.send(Event::GetContext(
+                                                        ContextURI::Unknown(uri),
+                                                    ))?;
+                                                    log::info!(
+                                                    "encountered not supported context type: {:#?}",
+                                                    context._type
+                                                )
+                                                }
+                                            };
+                                        }
+                                    }
+                                }
+                                None => {
+                                    if !player.context_uri.is_empty() {
+                                        utils::update_context(&state, "".to_string());
+                                        send.send(Event::GetContext(ContextURI::Unknown(
+                                            "".to_string(),
+                                        )))?;
+                                        log::info!(
+                                            "current playback doesn't have a playing context"
+                                        );
+                                    }
+                                }
+                            }
+                        };
+                    }
+                }
+            }
+
+            std::thread::sleep(refresh_duration);
+        }
+    });
 }

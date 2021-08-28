@@ -75,10 +75,10 @@ async fn main() -> anyhow::Result<()> {
     std::thread::spawn({
         let session = session.clone();
         let device = state.app_config.device.clone();
-        send.send(event::Event::TransferPlayback(
-            session.device_id().to_string(),
-            false,
-        ))?;
+        // send.send(event::Event::TransferPlayback(
+        //     session.device_id().to_string(),
+        //     false,
+        // ))?;
         move || {
             connect::new_connection(session, device);
         }
@@ -90,7 +90,7 @@ async fn main() -> anyhow::Result<()> {
         let send = send.clone();
         let client = client::Client::new(session, &state).await?;
         move || {
-            client::start_watcher(state, client, send, recv);
+            client::start_client_handler(state, client, send, recv);
         }
     });
 
@@ -103,23 +103,10 @@ async fn main() -> anyhow::Result<()> {
         }
     });
 
-    if state.app_config.playback_refresh_duration_in_ms > 0 {
-        // playback pooling (every `playback_refresh_duration_in_ms` ms) thread
-        std::thread::spawn({
-            let send = send.clone();
-            let playback_refresh_duration =
-                std::time::Duration::from_millis(state.app_config.playback_refresh_duration_in_ms);
-            move || loop {
-                send.send(event::Event::GetCurrentPlayback)
-                    .unwrap_or_else(|err| {
-                        log::warn!("failed to send GetCurrentPlayback event: {}", err);
-                    });
-                std::thread::sleep(playback_refresh_duration);
-            }
-        });
-    }
+    // player event watcher thread(s)
+    client::start_player_event_watchers(state.clone(), send.clone());
 
     // application's UI rendering as the main thread
     send.send(event::Event::GetCurrentPlayback)?;
-    ui::start_ui(state, send)
+    ui::start_ui(state)
 }

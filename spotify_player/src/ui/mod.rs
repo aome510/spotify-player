@@ -1,4 +1,4 @@
-use crate::{event, state::*, utils};
+use crate::{state::*, utils};
 use anyhow::Result;
 use tui::{layout::*, style::*, text::*, widgets::*};
 
@@ -10,7 +10,7 @@ mod help;
 mod popup;
 
 /// starts the application UI as the main thread
-pub fn start_ui(state: SharedState, send: std::sync::mpsc::Sender<event::Event>) -> Result<()> {
+pub fn start_ui(state: SharedState) -> Result<()> {
     // terminal UI initializations
     let mut stdout = std::io::stdout();
     crossterm::terminal::enable_raw_mode()?;
@@ -31,8 +31,6 @@ pub fn start_ui(state: SharedState, send: std::sync::mpsc::Sender<event::Event>)
             return Ok(());
         }
 
-        update_player_state(&state, &send)?;
-
         terminal.draw(|frame| {
             let ui = state.ui.lock().unwrap();
 
@@ -44,88 +42,6 @@ pub fn start_ui(state: SharedState, send: std::sync::mpsc::Sender<event::Event>)
 
         std::thread::sleep(ui_refresh_duration);
     }
-}
-
-fn update_player_state(
-    state: &SharedState,
-    send: &std::sync::mpsc::Sender<event::Event>,
-) -> Result<()> {
-    let player = state.player.read().unwrap();
-
-    // updates the auth token if expired
-    if std::time::Instant::now() > player.token.expires_at {
-        send.send(event::Event::RefreshToken)?;
-    }
-
-    // updates the playback when the current playing song ends
-    let progress_ms = player.get_playback_progress();
-    let duration_ms = player.get_current_playing_track().map(|t| t.duration_ms);
-    let is_playing = match player.playback {
-        Some(ref playback) => playback.is_playing,
-        None => false,
-    };
-    if let Some(progress_ms) = progress_ms {
-        if progress_ms == duration_ms.unwrap() && is_playing {
-            send.send(event::Event::GetCurrentPlayback)?;
-        }
-    }
-
-    let ui = state.ui.lock().unwrap();
-
-    match ui.page {
-        PageState::Browsing(ref uri) => {
-            if player.context_uri != *uri {
-                utils::update_context(state, uri.clone());
-            }
-        }
-        PageState::CurrentPlaying => {
-            // updates the context (album, playlist, etc) tracks based on the current playback
-            if let Some(ref playback) = player.playback {
-                match playback.context {
-                    Some(ref context) => {
-                        let uri = context.uri.clone();
-
-                        if uri != player.context_uri {
-                            utils::update_context(state, uri.clone());
-                            if player.context_cache.peek(&uri).is_none() {
-                                match context._type {
-                                    rspotify::senum::Type::Playlist => send.send(
-                                        event::Event::GetContext(event::ContextURI::Playlist(uri)),
-                                    )?,
-                                    rspotify::senum::Type::Album => send.send(
-                                        event::Event::GetContext(event::ContextURI::Album(uri)),
-                                    )?,
-                                    rspotify::senum::Type::Artist => send.send(
-                                        event::Event::GetContext(event::ContextURI::Artist(uri)),
-                                    )?,
-                                    _ => {
-                                        send.send(event::Event::GetContext(
-                                            event::ContextURI::Unknown(uri),
-                                        ))?;
-                                        log::info!(
-                                            "encountered not supported context type: {:#?}",
-                                            context._type
-                                        )
-                                    }
-                                };
-                            }
-                        }
-                    }
-                    None => {
-                        if !player.context_uri.is_empty() {
-                            utils::update_context(state, "".to_string());
-                            send.send(event::Event::GetContext(event::ContextURI::Unknown(
-                                "".to_string(),
-                            )))?;
-                            log::info!("current playback doesn't have a playing context");
-                        }
-                    }
-                }
-            };
-        }
-    }
-
-    Ok(())
 }
 
 /// cleans up the resources before quitting the application
@@ -254,7 +170,8 @@ fn render_current_playback_widget(
                 .wrap(Wrap { trim: true })
                 // .style(theme.text_desc_style())
                 .block(Block::default());
-            let progress_ms = player.get_playback_progress().unwrap();
+            let progress_ms =
+                std::cmp::min(player.get_playback_progress().unwrap(), track.duration_ms);
             let progress_bar = Gauge::default()
                 .block(Block::default())
                 .gauge_style(ui.theme.playback_progress_bar())
