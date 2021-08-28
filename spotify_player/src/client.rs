@@ -532,8 +532,9 @@ impl Client {
     /// updates the current playback state by fetching data from the spotify client
     fn update_current_playback_state(&self, state: &state::SharedState) -> Result<()> {
         let playback = self.get_current_playback()?;
-        state.player.write().unwrap().playback = playback;
-        state.player.write().unwrap().playback_last_updated = Some(std::time::Instant::now());
+        let mut player = state.player.write().unwrap();
+        player.playback = playback;
+        player.playback_last_updated = Some(std::time::Instant::now());
         Ok(())
     }
 

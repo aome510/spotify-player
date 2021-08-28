@@ -1,3 +1,5 @@
+use std::sync::RwLockReadGuard;
+
 use super::Frame;
 use crate::{state::*, utils};
 use tui::{layout::*, style::*, widgets::*};
@@ -40,6 +42,7 @@ pub fn render_context_widget(
                         frame,
                         ui,
                         state,
+                        &player,
                         chunks[1],
                         (tracks, albums, artists),
                     );
@@ -50,6 +53,7 @@ pub fn render_context_widget(
                         frame,
                         ui,
                         state,
+                        &player,
                         chunks[1],
                         ui.get_search_filtered_items(tracks),
                     );
@@ -60,6 +64,7 @@ pub fn render_context_widget(
                         frame,
                         ui,
                         state,
+                        &player,
                         chunks[1],
                         ui.get_search_filtered_items(tracks),
                     );
@@ -83,6 +88,7 @@ fn render_context_artist_widget(
     frame: &mut Frame,
     ui: &mut UIStateGuard,
     state: &SharedState,
+    player: &RwLockReadGuard<PlayerState>,
     rect: Rect,
     data: (&[Track], &[Album], &[Artist]),
 ) {
@@ -107,6 +113,7 @@ fn render_context_artist_widget(
         frame,
         ui,
         state,
+        player,
         chunks[0],
         tracks,
     );
@@ -162,13 +169,14 @@ fn render_context_track_table_widget(
     frame: &mut Frame,
     ui: &mut UIStateGuard,
     state: &SharedState,
+    player: &RwLockReadGuard<PlayerState>,
     rect: Rect,
     tracks: Vec<&Track>,
 ) {
     let track_table = {
         let mut playing_track_uri = "".to_string();
         let mut active_desc = "";
-        if let Some(ref playback) = state.player.read().unwrap().playback {
+        if let Some(ref playback) = player.playback {
             if let Some(rspotify::model::PlayingItem::Track(ref track)) = playback.item {
                 playing_track_uri = track.uri.clone();
                 active_desc = if !playback.is_playing { "⏸" } else { "▶" };
