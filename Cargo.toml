@@ -1,8 +1,2 @@
 [workspace]
 members = ["spotify_player"]
-
-[profile.release]
-lto = true
-codegen-units = 1
-panic = "abort"
-# debug = true
