@@ -630,17 +630,32 @@ fn handle_command_for_focused_context_window(
                     ArtistFocusState::RelatedArtists => {
                         handle_command_for_artist_list(command, send, ui, artists)
                     }
-                    ArtistFocusState::TopTracks => {
-                        handle_command_for_track_table(command, send, ui, state, tracks)
-                    }
+                    ArtistFocusState::TopTracks => handle_command_for_track_table(
+                        command,
+                        send,
+                        ui,
+                        None,
+                        Some(tracks.iter().map(|t| t.uri.clone()).collect::<Vec<_>>()),
+                        tracks,
+                    ),
                 }
             }
-            Context::Album(_, ref tracks) => {
-                handle_command_for_track_table(command, send, ui, state, tracks)
-            }
-            Context::Playlist(_, ref tracks) => {
-                handle_command_for_track_table(command, send, ui, state, tracks)
-            }
+            Context::Album(ref album, ref tracks) => handle_command_for_track_table(
+                command,
+                send,
+                ui,
+                Some(album.uri.clone()),
+                None,
+                tracks,
+            ),
+            Context::Playlist(ref playlist, ref tracks) => handle_command_for_track_table(
+                command,
+                send,
+                ui,
+                Some(playlist.uri.clone()),
+                None,
+                tracks,
+            ),
             Context::Unknown(_) => Ok(false),
         },
         None => Ok(false),
@@ -725,7 +740,8 @@ fn handle_command_for_track_table(
     command: Command,
     send: &mpsc::Sender<Event>,
     ui: &mut UIStateGuard,
-    state: &SharedState,
+    context_uri: Option<String>,
+    track_uris: Option<Vec<String>>,
     tracks: &[Track],
 ) -> Result<bool> {
     let tracks = ui.get_search_filtered_items(tracks);
@@ -749,31 +765,20 @@ fn handle_command_for_track_table(
         }
         Command::ChooseSelected => {
             if let Some(id) = ui.window.selected() {
-                match state.player.read().unwrap().get_context().unwrap() {
-                    Context::Artist(_, _, _, _) => {
-                        // cannot use artist context uri with a track uri
-                        let tracks = tracks.iter().map(|t| t.uri.clone()).collect::<Vec<_>>();
-                        send.send(Event::Player(PlayerEvent::PlayTrack(
-                            None,
-                            Some(tracks),
-                            offset::for_position(id as u32),
-                        )))?;
-                    }
-                    Context::Playlist(ref playlist, _) => {
-                        send.send(Event::Player(PlayerEvent::PlayTrack(
-                            Some(playlist.uri.clone()),
-                            None,
-                            offset::for_uri(tracks[id].uri.clone()),
-                        )))?;
-                    }
-                    Context::Album(ref album, _) => {
-                        send.send(Event::Player(PlayerEvent::PlayTrack(
-                            Some(album.uri.clone()),
-                            None,
-                            offset::for_uri(tracks[id].uri.clone()),
-                        )))?;
-                    }
-                    Context::Unknown(_) => {}
+                if track_uris.is_some() {
+                    // play a track from a list of tracks, use ID offset for finding the track
+                    send.send(Event::Player(PlayerEvent::PlayTrack(
+                        None,
+                        track_uris,
+                        offset::for_position(id as u32),
+                    )))?;
+                } else if context_uri.is_some() {
+                    // play a track from a context, use URI offset for finding the track
+                    send.send(Event::Player(PlayerEvent::PlayTrack(
+                        context_uri,
+                        None,
+                        offset::for_uri(tracks[id].uri.clone()),
+                    )))?;
                 }
             }
             Ok(true)
