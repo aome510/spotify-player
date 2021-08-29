@@ -593,11 +593,11 @@ pub fn start_player_event_watchers(state: SharedState, send: std::sync::mpsc::Se
 
     // start the main player event watcher thread
     std::thread::spawn(move || -> Result<()> {
-        let refresh_duration = std::time::Duration::from_millis(
-            state.app_config.refresh_delay_in_ms_each_playback_update,
-        );
+        let refresh_duration = std::time::Duration::from_millis(1000);
         loop {
             {
+                // get the current UI's page state for updating player's context on change
+                let page = state.ui.lock().unwrap().page.clone();
                 let player = state.player.read().unwrap();
 
                 // update the auth token if expired
@@ -633,7 +633,6 @@ pub fn start_player_event_watchers(state: SharedState, send: std::sync::mpsc::Se
                 }
 
                 // update the player's context based on the UI's page state
-                let page = state.ui.lock().unwrap().page.clone();
                 match page {
                     PageState::Browsing(uri) => {
                         if player.context_uri != uri {

@@ -217,11 +217,11 @@ fn render_context_track_table_widget(
             )
             .block(Block::default())
             .widths(&[
-                Constraint::Percentage(3),
+                Constraint::Length(4),
                 Constraint::Percentage(30),
                 Constraint::Percentage(30),
                 Constraint::Percentage(30),
-                Constraint::Percentage(7),
+                Constraint::Percentage(10),
             ])
             .highlight_style(ui.theme.selection_style(is_active))
     };
