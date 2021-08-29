@@ -239,7 +239,14 @@ impl Client {
             uris,
             offset,
             None,
-        ))
+        ))?;
+        // NOTE: for some reasons, `librespot` device doesn't not keep the shuffle state
+        // when starting a playback. A workarond for this is to make an additional shuffle
+        // request to keep the playback's shuffle state.
+        Self::handle_rspotify_result(
+            self.spotify
+                .shuffle(playback.shuffle_state, Some(playback.device.id.clone())),
+        )
     }
 
     /// transfers the current playback to another device
@@ -574,8 +581,15 @@ pub async fn start_client_handler(
 }
 
 // starts multiple threads watching for player events then
-// notify the client to make update requests when needed
-pub fn start_player_event_watchers(state: SharedState, send: std::sync::mpsc::Sender<Event>) {
+// notifying the client to make update requests
+pub fn start_player_event_watchers(
+    state: SharedState,
+    send: std::sync::mpsc::Sender<Event>,
+) -> Result<()> {
+    // request devices and playback data for rendering the UI on startup
+    send.send(Event::GetCurrentPlayback)?;
+    send.send(Event::GetDevices)?;
+
     // start a playback pooling (every `playback_refresh_duration_in_ms` ms) thread
     if state.app_config.playback_refresh_duration_in_ms > 0 {
         std::thread::spawn({
@@ -692,4 +706,6 @@ pub fn start_player_event_watchers(state: SharedState, send: std::sync::mpsc::Se
             std::thread::sleep(refresh_duration);
         }
     });
+
+    Ok(())
 }

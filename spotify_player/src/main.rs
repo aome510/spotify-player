@@ -100,10 +100,8 @@ async fn main() -> anyhow::Result<()> {
     });
 
     // player event watcher thread(s)
-    client::start_player_event_watchers(state.clone(), send.clone());
+    client::start_player_event_watchers(state.clone(), send.clone())?;
 
     // application's UI rendering as the main thread
-    send.send(event::Event::GetCurrentPlayback)?;
-    send.send(event::Event::GetDevices)?;
     ui::start_ui(state)
 }
