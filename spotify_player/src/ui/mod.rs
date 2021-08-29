@@ -141,7 +141,8 @@ fn render_current_playback_widget(
             let playback_info = vec![
                 Span::styled(
                     format!(
-                        "{} by {}",
+                        "{}  {} by {}",
+                        if !playback.is_playing { "⏸" } else { "▶" },
                         track.name,
                         track
                             .artists
