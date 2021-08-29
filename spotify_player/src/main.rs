@@ -75,10 +75,6 @@ async fn main() -> anyhow::Result<()> {
     std::thread::spawn({
         let session = session.clone();
         let device = state.app_config.device.clone();
-        // send.send(event::Event::TransferPlayback(
-        //     session.device_id().to_string(),
-        //     false,
-        // ))?;
         move || {
             connect::new_connection(session, device);
         }
@@ -108,5 +104,6 @@ async fn main() -> anyhow::Result<()> {
 
     // application's UI rendering as the main thread
     send.send(event::Event::GetCurrentPlayback)?;
+    send.send(event::Event::GetDevices)?;
     ui::start_ui(state)
 }

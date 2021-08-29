@@ -606,6 +606,18 @@ pub fn start_player_event_watchers(state: SharedState, send: std::sync::mpsc::Se
                 }
 
                 {
+                    // if cannot find the current playback, try
+                    // to connect the first avaiable device
+                    if player.playback.is_none() && !player.devices.is_empty() {
+                        log::info!(
+                            "no playback found, try to connect device {}",
+                            player.devices[0].name
+                        );
+                        send.send(Event::TransferPlayback(player.devices[0].id.clone(), false))?;
+                    }
+                }
+
+                {
                     // refresh the playback when the current song ends
                     let progress_ms = player.get_playback_progress();
                     let duration_ms = player.get_current_playing_track().map(|t| t.duration_ms);
