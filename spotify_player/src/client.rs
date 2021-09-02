@@ -240,9 +240,9 @@ impl Client {
             offset,
             None,
         ))?;
-        // NOTE: for some reasons, `librespot` device doesn't not keep the shuffle state
-        // when starting a playback. A workarond for this is to make an additional shuffle
-        // request to keep the playback's shuffle state.
+        // NOTE: for some reasons, `librespot` device does not keep the shuffle state
+        // after starting a playback. A work around for this is to make an additional
+        // shuffle request to keep the playback's original shuffle state.
         Self::handle_rspotify_result(
             self.spotify
                 .shuffle(playback.shuffle_state, Some(playback.device.id.clone())),
@@ -693,7 +693,7 @@ pub fn start_player_event_watchers(
                                             "".to_string(),
                                         )))?;
                                         log::info!(
-                                            "current playback doesn't have a playing context"
+                                            "current playback does not have a playing context"
                                         );
                                     }
                                 }
