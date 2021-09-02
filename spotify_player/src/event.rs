@@ -6,9 +6,9 @@ use crate::{
 };
 use anyhow::Result;
 use crossterm::event::{self, EventStream, KeyCode, KeyModifiers};
+use futures_util::StreamExt;
 use rspotify::model::offset;
 use std::sync::mpsc;
-use tokio_stream::StreamExt;
 
 #[derive(Debug)]
 pub enum ContextURI {

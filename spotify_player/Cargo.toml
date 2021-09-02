@@ -17,9 +17,11 @@ config_parser2 = "0.1.2"
 crossterm = { version = "0.20.0", features = ["event-stream"] }
 dirs-next = "2.0.0"
 env_logger = "0.9.0"
+futures-util = "0.3.17"
 librespot-connect = "0.2.0"
 librespot-core = "0.2.0"
 librespot-playback = "0.2.0"
+librespot-protocol = "0.2.0"
 log = "0.4.14"
 lru = "0.6.6"
 reqwest = { version = "0.11.4", features = ["json"] }
@@ -27,10 +29,10 @@ rpassword = "5.0.1"
 rspotify = { version = "0.10.0", features = ["blocking"] }
 serde = { version = "1.0.126", features = ["derive"] }
 tokio = { version = "1.9.0", features = ["full"] }
-tokio-stream = "0.1.7"
 toml = "0.5.8"
 tui = { version = "0.15.0", default-features = false, features = ["crossterm", "serde"] }
 unicode-width = "0.1.8"
+url = "2.2.2"
 
 [features]
 alsa_backend = ["librespot-playback/alsa-backend"]

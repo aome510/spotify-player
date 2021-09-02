@@ -50,3 +50,16 @@ pub async fn new_connection(session: Session, device: config::DeviceConfig) {
     let (_spirc, spirc_task) = Spirc::new(connect_config, session, player, mixer);
     spirc_task.await;
 }
+
+// fn new_player(session: Session) {
+//     let uri = format!(
+//         "hm:://remote/user/{}/",
+//         url::form_urlencoded::byte_serialize(session.username().as_bytes()).collect::<String>()
+//     );
+//     let subscription = session
+//         .mercury()
+//         .subscribe(uri)
+//         .map(Result::unwrap)
+//         .map(UnboundedReceiver::new)
+//         .flatten_stream();
+// }
