@@ -2,6 +2,7 @@ name: CI
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: master
 
@@ -11,6 +12,7 @@ env:
 
 jobs:
   linux-test:
+    if: github.event.pull_request.draft != true
     name: Linux (ubuntu)
     runs-on: ubuntu-latest
     steps:
