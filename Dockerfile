@@ -1,9 +1,11 @@
-FROM ekidd/rust-musl-builder:latest as builder
-ADD --chown=rust:rust . ./
+FROM rust as builder
+WORKDIR app
+COPY . .
 RUN cargo build --release --bin spotify_player --no-default-features
 
-FROM alpine:latest
-WORKDIR app
-COPY --from=builder /home/rust/src/target/x86_64-unknown-linux-musl/release/spotify_player .
-RUN mkdir -p ./config
-CMD ["./spotify_player", "-c", "./config"]
+FROM gcr.io/distroless/cc
+WORKDIR /app/config
+WORKDIR /app/cache
+WORKDIR /app
+COPY --from=builder /app/target/release/spotify_player .
+CMD ["./spotify_player", "-c", "./config", "-C", "./cache"]
