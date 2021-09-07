@@ -2,6 +2,7 @@ mod auth;
 mod client;
 mod command;
 mod config;
+#[cfg(feature = "streaming")]
 mod connect;
 mod event;
 mod key;
@@ -72,6 +73,7 @@ async fn main() -> anyhow::Result<()> {
     let session = auth::new_session(&cache_folder).await?;
 
     // connection thread
+    #[cfg(feature = "streaming")]
     std::thread::spawn({
         let session = session.clone();
         let device = state.app_config.device.clone();

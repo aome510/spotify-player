@@ -1,7 +1,6 @@
 FROM ekidd/rust-musl-builder:latest as builder
-RUN sudo apt-get update && sudo apt-get install -y libasound2-dev
 ADD --chown=rust:rust . ./
-RUN cargo build --release --bin spotify_player
+RUN cargo build --release --bin spotify_player --no-default-features
 
 FROM alpine:latest
 WORKDIR app
