@@ -49,10 +49,19 @@ docker pull aome510/spotify_player:latest
 then run
 
 ```
-docker run --rm -v $APP_CONFIG_FOLDER_PATH:/app/config/ -it aome510/spotify_player:latest
+docker run --rm -it aome510/spotify_player:latest
 ```
 
-with `$APP_CONFIG_FOLDER_PATH` is the application's configuration folder.
+to run the application.
+
+You can also use your local application's config folder to configure the application or cache folder to avoid specifying authentication token each time running the application with docker:
+
+```
+docker run --rm \
+-v $APP_CONFIG_FOLDER:/app/config/ \
+-v $APP_CACHE_FOLDER:/app/cache/ \
+-it aome510/spotify_player:latest
+```
 
 ## Examples
 
