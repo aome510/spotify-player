@@ -687,6 +687,8 @@ fn handle_command_for_artist_list(
     ui: &mut UIStateGuard,
     artists: &[Artist],
 ) -> Result<bool> {
+    let artists = ui.get_search_filtered_items(artists);
+
     match command {
         Command::SelectNext => {
             if let Some(id) = ui.window.selected() {
@@ -724,6 +726,8 @@ fn handle_command_for_album_list(
     ui: &mut UIStateGuard,
     albums: &[Album],
 ) -> Result<bool> {
+    let albums = ui.get_search_filtered_items(albums);
+
     match command {
         Command::SelectNext => {
             if let Some(id) = ui.window.selected() {
