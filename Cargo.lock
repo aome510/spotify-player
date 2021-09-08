@@ -3059,6 +3059,7 @@ dependencies = [
  "librespot-playback",
  "log",
  "lru",
+ "rand 0.8.4",
  "reqwest 0.11.4",
  "rpassword",
  "rspotify",

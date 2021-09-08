@@ -157,6 +157,16 @@ impl Context {
         }
     }
 
+    /// gets all tracks inside the current playing context (immutable)
+    pub fn get_tracks(&self) -> Option<&Vec<Track>> {
+        match self {
+            Context::Unknown(_) => None,
+            Context::Album(_, ref tracks) => Some(tracks),
+            Context::Playlist(_, ref tracks) => Some(tracks),
+            Context::Artist(_, ref tracks, _, _) => Some(tracks),
+        }
+    }
+
     /// gets all tracks inside the current playing context (mutable)
     pub fn get_tracks_mut(&mut self) -> Option<&mut Vec<Track>> {
         match self {

@@ -31,6 +31,7 @@ tokio-stream = "0.1.7"
 toml = "0.5.8"
 tui = { version = "0.15.0", default-features = false, features = ["crossterm", "serde"] }
 unicode-width = "0.1.8"
+rand = "0.8.4"
 
 [features]
 alsa-backend = ["streaming", "librespot-playback/alsa-backend"]

@@ -49,9 +49,6 @@ impl Client {
             PlayerEvent::PlayTrack(context_uri, track_uris, offset) => {
                 self.start_playback(playback, context_uri, track_uris, offset)
             }
-            PlayerEvent::PlayContext(context_uri) => {
-                self.start_playback(playback, Some(context_uri), None, None)
-            }
         }
     }
 

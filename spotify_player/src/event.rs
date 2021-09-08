@@ -6,6 +6,7 @@ use crate::{
 };
 use anyhow::Result;
 use crossterm::event::{self, EventStream, KeyCode, KeyModifiers};
+use rand::Rng;
 use rspotify::model::offset;
 use std::sync::mpsc;
 use tokio_stream::StreamExt;
@@ -29,7 +30,6 @@ pub enum PlayerEvent {
     Shuffle,
     Volume(u8),
     PlayTrack(Option<String>, Option<Vec<String>>, Option<offset::Offset>),
-    PlayContext(String),
 }
 
 #[derive(Debug)]
@@ -296,8 +296,18 @@ fn handle_command_for_none_popup(
             Ok(true)
         }
         Command::PlayContext => {
-            let uri = state.player.read().unwrap().context_uri.clone();
-            send.send(Event::Player(PlayerEvent::PlayContext(uri)))?;
+            let player = state.player.read().unwrap();
+            let context = player.get_context();
+            if let Some(context) = context {
+                if let Some(tracks) = context.get_tracks() {
+                    let len = tracks.len() as u32;
+                    send.send(Event::Player(PlayerEvent::PlayTrack(
+                        Some(player.context_uri.clone()),
+                        None,
+                        offset::for_position(rand::thread_rng().gen_range(0..len)),
+                    )))?;
+                }
+            }
             Ok(true)
         }
         Command::FocusNextWindow => {
