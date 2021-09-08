@@ -3,6 +3,8 @@
 ## Table of Contents
 
 - [Introduction](#introduction)
+  - [Spotify Connect](#spotify-connect)
+  - [Streaming](#streaming)
 - [Installation](#installation)
   - [AUR](#aur)
   - [Cargo](#cargo)
@@ -12,21 +14,27 @@
   - [Playlist](#playlist)
   - [Artist](#artist)
   - [Album](#album)
-- [Command table](#commands)
+- [Commands](#commands)
 - [Mouse support](#mouse-support)
 - [Configurations](#configurations)
 - [Roadmap](#roadmap)
 
 ## Introduction
 
-- `spotify-player` is a custom Spotify player that I built and tweaked based on my personal preferences. It is fast, easy to use, and [configurable](https://github.com/aome510/spotify-player/blob/master/doc/config.md).
-- `spotify-player` is designed to be a player, not a fully-fledged Spotify clone, so it does not aim to support all possible Spotify features. Its main goal is to provide a quick and intuitive way to modify the current playback by either using player commands or navigating between different contexts.
-- `spotify-player`, similar to other TUI applications, is keyboard driven. User will use a set of [predefined commands with shortcuts](#commands) to interact with the player.
-- `spotify-player` has a simple UI with three main components:
-  - a playback window displaying the current playback
-  - a context window displaying a context (playlist, album, artist)
-  - popup windows for using some commands (switch theme, browser playlists, etc) or displaying additional information
+- `spotify-player` is a fast, easy to use, and [configurable](https://github.com/aome510/spotify-player/blob/master/doc/config.md) Spotify player.
+- `spotify-player` is designed to be a player, not a fully-fledged Spotify clone, so it does not aim to support all possible Spotify features. Its main goal is to provide a quick and intuitive way to control the current playback using [commands](#commands).
 - `spotify-player` is built on top of [tui](https://github.com/fdehau/tui-rs), [rspotify](https://github.com/ramsayleung/rspotify), and [librespot](https://github.com/librespot-org/librespot) libraries. It's inspired by [spotify-tui](https://github.com/Rigellute/spotify-tui) and [ncspot](https://github.com/hrkfdn/ncspot).
+- `spotify-player` can be used as either a remote player to control a running Spotify client or a [local player](#streaming) with integrated Spotify client. On startup, the application will connect to the currently running Spotify client. If not exist such client, user will need to use [Spotify connect](#spotify-connect) to connect to an available client.
+
+### Spotify Connect
+
+To enable [Spotify connect](https://www.spotify.com/us/connect/) support, user will need to register a Spotify application and use their own `client_id` as described in the [configuration documentation](https://github.com/aome510/spotify-player/blob/master/doc/config.md#general). More details on registering a Spotify application can be found in the [Spotify documentation](https://developer.spotify.com/documentation/general/guides/app-settings/).
+
+When `spotify_player` runs with your own `client_id`, press **D** (`SwitchDevice` command) to get the list of available devices then press **enter** to connect to a selected device.
+
+### Streaming
+
+`spotify-player` supports streaming using [librespot](https://github.com/librespot-org/librespot) library to create an integrated Spotify client while running. User will need to use their own `client_id` to connect to the integrated client as described in the [Spotify Connect](#spotify-connect) section. By default, the integrated client will create a Spotify device under `spotify-player` name.
 
 ## Installation
 
@@ -138,6 +146,7 @@ Please refer to [the configuration documentation](https://github.com/aome510/spo
 ## Roadmap
 
 - [ ] integrate Spotify's [search APIs](https://developer.spotify.com/documentation/web-api/reference/#category-search)
-- [ ] implement add track to playlist, save album, and follow artist.
-- [ ] add a (optional?) spotify client ([librespot](https://github.com/librespot-org/librespot))
+- [ ] add supports for add track to playlist, save album, follow artist, and related commands.
+- [x] add a (optional?) integrated spotify client (possibly use [librespot](https://github.com/librespot-org/librespot))
+  - [ ] implement a custom connection logic to replace librespot's [spirc](https://github.com/librespot-org/librespot/blob/dev/connect/src/spirc.rs).
 - [ ] add mpris (dbus) support

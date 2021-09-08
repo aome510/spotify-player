@@ -27,7 +27,7 @@ All configurations are stored inside the application's configuration folder (def
 
 **Note**:
 
-- By default, the application uses the official Spotify Web app's client ID (`65b708073fc0480ea92a077233ca87bd`). It's recommended to create [your own Client ID](https://developer.spotify.com/documentation/general/guides/app-settings/) to avoid possible rate limit and to allow full remote control (Spotify connect) support.
+- By default, the application uses the official Spotify Web app's client ID (`65b708073fc0480ea92a077233ca87bd`). It's recommended to use [your own Client ID](https://developer.spotify.com/documentation/general/guides/app-settings/) to avoid possible rate limit and to allow a full [Spotify connect](https://www.spotify.com/us/connect/) support.
 - Positive-value `app_refresh_duration_in_ms` is used to refresh the current playback (making a Spotify API call) every `app_refresh_duration_in_ms` ms. This can result in hitting Spotify rate limit if the player is running for a long period of time.
 - To prevent the rate limit, `spotify-player` sets `playback_refresh_duration_in_ms=0` by default and relies on `n_refreshes_each_playback_update` and `refresh_delay_in_ms_each_playback_update` for refreshing the playback each time a command or event updates the player's playback.
 - List of commands that triggers a playback update:
