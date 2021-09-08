@@ -30,11 +30,37 @@
 
 To enable [Spotify connect](https://www.spotify.com/us/connect/) support, user will need to register a Spotify application and use their own `client_id` as described in the [configuration documentation](https://github.com/aome510/spotify-player/blob/master/doc/config.md#general). More details on registering a Spotify application can be found in the [Spotify documentation](https://developer.spotify.com/documentation/general/guides/app-settings/).
 
-When `spotify_player` runs with your own `client_id`, press **D** (`SwitchDevice` command) to get the list of available devices then press **enter** to connect to a selected device.
+When `spotify_player` runs with your own `client_id`, press **D** (`SwitchDevice` command) to get the list of available devices then press **enter** to connect to the selected device.
 
 ### Streaming
 
 `spotify-player` supports streaming using [librespot](https://github.com/librespot-org/librespot) library to create an integrated Spotify client while running. User will need to use their own `client_id` to connect to the integrated client as described in the [Spotify Connect](#spotify-connect) section. By default, the integrated client will create a Spotify device under `spotify-player` name.
+
+The integrated client will use [rodio](https://github.com/RustAudio/rodio) as the default [audio backend](https://github.com/librespot-org/librespot/wiki/Audio-Backends). List of available backends:
+
+- `alsa-backend`
+- `pulseaudio-backend`
+- `rodio-backend`
+- `portaudio-backend`
+- `jackaudio-backend`
+- `rodiojack-backend`
+- `sdl-backend`
+- `gstreamer-backend`
+
+User can change the audio backend when building by specifying the `--features` option. For example, to use `pulseaudio-backend`, run
+
+``` shell
+cargo build --release --no-default-features --features pulseaudio-backend
+```
+
+Note that user will need additional dependencies depending on the selected audio backend. More details on compiling can be found in the [Librespot documentation](https://github.com/librespot-org/librespot/wiki/Compiling#general-dependencies).
+
+
+User can also disable the `streaming` feature by running
+
+``` shell
+cargo build --release --no-default-features
+```
 
 ## Installation
 
@@ -47,6 +73,8 @@ Run `yay -S spotify-player` to install the application as an AUR package.
 Run `cargo install spotify_player` to install the application from [crates.io](https://crates.io/crates/spotify_player).
 
 ### Docker
+
+**Note**: [streaming](#streaming) feature is disabled when using docker image.
 
 You can download the binary image of the latest build from the `master` branch by running
 

@@ -33,10 +33,14 @@ tui = { version = "0.15.0", default-features = false, features = ["crossterm", "
 unicode-width = "0.1.8"
 
 [features]
-alsa_backend = ["streaming", "librespot-playback/alsa-backend"]
-pulseaudio_backend = ["streaming", "librespot-playback/pulseaudio-backend"]
-rodio_backend = ["streaming", "librespot-playback/rodio-backend"]
-portaudio_backend = ["streaming", "librespot-playback/portaudio-backend"]
+alsa-backend = ["streaming", "librespot-playback/alsa-backend"]
+pulseaudio-backend = ["streaming", "librespot-playback/pulseaudio-backend"]
+rodio-backend = ["streaming", "librespot-playback/rodio-backend"]
+portaudio-backend = ["streaming", "librespot-playback/portaudio-backend"]
+jackaudio-backend = ["streaming", "librespot-playback/jackaudio-backend"]
+rodiojack-backend = ["streaming", "librespot-playback/rodiojack-backend"]
+sdl-backend = ["streaming", "librespot-playback/sdl-backend"]
+gstreamer-backend = ["streaming", "librespot-playback/gstreamer-backend"]
 streaming = ["librespot-playback", "librespot-connect"]
 
-default = ["rodio_backend"]
+default = ["rodio-backend"]
