@@ -298,13 +298,22 @@ fn handle_command_for_none_popup(
         Command::PlayContext => {
             let player = state.player.read().unwrap();
             let context = player.get_context();
+
+            // randomly play a track from the current context
             if let Some(context) = context {
                 if let Some(tracks) = context.get_tracks() {
-                    let len = tracks.len() as u32;
+                    let offset = match context {
+                        // Spotify does not allow to manually specify `offset` for artist context
+                        Context::Artist(_, _, _, _) => None,
+                        _ => {
+                            let id = rand::thread_rng().gen_range(0..tracks.len());
+                            offset::for_uri(tracks[id].uri.clone())
+                        }
+                    };
                     send.send(Event::Player(PlayerEvent::PlayTrack(
                         Some(player.context_uri.clone()),
                         None,
-                        offset::for_position(rand::thread_rng().gen_range(0..len)),
+                        offset,
                     )))?;
                 }
             }
