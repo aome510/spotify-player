@@ -1,0 +1,63 @@
+# example theme configuration file
+# This file adds two new themes `dracula2` and `solarized_dark`
+# in addition to the default application's themes.
+
+[[themes]]
+name = "dracula2"
+[themes.palette]
+background = "#1e1f29"
+foreground = "#f8f8f2"
+black = "#000000"
+blue = "#bd93f9"
+cyan = "#8be9fd"
+green = "#50fa7b"
+magenta = "#ff79c6"
+red = "#ff5555"
+white = "#bbbbbb"
+yellow = "#f1fa8c"
+bright_black = "#555555"
+bright_blue = "#bd93f9"
+bright_cyan = "#8be9fd"
+bright_green = "#50fa7b"
+bright_magenta = "#ff79c6"
+bright_red = "#ff5555"
+bright_white = "#ffffff"
+bright_yellow = "#f1fa8c"
+selection_background = "#44475a"
+selection_foreground =  "#ffffff"
+
+[themes.component_style]
+# The `component_style` field of a theme is optional.
+# If not specified, a default value will be used as below:
+block_title = { fg = "Magenta"  }
+playback_track = { fg = "Cyan", modifiers = ["Bold"] }
+playback_album = { fg = "Yellow" }
+playback_metadata = { fg = "BrightBlack" }
+playback_progress_bar = { fg = "SelectionBackground", bg = "Green", modifiers = ["Italic"] }
+current_active = { fg = "Green", modifiers = ["Bold"] }
+context_desc = { fg = "Cyan", modifiers = ["Bold"] }
+context_tracks_table_header = { fg = "Blue" }
+    
+[[themes]]
+name = "solarized_dark"
+[themes.palette]
+background = "#002b36"
+foreground = "#839496"
+black = "#073642"
+blue = "#268bd2"
+cyan = "#2aa198"
+green = "#859900"
+magenta = "#d33682"
+red = "#dc322f"
+white = "#eee8d5"
+yellow = "#b58900"
+bright_black = "#002b36"
+bright_blue = "#839496"
+bright_cyan = "#93a1a1"
+bright_green = "#586e75"
+bright_magenta = "#6c71c4"
+bright_red = "#cb4b16"
+bright_white = "#fdf6e3"
+bright_yellow = "#657b83"
+selection_background = "#073642"
+selection_foreground =  "#93a1a1"

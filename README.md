@@ -7,8 +7,9 @@
   - [Spotify Connect](#spotify-connect)
   - [Streaming](#streaming)
 - [Installation](#installation)
-  - [AUR](#aur)
   - [Cargo](#cargo)
+  - [AUR](#aur)
+  - [NetBSD](#netbsd)
   - [Docker](#docker)
 - [Examples](#examples)
   - [Demo](#demo)
@@ -69,13 +70,24 @@ cargo build --release --no-default-features
 
 ## Installation
 
+### Cargo
+
+Run `cargo install spotify_player` to install the application from [crates.io](https://crates.io/crates/spotify_player).
+
 ### AUR
 
 Run `yay -S spotify-player` to install the application as an AUR package.
 
-### Cargo
+### NetBSD
 
-Run `cargo install spotify_player` to install the application from [crates.io](https://crates.io/crates/spotify_player).
+Using the package manager, run `pkgin install spotify-player` to install from the official repositories.
+
+Building from source,
+
+```
+cd /usr/pkgsrc/audio/spotify-player
+make install
+```
 
 ### Docker
 

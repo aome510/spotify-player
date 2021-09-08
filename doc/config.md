@@ -62,9 +62,11 @@ The new theme can then be used by setting the `theme` option in the [`app.toml`]
 
 A theme has three main components: `name` (the theme's name), `palette` (the theme's color palette), `component_style` (a list of predefined style for application's components). `name` and `palette` are required when defining a new theme. If `component_style` is not specified, a default value will be used.
 
+An example of user-defined themes can be found in the example [`theme.toml`](https://github.com/aome510/spotify-player/blob/master/examples/theme.toml) file
+
 ### Use script to add theme
 
-I have created [a `theme_parse` python script](../scripts/theme_parse) (require `pyaml` library) to parse [Iterm2 alacritty's color schemes](https://github.com/mbadolato/iTerm2-Color-Schemes/tree/master/alacritty) into `spotify-player` compatible theme configurations.
+I have created [a `theme_parse` python script](../scripts/theme_parse) (require `pyaml` and `requests` libraries) to parse [Iterm2 alacritty's color schemes](https://github.com/mbadolato/iTerm2-Color-Schemes/tree/master/alacritty) into `spotify-player` compatible theme configurations.
 
 For example, you can run
 
