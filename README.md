@@ -3,6 +3,7 @@
 ## Table of Contents
 
 - [Introduction](#introduction)
+  - [Requirements](#requirements)
   - [Spotify Connect](#spotify-connect)
   - [Streaming](#streaming)
 - [Installation](#installation)
@@ -22,9 +23,13 @@
 ## Introduction
 
 - `spotify-player` is a fast, easy to use, and [configurable](https://github.com/aome510/spotify-player/blob/master/doc/config.md) Spotify player.
-- `spotify-player` is designed to be a player, not a fully-fledged Spotify clone, so it does not aim to support all possible Spotify features. Its main goal is to provide a quick and intuitive way to control the current playback using [commands](#commands).
+- `spotify-player` is designed to be a player, not a fully-fledged Spotify clone, so it does not aim to support all possible Spotify features. Its main goal is to provide a quick and intuitive way to control music using [commands](#commands).
 - `spotify-player` is built on top of [tui](https://github.com/fdehau/tui-rs), [rspotify](https://github.com/ramsayleung/rspotify), and [librespot](https://github.com/librespot-org/librespot) libraries. It's inspired by [spotify-tui](https://github.com/Rigellute/spotify-tui) and [ncspot](https://github.com/hrkfdn/ncspot).
-- `spotify-player` can be used as either a remote player to control a running Spotify client or a [local player](#streaming) with integrated Spotify client. On startup, the application will connect to the currently running Spotify client. If not exist such client, user will need to use [Spotify connect](#spotify-connect) to connect to an available client.
+- `spotify-player` can be used as either a remote player to control a running Spotify client or a [local player](#streaming) with an integrated Spotify client. On startup, the application will connect to the currently running Spotify client. If not exist such client, user will need to use [Spotify connect](#spotify-connect) to connect to an available client.
+
+### Requirements
+
+User will need to have a Spotify Premium account to use all application's supported features.
 
 ### Spotify Connect
 
@@ -34,7 +39,7 @@ When `spotify_player` runs with your own `client_id`, press **D** (`SwitchDevice
 
 ### Streaming
 
-`spotify-player` supports streaming using [librespot](https://github.com/librespot-org/librespot) library to create an integrated Spotify client while running. User will need to use their own `client_id` to connect to the integrated client as described in the [Spotify Connect](#spotify-connect) section. By default, the integrated client will create a Spotify device under `spotify-player` name.
+`spotify-player` supports streaming by using [librespot](https://github.com/librespot-org/librespot) library to create an integrated Spotify client while running. User will need to use their own `client_id` to connect to the integrated client as described in the [Spotify Connect](#spotify-connect) section. By default, the integrated client will create a Spotify device under `spotify-player` name.
 
 The integrated client will use [rodio](https://github.com/RustAudio/rodio) as the default [audio backend](https://github.com/librespot-org/librespot/wiki/Audio-Backends). List of available backends:
 
@@ -47,7 +52,7 @@ The integrated client will use [rodio](https://github.com/RustAudio/rodio) as th
 - `sdl-backend`
 - `gstreamer-backend`
 
-User can change the audio backend when building by specifying the `--features` option. For example, to use `pulseaudio-backend`, run
+User can change the audio backend when building the application by specifying the `--features` option. For example, to build `spotify-player` with `pulseaudio-backend`, run
 
 ``` shell
 cargo build --release --no-default-features --features pulseaudio-backend
@@ -90,7 +95,7 @@ docker run --rm -it aome510/spotify_player:latest
 
 to run the application.
 
-You can also use your local application's config folder to configure the application or cache folder to avoid specifying authentication token each time running the application with docker:
+You can also use your local config folder to configure the application or your local cache folder to store the authentication token when running the docker image:
 
 ```
 docker run --rm \
@@ -102,6 +107,8 @@ docker run --rm \
 ## Examples
 
 ### Demo
+
+Demo of `spotify-player v0.1.0`:
 
 [![asciicast](https://asciinema.org/a/430335.svg)](https://asciinema.org/a/430335)
 
@@ -160,6 +167,8 @@ List of supported commands:
 | `SortTrackByDuration`        | sort the track table (if any) by track's duration         | `s d`              |
 | `SortTrackByAddedDate`       | sort the track table (if any) by track's added date       | `s D`              |
 | `ReverseOrder`               | reverse the order of the track table (if any)             | `s r`              |
+
+To add new shortcuts or modify the default shortcuts, please refer to the [keymaps section](https://github.com/aome510/spotify-player/blob/master/doc/config.md#keymaps) in the configuration documentation.
 
 ## Mouse support
 

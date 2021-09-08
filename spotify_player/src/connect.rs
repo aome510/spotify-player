@@ -28,6 +28,11 @@ pub async fn new_connection(session: Session, device: config::DeviceConfig) {
         autoplay: false,
     };
 
+    log::info!(
+        "application's connect configurations: {:#?}",
+        connect_config
+    );
+
     let mixer = Box::new(mixer::softmixer::SoftMixer::open(None)) as Box<dyn Mixer>;
     mixer.set_volume(volume);
 
@@ -40,12 +45,17 @@ pub async fn new_connection(session: Session, device: config::DeviceConfig) {
             .unwrap_or_default(),
         ..Default::default()
     };
+
+    log::info!("application's player configurations: {:#?}", player_config);
+
     let (player, _channel) = Player::new(
         player_config,
         session.clone(),
         mixer.get_audio_filter(),
         move || backend(None, AudioFormat::default()),
     );
+
+    log::info!("starting librespot's integrated client using spirc protocol...");
 
     let (_spirc, spirc_task) = Spirc::new(connect_config, session, player, mixer);
     spirc_task.await;

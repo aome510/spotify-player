@@ -72,7 +72,7 @@ async fn main() -> anyhow::Result<()> {
 
     let session = auth::new_session(&cache_folder).await?;
 
-    // connection thread
+    // connection thread (used to initialize the integrated Spotify client using librespot)
     #[cfg(feature = "streaming")]
     std::thread::spawn({
         let session = session.clone();
@@ -82,7 +82,7 @@ async fn main() -> anyhow::Result<()> {
         }
     });
 
-    // client event watcher/handler thread
+    // client event handler thread
     std::thread::spawn({
         let state = state.clone();
         let send = send.clone();
@@ -92,7 +92,7 @@ async fn main() -> anyhow::Result<()> {
         }
     });
 
-    // terminal event handling thread
+    // terminal event handler thread
     std::thread::spawn({
         let send = send.clone();
         let state = state.clone();
@@ -104,6 +104,6 @@ async fn main() -> anyhow::Result<()> {
     // player event watcher thread(s)
     client::start_player_event_watchers(state.clone(), send.clone())?;
 
-    // application's UI rendering as the main thread
+    // application's UI as the main thread
     ui::start_ui(state)
 }
