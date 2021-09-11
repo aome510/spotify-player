@@ -193,3 +193,30 @@ fn render_current_playback_widget(
         }
     };
 }
+
+/// constructs a generic list widget
+fn construct_list_widget<'a>(
+    ui: &UIStateGuard,
+    items: Vec<(String, bool)>,
+    title: &str,
+    is_active: bool,
+) -> List<'a> {
+    List::new(
+        items
+            .into_iter()
+            .map(|(s, is_active)| {
+                ListItem::new(s).style(if is_active {
+                    ui.theme.current_active()
+                } else {
+                    Style::default()
+                })
+            })
+            .collect::<Vec<_>>(),
+    )
+    .highlight_style(ui.theme.selection_style(is_active))
+    .block(
+        Block::default()
+            .title(ui.theme.block_title_with_style(title))
+            .borders(Borders::ALL),
+    )
+}
