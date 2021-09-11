@@ -577,17 +577,20 @@ pub async fn start_client_handler(
     }
 }
 
-// starts multiple threads watching for player events then
-// notifying the client to make update requests
+// starts multiple event watchers that
+// listen to player events and notify the client
+// to make additional update requests if needed
 pub fn start_player_event_watchers(
     state: SharedState,
     send: std::sync::mpsc::Sender<Event>,
 ) -> Result<()> {
-    // request devices and playback data for rendering the UI on startup
+    // on startup, the UI needs to know the current playback to render the current playing context
     send.send(Event::GetCurrentPlayback)?;
+    // needs to know all available devices on startup to connect to the first available device if none is running
     send.send(Event::GetDevices)?;
 
     // start a playback pooling (every `playback_refresh_duration_in_ms` ms) thread
+    // A zero-value `playback_refresh_in_ms` indicates no playback pooling thread
     if state.app_config.playback_refresh_duration_in_ms > 0 {
         std::thread::spawn({
             let send = send.clone();
@@ -602,8 +605,9 @@ pub fn start_player_event_watchers(
         });
     }
 
-    // start the main player event watcher thread
+    // start the main event watcher thread
     std::thread::spawn(move || -> Result<()> {
+        // try to check for new events every second
         let refresh_duration = std::time::Duration::from_millis(1000);
         loop {
             {
@@ -624,12 +628,13 @@ pub fn start_player_event_watchers(
                             "no playback found, try to connect device {}",
                             player.devices[0].name
                         );
+                        // only trying to connect, not transfer the current playback
                         send.send(Event::TransferPlayback(player.devices[0].id.clone(), false))?;
                     }
                 }
 
                 {
-                    // refresh the playback when the current song ends
+                    // refresh the playback when the current track ends
                     let progress_ms = player.get_playback_progress();
                     let duration_ms = player.get_current_playing_track().map(|t| t.duration_ms);
                     let is_playing = match player.playback {
