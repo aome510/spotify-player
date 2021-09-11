@@ -13,6 +13,7 @@ pub struct PlayerState {
 
     pub context_uri: String,
     pub context_cache: lru::LruCache<String, Context>,
+    pub search_cache: lru::LruCache<String, SearchResults>,
 
     pub playback: Option<context::CurrentlyPlaybackContext>,
     pub playback_last_updated: Option<std::time::Instant>,
@@ -25,6 +26,20 @@ pub enum Context {
     Album(album::FullAlbum, Vec<Track>),
     Artist(artist::FullArtist, Vec<Track>, Vec<Album>, Vec<Artist>),
     Unknown(String),
+}
+
+/// SearchResults denotes the returned data when searching using Spotify API.
+/// Search results are returned as pages of Spotify objects, which includes
+/// - `tracks`
+/// - `albums`
+/// - `artists`
+/// - `playlists`
+#[derive(Debug)]
+pub struct SearchResults {
+    pub tracks: page::Page<track::SimplifiedTrack>,
+    pub albums: page::Page<album::SimplifiedAlbum>,
+    pub artists: page::Page<artist::SimplifiedArtist>,
+    pub playlists: page::Page<playlist::SimplifiedPlaylist>,
 }
 
 #[derive(Debug)]
@@ -116,6 +131,7 @@ impl Default for PlayerState {
             user_followed_artists: vec![],
             context_uri: "".to_owned(),
             context_cache: lru::LruCache::new(64),
+            search_cache: lru::LruCache::new(64),
             playback: None,
             playback_last_updated: None,
         }

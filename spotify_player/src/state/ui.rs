@@ -26,6 +26,7 @@ pub struct UIState {
 pub enum PageState {
     CurrentPlaying,
     Browsing(String),
+    Searching(String),
 }
 
 /// Window state
@@ -38,6 +39,8 @@ pub enum WindowState {
     Album(TableState),
     // top tracks, albums, related artists
     Artist(TableState, ListState, ListState, ArtistFocusState),
+    // tracks, albums, artists, playlists
+    Search(ListState, ListState, ListState, ListState, SearchFocusState),
 }
 
 /// Popup state
@@ -66,6 +69,15 @@ pub enum ArtistFocusState {
     TopTracks,
     Albums,
     RelatedArtists,
+}
+
+/// Search Focus state
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum SearchFocusState {
+    Tracks,
+    Albums,
+    Artists,
+    Playlists,
 }
 
 impl UIState {
