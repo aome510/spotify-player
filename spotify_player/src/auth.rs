@@ -59,8 +59,16 @@ async fn new_session_with_new_creds(cache: &Cache) -> Result<Session> {
 }
 
 /// creates new Librespot session
-pub async fn new_session(cache_folder: &std::path::Path) -> Result<Session> {
-    let cache = Cache::new(Some(cache_folder), Some(&cache_folder.join("audio")), None)?;
+pub async fn new_session(cache_folder: &std::path::Path, audio_cache: bool) -> Result<Session> {
+    let audio_cache_folder = cache_folder.join("audio");
+    // specifying `audio_cache` to `None` to disable audio cache
+    let audio_cache = if audio_cache {
+        Some(audio_cache_folder.as_path())
+    } else {
+        None
+    };
+
+    let cache = Cache::new(Some(cache_folder), audio_cache, None)?;
 
     // create a new session if either
     // - there is no cached credentials or

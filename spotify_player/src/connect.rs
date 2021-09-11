@@ -15,7 +15,8 @@ use librespot_playback::{
 /// create a new librespot connection running in the background
 pub async fn new_connection(session: Session, device: config::DeviceConfig) {
     // librespot volume is a u16 number ranging from 0 to 65535,
-    // a percentage volume value is used for the device configuration
+    // while a percentage volume value (from 0 to 100) is used for the device configuration.
+    // So we need to convert from one format to another
     let volume = (std::cmp::min(device.volume, 100_u8) as f64 / 100.0 * 65535_f64).round() as u16;
 
     let connect_config = ConnectConfig {
@@ -23,7 +24,7 @@ pub async fn new_connection(session: Session, device: config::DeviceConfig) {
         device_type: device.device_type.parse::<DeviceType>().unwrap_or_default(),
         volume,
 
-        // non-configurable fields
+        // non-configurable fields, we may allow users to configure these fields in a future release
         volume_ctrl: VolumeCtrl::default(),
         autoplay: false,
     };
@@ -55,7 +56,7 @@ pub async fn new_connection(session: Session, device: config::DeviceConfig) {
         move || backend(None, AudioFormat::default()),
     );
 
-    log::info!("starting librespot's integrated client using spirc protocol...");
+    log::info!("starting an integrated Spotify client using librespot's spirc protocol...");
 
     let (_spirc, spirc_task) = Spirc::new(connect_config, session, player, mixer);
     spirc_task.await;

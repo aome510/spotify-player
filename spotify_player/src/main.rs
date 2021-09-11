@@ -70,7 +70,7 @@ async fn main() -> anyhow::Result<()> {
     // start application's threads
     let (send, recv) = std::sync::mpsc::channel::<event::Event>();
 
-    let session = auth::new_session(&cache_folder).await?;
+    let session = auth::new_session(&cache_folder, state.app_config.device.audio_cache).await?;
 
     // connection thread (used to initialize the integrated Spotify client using librespot)
     #[cfg(feature = "streaming")]

@@ -36,6 +36,7 @@ pub struct DeviceConfig {
     pub device_type: String,
     pub volume: u8,
     pub bitrate: u16,
+    pub audio_cache: bool,
 }
 
 impl Default for AppConfig {
@@ -62,6 +63,7 @@ impl Default for DeviceConfig {
             device_type: "speaker".to_string(),
             volume: 50,
             bitrate: 160,
+            audio_cache: false,
         }
     }
 }
