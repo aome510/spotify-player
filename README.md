@@ -34,9 +34,13 @@ User will need to have a Spotify Premium account to use all application's suppor
 
 ### Spotify Connect
 
-To enable [Spotify connect](https://www.spotify.com/us/connect/) support, user will need to register a Spotify application and use their own `client_id` as described in the [configuration documentation](https://github.com/aome510/spotify-player/blob/master/doc/config.md#general). More details on registering a Spotify application can be found in the [Spotify documentation](https://developer.spotify.com/documentation/general/guides/app-settings/).
+To enable [Spotify connect](https://www.spotify.com/us/connect/) support, user will need to register a Spotify application and specify their own `client_id` in the application's general configuration file as described in the [configuration documentation](https://github.com/aome510/spotify-player/blob/master/doc/config.md#general).
 
-When `spotify_player` runs with your own `client_id`, press **D** (`SwitchDevice` command) to get the list of available devices then press **enter** to connect to the selected device.
+More details on registering a Spotify application can be found in the [Spotify documentation](https://developer.spotify.com/documentation/general/guides/app-settings/).
+
+**Note**: when using the default value for `client_id`, `spotify-player` can still be used as a remote player but it requires to have a running Spotify client before starting the application.
+
+When `spotify_player` runs with your own `client_id`, press **D** (default shortcut for `SwitchDevice` command) to get the list of available devices then press **enter** (default shortcut for `ChooseSelected` command) to connect to the selected device.
 
 ### Streaming
 
@@ -55,16 +59,15 @@ The integrated client will use [rodio](https://github.com/RustAudio/rodio) as th
 
 User can change the audio backend when building the application by specifying the `--features` option. For example, to build `spotify-player` with `pulseaudio-backend`, run
 
-``` shell
+```shell
 cargo build --release --no-default-features --features pulseaudio-backend
 ```
 
-Note that user will need additional dependencies depending on the selected audio backend. More details on compiling can be found in the [Librespot documentation](https://github.com/librespot-org/librespot/wiki/Compiling#general-dependencies).
-
+**Note**: user will need additional dependencies depending on the selected audio backend. More details on compiling can be found in the [Librespot documentation](https://github.com/librespot-org/librespot/wiki/Compiling#general-dependencies).
 
 User can also disable the `streaming` feature by running
 
-``` shell
+```shell
 cargo build --release --no-default-features
 ```
 
