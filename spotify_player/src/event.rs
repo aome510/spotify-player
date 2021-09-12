@@ -304,6 +304,31 @@ fn handle_command_for_none_popup(
             send.send(Event::Search("blackpink".to_owned()))?;
             Ok(true)
         }
+        Command::FocusNextWindow => {
+            ui.window.next();
+            Ok(true)
+        }
+        Command::FocusPreviousWindow => {
+            ui.window.previous();
+            Ok(true)
+        }
+        _ => match ui.page {
+            PageState::Browsing(_) => handle_command_for_context_window(command, send, state, ui),
+            PageState::CurrentPlaying => {
+                handle_command_for_context_window(command, send, state, ui)
+            }
+            PageState::Searching(_) => handle_command_for_search_window(command, send, state, ui),
+        },
+    }
+}
+
+fn handle_command_for_context_window(
+    command: Command,
+    send: &mpsc::Sender<Event>,
+    state: &SharedState,
+    ui: &mut UIStateGuard,
+) -> Result<bool> {
+    match command {
         Command::SearchContext => {
             ui.window.select(Some(0));
             ui.popup = PopupState::ContextSearch("".to_owned());
@@ -331,14 +356,6 @@ fn handle_command_for_none_popup(
                     )))?;
                 }
             }
-            Ok(true)
-        }
-        Command::FocusNextWindow => {
-            ui.window.next();
-            Ok(true)
-        }
-        Command::FocusPreviousWindow => {
-            ui.window.previous();
             Ok(true)
         }
         _ => {
@@ -378,10 +395,19 @@ fn handle_command_for_none_popup(
             if handled {
                 Ok(true)
             } else {
-                handle_command_for_focused_context_window(command, send, ui, state)
+                handle_command_for_focused_context_subwindow(command, send, ui, state)
             }
         }
     }
+}
+
+fn handle_command_for_search_window(
+    command: Command,
+    send: &mpsc::Sender<Event>,
+    state: &SharedState,
+    ui: &mut UIStateGuard,
+) -> Result<bool> {
+    Ok(false)
 }
 
 fn handle_key_sequence_for_search_popup(
@@ -433,7 +459,7 @@ fn handle_key_sequence_for_search_popup(
                 ui.window.previous();
                 Ok(true)
             }
-            _ => handle_command_for_focused_context_window(command, send, ui, state),
+            _ => handle_command_for_focused_context_subwindow(command, send, ui, state),
         },
         None => Ok(false),
     }
@@ -643,7 +669,7 @@ fn handle_command(
     }
 }
 
-fn handle_command_for_focused_context_window(
+fn handle_command_for_focused_context_subwindow(
     command: Command,
     send: &mpsc::Sender<Event>,
     ui: &mut UIStateGuard,
@@ -657,19 +683,25 @@ fn handle_command_for_focused_context_window(
                     _ => unreachable!(),
                 };
                 match focus_state {
-                    ArtistFocusState::Albums => {
-                        handle_command_for_album_list(command, send, ui, albums)
-                    }
-                    ArtistFocusState::RelatedArtists => {
-                        handle_command_for_artist_list(command, send, ui, artists)
-                    }
+                    ArtistFocusState::Albums => handle_command_for_album_list(
+                        command,
+                        send,
+                        ui,
+                        ui.get_search_filtered_items(albums),
+                    ),
+                    ArtistFocusState::RelatedArtists => handle_command_for_artist_list(
+                        command,
+                        send,
+                        ui,
+                        ui.get_search_filtered_items(artists),
+                    ),
                     ArtistFocusState::TopTracks => handle_command_for_track_table(
                         command,
                         send,
                         ui,
                         None,
                         Some(tracks.iter().map(|t| t.uri.clone()).collect::<Vec<_>>()),
-                        tracks,
+                        ui.get_search_filtered_items(tracks),
                     ),
                 }
             }
@@ -679,7 +711,7 @@ fn handle_command_for_focused_context_window(
                 ui,
                 Some(album.uri.clone()),
                 None,
-                tracks,
+                ui.get_search_filtered_items(tracks),
             ),
             Context::Playlist(ref playlist, ref tracks) => handle_command_for_track_table(
                 command,
@@ -687,7 +719,7 @@ fn handle_command_for_focused_context_window(
                 ui,
                 Some(playlist.uri.clone()),
                 None,
-                tracks,
+                ui.get_search_filtered_items(tracks),
             ),
             Context::Unknown(_) => Ok(false),
         },
@@ -699,10 +731,8 @@ fn handle_command_for_artist_list(
     command: Command,
     send: &mpsc::Sender<Event>,
     ui: &mut UIStateGuard,
-    artists: &[Artist],
+    artists: Vec<&Artist>,
 ) -> Result<bool> {
-    let artists = ui.get_search_filtered_items(artists);
-
     match command {
         Command::SelectNext => {
             if let Some(id) = ui.window.selected() {
@@ -738,10 +768,8 @@ fn handle_command_for_album_list(
     command: Command,
     send: &mpsc::Sender<Event>,
     ui: &mut UIStateGuard,
-    albums: &[Album],
+    albums: Vec<&Album>,
 ) -> Result<bool> {
-    let albums = ui.get_search_filtered_items(albums);
-
     match command {
         Command::SelectNext => {
             if let Some(id) = ui.window.selected() {
@@ -779,10 +807,8 @@ fn handle_command_for_track_table(
     ui: &mut UIStateGuard,
     context_uri: Option<String>,
     track_uris: Option<Vec<String>>,
-    tracks: &[Track],
+    tracks: Vec<&Track>,
 ) -> Result<bool> {
-    let tracks = ui.get_search_filtered_items(tracks);
-
     match command {
         Command::SelectNext => {
             if let Some(id) = ui.window.selected() {
