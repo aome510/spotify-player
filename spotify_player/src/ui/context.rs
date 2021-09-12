@@ -1,25 +1,20 @@
-use std::sync::RwLockReadGuard;
-
 use super::Frame;
 use crate::{state::*, ui::construct_list_widget, utils};
+use std::sync::RwLockReadGuard;
 use tui::{layout::*, style::*, widgets::*};
 
-pub fn render_context_widget(
+/// renders the context window which can be
+/// - Current Playing: display the playing context of the current track
+/// - Browsing: display the context of an arbitrary context
+pub fn render_context_window(
     is_active: bool,
     frame: &mut Frame,
     ui: &mut UIStateGuard,
     state: &SharedState,
     rect: Rect,
+    block: Block,
 ) {
     let player = state.player.read().unwrap();
-    // context widget box border
-    let context_block_title = match ui.page {
-        PageState::CurrentPlaying => "Context (Current Playing)",
-        PageState::Browsing(_) => "Context (Browsing)",
-    };
-    let block = Block::default()
-        .title(ui.theme.block_title_with_style(context_block_title))
-        .borders(Borders::ALL);
 
     match player.get_context() {
         Some(context) => {

@@ -2,13 +2,14 @@ use super::{construct_list_widget, help, Frame};
 use crate::state::*;
 use tui::{layout::*, style::*, widgets::*};
 
+/// renders a popup to handle a command or show additional information
+/// depending on the current popup state
 pub fn render_popup(
     frame: &mut Frame,
     ui: &mut UIStateGuard,
     state: &SharedState,
     rect: Rect,
 ) -> (Rect, bool) {
-    // handle popup windows
     let player = state.player.read().unwrap();
     match ui.popup {
         PopupState::None => (rect, true),
@@ -128,13 +129,13 @@ pub fn render_popup(
                 .constraints([Constraint::Min(0), Constraint::Length(3)].as_ref())
                 .split(rect);
 
-            render_search_box_widget(frame, ui, chunks[1], format!("/{}", query));
+            render_context_search_box(frame, ui, chunks[1], format!("/{}", query));
             (chunks[0], true)
         }
     }
 }
 
-fn render_search_box_widget(frame: &mut Frame, ui: &UIStateGuard, rect: Rect, query: String) {
+fn render_context_search_box(frame: &mut Frame, ui: &UIStateGuard, rect: Rect, query: String) {
     let search_box = Paragraph::new(query).block(
         Block::default()
             .borders(Borders::ALL)

@@ -8,6 +8,7 @@ type Frame<'a> = tui::Frame<'a, tui::backend::CrosstermBackend<std::io::Stdout>>
 mod context;
 mod help;
 mod popup;
+mod search;
 
 /// starts the application UI as the main thread
 pub fn start_ui(state: SharedState) -> Result<()> {
@@ -34,10 +35,11 @@ pub fn start_ui(state: SharedState) -> Result<()> {
         terminal.draw(|frame| {
             let ui = state.ui.lock().unwrap();
 
+            // set the background and foreground colors for the application
             let block = Block::default().style(ui.theme.app_style());
             frame.render_widget(block, frame.size());
 
-            render_application_layout(frame, ui, &state, frame.size());
+            render_application(frame, ui, &state, frame.size());
         })?;
 
         std::thread::sleep(ui_refresh_duration);
@@ -56,18 +58,18 @@ fn clean_up(mut terminal: Terminal) -> Result<()> {
     Ok(())
 }
 
-fn render_application_layout(
-    frame: &mut Frame,
-    mut ui: UIStateGuard,
-    state: &SharedState,
-    rect: Rect,
-) {
-    let rect = render_shortcut_helps(frame, &ui, state, rect);
+/// renders the application
+fn render_application(frame: &mut Frame, mut ui: UIStateGuard, state: &SharedState, rect: Rect) {
+    let rect = render_shortcut_help_window(frame, &ui, state, rect);
+
     let (rect, is_active) = popup::render_popup(frame, &mut ui, state, rect);
-    render_player_layout(is_active, frame, &mut ui, state, rect);
+
+    render_main_layout(is_active, frame, &mut ui, state, rect);
 }
 
-fn render_shortcut_helps(
+/// renders a shortcut help window to show the available shortcuts
+/// based on user's inputs
+fn render_shortcut_help_window(
     frame: &mut Frame,
     ui: &UIStateGuard,
     state: &SharedState,
@@ -103,7 +105,10 @@ fn render_shortcut_helps(
     }
 }
 
-fn render_player_layout(
+/// renders the application's main layout which consists of:
+/// - a playback window on top
+/// - a context window or a search window at bottom depending on the current UI's `PageState`
+fn render_main_layout(
     is_active: bool,
     frame: &mut Frame,
     ui: &mut UIStateGuard,
@@ -114,11 +119,31 @@ fn render_player_layout(
         .direction(Direction::Vertical)
         .constraints([Constraint::Length(7), Constraint::Min(0)].as_ref())
         .split(rect);
-    render_current_playback_widget(frame, ui, state, chunks[0]);
-    context::render_context_widget(is_active, frame, ui, state, chunks[1]);
+    render_playback_window(frame, ui, state, chunks[0]);
+
+    match ui.page {
+        PageState::CurrentPlaying => {
+            let block = Block::default()
+                .title(ui.theme.block_title_with_style("Context (Current Playing)"))
+                .borders(Borders::ALL);
+            context::render_context_window(is_active, frame, ui, state, chunks[1], block);
+        }
+        PageState::Browsing(_) => {
+            let block = Block::default()
+                .title(ui.theme.block_title_with_style("Context (Browsing)"))
+                .borders(Borders::ALL);
+            context::render_context_window(is_active, frame, ui, state, chunks[1], block);
+        }
+        PageState::Searching(_) => {
+            search::render_search_window(is_active, frame, ui, state, chunks[1]);
+        }
+    };
 }
 
-fn render_current_playback_widget(
+/// renders a playback window showing information about the current playback such as
+/// - track title, artists, album
+/// - playback metadata (playing state, repeat state, shuffle state, volume, etc)
+fn render_playback_window(
     frame: &mut Frame,
     ui: &mut UIStateGuard,
     state: &SharedState,
