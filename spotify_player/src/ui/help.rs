@@ -1,5 +1,5 @@
 use super::Frame;
-use crate::{config, state};
+use crate::{config, state::*};
 use std::collections::{btree_map::Entry, BTreeMap};
 use tui::{layout::*, widgets::*};
 
@@ -15,35 +15,49 @@ const COMMAND_TABLE_CONSTRAINTS: [Constraint; 3] = [
     Constraint::Percentage(50),
 ];
 
-/// renders a shortcuts help widget from a list of keymaps
-pub fn render_shortcuts_help_widget(
-    keymaps: Vec<config::Keymap>,
+/// renders a shortcut help window to show the available shortcuts
+/// based on user's inputs
+pub fn render_shortcut_help_window(
     frame: &mut Frame,
-    ui: &state::UIStateGuard,
+    ui: &UIStateGuard,
+    state: &SharedState,
     rect: Rect,
-) {
-    let help_table = Table::new(
-        keymaps
+) -> Rect {
+    let input = &ui.input_key_sequence;
+    // render the shortcuts help table if needed
+    let matches = if input.keys.is_empty() {
+        vec![]
+    } else {
+        state
+            .keymap_config
+            .find_matched_prefix_keymaps(input)
             .into_iter()
-            .map(|km| format!("{}: {:?}", km.key_sequence, km.command))
+            .map(|keymap| {
+                let mut keymap = keymap.clone();
+                keymap.key_sequence.keys.drain(0..input.keys.len());
+                keymap
+            })
+            .filter(|keymap| !keymap.key_sequence.keys.is_empty())
             .collect::<Vec<_>>()
-            .chunks(SHORTCUT_TABLE_N_COLUMNS)
-            .map(|c| Row::new(c.iter().map(|i| Cell::from(i.to_owned()))))
-            .collect::<Vec<_>>(),
-    )
-    .widths(&SHORTCUT_TABLE_CONSTRAINS)
-    .block(
-        Block::default()
-            .title(ui.theme.block_title_with_style("Shortcuts"))
-            .borders(Borders::ALL),
-    );
-    frame.render_widget(help_table, rect);
+    };
+
+    if matches.is_empty() {
+        rect
+    } else {
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Min(0), Constraint::Length(7)].as_ref())
+            .split(rect);
+        render_shortcuts_help_window(matches, frame, ui, chunks[1]);
+        chunks[0]
+    }
 }
 
-pub fn render_commands_help_widget(
+/// renders a command help window listing all key shortcuts and corresponding descriptions
+pub fn render_commands_help_window(
     frame: &mut Frame,
-    ui: &state::UIStateGuard,
-    state: &state::SharedState,
+    ui: &UIStateGuard,
+    state: &SharedState,
     rect: Rect,
 ) {
     let mut map = BTreeMap::new();
@@ -82,6 +96,31 @@ pub fn render_commands_help_widget(
     .block(
         Block::default()
             .title(ui.theme.block_title_with_style("Commands"))
+            .borders(Borders::ALL),
+    );
+    frame.render_widget(help_table, rect);
+}
+
+/// renders a shortcuts help widget from a list of keymaps
+fn render_shortcuts_help_window(
+    keymaps: Vec<config::Keymap>,
+    frame: &mut Frame,
+    ui: &UIStateGuard,
+    rect: Rect,
+) {
+    let help_table = Table::new(
+        keymaps
+            .into_iter()
+            .map(|km| format!("{}: {:?}", km.key_sequence, km.command))
+            .collect::<Vec<_>>()
+            .chunks(SHORTCUT_TABLE_N_COLUMNS)
+            .map(|c| Row::new(c.iter().map(|i| Cell::from(i.to_owned()))))
+            .collect::<Vec<_>>(),
+    )
+    .widths(&SHORTCUT_TABLE_CONSTRAINS)
+    .block(
+        Block::default()
+            .title(ui.theme.block_title_with_style("Shortcuts"))
             .borders(Borders::ALL),
     );
     frame.render_widget(help_table, rect);

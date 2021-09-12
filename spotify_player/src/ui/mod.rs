@@ -60,49 +60,11 @@ fn clean_up(mut terminal: Terminal) -> Result<()> {
 
 /// renders the application
 fn render_application(frame: &mut Frame, mut ui: UIStateGuard, state: &SharedState, rect: Rect) {
-    let rect = render_shortcut_help_window(frame, &ui, state, rect);
+    let rect = help::render_shortcut_help_window(frame, &ui, state, rect);
 
     let (rect, is_active) = popup::render_popup(frame, &mut ui, state, rect);
 
     render_main_layout(is_active, frame, &mut ui, state, rect);
-}
-
-/// renders a shortcut help window to show the available shortcuts
-/// based on user's inputs
-fn render_shortcut_help_window(
-    frame: &mut Frame,
-    ui: &UIStateGuard,
-    state: &SharedState,
-    rect: Rect,
-) -> Rect {
-    let input = &ui.input_key_sequence;
-    // render the shortcuts help table if needed
-    let matches = if input.keys.is_empty() {
-        vec![]
-    } else {
-        state
-            .keymap_config
-            .find_matched_prefix_keymaps(input)
-            .into_iter()
-            .map(|keymap| {
-                let mut keymap = keymap.clone();
-                keymap.key_sequence.keys.drain(0..input.keys.len());
-                keymap
-            })
-            .filter(|keymap| !keymap.key_sequence.keys.is_empty())
-            .collect::<Vec<_>>()
-    };
-
-    if matches.is_empty() {
-        rect
-    } else {
-        let chunks = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([Constraint::Min(0), Constraint::Length(7)].as_ref())
-            .split(rect);
-        help::render_shortcuts_help_widget(matches, frame, ui, chunks[1]);
-        chunks[0]
-    }
 }
 
 /// renders the application's main layout which consists of:

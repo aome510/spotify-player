@@ -1,6 +1,6 @@
 use super::{construct_list_widget, help, Frame};
 use crate::state::*;
-use tui::{layout::*, style::*, widgets::*};
+use tui::{layout::*, widgets::*};
 
 /// renders a popup to handle a command or show additional information
 /// depending on the current popup state
@@ -19,7 +19,7 @@ pub fn render_popup(
                 .constraints([Constraint::Length(7), Constraint::Min(0)].as_ref())
                 .split(rect);
 
-            help::render_commands_help_widget(frame, ui, state, chunks[1]);
+            help::render_commands_help_window(frame, ui, state, chunks[1]);
             (chunks[0], false)
         }
         PopupState::DeviceList(_) => {
