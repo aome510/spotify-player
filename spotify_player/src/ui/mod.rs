@@ -112,7 +112,7 @@ fn render_main_layout(
 
 /// renders a playback window showing information about the current playback such as
 /// - track title, artists, album
-/// - playback metadata (playing state, repeat state, shuffle state, volume, etc)
+/// - playback metadata (playing state, repeat state, shuffle state, volume, device, etc)
 fn render_playback_window(
     frame: &mut Frame,
     ui: &mut UIStateGuard,
@@ -152,10 +152,11 @@ fn render_playback_window(
                 Span::styled(track.album.name.to_string(), ui.theme.playback_album()).into(),
                 Span::styled(
                     format!(
-                        "repeat: {} | shuffle: {} | volume: {}%",
+                        "repeat: {} | shuffle: {} | volume: {}% | device: {}",
                         playback.repeat_state.as_str(),
                         playback.shuffle_state,
                         playback.device.volume_percent,
+                        playback.device.name,
                     ),
                     ui.theme.playback_metadata(),
                 )
