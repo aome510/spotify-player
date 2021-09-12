@@ -36,7 +36,7 @@ pub fn render_popup(
                     .iter()
                     .map(|d| (format!("{} | {}", d.name, d.id), current_device_id == d.id))
                     .collect();
-                construct_list_widget(ui, items, "Devices", true)
+                construct_list_widget(ui, items, "Devices", true, None)
             };
 
             frame.render_stateful_widget(widget, chunks[1], ui.popup.get_list_state_mut().unwrap());
@@ -49,7 +49,7 @@ pub fn render_popup(
                 .split(rect);
             let widget = {
                 let items = themes.iter().map(|t| (t.name.clone(), false)).collect();
-                construct_list_widget(ui, items, "Themes", true)
+                construct_list_widget(ui, items, "Themes", true, None)
             };
 
             frame.render_stateful_widget(widget, chunks[1], ui.popup.get_list_state_mut().unwrap());
@@ -66,7 +66,7 @@ pub fn render_popup(
                     .iter()
                     .map(|p| (p.name.clone(), false))
                     .collect();
-                construct_list_widget(ui, items, "User Playlists", true)
+                construct_list_widget(ui, items, "User Playlists", true, None)
             };
 
             frame.render_stateful_widget(widget, chunks[1], ui.popup.get_list_state_mut().unwrap());
@@ -83,7 +83,7 @@ pub fn render_popup(
                     .iter()
                     .map(|a| (a.name.clone(), false))
                     .collect();
-                construct_list_widget(ui, items, "User Followed Artists", true)
+                construct_list_widget(ui, items, "User Followed Artists", true, None)
             };
 
             frame.render_stateful_widget(widget, chunks[1], ui.popup.get_list_state_mut().unwrap());
@@ -100,7 +100,7 @@ pub fn render_popup(
                     .iter()
                     .map(|a| (a.name.clone(), false))
                     .collect();
-                construct_list_widget(ui, items, "User Saved Albums", true)
+                construct_list_widget(ui, items, "User Saved Albums", true, None)
             };
 
             frame.render_stateful_widget(widget, chunks[1], ui.popup.get_list_state_mut().unwrap());
@@ -115,7 +115,7 @@ pub fn render_popup(
             frame.render_stateful_widget(
                 {
                     let items = artists.iter().map(|a| (a.name.clone(), false)).collect();
-                    construct_list_widget(ui, items, "Artists", true)
+                    construct_list_widget(ui, items, "Artists", true, None)
                 },
                 chunks[1],
                 ui.popup.get_list_state_mut().unwrap(),

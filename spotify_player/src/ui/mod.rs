@@ -200,7 +200,10 @@ fn construct_list_widget<'a>(
     items: Vec<(String, bool)>,
     title: &str,
     is_active: bool,
+    borders: Option<Borders>,
 ) -> List<'a> {
+    let borders = borders.unwrap_or(Borders::ALL);
+
     List::new(
         items
             .into_iter()
@@ -217,6 +220,6 @@ fn construct_list_widget<'a>(
     .block(
         Block::default()
             .title(ui.theme.block_title_with_style(title))
-            .borders(Borders::ALL),
+            .borders(borders),
     )
 }

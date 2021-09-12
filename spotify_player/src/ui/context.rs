@@ -1,7 +1,7 @@
 use std::sync::RwLockReadGuard;
 
 use super::Frame;
-use crate::{state::*, utils};
+use crate::{state::*, ui::construct_list_widget, utils};
 use tui::{layout::*, style::*, widgets::*};
 
 pub fn render_context_widget(
@@ -104,55 +104,61 @@ fn render_context_artist_widget(
         ui.get_search_filtered_items(data.2),
     );
 
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Length(12), Constraint::Min(1)].as_ref())
-        .split(rect);
-    render_context_track_table_widget(
-        is_active && focus_state == ArtistFocusState::TopTracks,
-        frame,
-        ui,
-        state,
-        player,
-        chunks[0],
-        tracks,
-    );
+    let rect = {
+        // render the top tracks table for artist context window
+
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Length(12), Constraint::Min(1)].as_ref())
+            .split(rect);
+        render_context_track_table_widget(
+            is_active && focus_state == ArtistFocusState::TopTracks,
+            frame,
+            ui,
+            state,
+            player,
+            chunks[0],
+            tracks,
+        );
+        chunks[1]
+    };
 
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
-        .split(chunks[1]);
+        .split(rect);
 
-    let albums_list = List::new(
-        albums
+    // construct album list widget
+    let albums_list = {
+        let album_items = albums
             .into_iter()
-            .map(|a| ListItem::new(a.name.clone()))
-            .collect::<Vec<_>>(),
-    )
-    .highlight_style(
-        ui.theme
-            .selection_style(is_active && focus_state == ArtistFocusState::Albums),
-    )
-    .block(
-        Block::default()
-            .borders(Borders::TOP)
-            .title(ui.theme.block_title_with_style("Albums")),
-    );
-    let artists_list = List::new(
-        artists
+            .map(|a| (a.name.clone(), false))
+            .collect::<Vec<_>>();
+
+        construct_list_widget(
+            ui,
+            album_items,
+            "Albums",
+            is_active && focus_state == ArtistFocusState::Albums,
+            Some(Borders::TOP),
+        )
+    };
+
+    // construct artist list widget
+    let artists_list = {
+        let artist_items = artists
             .into_iter()
-            .map(|a| ListItem::new(a.name.clone()))
-            .collect::<Vec<_>>(),
-    )
-    .highlight_style(
-        ui.theme
-            .selection_style(is_active && focus_state == ArtistFocusState::RelatedArtists),
-    )
-    .block(
-        Block::default()
-            .borders(Borders::TOP | Borders::LEFT)
-            .title(ui.theme.block_title_with_style("Related Artists")),
-    );
+            .map(|a| (a.name.clone(), false))
+            .collect::<Vec<_>>();
+
+        construct_list_widget(
+            ui,
+            artist_items,
+            "Related Artists",
+            is_active && focus_state == ArtistFocusState::RelatedArtists,
+            Some(Borders::TOP | Borders::LEFT),
+        )
+    };
 
     let (albums_list_state, artists_list_state) = match ui.window {
         WindowState::Artist(_, ref mut albums_list_state, ref mut artists_list_state, _) => {
@@ -160,10 +166,12 @@ fn render_context_artist_widget(
         }
         _ => unreachable!(),
     };
+
     frame.render_stateful_widget(albums_list, chunks[0], albums_list_state);
     frame.render_stateful_widget(artists_list, chunks[1], artists_list_state);
 }
 
+/// constructs a track table widget then renders it
 fn render_context_track_table_widget(
     is_active: bool,
     frame: &mut Frame,
