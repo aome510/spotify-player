@@ -2,7 +2,7 @@ use crate::{
     command::Command,
     key::{Key, KeySequence},
     state::*,
-    utils,
+    utils::{self, new_list_state},
 };
 use anyhow::Result;
 use crossterm::event::{self, EventStream, KeyCode, KeyModifiers};
@@ -291,6 +291,19 @@ fn handle_command_for_none_popup(
     ui: &mut UIStateGuard,
 ) -> Result<bool> {
     match command {
+        Command::EnterSearchPage => {
+            // TODO: handle the command properly
+            ui.page = PageState::Searching("blackpink".to_owned());
+            ui.window = WindowState::Search(
+                new_list_state(),
+                new_list_state(),
+                new_list_state(),
+                new_list_state(),
+                SearchFocusState::Tracks,
+            );
+            send.send(Event::Search("blackpink".to_owned()))?;
+            Ok(true)
+        }
         Command::SearchContext => {
             ui.window.select(Some(0));
             ui.popup = PopupState::ContextSearch("".to_owned());

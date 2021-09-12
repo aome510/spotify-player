@@ -52,7 +52,7 @@ pub fn render_search_window(
             track_items,
             "Tracks",
             is_active && focus_state == SearchFocusState::Tracks,
-            Some(Borders::TOP),
+            Some(Borders::TOP | Borders::RIGHT),
         )
     };
 
@@ -86,7 +86,7 @@ pub fn render_search_window(
             artist_items,
             "Artists",
             is_active && focus_state == SearchFocusState::Artists,
-            Some(Borders::TOP),
+            Some(Borders::TOP | Borders::RIGHT),
         )
     };
 
@@ -107,9 +107,16 @@ pub fn render_search_window(
         )
     };
 
+    // renders borders with title
+    let block = Block::default()
+        .title(ui.theme.block_title_with_style("Search"))
+        .borders(Borders::ALL);
+    frame.render_widget(block, rect);
+
     // split the given `rect` layout into a 2x2 layout consiting of 4 chunks
     let chunks = Layout::default()
         .direction(Direction::Vertical)
+        .margin(1)
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
         .split(rect)
         .into_iter()
