@@ -1,6 +1,6 @@
 use crate::{
     event::{ContextURI, Event, PlayerEvent},
-    state::{Context, PageState, SharedState, Track},
+    state::{Context, PageState, SearchResults, SharedState, Track},
     token, utils,
 };
 use anyhow::{anyhow, Result};
@@ -128,6 +128,9 @@ impl Client {
                             .put(uri.clone(), Context::Unknown(uri));
                     }
                 };
+            }
+            Event::Search(query) => {
+                self.search(state, query)?;
             }
         };
 
@@ -336,6 +339,91 @@ impl Client {
     /// gets the current playing context
     pub fn get_current_playback(&self) -> Result<Option<context::CurrentlyPlaybackContext>> {
         Self::handle_rspotify_result(self.spotify.current_playback(None, None))
+    }
+
+    /// searchs for items (tracks, artists, albums, playlists) that match a given query string.
+    /// Search results are then stored inside a search cache.
+    pub fn search(&self, state: &SharedState, query: String) -> Result<()> {
+        let tracks = {
+            let search_result = Self::handle_rspotify_result(self.spotify.search(
+                &query,
+                SearchType::Track,
+                None,
+                None,
+                None,
+                None,
+            ))?;
+
+            match search_result {
+                search::SearchResult::Tracks(page) => page,
+                _ => unreachable!(),
+            }
+        };
+
+        let artists = {
+            let search_result = Self::handle_rspotify_result(self.spotify.search(
+                &query,
+                SearchType::Artist,
+                None,
+                None,
+                None,
+                None,
+            ))?;
+
+            match search_result {
+                search::SearchResult::Artists(page) => page,
+                _ => unreachable!(),
+            }
+        };
+
+        let albums = {
+            let search_result = Self::handle_rspotify_result(self.spotify.search(
+                &query,
+                SearchType::Album,
+                None,
+                None,
+                None,
+                None,
+            ))?;
+
+            match search_result {
+                search::SearchResult::Albums(page) => page,
+                _ => unreachable!(),
+            }
+        };
+
+        let playlists = {
+            let search_result = Self::handle_rspotify_result(self.spotify.search(
+                &query,
+                SearchType::Playlist,
+                None,
+                None,
+                None,
+                None,
+            ))?;
+
+            match search_result {
+                search::SearchResult::Playlists(page) => page,
+                _ => unreachable!(),
+            }
+        };
+
+        let search_results = SearchResults {
+            tracks,
+            artists,
+            albums,
+            playlists,
+        };
+
+        // put the search results into the player state's search cache
+        state
+            .player
+            .write()
+            .unwrap()
+            .search_cache
+            .put(query, search_results);
+
+        Ok(())
     }
 
     /// handles a `rspotify` client result and converts it into `anyhow` compatible result format
@@ -650,6 +738,7 @@ pub fn start_player_event_watchers(
 
                 // update the player's context based on the UI's page state
                 match page {
+                    PageState::Searching(_) => {}
                     PageState::Browsing(uri) => {
                         if player.context_uri != uri {
                             utils::update_context(&state, uri);

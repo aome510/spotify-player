@@ -36,9 +36,9 @@ pub enum Context {
 /// - `playlists`
 #[derive(Debug)]
 pub struct SearchResults {
-    pub tracks: page::Page<track::SimplifiedTrack>,
+    pub tracks: page::Page<track::FullTrack>,
+    pub artists: page::Page<artist::FullArtist>,
     pub albums: page::Page<album::SimplifiedAlbum>,
-    pub artists: page::Page<artist::SimplifiedArtist>,
     pub playlists: page::Page<playlist::SimplifiedPlaylist>,
 }
 

@@ -44,6 +44,7 @@ pub enum Event {
     GetContext(ContextURI),
     GetCurrentPlayback,
     TransferPlayback(String, bool),
+    Search(String),
     Player(PlayerEvent),
 }
 
