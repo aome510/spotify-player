@@ -231,15 +231,19 @@ impl WindowState {
 
 impl Focusable for WindowState {
     fn next(&mut self) {
-        if let Self::Artist(_, _, _, artist) = self {
-            artist.next()
-        };
+        match self {
+            Self::Artist(_, _, _, focus) => focus.next(),
+            Self::Search(_, _, _, _, focus) => focus.next(),
+            _ => {}
+        }
     }
 
     fn previous(&mut self) {
-        if let Self::Artist(_, _, _, artist) = self {
-            artist.previous()
-        };
+        match self {
+            Self::Artist(_, _, _, focus) => focus.previous(),
+            Self::Search(_, _, _, _, focus) => focus.previous(),
+            _ => {}
+        }
     }
 }
 
@@ -270,4 +274,12 @@ impl_focusable!(
     [TopTracks, Albums],
     [Albums, RelatedArtists],
     [RelatedArtists, TopTracks]
+);
+
+impl_focusable!(
+    SearchFocusState,
+    [Tracks, Albums],
+    [Albums, Artists],
+    [Artists, Playlists],
+    [Playlists, Tracks]
 );
