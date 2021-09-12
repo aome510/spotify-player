@@ -85,16 +85,24 @@ fn render_main_layout(
 
     match ui.page {
         PageState::CurrentPlaying => {
-            let block = Block::default()
-                .title(ui.theme.block_title_with_style("Context (Current Playing)"))
-                .borders(Borders::ALL);
-            context::render_context_window(is_active, frame, ui, state, chunks[1], block);
+            context::render_context_window(
+                is_active,
+                frame,
+                ui,
+                state,
+                chunks[1],
+                "Context (Current Playing)",
+            );
         }
         PageState::Browsing(_) => {
-            let block = Block::default()
-                .title(ui.theme.block_title_with_style("Context (Browsing)"))
-                .borders(Borders::ALL);
-            context::render_context_window(is_active, frame, ui, state, chunks[1], block);
+            context::render_context_window(
+                is_active,
+                frame,
+                ui,
+                state,
+                chunks[1],
+                "Context (Browsing)",
+            );
         }
         PageState::Searching(_) => {
             search::render_search_window(is_active, frame, ui, state, chunks[1]);

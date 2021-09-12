@@ -12,15 +12,19 @@ pub fn render_context_window(
     ui: &mut UIStateGuard,
     state: &SharedState,
     rect: Rect,
-    block: Block,
+    title: &str,
 ) {
+    let block = Block::default()
+        .title(ui.theme.block_title_with_style(title))
+        .borders(Borders::ALL);
+
     let player = state.player.read().unwrap();
 
     match player.get_context() {
         Some(context) => {
             frame.render_widget(block, rect);
 
-            // context description
+            // render context description
             let chunks = Layout::default()
                 .direction(Direction::Vertical)
                 .margin(1)
