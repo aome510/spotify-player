@@ -113,10 +113,22 @@ pub fn render_search_window(
         .borders(Borders::ALL);
     frame.render_widget(block, rect);
 
+    // renders the query input box
+    let rect = {
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .margin(1)
+            .constraints([Constraint::Length(1), Constraint::Min(0)].as_ref())
+            .split(rect);
+
+        frame.render_widget(Paragraph::new(query.clone()), chunks[0]);
+
+        chunks[1]
+    };
+
     // split the given `rect` layout into a 2x2 layout consiting of 4 chunks
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .margin(1)
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
         .split(rect)
         .into_iter()
