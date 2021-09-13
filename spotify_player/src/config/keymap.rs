@@ -132,6 +132,10 @@ impl Default for KeymapConfig {
                     command: Command::PreviousPage,
                 },
                 Keymap {
+                    key_sequence: "C-p".into(),
+                    command: Command::PreviousPage,
+                },
+                Keymap {
                     key_sequence: "?".into(),
                     command: Command::OpenCommandHelp,
                 },
