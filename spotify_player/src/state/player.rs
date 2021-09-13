@@ -121,6 +121,30 @@ impl PlayerState {
     }
 }
 
+impl SearchResults {
+    fn empty_page<T>() -> page::Page<T> {
+        page::Page {
+            href: "".to_owned(),
+            items: vec![],
+            limit: 0,
+            next: None,
+            offset: 0,
+            previous: None,
+            total: 0,
+        }
+    }
+
+    // returns an empty search results
+    pub fn empty() -> Self {
+        Self {
+            tracks: Self::empty_page::<track::FullTrack>(),
+            artists: Self::empty_page::<artist::FullArtist>(),
+            albums: Self::empty_page::<album::SimplifiedAlbum>(),
+            playlists: Self::empty_page::<playlist::SimplifiedPlaylist>(),
+        }
+    }
+}
+
 impl Default for PlayerState {
     fn default() -> Self {
         Self {

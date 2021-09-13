@@ -113,8 +113,11 @@ fn handle_terminal_event(
 
     let handled = match command {
         None => {
+            // handle input key sequence for searching window/popup
             if let PopupState::ContextSearch(_) = ui.popup {
                 handle_key_sequence_for_search_popup(&key_sequence, send, state, &mut ui)?
+            } else if let PageState::Searching(_) = ui.page {
+                handle_key_sequence_for_search_window(&key_sequence, send, state, &mut ui)?
             } else {
                 false
             }
@@ -122,7 +125,18 @@ fn handle_terminal_event(
         Some(command) => {
             // handle commands specifically for a popup window
             let handled = match ui.popup {
-                PopupState::None => handle_command_for_none_popup(command, send, state, &mut ui)?,
+                PopupState::None => match ui.page {
+                    // no popup, handle command based on the current UI's `PageState`
+                    PageState::Browsing(_) => {
+                        handle_command_for_context_window(command, send, state, &mut ui)?
+                    }
+                    PageState::CurrentPlaying => {
+                        handle_command_for_context_window(command, send, state, &mut ui)?
+                    }
+                    PageState::Searching(_) => {
+                        handle_key_sequence_for_search_window(&key_sequence, send, state, &mut ui)?
+                    }
+                },
                 PopupState::ContextSearch(_) => {
                     handle_key_sequence_for_search_popup(&key_sequence, send, state, &mut ui)?
                 }
@@ -284,7 +298,7 @@ fn handle_mouse_event(
     Ok(())
 }
 
-fn handle_command_for_none_popup(
+fn handle_command_for_context_window(
     command: Command,
     send: &mpsc::Sender<Event>,
     state: &SharedState,
@@ -293,7 +307,7 @@ fn handle_command_for_none_popup(
     match command {
         Command::EnterSearchPage => {
             // TODO: handle the command properly
-            let new_page = PageState::Searching("blackpink".to_owned());
+            let new_page = PageState::Searching("".to_owned());
             ui.history.push(new_page.clone());
             ui.page = new_page;
             ui.window = WindowState::Search(
@@ -308,8 +322,6 @@ fn handle_command_for_none_popup(
             // prevent the context window from updating when going
             // back from a search window using `PreviousPage` command
             state.player.write().unwrap().context_uri = "".to_owned();
-
-            send.send(Event::Search("blackpink".to_owned()))?;
             Ok(true)
         }
         Command::FocusNextWindow => {
@@ -320,23 +332,6 @@ fn handle_command_for_none_popup(
             ui.window.previous();
             Ok(true)
         }
-        _ => match ui.page {
-            PageState::Browsing(_) => handle_command_for_context_window(command, send, state, ui),
-            PageState::CurrentPlaying => {
-                handle_command_for_context_window(command, send, state, ui)
-            }
-            PageState::Searching(_) => handle_command_for_search_window(command, send, state, ui),
-        },
-    }
-}
-
-fn handle_command_for_context_window(
-    command: Command,
-    send: &mpsc::Sender<Event>,
-    state: &SharedState,
-    ui: &mut UIStateGuard,
-) -> Result<bool> {
-    match command {
         Command::SearchContext => {
             ui.window.select(Some(0));
             ui.popup = PopupState::ContextSearch("".to_owned());
@@ -409,12 +404,40 @@ fn handle_command_for_context_window(
     }
 }
 
-fn handle_command_for_search_window(
-    command: Command,
+fn handle_key_sequence_for_search_window(
+    key_sequence: &KeySequence,
     send: &mpsc::Sender<Event>,
     state: &SharedState,
     ui: &mut UIStateGuard,
 ) -> Result<bool> {
+    let query = match ui.page {
+        PageState::Searching(ref mut query) => query,
+        _ => unreachable!(),
+    };
+
+    // handle user's input
+    if key_sequence.keys.len() == 1 {
+        if let Key::None(c) = key_sequence.keys[0] {
+            match c {
+                KeyCode::Char(c) => {
+                    query.push(c);
+                    send.send(Event::Search(query.clone()))?;
+                    return Ok(true);
+                }
+                KeyCode::Backspace => {
+                    if !query.is_empty() {
+                        query.pop().unwrap();
+                        if !query.is_empty() {
+                            send.send(Event::Search(query.clone()))?;
+                        }
+                    }
+                    return Ok(true);
+                }
+                _ => {}
+            }
+        }
+    }
+
     Ok(false)
 }
 
@@ -424,12 +447,12 @@ fn handle_key_sequence_for_search_popup(
     state: &SharedState,
     ui: &mut UIStateGuard,
 ) -> Result<bool> {
+    let query = match ui.popup {
+        PopupState::ContextSearch(ref mut query) => query,
+        _ => unreachable!(),
+    };
     if key_sequence.keys.len() == 1 {
         if let Key::None(c) = key_sequence.keys[0] {
-            let query = match ui.popup {
-                PopupState::ContextSearch(ref mut query) => query,
-                _ => unreachable!(),
-            };
             match c {
                 KeyCode::Char(c) => {
                     query.push(c);

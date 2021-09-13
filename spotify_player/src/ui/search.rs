@@ -22,11 +22,10 @@ pub fn render_search_window(
 
     let player = state.player.read().unwrap();
     // gets the search results from the query
+    let empty_results = SearchResults::empty();
     let search_results = match player.search_cache.peek(query) {
         Some(search_results) => search_results,
-        None => {
-            return;
-        }
+        None => &empty_results,
     };
 
     let focus_state = match ui.window {
