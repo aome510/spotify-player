@@ -28,12 +28,20 @@ impl Client {
         log::info!("handle player request: {:?}", event);
 
         let player = state.player.read().unwrap();
+
+        // `TransferPlayback` needs to handle separately b/c it doesn't require to
+        // have an active playback
+        if let PlayerRequest::TransferPlayback(device_id, force_play) = event {
+            return self.transfer_playback(device_id, force_play);
+        }
+
         let playback = match player.playback {
             Some(ref playback) => playback,
             None => {
                 return Err(anyhow!("failed to get the current playback context"));
             }
         };
+
         match event {
             PlayerRequest::NextTrack => self.next_track(playback),
             PlayerRequest::PreviousTrack => self.previous_track(playback),
@@ -45,9 +53,7 @@ impl Client {
             PlayerRequest::PlayTrack(context_uri, track_uris, offset) => {
                 self.start_playback(playback, context_uri, track_uris, offset)
             }
-            PlayerRequest::TransferPlayback(device_id, force_play) => {
-                self.transfer_playback(device_id, force_play)
-            }
+            PlayerRequest::TransferPlayback(_, _) => unreachable!(),
         }
     }
 
@@ -572,6 +578,10 @@ pub async fn start_client_handler(
         client.spotify.access_token =
             Some(state.player.read().unwrap().token.access_token.to_owned());
 
+        // This's not the best way to handle a request without blocking :/.
+        // Kinda a workaround atm.
+        // TODO: find a better approach to handle a request without blocking and
+        // minimizing the number of clonings
         {
             // handle the client request while trying not to block the current thread
             let client = client.clone();

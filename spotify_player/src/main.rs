@@ -71,6 +71,9 @@ async fn main() -> anyhow::Result<()> {
     let (send, recv) = std::sync::mpsc::channel::<event::ClientRequest>();
 
     let session = auth::new_session(&cache_folder, state.app_config.device.audio_cache).await?;
+    // get the auth token and store it inside the player state
+    let token = token::get_token(&session, &state.app_config.client_id).await?;
+    state.player.write().unwrap().token = token;
 
     // connection thread (used to initialize the integrated Spotify client using librespot)
     #[cfg(feature = "streaming")]
