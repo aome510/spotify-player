@@ -24,14 +24,14 @@ impl Client {
     }
 
     /// handles a player request
-    fn handle_player_request(&self, state: &SharedState, event: PlayerRequest) -> Result<()> {
-        log::info!("handle player request: {:?}", event);
+    fn handle_player_request(&self, state: &SharedState, request: PlayerRequest) -> Result<()> {
+        log::info!("handle player request: {:?}", request);
 
         let player = state.player.read().unwrap();
 
         // `TransferPlayback` needs to handle separately b/c it doesn't require to
         // have an active playback
-        if let PlayerRequest::TransferPlayback(device_id, force_play) = event {
+        if let PlayerRequest::TransferPlayback(device_id, force_play) = request {
             return self.transfer_playback(device_id, force_play);
         }
 
@@ -42,7 +42,7 @@ impl Client {
             }
         };
 
-        match event {
+        match request {
             PlayerRequest::NextTrack => self.next_track(playback),
             PlayerRequest::PreviousTrack => self.previous_track(playback),
             PlayerRequest::ResumePause => self.resume_pause(playback),
@@ -71,7 +71,7 @@ impl Client {
                 // # Why needs more than one request to update the playback?
                 // Spotify API may take a while to update with the new changes,
                 // so we may need to make additional requests to ensure that
-                // the current playback is synced with the latest change.
+                // the current playback is in sync with the latest change.
                 let n_refreshes = state.app_config.n_refreshes_each_playback_update;
                 let delay_duration = std::time::Duration::from_millis(
                     state.app_config.refresh_delay_in_ms_each_playback_update,
@@ -578,10 +578,10 @@ pub async fn start_client_handler(
         client.spotify.access_token =
             Some(state.player.read().unwrap().token.access_token.to_owned());
 
-        // This's not the best way to handle a request without blocking :/.
+        // This is not a nice way to handle a request without blocking :/.
         // Kinda a workaround atm.
-        // TODO: find a better approach to handle a request without blocking and
-        // minimizing the number of clonings
+        // TODO: find a better approach to handle a request without blocking and,
+        // at the same time, minimizing the number of clones
         {
             // handle the client request while trying not to block the current thread
             let client = client.clone();
@@ -633,14 +633,16 @@ pub async fn start_player_event_watchers(
         });
     }
 
-    // start the main event watcher,
-    // try to watch for new events every second
+    // start the main event watcher watching for new events every second
     let refresh_duration = std::time::Duration::from_millis(1000);
     loop {
         watch_player_events(&state, &send, &session)
             .await
             .unwrap_or_else(|err| {
-                log::warn!("failed to watch player events: {}", err);
+                log::warn!(
+                    "encountered an error when watching for player events: {}",
+                    err
+                );
             });
 
         std::thread::sleep(refresh_duration);
