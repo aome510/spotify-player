@@ -24,7 +24,7 @@ impl Client {
 
     /// handles a player request
     fn handle_player_request(&self, state: &SharedState, event: PlayerRequest) -> Result<()> {
-        log::info!("handle player event: {:?}", event);
+        log::info!("handle player request: {:?}", event);
 
         let player = state.player.read().unwrap();
         let playback = match player.playback {
@@ -52,17 +52,12 @@ impl Client {
 
     /// handles a client request
     pub async fn handle_request(
-        &mut self,
+        &self,
         state: &SharedState,
         send: &std::sync::mpsc::Sender<ClientRequest>,
         request: ClientRequest,
     ) -> Result<()> {
-        log::info!("handle the client event {:?}", request);
-
-        // use the authentication token stored inside the player state
-        // for making API calls to Spotify
-        self.spotify.access_token =
-            Some(state.player.read().unwrap().token.access_token.to_owned());
+        log::info!("handle the client request {:?}", request);
 
         match request {
             ClientRequest::Player(event) => {
@@ -561,6 +556,11 @@ pub async fn start_client_handler(
     recv: std::sync::mpsc::Receiver<ClientRequest>,
 ) {
     while let Ok(request) = recv.recv() {
+        // use the authentication token stored inside the player state
+        // for making API calls to Spotify
+        client.spotify.access_token =
+            Some(state.player.read().unwrap().token.access_token.to_owned());
+
         if let Err(err) = client.handle_request(&state, &send, request).await {
             log::warn!("{:#?}", err);
         }
