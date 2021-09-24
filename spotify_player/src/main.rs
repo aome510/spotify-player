@@ -68,9 +68,12 @@ async fn main() -> anyhow::Result<()> {
     let state = std::sync::Arc::new(state);
 
     // start application's threads
-    let (send, recv) = std::sync::mpsc::channel::<event::Event>();
+    let (send, recv) = std::sync::mpsc::channel::<event::ClientRequest>();
 
     let session = auth::new_session(&cache_folder, state.app_config.device.audio_cache).await?;
+    // get the auth token and store it inside the player state
+    let token = token::get_token(&session, &state.app_config.client_id).await?;
+    state.player.write().unwrap().token = token;
 
     // connection thread (used to initialize the integrated Spotify client using librespot)
     #[cfg(feature = "streaming")]
@@ -85,10 +88,9 @@ async fn main() -> anyhow::Result<()> {
     // client event handler thread
     std::thread::spawn({
         let state = state.clone();
-        let send = send.clone();
-        let client = client::Client::new(session, &state).await?;
+        let client = client::Client::new();
         move || {
-            client::start_client_handler(state, client, send, recv);
+            client::start_client_handler(state, client, recv);
         }
     });
 
@@ -102,7 +104,13 @@ async fn main() -> anyhow::Result<()> {
     });
 
     // player event watcher thread(s)
-    client::start_player_event_watchers(state.clone(), send.clone())?;
+    std::thread::spawn({
+        let send = send.clone();
+        let state = state.clone();
+        move || {
+            client::start_player_event_watchers(state, send, session);
+        }
+    });
 
     // application's UI as the main thread
     ui::start_ui(state)
