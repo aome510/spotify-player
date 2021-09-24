@@ -1,3 +1,5 @@
+use std::thread;
+
 use crate::{
     event::{ClientRequest, ContextURI, PlayerRequest},
     state::{Context, PageState, SearchResults, SharedState, Track},
@@ -27,14 +29,13 @@ impl Client {
     fn handle_player_request(&self, state: &SharedState, request: PlayerRequest) -> Result<()> {
         log::info!("handle player request: {:?}", request);
 
-        let player = state.player.read().unwrap();
-
         // `TransferPlayback` needs to handle separately b/c it doesn't require to
         // have an active playback
         if let PlayerRequest::TransferPlayback(device_id, force_play) = request {
             return self.transfer_playback(device_id, force_play);
         }
 
+        let player = state.player.read().unwrap();
         let playback = match player.playback {
             Some(ref playback) => playback,
             None => {
@@ -347,69 +348,94 @@ impl Client {
     /// searchs for items (tracks, artists, albums, playlists) that match a given query string.
     /// Search results are then stored inside a search cache.
     pub fn search(&self, state: &SharedState, query: String) -> Result<()> {
-        let tracks = {
-            let search_result = Self::handle_rspotify_result(self.spotify.search(
-                &query,
-                SearchType::Track,
-                None,
-                None,
-                None,
-                None,
-            ))?;
+        // searching for tracks, artists, albums, and playlists that match
+        // a given query string. Each class of items will be handled separately
+        // in a separate thread.
 
-            match search_result {
-                search::SearchResult::Tracks(page) => page,
-                _ => unreachable!(),
+        let tracks_thread = thread::spawn({
+            let spotify = self.spotify.clone();
+            let query = query.clone();
+            move || -> Result<_> {
+                let search_result = Self::handle_rspotify_result(spotify.search(
+                    &query,
+                    SearchType::Track,
+                    None,
+                    None,
+                    None,
+                    None,
+                ))?;
+
+                Ok(match search_result {
+                    search::SearchResult::Tracks(page) => page,
+                    _ => unreachable!(),
+                })
             }
-        };
+        });
 
-        let artists = {
-            let search_result = Self::handle_rspotify_result(self.spotify.search(
-                &query,
-                SearchType::Artist,
-                None,
-                None,
-                None,
-                None,
-            ))?;
+        let artists_thread = thread::spawn({
+            let spotify = self.spotify.clone();
+            let query = query.clone();
+            move || -> Result<_> {
+                let search_result = Self::handle_rspotify_result(spotify.search(
+                    &query,
+                    SearchType::Artist,
+                    None,
+                    None,
+                    None,
+                    None,
+                ))?;
 
-            match search_result {
-                search::SearchResult::Artists(page) => page,
-                _ => unreachable!(),
+                Ok(match search_result {
+                    search::SearchResult::Artists(page) => page,
+                    _ => unreachable!(),
+                })
             }
-        };
+        });
 
-        let albums = {
-            let search_result = Self::handle_rspotify_result(self.spotify.search(
-                &query,
-                SearchType::Album,
-                None,
-                None,
-                None,
-                None,
-            ))?;
+        let albums_thread = thread::spawn({
+            let spotify = self.spotify.clone();
+            let query = query.clone();
+            move || -> Result<_> {
+                let search_result = Self::handle_rspotify_result(spotify.search(
+                    &query,
+                    SearchType::Album,
+                    None,
+                    None,
+                    None,
+                    None,
+                ))?;
 
-            match search_result {
-                search::SearchResult::Albums(page) => page,
-                _ => unreachable!(),
+                Ok(match search_result {
+                    search::SearchResult::Albums(page) => page,
+                    _ => unreachable!(),
+                })
             }
-        };
+        });
 
-        let playlists = {
-            let search_result = Self::handle_rspotify_result(self.spotify.search(
-                &query,
-                SearchType::Playlist,
-                None,
-                None,
-                None,
-                None,
-            ))?;
+        let playlists_thread = thread::spawn({
+            let spotify = self.spotify.clone();
+            let query = query.clone();
+            move || -> Result<_> {
+                let search_result = Self::handle_rspotify_result(spotify.search(
+                    &query,
+                    SearchType::Playlist,
+                    None,
+                    None,
+                    None,
+                    None,
+                ))?;
 
-            match search_result {
-                search::SearchResult::Playlists(page) => page,
-                _ => unreachable!(),
+                Ok(match search_result {
+                    search::SearchResult::Playlists(page) => page,
+                    _ => unreachable!(),
+                })
             }
-        };
+        });
+
+        let tracks = tracks_thread.join().unwrap()?;
+        let artists = artists_thread.join().unwrap()?;
+        let albums = albums_thread.join().unwrap()?;
+        let playlists = playlists_thread.join().unwrap()?;
 
         let search_results = SearchResults {
             tracks,
