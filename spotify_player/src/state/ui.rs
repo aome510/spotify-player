@@ -74,6 +74,7 @@ pub enum ArtistFocusState {
 /// Search Focus state
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum SearchFocusState {
+    Input,
     Tracks,
     Albums,
     Artists,
@@ -185,6 +186,7 @@ impl WindowState {
                 ref mut playlists,
                 ref focus,
             ) => match focus {
+                SearchFocusState::Input => {}
                 SearchFocusState::Tracks => tracks.select(id),
                 SearchFocusState::Albums => albums.select(id),
                 SearchFocusState::Artists => artists.select(id),
@@ -211,6 +213,7 @@ impl WindowState {
             Self::Unknown => None,
             Self::Search(ref tracks, ref albums, ref artists, ref playlists, ref focus) => {
                 match focus {
+                    &SearchFocusState::Input => None,
                     SearchFocusState::Tracks => tracks.selected(),
                     SearchFocusState::Albums => albums.selected(),
                     SearchFocusState::Artists => artists.selected(),
@@ -278,8 +281,9 @@ impl_focusable!(
 
 impl_focusable!(
     SearchFocusState,
+    [Input, Tracks],
     [Tracks, Albums],
     [Albums, Artists],
     [Artists, Playlists],
-    [Playlists, Tracks]
+    [Playlists, Input]
 );

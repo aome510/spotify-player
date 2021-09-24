@@ -31,9 +31,6 @@ pub fn render_search_window(
     let focus_state = match ui.window {
         WindowState::Search(_, _, _, _, focus) => focus,
         _ => {
-            // `WindowState` and `PageState` can be updated independently
-            // and therefore having unmatching data.
-            // So should not use `unreachable!()` for this match
             return;
         }
     };
@@ -120,7 +117,12 @@ pub fn render_search_window(
             .constraints([Constraint::Length(1), Constraint::Min(0)].as_ref())
             .split(rect);
 
-        frame.render_widget(Paragraph::new(query.clone()), chunks[0]);
+        let is_active = is_active && focus_state == SearchFocusState::Input;
+
+        frame.render_widget(
+            Paragraph::new(query.clone()).style(ui.theme.selection_style(is_active)),
+            chunks[0],
+        );
 
         chunks[1]
     };

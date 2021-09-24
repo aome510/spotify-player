@@ -313,7 +313,7 @@ fn handle_command_for_context_window(
                 new_list_state(),
                 new_list_state(),
                 new_list_state(),
-                SearchFocusState::Tracks,
+                SearchFocusState::Input,
             );
             // needs to set `context_uri` to an empty string
             // because keeping the original `context_uri` will
@@ -408,34 +408,63 @@ fn handle_key_sequence_for_search_window(
     state: &SharedState,
     ui: &mut UIStateGuard,
 ) -> Result<bool> {
-    let query = match ui.page {
-        PageState::Searching(ref mut query) => query,
-        _ => unreachable!(),
+    let focus_state = match ui.window {
+        WindowState::Search(_, _, _, _, focus) => focus,
+        _ => {
+            return Ok(false);
+        }
     };
 
-    // handle user's input
-    if key_sequence.keys.len() == 1 {
-        if let Key::None(c) = key_sequence.keys[0] {
-            match c {
-                KeyCode::Char(c) => {
-                    query.push(c);
-                    return Ok(true);
-                }
-                KeyCode::Backspace => {
-                    if !query.is_empty() {
-                        query.pop().unwrap();
+    match focus_state {
+        SearchFocusState::Input => {
+            let query = match ui.page {
+                PageState::Searching(ref mut query) => query,
+                _ => unreachable!(),
+            };
+
+            // handle user's input
+            if key_sequence.keys.len() == 1 {
+                if let Key::None(c) = key_sequence.keys[0] {
+                    match c {
+                        KeyCode::Char(c) => {
+                            query.push(c);
+                            return Ok(true);
+                        }
+                        KeyCode::Backspace => {
+                            if !query.is_empty() {
+                                query.pop().unwrap();
+                            }
+                            return Ok(true);
+                        }
+                        KeyCode::Enter => {
+                            if !query.is_empty() {
+                                send.send(ClientRequest::Search(query.clone()))?;
+                            }
+                            return Ok(true);
+                        }
+                        _ => {}
                     }
-                    return Ok(true);
                 }
-                KeyCode::Enter => {
-                    if !query.is_empty() {
-                        send.send(ClientRequest::Search(query.clone()))?;
+            }
+
+            let command = state
+                .keymap_config
+                .find_command_from_key_sequence(key_sequence);
+            if let Some(command) = command {
+                match command {
+                    Command::FocusNextWindow => {
+                        ui.window.next();
+                        return Ok(true);
                     }
-                    return Ok(true);
+                    Command::FocusPreviousWindow => {
+                        ui.window.previous();
+                        return Ok(true);
+                    }
+                    _ => {}
                 }
-                _ => {}
             }
         }
+        _ => {}
     }
 
     Ok(false)
