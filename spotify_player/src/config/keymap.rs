@@ -124,7 +124,15 @@ impl Default for KeymapConfig {
                     command: Command::BrowseSelectedTrackAlbum,
                 },
                 Keymap {
+                    key_sequence: "g /".into(),
+                    command: Command::EnterSearchPage,
+                },
+                Keymap {
                     key_sequence: "backspace".into(),
+                    command: Command::PreviousPage,
+                },
+                Keymap {
+                    key_sequence: "C-p".into(),
                     command: Command::PreviousPage,
                 },
                 Keymap {

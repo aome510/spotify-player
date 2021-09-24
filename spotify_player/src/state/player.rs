@@ -27,6 +27,20 @@ pub enum Context {
     Unknown(String),
 }
 
+/// SearchResults denotes the returned data when searching using Spotify API.
+/// Search results are returned as pages of Spotify objects, which includes
+/// - `tracks`
+/// - `albums`
+/// - `artists`
+/// - `playlists`
+#[derive(Clone, Debug)]
+pub struct SearchResults {
+    pub tracks: page::Page<Track>,
+    pub artists: page::Page<Artist>,
+    pub albums: page::Page<Album>,
+    pub playlists: page::Page<playlist::SimplifiedPlaylist>,
+}
+
 #[derive(Debug)]
 /// Order of sorting tracks in a playing context
 pub enum ContextSortOrder {
@@ -103,6 +117,30 @@ impl PlayerState {
     /// gets the current context (mutable)
     pub fn get_context_mut(&mut self) -> Option<&mut Context> {
         self.context_cache.peek_mut(&self.context_uri)
+    }
+}
+
+impl SearchResults {
+    fn empty_page<T>() -> page::Page<T> {
+        page::Page {
+            href: "".to_owned(),
+            items: vec![],
+            limit: 0,
+            next: None,
+            offset: 0,
+            previous: None,
+            total: 0,
+        }
+    }
+
+    // returns an empty search results
+    pub fn empty() -> Self {
+        Self {
+            tracks: Self::empty_page::<Track>(),
+            artists: Self::empty_page::<Artist>(),
+            albums: Self::empty_page::<Album>(),
+            playlists: Self::empty_page::<playlist::SimplifiedPlaylist>(),
+        }
     }
 }
 

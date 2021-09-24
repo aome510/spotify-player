@@ -65,7 +65,7 @@ pub fn update_context(state: &state::SharedState, context_uri: String) {
                     let mut ui = state.ui.lock().unwrap();
                     // update the UI's context state based on the player's context state
                     match context {
-                        state::Context::Artist(_, _, _, _) => {
+                        state::Context::Artist(..) => {
                             ui.window = WindowState::Artist(
                                 new_table_state(),
                                 new_list_state(),
@@ -73,10 +73,10 @@ pub fn update_context(state: &state::SharedState, context_uri: String) {
                                 ArtistFocusState::TopTracks,
                             );
                         }
-                        state::Context::Album(_, _) => {
+                        state::Context::Album(..) => {
                             ui.window = WindowState::Album(new_table_state());
                         }
-                        state::Context::Playlist(_, _) => {
+                        state::Context::Playlist(..) => {
                             ui.window = WindowState::Playlist(new_table_state());
                         }
                         state::Context::Unknown(_) => {

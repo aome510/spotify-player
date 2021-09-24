@@ -1,7 +1,10 @@
+use std::thread;
+
 use crate::{
     event::{ClientRequest, ContextURI, PlayerRequest},
-    state::{Context, PageState, SharedState, Track},
-    token, utils,
+    state::*,
+    token,
+    utils::{self, new_list_state},
 };
 use anyhow::{anyhow, Result};
 use librespot_core::session::Session;
@@ -27,14 +30,13 @@ impl Client {
     fn handle_player_request(&self, state: &SharedState, request: PlayerRequest) -> Result<()> {
         log::info!("handle player request: {:?}", request);
 
-        let player = state.player.read().unwrap();
-
         // `TransferPlayback` needs to handle separately b/c it doesn't require to
         // have an active playback
         if let PlayerRequest::TransferPlayback(device_id, force_play) = request {
             return self.transfer_playback(device_id, force_play);
         }
 
+        let player = state.player.read().unwrap();
         let playback = match player.playback {
             Some(ref playback) => playback,
             None => {
@@ -53,7 +55,7 @@ impl Client {
             PlayerRequest::PlayTrack(context_uri, track_uris, offset) => {
                 self.start_playback(playback, context_uri, track_uris, offset)
             }
-            PlayerRequest::TransferPlayback(_, _) => unreachable!(),
+            PlayerRequest::TransferPlayback(..) => unreachable!(),
         }
     }
 
@@ -131,6 +133,9 @@ impl Client {
                             .put(uri.clone(), Context::Unknown(uri));
                     }
                 };
+            }
+            ClientRequest::Search(query) => {
+                self.search(state, query)?;
             }
         };
 
@@ -339,6 +344,137 @@ impl Client {
     /// gets the current playing context
     pub fn get_current_playback(&self) -> Result<Option<context::CurrentlyPlaybackContext>> {
         Self::handle_rspotify_result(self.spotify.current_playback(None, None))
+    }
+
+    /// searchs for items (tracks, artists, albums, playlists) that match a given query string.
+    pub fn search(&self, state: &SharedState, query: String) -> Result<()> {
+        // searching for tracks, artists, albums, and playlists that match
+        // a given query string. Each class of items will be handled separately
+        // in a separate thread.
+
+        let tracks_thread = thread::spawn({
+            let spotify = self.spotify.clone();
+            let query = query.clone();
+            move || -> Result<_> {
+                let search_result = Self::handle_rspotify_result(spotify.search(
+                    &query,
+                    SearchType::Track,
+                    None,
+                    None,
+                    None,
+                    None,
+                ))?;
+
+                Ok(match search_result {
+                    search::SearchResult::Tracks(page) => page,
+                    _ => unreachable!(),
+                })
+            }
+        });
+
+        let artists_thread = thread::spawn({
+            let spotify = self.spotify.clone();
+            let query = query.clone();
+            move || -> Result<_> {
+                let search_result = Self::handle_rspotify_result(spotify.search(
+                    &query,
+                    SearchType::Artist,
+                    None,
+                    None,
+                    None,
+                    None,
+                ))?;
+
+                Ok(match search_result {
+                    search::SearchResult::Artists(page) => page,
+                    _ => unreachable!(),
+                })
+            }
+        });
+
+        let albums_thread = thread::spawn({
+            let spotify = self.spotify.clone();
+            let query = query.clone();
+            move || -> Result<_> {
+                let search_result = Self::handle_rspotify_result(spotify.search(
+                    &query,
+                    SearchType::Album,
+                    None,
+                    None,
+                    None,
+                    None,
+                ))?;
+
+                Ok(match search_result {
+                    search::SearchResult::Albums(page) => page,
+                    _ => unreachable!(),
+                })
+            }
+        });
+
+        let playlists_thread = thread::spawn({
+            let spotify = self.spotify.clone();
+            move || -> Result<_> {
+                let search_result = Self::handle_rspotify_result(spotify.search(
+                    &query,
+                    SearchType::Playlist,
+                    None,
+                    None,
+                    None,
+                    None,
+                ))?;
+
+                Ok(match search_result {
+                    search::SearchResult::Playlists(page) => page,
+                    _ => unreachable!(),
+                })
+            }
+        });
+
+        let tracks = tracks_thread.join().unwrap()?;
+        let artists = artists_thread.join().unwrap()?;
+        let albums = albums_thread.join().unwrap()?;
+        let playlists = playlists_thread.join().unwrap()?;
+
+        let search_results = SearchResults {
+            tracks: Self::into_page(tracks),
+            artists: Self::into_page(artists),
+            albums: Self::into_page(albums),
+            playlists,
+        };
+
+        // update ui states
+        if let PageState::Searching(_, ref mut state_search_results) = state.ui.lock().unwrap().page
+        {
+            *state_search_results = Box::new(search_results);
+        }
+        state.ui.lock().unwrap().window = WindowState::Search(
+            new_list_state(),
+            new_list_state(),
+            new_list_state(),
+            new_list_state(),
+            SearchFocusState::Input,
+        );
+
+        Ok(())
+    }
+
+    /// converts a page of items with type `Y` into a page of items with type `X`
+    /// given that type `Y` can be converted to type `X` through the `Into<X>` trait
+    fn into_page<X, Y: Into<X>>(page_y: page::Page<Y>) -> page::Page<X> {
+        page::Page {
+            items: page_y
+                .items
+                .into_iter()
+                .map(|y| y.into())
+                .collect::<Vec<_>>(),
+            href: page_y.href,
+            limit: page_y.limit,
+            next: page_y.next,
+            offset: page_y.offset,
+            previous: page_y.previous,
+            total: page_y.total,
+        }
     }
 
     /// handles a `rspotify` client result and converts it into `anyhow` compatible result format
@@ -696,6 +832,23 @@ async fn watch_player_events(
     // update the player's context based on the UI's page state
     let page = state.ui.lock().unwrap().page.clone();
     match page {
+        PageState::Searching(..) => {
+            let mut ui = state.ui.lock().unwrap();
+            match ui.window {
+                WindowState::Search(..) => {}
+                _ => {
+                    // the current window state doesn't match the current page state,
+                    // this can happen after calling the `PreviousPage` command
+                    ui.window = WindowState::Search(
+                        new_list_state(),
+                        new_list_state(),
+                        new_list_state(),
+                        new_list_state(),
+                        SearchFocusState::Input,
+                    );
+                }
+            }
+        }
         PageState::Browsing(uri) => {
             if player.context_uri != uri {
                 utils::update_context(state, uri);

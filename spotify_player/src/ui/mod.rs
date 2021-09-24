@@ -8,6 +8,7 @@ type Frame<'a> = tui::Frame<'a, tui::backend::CrosstermBackend<std::io::Stdout>>
 mod context;
 mod help;
 mod popup;
+mod search;
 
 /// starts the application UI as the main thread
 pub fn start_ui(state: SharedState) -> Result<()> {
@@ -34,10 +35,11 @@ pub fn start_ui(state: SharedState) -> Result<()> {
         terminal.draw(|frame| {
             let ui = state.ui.lock().unwrap();
 
+            // set the background and foreground colors for the application
             let block = Block::default().style(ui.theme.app_style());
             frame.render_widget(block, frame.size());
 
-            render_application_layout(frame, ui, &state, frame.size());
+            render_application(frame, ui, &state, frame.size());
         })?;
 
         std::thread::sleep(ui_refresh_duration);
@@ -56,54 +58,19 @@ fn clean_up(mut terminal: Terminal) -> Result<()> {
     Ok(())
 }
 
-fn render_application_layout(
-    frame: &mut Frame,
-    mut ui: UIStateGuard,
-    state: &SharedState,
-    rect: Rect,
-) {
-    let rect = render_shortcut_helps(frame, &ui, state, rect);
+/// renders the application
+fn render_application(frame: &mut Frame, mut ui: UIStateGuard, state: &SharedState, rect: Rect) {
+    let rect = help::render_shortcut_help_window(frame, &ui, state, rect);
+
     let (rect, is_active) = popup::render_popup(frame, &mut ui, state, rect);
-    render_player_layout(is_active, frame, &mut ui, state, rect);
+
+    render_main_layout(is_active, frame, &mut ui, state, rect);
 }
 
-fn render_shortcut_helps(
-    frame: &mut Frame,
-    ui: &UIStateGuard,
-    state: &SharedState,
-    rect: Rect,
-) -> Rect {
-    let input = &ui.input_key_sequence;
-    // render the shortcuts help table if needed
-    let matches = if input.keys.is_empty() {
-        vec![]
-    } else {
-        state
-            .keymap_config
-            .find_matched_prefix_keymaps(input)
-            .into_iter()
-            .map(|keymap| {
-                let mut keymap = keymap.clone();
-                keymap.key_sequence.keys.drain(0..input.keys.len());
-                keymap
-            })
-            .filter(|keymap| !keymap.key_sequence.keys.is_empty())
-            .collect::<Vec<_>>()
-    };
-
-    if matches.is_empty() {
-        rect
-    } else {
-        let chunks = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([Constraint::Min(0), Constraint::Length(7)].as_ref())
-            .split(rect);
-        help::render_shortcuts_help_widget(matches, frame, ui, chunks[1]);
-        chunks[0]
-    }
-}
-
-fn render_player_layout(
+/// renders the application's main layout which consists of:
+/// - a playback window on top
+/// - a context window or a search window at bottom depending on the current UI's `PageState`
+fn render_main_layout(
     is_active: bool,
     frame: &mut Frame,
     ui: &mut UIStateGuard,
@@ -114,11 +81,39 @@ fn render_player_layout(
         .direction(Direction::Vertical)
         .constraints([Constraint::Length(7), Constraint::Min(0)].as_ref())
         .split(rect);
-    render_current_playback_widget(frame, ui, state, chunks[0]);
-    context::render_context_widget(is_active, frame, ui, state, chunks[1]);
+    render_playback_window(frame, ui, state, chunks[0]);
+
+    match ui.page {
+        PageState::CurrentPlaying => {
+            context::render_context_window(
+                is_active,
+                frame,
+                ui,
+                state,
+                chunks[1],
+                "Context (Current Playing)",
+            );
+        }
+        PageState::Browsing(_) => {
+            context::render_context_window(
+                is_active,
+                frame,
+                ui,
+                state,
+                chunks[1],
+                "Context (Browsing)",
+            );
+        }
+        PageState::Searching(..) => {
+            search::render_search_window(is_active, frame, ui, chunks[1]);
+        }
+    };
 }
 
-fn render_current_playback_widget(
+/// renders a playback window showing information about the current playback such as
+/// - track title, artists, album
+/// - playback metadata (playing state, repeat state, shuffle state, volume, device, etc)
+fn render_playback_window(
     frame: &mut Frame,
     ui: &mut UIStateGuard,
     state: &SharedState,
@@ -157,10 +152,11 @@ fn render_current_playback_widget(
                 Span::styled(track.album.name.to_string(), ui.theme.playback_album()).into(),
                 Span::styled(
                     format!(
-                        "repeat: {} | shuffle: {} | volume: {}%",
+                        "repeat: {} | shuffle: {} | volume: {}% | device: {}",
                         playback.repeat_state.as_str(),
                         playback.shuffle_state,
                         playback.device.volume_percent,
+                        playback.device.name,
                     ),
                     ui.theme.playback_metadata(),
                 )
@@ -192,4 +188,34 @@ fn render_current_playback_widget(
             frame.render_widget(progress_bar, chunks[1]);
         }
     };
+}
+
+/// constructs a generic list widget
+fn construct_list_widget<'a>(
+    ui: &UIStateGuard,
+    items: Vec<(String, bool)>,
+    title: &str,
+    is_active: bool,
+    borders: Option<Borders>,
+) -> List<'a> {
+    let borders = borders.unwrap_or(Borders::ALL);
+
+    List::new(
+        items
+            .into_iter()
+            .map(|(s, is_active)| {
+                ListItem::new(s).style(if is_active {
+                    ui.theme.current_active()
+                } else {
+                    Style::default()
+                })
+            })
+            .collect::<Vec<_>>(),
+    )
+    .highlight_style(ui.theme.selection_style(is_active))
+    .block(
+        Block::default()
+            .title(ui.theme.block_title_with_style(title))
+            .borders(borders),
+    )
 }
