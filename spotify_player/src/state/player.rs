@@ -36,9 +36,9 @@ pub enum Context {
 /// - `playlists`
 #[derive(Debug)]
 pub struct SearchResults {
-    pub tracks: page::Page<track::FullTrack>,
-    pub artists: page::Page<artist::FullArtist>,
-    pub albums: page::Page<album::SimplifiedAlbum>,
+    pub tracks: page::Page<Track>,
+    pub artists: page::Page<Artist>,
+    pub albums: page::Page<Album>,
     pub playlists: page::Page<playlist::SimplifiedPlaylist>,
 }
 
@@ -137,9 +137,9 @@ impl SearchResults {
     // returns an empty search results
     pub fn empty() -> Self {
         Self {
-            tracks: Self::empty_page::<track::FullTrack>(),
-            artists: Self::empty_page::<artist::FullArtist>(),
-            albums: Self::empty_page::<album::SimplifiedAlbum>(),
+            tracks: Self::empty_page::<Track>(),
+            artists: Self::empty_page::<Artist>(),
+            albums: Self::empty_page::<Album>(),
             playlists: Self::empty_page::<playlist::SimplifiedPlaylist>(),
         }
     }

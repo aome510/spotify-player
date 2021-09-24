@@ -40,7 +40,7 @@ pub fn render_search_window(
             .tracks
             .items
             .iter()
-            .map(|a| (a.name.clone(), false))
+            .map(|a| (format!("{} - {}", a.name, a.get_artists_info()), false))
             .collect::<Vec<_>>();
 
         construct_list_widget(

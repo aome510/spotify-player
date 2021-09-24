@@ -7,7 +7,7 @@ use crate::{
 use anyhow::Result;
 use crossterm::event::{self, EventStream, KeyCode, KeyModifiers};
 use rand::Rng;
-use rspotify::model::offset;
+use rspotify::model::{offset, playlist};
 use std::sync::mpsc;
 use tokio_stream::StreamExt;
 
@@ -415,56 +415,80 @@ fn handle_key_sequence_for_search_window(
         }
     };
 
-    match focus_state {
-        SearchFocusState::Input => {
-            let query = match ui.page {
-                PageState::Searching(ref mut query) => query,
-                _ => unreachable!(),
-            };
+    let query = match ui.page {
+        PageState::Searching(ref mut query) => query,
+        _ => unreachable!(),
+    };
 
-            // handle user's input
-            if key_sequence.keys.len() == 1 {
-                if let Key::None(c) = key_sequence.keys[0] {
-                    match c {
-                        KeyCode::Char(c) => {
-                            query.push(c);
-                            return Ok(true);
-                        }
-                        KeyCode::Backspace => {
-                            if !query.is_empty() {
-                                query.pop().unwrap();
-                            }
-                            return Ok(true);
-                        }
-                        KeyCode::Enter => {
-                            if !query.is_empty() {
-                                send.send(ClientRequest::Search(query.clone()))?;
-                            }
-                            return Ok(true);
-                        }
-                        _ => {}
-                    }
-                }
-            }
-
-            let command = state
-                .keymap_config
-                .find_command_from_key_sequence(key_sequence);
-            if let Some(command) = command {
-                match command {
-                    Command::FocusNextWindow => {
-                        ui.window.next();
+    // handle user's input
+    if let SearchFocusState::Input = focus_state {
+        if key_sequence.keys.len() == 1 {
+            if let Key::None(c) = key_sequence.keys[0] {
+                match c {
+                    KeyCode::Char(c) => {
+                        query.push(c);
                         return Ok(true);
                     }
-                    Command::FocusPreviousWindow => {
-                        ui.window.previous();
+                    KeyCode::Backspace => {
+                        if !query.is_empty() {
+                            query.pop().unwrap();
+                        }
+                        return Ok(true);
+                    }
+                    KeyCode::Enter => {
+                        if !query.is_empty() {
+                            send.send(ClientRequest::Search(query.clone()))?;
+                        }
                         return Ok(true);
                     }
                     _ => {}
                 }
             }
         }
-        _ => {}
+    }
+
+    let command = state
+        .keymap_config
+        .find_command_from_key_sequence(key_sequence);
+
+    let player = state.player.read().unwrap();
+    // gets the search results from the query
+    let empty_results = SearchResults::empty();
+    let search_results = match player.search_cache.peek(query) {
+        Some(search_results) => search_results,
+        None => &empty_results,
+    };
+
+    if let Some(command) = command {
+        match command {
+            Command::FocusNextWindow => {
+                ui.window.next();
+                return Ok(true);
+            }
+            Command::FocusPreviousWindow => {
+                ui.window.previous();
+                return Ok(true);
+            }
+            _ => match focus_state {
+                SearchFocusState::Input => {}
+                SearchFocusState::Tracks => {
+                    let tracks = search_results.tracks.items.iter().collect::<Vec<_>>();
+                    return handle_command_for_track_list(command, send, ui, tracks);
+                }
+                SearchFocusState::Artists => {
+                    let artists = search_results.artists.items.iter().collect::<Vec<_>>();
+                    return handle_command_for_artist_list(command, send, ui, artists);
+                }
+                SearchFocusState::Albums => {
+                    let albums = search_results.albums.items.iter().collect::<Vec<_>>();
+                    return handle_command_for_album_list(command, send, ui, albums);
+                }
+                SearchFocusState::Playlists => {
+                    let playlists = search_results.playlists.items.iter().collect::<Vec<_>>();
+                    return handle_command_for_playlist_list(command, send, ui, playlists);
+                }
+            },
+        }
     }
 
     Ok(false)
@@ -787,6 +811,43 @@ fn handle_command_for_focused_context_subwindow(
     }
 }
 
+fn handle_command_for_track_list(
+    command: Command,
+    send: &mpsc::Sender<ClientRequest>,
+    ui: &mut UIStateGuard,
+    tracks: Vec<&Track>,
+) -> Result<bool> {
+    match command {
+        Command::SelectNext => {
+            if let Some(id) = ui.window.selected() {
+                if id + 1 < tracks.len() {
+                    ui.window.select(Some(id + 1));
+                }
+            }
+            Ok(true)
+        }
+        Command::SelectPrevious => {
+            if let Some(id) = ui.window.selected() {
+                if id > 0 {
+                    ui.window.select(Some(id - 1));
+                }
+            }
+            Ok(true)
+        }
+        Command::ChooseSelected => {
+            if let Some(id) = ui.window.selected() {
+                send.send(ClientRequest::Player(PlayerRequest::PlayTrack(
+                    None,
+                    Some(vec![tracks[id].uri.clone()]),
+                    None,
+                )))?;
+            }
+            Ok(true)
+        }
+        _ => Ok(false),
+    }
+}
+
 fn handle_command_for_artist_list(
     command: Command,
     send: &mpsc::Sender<ClientRequest>,
@@ -851,6 +912,43 @@ fn handle_command_for_album_list(
             if let Some(id) = ui.window.selected() {
                 let uri = albums[id].uri.clone().unwrap();
                 send.send(ClientRequest::GetContext(ContextURI::Album(uri.clone())))?;
+                let new_page = PageState::Browsing(uri);
+                ui.history.push(new_page.clone());
+                ui.page = new_page;
+            }
+            Ok(true)
+        }
+        _ => Ok(false),
+    }
+}
+
+fn handle_command_for_playlist_list(
+    command: Command,
+    send: &mpsc::Sender<ClientRequest>,
+    ui: &mut UIStateGuard,
+    playlists: Vec<&playlist::SimplifiedPlaylist>,
+) -> Result<bool> {
+    match command {
+        Command::SelectNext => {
+            if let Some(id) = ui.window.selected() {
+                if id + 1 < playlists.len() {
+                    ui.window.select(Some(id + 1));
+                }
+            }
+            Ok(true)
+        }
+        Command::SelectPrevious => {
+            if let Some(id) = ui.window.selected() {
+                if id > 0 {
+                    ui.window.select(Some(id - 1));
+                }
+            }
+            Ok(true)
+        }
+        Command::ChooseSelected => {
+            if let Some(id) = ui.window.selected() {
+                let uri = playlists[id].uri.clone();
+                send.send(ClientRequest::GetContext(ContextURI::Playlist(uri.clone())))?;
                 let new_page = PageState::Browsing(uri);
                 ui.history.push(new_page.clone());
                 ui.page = new_page;

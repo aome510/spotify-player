@@ -2,8 +2,9 @@ use std::thread;
 
 use crate::{
     event::{ClientRequest, ContextURI, PlayerRequest},
-    state::{Context, PageState, SearchResults, SharedState, Track},
-    token, utils,
+    state::*,
+    token,
+    utils::{self, new_list_state},
 };
 use anyhow::{anyhow, Result};
 use librespot_core::session::Session;
@@ -438,9 +439,9 @@ impl Client {
         let playlists = playlists_thread.join().unwrap()?;
 
         let search_results = SearchResults {
-            tracks,
-            artists,
-            albums,
+            tracks: Self::into_page(tracks),
+            artists: Self::into_page(artists),
+            albums: Self::into_page(albums),
             playlists,
         };
 
@@ -453,6 +454,24 @@ impl Client {
             .put(query, search_results);
 
         Ok(())
+    }
+
+    /// converts a page::Page of items with type Y into a page::Page of items with type X
+    /// given that type Y can be converted to type X through the Into<X> trait
+    fn into_page<X, Y: Into<X>>(page_y: page::Page<Y>) -> page::Page<X> {
+        page::Page {
+            items: page_y
+                .items
+                .into_iter()
+                .map(|y| y.into())
+                .collect::<Vec<_>>(),
+            href: page_y.href,
+            limit: page_y.limit,
+            next: page_y.next,
+            offset: page_y.offset,
+            previous: page_y.previous,
+            total: page_y.total,
+        }
     }
 
     /// handles a `rspotify` client result and converts it into `anyhow` compatible result format
@@ -810,7 +829,21 @@ async fn watch_player_events(
     // update the player's context based on the UI's page state
     let page = state.ui.lock().unwrap().page.clone();
     match page {
-        PageState::Searching(_) => {}
+        PageState::Searching(_) => {
+            let mut ui = state.ui.lock().unwrap();
+            match ui.window {
+                WindowState::Search(_, _, _, _, _) => {}
+                _ => {
+                    ui.window = WindowState::Search(
+                        new_list_state(),
+                        new_list_state(),
+                        new_list_state(),
+                        new_list_state(),
+                        SearchFocusState::Input,
+                    );
+                }
+            }
+        }
         PageState::Browsing(uri) => {
             if player.context_uri != uri {
                 utils::update_context(state, uri);
