@@ -304,7 +304,7 @@ fn handle_command_for_context_window(
 ) -> Result<bool> {
     match command {
         Command::EnterSearchPage => {
-            let new_page = PageState::Searching("".to_owned(), SearchResults::empty());
+            let new_page = PageState::Searching("".to_owned(), Box::new(SearchResults::empty()));
             ui.history.push(new_page.clone());
             ui.page = new_page;
             ui.window = WindowState::Search(

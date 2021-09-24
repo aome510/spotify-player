@@ -26,7 +26,7 @@ pub struct UIState {
 pub enum PageState {
     CurrentPlaying,
     Browsing(String),
-    Searching(String, SearchResults),
+    Searching(String, Box<SearchResults>),
 }
 
 /// Window state

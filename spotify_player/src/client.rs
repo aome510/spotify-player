@@ -446,7 +446,7 @@ impl Client {
         // update ui states
         if let PageState::Searching(_, ref mut state_search_results) = state.ui.lock().unwrap().page
         {
-            *state_search_results = search_results;
+            *state_search_results = Box::new(search_results);
         }
         state.ui.lock().unwrap().window = WindowState::Search(
             new_list_state(),
