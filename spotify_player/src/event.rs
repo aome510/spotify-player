@@ -316,9 +316,8 @@ fn handle_command_for_context_window(
             );
 
             // needs to set `context_uri` to an empty string
-            // because keeping the original `context_uri` will
-            // prevent the context window from updating when going
-            // back from a search window using `PreviousPage` command
+            // to trigger updating the context window when going
+            // backward from a page (call `PreviousPage` command)
             state.player.write().unwrap().context_uri = "".to_owned();
             Ok(true)
         }

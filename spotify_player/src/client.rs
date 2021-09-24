@@ -459,8 +459,8 @@ impl Client {
         Ok(())
     }
 
-    /// converts a page::Page of items with type Y into a page::Page of items with type X
-    /// given that type Y can be converted to type X through the Into<X> trait
+    /// converts a page of items with type `Y` into a page of items with type `X`
+    /// given that type `Y` can be converted to type `X` through the `Into<X>` trait
     fn into_page<X, Y: Into<X>>(page_y: page::Page<Y>) -> page::Page<X> {
         page::Page {
             items: page_y
@@ -837,6 +837,8 @@ async fn watch_player_events(
             match ui.window {
                 WindowState::Search(..) => {}
                 _ => {
+                    // the current window state doesn't match the current page state,
+                    // this can happen after calling the `PreviousPage` command
                     ui.window = WindowState::Search(
                         new_list_state(),
                         new_list_state(),
