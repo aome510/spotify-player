@@ -20,8 +20,8 @@ pub enum ContextURI {
 }
 
 #[derive(Debug)]
-/// An event that modifies the player's playback
-pub enum PlayerEvent {
+/// A request that modifies the player's playback
+pub enum PlayerRequest {
     NextTrack,
     PreviousTrack,
     ResumePause,
@@ -30,21 +30,19 @@ pub enum PlayerEvent {
     Shuffle,
     Volume(u8),
     PlayTrack(Option<String>, Option<Vec<String>>, Option<offset::Offset>),
+    TransferPlayback(String, bool),
 }
 
 #[derive(Debug)]
-/// An event to communicate with the client
-/// TODO: renaming this enum (e.g to `ClientRequest`)
-pub enum Event {
-    RefreshToken,
+/// A request to the client
+pub enum ClientRequest {
     GetDevices,
     GetUserPlaylists,
     GetUserSavedAlbums,
     GetUserFollowedArtists,
     GetContext(ContextURI),
     GetCurrentPlayback,
-    TransferPlayback(String, bool),
-    Player(PlayerEvent),
+    Player(PlayerRequest),
 }
 
 impl From<event::KeyEvent> for Key {
@@ -60,8 +58,8 @@ impl From<event::KeyEvent> for Key {
 }
 
 #[tokio::main]
-/// starts a terminal event handler
-pub async fn start_event_handler(send: mpsc::Sender<Event>, state: SharedState) {
+/// starts a handler to handle terminal events (key pressed, mouse clicked, etc)
+pub async fn start_event_handler(send: mpsc::Sender<ClientRequest>, state: SharedState) {
     let mut event_stream = EventStream::new();
 
     while let Some(event) = event_stream.next().await {
@@ -81,7 +79,7 @@ pub async fn start_event_handler(send: mpsc::Sender<Event>, state: SharedState) 
 
 fn handle_terminal_event(
     event: event::Event,
-    send: &mpsc::Sender<Event>,
+    send: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
 ) -> Result<()> {
     let key: Key = match event {
@@ -138,7 +136,7 @@ fn handle_terminal_event(
                             _ => unreachable!(),
                         };
                         let uri = artists[id].uri.clone().unwrap();
-                        send.send(Event::GetContext(ContextURI::Artist(uri.clone())))?;
+                        send.send(ClientRequest::GetContext(ContextURI::Artist(uri.clone())))?;
 
                         let frame_state = PageState::Browsing(uri);
                         ui.history.push(frame_state.clone());
@@ -230,10 +228,10 @@ fn handle_terminal_event(
                         player.devices.len(),
                         |_: &mut UIStateGuard, _: usize| {},
                         |ui: &mut UIStateGuard, id: usize| -> Result<()> {
-                            send.send(Event::TransferPlayback(
+                            send.send(ClientRequest::Player(PlayerRequest::TransferPlayback(
                                 player.devices[id].id.clone(),
                                 true,
-                            ))?;
+                            )))?;
                             ui.popup = PopupState::None;
                             Ok(())
                         },
@@ -264,7 +262,7 @@ fn handle_terminal_event(
 
 fn handle_mouse_event(
     event: event::MouseEvent,
-    send: &mpsc::Sender<Event>,
+    send: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
 ) -> Result<()> {
     let ui = state.ui.lock().unwrap();
@@ -276,7 +274,7 @@ fn handle_mouse_event(
             if let Some(track) = track {
                 let position_ms =
                     track.duration_ms * (event.column as u32) / (ui.progress_bar_rect.width as u32);
-                send.send(Event::Player(PlayerEvent::SeekTrack(position_ms)))?;
+                send.send(ClientRequest::Player(PlayerRequest::SeekTrack(position_ms)))?;
             }
         }
     }
@@ -285,7 +283,7 @@ fn handle_mouse_event(
 
 fn handle_command_for_none_popup(
     command: Command,
-    send: &mpsc::Sender<Event>,
+    send: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
     ui: &mut UIStateGuard,
 ) -> Result<bool> {
@@ -310,7 +308,7 @@ fn handle_command_for_none_popup(
                             offset::for_uri(tracks[id].uri.clone())
                         }
                     };
-                    send.send(Event::Player(PlayerEvent::PlayTrack(
+                    send.send(ClientRequest::Player(PlayerRequest::PlayTrack(
                         Some(player.context_uri.clone()),
                         None,
                         offset,
@@ -372,7 +370,7 @@ fn handle_command_for_none_popup(
 
 fn handle_key_sequence_for_search_popup(
     key_sequence: &KeySequence,
-    send: &mpsc::Sender<Event>,
+    send: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
     ui: &mut UIStateGuard,
 ) -> Result<bool> {
@@ -427,7 +425,7 @@ fn handle_key_sequence_for_search_popup(
 
 fn handle_command_for_uri_list_popup(
     command: Command,
-    send: &mpsc::Sender<Event>,
+    send: &mpsc::Sender<ClientRequest>,
     ui: &mut UIStateGuard,
     uris: Vec<String>,
     base_uri: ContextURI,
@@ -444,7 +442,7 @@ fn handle_command_for_uri_list_popup(
                 ContextURI::Album(_) => ContextURI::Album(uri),
                 ContextURI::Unknown(_) => ContextURI::Unknown(uri),
             };
-            send.send(Event::GetContext(context_uri))?;
+            send.send(ClientRequest::GetContext(context_uri))?;
 
             let frame_state = PageState::Browsing(uris[id].clone());
             ui.history.push(frame_state.clone());
@@ -511,7 +509,7 @@ fn handle_command_for_command_help_popup(command: Command, ui: &mut UIStateGuard
 
 fn handle_command(
     command: Command,
-    send: &mpsc::Sender<Event>,
+    send: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
     ui: &mut UIStateGuard,
 ) -> Result<bool> {
@@ -521,36 +519,36 @@ fn handle_command(
             Ok(true)
         }
         Command::NextTrack => {
-            send.send(Event::Player(PlayerEvent::NextTrack))?;
+            send.send(ClientRequest::Player(PlayerRequest::NextTrack))?;
             Ok(true)
         }
         Command::PreviousTrack => {
-            send.send(Event::Player(PlayerEvent::PreviousTrack))?;
+            send.send(ClientRequest::Player(PlayerRequest::PreviousTrack))?;
             Ok(true)
         }
         Command::ResumePause => {
-            send.send(Event::Player(PlayerEvent::ResumePause))?;
+            send.send(ClientRequest::Player(PlayerRequest::ResumePause))?;
             Ok(true)
         }
         Command::Repeat => {
-            send.send(Event::Player(PlayerEvent::Repeat))?;
+            send.send(ClientRequest::Player(PlayerRequest::Repeat))?;
             Ok(true)
         }
         Command::Shuffle => {
-            send.send(Event::Player(PlayerEvent::Shuffle))?;
+            send.send(ClientRequest::Player(PlayerRequest::Shuffle))?;
             Ok(true)
         }
         Command::VolumeUp => {
             if let Some(ref playback) = state.player.read().unwrap().playback {
                 let volume = std::cmp::min(playback.device.volume_percent + 5, 100_u32);
-                send.send(Event::Player(PlayerEvent::Volume(volume as u8)))?;
+                send.send(ClientRequest::Player(PlayerRequest::Volume(volume as u8)))?;
             }
             Ok(true)
         }
         Command::VolumeDown => {
             if let Some(ref playback) = state.player.read().unwrap().playback {
                 let volume = std::cmp::max(playback.device.volume_percent as i32 - 5, 0_i32);
-                send.send(Event::Player(PlayerEvent::Volume(volume as u8)))?;
+                send.send(ClientRequest::Player(PlayerRequest::Volume(volume as u8)))?;
             }
             Ok(true)
         }
@@ -559,7 +557,7 @@ fn handle_command(
             Ok(true)
         }
         Command::RefreshPlayback => {
-            send.send(Event::GetCurrentPlayback)?;
+            send.send(ClientRequest::GetCurrentPlayback)?;
             Ok(true)
         }
         Command::BrowsePlayingContext => {
@@ -570,7 +568,7 @@ fn handle_command(
         Command::BrowsePlayingTrackAlbum => {
             if let Some(track) = state.player.read().unwrap().get_current_playing_track() {
                 if let Some(ref uri) = track.album.uri {
-                    send.send(Event::GetContext(ContextURI::Album(uri.clone())))?;
+                    send.send(ClientRequest::GetContext(ContextURI::Album(uri.clone())))?;
                     let frame_state = PageState::Browsing(uri.clone());
                     ui.history.push(frame_state.clone());
                     ui.page = frame_state;
@@ -595,17 +593,17 @@ fn handle_command(
             Ok(true)
         }
         Command::BrowseUserPlaylists => {
-            send.send(Event::GetUserPlaylists)?;
+            send.send(ClientRequest::GetUserPlaylists)?;
             ui.popup = PopupState::UserPlaylistList(utils::new_list_state());
             Ok(true)
         }
         Command::BrowseUserFollowedArtists => {
-            send.send(Event::GetUserFollowedArtists)?;
+            send.send(ClientRequest::GetUserFollowedArtists)?;
             ui.popup = PopupState::UserFollowedArtistList(utils::new_list_state());
             Ok(true)
         }
         Command::BrowseUserSavedAlbums => {
-            send.send(Event::GetUserSavedAlbums)?;
+            send.send(ClientRequest::GetUserSavedAlbums)?;
             ui.popup = PopupState::UserSavedAlbumList(utils::new_list_state());
             Ok(true)
         }
@@ -618,7 +616,7 @@ fn handle_command(
         }
         Command::SwitchDevice => {
             ui.popup = PopupState::DeviceList(utils::new_list_state());
-            send.send(Event::GetDevices)?;
+            send.send(ClientRequest::GetDevices)?;
             Ok(true)
         }
         Command::SwitchTheme => {
@@ -631,7 +629,7 @@ fn handle_command(
 
 fn handle_command_for_focused_context_window(
     command: Command,
-    send: &mpsc::Sender<Event>,
+    send: &mpsc::Sender<ClientRequest>,
     ui: &mut UIStateGuard,
     state: &SharedState,
 ) -> Result<bool> {
@@ -683,7 +681,7 @@ fn handle_command_for_focused_context_window(
 
 fn handle_command_for_artist_list(
     command: Command,
-    send: &mpsc::Sender<Event>,
+    send: &mpsc::Sender<ClientRequest>,
     ui: &mut UIStateGuard,
     artists: &[Artist],
 ) -> Result<bool> {
@@ -709,7 +707,7 @@ fn handle_command_for_artist_list(
         Command::ChooseSelected => {
             if let Some(id) = ui.window.selected() {
                 let uri = artists[id].uri.clone().unwrap();
-                send.send(Event::GetContext(ContextURI::Artist(uri.clone())))?;
+                send.send(ClientRequest::GetContext(ContextURI::Artist(uri.clone())))?;
                 let frame_state = PageState::Browsing(uri);
                 ui.history.push(frame_state.clone());
                 ui.page = frame_state;
@@ -722,7 +720,7 @@ fn handle_command_for_artist_list(
 
 fn handle_command_for_album_list(
     command: Command,
-    send: &mpsc::Sender<Event>,
+    send: &mpsc::Sender<ClientRequest>,
     ui: &mut UIStateGuard,
     albums: &[Album],
 ) -> Result<bool> {
@@ -748,7 +746,7 @@ fn handle_command_for_album_list(
         Command::ChooseSelected => {
             if let Some(id) = ui.window.selected() {
                 let uri = albums[id].uri.clone().unwrap();
-                send.send(Event::GetContext(ContextURI::Album(uri.clone())))?;
+                send.send(ClientRequest::GetContext(ContextURI::Album(uri.clone())))?;
                 let frame_state = PageState::Browsing(uri);
                 ui.history.push(frame_state.clone());
                 ui.page = frame_state;
@@ -761,7 +759,7 @@ fn handle_command_for_album_list(
 
 fn handle_command_for_track_table(
     command: Command,
-    send: &mpsc::Sender<Event>,
+    send: &mpsc::Sender<ClientRequest>,
     ui: &mut UIStateGuard,
     context_uri: Option<String>,
     track_uris: Option<Vec<String>>,
@@ -790,14 +788,14 @@ fn handle_command_for_track_table(
             if let Some(id) = ui.window.selected() {
                 if track_uris.is_some() {
                     // play a track from a list of tracks, use ID offset for finding the track
-                    send.send(Event::Player(PlayerEvent::PlayTrack(
+                    send.send(ClientRequest::Player(PlayerRequest::PlayTrack(
                         None,
                         track_uris,
                         offset::for_position(id as u32),
                     )))?;
                 } else if context_uri.is_some() {
                     // play a track from a context, use URI offset for finding the track
-                    send.send(Event::Player(PlayerEvent::PlayTrack(
+                    send.send(ClientRequest::Player(PlayerRequest::PlayTrack(
                         context_uri,
                         None,
                         offset::for_uri(tracks[id].uri.clone()),
@@ -809,7 +807,7 @@ fn handle_command_for_track_table(
         Command::BrowseSelectedTrackAlbum => {
             if let Some(id) = ui.window.selected() {
                 if let Some(ref uri) = tracks[id].album.uri {
-                    send.send(Event::GetContext(ContextURI::Album(uri.clone())))?;
+                    send.send(ClientRequest::GetContext(ContextURI::Album(uri.clone())))?;
                     let frame_state = PageState::Browsing(uri.clone());
                     ui.history.push(frame_state.clone());
                     ui.page = frame_state;
