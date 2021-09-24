@@ -85,10 +85,9 @@ async fn main() -> anyhow::Result<()> {
     // client event handler thread
     std::thread::spawn({
         let state = state.clone();
-        let send = send.clone();
         let client = client::Client::new();
         move || {
-            client::start_client_handler(state, client, send, recv);
+            client::start_client_handler(state, client, recv);
         }
     });
 

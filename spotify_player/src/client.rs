@@ -8,6 +8,7 @@ use librespot_core::session::Session;
 use rspotify::{blocking::client::Spotify, model::*, senum::*};
 
 /// A spotify client
+#[derive(Clone)]
 pub struct Client {
     spotify: Spotify,
     http: reqwest::Client,
@@ -51,18 +52,29 @@ impl Client {
     }
 
     /// handles a client request
-    pub async fn handle_request(
-        &self,
-        state: &SharedState,
-        send: &std::sync::mpsc::Sender<ClientRequest>,
-        request: ClientRequest,
-    ) -> Result<()> {
+    pub async fn handle_request(&self, state: &SharedState, request: ClientRequest) -> Result<()> {
         log::info!("handle the client request {:?}", request);
 
         match request {
             ClientRequest::Player(event) => {
                 self.handle_player_request(state, event)?;
-                utils::update_playback(state, send);
+
+                // After handling a request that modifies the player's playback,
+                // try to update the playback state by making `n_refreshes` refresh requests.
+                //
+                // # Why needs more than one request to update the playback?
+                // Spotify API may take a while to update with the new changes,
+                // so we may need to make additional requests to ensure that
+                // the current playback is synced with the latest change.
+                let n_refreshes = state.app_config.n_refreshes_each_playback_update;
+                let delay_duration = std::time::Duration::from_millis(
+                    state.app_config.refresh_delay_in_ms_each_playback_update,
+                );
+
+                for _ in 0..n_refreshes {
+                    std::thread::sleep(delay_duration);
+                    self.update_current_playback_state(state)?;
+                }
             }
             ClientRequest::GetCurrentPlayback => {
                 self.update_current_playback_state(state)?;
@@ -547,12 +559,11 @@ impl Client {
     }
 }
 
-/// starts the client's event handler
+/// starts the client's request handler
 #[tokio::main]
 pub async fn start_client_handler(
     state: SharedState,
     mut client: Client,
-    send: std::sync::mpsc::Sender<ClientRequest>,
     recv: std::sync::mpsc::Receiver<ClientRequest>,
 ) {
     while let Ok(request) = recv.recv() {
@@ -561,8 +572,15 @@ pub async fn start_client_handler(
         client.spotify.access_token =
             Some(state.player.read().unwrap().token.access_token.to_owned());
 
-        if let Err(err) = client.handle_request(&state, &send, request).await {
-            log::warn!("{:#?}", err);
+        {
+            // handle the client request while trying not to block the current thread
+            let client = client.clone();
+            let state = state.clone();
+            tokio::spawn(async move {
+                if let Err(err) = client.handle_request(&state, request).await {
+                    log::warn!("{:#?}", err);
+                }
+            });
         }
     }
 }
