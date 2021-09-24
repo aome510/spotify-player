@@ -114,7 +114,7 @@ fn handle_terminal_event(
             // handle input key sequence for searching window/popup
             if let PopupState::ContextSearch(_) = ui.popup {
                 handle_key_sequence_for_search_popup(&key_sequence, send, state, &mut ui)?
-            } else if let PageState::Searching(_) = ui.page {
+            } else if let PageState::Searching(..) = ui.page {
                 handle_key_sequence_for_search_window(&key_sequence, send, state, &mut ui)?
             } else {
                 false
@@ -131,14 +131,14 @@ fn handle_terminal_event(
                     PageState::CurrentPlaying => {
                         handle_command_for_context_window(command, send, state, &mut ui)?
                     }
-                    PageState::Searching(_) => {
+                    PageState::Searching(..) => {
                         handle_key_sequence_for_search_window(&key_sequence, send, state, &mut ui)?
                     }
                 },
                 PopupState::ContextSearch(_) => {
                     handle_key_sequence_for_search_popup(&key_sequence, send, state, &mut ui)?
                 }
-                PopupState::ArtistList(_, _) => handle_command_for_list_popup(
+                PopupState::ArtistList(..) => handle_command_for_list_popup(
                     command,
                     match ui.popup {
                         PopupState::ArtistList(ref artists, _) => artists.len(),
@@ -304,8 +304,7 @@ fn handle_command_for_context_window(
 ) -> Result<bool> {
     match command {
         Command::EnterSearchPage => {
-            // TODO: handle the command properly
-            let new_page = PageState::Searching("".to_owned());
+            let new_page = PageState::Searching("".to_owned(), SearchResults::empty());
             ui.history.push(new_page.clone());
             ui.page = new_page;
             ui.window = WindowState::Search(
@@ -315,6 +314,7 @@ fn handle_command_for_context_window(
                 new_list_state(),
                 SearchFocusState::Input,
             );
+
             // needs to set `context_uri` to an empty string
             // because keeping the original `context_uri` will
             // prevent the context window from updating when going
@@ -344,7 +344,7 @@ fn handle_command_for_context_window(
                 if let Some(tracks) = context.get_tracks() {
                     let offset = match context {
                         // Spotify does not allow to manually specify `offset` for artist context
-                        Context::Artist(_, _, _, _) => None,
+                        Context::Artist(..) => None,
                         _ => {
                             let id = rand::thread_rng().gen_range(0..tracks.len());
                             offset::for_uri(tracks[id].uri.clone())
@@ -415,8 +415,10 @@ fn handle_key_sequence_for_search_window(
         }
     };
 
-    let query = match ui.page {
-        PageState::Searching(ref mut query) => query,
+    let (query, search_results) = match ui.page {
+        PageState::Searching(ref mut query, ref mut search_results) => {
+            (query, search_results.clone())
+        }
         _ => unreachable!(),
     };
 
@@ -450,14 +452,6 @@ fn handle_key_sequence_for_search_window(
     let command = state
         .keymap_config
         .find_command_from_key_sequence(key_sequence);
-
-    let player = state.player.read().unwrap();
-    // gets the search results from the query
-    let empty_results = SearchResults::empty();
-    let search_results = match player.search_cache.peek(query) {
-        Some(search_results) => search_results,
-        None => &empty_results,
-    };
 
     if let Some(command) = command {
         match command {

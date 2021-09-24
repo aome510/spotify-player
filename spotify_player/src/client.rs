@@ -55,7 +55,7 @@ impl Client {
             PlayerRequest::PlayTrack(context_uri, track_uris, offset) => {
                 self.start_playback(playback, context_uri, track_uris, offset)
             }
-            PlayerRequest::TransferPlayback(_, _) => unreachable!(),
+            PlayerRequest::TransferPlayback(..) => unreachable!(),
         }
     }
 
@@ -347,7 +347,6 @@ impl Client {
     }
 
     /// searchs for items (tracks, artists, albums, playlists) that match a given query string.
-    /// Search results are then stored inside a search cache.
     pub fn search(&self, state: &SharedState, query: String) -> Result<()> {
         // searching for tracks, artists, albums, and playlists that match
         // a given query string. Each class of items will be handled separately
@@ -415,7 +414,6 @@ impl Client {
 
         let playlists_thread = thread::spawn({
             let spotify = self.spotify.clone();
-            let query = query.clone();
             move || -> Result<_> {
                 let search_result = Self::handle_rspotify_result(spotify.search(
                     &query,
@@ -445,13 +443,18 @@ impl Client {
             playlists,
         };
 
-        // put the search results into the player state's search cache
-        state
-            .player
-            .write()
-            .unwrap()
-            .search_cache
-            .put(query, search_results);
+        // update ui states
+        if let PageState::Searching(_, ref mut state_search_results) = state.ui.lock().unwrap().page
+        {
+            *state_search_results = search_results;
+        }
+        state.ui.lock().unwrap().window = WindowState::Search(
+            new_list_state(),
+            new_list_state(),
+            new_list_state(),
+            new_list_state(),
+            SearchFocusState::Input,
+        );
 
         Ok(())
     }
@@ -829,10 +832,10 @@ async fn watch_player_events(
     // update the player's context based on the UI's page state
     let page = state.ui.lock().unwrap().page.clone();
     match page {
-        PageState::Searching(_) => {
+        PageState::Searching(..) => {
             let mut ui = state.ui.lock().unwrap();
             match ui.window {
-                WindowState::Search(_, _, _, _, _) => {}
+                WindowState::Search(..) => {}
                 _ => {
                     ui.window = WindowState::Search(
                         new_list_state(),

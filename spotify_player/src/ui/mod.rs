@@ -104,8 +104,8 @@ fn render_main_layout(
                 "Context (Browsing)",
             );
         }
-        PageState::Searching(_) => {
-            search::render_search_window(is_active, frame, ui, state, chunks[1]);
+        PageState::Searching(..) => {
+            search::render_search_window(is_active, frame, ui, chunks[1]);
         }
     };
 }
