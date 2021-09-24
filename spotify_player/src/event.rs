@@ -419,15 +419,17 @@ fn handle_key_sequence_for_search_window(
             match c {
                 KeyCode::Char(c) => {
                     query.push(c);
-                    send.send(ClientRequest::Search(query.clone()))?;
                     return Ok(true);
                 }
                 KeyCode::Backspace => {
                     if !query.is_empty() {
                         query.pop().unwrap();
-                        if !query.is_empty() {
-                            send.send(ClientRequest::Search(query.clone()))?;
-                        }
+                    }
+                    return Ok(true);
+                }
+                KeyCode::Enter => {
+                    if !query.is_empty() {
+                        send.send(ClientRequest::Search(query.clone()))?;
                     }
                     return Ok(true);
                 }
