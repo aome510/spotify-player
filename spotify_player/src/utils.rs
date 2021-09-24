@@ -39,7 +39,10 @@ pub fn truncate_string(s: String, max_len: usize) -> String {
 
 /// updates the current playback by fetching playback data from spotify every
 /// `AppConfig::refresh_delay_in_ms_each_playback_update`, repeated `AppConfig::n_refreshes_each_playback_update` times.
-pub fn update_playback(state: &state::SharedState, send: &std::sync::mpsc::Sender<event::Event>) {
+pub fn update_playback(
+    state: &state::SharedState,
+    send: &std::sync::mpsc::Sender<event::ClientRequest>,
+) {
     let n_refreshes = state.app_config.n_refreshes_each_playback_update;
     let delay_duration =
         std::time::Duration::from_millis(state.app_config.refresh_delay_in_ms_each_playback_update);
@@ -49,7 +52,7 @@ pub fn update_playback(state: &state::SharedState, send: &std::sync::mpsc::Sende
         move || {
             (0..n_refreshes).for_each(|_| {
                 std::thread::sleep(delay_duration);
-                send.send(event::Event::GetCurrentPlayback)
+                send.send(event::ClientRequest::GetCurrentPlayback)
                     .unwrap_or_else(|err| {
                         log::warn!("failed to send GetCurrentPlayback event: {:#?}", err);
                     });

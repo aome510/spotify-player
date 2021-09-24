@@ -68,7 +68,7 @@ async fn main() -> anyhow::Result<()> {
     let state = std::sync::Arc::new(state);
 
     // start application's threads
-    let (send, recv) = std::sync::mpsc::channel::<event::Event>();
+    let (send, recv) = std::sync::mpsc::channel::<event::ClientRequest>();
 
     let session = auth::new_session(&cache_folder, state.app_config.device.audio_cache).await?;
 
