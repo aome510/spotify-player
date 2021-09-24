@@ -36,7 +36,6 @@ pub enum PlayerEvent {
 /// An event to communicate with the client
 /// TODO: renaming this enum (e.g to `ClientRequest`)
 pub enum Event {
-    RefreshToken,
     GetDevices,
     GetUserPlaylists,
     GetUserSavedAlbums,
