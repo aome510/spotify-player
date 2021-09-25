@@ -1,4 +1,7 @@
-use crate::{state::*, utils};
+use crate::{
+    state::*,
+    utils::{self, new_list_state},
+};
 use anyhow::Result;
 use tui::{layout::*, style::*, text::*, widgets::*};
 
@@ -105,6 +108,22 @@ fn render_main_layout(
             );
         }
         PageState::Searching(..) => {
+            // make sure that the window state matches the current page state.
+            // The mismatch can happen when going back to the search from another page
+            match ui.window {
+                WindowState::Search(..) => {}
+                _ => {
+                    // the current window state doesn't match the current page state,
+                    // this can happen after calling the `PreviousPage` command
+                    ui.window = WindowState::Search(
+                        new_list_state(),
+                        new_list_state(),
+                        new_list_state(),
+                        new_list_state(),
+                        SearchFocusState::Input,
+                    );
+                }
+            }
             search::render_search_window(is_active, frame, ui, chunks[1]);
         }
     };

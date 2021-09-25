@@ -832,23 +832,7 @@ async fn watch_player_events(
     // update the player's context based on the UI's page state
     let page = state.ui.lock().unwrap().page.clone();
     match page {
-        PageState::Searching(..) => {
-            let mut ui = state.ui.lock().unwrap();
-            match ui.window {
-                WindowState::Search(..) => {}
-                _ => {
-                    // the current window state doesn't match the current page state,
-                    // this can happen after calling the `PreviousPage` command
-                    ui.window = WindowState::Search(
-                        new_list_state(),
-                        new_list_state(),
-                        new_list_state(),
-                        new_list_state(),
-                        SearchFocusState::Input,
-                    );
-                }
-            }
-        }
+        PageState::Searching(..) => {}
         PageState::Browsing(uri) => {
             if player.context_uri != uri {
                 utils::update_context(state, uri);
