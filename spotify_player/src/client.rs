@@ -740,14 +740,30 @@ pub async fn start_player_event_watchers(
     send: std::sync::mpsc::Sender<ClientRequest>,
     session: Session,
 ) {
-    // on startup, the UI needs to know the current playback to render the current playing context
-    send.send(ClientRequest::GetCurrentPlayback)
-        .unwrap_or_else(|err| {
-            log::warn!("failed to get the current playback: {}", err);
-        });
-    // needs to know all available devices on startup to connect to the first available device if none is running
-    send.send(ClientRequest::GetDevices).unwrap_or_else(|err| {
-        log::warn!("failed to get devices: {}", err);
+    std::thread::spawn({
+        let send = send.clone();
+        move || {
+            // need to get the playback data on startup to render the player
+            //
+            // - Why needs to query the APIs multiple times?
+            // On startup, the integrated librespot device (enabled by the "streaming" feature)
+            // may not be initialized at the time the outer function is called.
+            // Querying the APIs multiple times is kinda a workaround to ensure
+            // that the initial playback data is in sync.
+            for _ in 0..5 {
+                // on startup, the UI needs to know the current playback to render the current playing context
+                send.send(ClientRequest::GetCurrentPlayback)
+                    .unwrap_or_else(|err| {
+                        log::warn!("failed to get the current playback: {}", err);
+                    });
+                // needs to know all available devices on startup to connect to the first available device if none is running
+                send.send(ClientRequest::GetDevices).unwrap_or_else(|err| {
+                    log::warn!("failed to get devices: {}", err);
+                });
+
+                std::thread::sleep(std::time::Duration::from_millis(1000));
+            }
+        }
     });
 
     // start a playback pooling (every `playback_refresh_duration_in_ms` ms) thread
