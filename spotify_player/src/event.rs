@@ -303,7 +303,7 @@ fn handle_command_for_context_window(
     ui: &mut UIStateGuard,
 ) -> Result<bool> {
     match command {
-        Command::EnterSearchPage => {
+        Command::SearchPage => {
             let new_page = PageState::Searching("".to_owned(), Box::new(SearchResults::empty()));
             ui.history.push(new_page.clone());
             ui.page = new_page;

@@ -16,7 +16,9 @@
   - [Playlist](#playlist)
   - [Artist](#artist)
   - [Album](#album)
+  - [Search](#search)
 - [Commands](#commands)
+  - [Search Page](#search-page)
 - [Mouse support](#mouse-support)
 - [Configurations](#configurations)
 - [Roadmap](#roadmap)
@@ -45,6 +47,8 @@ When `spotify_player` runs with your own `client_id`, press **D** (default short
 ### Streaming
 
 `spotify-player` supports streaming by using [librespot](https://github.com/librespot-org/librespot) library to create an integrated Spotify client while running. User will need to use their own `client_id` to connect to the integrated client as described in the [Spotify Connect](#spotify-connect) section. By default, the integrated client will create a Spotify device under `spotify-player` name.
+
+**Note:** using an integrated client can result in a slow startup time to connect to the player and retrieve the playback data. I'm still investigating on how to improve the startup time.
 
 The integrated client will use [rodio](https://github.com/RustAudio/rodio) as the default [audio backend](https://github.com/librespot-org/librespot/wiki/Audio-Backends). List of available backends:
 
@@ -123,7 +127,7 @@ docker run --rm \
 
 ### Demo
 
-Demo of `spotify-player v0.1.0`:
+A demo of `spotify-player v0.1.0`:
 
 [![asciicast](https://asciinema.org/a/430335.svg)](https://asciinema.org/a/430335)
 
@@ -138,6 +142,10 @@ Demo of `spotify-player v0.1.0`:
 ### Album
 
 ![Album context example](https://raw.githubusercontent.com/aome510/spotify-player/master/examples/album.png)
+
+### Search
+
+![Search page example](https://raw.githubusercontent.com/aome510/spotify-player/master/examples/search.png)
 
 ## Commands
 
@@ -175,6 +183,7 @@ List of supported commands:
 | `BrowsePlayingContext`       | browse the current playing context                        | `g space`          |
 | `BrowseSelectedTrackArtists` | open a popup for browsing the selected track's artists    | `g a`, `C-g a`     |
 | `BrowseSelectedTrackAlbum`   | browse to the selected track's album                      | `g A`, `C-g A`     |
+| `SearchPage`                 | go to the search page                                     | `g /`              |
 | `PreviousPage`               | go to the previous page                                   | `backspace`, `C-p` |
 | `SortTrackByTitle`           | sort the track table (if any) by track's title            | `s t`              |
 | `SortTrackByArtists`         | sort the track table (if any) by track's artists          | `s a`              |
@@ -184,6 +193,12 @@ List of supported commands:
 | `ReverseOrder`               | reverse the order of the track table (if any)             | `s r`              |
 
 To add new shortcuts or modify the default shortcuts, please refer to the [keymaps section](https://github.com/aome510/spotify-player/blob/master/doc/config.md#keymaps) in the configuration documentation.
+
+### Search Page
+
+When first entering the search page, the application places a focus on the search input. User can input text, delete one character backward using `backspace`, or search the text using `enter`.
+
+To move the focus from the search input to the other windows such as track results, album results, etc, use `FocusNextWindow` or `FocusPreviousWindow`.
 
 ## Mouse support
 
@@ -197,7 +212,7 @@ Please refer to [the configuration documentation](https://github.com/aome510/spo
 
 ## Roadmap
 
-- [ ] integrate Spotify's [search APIs](https://developer.spotify.com/documentation/web-api/reference/#category-search)
+- [x] integrate Spotify's [search APIs](https://developer.spotify.com/documentation/web-api/reference/#category-search)
 - [ ] add supports for add track to playlist, save album, follow artist, and related commands.
 - [x] add a (optional?) integrated spotify client (possibly use [librespot](https://github.com/librespot-org/librespot))
   - [ ] implement a custom connection logic to replace librespot's [spirc](https://github.com/librespot-org/librespot/blob/dev/connect/src/spirc.rs).

@@ -39,7 +39,7 @@ pub enum Command {
     BrowseSelectedTrackArtists,
     BrowseSelectedTrackAlbum,
 
-    EnterSearchPage,
+    SearchPage,
 
     PreviousPage,
 
@@ -86,7 +86,7 @@ impl Command {
                 "open a popup for browsing the selected track's artists"
             }
             Self::BrowseSelectedTrackAlbum => "browse to the selected track's album",
-            Self::EnterSearchPage => "go to the search page",
+            Self::SearchPage => "go to the search page",
             Self::PreviousPage => "go to the previous page",
             Self::SortTrackByTitle => "sort the track table (if any) by track's title",
             Self::SortTrackByArtists => "sort the track table (if any) by track's artists",

@@ -125,7 +125,7 @@ impl Default for KeymapConfig {
                 },
                 Keymap {
                     key_sequence: "g /".into(),
-                    command: Command::EnterSearchPage,
+                    command: Command::SearchPage,
                 },
                 Keymap {
                     key_sequence: "backspace".into(),
