@@ -183,7 +183,7 @@ List of supported commands:
 | `BrowsePlayingContext`       | browse the current playing context                        | `g space`          |
 | `BrowseSelectedTrackArtists` | open a popup for browsing the selected track's artists    | `g a`, `C-g a`     |
 | `BrowseSelectedTrackAlbum`   | browse to the selected track's album                      | `g A`, `C-g A`     |
-| `SearchPage`                 | go to the search page                                     | `g /`              |
+| `SearchPage`                 | go to the search page                                     | `g s`              |
 | `PreviousPage`               | go to the previous page                                   | `backspace`, `C-p` |
 | `SortTrackByTitle`           | sort the track table (if any) by track's title            | `s t`              |
 | `SortTrackByArtists`         | sort the track table (if any) by track's artists          | `s a`              |

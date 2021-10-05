@@ -124,7 +124,7 @@ impl Default for KeymapConfig {
                     command: Command::BrowseSelectedTrackAlbum,
                 },
                 Keymap {
-                    key_sequence: "g /".into(),
+                    key_sequence: "g s".into(),
                     command: Command::SearchPage,
                 },
                 Keymap {
