@@ -360,36 +360,43 @@ fn handle_command_for_context_window(
         }
         _ => {
             let handled = {
-                match state.player.write().unwrap().get_context_mut() {
-                    Some(context) => match command {
-                        Command::SortTrackByTitle => {
-                            context.sort_tracks(ContextSortOrder::TrackName);
+                if state.player.read().unwrap().get_context().is_none() {
+                    false
+                } else {
+                    let sort_order = match command {
+                        Command::SortTrackByTitle => Some(ContextSortOrder::TrackName),
+                        Command::SortTrackByAlbum => Some(ContextSortOrder::Album),
+                        Command::SortTrackByArtists => Some(ContextSortOrder::Artists),
+                        Command::SortTrackByAddedDate => Some(ContextSortOrder::AddedAt),
+                        Command::SortTrackByDuration => Some(ContextSortOrder::Duration),
+                        _ => None,
+                    };
+                    match sort_order {
+                        Some(sort_order) => {
+                            state
+                                .player
+                                .write()
+                                .unwrap()
+                                .get_context_mut()
+                                .unwrap()
+                                .sort_tracks(sort_order);
                             true
                         }
-                        Command::SortTrackByAlbum => {
-                            context.sort_tracks(ContextSortOrder::Album);
-                            true
+                        None => {
+                            if command == Command::ReverseTrackOrder {
+                                state
+                                    .player
+                                    .write()
+                                    .unwrap()
+                                    .get_context_mut()
+                                    .unwrap()
+                                    .reverse_tracks();
+                                true
+                            } else {
+                                false
+                            }
                         }
-                        Command::SortTrackByArtists => {
-                            context.sort_tracks(ContextSortOrder::Artists);
-                            true
-                        }
-                        Command::SortTrackByAddedDate => {
-                            context.sort_tracks(ContextSortOrder::AddedAt);
-                            true
-                        }
-                        Command::SortTrackByDuration => {
-                            context.sort_tracks(ContextSortOrder::Duration);
-                            true
-                        }
-                        Command::ReverseTrackOrder => {
-                            context.reverse_tracks();
-                            true
-                        }
-
-                        _ => false,
-                    },
-                    None => false,
+                    }
                 }
             };
             if handled {

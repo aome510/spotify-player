@@ -61,9 +61,9 @@ pub fn update_context(state: &state::SharedState, context_uri: String) {
 
             // spawn a pooling job to check when the context is updated inside the player state
             loop {
+                // update the UI's context state based on the player's context state
+                let mut ui = state.ui.lock().unwrap();
                 if let Some(context) = state.player.read().unwrap().get_context() {
-                    let mut ui = state.ui.lock().unwrap();
-                    // update the UI's context state based on the player's context state
                     match context {
                         state::Context::Artist(..) => {
                             ui.window = WindowState::Artist(

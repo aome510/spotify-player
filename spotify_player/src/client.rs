@@ -813,8 +813,9 @@ async fn watch_player_events(
         state.player.write().unwrap().token = token;
     }
 
-    let player = state.player.read().unwrap();
     {
+        let player = state.player.read().unwrap();
+
         // if cannot find the current playback, try
         // to connect the first avaiable device
         if player.playback.is_none() && !player.devices.is_empty() {
@@ -828,9 +829,7 @@ async fn watch_player_events(
                 false,
             )))?;
         }
-    }
 
-    {
         // update the playback when the current track ends
         let progress_ms = player.get_playback_progress();
         let duration_ms = player.get_current_playing_track().map(|t| t.duration_ms);
@@ -850,11 +849,12 @@ async fn watch_player_events(
     match page {
         PageState::Searching(..) => {}
         PageState::Browsing(uri) => {
-            if player.context_uri != uri {
+            if state.player.read().unwrap().context_uri != uri {
                 utils::update_context(state, uri);
             }
         }
         PageState::CurrentPlaying => {
+            let player = state.player.read().unwrap();
             // updates the context (album, playlist, etc) tracks based on the current playback
             if let Some(ref playback) = player.playback {
                 match playback.context {
