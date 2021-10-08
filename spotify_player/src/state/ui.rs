@@ -46,7 +46,7 @@ pub enum WindowState {
 #[derive(Debug)]
 pub enum PopupState {
     None,
-    CommandHelp,
+    CommandHelp(usize),
     ContextSearch(String),
     UserPlaylistList(ListState),
     UserFollowedArtistList(ListState),
@@ -136,7 +136,7 @@ impl PopupState {
             Self::UserSavedAlbumList(ref state) => Some(state),
             Self::ArtistList(_, ref state) => Some(state),
             Self::ThemeList(_, ref state) => Some(state),
-            Self::CommandHelp | Self::None | Self::ContextSearch(_) => None,
+            Self::CommandHelp(_) | Self::None | Self::ContextSearch(_) => None,
         }
     }
 
@@ -149,7 +149,7 @@ impl PopupState {
             Self::UserSavedAlbumList(ref mut state) => Some(state),
             Self::ArtistList(_, ref mut state) => Some(state),
             Self::ThemeList(_, ref mut state) => Some(state),
-            Self::CommandHelp | Self::None | Self::ContextSearch(_) => None,
+            Self::CommandHelp(_) | Self::None | Self::ContextSearch(_) => None,
         }
     }
 

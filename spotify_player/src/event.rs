@@ -254,7 +254,9 @@ fn handle_terminal_event(
                         &mut ui,
                     )?
                 }
-                PopupState::CommandHelp => handle_command_for_command_help_popup(command, &mut ui)?,
+                PopupState::CommandHelp(_) => {
+                    handle_command_for_command_help_popup(command, &mut ui)?
+                }
             };
 
             if handled {
@@ -589,7 +591,7 @@ fn handle_command_for_list_popup(
     ui: &mut UIStateGuard,
 ) -> Result<bool> {
     match command {
-        Command::SelectNext => {
+        Command::SelectNextOrScrollDown => {
             if let Some(id) = ui.popup.list_selected() {
                 if id + 1 < list_len {
                     ui.popup.list_select(Some(id + 1));
@@ -598,7 +600,7 @@ fn handle_command_for_list_popup(
             }
             Ok(true)
         }
-        Command::SelectPrevious => {
+        Command::SelectPreviousOrScrollUp => {
             if let Some(id) = ui.popup.list_selected() {
                 if id > 0 {
                     ui.popup.list_select(Some(id - 1));
@@ -622,11 +624,26 @@ fn handle_command_for_list_popup(
 }
 
 fn handle_command_for_command_help_popup(command: Command, ui: &mut UIStateGuard) -> Result<bool> {
-    if let Command::ClosePopup = command {
-        ui.popup = PopupState::None;
-        Ok(true)
-    } else {
-        Ok(false)
+    let offset = match ui.popup {
+        PopupState::CommandHelp(ref mut offset) => offset,
+        _ => unreachable!(),
+    };
+    match command {
+        Command::ClosePopup => {
+            ui.popup = PopupState::None;
+            Ok(true)
+        }
+        Command::SelectNextOrScrollDown => {
+            *offset += 1;
+            Ok(true)
+        }
+        Command::SelectPreviousOrScrollUp => {
+            if *offset > 0 {
+                *offset -= 1;
+            }
+            Ok(true)
+        }
+        _ => Ok(false),
     }
 }
 
@@ -676,7 +693,7 @@ fn handle_command(
             Ok(true)
         }
         Command::OpenCommandHelp => {
-            ui.popup = PopupState::CommandHelp;
+            ui.popup = PopupState::CommandHelp(0);
             Ok(true)
         }
         Command::RefreshPlayback => {
@@ -811,7 +828,7 @@ fn handle_command_for_track_list(
     tracks: Vec<&Track>,
 ) -> Result<bool> {
     match command {
-        Command::SelectNext => {
+        Command::SelectNextOrScrollDown => {
             if let Some(id) = ui.window.selected() {
                 if id + 1 < tracks.len() {
                     ui.window.select(Some(id + 1));
@@ -819,7 +836,7 @@ fn handle_command_for_track_list(
             }
             Ok(true)
         }
-        Command::SelectPrevious => {
+        Command::SelectPreviousOrScrollUp => {
             if let Some(id) = ui.window.selected() {
                 if id > 0 {
                     ui.window.select(Some(id - 1));
@@ -848,7 +865,7 @@ fn handle_command_for_artist_list(
     artists: Vec<&Artist>,
 ) -> Result<bool> {
     match command {
-        Command::SelectNext => {
+        Command::SelectNextOrScrollDown => {
             if let Some(id) = ui.window.selected() {
                 if id + 1 < artists.len() {
                     ui.window.select(Some(id + 1));
@@ -856,7 +873,7 @@ fn handle_command_for_artist_list(
             }
             Ok(true)
         }
-        Command::SelectPrevious => {
+        Command::SelectPreviousOrScrollUp => {
             if let Some(id) = ui.window.selected() {
                 if id > 0 {
                     ui.window.select(Some(id - 1));
@@ -883,7 +900,7 @@ fn handle_command_for_album_list(
     albums: Vec<&Album>,
 ) -> Result<bool> {
     match command {
-        Command::SelectNext => {
+        Command::SelectNextOrScrollDown => {
             if let Some(id) = ui.window.selected() {
                 if id + 1 < albums.len() {
                     ui.window.select(Some(id + 1));
@@ -891,7 +908,7 @@ fn handle_command_for_album_list(
             }
             Ok(true)
         }
-        Command::SelectPrevious => {
+        Command::SelectPreviousOrScrollUp => {
             if let Some(id) = ui.window.selected() {
                 if id > 0 {
                     ui.window.select(Some(id - 1));
@@ -918,7 +935,7 @@ fn handle_command_for_playlist_list(
     playlists: Vec<&playlist::SimplifiedPlaylist>,
 ) -> Result<bool> {
     match command {
-        Command::SelectNext => {
+        Command::SelectNextOrScrollDown => {
             if let Some(id) = ui.window.selected() {
                 if id + 1 < playlists.len() {
                     ui.window.select(Some(id + 1));
@@ -926,7 +943,7 @@ fn handle_command_for_playlist_list(
             }
             Ok(true)
         }
-        Command::SelectPrevious => {
+        Command::SelectPreviousOrScrollUp => {
             if let Some(id) = ui.window.selected() {
                 if id > 0 {
                     ui.window.select(Some(id - 1));
@@ -955,7 +972,7 @@ fn handle_command_for_track_table(
     tracks: Vec<&Track>,
 ) -> Result<bool> {
     match command {
-        Command::SelectNext => {
+        Command::SelectNextOrScrollDown => {
             if let Some(id) = ui.window.selected() {
                 if id + 1 < tracks.len() {
                     ui.window.select(Some(id + 1));
@@ -963,7 +980,7 @@ fn handle_command_for_track_table(
             }
             Ok(true)
         }
-        Command::SelectPrevious => {
+        Command::SelectPreviousOrScrollUp => {
             if let Some(id) = ui.window.selected() {
                 if id > 0 {
                     ui.window.select(Some(id - 1));

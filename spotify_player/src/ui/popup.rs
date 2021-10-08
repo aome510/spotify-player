@@ -13,7 +13,7 @@ pub fn render_popup(
     let player = state.player.read().unwrap();
     match ui.popup {
         PopupState::None => (rect, true),
-        PopupState::CommandHelp => {
+        PopupState::CommandHelp(_) => {
             let chunks = Layout::default()
                 .direction(Direction::Vertical)
                 .constraints([Constraint::Length(7), Constraint::Min(0)].as_ref())
