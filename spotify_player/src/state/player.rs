@@ -186,11 +186,25 @@ impl Context {
             Context::Unknown(_) => {
                 "Cannot infer the playing context from the current playback".to_owned()
             }
-            Context::Album(ref album, _) => {
-                format!("Album: {}", album.name)
+            Context::Album(ref album, ref tracks) => {
+                format!(
+                    "Album: {} | {} | {} songs",
+                    album.name,
+                    album.release_date,
+                    tracks.len()
+                )
             }
-            Context::Playlist(ref playlist, _) => {
-                format!("Playlist: {}", playlist.name)
+            Context::Playlist(ref playlist, tracks) => {
+                format!(
+                    "Playlist: {} | {} | {} songs",
+                    playlist.name,
+                    playlist
+                        .owner
+                        .display_name
+                        .as_ref()
+                        .unwrap_or(&"unknown".to_owned()),
+                    tracks.len()
+                )
             }
             Context::Artist(ref artist, _, _, _) => {
                 format!("Artist: {}", artist.name)
