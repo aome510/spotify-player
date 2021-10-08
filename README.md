@@ -166,8 +166,8 @@ List of supported commands:
 | `Quit`                       | quit the application                                      | `C-c`, `q`         |
 | `OpenCommandHelp`            | open a command help popup                                 | `?`, `C-h`         |
 | `ClosePopup`                 | close a popup                                             | `esc`              |
-| `SelectNext`                 | select the next item in the focused list or table         | `j`, `C-j`, `down` |
-| `SelectPrevious`             | select the previous item in the focused list or table     | `k`, `C-k`, `up`   |
+| `SelectNextOrScrollDown`     | select the next item in a list/table or scroll down       | `j`, `C-j`, `down` |
+| `SelectPreviousOrScrollUp`   | select the previous item in a list/table or scroll up     | `k`, `C-k`, `up`   |
 | `ChooseSelected`             | choose the selected item and act on it                    | `enter`            |
 | `RefreshPlayback`            | manually refresh the current playback                     | `r`                |
 | `FocusNextWindow`            | focus the next focusable window (if any)                  | `tab`              |

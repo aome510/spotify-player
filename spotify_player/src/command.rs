@@ -16,8 +16,8 @@ pub enum Command {
     OpenCommandHelp,
     ClosePopup,
 
-    SelectNext,
-    SelectPrevious,
+    SelectNextOrScrollDown,
+    SelectPreviousOrScrollUp,
     ChooseSelected,
 
     RefreshPlayback,
@@ -65,8 +65,10 @@ impl Command {
             Self::Quit => "quit the application",
             Self::OpenCommandHelp => "open a command help popup",
             Self::ClosePopup => "close a popup",
-            Self::SelectNext => "select the next item in the focused list or table",
-            Self::SelectPrevious => "select the previous item in the focused list or table",
+            Self::SelectNextOrScrollDown => "select the next item in a list/table or scroll down",
+            Self::SelectPreviousOrScrollUp => {
+                "select the previous item in a list/table or scroll up"
+            }
             Self::ChooseSelected => "choose the selected item and act on it",
             Self::RefreshPlayback => "manually refresh the current playback",
             Self::FocusNextWindow => "focus the next focusable window (if any)",

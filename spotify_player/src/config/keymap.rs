@@ -157,27 +157,27 @@ impl Default for KeymapConfig {
                 },
                 Keymap {
                     key_sequence: "j".into(),
-                    command: Command::SelectNext,
+                    command: Command::SelectNextOrScrollDown,
                 },
                 Keymap {
                     key_sequence: "C-j".into(),
-                    command: Command::SelectNext,
+                    command: Command::SelectNextOrScrollDown,
                 },
                 Keymap {
                     key_sequence: "down".into(),
-                    command: Command::SelectNext,
+                    command: Command::SelectNextOrScrollDown,
                 },
                 Keymap {
                     key_sequence: "k".into(),
-                    command: Command::SelectPrevious,
+                    command: Command::SelectPreviousOrScrollUp,
                 },
                 Keymap {
                     key_sequence: "C-k".into(),
-                    command: Command::SelectPrevious,
+                    command: Command::SelectPreviousOrScrollUp,
                 },
                 Keymap {
                     key_sequence: "up".into(),
-                    command: Command::SelectPrevious,
+                    command: Command::SelectPreviousOrScrollUp,
                 },
                 Keymap {
                     key_sequence: "s t".into(),
