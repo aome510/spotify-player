@@ -56,11 +56,15 @@ pub fn render_shortcut_help_window(
 /// renders a command help window listing all key shortcuts and corresponding descriptions
 pub fn render_commands_help_window(
     frame: &mut Frame,
-    ui: &UIStateGuard,
+    ui: &mut UIStateGuard,
     state: &SharedState,
     rect: Rect,
-    offset: usize,
 ) {
+    let offset = match ui.popup {
+        PopupState::CommandHelp(ref mut offset) => offset,
+        _ => unreachable!(),
+    };
+
     let mut map = BTreeMap::new();
     state.keymap_config.keymaps.iter().for_each(|km| {
         let v = map.entry(km.command);
@@ -74,9 +78,14 @@ pub fn render_commands_help_window(
             }
         }
     });
+
+    // offset should not be greater than or equal the number of available commands
+    if *offset >= map.len() {
+        *offset = map.len() - 1
+    }
     let help_table = Table::new(
         map.into_iter()
-            .skip(offset)
+            .skip(*offset)
             .map(|(c, k)| {
                 Row::new(vec![
                     Cell::from(format!("{:?}", c)),

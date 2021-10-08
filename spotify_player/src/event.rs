@@ -254,8 +254,8 @@ fn handle_terminal_event(
                         &mut ui,
                     )?
                 }
-                PopupState::CommandHelp(offset) => {
-                    handle_command_for_command_help_popup(command, &mut ui, offset)?
+                PopupState::CommandHelp(_) => {
+                    handle_command_for_command_help_popup(command, &mut ui)?
                 }
             };
 
@@ -623,16 +623,27 @@ fn handle_command_for_list_popup(
     }
 }
 
-fn handle_command_for_command_help_popup(
-    command: Command,
-    ui: &mut UIStateGuard,
-    page_offset: usize,
-) -> Result<bool> {
-    if let Command::ClosePopup = command {
-        ui.popup = PopupState::None;
-        Ok(true)
-    } else {
-        Ok(false)
+fn handle_command_for_command_help_popup(command: Command, ui: &mut UIStateGuard) -> Result<bool> {
+    let offset = match ui.popup {
+        PopupState::CommandHelp(ref mut offset) => offset,
+        _ => unreachable!(),
+    };
+    match command {
+        Command::ClosePopup => {
+            ui.popup = PopupState::None;
+            Ok(true)
+        }
+        Command::SelectNextOrScrollDown => {
+            *offset += 1;
+            Ok(true)
+        }
+        Command::SelectPreviousOrScrollUp => {
+            if *offset > 0 {
+                *offset -= 1;
+            }
+            Ok(true)
+        }
+        _ => Ok(false),
     }
 }
 
