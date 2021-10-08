@@ -13,13 +13,13 @@ pub fn render_popup(
     let player = state.player.read().unwrap();
     match ui.popup {
         PopupState::None => (rect, true),
-        PopupState::CommandHelp => {
+        PopupState::CommandHelp(offset) => {
             let chunks = Layout::default()
                 .direction(Direction::Vertical)
                 .constraints([Constraint::Length(7), Constraint::Min(0)].as_ref())
                 .split(rect);
 
-            help::render_commands_help_window(frame, ui, state, chunks[1]);
+            help::render_commands_help_window(frame, ui, state, chunks[1], offset);
             (chunks[0], false)
         }
         PopupState::DeviceList(_) => {

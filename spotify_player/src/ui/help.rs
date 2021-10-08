@@ -59,6 +59,7 @@ pub fn render_commands_help_window(
     ui: &UIStateGuard,
     state: &SharedState,
     rect: Rect,
+    offset: usize,
 ) {
     let mut map = BTreeMap::new();
     state.keymap_config.keymaps.iter().for_each(|km| {
@@ -75,6 +76,7 @@ pub fn render_commands_help_window(
     });
     let help_table = Table::new(
         map.into_iter()
+            .skip(offset)
             .map(|(c, k)| {
                 Row::new(vec![
                     Cell::from(format!("{:?}", c)),

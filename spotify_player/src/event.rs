@@ -254,7 +254,9 @@ fn handle_terminal_event(
                         &mut ui,
                     )?
                 }
-                PopupState::CommandHelp => handle_command_for_command_help_popup(command, &mut ui)?,
+                PopupState::CommandHelp(offset) => {
+                    handle_command_for_command_help_popup(command, &mut ui, offset)?
+                }
             };
 
             if handled {
@@ -621,7 +623,11 @@ fn handle_command_for_list_popup(
     }
 }
 
-fn handle_command_for_command_help_popup(command: Command, ui: &mut UIStateGuard) -> Result<bool> {
+fn handle_command_for_command_help_popup(
+    command: Command,
+    ui: &mut UIStateGuard,
+    page_offset: usize,
+) -> Result<bool> {
     if let Command::ClosePopup = command {
         ui.popup = PopupState::None;
         Ok(true)
@@ -676,7 +682,7 @@ fn handle_command(
             Ok(true)
         }
         Command::OpenCommandHelp => {
-            ui.popup = PopupState::CommandHelp;
+            ui.popup = PopupState::CommandHelp(0);
             Ok(true)
         }
         Command::RefreshPlayback => {
