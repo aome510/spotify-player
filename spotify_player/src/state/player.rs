@@ -14,6 +14,8 @@ pub struct PlayerState {
     pub context_uri: String,
     pub context_cache: lru::LruCache<String, Context>,
 
+    pub search_cache: lru::LruCache<String, SearchResults>,
+
     pub playback: Option<context::CurrentlyPlaybackContext>,
     pub playback_last_updated: Option<std::time::Instant>,
 }
@@ -154,6 +156,7 @@ impl Default for PlayerState {
             user_followed_artists: vec![],
             context_uri: "".to_owned(),
             context_cache: lru::LruCache::new(64),
+            search_cache: lru::LruCache::new(64),
             playback: None,
             playback_last_updated: None,
         }

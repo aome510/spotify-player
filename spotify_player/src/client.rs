@@ -352,6 +352,14 @@ impl Client {
         // a given query string. Each class of items will be handled separately
         // in a separate thread.
 
+        // already search the query before, updating the ui page state directly
+        if let Some(search_results) = state.player.read().unwrap().search_cache.peek(&query) {
+            if let PageState::Searching(_, ref mut state_results) = state.ui.lock().unwrap().page {
+                *state_results = Box::new(search_results.clone());
+            }
+            return Ok(());
+        }
+
         let tracks_thread = thread::spawn({
             let spotify = self.spotify.clone();
             let query = query.clone();
@@ -414,6 +422,7 @@ impl Client {
 
         let playlists_thread = thread::spawn({
             let spotify = self.spotify.clone();
+            let query = query.clone();
             move || -> Result<_> {
                 let search_result = Self::handle_rspotify_result(spotify.search(
                     &query,
@@ -443,18 +452,25 @@ impl Client {
             playlists,
         };
 
+        // update the search cache stored inside the player state
+        state
+            .player
+            .write()
+            .unwrap()
+            .search_cache
+            .put(query, search_results.clone());
+
         // update ui states
-        if let PageState::Searching(_, ref mut state_search_results) = state.ui.lock().unwrap().page
-        {
-            *state_search_results = Box::new(search_results);
+        if let PageState::Searching(_, ref mut state_results) = state.ui.lock().unwrap().page {
+            *state_results = Box::new(search_results);
+            state.ui.lock().unwrap().window = WindowState::Search(
+                new_list_state(),
+                new_list_state(),
+                new_list_state(),
+                new_list_state(),
+                SearchFocusState::Input,
+            );
         }
-        state.ui.lock().unwrap().window = WindowState::Search(
-            new_list_state(),
-            new_list_state(),
-            new_list_state(),
-            new_list_state(),
-            SearchFocusState::Input,
-        );
 
         Ok(())
     }
