@@ -86,7 +86,7 @@ fn render_main_layout(
         .split(rect);
     render_playback_window(frame, ui, state, chunks[0]);
 
-    match ui.page {
+    match ui.current_page() {
         PageState::CurrentPlaying => {
             context::render_context_window(
                 is_active,

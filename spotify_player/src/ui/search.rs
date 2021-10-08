@@ -9,7 +9,7 @@ use {tui::layout::*, tui::widgets::*};
 /// This function will panic if the current UI's `PageState` is not `PageState::Searching`
 pub fn render_search_window(is_active: bool, frame: &mut Frame, ui: &mut UIStateGuard, rect: Rect) {
     // gets the search query from UI's `PageState`
-    let (query, search_results) = match ui.page {
+    let (query, search_results) = match ui.current_page() {
         PageState::Searching(ref query, ref search_results) => (query, search_results),
         _ => unreachable!(),
     };

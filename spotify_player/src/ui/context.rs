@@ -75,6 +75,8 @@ pub fn render_context_window(
             let desc = if player.context_uri.is_empty() {
                 "Cannot infer the playing context from the current playback"
             } else {
+                // context is not empty, but cannot get context data inside the player state
+                // => still loading the context data
                 "Loading..."
             };
             frame.render_widget(Paragraph::new(desc).block(block), rect);

@@ -13,7 +13,6 @@ pub struct UIState {
     pub theme: config::Theme,
     pub input_key_sequence: key::KeySequence,
 
-    pub page: PageState,
     pub history: Vec<PageState>,
     pub popup: PopupState,
     pub window: WindowState,
@@ -88,6 +87,14 @@ impl UIState {
             .fold(true, |acc, cur| acc & s.contains(cur))
     }
 
+    pub fn current_page(&self) -> &PageState {
+        self.history.last().expect("History must not be empty")
+    }
+
+    pub fn current_page_mut(&mut self) -> &mut PageState {
+        self.history.last_mut().expect("History must not be empty")
+    }
+
     /// gets a list of items possibly filtered by a search query if currently inside a search state
     pub fn get_search_filtered_items<'a, T: std::fmt::Display>(
         &self,
@@ -110,7 +117,6 @@ impl Default for UIState {
             theme: config::Theme::default(),
             input_key_sequence: key::KeySequence { keys: vec![] },
 
-            page: PageState::CurrentPlaying,
             history: vec![PageState::CurrentPlaying],
             popup: PopupState::None,
             window: WindowState::Unknown,

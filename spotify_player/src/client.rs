@@ -351,12 +351,23 @@ impl Client {
         // searching for tracks, artists, albums, and playlists that match
         // a given query string. Each class of items will be handled separately
         // in a separate thread.
+        let update_ui_states = |results: SearchResults| {
+            let mut ui = state.ui.lock().unwrap();
+            if let PageState::Searching(_, ref mut state_results) = ui.current_page_mut() {
+                *state_results = Box::new(results);
+                ui.window = WindowState::Search(
+                    new_list_state(),
+                    new_list_state(),
+                    new_list_state(),
+                    new_list_state(),
+                    SearchFocusState::Input,
+                );
+            }
+        };
 
         // already search the query before, updating the ui page state directly
         if let Some(search_results) = state.player.read().unwrap().search_cache.peek(&query) {
-            if let PageState::Searching(_, ref mut state_results) = state.ui.lock().unwrap().page {
-                *state_results = Box::new(search_results.clone());
-            }
+            update_ui_states(search_results.clone());
             return Ok(());
         }
 
@@ -460,18 +471,7 @@ impl Client {
             .search_cache
             .put(query, search_results.clone());
 
-        // update ui states
-        if let PageState::Searching(_, ref mut state_results) = state.ui.lock().unwrap().page {
-            *state_results = Box::new(search_results);
-            state.ui.lock().unwrap().window = WindowState::Search(
-                new_list_state(),
-                new_list_state(),
-                new_list_state(),
-                new_list_state(),
-                SearchFocusState::Input,
-            );
-        }
-
+        update_ui_states(search_results);
         Ok(())
     }
 
@@ -861,12 +861,11 @@ async fn watch_player_events(
     }
 
     // update the player's context based on the UI's page state
-    let page = state.ui.lock().unwrap().page.clone();
-    match page {
+    match state.ui.lock().unwrap().current_page() {
         PageState::Searching(..) => {}
         PageState::Browsing(uri) => {
-            if state.player.read().unwrap().context_uri != uri {
-                utils::update_context(state, uri);
+            if state.player.read().unwrap().context_uri != *uri {
+                utils::update_context(state, uri.clone());
             }
         }
         PageState::CurrentPlaying => {

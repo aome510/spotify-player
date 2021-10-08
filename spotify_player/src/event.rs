@@ -114,7 +114,7 @@ fn handle_terminal_event(
             // handle input key sequence for searching window/popup
             if let PopupState::ContextSearch(_) = ui.popup {
                 handle_key_sequence_for_search_popup(&key_sequence, send, state, &mut ui)?
-            } else if let PageState::Searching(..) = ui.page {
+            } else if let PageState::Searching(..) = ui.current_page() {
                 handle_key_sequence_for_search_window(&key_sequence, send, state, &mut ui)?
             } else {
                 false
@@ -123,7 +123,7 @@ fn handle_terminal_event(
         Some(command) => {
             // handle commands specifically for a popup window
             let handled = match ui.popup {
-                PopupState::None => match ui.page {
+                PopupState::None => match ui.current_page() {
                     // no popup, handle command based on the current UI's `PageState`
                     PageState::Browsing(_) => {
                         handle_command_for_context_window(command, send, state, &mut ui)?
@@ -153,9 +153,7 @@ fn handle_terminal_event(
                         let uri = artists[id].uri.clone().unwrap();
                         send.send(ClientRequest::GetContext(ContextURI::Artist(uri.clone())))?;
 
-                        let frame_state = PageState::Browsing(uri);
-                        ui.history.push(frame_state.clone());
-                        ui.page = frame_state;
+                        ui.history.push(PageState::Browsing(uri));
                         ui.popup = PopupState::None;
                         Ok(())
                     },
@@ -304,9 +302,10 @@ fn handle_command_for_context_window(
 ) -> Result<bool> {
     match command {
         Command::SearchPage => {
-            let new_page = PageState::Searching("".to_owned(), Box::new(SearchResults::empty()));
-            ui.history.push(new_page.clone());
-            ui.page = new_page;
+            ui.history.push(PageState::Searching(
+                "".to_owned(),
+                Box::new(SearchResults::empty()),
+            ));
             ui.window = WindowState::Search(
                 new_list_state(),
                 new_list_state(),
@@ -421,7 +420,7 @@ fn handle_key_sequence_for_search_window(
         }
     };
 
-    let (query, search_results) = match ui.page {
+    let (query, search_results) = match ui.current_page_mut() {
         PageState::Searching(ref mut query, ref mut search_results) => {
             (query, search_results.clone())
         }
@@ -570,9 +569,7 @@ fn handle_command_for_uri_list_popup(
             };
             send.send(ClientRequest::GetContext(context_uri))?;
 
-            let new_page = PageState::Browsing(uris[id].clone());
-            ui.history.push(new_page.clone());
-            ui.page = new_page;
+            ui.history.push(PageState::Browsing(uris[id].clone()));
             ui.popup = PopupState::None;
             Ok(())
         },
@@ -687,7 +684,6 @@ fn handle_command(
             Ok(true)
         }
         Command::BrowsePlayingContext => {
-            ui.page = PageState::CurrentPlaying;
             ui.history.push(PageState::CurrentPlaying);
             Ok(true)
         }
@@ -695,9 +691,7 @@ fn handle_command(
             if let Some(track) = state.player.read().unwrap().get_current_playing_track() {
                 if let Some(ref uri) = track.album.uri {
                     send.send(ClientRequest::GetContext(ContextURI::Album(uri.clone())))?;
-                    let new_page = PageState::Browsing(uri.clone());
-                    ui.history.push(new_page.clone());
-                    ui.page = new_page;
+                    ui.history.push(PageState::Browsing(uri.clone()));
                 }
             }
             Ok(true)
@@ -736,7 +730,6 @@ fn handle_command(
         Command::PreviousPage => {
             if ui.history.len() > 1 {
                 ui.history.pop();
-                ui.page = ui.history.last().unwrap().clone();
             }
             Ok(true)
         }
@@ -875,9 +868,7 @@ fn handle_command_for_artist_list(
             if let Some(id) = ui.window.selected() {
                 let uri = artists[id].uri.clone().unwrap();
                 send.send(ClientRequest::GetContext(ContextURI::Artist(uri.clone())))?;
-                let new_page = PageState::Browsing(uri);
-                ui.history.push(new_page.clone());
-                ui.page = new_page;
+                ui.history.push(PageState::Browsing(uri));
             }
             Ok(true)
         }
@@ -912,9 +903,7 @@ fn handle_command_for_album_list(
             if let Some(id) = ui.window.selected() {
                 let uri = albums[id].uri.clone().unwrap();
                 send.send(ClientRequest::GetContext(ContextURI::Album(uri.clone())))?;
-                let new_page = PageState::Browsing(uri);
-                ui.history.push(new_page.clone());
-                ui.page = new_page;
+                ui.history.push(PageState::Browsing(uri));
             }
             Ok(true)
         }
@@ -949,9 +938,7 @@ fn handle_command_for_playlist_list(
             if let Some(id) = ui.window.selected() {
                 let uri = playlists[id].uri.clone();
                 send.send(ClientRequest::GetContext(ContextURI::Playlist(uri.clone())))?;
-                let new_page = PageState::Browsing(uri);
-                ui.history.push(new_page.clone());
-                ui.page = new_page;
+                ui.history.push(PageState::Browsing(uri));
             }
             Ok(true)
         }
@@ -1008,9 +995,7 @@ fn handle_command_for_track_table(
             if let Some(id) = ui.window.selected() {
                 if let Some(ref uri) = tracks[id].album.uri {
                     send.send(ClientRequest::GetContext(ContextURI::Album(uri.clone())))?;
-                    let new_page = PageState::Browsing(uri.clone());
-                    ui.history.push(new_page.clone());
-                    ui.page = new_page;
+                    ui.history.push(PageState::Browsing(uri.clone()));
                 }
             }
             Ok(true)

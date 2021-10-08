@@ -61,32 +61,29 @@ pub fn update_context(state: &state::SharedState, context_uri: String) {
 
             // spawn a pooling job to check when the context is updated inside the player state
             loop {
-                if let Some(context) = state.player.read().unwrap().get_context() {
-                    // update the UI's context state based on the player's context state
-                    let mut ui = state.ui.lock().unwrap();
-                    match context {
-                        state::Context::Artist(..) => {
-                            ui.window = WindowState::Artist(
-                                new_table_state(),
-                                new_list_state(),
-                                new_list_state(),
-                                ArtistFocusState::TopTracks,
-                            );
-                        }
-                        state::Context::Album(..) => {
-                            ui.window = WindowState::Album(new_table_state());
-                        }
-                        state::Context::Playlist(..) => {
-                            ui.window = WindowState::Playlist(new_table_state());
-                        }
-                        state::Context::Unknown(_) => {
-                            ui.window = WindowState::Unknown;
-                        }
+                let window_state = match state.player.read().unwrap().get_context() {
+                    Some(context) => match context {
+                        state::Context::Artist(..) => WindowState::Artist(
+                            new_table_state(),
+                            new_list_state(),
+                            new_list_state(),
+                            ArtistFocusState::TopTracks,
+                        ),
+                        state::Context::Album(..) => WindowState::Album(new_table_state()),
+                        state::Context::Playlist(..) => WindowState::Playlist(new_table_state()),
+                        state::Context::Unknown(_) => WindowState::Unknown,
+                    },
+                    None => {
+                        std::thread::sleep(refresh_duration);
+                        continue;
                     }
-                    ui.popup = PopupState::None;
-                    break;
-                }
-                std::thread::sleep(refresh_duration);
+                };
+
+                // update the UI states based on the new playing context
+                let mut ui = state.ui.lock().unwrap();
+                ui.window = window_state;
+                ui.popup = PopupState::None;
+                break;
             }
         }
     });
