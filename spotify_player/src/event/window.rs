@@ -1,11 +1,20 @@
 use super::*;
 
+/// handles a key sequence for a context window
 pub fn handle_key_sequence_for_context_window(
     key_sequence: &KeySequence,
     send: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
     ui: &mut UIStateGuard,
 ) -> Result<bool> {
+    let command = match state
+        .keymap_config
+        .find_command_from_key_sequence(key_sequence)
+    {
+        Some(command) => command,
+        None => return Ok(false),
+    };
+
     match command {
         Command::SearchPage => {
             ui.history.push(PageState::Searching(
@@ -20,24 +29,20 @@ pub fn handle_key_sequence_for_context_window(
                 SearchFocusState::Input,
             );
 
-            // needs to set `context_uri` to an empty string
-            // to trigger updating the context window when going
-            // backward from a page (call `PreviousPage` command)
+            // manually empty the `context_uri` to trigger
+            // context updating when moving from the search page
+            // to a previous context page
             state.player.write().unwrap().context_uri = "".to_owned();
-            Ok(true)
         }
         Command::FocusNextWindow => {
             ui.window.next();
-            Ok(true)
         }
         Command::FocusPreviousWindow => {
             ui.window.previous();
-            Ok(true)
         }
         Command::SearchContext => {
             ui.window.select(Some(0));
-            ui.popup = PopupState::ContextSearch("".to_owned());
-            Ok(true)
+            ui.popup = Some(PopupState::ContextSearch("".to_owned()));
         }
         Command::PlayContext => {
             let player = state.player.read().unwrap();
@@ -54,6 +59,7 @@ pub fn handle_key_sequence_for_context_window(
                             offset::for_uri(tracks[id].uri.clone())
                         }
                     };
+
                     send.send(ClientRequest::Player(PlayerRequest::PlayTrack(
                         Some(player.context_uri.clone()),
                         None,
@@ -61,58 +67,52 @@ pub fn handle_key_sequence_for_context_window(
                     )))?;
                 }
             }
-            Ok(true)
         }
         _ => {
-            let handled = {
-                if state.player.read().unwrap().get_context().is_none() {
-                    false
-                } else {
-                    let sort_order = match command {
-                        Command::SortTrackByTitle => Some(ContextSortOrder::TrackName),
-                        Command::SortTrackByAlbum => Some(ContextSortOrder::Album),
-                        Command::SortTrackByArtists => Some(ContextSortOrder::Artists),
-                        Command::SortTrackByAddedDate => Some(ContextSortOrder::AddedAt),
-                        Command::SortTrackByDuration => Some(ContextSortOrder::Duration),
-                        _ => None,
-                    };
-                    match sort_order {
-                        Some(sort_order) => {
+            // handles sort/reverse commands separately
+            if state.player.read().unwrap().get_context().is_some() {
+                let sort_order = match command {
+                    Command::SortTrackByTitle => Some(ContextSortOrder::TrackName),
+                    Command::SortTrackByAlbum => Some(ContextSortOrder::Album),
+                    Command::SortTrackByArtists => Some(ContextSortOrder::Artists),
+                    Command::SortTrackByAddedDate => Some(ContextSortOrder::AddedAt),
+                    Command::SortTrackByDuration => Some(ContextSortOrder::Duration),
+                    _ => None,
+                };
+                match sort_order {
+                    Some(sort_order) => {
+                        state
+                            .player
+                            .write()
+                            .unwrap()
+                            .get_context_mut()
+                            .unwrap()
+                            .sort_tracks(sort_order);
+                        return Ok(true);
+                    }
+                    None => {
+                        if command == Command::ReverseTrackOrder {
                             state
                                 .player
                                 .write()
                                 .unwrap()
                                 .get_context_mut()
                                 .unwrap()
-                                .sort_tracks(sort_order);
-                            true
-                        }
-                        None => {
-                            if command == Command::ReverseTrackOrder {
-                                state
-                                    .player
-                                    .write()
-                                    .unwrap()
-                                    .get_context_mut()
-                                    .unwrap()
-                                    .reverse_tracks();
-                                true
-                            } else {
-                                false
-                            }
+                                .reverse_tracks();
+                            return Ok(true);
                         }
                     }
                 }
-            };
-            if handled {
-                Ok(true)
-            } else {
-                handle_command_for_focused_context_subwindow(command, send, ui, state)
             }
+
+            // the command hasn't been handled, assign the job to the focused subwindow's handler
+            return handle_command_for_focused_context_subwindow(command, send, ui, state);
         }
     }
+    Ok(true)
 }
 
+/// handles a key sequence for a search window
 pub fn handle_key_sequence_for_search_window(
     key_sequence: &KeySequence,
     send: &mpsc::Sender<ClientRequest>,
@@ -160,45 +160,51 @@ pub fn handle_key_sequence_for_search_window(
         }
     }
 
-    let command = state
+    let command = match state
         .keymap_config
-        .find_command_from_key_sequence(key_sequence);
+        .find_command_from_key_sequence(key_sequence)
+    {
+        Some(command) => command,
+        None => return Ok(false),
+    };
 
-    if let Some(command) = command {
-        match command {
-            Command::FocusNextWindow => {
-                ui.window.next();
-                return Ok(true);
-            }
-            Command::FocusPreviousWindow => {
-                ui.window.previous();
-                return Ok(true);
-            }
-            _ => match focus_state {
-                SearchFocusState::Input => {}
-                SearchFocusState::Tracks => {
-                    let tracks = search_results.tracks.items.iter().collect::<Vec<_>>();
-                    return handle_command_for_track_list(command, send, ui, tracks);
-                }
-                SearchFocusState::Artists => {
-                    let artists = search_results.artists.items.iter().collect::<Vec<_>>();
-                    return handle_command_for_artist_list(command, send, ui, artists);
-                }
-                SearchFocusState::Albums => {
-                    let albums = search_results.albums.items.iter().collect::<Vec<_>>();
-                    return handle_command_for_album_list(command, send, ui, albums);
-                }
-                SearchFocusState::Playlists => {
-                    let playlists = search_results.playlists.items.iter().collect::<Vec<_>>();
-                    return handle_command_for_playlist_list(command, send, ui, playlists);
-                }
-            },
+    match command {
+        Command::FocusNextWindow => {
+            ui.window.next();
+            return Ok(true);
         }
+        Command::FocusPreviousWindow => {
+            ui.window.previous();
+            return Ok(true);
+        }
+        // determine the current focused subwindow inside the search window,
+        // and assign the handling job to the corresponding handler
+        _ => match focus_state {
+            SearchFocusState::Input => return Ok(false),
+            SearchFocusState::Tracks => {
+                let tracks = search_results.tracks.items.iter().collect::<Vec<_>>();
+                return handle_command_for_track_list_subwindow(command, send, ui, tracks);
+            }
+            SearchFocusState::Artists => {
+                let artists = search_results.artists.items.iter().collect::<Vec<_>>();
+                return handle_command_for_artist_list_subwindow(command, send, ui, artists);
+            }
+            SearchFocusState::Albums => {
+                let albums = search_results.albums.items.iter().collect::<Vec<_>>();
+                return handle_command_for_album_list_subwindow(command, send, ui, albums);
+            }
+            SearchFocusState::Playlists => {
+                let playlists = search_results.playlists.items.iter().collect::<Vec<_>>();
+                return handle_command_for_playlist_list(command, send, ui, playlists);
+            }
+        },
     }
-
-    Ok(false)
 }
 
+/// handles a command for the currently focused context subwindow
+///
+/// The function will need to determine the focused subwindow then
+/// assign the handling job to such subwindow's command handler
 pub fn handle_command_for_focused_context_subwindow(
     command: Command,
     send: &mpsc::Sender<ClientRequest>,
@@ -212,20 +218,21 @@ pub fn handle_command_for_focused_context_subwindow(
                     WindowState::Artist(_, _, _, state) => state,
                     _ => unreachable!(),
                 };
+
                 match focus_state {
-                    ArtistFocusState::Albums => handle_command_for_album_list(
+                    ArtistFocusState::Albums => handle_command_for_album_list_subwindow(
                         command,
                         send,
                         ui,
                         ui.get_search_filtered_items(albums),
                     ),
-                    ArtistFocusState::RelatedArtists => handle_command_for_artist_list(
+                    ArtistFocusState::RelatedArtists => handle_command_for_artist_list_subwindow(
                         command,
                         send,
                         ui,
                         ui.get_search_filtered_items(artists),
                     ),
-                    ArtistFocusState::TopTracks => handle_command_for_track_table(
+                    ArtistFocusState::TopTracks => handle_command_for_track_table_subwindow(
                         command,
                         send,
                         ui,
@@ -235,7 +242,7 @@ pub fn handle_command_for_focused_context_subwindow(
                     ),
                 }
             }
-            Context::Album(ref album, ref tracks) => handle_command_for_track_table(
+            Context::Album(ref album, ref tracks) => handle_command_for_track_table_subwindow(
                 command,
                 send,
                 ui,
@@ -243,21 +250,107 @@ pub fn handle_command_for_focused_context_subwindow(
                 None,
                 ui.get_search_filtered_items(tracks),
             ),
-            Context::Playlist(ref playlist, ref tracks) => handle_command_for_track_table(
-                command,
-                send,
-                ui,
-                Some(playlist.uri.clone()),
-                None,
-                ui.get_search_filtered_items(tracks),
-            ),
+            Context::Playlist(ref playlist, ref tracks) => {
+                handle_command_for_track_table_subwindow(
+                    command,
+                    send,
+                    ui,
+                    Some(playlist.uri.clone()),
+                    None,
+                    ui.get_search_filtered_items(tracks),
+                )
+            }
             Context::Unknown(_) => Ok(false),
         },
         None => Ok(false),
     }
 }
 
-fn handle_command_for_track_list(
+/// handles a command for the track table subwindow
+///
+/// In addition to the command and the application's states,
+/// the function requires
+/// - `tracks`: a list of tracks in the track table
+/// - **either** `track_uris` (a list of track's uris) or `context_uris` (a context's uri):
+///
+/// If `track_uris` is specified, playing a track in the track table will
+/// create a playing context consisting of tracks whose uri is in `track_uris`.
+/// The above case is only used for the top track table in an **Artist** context window.
+///
+/// If `context_uri` is specified, playing a track in the track table will
+/// create a playing context representing the context with `context_uri` uri.
+/// The above case is used for the track table of a playlist or an album.
+fn handle_command_for_track_table_subwindow(
+    command: Command,
+    send: &mpsc::Sender<ClientRequest>,
+    ui: &mut UIStateGuard,
+    context_uri: Option<String>,
+    track_uris: Option<Vec<String>>,
+    tracks: Vec<&Track>,
+) -> Result<bool> {
+    match command {
+        Command::SelectNextOrScrollDown => {
+            if let Some(id) = ui.window.selected() {
+                if id + 1 < tracks.len() {
+                    ui.window.select(Some(id + 1));
+                }
+            }
+        }
+        Command::SelectPreviousOrScrollUp => {
+            if let Some(id) = ui.window.selected() {
+                if id > 0 {
+                    ui.window.select(Some(id - 1));
+                }
+            }
+        }
+        Command::ChooseSelected => {
+            if let Some(id) = ui.window.selected() {
+                if track_uris.is_some() {
+                    // play a track from a list of tracks, use ID offset for finding the track
+                    send.send(ClientRequest::Player(PlayerRequest::PlayTrack(
+                        None,
+                        track_uris,
+                        offset::for_uri(tracks[id].uri.clone()),
+                    )))?;
+                } else if context_uri.is_some() {
+                    // play a track from a context, use URI offset for finding the track
+                    send.send(ClientRequest::Player(PlayerRequest::PlayTrack(
+                        context_uri,
+                        None,
+                        offset::for_uri(tracks[id].uri.clone()),
+                    )))?;
+                }
+            }
+        }
+        Command::BrowseSelectedTrackAlbum => {
+            if let Some(id) = ui.window.selected() {
+                if let Some(ref uri) = tracks[id].album.uri {
+                    send.send(ClientRequest::GetContext(ContextURI::Album(uri.clone())))?;
+                    ui.history.push(PageState::Browsing(uri.clone()));
+                }
+            }
+        }
+        Command::BrowseSelectedTrackArtists => {
+            if let Some(id) = ui.window.selected() {
+                let artists = tracks[id]
+                    .artists
+                    .iter()
+                    .map(|a| Artist {
+                        name: a.name.clone(),
+                        uri: a.uri.clone(),
+                        id: a.id.clone(),
+                    })
+                    .filter(|a| a.uri.is_some())
+                    .collect::<Vec<_>>();
+                ui.popup = Some(PopupState::ArtistList(artists, new_list_state()));
+            }
+        }
+        _ => return Ok(false),
+    }
+    Ok(true)
+}
+
+fn handle_command_for_track_list_subwindow(
     command: Command,
     send: &mpsc::Sender<ClientRequest>,
     ui: &mut UIStateGuard,
@@ -270,7 +363,6 @@ fn handle_command_for_track_list(
                     ui.window.select(Some(id + 1));
                 }
             }
-            Ok(true)
         }
         Command::SelectPreviousOrScrollUp => {
             if let Some(id) = ui.window.selected() {
@@ -278,7 +370,6 @@ fn handle_command_for_track_list(
                     ui.window.select(Some(id - 1));
                 }
             }
-            Ok(true)
         }
         Command::ChooseSelected => {
             if let Some(id) = ui.window.selected() {
@@ -288,13 +379,13 @@ fn handle_command_for_track_list(
                     None,
                 )))?;
             }
-            Ok(true)
         }
-        _ => Ok(false),
+        _ => return Ok(false),
     }
+    Ok(true)
 }
 
-fn handle_command_for_artist_list(
+fn handle_command_for_artist_list_subwindow(
     command: Command,
     send: &mpsc::Sender<ClientRequest>,
     ui: &mut UIStateGuard,
@@ -307,7 +398,6 @@ fn handle_command_for_artist_list(
                     ui.window.select(Some(id + 1));
                 }
             }
-            Ok(true)
         }
         Command::SelectPreviousOrScrollUp => {
             if let Some(id) = ui.window.selected() {
@@ -315,7 +405,6 @@ fn handle_command_for_artist_list(
                     ui.window.select(Some(id - 1));
                 }
             }
-            Ok(true)
         }
         Command::ChooseSelected => {
             if let Some(id) = ui.window.selected() {
@@ -323,13 +412,13 @@ fn handle_command_for_artist_list(
                 send.send(ClientRequest::GetContext(ContextURI::Artist(uri.clone())))?;
                 ui.history.push(PageState::Browsing(uri));
             }
-            Ok(true)
         }
-        _ => Ok(false),
+        _ => return Ok(false),
     }
+    Ok(true)
 }
 
-fn handle_command_for_album_list(
+fn handle_command_for_album_list_subwindow(
     command: Command,
     send: &mpsc::Sender<ClientRequest>,
     ui: &mut UIStateGuard,
@@ -342,7 +431,6 @@ fn handle_command_for_album_list(
                     ui.window.select(Some(id + 1));
                 }
             }
-            Ok(true)
         }
         Command::SelectPreviousOrScrollUp => {
             if let Some(id) = ui.window.selected() {
@@ -350,7 +438,6 @@ fn handle_command_for_album_list(
                     ui.window.select(Some(id - 1));
                 }
             }
-            Ok(true)
         }
         Command::ChooseSelected => {
             if let Some(id) = ui.window.selected() {
@@ -358,10 +445,10 @@ fn handle_command_for_album_list(
                 send.send(ClientRequest::GetContext(ContextURI::Album(uri.clone())))?;
                 ui.history.push(PageState::Browsing(uri));
             }
-            Ok(true)
         }
-        _ => Ok(false),
+        _ => return Ok(false),
     }
+    Ok(true)
 }
 
 fn handle_command_for_playlist_list(
@@ -377,7 +464,6 @@ fn handle_command_for_playlist_list(
                     ui.window.select(Some(id + 1));
                 }
             }
-            Ok(true)
         }
         Command::SelectPreviousOrScrollUp => {
             if let Some(id) = ui.window.selected() {
@@ -385,7 +471,6 @@ fn handle_command_for_playlist_list(
                     ui.window.select(Some(id - 1));
                 }
             }
-            Ok(true)
         }
         Command::ChooseSelected => {
             if let Some(id) = ui.window.selected() {
@@ -393,82 +478,8 @@ fn handle_command_for_playlist_list(
                 send.send(ClientRequest::GetContext(ContextURI::Playlist(uri.clone())))?;
                 ui.history.push(PageState::Browsing(uri));
             }
-            Ok(true)
         }
-        _ => Ok(false),
+        _ => return Ok(false),
     }
-}
-
-fn handle_command_for_track_table(
-    command: Command,
-    send: &mpsc::Sender<ClientRequest>,
-    ui: &mut UIStateGuard,
-    context_uri: Option<String>,
-    track_uris: Option<Vec<String>>,
-    tracks: Vec<&Track>,
-) -> Result<bool> {
-    match command {
-        Command::SelectNextOrScrollDown => {
-            if let Some(id) = ui.window.selected() {
-                if id + 1 < tracks.len() {
-                    ui.window.select(Some(id + 1));
-                }
-            }
-            Ok(true)
-        }
-        Command::SelectPreviousOrScrollUp => {
-            if let Some(id) = ui.window.selected() {
-                if id > 0 {
-                    ui.window.select(Some(id - 1));
-                }
-            }
-            Ok(true)
-        }
-        Command::ChooseSelected => {
-            if let Some(id) = ui.window.selected() {
-                if track_uris.is_some() {
-                    // play a track from a list of tracks, use ID offset for finding the track
-                    send.send(ClientRequest::Player(PlayerRequest::PlayTrack(
-                        None,
-                        track_uris,
-                        offset::for_position(id as u32),
-                    )))?;
-                } else if context_uri.is_some() {
-                    // play a track from a context, use URI offset for finding the track
-                    send.send(ClientRequest::Player(PlayerRequest::PlayTrack(
-                        context_uri,
-                        None,
-                        offset::for_uri(tracks[id].uri.clone()),
-                    )))?;
-                }
-            }
-            Ok(true)
-        }
-        Command::BrowseSelectedTrackAlbum => {
-            if let Some(id) = ui.window.selected() {
-                if let Some(ref uri) = tracks[id].album.uri {
-                    send.send(ClientRequest::GetContext(ContextURI::Album(uri.clone())))?;
-                    ui.history.push(PageState::Browsing(uri.clone()));
-                }
-            }
-            Ok(true)
-        }
-        Command::BrowseSelectedTrackArtists => {
-            if let Some(id) = ui.window.selected() {
-                let artists = tracks[id]
-                    .artists
-                    .iter()
-                    .map(|a| Artist {
-                        name: a.name.clone(),
-                        uri: a.uri.clone(),
-                        id: a.id.clone(),
-                    })
-                    .filter(|a| a.uri.is_some())
-                    .collect::<Vec<_>>();
-                ui.popup = PopupState::ArtistList(artists, new_list_state());
-            }
-            Ok(true)
-        }
-        _ => Ok(false),
-    }
+    Ok(true)
 }

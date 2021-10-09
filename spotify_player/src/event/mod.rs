@@ -174,6 +174,7 @@ fn handle_key_event(
     Ok(())
 }
 
+/// handles a global command
 fn handle_global_command(
     command: Command,
     send: &mpsc::Sender<ClientRequest>,
