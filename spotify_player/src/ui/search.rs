@@ -29,11 +29,13 @@ pub fn render_search_window(is_active: bool, frame: &mut Frame, ui: &mut UIState
             .map(|a| (format!("{} - {}", a.name, a.get_artists_info()), false))
             .collect::<Vec<_>>();
 
+        let is_active = is_active && focus_state == SearchFocusState::Tracks;
+
         construct_list_widget(
             ui,
             track_items,
-            "Tracks",
-            is_active && focus_state == SearchFocusState::Tracks,
+            &format!("Tracks{}", if is_active { " [*]" } else { "" }),
+            is_active,
             Some(Borders::TOP | Borders::RIGHT),
         )
     };
@@ -46,11 +48,13 @@ pub fn render_search_window(is_active: bool, frame: &mut Frame, ui: &mut UIState
             .map(|a| (a.name.clone(), false))
             .collect::<Vec<_>>();
 
+        let is_active = is_active && focus_state == SearchFocusState::Albums;
+
         construct_list_widget(
             ui,
             album_items,
-            "Albums",
-            is_active && focus_state == SearchFocusState::Albums,
+            &format!("Albums{}", if is_active { " [*]" } else { "" }),
+            is_active,
             Some(Borders::TOP),
         )
     };
@@ -63,11 +67,13 @@ pub fn render_search_window(is_active: bool, frame: &mut Frame, ui: &mut UIState
             .map(|a| (a.name.clone(), false))
             .collect::<Vec<_>>();
 
+        let is_active = is_active && focus_state == SearchFocusState::Artists;
+
         construct_list_widget(
             ui,
             artist_items,
-            "Artists",
-            is_active && focus_state == SearchFocusState::Artists,
+            &format!("Artists{}", if is_active { " [*]" } else { "" }),
+            is_active,
             Some(Borders::TOP | Borders::RIGHT),
         )
     };
@@ -80,11 +86,13 @@ pub fn render_search_window(is_active: bool, frame: &mut Frame, ui: &mut UIState
             .map(|a| (a.name.clone(), false))
             .collect::<Vec<_>>();
 
+        let is_active = is_active && focus_state == SearchFocusState::Playlists;
+
         construct_list_widget(
             ui,
             playlist_items,
-            "Playlists",
-            is_active && focus_state == SearchFocusState::Playlists,
+            &format!("Playlists{}", if is_active { " [*]" } else { "" }),
+            is_active,
             Some(Borders::TOP),
         )
     };
