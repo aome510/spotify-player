@@ -271,13 +271,13 @@ fn handle_key_sequence_for_list_popup(
     let current_id = popup.list_selected().unwrap();
 
     match command {
-        Command::SelectNextOrScrollDown => {
+        Command::SelectPreviousOrScrollUp => {
             if current_id > 0 {
                 popup.list_select(Some(current_id - 1));
                 on_select_func(ui, current_id - 1);
             }
         }
-        Command::SelectPreviousOrScrollUp => {
+        Command::SelectNextOrScrollDown => {
             if current_id + 1 < n_items {
                 popup.list_select(Some(current_id + 1));
                 on_select_func(ui, current_id + 1);
