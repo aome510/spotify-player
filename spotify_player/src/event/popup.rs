@@ -2,17 +2,17 @@ use super::*;
 
 /// handles a key sequence for a popup
 pub fn handle_key_sequence_for_popup(
-    key_sequence: KeySequence,
+    key_sequence: &KeySequence,
     send: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
     ui: &mut UIStateGuard,
 ) -> Result<bool> {
     match ui.popup.as_ref().unwrap() {
         PopupState::ContextSearch(_) => {
-            handle_key_sequence_for_search_popup(&key_sequence, send, state, ui)
+            handle_key_sequence_for_search_popup(key_sequence, send, state, ui)
         }
         PopupState::ArtistList(..) => handle_key_sequence_for_list_popup(
-            &key_sequence,
+            key_sequence,
             state,
             ui,
             match ui.popup {
@@ -46,7 +46,7 @@ pub fn handle_key_sequence_for_popup(
                 .collect::<Vec<_>>();
 
             handle_key_sequence_for_context_list_popup(
-                &key_sequence,
+                key_sequence,
                 send,
                 state,
                 ui,
@@ -63,7 +63,7 @@ pub fn handle_key_sequence_for_popup(
                 .collect::<Vec<_>>();
 
             handle_key_sequence_for_context_list_popup(
-                &key_sequence,
+                key_sequence,
                 send,
                 state,
                 ui,
@@ -80,7 +80,7 @@ pub fn handle_key_sequence_for_popup(
                 .collect::<Vec<_>>();
 
             handle_key_sequence_for_context_list_popup(
-                &key_sequence,
+                key_sequence,
                 send,
                 state,
                 ui,
@@ -89,7 +89,7 @@ pub fn handle_key_sequence_for_popup(
             )
         }
         PopupState::ThemeList(_, _) => handle_key_sequence_for_list_popup(
-            &key_sequence,
+            key_sequence,
             state,
             ui,
             match ui.popup {
@@ -118,7 +118,7 @@ pub fn handle_key_sequence_for_popup(
             let player = state.player.read().unwrap();
 
             handle_key_sequence_for_list_popup(
-                &key_sequence,
+                key_sequence,
                 state,
                 ui,
                 player.devices.len(),
@@ -137,7 +137,7 @@ pub fn handle_key_sequence_for_popup(
             )
         }
         PopupState::CommandHelp(_) => {
-            handle_key_sequence_for_command_help_popup(&key_sequence, state, ui)
+            handle_key_sequence_for_command_help_popup(key_sequence, state, ui)
         }
     }
 }
@@ -189,7 +189,11 @@ fn handle_key_sequence_for_search_popup(
             Command::FocusPreviousWindow => {
                 ui.window.previous();
             }
-            _ => return handle_command_for_focused_context_subwindow(command, send, ui, state),
+            _ => {
+                return window::handle_command_for_focused_context_subwindow(
+                    command, send, ui, state,
+                )
+            }
         },
         None => return Ok(false),
     }
