@@ -1,4 +1,4 @@
-use crossterm::event::KeyCode;
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 /// Key represents a key received from user's input
@@ -169,6 +169,18 @@ impl KeySequence {
             return false;
         }
         (0..self.keys.len()).fold(true, |acc, i| acc & (self.keys[i] == other.keys[i]))
+    }
+}
+
+impl From<KeyEvent> for Key {
+    fn from(event: KeyEvent) -> Self {
+        match event.modifiers {
+            KeyModifiers::NONE => Key::None(event.code),
+            KeyModifiers::ALT => Key::Alt(event.code),
+            KeyModifiers::CONTROL => Key::Ctrl(event.code),
+            KeyModifiers::SHIFT => Key::None(event.code),
+            _ => unreachable!(),
+        }
     }
 }
 

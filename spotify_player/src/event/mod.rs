@@ -2,10 +2,10 @@ use crate::{
     command::Command,
     key::{Key, KeySequence},
     state::*,
-    utils::{self, new_list_state},
+    utils::new_list_state,
 };
 use anyhow::Result;
-use crossterm::event::{self, EventStream, KeyCode, KeyModifiers};
+use crossterm::event::*;
 use rand::Rng;
 use rspotify::model::{offset, playlist};
 use std::sync::mpsc;
@@ -46,18 +46,6 @@ pub enum ClientRequest {
     Player(PlayerRequest),
 }
 
-impl From<event::KeyEvent> for Key {
-    fn from(event: event::KeyEvent) -> Self {
-        match event.modifiers {
-            KeyModifiers::NONE => Key::None(event.code),
-            KeyModifiers::ALT => Key::Alt(event.code),
-            KeyModifiers::CONTROL => Key::Ctrl(event.code),
-            KeyModifiers::SHIFT => Key::None(event.code),
-            _ => unreachable!(),
-        }
-    }
-}
-
 #[tokio::main]
 /// starts a handler to handle terminal events (key pressed, mouse clicked, etc)
 pub async fn start_event_handler(send: mpsc::Sender<ClientRequest>, state: SharedState) {
@@ -79,13 +67,13 @@ pub async fn start_event_handler(send: mpsc::Sender<ClientRequest>, state: Share
 }
 
 fn handle_terminal_event(
-    event: event::Event,
+    event: Event,
     send: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
 ) -> Result<()> {
     let key: Key = match event {
-        event::Event::Key(event) => event.into(),
-        event::Event::Mouse(event) => {
+        Event::Key(event) => event.into(),
+        Event::Mouse(event) => {
             return handle_mouse_event(event, send, state);
         }
         _ => {
@@ -276,13 +264,13 @@ fn handle_terminal_event(
 }
 
 fn handle_mouse_event(
-    event: event::MouseEvent,
+    event: MouseEvent,
     send: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
 ) -> Result<()> {
     let ui = state.ui.lock().unwrap();
     // a left click event
-    if let event::MouseEventKind::Down(event::MouseButton::Left) = event.kind {
+    if let MouseEventKind::Down(MouseButton::Left) = event.kind {
         if event.row == ui.progress_bar_rect.y {
             let player = state.player.read().unwrap();
             let track = player.get_current_playing_track();
@@ -725,23 +713,23 @@ fn handle_command(
                     })
                     .filter(|a| a.uri.is_some())
                     .collect::<Vec<_>>();
-                ui.popup = PopupState::ArtistList(artists, utils::new_list_state());
+                ui.popup = PopupState::ArtistList(artists, new_list_state());
             }
             Ok(true)
         }
         Command::BrowseUserPlaylists => {
             send.send(ClientRequest::GetUserPlaylists)?;
-            ui.popup = PopupState::UserPlaylistList(utils::new_list_state());
+            ui.popup = PopupState::UserPlaylistList(new_list_state());
             Ok(true)
         }
         Command::BrowseUserFollowedArtists => {
             send.send(ClientRequest::GetUserFollowedArtists)?;
-            ui.popup = PopupState::UserFollowedArtistList(utils::new_list_state());
+            ui.popup = PopupState::UserFollowedArtistList(new_list_state());
             Ok(true)
         }
         Command::BrowseUserSavedAlbums => {
             send.send(ClientRequest::GetUserSavedAlbums)?;
-            ui.popup = PopupState::UserSavedAlbumList(utils::new_list_state());
+            ui.popup = PopupState::UserSavedAlbumList(new_list_state());
             Ok(true)
         }
         Command::PreviousPage => {
@@ -751,12 +739,12 @@ fn handle_command(
             Ok(true)
         }
         Command::SwitchDevice => {
-            ui.popup = PopupState::DeviceList(utils::new_list_state());
+            ui.popup = PopupState::DeviceList(new_list_state());
             send.send(ClientRequest::GetDevices)?;
             Ok(true)
         }
         Command::SwitchTheme => {
-            ui.popup = PopupState::ThemeList(state.get_themes(ui), utils::new_list_state());
+            ui.popup = PopupState::ThemeList(state.get_themes(ui), new_list_state());
             Ok(true)
         }
         _ => Ok(false),
@@ -1029,7 +1017,7 @@ fn handle_command_for_track_table(
                     })
                     .filter(|a| a.uri.is_some())
                     .collect::<Vec<_>>();
-                ui.popup = PopupState::ArtistList(artists, utils::new_list_state());
+                ui.popup = PopupState::ArtistList(artists, new_list_state());
             }
             Ok(true)
         }
