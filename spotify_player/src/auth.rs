@@ -2,7 +2,10 @@ use std::io::Write;
 
 use anyhow::{anyhow, Result};
 use librespot_core::{
-    authentication::Credentials, cache::Cache, config::SessionConfig, session::Session,
+    authentication::Credentials,
+    cache::Cache,
+    config::SessionConfig,
+    session::{Session, SessionError},
 };
 
 fn read_user_auth_details(user: Option<String>) -> Result<(String, String)> {
@@ -30,7 +33,7 @@ fn read_user_auth_details(user: Option<String>) -> Result<(String, String)> {
 async fn new_session_with_new_creds(cache: &Cache) -> Result<Session> {
     log::info!("creating a new session with new authentication credentials");
 
-    println!("Authentication token not found or expired, please reauthenticate.");
+    println!("Authentication token not found or invalid, please reauthenticate.");
 
     let mut user: Option<String> = None;
 
@@ -50,7 +53,7 @@ async fn new_session_with_new_creds(cache: &Cache) -> Result<Session> {
             }
             Err(err) => {
                 println!("Failed to authenticate, {} tries left", 2 - i);
-                log::warn!("failed to authenticate: {:?}", err)
+                log::warn!("failed to authenticate: {}", err)
             }
         }
     }
@@ -81,7 +84,16 @@ pub async fn new_session(cache_folder: &std::path::Path, audio_cache: bool) -> R
                     log::info!("use the cached credentials");
                     Ok(session)
                 }
-                Err(_) => new_session_with_new_creds(&cache).await,
+                Err(err) => match err {
+                    SessionError::AuthenticationError(err) => {
+                        log::warn!("authentication error: {}", err);
+                        new_session_with_new_creds(&cache).await
+                    }
+                    SessionError::IoError(err) => Err(anyhow!(format!(
+                        "{}\nPlease check your internet connection.",
+                        err
+                    ))),
+                },
             }
         }
     }
