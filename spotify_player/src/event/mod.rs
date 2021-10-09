@@ -15,7 +15,7 @@ mod popup;
 mod window;
 
 #[derive(Debug)]
-/// A URI of different kinds of contexts
+/// A context URI
 pub enum ContextURI {
     Playlist(String),
     Album(String),
@@ -59,7 +59,11 @@ pub async fn start_event_handler(send: mpsc::Sender<ClientRequest>, state: Share
         match event {
             Ok(event) => {
                 log::info!("got event: {:?}", event);
-                if let Err(err) = handle_terminal_event(event, &send, &state) {
+                if let Err(err) = match event {
+                    Event::Mouse(event) => handle_mouse_event(event, &send, &state),
+                    Event::Key(event) => handle_key_event(event, &send, &state),
+                    _ => Ok(()),
+                } {
                     log::warn!("failed to handle event: {:#}", err);
                 }
             }
@@ -67,19 +71,6 @@ pub async fn start_event_handler(send: mpsc::Sender<ClientRequest>, state: Share
                 log::warn!("failed to get event: {:#}", err);
             }
         }
-    }
-}
-
-// handles a terminal event
-fn handle_terminal_event(
-    event: Event,
-    send: &mpsc::Sender<ClientRequest>,
-    state: &SharedState,
-) -> Result<()> {
-    match event {
-        Event::Mouse(event) => handle_mouse_event(event, send, state),
-        Event::Key(event) => handle_key_event(event, send, state),
-        _ => Ok(()),
     }
 }
 
