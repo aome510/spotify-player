@@ -45,7 +45,7 @@ pub fn handle_key_sequence_for_popup(
                 .map(|p| p.uri.clone())
                 .collect::<Vec<_>>();
 
-            handle_key_sequence_for_context_browsing_list_popup(
+            handle_key_sequence_for_context_list_popup(
                 &key_sequence,
                 send,
                 state,
@@ -62,7 +62,7 @@ pub fn handle_key_sequence_for_popup(
                 .map(|a| a.uri.clone().unwrap())
                 .collect::<Vec<_>>();
 
-            handle_key_sequence_for_context_browsing_list_popup(
+            handle_key_sequence_for_context_list_popup(
                 &key_sequence,
                 send,
                 state,
@@ -79,7 +79,7 @@ pub fn handle_key_sequence_for_popup(
                 .map(|a| a.uri.clone().unwrap())
                 .collect::<Vec<_>>();
 
-            handle_key_sequence_for_context_browsing_list_popup(
+            handle_key_sequence_for_context_list_popup(
                 &key_sequence,
                 send,
                 state,
@@ -196,13 +196,14 @@ fn handle_key_sequence_for_search_popup(
     Ok(true)
 }
 
-/// handles a key sequence for a list popup used to browse a context
+/// handles a key sequence for a context list popup in which
+/// each item represents a context
 ///
 /// In addition to application's states and the key sequence,
 /// the function requires to specify:
-/// - `uris`: a list of context URI(s)
-/// - `uri_type`: an enum represents the type of context URI (`playlist`, `artist`, etc)
-fn handle_key_sequence_for_context_browsing_list_popup(
+/// - `uris`: a list of context URIs
+/// - `uri_type`: an enum represents the type of a context in the list (`playlist`, `artist`, etc)
+fn handle_key_sequence_for_context_list_popup(
     key_sequence: &KeySequence,
     send: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
@@ -310,18 +311,16 @@ fn handle_key_sequence_for_command_help_popup(
     match command {
         Command::ClosePopup => {
             ui.popup = None;
-            Ok(true)
         }
         Command::SelectNextOrScrollDown => {
             *offset += 1;
-            Ok(true)
         }
         Command::SelectPreviousOrScrollUp => {
             if *offset > 0 {
                 *offset -= 1;
             }
-            Ok(true)
         }
-        _ => Ok(false),
+        _ => return Ok(false),
     }
+    Ok(true)
 }
