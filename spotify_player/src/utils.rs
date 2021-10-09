@@ -1,7 +1,7 @@
 use tui::widgets::{ListState, TableState};
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
-use crate::state::{self, ArtistFocusState, PopupState, WindowState};
+use crate::state::{self, ArtistFocusState, WindowState};
 
 /// formats a time duration (in ms) into a "{minutes}:{seconds}" format
 pub fn format_duration(duration: u32) -> String {
@@ -82,7 +82,7 @@ pub fn update_context(state: &state::SharedState, context_uri: String) {
                 // update the UI states based on the new playing context
                 let mut ui = state.ui.lock().unwrap();
                 ui.window = window_state;
-                ui.popup = PopupState::None;
+                ui.popup = None;
                 break;
             }
         }

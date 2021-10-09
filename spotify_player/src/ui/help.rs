@@ -61,7 +61,7 @@ pub fn render_commands_help_window(
     rect: Rect,
 ) {
     let offset = match ui.popup {
-        PopupState::CommandHelp(ref mut offset) => offset,
+        Some(PopupState::CommandHelp(ref mut offset)) => offset,
         _ => unreachable!(),
     };
 
