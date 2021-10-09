@@ -171,31 +171,31 @@ pub fn handle_key_sequence_for_search_window(
     match command {
         Command::FocusNextWindow => {
             ui.window.next();
-            return Ok(true);
+            Ok(true)
         }
         Command::FocusPreviousWindow => {
             ui.window.previous();
-            return Ok(true);
+            Ok(true)
         }
         // determine the current focused subwindow inside the search window,
         // and assign the handling job to the corresponding handler
         _ => match focus_state {
-            SearchFocusState::Input => return Ok(false),
+            SearchFocusState::Input => Ok(false),
             SearchFocusState::Tracks => {
                 let tracks = search_results.tracks.items.iter().collect::<Vec<_>>();
-                return handle_command_for_track_list_subwindow(command, send, ui, tracks);
+                handle_command_for_track_list_subwindow(command, send, ui, tracks)
             }
             SearchFocusState::Artists => {
                 let artists = search_results.artists.items.iter().collect::<Vec<_>>();
-                return handle_command_for_artist_list_subwindow(command, send, ui, artists);
+                handle_command_for_artist_list_subwindow(command, send, ui, artists)
             }
             SearchFocusState::Albums => {
                 let albums = search_results.albums.items.iter().collect::<Vec<_>>();
-                return handle_command_for_album_list_subwindow(command, send, ui, albums);
+                handle_command_for_album_list_subwindow(command, send, ui, albums)
             }
             SearchFocusState::Playlists => {
                 let playlists = search_results.playlists.items.iter().collect::<Vec<_>>();
-                return handle_command_for_playlist_list(command, send, ui, playlists);
+                handle_command_for_playlist_list(command, send, ui, playlists)
             }
         },
     }
