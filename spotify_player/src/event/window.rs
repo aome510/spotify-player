@@ -28,11 +28,6 @@ pub fn handle_key_sequence_for_context_window(
                 new_list_state(),
                 SearchFocusState::Input,
             );
-
-            // manually empty the `context_uri` to trigger
-            // context updating when moving from the search page
-            // to a previous context page
-            state.player.write().unwrap().context_uri = "".to_owned();
         }
         Command::FocusNextWindow => {
             ui.window.next();

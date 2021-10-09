@@ -862,7 +862,12 @@ async fn watch_player_events(
 
     // update the player's context based on the UI's page state
     match state.ui.lock().unwrap().current_page() {
-        PageState::Searching(..) => {}
+        PageState::Searching(..) => {
+            // manually empty the `context_uri` to trigger
+            // context updating when moving from the search page
+            // to a previous context page and vice versa
+            state.player.write().unwrap().context_uri = "".to_owned();
+        }
         PageState::Browsing(uri) => {
             if state.player.read().unwrap().context_uri != *uri {
                 utils::update_context(state, uri.clone());
