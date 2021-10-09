@@ -11,6 +11,8 @@ use rspotify::model::{offset, playlist};
 use std::sync::mpsc;
 use tokio_stream::StreamExt;
 
+mod popup;
+
 #[derive(Debug)]
 pub enum ContextURI {
     Playlist(String),
@@ -66,23 +68,33 @@ pub async fn start_event_handler(send: mpsc::Sender<ClientRequest>, state: Share
     }
 }
 
+// handles a terminal event
 fn handle_terminal_event(
     event: Event,
     send: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
 ) -> Result<()> {
-    let key: Key = match event {
-        Event::Key(event) => event.into(),
-        Event::Mouse(event) => {
-            return handle_mouse_event(event, send, state);
-        }
-        _ => {
-            return Ok(());
-        }
-    };
+    match event {
+        Event::Key(event) => handle_key_event(event, send, state),
+        // mouse event is handled separately
+        Event::Mouse(event) => handle_mouse_event(event, send, state),
+        _ => Ok(()),
+    }
+}
 
+// handle a terminal key pressed event
+fn handle_key_event(
+    event: KeyEvent,
+    send: &mpsc::Sender<ClientRequest>,
+    state: &SharedState,
+) -> Result<()> {
+    let key: Key = event.into();
+
+    // lock the UI state because we'll use it many times
+    // when handling a terminal event
     let mut ui = state.ui.lock().unwrap();
 
+    // parse the key sequence from user's previous inputs
     let mut key_sequence = ui.input_key_sequence.clone();
     key_sequence.keys.push(key.clone());
     if state
@@ -93,6 +105,7 @@ fn handle_terminal_event(
         key_sequence = KeySequence { keys: vec![key] };
     }
 
+    // find a command matching a key sequence
     let command = state
         .keymap_config
         .find_command_from_key_sequence(&key_sequence);
@@ -110,143 +123,6 @@ fn handle_terminal_event(
         }
         Some(command) => {
             // handle commands specifically for a popup window
-            let handled = match ui.popup {
-                PopupState::None => match ui.current_page() {
-                    // no popup, handle command based on the current UI's `PageState`
-                    PageState::Browsing(_) => {
-                        handle_command_for_context_window(command, send, state, &mut ui)?
-                    }
-                    PageState::CurrentPlaying => {
-                        handle_command_for_context_window(command, send, state, &mut ui)?
-                    }
-                    PageState::Searching(..) => {
-                        handle_key_sequence_for_search_window(&key_sequence, send, state, &mut ui)?
-                    }
-                },
-                PopupState::ContextSearch(_) => {
-                    handle_key_sequence_for_search_popup(&key_sequence, send, state, &mut ui)?
-                }
-                PopupState::ArtistList(..) => handle_command_for_list_popup(
-                    command,
-                    match ui.popup {
-                        PopupState::ArtistList(ref artists, _) => artists.len(),
-                        _ => unreachable!(),
-                    },
-                    |_: &mut UIStateGuard, _: usize| {},
-                    |ui: &mut UIStateGuard, id: usize| -> Result<()> {
-                        let artists = match ui.popup {
-                            PopupState::ArtistList(ref artists, _) => artists,
-                            _ => unreachable!(),
-                        };
-                        let uri = artists[id].uri.clone().unwrap();
-                        send.send(ClientRequest::GetContext(ContextURI::Artist(uri.clone())))?;
-
-                        ui.history.push(PageState::Browsing(uri));
-                        ui.popup = PopupState::None;
-                        Ok(())
-                    },
-                    |ui: &mut UIStateGuard| {
-                        ui.popup = PopupState::None;
-                    },
-                    &mut ui,
-                )?,
-                PopupState::UserPlaylistList(_) => {
-                    let player = state.player.read().unwrap();
-                    let playlist_uris = player
-                        .user_playlists
-                        .iter()
-                        .map(|p| p.uri.clone())
-                        .collect::<Vec<_>>();
-                    handle_command_for_uri_list_popup(
-                        command,
-                        send,
-                        &mut ui,
-                        playlist_uris,
-                        ContextURI::Playlist("".to_owned()),
-                    )?
-                }
-                PopupState::UserFollowedArtistList(_) => {
-                    let player = state.player.read().unwrap();
-                    let artist_uris = player
-                        .user_followed_artists
-                        .iter()
-                        .map(|a| a.uri.clone().unwrap())
-                        .collect::<Vec<_>>();
-                    handle_command_for_uri_list_popup(
-                        command,
-                        send,
-                        &mut ui,
-                        artist_uris,
-                        ContextURI::Artist("".to_owned()),
-                    )?
-                }
-                PopupState::UserSavedAlbumList(_) => {
-                    let player = state.player.read().unwrap();
-                    let album_uris = player
-                        .user_saved_albums
-                        .iter()
-                        .map(|a| a.uri.clone().unwrap())
-                        .collect::<Vec<_>>();
-
-                    handle_command_for_uri_list_popup(
-                        command,
-                        send,
-                        &mut ui,
-                        album_uris,
-                        ContextURI::Album("".to_owned()),
-                    )?
-                }
-                PopupState::ThemeList(_, _) => handle_command_for_list_popup(
-                    command,
-                    match ui.popup {
-                        PopupState::ThemeList(ref themes, _) => themes.len(),
-                        _ => unreachable!(),
-                    },
-                    |ui: &mut UIStateGuard, id: usize| {
-                        ui.theme = match ui.popup {
-                            PopupState::ThemeList(ref themes, _) => themes[id].clone(),
-                            _ => unreachable!(),
-                        };
-                    },
-                    |ui: &mut UIStateGuard, _: usize| -> Result<()> {
-                        ui.popup = PopupState::None;
-                        Ok(())
-                    },
-                    |ui: &mut UIStateGuard| {
-                        ui.theme = match ui.popup {
-                            PopupState::ThemeList(ref themes, _) => themes[0].clone(),
-                            _ => unreachable!(),
-                        };
-                        ui.popup = PopupState::None;
-                    },
-                    &mut ui,
-                )?,
-                PopupState::DeviceList(_) => {
-                    let player = state.player.read().unwrap();
-
-                    handle_command_for_list_popup(
-                        command,
-                        player.devices.len(),
-                        |_: &mut UIStateGuard, _: usize| {},
-                        |ui: &mut UIStateGuard, id: usize| -> Result<()> {
-                            send.send(ClientRequest::Player(PlayerRequest::TransferPlayback(
-                                player.devices[id].id.clone(),
-                                true,
-                            )))?;
-                            ui.popup = PopupState::None;
-                            Ok(())
-                        },
-                        |ui: &mut UIStateGuard| {
-                            ui.popup = PopupState::None;
-                        },
-                        &mut ui,
-                    )?
-                }
-                PopupState::CommandHelp(_) => {
-                    handle_command_for_command_help_popup(command, &mut ui)?
-                }
-            };
-
             if handled {
                 true
             } else {
@@ -263,6 +139,7 @@ fn handle_terminal_event(
     Ok(())
 }
 
+// handles a terminal mouse event
 fn handle_mouse_event(
     event: MouseEvent,
     send: &mpsc::Sender<ClientRequest>,
@@ -568,71 +445,6 @@ fn handle_command_for_uri_list_popup(
         },
         ui,
     )
-}
-
-fn handle_command_for_list_popup(
-    command: Command,
-    list_len: usize,
-    on_select_func: impl Fn(&mut UIStateGuard, usize),
-    choose_handle_func: impl Fn(&mut UIStateGuard, usize) -> Result<()>,
-    close_handle_func: impl Fn(&mut UIStateGuard),
-    ui: &mut UIStateGuard,
-) -> Result<bool> {
-    match command {
-        Command::SelectNextOrScrollDown => {
-            if let Some(id) = ui.popup.list_selected() {
-                if id + 1 < list_len {
-                    ui.popup.list_select(Some(id + 1));
-                    on_select_func(ui, id + 1);
-                }
-            }
-            Ok(true)
-        }
-        Command::SelectPreviousOrScrollUp => {
-            if let Some(id) = ui.popup.list_selected() {
-                if id > 0 {
-                    ui.popup.list_select(Some(id - 1));
-                    on_select_func(ui, id - 1);
-                }
-            }
-            Ok(true)
-        }
-        Command::ChooseSelected => {
-            if let Some(id) = ui.popup.list_selected() {
-                choose_handle_func(ui, id)?;
-            }
-            Ok(true)
-        }
-        Command::ClosePopup => {
-            close_handle_func(ui);
-            Ok(true)
-        }
-        _ => Ok(false),
-    }
-}
-
-fn handle_command_for_command_help_popup(command: Command, ui: &mut UIStateGuard) -> Result<bool> {
-    let offset = match ui.popup {
-        PopupState::CommandHelp(ref mut offset) => offset,
-        _ => unreachable!(),
-    };
-    match command {
-        Command::ClosePopup => {
-            ui.popup = PopupState::None;
-            Ok(true)
-        }
-        Command::SelectNextOrScrollDown => {
-            *offset += 1;
-            Ok(true)
-        }
-        Command::SelectPreviousOrScrollUp => {
-            if *offset > 0 {
-                *offset -= 1;
-            }
-            Ok(true)
-        }
-        _ => Ok(false),
-    }
 }
 
 fn handle_command(

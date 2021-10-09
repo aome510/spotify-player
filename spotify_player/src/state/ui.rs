@@ -14,7 +14,7 @@ pub struct UIState {
     pub input_key_sequence: key::KeySequence,
 
     pub history: Vec<PageState>,
-    pub popup: PopupState,
+    pub popup: Option<PopupState>,
     pub window: WindowState,
 
     pub progress_bar_rect: tui::layout::Rect,
@@ -45,7 +45,6 @@ pub enum WindowState {
 /// Popup state
 #[derive(Debug)]
 pub enum PopupState {
-    None,
     CommandHelp(usize),
     ContextSearch(String),
     UserPlaylistList(ListState),
@@ -101,7 +100,7 @@ impl UIState {
         items: &'a [T],
     ) -> Vec<&'a T> {
         match self.popup {
-            PopupState::ContextSearch(ref query) => items
+            Some(PopupState::ContextSearch(ref query)) => items
                 .iter()
                 .filter(|t| Self::query_match(&t.to_string().to_lowercase(), &query.to_lowercase()))
                 .collect::<Vec<_>>(),
@@ -118,7 +117,7 @@ impl Default for UIState {
             input_key_sequence: key::KeySequence { keys: vec![] },
 
             history: vec![PageState::CurrentPlaying],
-            popup: PopupState::None,
+            popup: None,
             window: WindowState::Unknown,
 
             progress_bar_rect: tui::layout::Rect::default(),
@@ -136,7 +135,7 @@ impl PopupState {
             Self::UserSavedAlbumList(ref state) => Some(state),
             Self::ArtistList(_, ref state) => Some(state),
             Self::ThemeList(_, ref state) => Some(state),
-            Self::CommandHelp(_) | Self::None | Self::ContextSearch(_) => None,
+            Self::CommandHelp(_) | Self::ContextSearch(_) => None,
         }
     }
 
@@ -149,7 +148,7 @@ impl PopupState {
             Self::UserSavedAlbumList(ref mut state) => Some(state),
             Self::ArtistList(_, ref mut state) => Some(state),
             Self::ThemeList(_, ref mut state) => Some(state),
-            Self::CommandHelp(_) | Self::None | Self::ContextSearch(_) => None,
+            Self::CommandHelp(_) | Self::ContextSearch(_) => None,
         }
     }
 
