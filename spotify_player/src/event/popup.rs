@@ -139,6 +139,9 @@ pub fn handle_key_sequence_for_popup(
         PopupState::CommandHelp(_) => {
             handle_key_sequence_for_command_help_popup(key_sequence, state, ui)
         }
+        PopupState::ActionList(..) => {
+            todo!()
+        }
     }
 }
 

@@ -802,7 +802,7 @@ pub async fn start_player_event_watchers(
     }
 
     // start the main event watcher watching for new events every second
-    let refresh_duration = std::time::Duration::from_millis(1000);
+    let refresh_duration = std::time::Duration::from_millis(500);
     loop {
         watch_player_events(&state, &send, &session)
             .await

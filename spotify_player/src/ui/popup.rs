@@ -15,6 +15,9 @@ pub fn render_popup(
     match ui.popup {
         None => (rect, true),
         Some(ref popup) => match popup {
+            PopupState::ActionList(..) => {
+                todo!()
+            }
             PopupState::CommandHelp(_) => {
                 let chunks = Layout::default()
                     .direction(Direction::Vertical)
