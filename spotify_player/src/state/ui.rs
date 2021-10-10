@@ -1,5 +1,5 @@
 use super::player::*;
-use crate::{config, key};
+use crate::{command, config, key};
 
 use tui::widgets::{ListState, TableState};
 pub type UIStateGuard<'a> = std::sync::MutexGuard<'a, UIState>;
@@ -53,6 +53,7 @@ pub enum PopupState {
     DeviceList(ListState),
     ArtistList(Vec<Artist>, ListState),
     ThemeList(Vec<config::Theme>, ListState),
+    ActionList(Vec<command::Command>, ListState),
 }
 
 /// A trait representing a focusable state
@@ -135,6 +136,7 @@ impl PopupState {
             Self::UserSavedAlbumList(ref state) => Some(state),
             Self::ArtistList(_, ref state) => Some(state),
             Self::ThemeList(_, ref state) => Some(state),
+            Self::ActionList(_, ref state) => Some(state),
             Self::CommandHelp(_) | Self::ContextSearch(_) => None,
         }
     }
@@ -148,6 +150,7 @@ impl PopupState {
             Self::UserSavedAlbumList(ref mut state) => Some(state),
             Self::ArtistList(_, ref mut state) => Some(state),
             Self::ThemeList(_, ref mut state) => Some(state),
+            Self::ActionList(_, ref mut state) => Some(state),
             Self::CommandHelp(_) | Self::ContextSearch(_) => None,
         }
     }
