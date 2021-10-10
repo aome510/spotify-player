@@ -11,6 +11,9 @@ use rspotify::model::{offset, playlist};
 use std::sync::mpsc;
 use tokio_stream::StreamExt;
 
+use self::item::{browse_track_album, browse_track_artist};
+
+mod item;
 mod popup;
 mod window;
 
@@ -214,25 +217,12 @@ fn handle_global_command(
         }
         Command::BrowsePlayingTrackAlbum => {
             if let Some(track) = state.player.read().unwrap().get_current_playing_track() {
-                if let Some(ref uri) = track.album.uri {
-                    send.send(ClientRequest::GetContext(ContextURI::Album(uri.clone())))?;
-                    ui.history.push(PageState::Browsing(uri.clone()));
-                }
+                browse_track_album(track.into(), send, ui)?;
             }
         }
         Command::BrowsePlayingTrackArtists => {
             if let Some(track) = state.player.read().unwrap().get_current_playing_track() {
-                let artists = track
-                    .artists
-                    .iter()
-                    .map(|a| Artist {
-                        name: a.name.clone(),
-                        uri: a.uri.clone(),
-                        id: a.id.clone(),
-                    })
-                    .filter(|a| a.uri.is_some())
-                    .collect::<Vec<_>>();
-                ui.popup = Some(PopupState::ArtistList(artists, new_list_state()));
+                browse_track_artist(track.into(), ui);
             }
         }
         Command::BrowseUserPlaylists => {

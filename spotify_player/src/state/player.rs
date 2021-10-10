@@ -81,6 +81,14 @@ pub struct Artist {
     pub name: String,
 }
 
+#[derive(Debug)]
+pub enum Item {
+    Track(Track),
+    Album(Album),
+    Artist(Artist),
+    Playlist(playlist::FullPlaylist),
+}
+
 impl PlayerState {
     /// gets the current playing track
     pub fn get_current_playing_track(&self) -> Option<&track::FullTrack> {
@@ -295,6 +303,25 @@ impl From<track::SimplifiedTrack> for Track {
             name: track.name,
             artists: track.artists.into_iter().map(|a| a.into()).collect(),
             album: Album::default(),
+            duration: track.duration_ms,
+            added_at: 0,
+        }
+    }
+}
+
+impl From<&track::FullTrack> for Track {
+    fn from(track: &track::FullTrack) -> Self {
+        Self {
+            id: track.id.clone(),
+            uri: track.uri.clone(),
+            name: track.name.clone(),
+            artists: track
+                .artists
+                .clone()
+                .into_iter()
+                .map(|a| a.into())
+                .collect(),
+            album: track.album.clone().into(),
             duration: track.duration_ms,
             added_at: 0,
         }

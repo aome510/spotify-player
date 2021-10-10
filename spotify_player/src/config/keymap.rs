@@ -68,6 +68,14 @@ impl Default for KeymapConfig {
                     command: Command::SearchContext,
                 },
                 Keymap {
+                    key_sequence: "C-;".into(),
+                    command: Command::ShowActionsOnSelectedItem,
+                },
+                Keymap {
+                    key_sequence: "g a".into(),
+                    command: Command::ShowActionsOnSelectedItem,
+                },
+                Keymap {
                     key_sequence: "tab".into(),
                     command: Command::FocusNextWindow,
                 },

@@ -29,6 +29,8 @@ pub enum Command {
     SwitchDevice,
     SearchContext,
 
+    ShowActionsOnSelectedItem,
+
     BrowseUserPlaylists,
     BrowseUserFollowedArtists,
     BrowseUserSavedAlbums,
@@ -68,6 +70,7 @@ impl Command {
             }
             Self::ChooseSelected => "choose the selected item and act on it",
             Self::RefreshPlayback => "manually refresh the current playback",
+            Self::ShowActionsOnSelectedItem => "show actions on a selected item",
             Self::FocusNextWindow => "focus the next focusable window (if any)",
             Self::FocusPreviousWindow => "focus the previous focusable window (if any)",
             Self::SwitchTheme => "open a popup for switching theme",
