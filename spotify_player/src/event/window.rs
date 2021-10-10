@@ -317,29 +317,6 @@ fn handle_command_for_track_table_subwindow(
                 }
             }
         }
-        Command::BrowseSelectedTrackAlbum => {
-            if let Some(id) = ui.window.selected() {
-                if let Some(ref uri) = tracks[id].album.uri {
-                    send.send(ClientRequest::GetContext(ContextURI::Album(uri.clone())))?;
-                    ui.history.push(PageState::Browsing(uri.clone()));
-                }
-            }
-        }
-        Command::BrowseSelectedTrackArtists => {
-            if let Some(id) = ui.window.selected() {
-                let artists = tracks[id]
-                    .artists
-                    .iter()
-                    .map(|a| Artist {
-                        name: a.name.clone(),
-                        uri: a.uri.clone(),
-                        id: a.id.clone(),
-                    })
-                    .filter(|a| a.uri.is_some())
-                    .collect::<Vec<_>>();
-                ui.popup = Some(PopupState::ArtistList(artists, new_list_state()));
-            }
-        }
         _ => return Ok(false),
     }
     Ok(true)

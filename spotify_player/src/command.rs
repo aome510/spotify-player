@@ -36,11 +36,8 @@ pub enum Command {
     BrowsePlayingTrackArtists,
     BrowsePlayingTrackAlbum,
     BrowsePlayingContext,
-    BrowseSelectedTrackArtists,
-    BrowseSelectedTrackAlbum,
 
     SearchPage,
-
     PreviousPage,
 
     SortTrackByTitle,
@@ -84,10 +81,6 @@ impl Command {
             }
             Self::BrowsePlayingTrackAlbum => "browse the current playing track's album",
             Self::BrowsePlayingContext => "browse the current playing context",
-            Self::BrowseSelectedTrackArtists => {
-                "open a popup for browsing the selected track's artists"
-            }
-            Self::BrowseSelectedTrackAlbum => "browse to the selected track's album",
             Self::SearchPage => "go to the search page",
             Self::PreviousPage => "go to the previous page",
             Self::SortTrackByTitle => "sort the track table (if any) by track's title",
