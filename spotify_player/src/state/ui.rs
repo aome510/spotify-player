@@ -56,7 +56,7 @@ pub enum PopupState {
     ActionList(Item, ListState),
 }
 
-/// An action on a popup's item
+/// An action on a playlist popup list
 #[derive(Debug)]
 pub enum PlaylistPopupAction {
     Browse,

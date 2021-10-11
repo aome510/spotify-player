@@ -71,7 +71,7 @@ async fn main() -> anyhow::Result<()> {
     state.parse_config_files(&config_folder, matches.value_of("theme"))?;
 
     let session = auth::new_session(&cache_folder, state.app_config.device.audio_cache).await?;
-    // retrieve the authentication token, and store inside the player state
+    // retrieve the authentication token, and store it inside the player state
     let token = token::get_token(&session, &state.app_config.client_id).await?;
     state.player.write().unwrap().token = token;
 

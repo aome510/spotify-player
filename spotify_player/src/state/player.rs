@@ -321,25 +321,6 @@ impl From<track::SimplifiedTrack> for Track {
     }
 }
 
-impl From<&track::FullTrack> for Track {
-    fn from(track: &track::FullTrack) -> Self {
-        Self {
-            id: track.id.clone(),
-            uri: track.uri.clone(),
-            name: track.name.clone(),
-            artists: track
-                .artists
-                .clone()
-                .into_iter()
-                .map(|a| a.into())
-                .collect(),
-            album: track.album.clone().into(),
-            duration: track.duration_ms,
-            added_at: 0,
-        }
-    }
-}
-
 impl From<track::FullTrack> for Track {
     fn from(track: track::FullTrack) -> Self {
         Self {

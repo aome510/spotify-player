@@ -5,8 +5,8 @@ use tui::{layout::*, widgets::*};
 /// renders a popup (if any) to handle a command or show additional information
 /// depending on the current popup state.
 ///
-/// The function returns the remaining rectangle area to draw the main layout
-/// and a boolean `is_active` to determine whether the focus is **not** placed on the popup.
+/// The function returns a rectangle area to render the main layout
+/// and a boolean `is_active` determining whether the focus is **not** placed on the popup.
 pub fn render_popup(
     frame: &mut Frame,
     ui: &mut UIStateGuard,

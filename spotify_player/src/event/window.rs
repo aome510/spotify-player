@@ -298,14 +298,14 @@ fn handle_command_for_track_table_subwindow(
         }
         Command::ChooseSelected => {
             if track_uris.is_some() {
-                // play a track from a list of tracks, use ID offset for finding the track
+                // play a track from a list of tracks
                 send.send(ClientRequest::Player(PlayerRequest::PlayTrack(
                     None,
                     track_uris,
                     offset::for_uri(tracks[id].uri.clone()),
                 )))?;
             } else if context_uri.is_some() {
-                // play a track from a context, use URI offset for finding the track
+                // play a track from a context
                 send.send(ClientRequest::Player(PlayerRequest::PlayTrack(
                     context_uri,
                     None,
