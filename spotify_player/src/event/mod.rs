@@ -7,7 +7,7 @@ use crate::{
 use anyhow::Result;
 use crossterm::event::*;
 use rand::Rng;
-use rspotify::model::{offset, playlist};
+use rspotify::model::offset;
 use std::sync::mpsc;
 use tokio_stream::StreamExt;
 
@@ -40,6 +40,7 @@ pub enum PlayerRequest {
 #[derive(Debug)]
 /// A request to the client
 pub enum ClientRequest {
+    GetCurrentUser,
     GetDevices,
     GetUserPlaylists,
     GetUserSavedAlbums,
@@ -47,6 +48,8 @@ pub enum ClientRequest {
     GetContext(ContextURI),
     GetCurrentPlayback,
     Search(String),
+    /// playlist_id, track_id
+    AddTrackToPlaylist(String, String),
     Player(PlayerRequest),
 }
 
@@ -237,7 +240,18 @@ fn handle_global_command(
         }
         Command::BrowseUserPlaylists => {
             send.send(ClientRequest::GetUserPlaylists)?;
-            ui.popup = Some(PopupState::UserPlaylistList(new_list_state()));
+            ui.popup = Some(PopupState::UserPlaylistList(
+                PlaylistPopupAction::Browse,
+                state
+                    .player
+                    .read()
+                    .unwrap()
+                    .user_playlists
+                    .iter()
+                    .cloned()
+                    .collect(),
+                new_list_state(),
+            ));
         }
         Command::BrowseUserFollowedArtists => {
             send.send(ClientRequest::GetUserFollowedArtists)?;
