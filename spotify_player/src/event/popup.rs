@@ -142,49 +142,7 @@ pub fn handle_key_sequence_for_popup(
             handle_key_sequence_for_command_help_popup(key_sequence, state, ui)
         }
         PopupState::ActionList(ref item, _) => {
-            let actions = item.actions();
-            handle_key_sequence_for_list_popup(
-                key_sequence,
-                state,
-                ui,
-                actions.len(),
-                |_, _| {},
-                |ui: &mut UIStateGuard, id: usize| -> Result<()> {
-                    let item = match ui.popup {
-                        Some(PopupState::ActionList(ref item, _)) => item,
-                        _ => unreachable!(),
-                    };
-
-                    match item {
-                        Item::Track(track) => match actions[id] {
-                            Action::BrowseAlbum => {
-                                let uri = track.album.uri.clone();
-                                if let Some(uri) = uri {
-                                    send.send(ClientRequest::GetContext(ContextURI::Album(
-                                        uri.clone(),
-                                    )))?;
-                                    ui.history.push(PageState::Browsing(uri));
-                                }
-                            }
-                            Action::BrowseArtist => {
-                                let artists = track
-                                    .artists
-                                    .iter()
-                                    .filter(|a| a.uri.is_some())
-                                    .cloned()
-                                    .collect::<Vec<_>>();
-                                ui.popup = Some(PopupState::ArtistList(artists, new_list_state()));
-                            }
-                            Action::SaveToLibrary => todo!(),
-                        },
-                        _ => todo!(),
-                    }
-                    Ok(())
-                },
-                |ui: &mut UIStateGuard| {
-                    ui.popup = None;
-                },
-            )
+            handle_key_sequence_for_action_list_popup(item.actions(), key_sequence, send, state, ui)
         }
     }
 }
@@ -376,4 +334,76 @@ fn handle_key_sequence_for_command_help_popup(
         _ => return Ok(false),
     }
     Ok(true)
+}
+
+/// handles a key sequence for an action list popup
+fn handle_key_sequence_for_action_list_popup(
+    actions: Vec<Action>,
+    key_sequence: &KeySequence,
+    send: &mpsc::Sender<ClientRequest>,
+    state: &SharedState,
+    ui: &mut UIStateGuard,
+) -> Result<bool> {
+    handle_key_sequence_for_list_popup(
+        key_sequence,
+        state,
+        ui,
+        actions.len(),
+        |_, _| {},
+        |ui: &mut UIStateGuard, id: usize| -> Result<()> {
+            let item = match ui.popup {
+                Some(PopupState::ActionList(ref item, _)) => item,
+                _ => unreachable!(),
+            };
+
+            match item {
+                Item::Track(track) => match actions[id] {
+                    Action::BrowseAlbum => {
+                        let uri = track.album.uri.clone();
+                        if let Some(uri) = uri {
+                            send.send(ClientRequest::GetContext(ContextURI::Album(uri.clone())))?;
+                            ui.history.push(PageState::Browsing(uri));
+                        }
+                    }
+                    Action::BrowseArtist => {
+                        let artists = track
+                            .artists
+                            .iter()
+                            .filter(|a| a.uri.is_some())
+                            .cloned()
+                            .collect::<Vec<_>>();
+                        ui.popup = Some(PopupState::ArtistList(artists, new_list_state()));
+                    }
+                    Action::SaveToLibrary => todo!(),
+                },
+                Item::Album(album) => match actions[id] {
+                    Action::BrowseArtist => {
+                        let artists = album
+                            .artists
+                            .iter()
+                            .filter(|a| a.uri.is_some())
+                            .cloned()
+                            .collect::<Vec<_>>();
+                        ui.popup = Some(PopupState::ArtistList(artists, new_list_state()));
+                    }
+                    Action::SaveToLibrary => todo!(),
+                    _ => {}
+                },
+                Item::Artist(artist) => {
+                    if let Action::SaveToLibrary = actions[id] {
+                        todo!()
+                    }
+                }
+                Item::Playlist(playlist) => {
+                    if let Action::SaveToLibrary = actions[id] {
+                        todo!()
+                    }
+                }
+            }
+            Ok(())
+        },
+        |ui: &mut UIStateGuard| {
+            ui.popup = None;
+        },
+    )
 }
