@@ -50,6 +50,7 @@ pub enum ClientRequest {
     Search(String),
     /// playlist_id, track_id
     AddTrackToPlaylist(String, String),
+    SaveToLibrary(Item),
     Player(PlayerRequest),
 }
 
@@ -242,14 +243,7 @@ fn handle_global_command(
             send.send(ClientRequest::GetUserPlaylists)?;
             ui.popup = Some(PopupState::UserPlaylistList(
                 PlaylistPopupAction::Browse,
-                state
-                    .player
-                    .read()
-                    .unwrap()
-                    .user_playlists
-                    .iter()
-                    .cloned()
-                    .collect(),
+                state.player.read().unwrap().user_playlists.to_vec(),
                 new_list_state(),
             ));
         }

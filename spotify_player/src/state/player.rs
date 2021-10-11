@@ -92,7 +92,7 @@ pub struct Playlist {
     pub owner: (String, String),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Item {
     Track(Track),
     Album(Album),

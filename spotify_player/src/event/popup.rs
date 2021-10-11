@@ -436,7 +436,8 @@ fn handle_key_sequence_for_action_list_popup(
                         }
                     }
                     Action::SaveToLibrary => {
-                        todo!()
+                        send.send(ClientRequest::SaveToLibrary(item.clone()))?;
+                        ui.popup = None;
                     }
                 },
                 Item::Album(album) => match actions[id] {
@@ -449,17 +450,22 @@ fn handle_key_sequence_for_action_list_popup(
                             .collect::<Vec<_>>();
                         ui.popup = Some(PopupState::ArtistList(artists, new_list_state()));
                     }
-                    Action::SaveToLibrary => todo!(),
+                    Action::SaveToLibrary => {
+                        send.send(ClientRequest::SaveToLibrary(item.clone()))?;
+                        ui.popup = None;
+                    }
                     _ => {}
                 },
-                Item::Artist(artist) => {
+                Item::Artist(_) => {
                     if let Action::SaveToLibrary = actions[id] {
-                        todo!()
+                        send.send(ClientRequest::SaveToLibrary(item.clone()))?;
+                        ui.popup = None;
                     }
                 }
-                Item::Playlist(playlist) => {
+                Item::Playlist(_) => {
                     if let Action::SaveToLibrary = actions[id] {
-                        todo!()
+                        send.send(ClientRequest::SaveToLibrary(item.clone()))?;
+                        ui.popup = None;
                     }
                 }
             }

@@ -148,6 +148,9 @@ impl Client {
                     track_id,
                 )?;
             }
+            ClientRequest::SaveToLibrary(item) => {
+                self.save_to_library(state, item)?;
+            }
         };
 
         Ok(())
@@ -513,6 +516,65 @@ impl Client {
             &[track_id],
             None,
         ))?;
+        Ok(())
+    }
+
+    /// saves a Spotify item to current user's library
+    pub fn save_to_library(&self, state: &SharedState, item: Item) -> Result<()> {
+        match item {
+            Item::Track(track) => {
+                if let Some(id) = track.id {
+                    let contains = Self::handle_rspotify_result(
+                        self.spotify
+                            .current_user_saved_tracks_contains(&[id.clone()]),
+                    )?;
+                    if !contains[0] {
+                        Self::handle_rspotify_result(
+                            self.spotify.current_user_saved_tracks_add(&[id]),
+                        )?;
+                    }
+                }
+            }
+            Item::Album(album) => {
+                if let Some(id) = album.id {
+                    let contains = Self::handle_rspotify_result(
+                        self.spotify
+                            .current_user_saved_albums_contains(&[id.clone()]),
+                    )?;
+                    if !contains[0] {
+                        Self::handle_rspotify_result(
+                            self.spotify.current_user_saved_albums_add(&[id]),
+                        )?;
+                    }
+                }
+            }
+            Item::Artist(artist) => {
+                if let Some(id) = artist.id {
+                    let follows = Self::handle_rspotify_result(
+                        self.spotify.user_artist_check_follow(&[id.clone()]),
+                    )?;
+                    if !follows[0] {
+                        Self::handle_rspotify_result(self.spotify.user_follow_artists(&[id]))?;
+                    }
+                }
+            }
+            Item::Playlist(playlist) => {
+                let user_id = state.player.read().unwrap().user_id.clone();
+                let follows =
+                    Self::handle_rspotify_result(self.spotify.user_playlist_check_follow(
+                        &playlist.owner.0,
+                        &playlist.id,
+                        &[user_id],
+                    ))?;
+                if !follows[0] {
+                    Self::handle_rspotify_result(self.spotify.user_playlist_follow_playlist(
+                        &playlist.owner.0,
+                        &playlist.id,
+                        None,
+                    ))?;
+                }
+            }
+        }
         Ok(())
     }
 
