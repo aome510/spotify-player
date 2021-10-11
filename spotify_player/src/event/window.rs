@@ -457,7 +457,7 @@ fn handle_command_for_playlist_list(
         }
         Command::ShowActionsOnSelectedItem => {
             ui.popup = Some(PopupState::ActionList(
-                Item::Playlist(playlists[id].clone()),
+                Item::Playlist(Box::new(playlists[id].clone())),
                 new_list_state(),
             ));
         }
