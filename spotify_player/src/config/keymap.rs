@@ -68,6 +68,14 @@ impl Default for KeymapConfig {
                     command: Command::SearchContext,
                 },
                 Keymap {
+                    key_sequence: "C-space".into(),
+                    command: Command::ShowActionsOnSelectedItem,
+                },
+                Keymap {
+                    key_sequence: "g a".into(),
+                    command: Command::ShowActionsOnSelectedItem,
+                },
+                Keymap {
                     key_sequence: "tab".into(),
                     command: Command::FocusNextWindow,
                 },
@@ -106,22 +114,6 @@ impl Default for KeymapConfig {
                 Keymap {
                     key_sequence: "g space".into(),
                     command: Command::BrowsePlayingContext,
-                },
-                Keymap {
-                    key_sequence: "C-g a".into(),
-                    command: Command::BrowseSelectedTrackArtists,
-                },
-                Keymap {
-                    key_sequence: "C-g A".into(),
-                    command: Command::BrowseSelectedTrackAlbum,
-                },
-                Keymap {
-                    key_sequence: "g a".into(),
-                    command: Command::BrowseSelectedTrackArtists,
-                },
-                Keymap {
-                    key_sequence: "g A".into(),
-                    command: Command::BrowseSelectedTrackAlbum,
                 },
                 Keymap {
                     key_sequence: "g s".into(),

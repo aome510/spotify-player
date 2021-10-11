@@ -1,4 +1,4 @@
-use crate::token::Token;
+use crate::{command::Action, token::Token};
 use rspotify::model::*;
 
 /// Player state
@@ -7,7 +7,8 @@ pub struct PlayerState {
     pub devices: Vec<device::Device>,
     pub token: Token,
 
-    pub user_playlists: Vec<playlist::SimplifiedPlaylist>,
+    pub user_id: String,
+    pub user_playlists: Vec<Playlist>,
     pub user_followed_artists: Vec<Artist>,
     pub user_saved_albums: Vec<Album>,
 
@@ -40,7 +41,7 @@ pub struct SearchResults {
     pub tracks: page::Page<Track>,
     pub artists: page::Page<Artist>,
     pub albums: page::Page<Album>,
-    pub playlists: page::Page<playlist::SimplifiedPlaylist>,
+    pub playlists: page::Page<Playlist>,
 }
 
 #[derive(Debug)]
@@ -71,6 +72,7 @@ pub struct Album {
     pub id: Option<String>,
     pub uri: Option<String>,
     pub name: String,
+    pub artists: Vec<Artist>,
 }
 
 #[derive(Default, Debug, Clone)]
@@ -79,6 +81,23 @@ pub struct Artist {
     pub id: Option<String>,
     pub uri: Option<String>,
     pub name: String,
+}
+
+#[derive(Default, Debug, Clone)]
+pub struct Playlist {
+    pub id: String,
+    pub uri: String,
+    pub name: String,
+    /// (id, display_name)
+    pub owner: (String, String),
+}
+
+#[derive(Debug, Clone)]
+pub enum Item {
+    Track(Track),
+    Album(Album),
+    Artist(Artist),
+    Playlist(Playlist),
 }
 
 impl PlayerState {
@@ -141,7 +160,7 @@ impl SearchResults {
             tracks: Self::empty_page::<Track>(),
             artists: Self::empty_page::<Artist>(),
             albums: Self::empty_page::<Album>(),
-            playlists: Self::empty_page::<playlist::SimplifiedPlaylist>(),
+            playlists: Self::empty_page::<Playlist>(),
         }
     }
 }
@@ -151,6 +170,7 @@ impl Default for PlayerState {
         Self {
             token: Token::new(),
             devices: vec![],
+            user_id: "".to_owned(),
             user_playlists: vec![],
             user_saved_albums: vec![],
             user_followed_artists: vec![],
@@ -321,6 +341,7 @@ impl From<album::SimplifiedAlbum> for Album {
             name: album.name,
             id: album.id,
             uri: album.uri,
+            artists: album.artists.into_iter().map(|a| a.into()).collect(),
         }
     }
 }
@@ -331,6 +352,7 @@ impl From<album::FullAlbum> for Album {
             name: album.name,
             id: Some(album.id),
             uri: Some(album.uri),
+            artists: album.artists.into_iter().map(|a| a.into()).collect(),
         }
     }
 }
@@ -355,6 +377,20 @@ impl From<artist::FullArtist> for Artist {
     }
 }
 
+impl From<playlist::SimplifiedPlaylist> for Playlist {
+    fn from(playlist: playlist::SimplifiedPlaylist) -> Self {
+        Self {
+            id: playlist.id,
+            name: playlist.name,
+            uri: playlist.uri,
+            owner: (
+                playlist.owner.display_name.unwrap_or_default(),
+                playlist.owner.id,
+            ),
+        }
+    }
+}
+
 impl ContextSortOrder {
     pub fn compare(&self, x: &Track, y: &Track) -> std::cmp::Ordering {
         match *self {
@@ -363,6 +399,23 @@ impl ContextSortOrder {
             Self::Album => x.album.name.cmp(&y.album.name),
             Self::Duration => x.duration.cmp(&y.duration),
             Self::Artists => x.get_artists_info().cmp(&y.get_artists_info()),
+        }
+    }
+}
+
+impl Item {
+    /// gets the list of possible actions on the current item
+    pub fn actions(&self) -> Vec<Action> {
+        match self {
+            Self::Track(_) => vec![
+                Action::BrowseAlbum,
+                Action::BrowseArtist,
+                Action::AddTrackToPlaylist,
+                Action::SaveToLibrary,
+            ],
+            Self::Artist(_) => vec![Action::SaveToLibrary],
+            Self::Album(_) => vec![Action::BrowseArtist, Action::SaveToLibrary],
+            Self::Playlist(_) => vec![Action::SaveToLibrary],
         }
     }
 }

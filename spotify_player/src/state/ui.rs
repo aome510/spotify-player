@@ -47,12 +47,20 @@ pub enum WindowState {
 pub enum PopupState {
     CommandHelp(usize),
     ContextSearch(String),
-    UserPlaylistList(ListState),
+    UserPlaylistList(PlaylistPopupAction, Vec<Playlist>, ListState),
     UserFollowedArtistList(ListState),
     UserSavedAlbumList(ListState),
     DeviceList(ListState),
     ArtistList(Vec<Artist>, ListState),
     ThemeList(Vec<config::Theme>, ListState),
+    ActionList(Item, ListState),
+}
+
+/// An action on a playlist popup list
+#[derive(Debug)]
+pub enum PlaylistPopupAction {
+    Browse,
+    AddTrack(String),
 }
 
 /// A trait representing a focusable state
@@ -130,11 +138,12 @@ impl PopupState {
     pub fn get_list_state(&self) -> Option<&ListState> {
         match self {
             Self::DeviceList(ref state) => Some(state),
-            Self::UserPlaylistList(ref state) => Some(state),
+            Self::UserPlaylistList(_, _, ref state) => Some(state),
             Self::UserFollowedArtistList(ref state) => Some(state),
             Self::UserSavedAlbumList(ref state) => Some(state),
             Self::ArtistList(_, ref state) => Some(state),
             Self::ThemeList(_, ref state) => Some(state),
+            Self::ActionList(_, ref state) => Some(state),
             Self::CommandHelp(_) | Self::ContextSearch(_) => None,
         }
     }
@@ -143,11 +152,12 @@ impl PopupState {
     pub fn get_list_state_mut(&mut self) -> Option<&mut ListState> {
         match self {
             Self::DeviceList(ref mut state) => Some(state),
-            Self::UserPlaylistList(ref mut state) => Some(state),
+            Self::UserPlaylistList(_, _, ref mut state) => Some(state),
             Self::UserFollowedArtistList(ref mut state) => Some(state),
             Self::UserSavedAlbumList(ref mut state) => Some(state),
             Self::ArtistList(_, ref mut state) => Some(state),
             Self::ThemeList(_, ref mut state) => Some(state),
+            Self::ActionList(_, ref mut state) => Some(state),
             Self::CommandHelp(_) | Self::ContextSearch(_) => None,
         }
     }

@@ -64,6 +64,10 @@ impl Client {
         log::info!("handle the client request {:?}", request);
 
         match request {
+            ClientRequest::GetCurrentUser => {
+                let user = self.get_current_user()?;
+                state.player.write().unwrap().user_id = user.id;
+            }
             ClientRequest::Player(event) => {
                 self.handle_player_request(state, event)?;
 
@@ -137,9 +141,24 @@ impl Client {
             ClientRequest::Search(query) => {
                 self.search(state, query)?;
             }
+            ClientRequest::AddTrackToPlaylist(playlist_id, track_id) => {
+                self.add_track_to_playlist(
+                    state.player.read().unwrap().user_id.clone(),
+                    playlist_id,
+                    track_id,
+                )?;
+            }
+            ClientRequest::SaveToLibrary(item) => {
+                self.save_to_library(state, item)?;
+            }
         };
 
         Ok(())
+    }
+
+    /// gets the current user
+    pub fn get_current_user(&self) -> Result<user::PrivateUser> {
+        Self::handle_rspotify_result(self.spotify.current_user())
     }
 
     /// gets all available devices
@@ -148,10 +167,11 @@ impl Client {
     }
 
     /// gets all playlists of the current user
-    pub async fn get_current_user_playlists(&self) -> Result<Vec<playlist::SimplifiedPlaylist>> {
+    pub async fn get_current_user_playlists(&self) -> Result<Vec<Playlist>> {
         let first_page =
             Self::handle_rspotify_result(self.spotify.current_user_playlists(50, None))?;
-        self.get_all_paging_items(first_page).await
+        let playlists = self.get_all_paging_items(first_page).await?;
+        Ok(playlists.into_iter().map(|p| p.into()).collect())
     }
 
     /// gets all followed artists of the current user
@@ -460,7 +480,7 @@ impl Client {
             tracks: Self::into_page(tracks),
             artists: Self::into_page(artists),
             albums: Self::into_page(albums),
-            playlists,
+            playlists: Self::into_page(playlists),
         };
 
         // update the search cache stored inside the player state
@@ -472,6 +492,89 @@ impl Client {
             .put(query, search_results.clone());
 
         update_ui_states(search_results);
+        Ok(())
+    }
+
+    /// adds track to a user's playlist
+    pub fn add_track_to_playlist(
+        &self,
+        user_id: String,
+        playlist_id: String,
+        track_id: String,
+    ) -> Result<()> {
+        // remove all the occurrences of the track to ensure no duplication in the playlist
+        Self::handle_rspotify_result(self.spotify.user_playlist_remove_all_occurrences_of_tracks(
+            &user_id,
+            &playlist_id,
+            &[track_id.clone()],
+            None,
+        ))?;
+
+        Self::handle_rspotify_result(self.spotify.user_playlist_add_tracks(
+            &user_id,
+            &playlist_id,
+            &[track_id],
+            None,
+        ))?;
+        Ok(())
+    }
+
+    /// saves a Spotify item to current user's library
+    pub fn save_to_library(&self, state: &SharedState, item: Item) -> Result<()> {
+        match item {
+            Item::Track(track) => {
+                if let Some(id) = track.id {
+                    let contains = Self::handle_rspotify_result(
+                        self.spotify
+                            .current_user_saved_tracks_contains(&[id.clone()]),
+                    )?;
+                    if !contains[0] {
+                        Self::handle_rspotify_result(
+                            self.spotify.current_user_saved_tracks_add(&[id]),
+                        )?;
+                    }
+                }
+            }
+            Item::Album(album) => {
+                if let Some(id) = album.id {
+                    let contains = Self::handle_rspotify_result(
+                        self.spotify
+                            .current_user_saved_albums_contains(&[id.clone()]),
+                    )?;
+                    if !contains[0] {
+                        Self::handle_rspotify_result(
+                            self.spotify.current_user_saved_albums_add(&[id]),
+                        )?;
+                    }
+                }
+            }
+            Item::Artist(artist) => {
+                if let Some(id) = artist.id {
+                    let follows = Self::handle_rspotify_result(
+                        self.spotify.user_artist_check_follow(&[id.clone()]),
+                    )?;
+                    if !follows[0] {
+                        Self::handle_rspotify_result(self.spotify.user_follow_artists(&[id]))?;
+                    }
+                }
+            }
+            Item::Playlist(playlist) => {
+                let user_id = state.player.read().unwrap().user_id.clone();
+                let follows =
+                    Self::handle_rspotify_result(self.spotify.user_playlist_check_follow(
+                        &playlist.owner.0,
+                        &playlist.id,
+                        &[user_id],
+                    ))?;
+                if !follows[0] {
+                    Self::handle_rspotify_result(self.spotify.user_playlist_follow_playlist(
+                        &playlist.owner.0,
+                        &playlist.id,
+                        None,
+                    ))?;
+                }
+            }
+        }
         Ok(())
     }
 
@@ -756,32 +859,6 @@ pub async fn start_player_event_watchers(
     send: std::sync::mpsc::Sender<ClientRequest>,
     session: Session,
 ) {
-    std::thread::spawn({
-        let send = send.clone();
-        move || {
-            // need to get the playback data on startup to render the player
-            //
-            // - Why needs to query the APIs multiple times?
-            // On startup, the integrated librespot device (enabled by the "streaming" feature)
-            // may not be initialized at the time the outer function is called.
-            // Querying the APIs multiple times is kinda a workaround to ensure
-            // that the initial playback data is in sync.
-            for _ in 0..5 {
-                // on startup, the UI needs to know the current playback to render the current playing context
-                send.send(ClientRequest::GetCurrentPlayback)
-                    .unwrap_or_else(|err| {
-                        log::warn!("failed to get the current playback: {}", err);
-                    });
-                // needs to know all available devices on startup to connect to the first available device if none is running
-                send.send(ClientRequest::GetDevices).unwrap_or_else(|err| {
-                    log::warn!("failed to get devices: {}", err);
-                });
-
-                std::thread::sleep(std::time::Duration::from_millis(1000));
-            }
-        }
-    });
-
     // start a playback pooling (every `playback_refresh_duration_in_ms` ms) thread
     // A zero-value `playback_refresh_in_ms` indicates no playback pooling thread
     if state.app_config.playback_refresh_duration_in_ms > 0 {
@@ -791,18 +868,15 @@ pub async fn start_player_event_watchers(
                 std::time::Duration::from_millis(state.app_config.playback_refresh_duration_in_ms);
             move || -> Result<()> {
                 loop {
-                    send.send(ClientRequest::GetCurrentPlayback)
-                        .unwrap_or_else(|err| {
-                            log::warn!("failed to get the current playback: {}", err);
-                        });
+                    send.send(ClientRequest::GetCurrentPlayback).unwrap();
                     std::thread::sleep(playback_refresh_duration);
                 }
             }
         });
     }
 
-    // start the main event watcher watching for new events every second
-    let refresh_duration = std::time::Duration::from_millis(1000);
+    // start the main event watcher watching for new events every `refresh_duration` ms
+    let refresh_duration = std::time::Duration::from_millis(500);
     loop {
         watch_player_events(&state, &send, &session)
             .await

@@ -5,7 +5,7 @@ use librespot_core::keymaster;
 use librespot_core::session::Session;
 
 // spotify authentication token's scopes for permissions
-const SCOPES: [&str; 11] = [
+const SCOPES: [&str; 15] = [
     "user-read-recently-played",
     "user-top-read",
     "user-read-playback-position",
@@ -14,9 +14,13 @@ const SCOPES: [&str; 11] = [
     "user-read-currently-playing",
     "streaming",
     "playlist-read-private",
+    "playlist-modify-private",
+    "playlist-modify-public",
     "playlist-read-collaborative",
     "user-follow-read",
+    "user-follow-modify",
     "user-library-read",
+    "user-library-modify",
 ];
 
 /// gets an authentication using the current Librespot session

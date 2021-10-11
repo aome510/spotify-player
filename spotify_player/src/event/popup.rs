@@ -1,3 +1,5 @@
+use crate::command::Action;
+
 use super::*;
 
 /// handles a key sequence for a popup
@@ -37,22 +39,66 @@ pub fn handle_key_sequence_for_popup(
                 ui.popup = None;
             },
         ),
-        PopupState::UserPlaylistList(_) => {
-            let player = state.player.read().unwrap();
-            let playlist_uris = player
-                .user_playlists
-                .iter()
-                .map(|p| p.uri.clone())
-                .collect::<Vec<_>>();
+        PopupState::UserPlaylistList(action, playlists, _) => {
+            match action {
+                PlaylistPopupAction::Browse => {
+                    let playlist_uris = playlists.iter().map(|p| p.uri.clone()).collect::<Vec<_>>();
 
-            handle_key_sequence_for_context_list_popup(
-                key_sequence,
-                send,
-                state,
-                ui,
-                playlist_uris,
-                ContextURI::Playlist("".to_owned()),
-            )
+                    handle_key_sequence_for_context_browsing_list_popup(
+                        key_sequence,
+                        send,
+                        state,
+                        ui,
+                        playlist_uris,
+                        ContextURI::Playlist("".to_owned()),
+                    )
+                }
+                PlaylistPopupAction::AddTrack(ref track_id) => {
+                    let track_id = track_id.clone();
+
+                    handle_key_sequence_for_list_popup(
+                        key_sequence,
+                        state,
+                        ui,
+                        {
+                            match ui.popup {
+                                Some(PopupState::UserPlaylistList(_, ref playlists, _)) => {
+                                    playlists.len()
+                                }
+                                _ => unreachable!(),
+                            }
+                        },
+                        |_, _| {},
+                        |ui: &mut UIStateGuard, id: usize| -> Result<()> {
+                            let playlists = match ui.popup {
+                                Some(PopupState::UserPlaylistList(_, ref playlists, _)) => {
+                                    playlists
+                                }
+                                _ => unreachable!(),
+                            };
+
+                            // when adding a new track to a playlist, we need to remove
+                            // the cache for that playlist
+                            state
+                                .player
+                                .write()
+                                .unwrap()
+                                .context_cache
+                                .pop(&playlists[id].uri);
+
+                            send.send(ClientRequest::AddTrackToPlaylist(
+                                playlists[id].id.clone(),
+                                track_id.clone(),
+                            ))?;
+                            ui.popup = None;
+                            Ok(())
+                        },
+                        |ui: &mut UIStateGuard| {
+                            ui.popup = None;
+                        },
+                    )
+                }
+            }
         }
         PopupState::UserFollowedArtistList(_) => {
             let player = state.player.read().unwrap();
@@ -62,7 +108,7 @@ pub fn handle_key_sequence_for_popup(
                 .map(|a| a.uri.clone().unwrap())
                 .collect::<Vec<_>>();
 
-            handle_key_sequence_for_context_list_popup(
+            handle_key_sequence_for_context_browsing_list_popup(
                 key_sequence,
                 send,
                 state,
@@ -79,7 +125,7 @@ pub fn handle_key_sequence_for_popup(
                 .map(|a| a.uri.clone().unwrap())
                 .collect::<Vec<_>>();
 
-            handle_key_sequence_for_context_list_popup(
+            handle_key_sequence_for_context_browsing_list_popup(
                 key_sequence,
                 send,
                 state,
@@ -138,6 +184,9 @@ pub fn handle_key_sequence_for_popup(
         }
         PopupState::CommandHelp(_) => {
             handle_key_sequence_for_command_help_popup(key_sequence, state, ui)
+        }
+        PopupState::ActionList(ref item, _) => {
+            handle_key_sequence_for_action_list_popup(item.actions(), key_sequence, send, state, ui)
         }
     }
 }
@@ -207,7 +256,7 @@ fn handle_key_sequence_for_search_popup(
 /// the function requires to specify:
 /// - `uris`: a list of context URIs
 /// - `uri_type`: an enum represents the type of a context in the list (`playlist`, `artist`, etc)
-fn handle_key_sequence_for_context_list_popup(
+fn handle_key_sequence_for_context_browsing_list_popup(
     key_sequence: &KeySequence,
     send: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
@@ -329,4 +378,101 @@ fn handle_key_sequence_for_command_help_popup(
         _ => return Ok(false),
     }
     Ok(true)
+}
+
+/// handles a key sequence for an action list popup
+fn handle_key_sequence_for_action_list_popup(
+    actions: Vec<Action>,
+    key_sequence: &KeySequence,
+    send: &mpsc::Sender<ClientRequest>,
+    state: &SharedState,
+    ui: &mut UIStateGuard,
+) -> Result<bool> {
+    handle_key_sequence_for_list_popup(
+        key_sequence,
+        state,
+        ui,
+        actions.len(),
+        |_, _| {},
+        |ui: &mut UIStateGuard, id: usize| -> Result<()> {
+            let item = match ui.popup {
+                Some(PopupState::ActionList(ref item, _)) => item,
+                _ => unreachable!(),
+            };
+
+            match item {
+                Item::Track(track) => match actions[id] {
+                    Action::BrowseAlbum => {
+                        let uri = track.album.uri.clone();
+                        if let Some(uri) = uri {
+                            send.send(ClientRequest::GetContext(ContextURI::Album(uri.clone())))?;
+                            ui.history.push(PageState::Browsing(uri));
+                        }
+                    }
+                    Action::BrowseArtist => {
+                        let artists = track
+                            .artists
+                            .iter()
+                            .filter(|a| a.uri.is_some())
+                            .cloned()
+                            .collect::<Vec<_>>();
+                        ui.popup = Some(PopupState::ArtistList(artists, new_list_state()));
+                    }
+                    Action::AddTrackToPlaylist => {
+                        if let Some(ref id) = track.id {
+                            let player = state.player.read().unwrap();
+                            let playlists = player
+                                .user_playlists
+                                .iter()
+                                .filter(|p| p.owner.1 == player.user_id)
+                                .cloned()
+                                .collect();
+
+                            ui.popup = Some(PopupState::UserPlaylistList(
+                                PlaylistPopupAction::AddTrack(id.clone()),
+                                playlists,
+                                new_list_state(),
+                            ));
+                        }
+                    }
+                    Action::SaveToLibrary => {
+                        send.send(ClientRequest::SaveToLibrary(item.clone()))?;
+                        ui.popup = None;
+                    }
+                },
+                Item::Album(album) => match actions[id] {
+                    Action::BrowseArtist => {
+                        let artists = album
+                            .artists
+                            .iter()
+                            .filter(|a| a.uri.is_some())
+                            .cloned()
+                            .collect::<Vec<_>>();
+                        ui.popup = Some(PopupState::ArtistList(artists, new_list_state()));
+                    }
+                    Action::SaveToLibrary => {
+                        send.send(ClientRequest::SaveToLibrary(item.clone()))?;
+                        ui.popup = None;
+                    }
+                    _ => {}
+                },
+                Item::Artist(_) => {
+                    if let Action::SaveToLibrary = actions[id] {
+                        send.send(ClientRequest::SaveToLibrary(item.clone()))?;
+                        ui.popup = None;
+                    }
+                }
+                Item::Playlist(_) => {
+                    if let Action::SaveToLibrary = actions[id] {
+                        send.send(ClientRequest::SaveToLibrary(item.clone()))?;
+                        ui.popup = None;
+                    }
+                }
+            }
+            Ok(())
+        },
+        |ui: &mut UIStateGuard| {
+            ui.popup = None;
+        },
+    )
 }

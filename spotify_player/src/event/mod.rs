@@ -7,7 +7,7 @@ use crate::{
 use anyhow::Result;
 use crossterm::event::*;
 use rand::Rng;
-use rspotify::model::{offset, playlist};
+use rspotify::model::offset;
 use std::sync::mpsc;
 use tokio_stream::StreamExt;
 
@@ -40,6 +40,7 @@ pub enum PlayerRequest {
 #[derive(Debug)]
 /// A request to the client
 pub enum ClientRequest {
+    GetCurrentUser,
     GetDevices,
     GetUserPlaylists,
     GetUserSavedAlbums,
@@ -47,6 +48,9 @@ pub enum ClientRequest {
     GetContext(ContextURI),
     GetCurrentPlayback,
     Search(String),
+    /// playlist_id, track_id
+    AddTrackToPlaylist(String, String),
+    SaveToLibrary(Item),
     Player(PlayerRequest),
 }
 
@@ -225,19 +229,23 @@ fn handle_global_command(
                 let artists = track
                     .artists
                     .iter()
+                    .filter(|a| a.uri.is_some())
                     .map(|a| Artist {
                         name: a.name.clone(),
                         uri: a.uri.clone(),
                         id: a.id.clone(),
                     })
-                    .filter(|a| a.uri.is_some())
                     .collect::<Vec<_>>();
                 ui.popup = Some(PopupState::ArtistList(artists, new_list_state()));
             }
         }
         Command::BrowseUserPlaylists => {
             send.send(ClientRequest::GetUserPlaylists)?;
-            ui.popup = Some(PopupState::UserPlaylistList(new_list_state()));
+            ui.popup = Some(PopupState::UserPlaylistList(
+                PlaylistPopupAction::Browse,
+                state.player.read().unwrap().user_playlists.to_vec(),
+                new_list_state(),
+            ));
         }
         Command::BrowseUserFollowedArtists => {
             send.send(ClientRequest::GetUserFollowedArtists)?;

@@ -29,6 +29,8 @@ pub enum Command {
     SwitchDevice,
     SearchContext,
 
+    ShowActionsOnSelectedItem,
+
     BrowseUserPlaylists,
     BrowseUserFollowedArtists,
     BrowseUserSavedAlbums,
@@ -36,11 +38,8 @@ pub enum Command {
     BrowsePlayingTrackArtists,
     BrowsePlayingTrackAlbum,
     BrowsePlayingContext,
-    BrowseSelectedTrackArtists,
-    BrowseSelectedTrackAlbum,
 
     SearchPage,
-
     PreviousPage,
 
     SortTrackByTitle,
@@ -49,6 +48,15 @@ pub enum Command {
     SortTrackByDuration,
     SortTrackByAddedDate,
     ReverseTrackOrder,
+}
+
+/// An action on a Spotify item (track,album,artist,playlist)
+#[derive(Copy, Clone, Debug)]
+pub enum Action {
+    AddTrackToPlaylist,
+    SaveToLibrary,
+    BrowseArtist,
+    BrowseAlbum,
 }
 
 impl Command {
@@ -71,6 +79,7 @@ impl Command {
             }
             Self::ChooseSelected => "choose the selected item and act on it",
             Self::RefreshPlayback => "manually refresh the current playback",
+            Self::ShowActionsOnSelectedItem => "show actions on a selected item",
             Self::FocusNextWindow => "focus the next focusable window (if any)",
             Self::FocusPreviousWindow => "focus the previous focusable window (if any)",
             Self::SwitchTheme => "open a popup for switching theme",
@@ -84,10 +93,6 @@ impl Command {
             }
             Self::BrowsePlayingTrackAlbum => "browse the current playing track's album",
             Self::BrowsePlayingContext => "browse the current playing context",
-            Self::BrowseSelectedTrackArtists => {
-                "open a popup for browsing the selected track's artists"
-            }
-            Self::BrowseSelectedTrackAlbum => "browse to the selected track's album",
             Self::SearchPage => "go to the search page",
             Self::PreviousPage => "go to the previous page",
             Self::SortTrackByTitle => "sort the track table (if any) by track's title",
