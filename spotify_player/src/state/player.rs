@@ -427,12 +427,13 @@ impl Item {
     pub fn actions(&self) -> Vec<Action> {
         match self {
             Self::Track(_) => vec![
-                Action::SaveToLibrary,
                 Action::BrowseAlbum,
                 Action::BrowseArtist,
+                Action::AddTrackToPlaylist,
+                Action::SaveToLibrary,
             ],
             Self::Artist(_) => vec![Action::SaveToLibrary],
-            Self::Album(_) => vec![Action::SaveToLibrary, Action::BrowseArtist],
+            Self::Album(_) => vec![Action::BrowseArtist, Action::SaveToLibrary],
             Self::Playlist(_) => vec![Action::SaveToLibrary],
         }
     }

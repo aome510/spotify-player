@@ -53,6 +53,7 @@ pub enum Command {
 /// An action on a Spotify item (track,album,artist,playlist)
 #[derive(Copy, Clone, Debug)]
 pub enum Action {
+    AddTrackToPlaylist,
     SaveToLibrary,
     BrowseArtist,
     BrowseAlbum,

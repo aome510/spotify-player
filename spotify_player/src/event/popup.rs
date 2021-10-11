@@ -418,7 +418,7 @@ fn handle_key_sequence_for_action_list_popup(
                             .collect::<Vec<_>>();
                         ui.popup = Some(PopupState::ArtistList(artists, new_list_state()));
                     }
-                    Action::SaveToLibrary => {
+                    Action::AddTrackToPlaylist => {
                         if let Some(ref id) = track.id {
                             let player = state.player.read().unwrap();
                             let playlists = player
@@ -434,6 +434,9 @@ fn handle_key_sequence_for_action_list_popup(
                                 new_list_state(),
                             ));
                         }
+                    }
+                    Action::SaveToLibrary => {
+                        todo!()
                     }
                 },
                 Item::Album(album) => match actions[id] {
