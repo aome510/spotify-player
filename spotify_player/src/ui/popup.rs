@@ -66,12 +66,8 @@ pub fn render_popup(
                 let rect = render_list_popup(frame, ui, rect, "Themes", items, 7);
                 (rect, false)
             }
-            PopupState::UserPlaylistList(_) => {
-                let items = player
-                    .user_playlists
-                    .iter()
-                    .map(|p| (p.name.clone(), false))
-                    .collect();
+            PopupState::UserPlaylistList(_, playlists, _) => {
+                let items = playlists.iter().map(|p| (p.name.clone(), false)).collect();
 
                 let rect = render_list_popup(frame, ui, rect, "User Playlists", items, 10);
                 (rect, false)

@@ -499,6 +499,14 @@ impl Client {
         playlist_id: String,
         track_id: String,
     ) -> Result<()> {
+        // remove all the occurrences of the track to ensure no duplication in the playlist
+        Self::handle_rspotify_result(self.spotify.user_playlist_remove_all_occurrences_of_tracks(
+            &user_id,
+            &playlist_id,
+            &[track_id.clone()],
+            None,
+        ))?;
+
         Self::handle_rspotify_result(self.spotify.user_playlist_add_tracks(
             &user_id,
             &playlist_id,

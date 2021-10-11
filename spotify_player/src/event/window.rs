@@ -435,7 +435,7 @@ fn handle_command_for_playlist_list(
     command: Command,
     send: &mpsc::Sender<ClientRequest>,
     ui: &mut UIStateGuard,
-    playlists: Vec<&playlist::SimplifiedPlaylist>,
+    playlists: Vec<&Playlist>,
 ) -> Result<bool> {
     let id = ui.window.selected().unwrap();
 
@@ -457,7 +457,7 @@ fn handle_command_for_playlist_list(
         }
         Command::ShowActionsOnSelectedItem => {
             ui.popup = Some(PopupState::ActionList(
-                Item::Playlist(Box::new(playlists[id].clone())),
+                Item::Playlist(playlists[id].clone()),
                 new_list_state(),
             ));
         }

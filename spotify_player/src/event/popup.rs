@@ -39,22 +39,66 @@ pub fn handle_key_sequence_for_popup(
                 ui.popup = None;
             },
         ),
-        PopupState::UserPlaylistList(_) => {
-            let player = state.player.read().unwrap();
-            let playlist_uris = player
-                .user_playlists
-                .iter()
-                .map(|p| p.uri.clone())
-                .collect::<Vec<_>>();
+        PopupState::UserPlaylistList(action, playlists, _) => {
+            match action {
+                PlaylistPopupAction::Browse => {
+                    let playlist_uris = playlists.iter().map(|p| p.uri.clone()).collect::<Vec<_>>();
 
-            handle_key_sequence_for_context_list_popup(
-                key_sequence,
-                send,
-                state,
-                ui,
-                playlist_uris,
-                ContextURI::Playlist("".to_owned()),
-            )
+                    handle_key_sequence_for_context_browsing_list_popup(
+                        key_sequence,
+                        send,
+                        state,
+                        ui,
+                        playlist_uris,
+                        ContextURI::Playlist("".to_owned()),
+                    )
+                }
+                PlaylistPopupAction::AddTrack(ref track_id) => {
+                    let track_id = track_id.clone();
+
+                    handle_key_sequence_for_list_popup(
+                        key_sequence,
+                        state,
+                        ui,
+                        {
+                            match ui.popup {
+                                Some(PopupState::UserPlaylistList(_, ref playlists, _)) => {
+                                    playlists.len()
+                                }
+                                _ => unreachable!(),
+                            }
+                        },
+                        |_, _| {},
+                        |ui: &mut UIStateGuard, id: usize| -> Result<()> {
+                            let playlists = match ui.popup {
+                                Some(PopupState::UserPlaylistList(_, ref playlists, _)) => {
+                                    playlists
+                                }
+                                _ => unreachable!(),
+                            };
+
+                            // when adding a new track to a playlist, we need to remove
+                            // the cache for that playlist
+                            state
+                                .player
+                                .write()
+                                .unwrap()
+                                .context_cache
+                                .pop(&playlists[id].uri);
+
+                            send.send(ClientRequest::AddTrackToPlaylist(
+                                playlists[id].id.clone(),
+                                track_id.clone(),
+                            ))?;
+                            ui.popup = None;
+                            Ok(())
+                        },
+                        |ui: &mut UIStateGuard| {
+                            ui.popup = None;
+                        },
+                    )
+                }
+            }
         }
         PopupState::UserFollowedArtistList(_) => {
             let player = state.player.read().unwrap();
@@ -64,7 +108,7 @@ pub fn handle_key_sequence_for_popup(
                 .map(|a| a.uri.clone().unwrap())
                 .collect::<Vec<_>>();
 
-            handle_key_sequence_for_context_list_popup(
+            handle_key_sequence_for_context_browsing_list_popup(
                 key_sequence,
                 send,
                 state,
@@ -81,7 +125,7 @@ pub fn handle_key_sequence_for_popup(
                 .map(|a| a.uri.clone().unwrap())
                 .collect::<Vec<_>>();
 
-            handle_key_sequence_for_context_list_popup(
+            handle_key_sequence_for_context_browsing_list_popup(
                 key_sequence,
                 send,
                 state,
@@ -212,7 +256,7 @@ fn handle_key_sequence_for_search_popup(
 /// the function requires to specify:
 /// - `uris`: a list of context URIs
 /// - `uri_type`: an enum represents the type of a context in the list (`playlist`, `artist`, etc)
-fn handle_key_sequence_for_context_list_popup(
+fn handle_key_sequence_for_context_browsing_list_popup(
     key_sequence: &KeySequence,
     send: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
@@ -374,7 +418,23 @@ fn handle_key_sequence_for_action_list_popup(
                             .collect::<Vec<_>>();
                         ui.popup = Some(PopupState::ArtistList(artists, new_list_state()));
                     }
-                    Action::SaveToLibrary => todo!(),
+                    Action::SaveToLibrary => {
+                        if let Some(ref id) = track.id {
+                            let player = state.player.read().unwrap();
+                            let playlists = player
+                                .user_playlists
+                                .iter()
+                                .filter(|p| p.owner.1 == player.user_id)
+                                .cloned()
+                                .collect();
+
+                            ui.popup = Some(PopupState::UserPlaylistList(
+                                PlaylistPopupAction::AddTrack(id.clone()),
+                                playlists,
+                                new_list_state(),
+                            ));
+                        }
+                    }
                 },
                 Item::Album(album) => match actions[id] {
                     Action::BrowseArtist => {
