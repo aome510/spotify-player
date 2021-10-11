@@ -317,6 +317,14 @@ fn handle_command_for_track_table_subwindow(
                 }
             }
         }
+        Command::ShowActionsOnSelectedItem => {
+            if let Some(id) = ui.window.selected() {
+                ui.popup = Some(PopupState::ActionList(
+                    Item::Track(tracks[id].clone()),
+                    new_list_state(),
+                ));
+            }
+        }
         _ => return Ok(false),
     }
     Ok(true)

@@ -1,4 +1,4 @@
-use crate::token::Token;
+use crate::{command::Action, token::Token};
 use rspotify::model::*;
 
 /// Player state
@@ -71,6 +71,7 @@ pub struct Album {
     pub id: Option<String>,
     pub uri: Option<String>,
     pub name: String,
+    pub artists: Vec<Artist>,
 }
 
 #[derive(Default, Debug, Clone)]
@@ -348,6 +349,7 @@ impl From<album::SimplifiedAlbum> for Album {
             name: album.name,
             id: album.id,
             uri: album.uri,
+            artists: album.artists.into_iter().map(|a| a.into()).collect(),
         }
     }
 }
@@ -358,6 +360,7 @@ impl From<album::FullAlbum> for Album {
             name: album.name,
             id: Some(album.id),
             uri: Some(album.uri),
+            artists: album.artists.into_iter().map(|a| a.into()).collect(),
         }
     }
 }
@@ -390,6 +393,22 @@ impl ContextSortOrder {
             Self::Album => x.album.name.cmp(&y.album.name),
             Self::Duration => x.duration.cmp(&y.duration),
             Self::Artists => x.get_artists_info().cmp(&y.get_artists_info()),
+        }
+    }
+}
+
+impl Item {
+    /// gets the list of possible actions on the current item
+    pub fn actions(&self) -> Vec<Action> {
+        match self {
+            Self::Track(_) => vec![
+                Action::SaveToLibrary,
+                Action::BrowseAlbum,
+                Action::BrowseArtist,
+            ],
+            Self::Artist(_) => vec![Action::SaveToLibrary],
+            Self::Album(_) => vec![Action::SaveToLibrary, Action::BrowseArtist],
+            Self::Playlist(_) => vec![Action::SaveToLibrary],
         }
     }
 }

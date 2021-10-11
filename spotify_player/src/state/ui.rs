@@ -53,7 +53,7 @@ pub enum PopupState {
     DeviceList(ListState),
     ArtistList(Vec<Artist>, ListState),
     ThemeList(Vec<config::Theme>, ListState),
-    ActionList(Item, Vec<command::Command>, ListState),
+    ActionList(Item, ListState),
 }
 
 /// A trait representing a focusable state
@@ -136,7 +136,7 @@ impl PopupState {
             Self::UserSavedAlbumList(ref state) => Some(state),
             Self::ArtistList(_, ref state) => Some(state),
             Self::ThemeList(_, ref state) => Some(state),
-            Self::ActionList(_, _, ref state) => Some(state),
+            Self::ActionList(_, ref state) => Some(state),
             Self::CommandHelp(_) | Self::ContextSearch(_) => None,
         }
     }
@@ -150,7 +150,7 @@ impl PopupState {
             Self::UserSavedAlbumList(ref mut state) => Some(state),
             Self::ArtistList(_, ref mut state) => Some(state),
             Self::ThemeList(_, ref mut state) => Some(state),
-            Self::ActionList(_, _, ref mut state) => Some(state),
+            Self::ActionList(_, ref mut state) => Some(state),
             Self::CommandHelp(_) | Self::ContextSearch(_) => None,
         }
     }

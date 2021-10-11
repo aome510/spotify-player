@@ -50,6 +50,13 @@ pub enum Command {
     ReverseTrackOrder,
 }
 
+/// An action on a Spotify item (track,album,artist,playlist)
+pub enum Action {
+    SaveToLibrary,
+    BrowseArtist,
+    BrowseAlbum,
+}
+
 impl Command {
     pub fn desc(&self) -> &'static str {
         match self {
