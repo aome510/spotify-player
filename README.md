@@ -114,7 +114,7 @@ docker run --rm -it aome510/spotify_player:latest
 
 to run the application.
 
-You can also use your local config folder to configure the application or your local cache folder to store the authentication token when running the docker image:
+You can also use your local config folder to configure the application or your local cache folder to store the authorization token when running the docker image:
 
 ```
 docker run --rm \

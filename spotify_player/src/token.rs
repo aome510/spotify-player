@@ -4,7 +4,7 @@ use anyhow::{anyhow, Result};
 use librespot_core::keymaster;
 use librespot_core::session::Session;
 
-// spotify authentication token's scopes for permissions
+// the application authorization token's permission scopes
 const SCOPES: [&str; 15] = [
     "user-read-recently-played",
     "user-top-read",
@@ -31,7 +31,7 @@ pub async fn get_token(session: &Session, client_id: &str) -> Result<Token> {
         .into())
 }
 
-// A spotify authentication token
+// A spotify authorization token
 #[derive(Debug)]
 pub struct Token {
     pub access_token: String,

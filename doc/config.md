@@ -17,7 +17,7 @@ All configurations are stored inside the application's configuration folder (def
 
 | Option                                     | Description                                                      | Default                            |
 | ------------------------------------------ | ---------------------------------------------------------------- | ---------------------------------- |
-| `client_id`                                | the application's client ID for getting authentication token     | `65b708073fc0480ea92a077233ca87bd` |
+| `client_id`                                | the application's client ID that interacts with Spotify APIs     | `65b708073fc0480ea92a077233ca87bd` |
 | `theme`                                    | application's theme                                              | `dracula`                          |
 | `n_refreshes_each_playback_update`         | number of refresh requests in each playback update               | `5`                                |
 | `refresh_delay_in_ms_each_playback_update` | delay in ms between two refresh requests in each playback update | `500`                              |

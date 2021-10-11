@@ -828,7 +828,7 @@ pub async fn start_client_handler(
     recv: std::sync::mpsc::Receiver<ClientRequest>,
 ) {
     while let Ok(request) = recv.recv() {
-        // use the authentication token stored inside the player state
+        // use the authorization token stored inside the player state
         // for making API calls to Spotify
         client.spotify.access_token =
             Some(state.player.read().unwrap().token.access_token.to_owned());
