@@ -1,3 +1,5 @@
+use event::ClientRequest;
+
 mod auth;
 mod client;
 mod command;
@@ -64,16 +66,34 @@ async fn main() -> anyhow::Result<()> {
 
     // init the shared application state
     let mut state = state::State::default();
+
+    // parse config options from the config files into application's state
     state.parse_config_files(&config_folder, matches.value_of("theme"))?;
+
+    let session = auth::new_session(&cache_folder, state.app_config.device.audio_cache).await?;
+    // retrieve the authentication token, and store inside the player state
+    let token = token::get_token(&session, &state.app_config.client_id).await?;
+    state.player.write().unwrap().token = token;
+
     let state = std::sync::Arc::new(state);
 
     // start application's threads
     let (send, recv) = std::sync::mpsc::channel::<event::ClientRequest>();
 
-    let session = auth::new_session(&cache_folder, state.app_config.device.audio_cache).await?;
-    // get the auth token and store it inside the player state
-    let token = token::get_token(&session, &state.app_config.client_id).await?;
-    state.player.write().unwrap().token = token;
+    // init thread
+    std::thread::spawn({
+        let send = send.clone();
+        move || {
+            send.send(ClientRequest::GetCurrentUser).unwrap();
+            send.send(ClientRequest::GetCurrentPlayback).unwrap();
+            send.send(ClientRequest::GetUserPlaylists).unwrap();
+
+            // wait for 1 second before getting the device list
+            // because it may take time to intialize the integrated Spotify client
+            std::thread::sleep(std::time::Duration::from_millis(1000));
+            send.send(ClientRequest::GetDevices).unwrap();
+        }
+    });
 
     // connection thread (used to initialize the integrated Spotify client using librespot)
     #[cfg(feature = "streaming")]
@@ -105,7 +125,6 @@ async fn main() -> anyhow::Result<()> {
 
     // player event watcher thread(s)
     std::thread::spawn({
-        let send = send.clone();
         let state = state.clone();
         move || {
             client::start_player_event_watchers(state, send, session);
