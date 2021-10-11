@@ -87,7 +87,7 @@ pub enum Item {
     Track(Track),
     Album(Album),
     Artist(Artist),
-    Playlist(playlist::FullPlaylist),
+    Playlist(playlist::SimplifiedPlaylist),
 }
 
 impl PlayerState {

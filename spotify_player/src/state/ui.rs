@@ -1,5 +1,5 @@
 use super::player::*;
-use crate::{command, config, key};
+use crate::{config, key};
 
 use tui::widgets::{ListState, TableState};
 pub type UIStateGuard<'a> = std::sync::MutexGuard<'a, UIState>;

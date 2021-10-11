@@ -283,47 +283,41 @@ fn handle_command_for_track_table_subwindow(
     track_uris: Option<Vec<String>>,
     tracks: Vec<&Track>,
 ) -> Result<bool> {
+    let id = ui.window.selected().unwrap();
+
     match command {
         Command::SelectNextOrScrollDown => {
-            if let Some(id) = ui.window.selected() {
-                if id + 1 < tracks.len() {
-                    ui.window.select(Some(id + 1));
-                }
+            if id + 1 < tracks.len() {
+                ui.window.select(Some(id + 1));
             }
         }
         Command::SelectPreviousOrScrollUp => {
-            if let Some(id) = ui.window.selected() {
-                if id > 0 {
-                    ui.window.select(Some(id - 1));
-                }
+            if id > 0 {
+                ui.window.select(Some(id - 1));
             }
         }
         Command::ChooseSelected => {
-            if let Some(id) = ui.window.selected() {
-                if track_uris.is_some() {
-                    // play a track from a list of tracks, use ID offset for finding the track
-                    send.send(ClientRequest::Player(PlayerRequest::PlayTrack(
-                        None,
-                        track_uris,
-                        offset::for_uri(tracks[id].uri.clone()),
-                    )))?;
-                } else if context_uri.is_some() {
-                    // play a track from a context, use URI offset for finding the track
-                    send.send(ClientRequest::Player(PlayerRequest::PlayTrack(
-                        context_uri,
-                        None,
-                        offset::for_uri(tracks[id].uri.clone()),
-                    )))?;
-                }
+            if track_uris.is_some() {
+                // play a track from a list of tracks, use ID offset for finding the track
+                send.send(ClientRequest::Player(PlayerRequest::PlayTrack(
+                    None,
+                    track_uris,
+                    offset::for_uri(tracks[id].uri.clone()),
+                )))?;
+            } else if context_uri.is_some() {
+                // play a track from a context, use URI offset for finding the track
+                send.send(ClientRequest::Player(PlayerRequest::PlayTrack(
+                    context_uri,
+                    None,
+                    offset::for_uri(tracks[id].uri.clone()),
+                )))?;
             }
         }
         Command::ShowActionsOnSelectedItem => {
-            if let Some(id) = ui.window.selected() {
-                ui.popup = Some(PopupState::ActionList(
-                    Item::Track(tracks[id].clone()),
-                    new_list_state(),
-                ));
-            }
+            ui.popup = Some(PopupState::ActionList(
+                Item::Track(tracks[id].clone()),
+                new_list_state(),
+            ));
         }
         _ => return Ok(false),
     }
@@ -336,29 +330,31 @@ fn handle_command_for_track_list_subwindow(
     ui: &mut UIStateGuard,
     tracks: Vec<&Track>,
 ) -> Result<bool> {
+    let id = ui.window.selected().unwrap();
+
     match command {
         Command::SelectNextOrScrollDown => {
-            if let Some(id) = ui.window.selected() {
-                if id + 1 < tracks.len() {
-                    ui.window.select(Some(id + 1));
-                }
+            if id + 1 < tracks.len() {
+                ui.window.select(Some(id + 1));
             }
         }
         Command::SelectPreviousOrScrollUp => {
-            if let Some(id) = ui.window.selected() {
-                if id > 0 {
-                    ui.window.select(Some(id - 1));
-                }
+            if id > 0 {
+                ui.window.select(Some(id - 1));
             }
         }
         Command::ChooseSelected => {
-            if let Some(id) = ui.window.selected() {
-                send.send(ClientRequest::Player(PlayerRequest::PlayTrack(
-                    None,
-                    Some(vec![tracks[id].uri.clone()]),
-                    None,
-                )))?;
-            }
+            send.send(ClientRequest::Player(PlayerRequest::PlayTrack(
+                None,
+                Some(vec![tracks[id].uri.clone()]),
+                None,
+            )))?;
+        }
+        Command::ShowActionsOnSelectedItem => {
+            ui.popup = Some(PopupState::ActionList(
+                Item::Track(tracks[id].clone()),
+                new_list_state(),
+            ));
         }
         _ => return Ok(false),
     }
@@ -371,27 +367,29 @@ fn handle_command_for_artist_list_subwindow(
     ui: &mut UIStateGuard,
     artists: Vec<&Artist>,
 ) -> Result<bool> {
+    let id = ui.window.selected().unwrap();
+
     match command {
         Command::SelectNextOrScrollDown => {
-            if let Some(id) = ui.window.selected() {
-                if id + 1 < artists.len() {
-                    ui.window.select(Some(id + 1));
-                }
+            if id + 1 < artists.len() {
+                ui.window.select(Some(id + 1));
             }
         }
         Command::SelectPreviousOrScrollUp => {
-            if let Some(id) = ui.window.selected() {
-                if id > 0 {
-                    ui.window.select(Some(id - 1));
-                }
+            if id > 0 {
+                ui.window.select(Some(id - 1));
             }
         }
         Command::ChooseSelected => {
-            if let Some(id) = ui.window.selected() {
-                let uri = artists[id].uri.clone().unwrap();
-                send.send(ClientRequest::GetContext(ContextURI::Artist(uri.clone())))?;
-                ui.history.push(PageState::Browsing(uri));
-            }
+            let uri = artists[id].uri.clone().unwrap();
+            send.send(ClientRequest::GetContext(ContextURI::Artist(uri.clone())))?;
+            ui.history.push(PageState::Browsing(uri));
+        }
+        Command::ShowActionsOnSelectedItem => {
+            ui.popup = Some(PopupState::ActionList(
+                Item::Artist(artists[id].clone()),
+                new_list_state(),
+            ));
         }
         _ => return Ok(false),
     }
@@ -404,27 +402,29 @@ fn handle_command_for_album_list_subwindow(
     ui: &mut UIStateGuard,
     albums: Vec<&Album>,
 ) -> Result<bool> {
+    let id = ui.window.selected().unwrap();
+
     match command {
         Command::SelectNextOrScrollDown => {
-            if let Some(id) = ui.window.selected() {
-                if id + 1 < albums.len() {
-                    ui.window.select(Some(id + 1));
-                }
+            if id + 1 < albums.len() {
+                ui.window.select(Some(id + 1));
             }
         }
         Command::SelectPreviousOrScrollUp => {
-            if let Some(id) = ui.window.selected() {
-                if id > 0 {
-                    ui.window.select(Some(id - 1));
-                }
+            if id > 0 {
+                ui.window.select(Some(id - 1));
             }
         }
         Command::ChooseSelected => {
-            if let Some(id) = ui.window.selected() {
-                let uri = albums[id].uri.clone().unwrap();
-                send.send(ClientRequest::GetContext(ContextURI::Album(uri.clone())))?;
-                ui.history.push(PageState::Browsing(uri));
-            }
+            let uri = albums[id].uri.clone().unwrap();
+            send.send(ClientRequest::GetContext(ContextURI::Album(uri.clone())))?;
+            ui.history.push(PageState::Browsing(uri));
+        }
+        Command::ShowActionsOnSelectedItem => {
+            ui.popup = Some(PopupState::ActionList(
+                Item::Album(albums[id].clone()),
+                new_list_state(),
+            ));
         }
         _ => return Ok(false),
     }
@@ -437,27 +437,29 @@ fn handle_command_for_playlist_list(
     ui: &mut UIStateGuard,
     playlists: Vec<&playlist::SimplifiedPlaylist>,
 ) -> Result<bool> {
+    let id = ui.window.selected().unwrap();
+
     match command {
         Command::SelectNextOrScrollDown => {
-            if let Some(id) = ui.window.selected() {
-                if id + 1 < playlists.len() {
-                    ui.window.select(Some(id + 1));
-                }
+            if id + 1 < playlists.len() {
+                ui.window.select(Some(id + 1));
             }
         }
         Command::SelectPreviousOrScrollUp => {
-            if let Some(id) = ui.window.selected() {
-                if id > 0 {
-                    ui.window.select(Some(id - 1));
-                }
+            if id > 0 {
+                ui.window.select(Some(id - 1));
             }
         }
         Command::ChooseSelected => {
-            if let Some(id) = ui.window.selected() {
-                let uri = playlists[id].uri.clone();
-                send.send(ClientRequest::GetContext(ContextURI::Playlist(uri.clone())))?;
-                ui.history.push(PageState::Browsing(uri));
-            }
+            let uri = playlists[id].uri.clone();
+            send.send(ClientRequest::GetContext(ContextURI::Playlist(uri.clone())))?;
+            ui.history.push(PageState::Browsing(uri));
+        }
+        Command::ShowActionsOnSelectedItem => {
+            ui.popup = Some(PopupState::ActionList(
+                Item::Playlist(playlists[id].clone()),
+                new_list_state(),
+            ));
         }
         _ => return Ok(false),
     }
