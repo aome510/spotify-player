@@ -47,13 +47,20 @@ pub enum WindowState {
 pub enum PopupState {
     CommandHelp(usize),
     ContextSearch(String),
-    UserPlaylistList(ListState),
+    UserPlaylistList(PlaylistPopupAction, Vec<Playlist>, ListState),
     UserFollowedArtistList(ListState),
     UserSavedAlbumList(ListState),
     DeviceList(ListState),
     ArtistList(Vec<Artist>, ListState),
     ThemeList(Vec<config::Theme>, ListState),
     ActionList(Item, ListState),
+}
+
+/// An action on a popup's item
+#[derive(Debug)]
+pub enum PlaylistPopupAction {
+    Browse,
+    AddTrack(String),
 }
 
 /// A trait representing a focusable state
@@ -131,7 +138,7 @@ impl PopupState {
     pub fn get_list_state(&self) -> Option<&ListState> {
         match self {
             Self::DeviceList(ref state) => Some(state),
-            Self::UserPlaylistList(ref state) => Some(state),
+            Self::UserPlaylistList(_, _, ref state) => Some(state),
             Self::UserFollowedArtistList(ref state) => Some(state),
             Self::UserSavedAlbumList(ref state) => Some(state),
             Self::ArtistList(_, ref state) => Some(state),
@@ -145,7 +152,7 @@ impl PopupState {
     pub fn get_list_state_mut(&mut self) -> Option<&mut ListState> {
         match self {
             Self::DeviceList(ref mut state) => Some(state),
-            Self::UserPlaylistList(ref mut state) => Some(state),
+            Self::UserPlaylistList(_, _, ref mut state) => Some(state),
             Self::UserFollowedArtistList(ref mut state) => Some(state),
             Self::UserSavedAlbumList(ref mut state) => Some(state),
             Self::ArtistList(_, ref mut state) => Some(state),
