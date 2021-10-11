@@ -68,7 +68,7 @@ impl Default for KeymapConfig {
                     command: Command::SearchContext,
                 },
                 Keymap {
-                    key_sequence: "C-;".into(),
+                    key_sequence: "C-space".into(),
                     command: Command::ShowActionsOnSelectedItem,
                 },
                 Keymap {

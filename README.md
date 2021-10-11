@@ -170,6 +170,7 @@ List of supported commands:
 | `SelectPreviousOrScrollUp`  | select the previous item in a list/table or scroll up     | `k`, `C-k`, `up`   |
 | `ChooseSelected`            | choose the selected item and act on it                    | `enter`            |
 | `RefreshPlayback`           | manually refresh the current playback                     | `r`                |
+| `ShowActionsOnSelectedItem` | show actions on a selected item                           | `g a`, `C-space`   |
 | `FocusNextWindow`           | focus the next focusable window (if any)                  | `tab`              |
 | `FocusPreviousWindow`       | focus the previous focusable window (if any)              | `backtab`          |
 | `SwitchTheme`               | open a popup for switching theme                          | `T`                |
