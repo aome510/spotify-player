@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use crate::{command::Action, token::Token};
 use rspotify::model::*;
 
@@ -17,7 +19,7 @@ pub struct PlayerState {
 
     pub search_cache: lru::LruCache<String, SearchResults>,
 
-    pub playback: Option<context::CurrentlyPlaybackContext>,
+    pub playback: Option<context::CurrentPlaybackContext>,
     pub playback_last_updated: Option<std::time::Instant>,
 }
 
@@ -54,42 +56,37 @@ pub enum ContextSortOrder {
     Duration,
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Debug, Clone)]
 /// A simplified version of `rspotify` track
 pub struct Track {
-    pub id: Option<String>,
-    pub uri: String,
+    pub id: Option<TrackId>,
     pub name: String,
     pub artists: Vec<Artist>,
     pub album: Album,
-    pub duration: u32,
+    pub duration: Duration,
     pub added_at: u64,
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Debug, Clone)]
 /// A simplified version of `rspotify` album
 pub struct Album {
-    pub id: Option<String>,
-    pub uri: Option<String>,
+    pub id: Option<AlbumId>,
     pub name: String,
     pub artists: Vec<Artist>,
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Debug, Clone)]
 /// A simplified version of `rspotify` artist
 pub struct Artist {
-    pub id: Option<String>,
-    pub uri: Option<String>,
+    pub id: Option<ArtistId>,
     pub name: String,
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct Playlist {
-    pub id: String,
-    pub uri: String,
+    pub id: PlaylistId,
     pub name: String,
-    /// (id, display_name)
-    pub owner: (String, String),
+    pub owner: (String, UserId),
 }
 
 #[derive(Debug, Clone)]
@@ -106,26 +103,25 @@ impl PlayerState {
         match self.playback {
             None => None,
             Some(ref playback) => match playback.item {
-                Some(rspotify::model::PlayingItem::Track(ref track)) => Some(track),
+                Some(rspotify::model::PlayableItem::Track(ref track)) => Some(track),
                 _ => None,
             },
         }
     }
 
     /// gets the current playback progress
-    pub fn get_playback_progress(&self) -> Option<u32> {
+    pub fn get_playback_progress(&self) -> Option<Duration> {
         match self.playback {
             None => None,
             Some(ref playback) => {
-                let progress_ms = (playback.progress_ms.unwrap() as u128)
+                let progress_ms = playback.progress.unwrap()
                     + if playback.is_playing {
                         std::time::Instant::now()
                             .saturating_duration_since(self.playback_last_updated.unwrap())
-                            .as_millis()
                     } else {
-                        0
+                        Duration::default()
                     };
-                Some(progress_ms as u32)
+                Some(progress_ms)
             }
         }
     }
@@ -292,30 +288,18 @@ impl std::fmt::Display for Artist {
     }
 }
 
-impl From<playlist::PlaylistTrack> for Track {
-    fn from(t: playlist::PlaylistTrack) -> Self {
-        let track = t.track.unwrap();
-        Self {
-            id: track.id,
-            uri: track.uri,
-            name: track.name,
-            artists: track.artists.into_iter().map(|a| a.into()).collect(),
-            album: track.album.into(),
-            duration: track.duration_ms,
-            added_at: t.added_at.timestamp() as u64,
-        }
-    }
-}
-
 impl From<track::SimplifiedTrack> for Track {
     fn from(track: track::SimplifiedTrack) -> Self {
         Self {
             id: track.id,
-            uri: track.uri,
             name: track.name,
             artists: track.artists.into_iter().map(|a| a.into()).collect(),
-            album: Album::default(),
-            duration: track.duration_ms,
+            album: Album {
+                name: String::default(),
+                id: None,
+                artists: vec![],
+            },
+            duration: track.duration,
             added_at: 0,
         }
     }
@@ -324,12 +308,11 @@ impl From<track::SimplifiedTrack> for Track {
 impl From<track::FullTrack> for Track {
     fn from(track: track::FullTrack) -> Self {
         Self {
-            id: track.id,
-            uri: track.uri,
+            id: Some(track.id),
             name: track.name,
             artists: track.artists.into_iter().map(|a| a.into()).collect(),
             album: track.album.into(),
-            duration: track.duration_ms,
+            duration: track.duration,
             added_at: 0,
         }
     }
@@ -340,7 +323,6 @@ impl From<album::SimplifiedAlbum> for Album {
         Self {
             name: album.name,
             id: album.id,
-            uri: album.uri,
             artists: album.artists.into_iter().map(|a| a.into()).collect(),
         }
     }
@@ -351,7 +333,6 @@ impl From<album::FullAlbum> for Album {
         Self {
             name: album.name,
             id: Some(album.id),
-            uri: Some(album.uri),
             artists: album.artists.into_iter().map(|a| a.into()).collect(),
         }
     }
@@ -362,7 +343,6 @@ impl From<artist::SimplifiedArtist> for Artist {
         Self {
             name: artist.name,
             id: artist.id,
-            uri: artist.uri,
         }
     }
 }
@@ -372,7 +352,6 @@ impl From<artist::FullArtist> for Artist {
         Self {
             name: artist.name,
             id: Some(artist.id),
-            uri: Some(artist.uri),
         }
     }
 }
@@ -382,7 +361,6 @@ impl From<playlist::SimplifiedPlaylist> for Playlist {
         Self {
             id: playlist.id,
             name: playlist.name,
-            uri: playlist.uri,
             owner: (
                 playlist.owner.display_name.unwrap_or_default(),
                 playlist.owner.id,
