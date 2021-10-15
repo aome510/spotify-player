@@ -7,7 +7,7 @@ use crate::{
     utils::{self, new_list_state},
 };
 use anyhow::{anyhow, Result};
-use librespot_core::session::Session;
+use librespot::core::session::Session;
 use rspotify::{blocking::client::Spotify, model::*, senum::*};
 
 /// A spotify client

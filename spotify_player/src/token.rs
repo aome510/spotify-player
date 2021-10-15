@@ -1,8 +1,7 @@
 use std::time::{Duration, Instant};
 
 use anyhow::{anyhow, Result};
-use librespot_core::keymaster;
-use librespot_core::session::Session;
+use librespot::core::{keymaster, session::Session};
 
 // the application authorization token's permission scopes
 const SCOPES: [&str; 15] = [

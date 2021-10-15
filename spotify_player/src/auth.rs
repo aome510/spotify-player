@@ -1,7 +1,7 @@
 use std::io::Write;
 
 use anyhow::{anyhow, Result};
-use librespot_core::{
+use librespot::core::{
     authentication::Credentials,
     cache::Cache,
     config::SessionConfig,
