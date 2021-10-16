@@ -1,7 +1,7 @@
 use super::player::*;
 use crate::{config, key};
-
 use tui::widgets::{ListState, TableState};
+
 pub type UIStateGuard<'a> = std::sync::MutexGuard<'a, UIState>;
 
 // TODO: improve the documentation for UI states' struct
@@ -103,10 +103,7 @@ impl UIState {
     }
 
     /// gets a list of items possibly filtered by a search query if currently inside a search state
-    pub fn search_filtered_items<'a, T: std::fmt::Display>(
-        &self,
-        items: &'a [T],
-    ) -> Vec<&'a T> {
+    pub fn search_filtered_items<'a, T: std::fmt::Display>(&self, items: &'a [T]) -> Vec<&'a T> {
         match self.popup {
             Some(PopupState::ContextSearch(ref query)) => items
                 .iter()
