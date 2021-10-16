@@ -1,6 +1,7 @@
 use super::player::*;
 use crate::{config, key};
 
+use rspotify::model;
 use tui::widgets::{ListState, TableState};
 
 pub type UIStateGuard<'a> = std::sync::MutexGuard<'a, UIState>;
@@ -61,7 +62,7 @@ pub enum PopupState {
 #[derive(Debug)]
 pub enum PlaylistPopupAction {
     Browse,
-    AddTrack(String),
+    AddTrack(model::TrackId),
 }
 
 /// A trait representing a focusable state

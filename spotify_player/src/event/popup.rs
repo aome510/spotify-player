@@ -173,13 +173,11 @@ pub fn handle_key_sequence_for_popup(
                 player.devices.len(),
                 |_, _| {},
                 |ui: &mut UIStateGuard, id: usize| -> Result<()> {
-                    if let Some(ref id) = player.devices[id].id {
-                        send.send(ClientRequest::Player(PlayerRequest::TransferPlayback(
-                            id.clone(),
-                            true,
-                        )))?;
-                        ui.popup = None;
-                    }
+                    send.send(ClientRequest::Player(PlayerRequest::TransferPlayback(
+                        player.devices[id].id.clone(),
+                        true,
+                    )))?;
+                    ui.popup = None;
                     Ok(())
                 },
                 |ui: &mut UIStateGuard| {

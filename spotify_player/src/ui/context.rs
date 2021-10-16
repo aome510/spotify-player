@@ -1,5 +1,6 @@
 use super::Frame;
 use crate::{state::*, ui::construct_list_widget, utils};
+use rspotify::model::Id;
 use std::sync::RwLockReadGuard;
 use tui::{layout::*, style::*, widgets::*};
 
@@ -183,11 +184,13 @@ fn render_context_track_table_widget(
     tracks: Vec<&Track>,
 ) {
     let track_table = {
+        // get the current playing track's URI to
+        // highlight such track (if exists) in the track table
         let mut playing_track_uri = "".to_string();
         let mut active_desc = "";
         if let Some(ref playback) = player.playback {
-            if let Some(rspotify::model::PlayingItem::Track(ref track)) = playback.item {
-                playing_track_uri = track.uri.clone();
+            if let Some(rspotify::model::PlayableItem::Track(ref track)) = playback.item {
+                playing_track_uri = track.id.uri();
                 active_desc = if !playback.is_playing { "⏸" } else { "▶" };
             }
         }
@@ -197,7 +200,7 @@ fn render_context_track_table_widget(
             .into_iter()
             .enumerate()
             .map(|(id, t)| {
-                let (id, style) = if playing_track_uri == t.uri {
+                let (id, style) = if playing_track_uri == t.id.uri() {
                     (active_desc.to_string(), ui.theme.current_active())
                 } else {
                     ((id + 1).to_string(), Style::default())
@@ -206,7 +209,7 @@ fn render_context_track_table_widget(
                     Cell::from(id),
                     Cell::from(utils::truncate_string(t.name.clone(), item_max_len)),
                     Cell::from(utils::truncate_string(t.artists_info(), item_max_len)),
-                    Cell::from(utils::truncate_string(t.album.name.clone(), item_max_len)),
+                    Cell::from(utils::truncate_string(t.album_info(), item_max_len)),
                     Cell::from(utils::format_duration(t.duration)),
                 ])
                 .style(style)

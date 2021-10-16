@@ -7,7 +7,7 @@ use rspotify::model;
 /// Player state
 #[derive(Debug)]
 pub struct PlayerState {
-    pub devices: Vec<model::Device>,
+    pub devices: Vec<Device>,
 
     pub user: Option<model::PrivateUser>,
     pub user_playlists: Vec<Playlist>,
@@ -26,9 +26,9 @@ pub struct PlayerState {
 /// Playing context (album, playlist, etc) of the current track
 #[derive(Clone, Debug)]
 pub enum Context {
-    Playlist(model::FullPlaylist, Vec<Track>),
-    Album(model::FullAlbum, Vec<Track>),
-    Artist(model::FullArtist, Vec<Track>, Vec<Album>, Vec<Artist>),
+    Playlist(Playlist, Vec<Track>),
+    Album(Album, Vec<Track>),
+    Artist(Artist, Vec<Track>, Vec<Album>, Vec<Artist>),
     Unknown(String),
 }
 
@@ -63,6 +63,13 @@ pub enum ContextSortOrder {
     Album,
     Artists,
     Duration,
+}
+
+#[derive(Debug, Clone)]
+/// A simplified version of `rspotify` device
+pub struct Device {
+    pub id: String,
+    pub name: String,
 }
 
 #[derive(Debug, Clone)]
@@ -223,11 +230,7 @@ impl Context {
                 format!(
                     "Playlist: {} | {} | {} songs",
                     playlist.name,
-                    playlist
-                        .owner
-                        .display_name
-                        .as_ref()
-                        .unwrap_or(&"unknown".to_owned()),
+                    playlist.owner.0,
                     tracks.len()
                 )
             }
@@ -258,6 +261,16 @@ impl Context {
     }
 }
 
+impl Device {
+    /// tries to convert from a `rspotify_model::Device` into `Device`
+    pub fn try_from_device(device: model::Device) -> Option<Self> {
+        device.id.map(|id| Self {
+            id,
+            name: device.name,
+        })
+    }
+}
+
 impl Track {
     /// gets the track's artists information
     pub fn artists_info(&self) -> String {
@@ -273,8 +286,8 @@ impl Track {
         self.album.map(|a| a.name).unwrap_or_default()
     }
 
-    /// gets the track basic information (track's name, artists' name and album's name)
-    pub fn basic_info(&self) -> String {
+    /// gets the track information (track's name, artists' name and album's name)
+    pub fn track_info(&self) -> String {
         format!(
             "{} {} {}",
             self.name,
@@ -283,7 +296,7 @@ impl Track {
         )
     }
 
-    /// tries to convert from a `rspotify::SimplifiedTrack` into `Track`
+    /// tries to convert from a `rspotify_model::SimplifiedTrack` into `Track`
     pub fn try_from_simplified_track(track: model::SimplifiedTrack) -> Option<Self> {
         track.id.map(|id| Self {
             id,
@@ -309,8 +322,14 @@ impl From<model::FullTrack> for Track {
     }
 }
 
+impl std::fmt::Display for Track {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.track_info())
+    }
+}
+
 impl Album {
-    /// tries to convert from a `rspotify::SimplifiedAlbum` into `Album`
+    /// tries to convert from a `rspotify_model::SimplifiedAlbum` into `Album`
     pub fn try_from_simplified_album(album: model::SimplifiedAlbum) -> Option<Self> {
         album.id.map(|id| Self {
             id,
@@ -332,8 +351,14 @@ impl From<model::FullAlbum> for Album {
     }
 }
 
+impl std::fmt::Display for Album {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name)
+    }
+}
+
 impl Artist {
-    /// tries to convert from a `rspotify::SimplifiedArtist` into `Artist`
+    /// tries to convert from a `rspotify_model::SimplifiedArtist` into `Artist`
     pub fn try_from_simplified_artist(artist: model::SimplifiedArtist) -> Option<Self> {
         artist.id.map(|id| Self {
             id,
@@ -351,6 +376,12 @@ impl From<model::FullArtist> for Artist {
     }
 }
 
+impl std::fmt::Display for Artist {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name)
+    }
+}
+
 /// a helper function to convert a vector of `rspotify_model::SimplifiedArtist` into
 /// a vector of `Artist`.
 fn from_simplified_artists_to_artists(artists: Vec<model::SimplifiedArtist>) -> Vec<Artist> {
@@ -364,6 +395,19 @@ fn from_simplified_artists_to_artists(artists: Vec<model::SimplifiedArtist>) -> 
 
 impl From<model::SimplifiedPlaylist> for Playlist {
     fn from(playlist: model::SimplifiedPlaylist) -> Self {
+        Self {
+            id: playlist.id,
+            name: playlist.name,
+            owner: (
+                playlist.owner.display_name.unwrap_or_default(),
+                playlist.owner.id,
+            ),
+        }
+    }
+}
+
+impl From<model::FullPlaylist> for Playlist {
+    fn from(playlist: model::FullPlaylist) -> Self {
         Self {
             id: playlist.id,
             name: playlist.name,
