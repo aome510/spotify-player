@@ -15,15 +15,6 @@ mod popup;
 mod window;
 
 #[derive(Debug)]
-/// A context URI
-pub enum ContextURI {
-    Playlist(String),
-    Album(String),
-    Artist(String),
-    Unknown(String),
-}
-
-#[derive(Debug)]
 /// A request that modifies the player's playback
 pub enum PlayerRequest {
     NextTrack,
@@ -264,10 +255,7 @@ fn handle_global_command(
             send.send(ClientRequest::GetDevices)?;
         }
         Command::SwitchTheme => {
-            ui.popup = Some(PopupState::ThemeList(
-                state.themes(ui),
-                new_list_state(),
-            ));
+            ui.popup = Some(PopupState::ThemeList(state.themes(ui), new_list_state()));
         }
         _ => return Ok(false),
     }

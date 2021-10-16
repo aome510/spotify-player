@@ -31,6 +31,8 @@ toml = "0.5.8"
 tui = { version = "0.16.0", default-features = false, features = ["crossterm", "serde"] }
 unicode-width = "0.1.9"
 rand = "0.8.4"
+maybe-async = "0.2.6"
+async-trait = "0.1.51"
 
 [features]
 alsa-backend = ["streaming", "librespot/alsa-backend"]
