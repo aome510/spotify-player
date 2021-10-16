@@ -103,7 +103,7 @@ impl UIState {
     }
 
     /// gets a list of items possibly filtered by a search query if currently inside a search state
-    pub fn get_search_filtered_items<'a, T: std::fmt::Display>(
+    pub fn search_filtered_items<'a, T: std::fmt::Display>(
         &self,
         items: &'a [T],
     ) -> Vec<&'a T> {
@@ -135,7 +135,7 @@ impl Default for UIState {
 
 impl PopupState {
     /// gets the state of the current list popup
-    pub fn get_list_state(&self) -> Option<&ListState> {
+    pub fn list_state(&self) -> Option<&ListState> {
         match self {
             Self::DeviceList(ref state) => Some(state),
             Self::UserPlaylistList(_, _, ref state) => Some(state),
@@ -149,7 +149,7 @@ impl PopupState {
     }
 
     /// gets the (mutable) state of the current list popup
-    pub fn get_list_state_mut(&mut self) -> Option<&mut ListState> {
+    pub fn list_state_mut(&mut self) -> Option<&mut ListState> {
         match self {
             Self::DeviceList(ref mut state) => Some(state),
             Self::UserPlaylistList(_, _, ref mut state) => Some(state),
@@ -164,7 +164,7 @@ impl PopupState {
 
     /// returns the selected position in the current list popup
     pub fn list_selected(&self) -> Option<usize> {
-        match self.get_list_state() {
+        match self.list_state() {
             None => None,
             Some(state) => state.selected(),
         }
@@ -172,7 +172,7 @@ impl PopupState {
 
     /// selects a position in the current list popup
     pub fn list_select(&mut self, id: Option<usize>) {
-        match self.get_list_state_mut() {
+        match self.list_state_mut() {
             None => {}
             Some(state) => state.select(id),
         }
@@ -181,7 +181,7 @@ impl PopupState {
 
 impl WindowState {
     /// gets the state of the context track table
-    pub fn get_track_table_state(&mut self) -> Option<&mut TableState> {
+    pub fn track_table_state(&mut self) -> Option<&mut TableState> {
         match self {
             Self::Playlist(ref mut state) => Some(state),
             Self::Album(ref mut state) => Some(state),

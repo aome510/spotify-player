@@ -187,7 +187,7 @@ fn render_playback_window(
                 // .style(theme.text_desc_style())
                 .block(Block::default());
             let progress_ms =
-                std::cmp::min(player.get_playback_progress().unwrap(), track.duration_ms);
+                std::cmp::min(player.playback_progress().unwrap(), track.duration_ms);
             let progress_bar = Gauge::default()
                 .block(Block::default())
                 .gauge_style(ui.theme.playback_progress_bar())

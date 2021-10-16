@@ -20,7 +20,7 @@ pub fn render_context_window(
 
     let player = state.player.read().unwrap();
 
-    match player.get_context() {
+    match player.context() {
         Some(context) => {
             frame.render_widget(block, rect);
 
@@ -30,7 +30,7 @@ pub fn render_context_window(
                 .margin(1)
                 .constraints([Constraint::Length(1), Constraint::Min(0)].as_ref())
                 .split(rect);
-            let context_desc = Paragraph::new(context.get_description())
+            let context_desc = Paragraph::new(context.description())
                 .block(Block::default().style(ui.theme.context_desc()));
             frame.render_widget(context_desc, chunks[0]);
 
@@ -54,7 +54,7 @@ pub fn render_context_window(
                         state,
                         &player,
                         chunks[1],
-                        ui.get_search_filtered_items(tracks),
+                        ui.search_filtered_items(tracks),
                     );
                 }
                 Context::Album(_, ref tracks) => {
@@ -65,7 +65,7 @@ pub fn render_context_window(
                         state,
                         &player,
                         chunks[1],
-                        ui.get_search_filtered_items(tracks),
+                        ui.search_filtered_items(tracks),
                     );
                 }
                 Context::Unknown(_) => {}
@@ -100,9 +100,9 @@ fn render_context_artist_widget(
         }
     };
     let (tracks, albums, artists) = (
-        ui.get_search_filtered_items(data.0),
-        ui.get_search_filtered_items(data.1),
-        ui.get_search_filtered_items(data.2),
+        ui.search_filtered_items(data.0),
+        ui.search_filtered_items(data.1),
+        ui.search_filtered_items(data.2),
     );
 
     let rect = {
@@ -205,7 +205,7 @@ fn render_context_track_table_widget(
                 Row::new(vec![
                     Cell::from(id),
                     Cell::from(utils::truncate_string(t.name.clone(), item_max_len)),
-                    Cell::from(utils::truncate_string(t.get_artists_info(), item_max_len)),
+                    Cell::from(utils::truncate_string(t.artists_info(), item_max_len)),
                     Cell::from(utils::truncate_string(t.album.name.clone(), item_max_len)),
                     Cell::from(utils::format_duration(t.duration)),
                 ])
@@ -235,7 +235,7 @@ fn render_context_track_table_widget(
             .highlight_style(ui.theme.selection_style(is_active))
     };
 
-    if let Some(state) = ui.window.get_track_table_state() {
+    if let Some(state) = ui.window.track_table_state() {
         frame.render_stateful_widget(track_table, rect, state)
     }
 }

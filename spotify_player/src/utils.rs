@@ -61,7 +61,7 @@ pub fn update_context(state: &state::SharedState, context_uri: String) {
 
             // spawn a pooling job to check when the context is updated inside the player state
             loop {
-                let window_state = match state.player.read().unwrap().get_context() {
+                let window_state = match state.player.read().unwrap().context() {
                     Some(context) => match context {
                         state::Context::Artist(..) => WindowState::Artist(
                             new_table_state(),

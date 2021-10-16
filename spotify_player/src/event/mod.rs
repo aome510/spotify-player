@@ -7,7 +7,7 @@ use crate::{
 use anyhow::Result;
 use crossterm::event::*;
 use rand::Rng;
-use rspotify::model::offset;
+use rspotify::model::*;
 use std::sync::mpsc;
 use tokio_stream::StreamExt;
 
@@ -48,8 +48,7 @@ pub enum ClientRequest {
     GetContext(ContextURI),
     GetCurrentPlayback,
     Search(String),
-    /// playlist_id, track_id
-    AddTrackToPlaylist(String, String),
+    AddTrackToPlaylist(PlaylistId, TrackId),
     SaveToLibrary(Item),
     Player(PlayerRequest),
 }
@@ -89,7 +88,7 @@ fn handle_mouse_event(
     if let MouseEventKind::Down(MouseButton::Left) = event.kind {
         if event.row == ui.progress_bar_rect.y {
             let player = state.player.read().unwrap();
-            let track = player.get_current_playing_track();
+            let track = player.current_playing_track();
             if let Some(track) = track {
                 let position_ms =
                     track.duration_ms * (event.column as u32) / (ui.progress_bar_rect.width as u32);
@@ -217,7 +216,7 @@ fn handle_global_command(
             ui.history.push(PageState::CurrentPlaying);
         }
         Command::BrowsePlayingTrackAlbum => {
-            if let Some(track) = state.player.read().unwrap().get_current_playing_track() {
+            if let Some(track) = state.player.read().unwrap().current_playing_track() {
                 if let Some(ref uri) = track.album.uri {
                     send.send(ClientRequest::GetContext(ContextURI::Album(uri.clone())))?;
                     ui.history.push(PageState::Browsing(uri.clone()));
@@ -225,7 +224,7 @@ fn handle_global_command(
             }
         }
         Command::BrowsePlayingTrackArtists => {
-            if let Some(track) = state.player.read().unwrap().get_current_playing_track() {
+            if let Some(track) = state.player.read().unwrap().current_playing_track() {
                 let artists = track
                     .artists
                     .iter()
@@ -266,7 +265,7 @@ fn handle_global_command(
         }
         Command::SwitchTheme => {
             ui.popup = Some(PopupState::ThemeList(
-                state.get_themes(ui),
+                state.themes(ui),
                 new_list_state(),
             ));
         }

@@ -26,7 +26,7 @@ pub fn render_search_window(is_active: bool, frame: &mut Frame, ui: &mut UIState
             .tracks
             .items
             .iter()
-            .map(|a| (format!("{} - {}", a.name, a.get_artists_info()), false))
+            .map(|a| (format!("{} - {}", a.name, a.artists_info()), false))
             .collect::<Vec<_>>();
 
         let is_active = is_active && focus_state == SearchFocusState::Tracks;

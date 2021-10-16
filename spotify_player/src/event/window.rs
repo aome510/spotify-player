@@ -41,11 +41,11 @@ pub fn handle_key_sequence_for_context_window(
         }
         Command::PlayContext => {
             let player = state.player.read().unwrap();
-            let context = player.get_context();
+            let context = player.context();
 
             // randomly play a track from the current context
             if let Some(context) = context {
-                if let Some(tracks) = context.get_tracks() {
+                if let Some(tracks) = context.tracks() {
                     let offset = match context {
                         // Spotify does not allow to manually specify `offset` for artist context
                         Context::Artist(..) => None,
@@ -65,7 +65,7 @@ pub fn handle_key_sequence_for_context_window(
         }
         _ => {
             // handles sort/reverse commands separately
-            if state.player.read().unwrap().get_context().is_some() {
+            if state.player.read().unwrap().context().is_some() {
                 let sort_order = match command {
                     Command::SortTrackByTitle => Some(ContextSortOrder::TrackName),
                     Command::SortTrackByAlbum => Some(ContextSortOrder::Album),
@@ -80,7 +80,7 @@ pub fn handle_key_sequence_for_context_window(
                             .player
                             .write()
                             .unwrap()
-                            .get_context_mut()
+                            .context_mut()
                             .unwrap()
                             .sort_tracks(sort_order);
                         return Ok(true);
@@ -91,7 +91,7 @@ pub fn handle_key_sequence_for_context_window(
                                 .player
                                 .write()
                                 .unwrap()
-                                .get_context_mut()
+                                .context_mut()
                                 .unwrap()
                                 .reverse_tracks();
                             return Ok(true);
@@ -206,7 +206,7 @@ pub fn handle_command_for_focused_context_subwindow(
     ui: &mut UIStateGuard,
     state: &SharedState,
 ) -> Result<bool> {
-    match state.player.read().unwrap().get_context() {
+    match state.player.read().unwrap().context() {
         Some(context) => match context {
             Context::Artist(_, ref tracks, ref albums, ref artists) => {
                 let focus_state = match ui.window {
@@ -219,13 +219,13 @@ pub fn handle_command_for_focused_context_subwindow(
                         command,
                         send,
                         ui,
-                        ui.get_search_filtered_items(albums),
+                        ui.search_filtered_items(albums),
                     ),
                     ArtistFocusState::RelatedArtists => handle_command_for_artist_list_subwindow(
                         command,
                         send,
                         ui,
-                        ui.get_search_filtered_items(artists),
+                        ui.search_filtered_items(artists),
                     ),
                     ArtistFocusState::TopTracks => handle_command_for_track_table_subwindow(
                         command,
@@ -233,7 +233,7 @@ pub fn handle_command_for_focused_context_subwindow(
                         ui,
                         None,
                         Some(tracks.iter().map(|t| t.uri.clone()).collect::<Vec<_>>()),
-                        ui.get_search_filtered_items(tracks),
+                        ui.search_filtered_items(tracks),
                     ),
                 }
             }
@@ -243,7 +243,7 @@ pub fn handle_command_for_focused_context_subwindow(
                 ui,
                 Some(album.uri.clone()),
                 None,
-                ui.get_search_filtered_items(tracks),
+                ui.search_filtered_items(tracks),
             ),
             Context::Playlist(ref playlist, ref tracks) => {
                 handle_command_for_track_table_subwindow(
@@ -252,7 +252,7 @@ pub fn handle_command_for_focused_context_subwindow(
                     ui,
                     Some(playlist.uri.clone()),
                     None,
-                    ui.get_search_filtered_items(tracks),
+                    ui.search_filtered_items(tracks),
                 )
             }
             Context::Unknown(_) => Ok(false),

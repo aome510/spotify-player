@@ -9,7 +9,7 @@ pub struct PlayerState {
     pub devices: Vec<device::Device>,
     pub token: Token,
 
-    pub user_id: String,
+    pub user: Option<PrivateUser>,
     pub user_playlists: Vec<Playlist>,
     pub user_followed_artists: Vec<Artist>,
     pub user_saved_albums: Vec<Album>,
@@ -99,7 +99,7 @@ pub enum Item {
 
 impl PlayerState {
     /// gets the current playing track
-    pub fn get_current_playing_track(&self) -> Option<&track::FullTrack> {
+    pub fn current_playing_track(&self) -> Option<&track::FullTrack> {
         match self.playback {
             None => None,
             Some(ref playback) => match playback.item {
@@ -110,7 +110,7 @@ impl PlayerState {
     }
 
     /// gets the current playback progress
-    pub fn get_playback_progress(&self) -> Option<Duration> {
+    pub fn playback_progress(&self) -> Option<Duration> {
         match self.playback {
             None => None,
             Some(ref playback) => {
@@ -127,12 +127,12 @@ impl PlayerState {
     }
 
     /// gets the current context
-    pub fn get_context(&self) -> Option<&Context> {
+    pub fn context(&self) -> Option<&Context> {
         self.context_cache.peek(&self.context_uri)
     }
 
     /// gets the current context (mutable)
-    pub fn get_context_mut(&mut self) -> Option<&mut Context> {
+    pub fn context_mut(&mut self) -> Option<&mut Context> {
         self.context_cache.peek_mut(&self.context_uri)
     }
 }
@@ -166,7 +166,7 @@ impl Default for PlayerState {
         Self {
             token: Token::new(),
             devices: vec![],
-            user_id: "".to_owned(),
+            user: None,
             user_playlists: vec![],
             user_saved_albums: vec![],
             user_followed_artists: vec![],
@@ -182,7 +182,7 @@ impl Default for PlayerState {
 impl Context {
     /// sorts tracks in the current playing context given a context sort oder
     pub fn sort_tracks(&mut self, sort_oder: ContextSortOrder) {
-        let tracks = self.get_tracks_mut();
+        let tracks = self.tracks_mut();
         if let Some(tracks) = tracks {
             tracks.sort_by(|x, y| sort_oder.compare(x, y));
         }
@@ -190,14 +190,14 @@ impl Context {
 
     /// reverses order of tracks in the current playing context
     pub fn reverse_tracks(&mut self) {
-        let tracks = self.get_tracks_mut();
+        let tracks = self.tracks_mut();
         if let Some(tracks) = tracks {
             tracks.reverse();
         }
     }
 
     /// gets the description of current playing context
-    pub fn get_description(&self) -> String {
+    pub fn description(&self) -> String {
         match self {
             Context::Unknown(_) => {
                 "Cannot infer the playing context from the current playback".to_owned()
@@ -229,7 +229,7 @@ impl Context {
     }
 
     /// gets all tracks inside the current playing context (immutable)
-    pub fn get_tracks(&self) -> Option<&Vec<Track>> {
+    pub fn tracks(&self) -> Option<&Vec<Track>> {
         match self {
             Context::Unknown(_) => None,
             Context::Album(_, ref tracks) => Some(tracks),
@@ -239,7 +239,7 @@ impl Context {
     }
 
     /// gets all tracks inside the current playing context (mutable)
-    pub fn get_tracks_mut(&mut self) -> Option<&mut Vec<Track>> {
+    pub fn tracks_mut(&mut self) -> Option<&mut Vec<Track>> {
         match self {
             Context::Unknown(_) => None,
             Context::Album(_, ref mut tracks) => Some(tracks),
@@ -251,7 +251,7 @@ impl Context {
 
 impl Track {
     /// gets the track's artists information
-    pub fn get_artists_info(&self) -> String {
+    pub fn artists_info(&self) -> String {
         self.artists
             .iter()
             .map(|a| a.name.clone())
@@ -260,19 +260,14 @@ impl Track {
     }
 
     /// gets the track basic information (track's name, artists' name and album's name)
-    pub fn get_basic_info(&self) -> String {
-        format!(
-            "{} {} {}",
-            self.name,
-            self.get_artists_info(),
-            self.album.name
-        )
+    pub fn basic_info(&self) -> String {
+        format!("{} {} {}", self.name, self.artists_info(), self.album.name)
     }
 }
 
 impl std::fmt::Display for Track {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.get_basic_info())
+        write!(f, "{}", self.basic_info())
     }
 }
 
@@ -376,7 +371,7 @@ impl ContextSortOrder {
             Self::TrackName => x.name.cmp(&y.name),
             Self::Album => x.album.name.cmp(&y.album.name),
             Self::Duration => x.duration.cmp(&y.duration),
-            Self::Artists => x.get_artists_info().cmp(&y.get_artists_info()),
+            Self::Artists => x.artists_info().cmp(&y.artists_info()),
         }
     }
 }
