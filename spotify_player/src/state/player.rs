@@ -1,12 +1,13 @@
-use crate::{command, token};
-use rspotify::model;
 use std::time;
+
+use crate::command;
+
+use rspotify::model;
 
 /// Player state
 #[derive(Debug)]
 pub struct PlayerState {
     pub devices: Vec<model::Device>,
-    pub token: token::Token,
 
     pub user: Option<model::PrivateUser>,
     pub user_playlists: Vec<Playlist>,
@@ -28,6 +29,15 @@ pub enum Context {
     Playlist(model::FullPlaylist, Vec<Track>),
     Album(model::FullAlbum, Vec<Track>),
     Artist(model::FullArtist, Vec<Track>, Vec<Album>, Vec<Artist>),
+    Unknown(String),
+}
+
+#[derive(Debug)]
+/// A context URI
+pub enum ContextURI {
+    Playlist(String),
+    Album(String),
+    Artist(String),
     Unknown(String),
 }
 
@@ -163,7 +173,6 @@ impl SearchResults {
 impl Default for PlayerState {
     fn default() -> Self {
         Self {
-            token: token::Token::new(),
             devices: vec![],
             user: None,
             user_playlists: vec![],

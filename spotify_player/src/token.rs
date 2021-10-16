@@ -1,9 +1,11 @@
-use std::time::{Duration, Instant};
+use std::collections::HashSet;
 
 use anyhow::{anyhow, Result};
+use chrono::{Duration, Utc};
 use librespot::core::{keymaster, session::Session};
+use rspotify::Token;
 
-// the application authorization token's permission scopes
+/// the application authorization token's permission scopes
 const SCOPES: [&str; 15] = [
     "user-read-recently-played",
     "user-top-read",
@@ -22,37 +24,22 @@ const SCOPES: [&str; 15] = [
     "user-library-modify",
 ];
 
-/// gets an authentication using the current Librespot session
+/// gets an authorization token with pre-defined permission scopes
 pub async fn get_token(session: &Session, client_id: &str) -> Result<Token> {
-    Ok(keymaster::get_token(session, client_id, &SCOPES.join(","))
+    let token = keymaster::get_token(session, client_id, &SCOPES.join(","))
         .await
-        .map_err(|err| anyhow!(format!("failed to get token: {:#?}", err)))?
-        .into())
-}
+        .map_err(|err| anyhow!(format!("failed to get token: {:#?}", err)))?;
 
-// A spotify authorization token
-#[derive(Debug)]
-pub struct Token {
-    pub access_token: String,
-    pub expires_at: Instant,
-}
+    // converts the token returned by librespot `get_token` function to a `rspotify::Token`
 
-impl Token {
-    pub fn new() -> Self {
-        Self {
-            access_token: "".to_string(),
-            expires_at: Instant::now(),
-        }
-    }
-}
+    let expires_in = Duration::from_std(std::time::Duration::from_secs(token.expires_in as u64))?;
+    let expires_at = Utc::now() + expires_in;
 
-impl From<keymaster::Token> for Token {
-    fn from(token: keymaster::Token) -> Self {
-        Self {
-            access_token: token.access_token,
-            // `expires_at` but earlier 5 min
-            expires_at: Instant::now() + Duration::from_secs(token.expires_in as u64)
-                - Duration::from_secs(5 * 60),
-        }
-    }
+    Ok(Token {
+        access_token: token.access_token,
+        expires_in,
+        expires_at: Some(expires_at),
+        scopes: HashSet::new(),
+        refresh_token: None,
+    })
 }

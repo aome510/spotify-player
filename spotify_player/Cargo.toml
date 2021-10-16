@@ -20,6 +20,7 @@ env_logger = "0.9.0"
 librespot = "0.3.0"
 log = "0.4.14"
 lru = "0.7.0"
+chrono = "0.4.19"
 reqwest = { version = "0.11.5", features = ["json"] }
 rpassword = "5.0.1"
 rspotify = "0.11.2"

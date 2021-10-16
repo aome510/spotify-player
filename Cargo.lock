@@ -2595,6 +2595,7 @@ name = "spotify_player"
 version = "0.3.0"
 dependencies = [
  "anyhow",
+ "chrono",
  "clap",
  "config_parser2",
  "crossterm 0.21.0",
