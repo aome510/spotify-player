@@ -3,9 +3,10 @@ use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 use crate::state::{self, ArtistFocusState, WindowState};
 
-/// formats a time duration (in ms) into a "{minutes}:{seconds}" format
-pub fn format_duration(duration: u32) -> String {
-    format!("{}:{:02}", duration / 60000, (duration / 1000) % 60)
+/// formats a time duration into a "{minutes}:{seconds}" format
+pub fn format_duration(duration: std::time::Duration) -> String {
+    let secs = duration.as_secs();
+    format!("{}:{:02}", secs / 60, secs)
 }
 
 /// truncates a string whose length exceeds a given `max_len` length.
