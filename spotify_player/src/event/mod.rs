@@ -7,7 +7,7 @@ use crate::{
 use anyhow::Result;
 use crossterm::event::*;
 use rand::Rng;
-use rspotify::model::*;
+use rspotify::model::{self, Id};
 use std::sync::mpsc;
 use tokio_stream::StreamExt;
 
@@ -24,7 +24,7 @@ pub enum PlayerRequest {
     Repeat,
     Shuffle,
     Volume(u8),
-    PlayTrack(Option<String>, Option<Vec<String>>, Option<offset::Offset>),
+    PlayTrack(Option<String>, Option<Vec<String>>, Option<model::Offset>),
     TransferPlayback(String, bool),
 }
 
@@ -36,10 +36,10 @@ pub enum ClientRequest {
     GetUserPlaylists,
     GetUserSavedAlbums,
     GetUserFollowedArtists,
-    GetContext(ContextURI),
+    GetContext(ContextId),
     GetCurrentPlayback,
     Search(String),
-    AddTrackToPlaylist(PlaylistId, TrackId),
+    AddTrackToPlaylist(model::PlaylistId, model::TrackId),
     SaveToLibrary(Item),
     Player(PlayerRequest),
 }
@@ -81,8 +81,8 @@ fn handle_mouse_event(
             let player = state.player.read().unwrap();
             let track = player.current_playing_track();
             if let Some(track) = track {
-                let position_ms =
-                    track.duration_ms * (event.column as u32) / (ui.progress_bar_rect.width as u32);
+                let position_ms = (track.duration.as_millis() as u32) * (event.column as u32)
+                    / (ui.progress_bar_rect.width as u32);
                 send.send(ClientRequest::Player(PlayerRequest::SeekTrack(position_ms)))?;
             }
         }
@@ -187,14 +187,18 @@ fn handle_global_command(
         }
         Command::VolumeUp => {
             if let Some(ref playback) = state.player.read().unwrap().playback {
-                let volume = std::cmp::min(playback.device.volume_percent + 5, 100_u32);
-                send.send(ClientRequest::Player(PlayerRequest::Volume(volume as u8)))?;
+                if let Some(percent) = playback.device.volume_percent {
+                    let volume = std::cmp::max(percent + 5, 100_u32);
+                    send.send(ClientRequest::Player(PlayerRequest::Volume(volume as u8)))?;
+                }
             }
         }
         Command::VolumeDown => {
             if let Some(ref playback) = state.player.read().unwrap().playback {
-                let volume = std::cmp::max(playback.device.volume_percent as i32 - 5, 0_i32);
-                send.send(ClientRequest::Player(PlayerRequest::Volume(volume as u8)))?;
+                if let Some(percent) = playback.device.volume_percent {
+                    let volume = std::cmp::max(percent.saturating_sub(5_u32), 0_u32);
+                    send.send(ClientRequest::Player(PlayerRequest::Volume(volume as u8)))?;
+                }
             }
         }
         Command::OpenCommandHelp => {
@@ -208,9 +212,9 @@ fn handle_global_command(
         }
         Command::BrowsePlayingTrackAlbum => {
             if let Some(track) = state.player.read().unwrap().current_playing_track() {
-                if let Some(ref uri) = track.album.uri {
-                    send.send(ClientRequest::GetContext(ContextURI::Album(uri.clone())))?;
-                    ui.history.push(PageState::Browsing(uri.clone()));
+                if let Some(ref id) = track.album.id {
+                    send.send(ClientRequest::GetContext(ContextId::Album(id.clone())))?;
+                    ui.history.push(PageState::Browsing(id.uri()));
                 }
             }
         }
@@ -219,12 +223,10 @@ fn handle_global_command(
                 let artists = track
                     .artists
                     .iter()
-                    .filter(|a| a.uri.is_some())
-                    .map(|a| Artist {
-                        name: a.name.clone(),
-                        uri: a.uri.clone(),
-                        id: a.id.clone(),
-                    })
+                    .filter(|a| a.id.is_some())
+                    .map(|a| Artist::try_from_simplified_artist(a.clone()))
+                    .filter(Option::is_some)
+                    .map(Option::unwrap)
                     .collect::<Vec<_>>();
                 ui.popup = Some(PopupState::ArtistList(artists, new_list_state()));
             }
