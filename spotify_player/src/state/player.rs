@@ -68,10 +68,10 @@ pub enum ContextSortOrder {
 #[derive(Debug, Clone)]
 /// A simplified version of `rspotify` track
 pub struct Track {
-    pub id: Option<model::TrackId>,
+    pub id: model::TrackId,
     pub name: String,
     pub artists: Vec<Artist>,
-    pub album: Album,
+    pub album: Option<Album>,
     pub duration: time::Duration,
     pub added_at: u64,
 }
@@ -79,8 +79,8 @@ pub struct Track {
 #[derive(Debug, Clone)]
 /// A simplified version of `rspotify` album
 pub struct Album {
-    pub id: Option<model::AlbumId>,
-    pub release_date: Option<String>,
+    pub id: model::AlbumId,
+    pub release_date: String,
     pub name: String,
     pub artists: Vec<Artist>,
 }
@@ -88,7 +88,7 @@ pub struct Album {
 #[derive(Debug, Clone)]
 /// A simplified version of `rspotify` artist
 pub struct Artist {
-    pub id: Option<model::ArtistId>,
+    pub id: model::ArtistId,
     pub name: String,
 }
 
@@ -268,69 +268,56 @@ impl Track {
             .join(", ")
     }
 
+    /// gets the track's album information
+    pub fn album_info(&self) -> String {
+        self.album.map(|a| a.name).unwrap_or_default()
+    }
+
     /// gets the track basic information (track's name, artists' name and album's name)
     pub fn basic_info(&self) -> String {
-        format!("{} {} {}", self.name, self.artists_info(), self.album.name)
+        format!(
+            "{} {} {}",
+            self.name,
+            self.artists_info(),
+            self.album_info(),
+        )
     }
-}
 
-impl std::fmt::Display for Track {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.basic_info())
-    }
-}
-
-impl std::fmt::Display for Album {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.name)
-    }
-}
-
-impl std::fmt::Display for Artist {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.name)
-    }
-}
-
-impl From<model::SimplifiedTrack> for Track {
-    fn from(track: model::SimplifiedTrack) -> Self {
-        Self {
-            id: track.id,
+    /// tries to convert from a `rspotify::SimplifiedTrack` into `Track`
+    pub fn try_from_simplified_track(track: model::SimplifiedTrack) -> Option<Self> {
+        track.id.map(|id| Self {
+            id,
             name: track.name,
-            artists: track.artists.into_iter().map(|a| a.into()).collect(),
-            album: Album {
-                name: String::default(),
-                id: None,
-                release_date: None,
-                artists: vec![],
-            },
+            artists: from_simplified_artists_to_artists(track.artists),
+            album: None,
             duration: track.duration,
             added_at: 0,
-        }
+        })
     }
 }
 
 impl From<model::FullTrack> for Track {
     fn from(track: model::FullTrack) -> Self {
         Self {
-            id: Some(track.id),
+            id: track.id,
             name: track.name,
-            artists: track.artists.into_iter().map(|a| a.into()).collect(),
-            album: track.album.into(),
+            artists: from_simplified_artists_to_artists(track.artists),
+            album: Album::try_from_simplified_album(track.album),
             duration: track.duration,
             added_at: 0,
         }
     }
 }
 
-impl From<model::SimplifiedAlbum> for Album {
-    fn from(album: model::SimplifiedAlbum) -> Self {
-        Self {
+impl Album {
+    /// tries to convert from a `rspotify::SimplifiedAlbum` into `Album`
+    pub fn try_from_simplified_album(album: model::SimplifiedAlbum) -> Option<Self> {
+        album.id.map(|id| Self {
+            id,
             name: album.name,
-            id: album.id,
-            release_date: album.release_date,
-            artists: album.artists.into_iter().map(|a| a.into()).collect(),
-        }
+            release_date: album.release_date.unwrap_or_default(),
+            artists: from_simplified_artists_to_artists(album.artists),
+        })
     }
 }
 
@@ -338,19 +325,20 @@ impl From<model::FullAlbum> for Album {
     fn from(album: model::FullAlbum) -> Self {
         Self {
             name: album.name,
-            id: Some(album.id),
-            release_date: Some(album.release_date),
-            artists: album.artists.into_iter().map(|a| a.into()).collect(),
+            id: album.id,
+            release_date: album.release_date,
+            artists: from_simplified_artists_to_artists(album.artists),
         }
     }
 }
 
-impl From<model::SimplifiedArtist> for Artist {
-    fn from(artist: model::SimplifiedArtist) -> Self {
-        Self {
+impl Artist {
+    /// tries to convert from a `rspotify::SimplifiedArtist` into `Artist`
+    pub fn try_from_simplified_artist(artist: model::SimplifiedArtist) -> Option<Self> {
+        artist.id.map(|id| Self {
+            id,
             name: artist.name,
-            id: artist.id,
-        }
+        })
     }
 }
 
@@ -358,9 +346,20 @@ impl From<model::FullArtist> for Artist {
     fn from(artist: model::FullArtist) -> Self {
         Self {
             name: artist.name,
-            id: Some(artist.id),
+            id: artist.id,
         }
     }
+}
+
+/// a helper function to convert a vector of `rspotify_model::SimplifiedArtist` into
+/// a vector of `Artist`.
+fn from_simplified_artists_to_artists(artists: Vec<model::SimplifiedArtist>) -> Vec<Artist> {
+    artists
+        .into_iter()
+        .map(Artist::try_from_simplified_artist)
+        .filter(Option::is_some)
+        .map(Option::unwrap)
+        .collect()
 }
 
 impl From<model::SimplifiedPlaylist> for Playlist {
@@ -381,7 +380,7 @@ impl ContextSortOrder {
         match *self {
             Self::AddedAt => x.added_at.cmp(&y.added_at),
             Self::TrackName => x.name.cmp(&y.name),
-            Self::Album => x.album.name.cmp(&y.album.name),
+            Self::Album => x.album_info().cmp(&y.album_info()),
             Self::Duration => x.duration.cmp(&y.duration),
             Self::Artists => x.artists_info().cmp(&y.artists_info()),
         }
