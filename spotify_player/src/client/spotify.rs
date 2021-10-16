@@ -56,7 +56,7 @@ pub struct Spotify {
 
 impl Spotify {
     /// creates a new Spotify client
-    pub fn new(client_id: String, session: Session) -> Spotify {
+    pub fn new(session: Session, client_id: String) -> Spotify {
         Self {
             creds: Credentials::default(),
             oauth: OAuth::default(),

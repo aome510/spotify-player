@@ -33,11 +33,11 @@ pub enum Context {
 }
 
 #[derive(Debug)]
-/// A context URI
-pub enum ContextURI {
-    Playlist(String),
-    Album(String),
-    Artist(String),
+/// A context Id
+pub enum ContextId {
+    Playlist(model::PlaylistId),
+    Album(model::AlbumId),
+    Artist(model::ArtistId),
     Unknown(String),
 }
 
@@ -80,6 +80,7 @@ pub struct Track {
 /// A simplified version of `rspotify` album
 pub struct Album {
     pub id: Option<model::AlbumId>,
+    pub release_date: Option<String>,
     pub name: String,
     pub artists: Vec<Artist>,
 }
@@ -300,6 +301,7 @@ impl From<model::SimplifiedTrack> for Track {
             album: Album {
                 name: String::default(),
                 id: None,
+                release_date: None,
                 artists: vec![],
             },
             duration: track.duration,
@@ -326,6 +328,7 @@ impl From<model::SimplifiedAlbum> for Album {
         Self {
             name: album.name,
             id: album.id,
+            release_date: album.release_date,
             artists: album.artists.into_iter().map(|a| a.into()).collect(),
         }
     }
@@ -336,6 +339,7 @@ impl From<model::FullAlbum> for Album {
         Self {
             name: album.name,
             id: Some(album.id),
+            release_date: Some(album.release_date),
             artists: album.artists.into_iter().map(|a| a.into()).collect(),
         }
     }
