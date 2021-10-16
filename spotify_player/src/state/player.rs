@@ -264,8 +264,11 @@ impl Context {
 impl Device {
     /// tries to convert from a `rspotify_model::Device` into `Device`
     pub fn try_from_device(device: model::Device) -> Option<Self> {
-        device.id.map(|id| Self {
-            id,
+        if device.id.is_none() {
+            return None;
+        }
+        Some(Self {
+            id: device.id.unwrap(),
             name: device.name,
         })
     }
@@ -283,7 +286,10 @@ impl Track {
 
     /// gets the track's album information
     pub fn album_info(&self) -> String {
-        self.album.map(|a| a.name).unwrap_or_default()
+        self.album
+            .as_ref()
+            .map(|a| a.name.clone())
+            .unwrap_or_default()
     }
 
     /// gets the track information (track's name, artists' name and album's name)
@@ -298,8 +304,11 @@ impl Track {
 
     /// tries to convert from a `rspotify_model::SimplifiedTrack` into `Track`
     pub fn try_from_simplified_track(track: model::SimplifiedTrack) -> Option<Self> {
-        track.id.map(|id| Self {
-            id,
+        if track.id.is_none() {
+            return None;
+        }
+        Some(Self {
+            id: track.id.unwrap(),
             name: track.name,
             artists: from_simplified_artists_to_artists(track.artists),
             album: None,
@@ -331,8 +340,11 @@ impl std::fmt::Display for Track {
 impl Album {
     /// tries to convert from a `rspotify_model::SimplifiedAlbum` into `Album`
     pub fn try_from_simplified_album(album: model::SimplifiedAlbum) -> Option<Self> {
-        album.id.map(|id| Self {
-            id,
+        if album.id.is_none() {
+            return None;
+        }
+        Some(Self {
+            id: album.id.unwrap(),
             name: album.name,
             release_date: album.release_date.unwrap_or_default(),
             artists: from_simplified_artists_to_artists(album.artists),
@@ -360,8 +372,11 @@ impl std::fmt::Display for Album {
 impl Artist {
     /// tries to convert from a `rspotify_model::SimplifiedArtist` into `Artist`
     pub fn try_from_simplified_artist(artist: model::SimplifiedArtist) -> Option<Self> {
-        artist.id.map(|id| Self {
-            id,
+        if artist.id.is_none() {
+            return None;
+        }
+        Some(Self {
+            id: artist.id.unwrap(),
             name: artist.name,
         })
     }

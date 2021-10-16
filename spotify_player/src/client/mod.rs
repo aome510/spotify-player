@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::{
     event::{ClientRequest, PlayerRequest},
     state::*,
@@ -9,10 +11,12 @@ use rspotify::{model, prelude::*};
 mod handlers;
 mod spotify;
 
+pub use handlers::*;
+
 /// A spotify client
 #[derive(Clone)]
 pub struct Client {
-    spotify: spotify::Spotify,
+    spotify: Arc<spotify::Spotify>,
     http: reqwest::Client,
 }
 
@@ -20,7 +24,7 @@ impl Client {
     /// creates a new client
     pub fn new(session: Session, client_id: String) -> Self {
         Self {
-            spotify: spotify::Spotify::new(session, client_id),
+            spotify: Arc::new(spotify::Spotify::new(session, client_id)),
             http: reqwest::Client::new(),
         }
     }
@@ -33,8 +37,8 @@ impl Client {
     ) -> Result<()> {
         log::info!("handle player request: {:?}", request);
 
-        // `TransferPlayback` needs to be handled separately b/c
-        // it doesn't require an active playback
+        // `TransferPlayback` needs to be handled separately
+        // because it doesn't require an active playback
         if let PlayerRequest::TransferPlayback(device_id, force_play) = request {
             return Ok(self
                 .spotify
@@ -123,7 +127,12 @@ impl Client {
             }
             ClientRequest::GetDevices => {
                 let devices = self.spotify.device().await?;
-                state.player.write().unwrap().devices = devices;
+                state.player.write().unwrap().devices = devices
+                    .into_iter()
+                    .map(Device::try_from_device)
+                    .filter(Option::is_some)
+                    .map(Option::unwrap)
+                    .collect();
             }
             ClientRequest::GetUserPlaylists => {
                 let playlists = self.current_user_playlists().await?;
@@ -248,11 +257,15 @@ impl Client {
                 .await?;
             self.all_paging_items(first_page).await
         }?;
-
         albums.append(&mut singles);
 
-        let albums = albums.into_iter().map(|a| a.into()).collect();
-
+        // converts `rspotify_model::SimplifiedAlbum` into `state::Album`
+        let albums = albums
+            .into_iter()
+            .map(|a| Album::try_from_simplified_album(a))
+            .filter(Option::is_some)
+            .map(Option::unwrap)
+            .collect();
         Ok(self.clean_up_artist_albums(albums))
     }
 
@@ -436,33 +449,34 @@ impl Client {
     pub async fn save_to_library(&self, state: &SharedState, item: Item) -> Result<()> {
         match item {
             Item::Track(track) => {
-                if let Some(ref id) = track.id {
-                    let contains = self
-                        .spotify
-                        .current_user_saved_tracks_contains(vec![id])
+                let contains = self
+                    .spotify
+                    .current_user_saved_tracks_contains(vec![&track.id])
+                    .await?;
+                if !contains[0] {
+                    self.spotify
+                        .current_user_saved_tracks_add(vec![&track.id])
                         .await?;
-                    if !contains[0] {
-                        self.spotify.current_user_saved_tracks_add(vec![id]).await?;
-                    }
                 }
             }
             Item::Album(album) => {
-                if let Some(ref id) = album.id {
-                    let contains = self
-                        .spotify
-                        .current_user_saved_albums_contains(vec![id])
+                let contains = self
+                    .spotify
+                    .current_user_saved_albums_contains(vec![&album.id])
+                    .await?;
+                if !contains[0] {
+                    self.spotify
+                        .current_user_saved_albums_add(vec![&album.id])
                         .await?;
-                    if !contains[0] {
-                        self.spotify.current_user_saved_albums_add(vec![id]).await?;
-                    }
                 }
             }
             Item::Artist(artist) => {
-                if let Some(ref id) = artist.id {
-                    let follows = self.spotify.user_artist_check_follow(vec![id]).await?;
-                    if !follows[0] {
-                        self.spotify.user_follow_artists(vec![id]).await?;
-                    }
+                let follows = self
+                    .spotify
+                    .user_artist_check_follow(vec![&artist.id])
+                    .await?;
+                if !follows[0] {
+                    self.spotify.user_follow_artists(vec![&artist.id]).await?;
                 }
             }
             Item::Playlist(playlist) => {
@@ -535,7 +549,7 @@ impl Client {
             state.player.write().unwrap().context_cache.put(
                 playlist_uri.clone(),
                 Context::Playlist(
-                    playlist,
+                    playlist.into(),
                     playlist_items_into_tracks(first_page.items.clone()),
                 ),
             );
@@ -570,17 +584,24 @@ impl Client {
         {
             // get the album
             let album = self.spotify.album(album_id).await?;
-
             // get the album's tracks
             let album_tracks = self.all_paging_items(album.tracks.clone()).await?;
+
+            // convert the `rspotify::FullAlbum` into `state::Album`
+            let album: Album = album.into();
+
             let tracks = album_tracks
                 .into_iter()
                 .map(|t| {
-                    let mut track: Track = t.into();
-                    track.album = album.clone().into();
-                    track
+                    Track::try_from_simplified_track(t).map(|mut t| {
+                        t.album = Some(album.clone());
+                        t
+                    })
                 })
+                .filter(Option::is_some)
+                .map(Option::unwrap)
                 .collect::<Vec<_>>();
+
             state
                 .player
                 .write()
@@ -701,16 +722,9 @@ impl Client {
     /// - sort albums by the release date
     /// - remove albums with duplicated names
     fn clean_up_artist_albums(&self, albums: Vec<Album>) -> Vec<Album> {
-        let mut albums = albums
-            .into_iter()
-            .filter(|a| a.release_date.is_some())
-            .collect::<Vec<_>>();
+        let mut albums = albums.into_iter().collect::<Vec<_>>();
 
-        albums.sort_by(|x, y| {
-            let date_x = x.release_date.as_ref().unwrap();
-            let date_y = y.release_date.as_ref().unwrap();
-            date_x.partial_cmp(date_y).unwrap()
-        });
+        albums.sort_by(|x, y| x.release_date.partial_cmp(&y.release_date).unwrap());
 
         // use a HashSet to keep track albums with the same name
         let mut seen_names = std::collections::HashSet::new();

@@ -422,7 +422,7 @@ fn handle_key_sequence_for_action_list_popup(
                     }
                     Action::AddTrackToPlaylist => {
                         let player = state.player.read().unwrap();
-                        if let Some(user) = player.user {
+                        if let Some(ref user) = player.user {
                             let playlists = player
                                 .user_playlists
                                 .iter()

@@ -1,8 +1,6 @@
-use std::sync::Arc;
-
 use anyhow::Result;
 use librespot::core::session::Session;
-use rspotify::model::Type;
+use rspotify::model::{self, Id};
 
 use crate::{
     event::{ClientRequest, PlayerRequest},
@@ -14,9 +12,9 @@ use super::Client;
 
 /// starts the client's request handler
 #[tokio::main]
-pub(crate) async fn start_client_handler(
+pub async fn start_client_handler(
     state: SharedState,
-    mut client: Client,
+    client: Client,
     recv: std::sync::mpsc::Receiver<ClientRequest>,
 ) {
     while let Ok(request) = recv.recv() {
@@ -26,13 +24,9 @@ pub(crate) async fn start_client_handler(
         // at the same time, minimizing the number of clones
         {
             // handle the client request while trying not to block the current thread
-            let client = Arc::new(&client);
-            let state = state.clone();
-            tokio::spawn(async move {
-                if let Err(err) = client.handle_request(&state, request).await {
-                    log::warn!("{:#?}", err);
-                }
-            });
+            if let Err(err) = client.handle_request(&state, request).await {
+                log::warn!("{:#?}", err);
+            }
         }
     }
 }
@@ -41,10 +35,9 @@ pub(crate) async fn start_client_handler(
 // to player events and notifying the client
 // to make additional update requests if needed
 #[tokio::main]
-pub(crate) async fn start_player_event_watchers(
+pub async fn start_player_event_watchers(
     state: SharedState,
     send: std::sync::mpsc::Sender<ClientRequest>,
-    session: Session,
 ) {
     // start a watcher thread that updates the current playback every `playback_refresh_duration_in_ms` ms.
     // A positive value of `playback_refresh_duration_in_ms` is required to start the watcher.
@@ -65,7 +58,7 @@ pub(crate) async fn start_player_event_watchers(
     // start the main event watcher watching for new events every `refresh_duration` ms.
     let refresh_duration = std::time::Duration::from_millis(500);
     loop {
-        watch_player_events(&state, &send, &session)
+        watch_player_events(&state, &send)
             .await
             .unwrap_or_else(|err| {
                 log::warn!(
@@ -81,7 +74,6 @@ pub(crate) async fn start_player_event_watchers(
 async fn watch_player_events(
     state: &SharedState,
     send: &std::sync::mpsc::Sender<ClientRequest>,
-    session: &Session,
 ) -> Result<()> {
     {
         let player = state.player.read().unwrap();
@@ -94,12 +86,10 @@ async fn watch_player_events(
                 player.devices[0].name
             );
             // only trying to connect, not transfer the current playback
-            if let Some(ref id) = player.devices[0].id {
-                send.send(ClientRequest::Player(PlayerRequest::TransferPlayback(
-                    id.clone(),
-                    false,
-                )))?;
-            }
+            send.send(ClientRequest::Player(PlayerRequest::TransferPlayback(
+                player.devices[0].id.clone(),
+                false,
+            )))?;
         }
 
         // update the playback when the current track ends
@@ -141,15 +131,19 @@ async fn watch_player_events(
                             utils::update_context(state, uri.clone());
                             if player.context_cache.peek(&uri).is_none() {
                                 match context._type {
-                                    Type::Playlist => send.send(ClientRequest::GetContext(
-                                        ContextURI::Playlist(uri),
+                                    model::Type::Playlist => {
+                                        send.send(ClientRequest::GetContext(ContextId::Playlist(
+                                            model::PlaylistId::from_uri(&uri)?,
+                                        )))?
+                                    }
+                                    model::Type::Album => send.send(ClientRequest::GetContext(
+                                        ContextId::Album(model::AlbumId::from_uri(&uri)?),
                                     ))?,
-                                    Type::Album => send
-                                        .send(ClientRequest::GetContext(ContextURI::Album(uri)))?,
-                                    Type::Artist => send
-                                        .send(ClientRequest::GetContext(ContextURI::Artist(uri)))?,
+                                    model::Type::Artist => send.send(ClientRequest::GetContext(
+                                        ContextId::Artist(model::ArtistId::from_uri(&uri)?),
+                                    ))?,
                                     _ => {
-                                        send.send(ClientRequest::GetContext(ContextURI::Unknown(
+                                        send.send(ClientRequest::GetContext(ContextId::Unknown(
                                             uri,
                                         )))?;
                                         log::info!(
@@ -164,7 +158,7 @@ async fn watch_player_events(
                     None => {
                         if !player.context_uri.is_empty() {
                             utils::update_context(state, "".to_string());
-                            send.send(ClientRequest::GetContext(ContextURI::Unknown(
+                            send.send(ClientRequest::GetContext(ContextId::Unknown(
                                 "".to_string(),
                             )))?;
                             log::info!("current playback does not have a playing context");

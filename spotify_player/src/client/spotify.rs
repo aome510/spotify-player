@@ -15,13 +15,13 @@ use crate::token;
 /// These above traits are required to implement
 /// `rspotify::BaseClient` and `rspotify::OauthClient` traits.
 #[derive(Clone, Default)]
-struct SessionWrapper {
+pub struct SessionWrapper {
     session: Option<Session>,
 }
 
 impl std::fmt::Debug for SessionWrapper {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&format!("{{ session: ... }}"))
+        f.write_str("{ session: ... }")
     }
 }
 
