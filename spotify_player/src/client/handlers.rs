@@ -104,11 +104,15 @@ async fn watch_player_events(
             // manually empty the `context_uri` to trigger
             // context updating when moving from the search page
             // to a previous context page and vice versa
-            state.player.write().unwrap().context_id = "".to_owned();
+            state.player.write().unwrap().context_id = None;
         }
-        PageState::Browsing(uri) => {
-            if state.player.read().unwrap().context_id != *uri {
-                utils::update_context(state, uri.clone());
+        PageState::Browsing(id) => {
+            let should_update = match state.player.read().unwrap().context_id {
+                None => true,
+                Some(ref context_id) => context_id != id,
+            };
+            if should_update {
+                utils::update_context(state, Some(id.clone()));
             }
         }
         PageState::CurrentPlaying => {
@@ -117,42 +121,44 @@ async fn watch_player_events(
             if let Some(ref playback) = player.playback {
                 match playback.context {
                     Some(ref context) => {
-                        let uri = context.uri.clone();
-
-                        if uri != player.context_id {
-                            utils::update_context(state, uri.clone());
-                            if player.context_cache.peek(&uri).is_none() {
-                                match context._type {
-                                    model::Type::Playlist => {
-                                        send.send(ClientRequest::GetContext(ContextId::Playlist(
-                                            PlaylistId::from_uri(&uri)?,
-                                        )))?
-                                    }
-                                    model::Type::Album => send.send(ClientRequest::GetContext(
-                                        ContextId::Album(AlbumId::from_uri(&uri)?),
-                                    ))?,
-                                    model::Type::Artist => send.send(ClientRequest::GetContext(
-                                        ContextId::Artist(ArtistId::from_uri(&uri)?),
-                                    ))?,
-                                    _ => {
-                                        send.send(ClientRequest::GetContext(ContextId::Unknown(
-                                            uri,
-                                        )))?;
-                                        log::info!(
-                                            "encountered not supported context type: {:#?}",
-                                            context._type
-                                        )
-                                    }
-                                };
-                            }
+                        let should_update = match player.context_id {
+                            None => true,
+                            Some(ref context_id) => context_id.uri() != context.uri,
+                        };
+                        if should_update && player.context_cache.peek(&context.uri).is_none() {
+                            match context._type {
+                                model::Type::Playlist => {
+                                    let context_id =
+                                        ContextId::Playlist(PlaylistId::from_uri(&context.uri)?);
+                                    send.send(ClientRequest::GetContext(context_id.clone()))?;
+                                    utils::update_context(state, Some(context_id));
+                                }
+                                model::Type::Album => {
+                                    let context_id =
+                                        ContextId::Album(AlbumId::from_uri(&context.uri)?);
+                                    send.send(ClientRequest::GetContext(context_id.clone()))?;
+                                    utils::update_context(state, Some(context_id));
+                                }
+                                model::Type::Artist => {
+                                    let context_id =
+                                        ContextId::Artist(ArtistId::from_uri(&context.uri)?);
+                                    send.send(ClientRequest::GetContext(context_id.clone()))?;
+                                    utils::update_context(state, Some(context_id));
+                                }
+                                _ => {
+                                    log::info!(
+                                        "encountered not supported context type: {:#?}",
+                                        context._type
+                                    )
+                                }
+                            };
                         }
                     }
                     None => {
-                        if !player.context_id.is_empty() {
-                            utils::update_context(state, "".to_string());
-                            send.send(ClientRequest::GetContext(ContextId::Unknown(
-                                "".to_string(),
-                            )))?;
+                        if player.context_id.is_some() {
+                            // the current playback doesn't have a playing context,
+                            // update the state's `context_id` to `None`
+                            utils::update_context(state, None);
                             log::info!("current playback does not have a playing context");
                         }
                     }

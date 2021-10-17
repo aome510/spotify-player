@@ -87,13 +87,11 @@ impl Client {
                     .shuffle(!playback.shuffle_state, device_id)
                     .await?
             }
-
             PlayerRequest::Volume(volume) => self.spotify.volume(volume, device_id).await?,
-
-            PlayerRequest::PlayTrack(context_uri, track_uris, offset) => {
-                self.start_playback(playback, context_uri, track_uris, offset)
-                    .await?
-            }
+            // PlayerRequest::PlayTrack(context_uri, track_uris, offset) => {
+            //     self.start_playback(playback, context_uri, track_uris, offset)
+            //         .await?
+            // }
             PlayerRequest::TransferPlayback(..) => unreachable!(),
         })
     }
@@ -161,14 +159,6 @@ impl Client {
                     }
                     ContextId::Artist(artist_id) => {
                         self.artist_context(&artist_id, state).await?;
-                    }
-                    ContextId::Unknown(uri) => {
-                        state
-                            .player
-                            .write()
-                            .unwrap()
-                            .context_cache
-                            .put(uri.clone(), Context::Unknown(uri));
                     }
                 };
             }

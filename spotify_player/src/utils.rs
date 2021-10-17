@@ -52,14 +52,15 @@ pub fn update_context(state: &state::SharedState, context_id: Option<state::Cont
     std::thread::spawn({
         let state = state.clone();
         move || {
-            log::info!("update state context id: {:#?}", context_id);
+            log::info!("update state's context id to {:#?}", context_id);
+
+            let is_none_context = context_id.is_none();
 
             state.player.write().unwrap().context_id = context_id;
-
             state.ui.lock().unwrap().window = state::WindowState::Unknown;
 
-            // unknown context, skip pooling
-            if context_id.is_none() {
+            // `None` context, skip pooling
+            if is_none_context {
                 return;
             }
 
