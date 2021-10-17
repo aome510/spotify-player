@@ -29,6 +29,11 @@ impl Client {
         }
     }
 
+    /// initializes the authorization token stored inside the Spotify client
+    pub async fn init_token(&self) -> Result<()> {
+        Ok(self.spotify.refresh_token().await?)
+    }
+
     /// handles a player request
     async fn handle_player_request(
         &self,

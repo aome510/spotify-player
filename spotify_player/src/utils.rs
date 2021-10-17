@@ -6,7 +6,7 @@ use crate::state::{self, ArtistFocusState, WindowState};
 /// formats a time duration into a "{minutes}:{seconds}" format
 pub fn format_duration(duration: std::time::Duration) -> String {
     let secs = duration.as_secs();
-    format!("{}:{:02}", secs / 60, secs)
+    format!("{}:{:02}", secs / 60, secs % 60)
 }
 
 /// truncates a string whose length exceeds a given `max_len` length.

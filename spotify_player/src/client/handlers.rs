@@ -1,5 +1,4 @@
 use anyhow::Result;
-use librespot::core::session::Session;
 use rspotify::model::{self, Id};
 
 use crate::{
@@ -18,15 +17,8 @@ pub async fn start_client_handler(
     recv: std::sync::mpsc::Receiver<ClientRequest>,
 ) {
     while let Ok(request) = recv.recv() {
-        // This is not a nice way to handle a request without blocking :/.
-        // Kinda a workaround atm.
-        // TODO: find a better approach to handle a request without blocking and,
-        // at the same time, minimizing the number of clones
-        {
-            // handle the client request while trying not to block the current thread
-            if let Err(err) = client.handle_request(&state, request).await {
-                log::warn!("{:#?}", err);
-            }
+        if let Err(err) = client.handle_request(&state, request).await {
+            log::warn!("{:#?}", err);
         }
     }
 }

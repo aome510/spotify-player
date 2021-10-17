@@ -47,19 +47,14 @@ pub fn render_popup(
                 (rect, false)
             }
             PopupState::DeviceList(_) => {
-                let current_device_name = match player.playback {
-                    Some(ref playback) => &playback.device.name,
+                let current_device_id = match player.playback {
+                    Some(ref playback) => playback.device.id.as_deref().unwrap_or_default(),
                     None => "",
                 };
                 let items = player
                     .devices
                     .iter()
-                    .map(|d| {
-                        (
-                            format!("{} | {}", d.name, d.id),
-                            current_device_name == d.name,
-                        )
-                    })
+                    .map(|d| (format!("{} | {}", d.name, d.id), current_device_id == d.id))
                     .collect();
 
                 let rect = render_list_popup(frame, ui, rect, "Devices", items, 5);

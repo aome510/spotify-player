@@ -104,8 +104,8 @@ async fn main() -> anyhow::Result<()> {
     // client event handler thread
     std::thread::spawn({
         let state = state.clone();
-        let session = session.clone();
         let client = client::Client::new(session, state.app_config.client_id.clone());
+        client.init_token().await?;
         move || {
             client::start_client_handler(state, client, recv);
         }
