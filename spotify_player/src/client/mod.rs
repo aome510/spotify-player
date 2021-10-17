@@ -186,7 +186,7 @@ impl Client {
     pub async fn current_user_playlists(&self) -> Result<Vec<Playlist>> {
         let first_page = self
             .spotify
-            .current_user_playlists_manual(None, None)
+            .current_user_playlists_manual(Some(50), None)
             .await?;
 
         let playlists = self.all_paging_items(first_page).await?;
@@ -221,7 +221,7 @@ impl Client {
     pub async fn current_user_saved_albums(&self) -> Result<Vec<Album>> {
         let first_page = self
             .spotify
-            .current_user_saved_albums_manual(None, None, None)
+            .current_user_saved_albums_manual(None, Some(50), None)
             .await?;
 
         let albums = self.all_paging_items(first_page).await?;
