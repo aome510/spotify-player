@@ -4,6 +4,8 @@ use crate::command;
 
 use rspotify::model;
 
+pub use rspotify::model::{AlbumId, ArtistId, Id, PlaylistId, TrackId, UserId};
+
 /// Player state
 #[derive(Debug)]
 pub struct PlayerState {
@@ -14,7 +16,7 @@ pub struct PlayerState {
     pub user_followed_artists: Vec<Artist>,
     pub user_saved_albums: Vec<Album>,
 
-    pub context_uri: String,
+    pub context_id: Option<ContextId>,
     pub context_cache: lru::LruCache<String, Context>,
 
     pub search_cache: lru::LruCache<String, SearchResults>,
@@ -32,13 +34,12 @@ pub enum Context {
     Unknown(String),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 /// A context Id
 pub enum ContextId {
-    Playlist(model::PlaylistId),
-    Album(model::AlbumId),
-    Artist(model::ArtistId),
-    Unknown(String),
+    Playlist(PlaylistId),
+    Album(AlbumId),
+    Artist(ArtistId),
 }
 
 /// SearchResults denotes the returned data when searching using Spotify API.
@@ -75,7 +76,7 @@ pub struct Device {
 #[derive(Debug, Clone)]
 /// A simplified version of `rspotify` track
 pub struct Track {
-    pub id: model::TrackId,
+    pub id: TrackId,
     pub name: String,
     pub artists: Vec<Artist>,
     pub album: Option<Album>,
@@ -86,7 +87,7 @@ pub struct Track {
 #[derive(Debug, Clone)]
 /// A simplified version of `rspotify` album
 pub struct Album {
-    pub id: model::AlbumId,
+    pub id: AlbumId,
     pub release_date: String,
     pub name: String,
     pub artists: Vec<Artist>,
@@ -95,15 +96,15 @@ pub struct Album {
 #[derive(Debug, Clone)]
 /// A simplified version of `rspotify` artist
 pub struct Artist {
-    pub id: model::ArtistId,
+    pub id: ArtistId,
     pub name: String,
 }
 
 #[derive(Debug, Clone)]
 pub struct Playlist {
-    pub id: model::PlaylistId,
+    pub id: PlaylistId,
     pub name: String,
-    pub owner: (String, model::UserId),
+    pub owner: (String, UserId),
 }
 
 #[derive(Debug, Clone)]
@@ -145,12 +146,28 @@ impl PlayerState {
 
     /// gets the current context
     pub fn context(&self) -> Option<&Context> {
-        self.context_cache.peek(&self.context_uri)
+        match self.context_id {
+            Some(ref id) => self.context_cache.peek(&id.uri()),
+            None => None,
+        }
     }
 
     /// gets the current context (mutable)
     pub fn context_mut(&mut self) -> Option<&mut Context> {
-        self.context_cache.peek_mut(&self.context_uri)
+        match self.context_id {
+            Some(ref id) => self.context_cache.peek_mut(&id.uri()),
+            None => None,
+        }
+    }
+}
+
+impl ContextId {
+    pub fn uri(&self) -> String {
+        match self {
+            Self::Album(ref id) => id.uri(),
+            Self::Artist(ref id) => id.uri(),
+            Self::Playlist(ref id) => id.uri(),
+        }
     }
 }
 
@@ -186,7 +203,7 @@ impl Default for PlayerState {
             user_playlists: vec![],
             user_saved_albums: vec![],
             user_followed_artists: vec![],
-            context_uri: "".to_owned(),
+            context_id: None,
             context_cache: lru::LruCache::new(64),
             search_cache: lru::LruCache::new(64),
             playback: None,

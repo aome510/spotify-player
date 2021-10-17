@@ -31,7 +31,7 @@ pub fn handle_key_sequence_for_popup(
                 let uri = artists[id].id.uri();
 
                 send.send(ClientRequest::GetContext(ContextId::Artist(
-                    model::ArtistId::from_uri(&uri)?,
+                    ArtistId::from_uri(&uri)?,
                 )))?;
 
                 ui.history.push(PageState::Browsing(uri));
@@ -276,9 +276,9 @@ fn handle_key_sequence_for_context_browsing_list_popup(
         |ui: &mut UIStateGuard, id: usize| -> Result<()> {
             let uri = uris[id].clone();
             let context_uri = match context_type {
-                model::Type::Playlist => ContextId::Playlist(model::PlaylistId::from_uri(&uri)?),
-                model::Type::Artist => ContextId::Artist(model::ArtistId::from_uri(&uri)?),
-                model::Type::Album => ContextId::Album(model::AlbumId::from_uri(&uri)?),
+                Type::Playlist => ContextId::Playlist(PlaylistId::from_uri(&uri)?),
+                Type::Artist => ContextId::Artist(ArtistId::from_uri(&uri)?),
+                Type::Album => ContextId::Album(AlbumId::from_uri(&uri)?),
                 _ => ContextId::Unknown(uri),
             };
 
@@ -409,7 +409,7 @@ fn handle_key_sequence_for_action_list_popup(
                         if let Some(ref album) = track.album {
                             let uri = album.id.uri();
                             send.send(ClientRequest::GetContext(ContextId::Album(
-                                model::AlbumId::from_uri(&uri)?,
+                                AlbumId::from_uri(&uri)?,
                             )))?;
                             ui.history.push(PageState::Browsing(uri));
                         }

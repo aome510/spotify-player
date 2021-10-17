@@ -24,7 +24,7 @@ pub enum PlayerRequest {
     Repeat,
     Shuffle,
     Volume(u8),
-    PlayTrack(Option<String>, Option<Vec<String>>, Option<model::Offset>),
+    StartPlayback(Option<String>, Option<Vec<String>>, Option<model::Offset>),
     TransferPlayback(String, bool),
 }
 
@@ -39,7 +39,7 @@ pub enum ClientRequest {
     GetContext(ContextId),
     GetCurrentPlayback,
     Search(String),
-    AddTrackToPlaylist(model::PlaylistId, model::TrackId),
+    AddTrackToPlaylist(PlaylistId, TrackId),
     SaveToLibrary(Item),
     Player(PlayerRequest),
 }

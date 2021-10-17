@@ -56,7 +56,7 @@ pub fn handle_key_sequence_for_context_window(
                     };
 
                     send.send(ClientRequest::Player(PlayerRequest::PlayTrack(
-                        Some(player.context_uri.clone()),
+                        Some(player.context_id.clone()),
                         None,
                         offset,
                     )))?;
@@ -383,7 +383,7 @@ fn handle_command_for_artist_list_subwindow(
         Command::ChooseSelected => {
             let uri = artists[id].id.uri();
             send.send(ClientRequest::GetContext(ContextId::Artist(
-                model::ArtistId::from_uri(&uri)?,
+                ArtistId::from_uri(&uri)?,
             )))?;
             ui.history.push(PageState::Browsing(uri));
         }
@@ -420,7 +420,7 @@ fn handle_command_for_album_list_subwindow(
         Command::ChooseSelected => {
             let uri = albums[id].id.uri();
             send.send(ClientRequest::GetContext(ContextId::Album(
-                model::AlbumId::from_uri(&uri)?,
+                AlbumId::from_uri(&uri)?,
             )))?;
             ui.history.push(PageState::Browsing(uri));
         }
@@ -457,7 +457,7 @@ fn handle_command_for_playlist_list(
         Command::ChooseSelected => {
             let uri = playlists[id].id.uri();
             send.send(ClientRequest::GetContext(ContextId::Playlist(
-                model::PlaylistId::from_uri(&uri)?,
+                PlaylistId::from_uri(&uri)?,
             )))?;
             ui.history.push(PageState::Browsing(uri));
         }

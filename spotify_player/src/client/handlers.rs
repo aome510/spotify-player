@@ -104,10 +104,10 @@ async fn watch_player_events(
             // manually empty the `context_uri` to trigger
             // context updating when moving from the search page
             // to a previous context page and vice versa
-            state.player.write().unwrap().context_uri = "".to_owned();
+            state.player.write().unwrap().context_id = "".to_owned();
         }
         PageState::Browsing(uri) => {
-            if state.player.read().unwrap().context_uri != *uri {
+            if state.player.read().unwrap().context_id != *uri {
                 utils::update_context(state, uri.clone());
             }
         }
@@ -119,20 +119,20 @@ async fn watch_player_events(
                     Some(ref context) => {
                         let uri = context.uri.clone();
 
-                        if uri != player.context_uri {
+                        if uri != player.context_id {
                             utils::update_context(state, uri.clone());
                             if player.context_cache.peek(&uri).is_none() {
                                 match context._type {
                                     model::Type::Playlist => {
                                         send.send(ClientRequest::GetContext(ContextId::Playlist(
-                                            model::PlaylistId::from_uri(&uri)?,
+                                            PlaylistId::from_uri(&uri)?,
                                         )))?
                                     }
                                     model::Type::Album => send.send(ClientRequest::GetContext(
-                                        ContextId::Album(model::AlbumId::from_uri(&uri)?),
+                                        ContextId::Album(AlbumId::from_uri(&uri)?),
                                     ))?,
                                     model::Type::Artist => send.send(ClientRequest::GetContext(
-                                        ContextId::Artist(model::ArtistId::from_uri(&uri)?),
+                                        ContextId::Artist(ArtistId::from_uri(&uri)?),
                                     ))?,
                                     _ => {
                                         send.send(ClientRequest::GetContext(ContextId::Unknown(
@@ -148,7 +148,7 @@ async fn watch_player_events(
                         }
                     }
                     None => {
-                        if !player.context_uri.is_empty() {
+                        if !player.context_id.is_empty() {
                             utils::update_context(state, "".to_string());
                             send.send(ClientRequest::GetContext(ContextId::Unknown(
                                 "".to_string(),

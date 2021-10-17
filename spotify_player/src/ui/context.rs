@@ -73,7 +73,7 @@ pub fn render_context_window(
             }
         }
         None => {
-            let desc = if player.context_uri.is_empty() {
+            let desc = if player.context_id.is_empty() {
                 "Cannot infer the playing context from the current playback"
             } else {
                 // context is not empty, but cannot get context data inside the player state

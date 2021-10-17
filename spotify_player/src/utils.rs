@@ -53,7 +53,7 @@ pub fn update_context(state: &state::SharedState, context_uri: String) {
         let state = state.clone();
         move || {
             log::info!("update state context uri: {}", context_uri);
-            state.player.write().unwrap().context_uri = context_uri;
+            state.player.write().unwrap().context_id = context_uri;
 
             state.ui.lock().unwrap().window = state::WindowState::Unknown;
 

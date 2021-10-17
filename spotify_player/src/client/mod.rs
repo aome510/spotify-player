@@ -235,7 +235,7 @@ impl Client {
     }
 
     /// gets all albums of an artist
-    pub async fn artist_albums(&self, artist_id: &model::ArtistId) -> Result<Vec<Album>> {
+    pub async fn artist_albums(&self, artist_id: &ArtistId) -> Result<Vec<Album>> {
         let mut singles = {
             let first_page = self
                 .spotify
@@ -433,10 +433,10 @@ impl Client {
     /// adds track to a user's playlist
     pub async fn add_track_to_playlist(
         &self,
-        playlist_id: &model::PlaylistId,
-        track_id: &model::TrackId,
+        playlist_id: &PlaylistId,
+        track_id: &TrackId,
     ) -> Result<()> {
-        let dyn_track_id = track_id as &dyn model::PlayableId;
+        let dyn_track_id = track_id as &dyn PlayableId;
 
         // remove all the occurrences of the track to ensure no duplication in the playlist
         self.spotify
@@ -518,11 +518,7 @@ impl Client {
     }
 
     /// gets a playlist context data
-    async fn playlist_context(
-        &self,
-        playlist_id: &model::PlaylistId,
-        state: &SharedState,
-    ) -> Result<()> {
+    async fn playlist_context(&self, playlist_id: &PlaylistId, state: &SharedState) -> Result<()> {
         let playlist_uri = playlist_id.uri();
         log::info!("get playlist context: {}", playlist_uri);
 
@@ -576,7 +572,7 @@ impl Client {
     }
 
     /// gets an album context data
-    async fn album_context(&self, album_id: &model::AlbumId, state: &SharedState) -> Result<()> {
+    async fn album_context(&self, album_id: &AlbumId, state: &SharedState) -> Result<()> {
         let album_uri = album_id.uri();
         log::info!("get album context: {}", album_uri);
 
@@ -619,7 +615,7 @@ impl Client {
     }
 
     /// gets an artist context data
-    async fn artist_context(&self, artist_id: &model::ArtistId, state: &SharedState) -> Result<()> {
+    async fn artist_context(&self, artist_id: &ArtistId, state: &SharedState) -> Result<()> {
         unimplemented!()
         // let artist_uri = artist_id.uri();
         // log::info!("get artist context: {}", artist_uri);

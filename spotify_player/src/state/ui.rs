@@ -62,7 +62,7 @@ pub enum PopupState {
 #[derive(Debug)]
 pub enum PlaylistPopupAction {
     Browse,
-    AddTrack(model::TrackId),
+    AddTrack(TrackId),
 }
 
 /// A trait representing a focusable state
