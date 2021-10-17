@@ -665,24 +665,18 @@ impl Client {
     where
         T: serde::de::DeserializeOwned,
     {
-        unimplemented!()
-        // Ok(self
-        //     .http
-        //     .get(url)
-        //     .header(
-        //         reqwest::header::AUTHORIZATION,
-        //         format!(
-        //             "Bearer {}",
-        //             self.spotify.token().clone().unwrap_or_else(|| {
-        //                 log::warn!("failed to get spotify client's access token");
-        //                 "".to_string()
-        //             })
-        //         ),
-        //     )
-        //     .send()
-        //     .await?
-        //     .json::<T>()
-        //     .await?)
+        let access_token = self.spotify.access_token().await?;
+        Ok(self
+            .http
+            .get(url)
+            .header(
+                reqwest::header::AUTHORIZATION,
+                format!("Bearer {}", access_token),
+            )
+            .send()
+            .await?
+            .json::<T>()
+            .await?)
     }
 
     /// gets all paging items starting from a pagination object of the first page
