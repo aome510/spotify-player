@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 use crate::token;
 
-/// A wrapper struct for `librespot::*::Session` to implement
+/// A wrapper struct for `librespot::Session` that implements
 /// `Debug` and `Default` traits.
 /// These above traits are required to implement
 /// `rspotify::BaseClient` and `rspotify::OauthClient` traits.
@@ -37,13 +37,13 @@ impl SessionWrapper {
     pub fn session(&self) -> Result<&Session> {
         match self.session {
             Some(ref session) => Ok(session),
-            None => Err(anyhow!("failed to get the librespot session.")),
+            None => Err(anyhow!("failed to get the wrapped librespot session.")),
         }
     }
 }
 
 #[derive(Clone, Debug, Default)]
-/// A Spotify client to interact with Spotify server using APIs
+/// A Spotify client to interact with Spotify API server
 pub struct Spotify {
     pub creds: Credentials,
     pub oauth: OAuth,
@@ -71,7 +71,7 @@ impl Spotify {
         }
     }
 
-    /// gets a **valid** Spotify access token.
+    /// gets a Spotify access token for authorization.
     /// The function may retrieve a new token and update the current token
     /// stored inside the client if the old one is expired.
     pub async fn access_token(&self) -> Result<String> {
@@ -136,7 +136,7 @@ impl BaseClient for Spotify {
 /// Because the `Spotify` client interacts with Spotify APIs
 /// using an access token that is manually retrieved by
 /// the `librespot::get_token` function, implementing
-/// `OAuthClient::get_oauth` and `OAuthClient::request_token` are not needed
+/// `OAuthClient::get_oauth` and `OAuthClient::request_token` is unnecessary
 #[maybe_async]
 impl OAuthClient for Spotify {
     fn get_oauth(&self) -> &OAuth {
