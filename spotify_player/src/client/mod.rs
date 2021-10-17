@@ -70,7 +70,7 @@ impl Client {
             PlayerRequest::NextTrack => self.spotify.next_track(device_id).await?,
             PlayerRequest::PreviousTrack => self.spotify.previous_track(device_id).await?,
             PlayerRequest::ResumePause => {
-                if playback.is_playing {
+                if !playback.is_playing {
                     self.spotify.resume_playback(device_id, None).await?
                 } else {
                     self.spotify.pause_playback(device_id).await?
