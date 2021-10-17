@@ -45,24 +45,23 @@ pub fn handle_key_sequence_for_context_window(
 
             // randomly play a track from the current context
             if let Some(context) = context {
-                if let Some(tracks) = context.tracks() {
-                    let offset = match context {
-                        // Spotify does not allow to manually specify `offset` for artist context
-                        Context::Artist(..) => None,
-                        _ => {
-                            let id = rand::thread_rng().gen_range(0..tracks.len());
-                            Some(model::Offset::for_uri(&tracks[id].id.uri()))
-                        }
-                    };
+                let tracks = context.tracks();
+                let offset = match context {
+                    // Spotify does not allow to manually specify `offset` for artist context
+                    Context::Artist(..) => None,
+                    _ => {
+                        let id = rand::thread_rng().gen_range(0..tracks.len());
+                        Some(model::Offset::for_uri(&tracks[id].id.uri()))
+                    }
+                };
 
-                    unimplemented!()
+                unimplemented!()
 
-                    // send.send(ClientRequest::Player(PlayerRequest::PlayTrack(
-                    //     Some(player.context_id.clone()),
-                    //     None,
-                    //     offset,
-                    // )))?;
-                }
+                // send.send(ClientRequest::Player(PlayerRequest::PlayTrack(
+                //     Some(player.context_id.clone()),
+                //     None,
+                //     offset,
+                // )))?;
             }
         }
         _ => {

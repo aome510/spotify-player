@@ -1,7 +1,6 @@
 use super::player::*;
 use crate::{config, key};
 
-use rspotify::model;
 use tui::widgets::{ListState, TableState};
 
 pub type UIStateGuard<'a> = std::sync::MutexGuard<'a, UIState>;
@@ -26,7 +25,7 @@ pub struct UIState {
 #[derive(Clone, Debug)]
 pub enum PageState {
     CurrentPlaying,
-    Browsing(String),
+    Browsing(ContextId),
     Searching(String, Box<SearchResults>),
 }
 

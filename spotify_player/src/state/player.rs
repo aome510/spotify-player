@@ -31,10 +31,9 @@ pub enum Context {
     Playlist(Playlist, Vec<Track>),
     Album(Album, Vec<Track>),
     Artist(Artist, Vec<Track>, Vec<Album>, Vec<Artist>),
-    Unknown(String),
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 /// A context Id
 pub enum ContextId {
     Playlist(PlaylistId),
@@ -215,26 +214,17 @@ impl Default for PlayerState {
 impl Context {
     /// sorts tracks in the current playing context given a context sort oder
     pub fn sort_tracks(&mut self, sort_oder: ContextSortOrder) {
-        let tracks = self.tracks_mut();
-        if let Some(tracks) = tracks {
-            tracks.sort_by(|x, y| sort_oder.compare(x, y));
-        }
+        self.tracks_mut().sort_by(|x, y| sort_oder.compare(x, y));
     }
 
     /// reverses order of tracks in the current playing context
     pub fn reverse_tracks(&mut self) {
-        let tracks = self.tracks_mut();
-        if let Some(tracks) = tracks {
-            tracks.reverse();
-        }
+        self.tracks_mut().reverse();
     }
 
     /// gets the description of current playing context
     pub fn description(&self) -> String {
         match self {
-            Context::Unknown(_) => {
-                "Cannot infer the playing context from the current playback".to_owned()
-            }
             Context::Album(ref album, ref tracks) => {
                 format!(
                     "Album: {} | {} | {} songs",
@@ -258,22 +248,20 @@ impl Context {
     }
 
     /// gets all tracks inside the current playing context (immutable)
-    pub fn tracks(&self) -> Option<&Vec<Track>> {
+    pub fn tracks(&self) -> &Vec<Track> {
         match self {
-            Context::Unknown(_) => None,
-            Context::Album(_, ref tracks) => Some(tracks),
-            Context::Playlist(_, ref tracks) => Some(tracks),
-            Context::Artist(_, ref tracks, _, _) => Some(tracks),
+            Context::Album(_, ref tracks) => tracks,
+            Context::Playlist(_, ref tracks) => tracks,
+            Context::Artist(_, ref tracks, _, _) => tracks,
         }
     }
 
     /// gets all tracks inside the current playing context (mutable)
-    pub fn tracks_mut(&mut self) -> Option<&mut Vec<Track>> {
+    pub fn tracks_mut(&mut self) -> &mut Vec<Track> {
         match self {
-            Context::Unknown(_) => None,
-            Context::Album(_, ref mut tracks) => Some(tracks),
-            Context::Playlist(_, ref mut tracks) => Some(tracks),
-            Context::Artist(_, ref mut tracks, _, _) => Some(tracks),
+            Context::Album(_, ref mut tracks) => tracks,
+            Context::Playlist(_, ref mut tracks) => tracks,
+            Context::Artist(_, ref mut tracks, _, _) => tracks,
         }
     }
 }

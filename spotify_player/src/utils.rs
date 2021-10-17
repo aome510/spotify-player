@@ -48,14 +48,20 @@ pub fn new_table_state() -> TableState {
 }
 
 /// updates the current playing context
-pub fn update_context(state: &state::SharedState, context_uri: String) {
+pub fn update_context(state: &state::SharedState, context_id: Option<state::ContextId>) {
     std::thread::spawn({
         let state = state.clone();
         move || {
-            log::info!("update state context uri: {}", context_uri);
-            state.player.write().unwrap().context_id = context_uri;
+            log::info!("update state context id: {:#?}", context_id);
+
+            state.player.write().unwrap().context_id = context_id;
 
             state.ui.lock().unwrap().window = state::WindowState::Unknown;
+
+            // unknown context, skip pooling
+            if context_id.is_none() {
+                return;
+            }
 
             let refresh_duration =
                 std::time::Duration::from_millis(state.app_config.app_refresh_duration_in_ms);
@@ -72,7 +78,6 @@ pub fn update_context(state: &state::SharedState, context_uri: String) {
                         ),
                         state::Context::Album(..) => WindowState::Album(new_table_state()),
                         state::Context::Playlist(..) => WindowState::Playlist(new_table_state()),
-                        state::Context::Unknown(_) => WindowState::Unknown,
                     },
                     None => {
                         std::thread::sleep(refresh_duration);

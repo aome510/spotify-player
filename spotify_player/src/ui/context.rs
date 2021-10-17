@@ -69,11 +69,10 @@ pub fn render_context_window(
                         ui.search_filtered_items(tracks),
                     );
                 }
-                Context::Unknown(_) => {}
             }
         }
         None => {
-            let desc = if player.context_id.is_empty() {
+            let desc = if player.context_id.is_none() {
                 "Cannot infer the playing context from the current playback"
             } else {
                 // context is not empty, but cannot get context data inside the player state
