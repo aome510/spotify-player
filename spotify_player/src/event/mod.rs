@@ -7,21 +7,12 @@ use crate::{
 use anyhow::Result;
 use crossterm::event::*;
 use rand::Rng;
-use rspotify::model::offset;
+use rspotify::model;
 use std::sync::mpsc;
 use tokio_stream::StreamExt;
 
 mod popup;
 mod window;
-
-#[derive(Debug)]
-/// A context URI
-pub enum ContextURI {
-    Playlist(String),
-    Album(String),
-    Artist(String),
-    Unknown(String),
-}
 
 #[derive(Debug)]
 /// A request that modifies the player's playback
@@ -33,8 +24,8 @@ pub enum PlayerRequest {
     Repeat,
     Shuffle,
     Volume(u8),
-    PlayTrack(Option<String>, Option<Vec<String>>, Option<offset::Offset>),
     TransferPlayback(String, bool),
+    StartPlayback(Playback),
 }
 
 #[derive(Debug)]
@@ -45,11 +36,10 @@ pub enum ClientRequest {
     GetUserPlaylists,
     GetUserSavedAlbums,
     GetUserFollowedArtists,
-    GetContext(ContextURI),
+    GetContext(ContextId),
     GetCurrentPlayback,
     Search(String),
-    /// playlist_id, track_id
-    AddTrackToPlaylist(String, String),
+    AddTrackToPlaylist(PlaylistId, TrackId),
     SaveToLibrary(Item),
     Player(PlayerRequest),
 }
@@ -89,10 +79,10 @@ fn handle_mouse_event(
     if let MouseEventKind::Down(MouseButton::Left) = event.kind {
         if event.row == ui.progress_bar_rect.y {
             let player = state.player.read().unwrap();
-            let track = player.get_current_playing_track();
+            let track = player.current_playing_track();
             if let Some(track) = track {
-                let position_ms =
-                    track.duration_ms * (event.column as u32) / (ui.progress_bar_rect.width as u32);
+                let position_ms = (track.duration.as_millis() as u32) * (event.column as u32)
+                    / (ui.progress_bar_rect.width as u32);
                 send.send(ClientRequest::Player(PlayerRequest::SeekTrack(position_ms)))?;
             }
         }
@@ -197,14 +187,18 @@ fn handle_global_command(
         }
         Command::VolumeUp => {
             if let Some(ref playback) = state.player.read().unwrap().playback {
-                let volume = std::cmp::min(playback.device.volume_percent + 5, 100_u32);
-                send.send(ClientRequest::Player(PlayerRequest::Volume(volume as u8)))?;
+                if let Some(percent) = playback.device.volume_percent {
+                    let volume = std::cmp::max(percent + 5, 100_u32);
+                    send.send(ClientRequest::Player(PlayerRequest::Volume(volume as u8)))?;
+                }
             }
         }
         Command::VolumeDown => {
             if let Some(ref playback) = state.player.read().unwrap().playback {
-                let volume = std::cmp::max(playback.device.volume_percent as i32 - 5, 0_i32);
-                send.send(ClientRequest::Player(PlayerRequest::Volume(volume as u8)))?;
+                if let Some(percent) = playback.device.volume_percent {
+                    let volume = std::cmp::max(percent.saturating_sub(5_u32), 0_u32);
+                    send.send(ClientRequest::Player(PlayerRequest::Volume(volume as u8)))?;
+                }
             }
         }
         Command::OpenCommandHelp => {
@@ -217,24 +211,22 @@ fn handle_global_command(
             ui.history.push(PageState::CurrentPlaying);
         }
         Command::BrowsePlayingTrackAlbum => {
-            if let Some(track) = state.player.read().unwrap().get_current_playing_track() {
-                if let Some(ref uri) = track.album.uri {
-                    send.send(ClientRequest::GetContext(ContextURI::Album(uri.clone())))?;
-                    ui.history.push(PageState::Browsing(uri.clone()));
+            if let Some(track) = state.player.read().unwrap().current_playing_track() {
+                if let Some(ref id) = track.album.id {
+                    let context_id = ContextId::Album(id.clone());
+                    send.send(ClientRequest::GetContext(context_id.clone()))?;
+                    ui.history.push(PageState::Browsing(context_id));
                 }
             }
         }
         Command::BrowsePlayingTrackArtists => {
-            if let Some(track) = state.player.read().unwrap().get_current_playing_track() {
+            if let Some(track) = state.player.read().unwrap().current_playing_track() {
                 let artists = track
                     .artists
                     .iter()
-                    .filter(|a| a.uri.is_some())
-                    .map(|a| Artist {
-                        name: a.name.clone(),
-                        uri: a.uri.clone(),
-                        id: a.id.clone(),
-                    })
+                    .filter(|a| a.id.is_some())
+                    .map(|a| Artist::try_from_simplified_artist(a.clone()))
+                    .flatten()
                     .collect::<Vec<_>>();
                 ui.popup = Some(PopupState::ArtistList(artists, new_list_state()));
             }
@@ -265,10 +257,7 @@ fn handle_global_command(
             send.send(ClientRequest::GetDevices)?;
         }
         Command::SwitchTheme => {
-            ui.popup = Some(PopupState::ThemeList(
-                state.get_themes(ui),
-                new_list_state(),
-            ));
+            ui.popup = Some(PopupState::ThemeList(state.themes(ui), new_list_state()));
         }
         _ => return Ok(false),
     }

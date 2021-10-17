@@ -23,7 +23,7 @@ pub struct State {
 
 impl State {
     /// gets a list of application themes with the current theme as the first element
-    pub fn get_themes(&self, ui: &std::sync::MutexGuard<UIState>) -> Vec<config::Theme> {
+    pub fn themes(&self, ui: &std::sync::MutexGuard<UIState>) -> Vec<config::Theme> {
         let mut themes = self.theme_config.themes.clone();
         let id = themes.iter().position(|t| t.name == ui.theme.name);
         if let Some(id) = id {

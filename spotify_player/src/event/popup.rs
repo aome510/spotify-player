@@ -27,11 +27,10 @@ pub fn handle_key_sequence_for_popup(
                     Some(PopupState::ArtistList(ref artists, _)) => artists,
                     _ => unreachable!(),
                 };
-                let uri = artists[id].uri.clone().unwrap();
 
-                send.send(ClientRequest::GetContext(ContextURI::Artist(uri.clone())))?;
-
-                ui.history.push(PageState::Browsing(uri));
+                let context_id = ContextId::Artist(artists[id].id.clone());
+                send.send(ClientRequest::GetContext(context_id.clone()))?;
+                ui.history.push(PageState::Browsing(context_id));
                 ui.popup = None;
                 Ok(())
             },
@@ -42,7 +41,7 @@ pub fn handle_key_sequence_for_popup(
         PopupState::UserPlaylistList(action, playlists, _) => {
             match action {
                 PlaylistPopupAction::Browse => {
-                    let playlist_uris = playlists.iter().map(|p| p.uri.clone()).collect::<Vec<_>>();
+                    let playlist_uris = playlists.iter().map(|p| p.id.uri()).collect::<Vec<_>>();
 
                     handle_key_sequence_for_context_browsing_list_popup(
                         key_sequence,
@@ -50,7 +49,7 @@ pub fn handle_key_sequence_for_popup(
                         state,
                         ui,
                         playlist_uris,
-                        ContextURI::Playlist("".to_owned()),
+                        model::Type::Playlist,
                     )
                 }
                 PlaylistPopupAction::AddTrack(ref track_id) => {
@@ -84,7 +83,7 @@ pub fn handle_key_sequence_for_popup(
                                 .write()
                                 .unwrap()
                                 .context_cache
-                                .pop(&playlists[id].uri);
+                                .pop(&playlists[id].id.uri());
 
                             send.send(ClientRequest::AddTrackToPlaylist(
                                 playlists[id].id.clone(),
@@ -105,7 +104,7 @@ pub fn handle_key_sequence_for_popup(
             let artist_uris = player
                 .user_followed_artists
                 .iter()
-                .map(|a| a.uri.clone().unwrap())
+                .map(|a| a.id.uri())
                 .collect::<Vec<_>>();
 
             handle_key_sequence_for_context_browsing_list_popup(
@@ -114,7 +113,7 @@ pub fn handle_key_sequence_for_popup(
                 state,
                 ui,
                 artist_uris,
-                ContextURI::Artist("".to_owned()),
+                model::Type::Artist,
             )
         }
         PopupState::UserSavedAlbumList(_) => {
@@ -122,7 +121,7 @@ pub fn handle_key_sequence_for_popup(
             let album_uris = player
                 .user_saved_albums
                 .iter()
-                .map(|a| a.uri.clone().unwrap())
+                .map(|a| a.id.uri())
                 .collect::<Vec<_>>();
 
             handle_key_sequence_for_context_browsing_list_popup(
@@ -131,7 +130,7 @@ pub fn handle_key_sequence_for_popup(
                 state,
                 ui,
                 album_uris,
-                ContextURI::Album("".to_owned()),
+                model::Type::Album,
             )
         }
         PopupState::ThemeList(_, _) => handle_key_sequence_for_list_popup(
@@ -262,7 +261,7 @@ fn handle_key_sequence_for_context_browsing_list_popup(
     state: &SharedState,
     ui: &mut UIStateGuard,
     uris: Vec<String>,
-    uri_type: ContextURI,
+    context_type: model::Type,
 ) -> Result<bool> {
     handle_key_sequence_for_list_popup(
         key_sequence,
@@ -272,16 +271,18 @@ fn handle_key_sequence_for_context_browsing_list_popup(
         |_, _| {},
         |ui: &mut UIStateGuard, id: usize| -> Result<()> {
             let uri = uris[id].clone();
-            let context_uri = match uri_type {
-                ContextURI::Playlist(_) => ContextURI::Playlist(uri),
-                ContextURI::Artist(_) => ContextURI::Artist(uri),
-                ContextURI::Album(_) => ContextURI::Album(uri),
-                ContextURI::Unknown(_) => ContextURI::Unknown(uri),
+            let context_id = match context_type {
+                model::Type::Playlist => ContextId::Playlist(PlaylistId::from_uri(&uri)?),
+                model::Type::Artist => ContextId::Artist(ArtistId::from_uri(&uri)?),
+                model::Type::Album => ContextId::Album(AlbumId::from_uri(&uri)?),
+                _ => {
+                    return Ok(());
+                }
             };
 
-            send.send(ClientRequest::GetContext(context_uri))?;
+            send.send(ClientRequest::GetContext(context_id.clone()))?;
 
-            ui.history.push(PageState::Browsing(uris[id].clone()));
+            ui.history.push(PageState::Browsing(context_id));
             ui.popup = None;
             Ok(())
         },
@@ -403,33 +404,31 @@ fn handle_key_sequence_for_action_list_popup(
             match item {
                 Item::Track(track) => match actions[id] {
                     Action::BrowseAlbum => {
-                        let uri = track.album.uri.clone();
-                        if let Some(uri) = uri {
-                            send.send(ClientRequest::GetContext(ContextURI::Album(uri.clone())))?;
-                            ui.history.push(PageState::Browsing(uri));
+                        if let Some(ref album) = track.album {
+                            let uri = album.id.uri();
+                            let context_id = ContextId::Album(AlbumId::from_uri(&uri)?);
+                            send.send(ClientRequest::GetContext(context_id.clone()))?;
+                            ui.history.push(PageState::Browsing(context_id));
                         }
                     }
                     Action::BrowseArtist => {
-                        let artists = track
-                            .artists
-                            .iter()
-                            .filter(|a| a.uri.is_some())
-                            .cloned()
-                            .collect::<Vec<_>>();
-                        ui.popup = Some(PopupState::ArtistList(artists, new_list_state()));
+                        ui.popup = Some(PopupState::ArtistList(
+                            track.artists.clone(),
+                            new_list_state(),
+                        ));
                     }
                     Action::AddTrackToPlaylist => {
-                        if let Some(ref id) = track.id {
-                            let player = state.player.read().unwrap();
+                        let player = state.player.read().unwrap();
+                        if let Some(ref user) = player.user {
                             let playlists = player
                                 .user_playlists
                                 .iter()
-                                .filter(|p| p.owner.1 == player.user_id)
+                                .filter(|p| p.owner.1 == user.id)
                                 .cloned()
                                 .collect();
 
                             ui.popup = Some(PopupState::UserPlaylistList(
-                                PlaylistPopupAction::AddTrack(id.clone()),
+                                PlaylistPopupAction::AddTrack(track.id.clone()),
                                 playlists,
                                 new_list_state(),
                             ));
@@ -442,13 +441,10 @@ fn handle_key_sequence_for_action_list_popup(
                 },
                 Item::Album(album) => match actions[id] {
                     Action::BrowseArtist => {
-                        let artists = album
-                            .artists
-                            .iter()
-                            .filter(|a| a.uri.is_some())
-                            .cloned()
-                            .collect::<Vec<_>>();
-                        ui.popup = Some(PopupState::ArtistList(artists, new_list_state()));
+                        ui.popup = Some(PopupState::ArtistList(
+                            album.artists.clone(),
+                            new_list_state(),
+                        ));
                     }
                     Action::SaveToLibrary => {
                         send.send(ClientRequest::SaveToLibrary(item.clone()))?;

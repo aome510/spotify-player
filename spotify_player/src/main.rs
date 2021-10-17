@@ -64,24 +64,19 @@ async fn main() -> anyhow::Result<()> {
         std::fs::create_dir_all(&cache_audio_folder)?;
     }
 
-    // init the shared application state
+    // initialize the application state
     let mut state = state::State::default();
-
     // parse config options from the config files into application's state
     state.parse_config_files(&config_folder, matches.value_of("theme"))?;
-
-    let session = auth::new_session(&cache_folder, state.app_config.device.audio_cache).await?;
-    // retrieve the authorization token, and store it inside the player state
-    let token = token::get_token(&session, &state.app_config.client_id).await?;
-    log::info!("authorization token: {:#?}", token);
-    state.player.write().unwrap().token = token;
-
     let state = std::sync::Arc::new(state);
+
+    // initialize a librespot session
+    let session = auth::new_session(&cache_folder, state.app_config.device.audio_cache).await?;
 
     // start application's threads
     let (send, recv) = std::sync::mpsc::channel::<event::ClientRequest>();
 
-    // init thread
+    // init thread to get necessary data to render the player on startup
     std::thread::spawn({
         let send = send.clone();
         move || {
@@ -109,7 +104,8 @@ async fn main() -> anyhow::Result<()> {
     // client event handler thread
     std::thread::spawn({
         let state = state.clone();
-        let client = client::Client::new();
+        let client = client::Client::new(session, state.app_config.client_id.clone());
+        client.init_token().await?;
         move || {
             client::start_client_handler(state, client, recv);
         }
@@ -128,7 +124,7 @@ async fn main() -> anyhow::Result<()> {
     std::thread::spawn({
         let state = state.clone();
         move || {
-            client::start_player_event_watchers(state, send, session);
+            client::start_player_event_watchers(state, send);
         }
     });
 

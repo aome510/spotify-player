@@ -20,7 +20,7 @@ pub fn render_context_window(
 
     let player = state.player.read().unwrap();
 
-    match player.get_context() {
+    match player.context() {
         Some(context) => {
             frame.render_widget(block, rect);
 
@@ -30,7 +30,7 @@ pub fn render_context_window(
                 .margin(1)
                 .constraints([Constraint::Length(1), Constraint::Min(0)].as_ref())
                 .split(rect);
-            let context_desc = Paragraph::new(context.get_description())
+            let context_desc = Paragraph::new(context.description())
                 .block(Block::default().style(ui.theme.context_desc()));
             frame.render_widget(context_desc, chunks[0]);
 
@@ -54,7 +54,7 @@ pub fn render_context_window(
                         state,
                         &player,
                         chunks[1],
-                        ui.get_search_filtered_items(tracks),
+                        ui.filtered_items_by_search(tracks),
                     );
                 }
                 Context::Album(_, ref tracks) => {
@@ -65,14 +65,13 @@ pub fn render_context_window(
                         state,
                         &player,
                         chunks[1],
-                        ui.get_search_filtered_items(tracks),
+                        ui.filtered_items_by_search(tracks),
                     );
                 }
-                Context::Unknown(_) => {}
             }
         }
         None => {
-            let desc = if player.context_uri.is_empty() {
+            let desc = if player.context_id.is_none() {
                 "Cannot infer the playing context from the current playback"
             } else {
                 // context is not empty, but cannot get context data inside the player state
@@ -100,9 +99,9 @@ fn render_context_artist_widget(
         }
     };
     let (tracks, albums, artists) = (
-        ui.get_search_filtered_items(data.0),
-        ui.get_search_filtered_items(data.1),
-        ui.get_search_filtered_items(data.2),
+        ui.filtered_items_by_search(data.0),
+        ui.filtered_items_by_search(data.1),
+        ui.filtered_items_by_search(data.2),
     );
 
     let rect = {
@@ -183,11 +182,13 @@ fn render_context_track_table_widget(
     tracks: Vec<&Track>,
 ) {
     let track_table = {
+        // get the current playing track's URI to
+        // highlight such track (if exists) in the track table
         let mut playing_track_uri = "".to_string();
         let mut active_desc = "";
         if let Some(ref playback) = player.playback {
-            if let Some(rspotify::model::PlayingItem::Track(ref track)) = playback.item {
-                playing_track_uri = track.uri.clone();
+            if let Some(rspotify::model::PlayableItem::Track(ref track)) = playback.item {
+                playing_track_uri = track.id.uri();
                 active_desc = if !playback.is_playing { "⏸" } else { "▶" };
             }
         }
@@ -197,7 +198,7 @@ fn render_context_track_table_widget(
             .into_iter()
             .enumerate()
             .map(|(id, t)| {
-                let (id, style) = if playing_track_uri == t.uri {
+                let (id, style) = if playing_track_uri == t.id.uri() {
                     (active_desc.to_string(), ui.theme.current_active())
                 } else {
                     ((id + 1).to_string(), Style::default())
@@ -205,8 +206,8 @@ fn render_context_track_table_widget(
                 Row::new(vec![
                     Cell::from(id),
                     Cell::from(utils::truncate_string(t.name.clone(), item_max_len)),
-                    Cell::from(utils::truncate_string(t.get_artists_info(), item_max_len)),
-                    Cell::from(utils::truncate_string(t.album.name.clone(), item_max_len)),
+                    Cell::from(utils::truncate_string(t.artists_info(), item_max_len)),
+                    Cell::from(utils::truncate_string(t.album_info(), item_max_len)),
                     Cell::from(utils::format_duration(t.duration)),
                 ])
                 .style(style)
@@ -235,7 +236,7 @@ fn render_context_track_table_widget(
             .highlight_style(ui.theme.selection_style(is_active))
     };
 
-    if let Some(state) = ui.window.get_track_table_state() {
+    if let Some(state) = ui.window.track_table_state() {
         frame.render_stateful_widget(track_table, rect, state)
     }
 }

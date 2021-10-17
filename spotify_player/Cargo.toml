@@ -11,37 +11,38 @@ readme = "../README.md"
 include = ["src/**/*", "LICENSE", "../README.*"]
 
 [dependencies]
-anyhow = "1.0.42"
+anyhow = "1.0.44"
 clap = "2.33.3"
 config_parser2 = "0.1.2"
-crossterm = { version = "0.20.0", features = ["event-stream"] }
+crossterm = { version = "0.21.0", features = ["event-stream"] }
 dirs-next = "2.0.0"
 env_logger = "0.9.0"
-librespot-connect = { version = "0.2.0", optional = true }
-librespot-playback = { version = "0.2.0", optional = true }
-librespot-core = "0.2.0"
+librespot = "0.3.0"
 log = "0.4.14"
-lru = "0.6.6"
-reqwest = { version = "0.11.4", features = ["json"] }
+lru = "0.7.0"
+chrono = "0.4.19"
+reqwest = { version = "0.11.5", features = ["json"] }
 rpassword = "5.0.1"
-rspotify = { version = "0.10.0", features = ["blocking"] }
-serde = { version = "1.0.126", features = ["derive"] }
-tokio = { version = "1.9.0", features = ["full"] }
+rspotify = "0.11.2"
+serde = { version = "1.0.130", features = ["derive"] }
+tokio = { version = "1.12.0", features = ["full"] }
 tokio-stream = "0.1.7"
 toml = "0.5.8"
-tui = { version = "0.15.0", default-features = false, features = ["crossterm", "serde"] }
-unicode-width = "0.1.8"
+tui = { version = "0.16.0", default-features = false, features = ["crossterm", "serde"] }
+unicode-width = "0.1.9"
 rand = "0.8.4"
+maybe-async = "0.2.6"
+async-trait = "0.1.51"
 
 [features]
-alsa-backend = ["streaming", "librespot-playback/alsa-backend"]
-pulseaudio-backend = ["streaming", "librespot-playback/pulseaudio-backend"]
-rodio-backend = ["streaming", "librespot-playback/rodio-backend"]
-portaudio-backend = ["streaming", "librespot-playback/portaudio-backend"]
-jackaudio-backend = ["streaming", "librespot-playback/jackaudio-backend"]
-rodiojack-backend = ["streaming", "librespot-playback/rodiojack-backend"]
-sdl-backend = ["streaming", "librespot-playback/sdl-backend"]
-gstreamer-backend = ["streaming", "librespot-playback/gstreamer-backend"]
-streaming = ["librespot-playback", "librespot-connect"]
+alsa-backend = ["streaming", "librespot/alsa-backend"]
+pulseaudio-backend = ["streaming", "librespot/pulseaudio-backend"]
+rodio-backend = ["streaming", "librespot/rodio-backend"]
+portaudio-backend = ["streaming", "librespot/portaudio-backend"]
+jackaudio-backend = ["streaming", "librespot/jackaudio-backend"]
+rodiojack-backend = ["streaming", "librespot/rodiojack-backend"]
+sdl-backend = ["streaming", "librespot/sdl-backend"]
+gstreamer-backend = ["streaming", "librespot/gstreamer-backend"]
+streaming = []
 
 default = ["rodio-backend"]

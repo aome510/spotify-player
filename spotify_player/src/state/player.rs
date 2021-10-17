@@ -1,33 +1,53 @@
-use crate::{command::Action, token::Token};
-use rspotify::model::*;
+use std::time;
+
+use crate::command;
+
+use rspotify::model;
+
+pub use rspotify::model::{AlbumId, ArtistId, Id, PlaylistId, TrackId, UserId};
 
 /// Player state
 #[derive(Debug)]
 pub struct PlayerState {
-    pub devices: Vec<device::Device>,
-    pub token: Token,
+    pub devices: Vec<Device>,
 
-    pub user_id: String,
+    pub user: Option<model::PrivateUser>,
     pub user_playlists: Vec<Playlist>,
     pub user_followed_artists: Vec<Artist>,
     pub user_saved_albums: Vec<Album>,
 
-    pub context_uri: String,
+    pub context_id: Option<ContextId>,
     pub context_cache: lru::LruCache<String, Context>,
 
     pub search_cache: lru::LruCache<String, SearchResults>,
 
-    pub playback: Option<context::CurrentlyPlaybackContext>,
+    pub playback: Option<model::CurrentPlaybackContext>,
     pub playback_last_updated: Option<std::time::Instant>,
 }
 
 /// Playing context (album, playlist, etc) of the current track
 #[derive(Clone, Debug)]
 pub enum Context {
-    Playlist(playlist::FullPlaylist, Vec<Track>),
-    Album(album::FullAlbum, Vec<Track>),
-    Artist(artist::FullArtist, Vec<Track>, Vec<Album>, Vec<Artist>),
-    Unknown(String),
+    Playlist(Playlist, Vec<Track>),
+    Album(Album, Vec<Track>),
+    Artist(Artist, Vec<Track>, Vec<Album>, Vec<Artist>),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+/// A context Id
+pub enum ContextId {
+    Playlist(PlaylistId),
+    Album(AlbumId),
+    Artist(ArtistId),
+}
+
+/// A playback which can be either
+/// - a Spotify context
+/// - a vector of track ids
+#[derive(Clone, Debug)]
+pub enum Playback {
+    Context(ContextId, Option<model::Offset>),
+    URIs(Vec<TrackId>, Option<model::Offset>),
 }
 
 /// SearchResults denotes the returned data when searching using Spotify API.
@@ -36,12 +56,12 @@ pub enum Context {
 /// - `albums`
 /// - `artists`
 /// - `playlists`
-#[derive(Clone, Debug)]
+#[derive(Default, Clone, Debug)]
 pub struct SearchResults {
-    pub tracks: page::Page<Track>,
-    pub artists: page::Page<Artist>,
-    pub albums: page::Page<Album>,
-    pub playlists: page::Page<Playlist>,
+    pub tracks: Vec<Track>,
+    pub artists: Vec<Artist>,
+    pub albums: Vec<Album>,
+    pub playlists: Vec<Playlist>,
 }
 
 #[derive(Debug)]
@@ -54,42 +74,45 @@ pub enum ContextSortOrder {
     Duration,
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Debug, Clone)]
+/// A simplified version of `rspotify` device
+pub struct Device {
+    pub id: String,
+    pub name: String,
+}
+
+#[derive(Debug, Clone)]
 /// A simplified version of `rspotify` track
 pub struct Track {
-    pub id: Option<String>,
-    pub uri: String,
+    pub id: TrackId,
     pub name: String,
     pub artists: Vec<Artist>,
-    pub album: Album,
-    pub duration: u32,
+    pub album: Option<Album>,
+    pub duration: time::Duration,
     pub added_at: u64,
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Debug, Clone)]
 /// A simplified version of `rspotify` album
 pub struct Album {
-    pub id: Option<String>,
-    pub uri: Option<String>,
+    pub id: AlbumId,
+    pub release_date: String,
     pub name: String,
     pub artists: Vec<Artist>,
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Debug, Clone)]
 /// A simplified version of `rspotify` artist
 pub struct Artist {
-    pub id: Option<String>,
-    pub uri: Option<String>,
+    pub id: ArtistId,
     pub name: String,
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct Playlist {
-    pub id: String,
-    pub uri: String,
+    pub id: PlaylistId,
     pub name: String,
-    /// (id, display_name)
-    pub owner: (String, String),
+    pub owner: (String, UserId),
 }
 
 #[derive(Debug, Clone)]
@@ -102,65 +125,56 @@ pub enum Item {
 
 impl PlayerState {
     /// gets the current playing track
-    pub fn get_current_playing_track(&self) -> Option<&track::FullTrack> {
+    pub fn current_playing_track(&self) -> Option<&model::FullTrack> {
         match self.playback {
             None => None,
             Some(ref playback) => match playback.item {
-                Some(rspotify::model::PlayingItem::Track(ref track)) => Some(track),
+                Some(rspotify::model::PlayableItem::Track(ref track)) => Some(track),
                 _ => None,
             },
         }
     }
 
     /// gets the current playback progress
-    pub fn get_playback_progress(&self) -> Option<u32> {
+    pub fn playback_progress(&self) -> Option<time::Duration> {
         match self.playback {
             None => None,
             Some(ref playback) => {
-                let progress_ms = (playback.progress_ms.unwrap() as u128)
+                let progress_ms = playback.progress.unwrap()
                     + if playback.is_playing {
                         std::time::Instant::now()
                             .saturating_duration_since(self.playback_last_updated.unwrap())
-                            .as_millis()
                     } else {
-                        0
+                        time::Duration::default()
                     };
-                Some(progress_ms as u32)
+                Some(progress_ms)
             }
         }
     }
 
     /// gets the current context
-    pub fn get_context(&self) -> Option<&Context> {
-        self.context_cache.peek(&self.context_uri)
-    }
-
-    /// gets the current context (mutable)
-    pub fn get_context_mut(&mut self) -> Option<&mut Context> {
-        self.context_cache.peek_mut(&self.context_uri)
-    }
-}
-
-impl SearchResults {
-    fn empty_page<T>() -> page::Page<T> {
-        page::Page {
-            href: "".to_owned(),
-            items: vec![],
-            limit: 0,
-            next: None,
-            offset: 0,
-            previous: None,
-            total: 0,
+    pub fn context(&self) -> Option<&Context> {
+        match self.context_id {
+            Some(ref id) => self.context_cache.peek(&id.uri()),
+            None => None,
         }
     }
 
-    // returns an empty search results
-    pub fn empty() -> Self {
-        Self {
-            tracks: Self::empty_page::<Track>(),
-            artists: Self::empty_page::<Artist>(),
-            albums: Self::empty_page::<Album>(),
-            playlists: Self::empty_page::<Playlist>(),
+    /// gets the current context (mutable)
+    pub fn context_mut(&mut self) -> Option<&mut Context> {
+        match self.context_id {
+            Some(ref id) => self.context_cache.peek_mut(&id.uri()),
+            None => None,
+        }
+    }
+}
+
+impl ContextId {
+    pub fn uri(&self) -> String {
+        match self {
+            Self::Album(ref id) => id.uri(),
+            Self::Artist(ref id) => id.uri(),
+            Self::Playlist(ref id) => id.uri(),
         }
     }
 }
@@ -168,13 +182,12 @@ impl SearchResults {
 impl Default for PlayerState {
     fn default() -> Self {
         Self {
-            token: Token::new(),
             devices: vec![],
-            user_id: "".to_owned(),
+            user: None,
             user_playlists: vec![],
             user_saved_albums: vec![],
             user_followed_artists: vec![],
-            context_uri: "".to_owned(),
+            context_id: None,
             context_cache: lru::LruCache::new(64),
             search_cache: lru::LruCache::new(64),
             playback: None,
@@ -186,26 +199,17 @@ impl Default for PlayerState {
 impl Context {
     /// sorts tracks in the current playing context given a context sort oder
     pub fn sort_tracks(&mut self, sort_oder: ContextSortOrder) {
-        let tracks = self.get_tracks_mut();
-        if let Some(tracks) = tracks {
-            tracks.sort_by(|x, y| sort_oder.compare(x, y));
-        }
+        self.tracks_mut().sort_by(|x, y| sort_oder.compare(x, y));
     }
 
     /// reverses order of tracks in the current playing context
     pub fn reverse_tracks(&mut self) {
-        let tracks = self.get_tracks_mut();
-        if let Some(tracks) = tracks {
-            tracks.reverse();
-        }
+        self.tracks_mut().reverse();
     }
 
     /// gets the description of current playing context
-    pub fn get_description(&self) -> String {
+    pub fn description(&self) -> String {
         match self {
-            Context::Unknown(_) => {
-                "Cannot infer the playing context from the current playback".to_owned()
-            }
             Context::Album(ref album, ref tracks) => {
                 format!(
                     "Album: {} | {} | {} songs",
@@ -218,11 +222,7 @@ impl Context {
                 format!(
                     "Playlist: {} | {} | {} songs",
                     playlist.name,
-                    playlist
-                        .owner
-                        .display_name
-                        .as_ref()
-                        .unwrap_or(&"unknown".to_owned()),
+                    playlist.owner.0,
                     tracks.len()
                 )
             }
@@ -233,29 +233,38 @@ impl Context {
     }
 
     /// gets all tracks inside the current playing context (immutable)
-    pub fn get_tracks(&self) -> Option<&Vec<Track>> {
+    pub fn tracks(&self) -> &Vec<Track> {
         match self {
-            Context::Unknown(_) => None,
-            Context::Album(_, ref tracks) => Some(tracks),
-            Context::Playlist(_, ref tracks) => Some(tracks),
-            Context::Artist(_, ref tracks, _, _) => Some(tracks),
+            Context::Album(_, ref tracks) => tracks,
+            Context::Playlist(_, ref tracks) => tracks,
+            Context::Artist(_, ref tracks, _, _) => tracks,
         }
     }
 
     /// gets all tracks inside the current playing context (mutable)
-    pub fn get_tracks_mut(&mut self) -> Option<&mut Vec<Track>> {
+    pub fn tracks_mut(&mut self) -> &mut Vec<Track> {
         match self {
-            Context::Unknown(_) => None,
-            Context::Album(_, ref mut tracks) => Some(tracks),
-            Context::Playlist(_, ref mut tracks) => Some(tracks),
-            Context::Artist(_, ref mut tracks, _, _) => Some(tracks),
+            Context::Album(_, ref mut tracks) => tracks,
+            Context::Playlist(_, ref mut tracks) => tracks,
+            Context::Artist(_, ref mut tracks, _, _) => tracks,
         }
+    }
+}
+
+impl Device {
+    /// tries to convert from a `rspotify_model::Device` into `Device`
+    pub fn try_from_device(device: model::Device) -> Option<Self> {
+        device.id.as_ref()?;
+        Some(Self {
+            id: device.id.unwrap(),
+            name: device.name,
+        })
     }
 }
 
 impl Track {
     /// gets the track's artists information
-    pub fn get_artists_info(&self) -> String {
+    pub fn artists_info(&self) -> String {
         self.artists
             .iter()
             .map(|a| a.name.clone())
@@ -263,20 +272,78 @@ impl Track {
             .join(", ")
     }
 
-    /// gets the track basic information (track's name, artists' name and album's name)
-    pub fn get_basic_info(&self) -> String {
+    /// gets the track's album information
+    pub fn album_info(&self) -> String {
+        self.album
+            .as_ref()
+            .map(|a| a.name.clone())
+            .unwrap_or_default()
+    }
+
+    /// gets the track information (track's name, artists' name and album's name)
+    pub fn track_info(&self) -> String {
         format!(
             "{} {} {}",
             self.name,
-            self.get_artists_info(),
-            self.album.name
+            self.artists_info(),
+            self.album_info(),
         )
+    }
+
+    /// tries to convert from a `rspotify_model::SimplifiedTrack` into `Track`
+    pub fn try_from_simplified_track(track: model::SimplifiedTrack) -> Option<Self> {
+        track.id.as_ref()?;
+        Some(Self {
+            id: track.id.unwrap(),
+            name: track.name,
+            artists: from_simplified_artists_to_artists(track.artists),
+            album: None,
+            duration: track.duration,
+            added_at: 0,
+        })
+    }
+}
+
+impl From<model::FullTrack> for Track {
+    fn from(track: model::FullTrack) -> Self {
+        Self {
+            id: track.id,
+            name: track.name,
+            artists: from_simplified_artists_to_artists(track.artists),
+            album: Album::try_from_simplified_album(track.album),
+            duration: track.duration,
+            added_at: 0,
+        }
     }
 }
 
 impl std::fmt::Display for Track {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.get_basic_info())
+        write!(f, "{}", self.track_info())
+    }
+}
+
+impl Album {
+    /// tries to convert from a `rspotify_model::SimplifiedAlbum` into `Album`
+    pub fn try_from_simplified_album(album: model::SimplifiedAlbum) -> Option<Self> {
+        album.id.as_ref()?;
+        Some(Self {
+            id: album.id.unwrap(),
+            name: album.name,
+            release_date: album.release_date.unwrap_or_default(),
+            artists: from_simplified_artists_to_artists(album.artists),
+        })
+    }
+}
+
+impl From<model::FullAlbum> for Album {
+    fn from(album: model::FullAlbum) -> Self {
+        Self {
+            name: album.name,
+            id: album.id,
+            release_date: album.release_date,
+            artists: from_simplified_artists_to_artists(album.artists),
+        }
     }
 }
 
@@ -286,103 +353,60 @@ impl std::fmt::Display for Album {
     }
 }
 
+impl Artist {
+    /// tries to convert from a `rspotify_model::SimplifiedArtist` into `Artist`
+    pub fn try_from_simplified_artist(artist: model::SimplifiedArtist) -> Option<Self> {
+        artist.id.as_ref()?;
+        Some(Self {
+            id: artist.id.unwrap(),
+            name: artist.name,
+        })
+    }
+}
+
+impl From<model::FullArtist> for Artist {
+    fn from(artist: model::FullArtist) -> Self {
+        Self {
+            name: artist.name,
+            id: artist.id,
+        }
+    }
+}
+
 impl std::fmt::Display for Artist {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.name)
     }
 }
 
-impl From<playlist::PlaylistTrack> for Track {
-    fn from(t: playlist::PlaylistTrack) -> Self {
-        let track = t.track.unwrap();
-        Self {
-            id: track.id,
-            uri: track.uri,
-            name: track.name,
-            artists: track.artists.into_iter().map(|a| a.into()).collect(),
-            album: track.album.into(),
-            duration: track.duration_ms,
-            added_at: t.added_at.timestamp() as u64,
-        }
-    }
+/// a helper function to convert a vector of `rspotify_model::SimplifiedArtist` into
+/// a vector of `Artist`.
+fn from_simplified_artists_to_artists(artists: Vec<model::SimplifiedArtist>) -> Vec<Artist> {
+    artists
+        .into_iter()
+        .map(Artist::try_from_simplified_artist)
+        .flatten()
+        .collect()
 }
 
-impl From<track::SimplifiedTrack> for Track {
-    fn from(track: track::SimplifiedTrack) -> Self {
-        Self {
-            id: track.id,
-            uri: track.uri,
-            name: track.name,
-            artists: track.artists.into_iter().map(|a| a.into()).collect(),
-            album: Album::default(),
-            duration: track.duration_ms,
-            added_at: 0,
-        }
-    }
-}
-
-impl From<track::FullTrack> for Track {
-    fn from(track: track::FullTrack) -> Self {
-        Self {
-            id: track.id,
-            uri: track.uri,
-            name: track.name,
-            artists: track.artists.into_iter().map(|a| a.into()).collect(),
-            album: track.album.into(),
-            duration: track.duration_ms,
-            added_at: 0,
-        }
-    }
-}
-
-impl From<album::SimplifiedAlbum> for Album {
-    fn from(album: album::SimplifiedAlbum) -> Self {
-        Self {
-            name: album.name,
-            id: album.id,
-            uri: album.uri,
-            artists: album.artists.into_iter().map(|a| a.into()).collect(),
-        }
-    }
-}
-
-impl From<album::FullAlbum> for Album {
-    fn from(album: album::FullAlbum) -> Self {
-        Self {
-            name: album.name,
-            id: Some(album.id),
-            uri: Some(album.uri),
-            artists: album.artists.into_iter().map(|a| a.into()).collect(),
-        }
-    }
-}
-
-impl From<artist::SimplifiedArtist> for Artist {
-    fn from(artist: artist::SimplifiedArtist) -> Self {
-        Self {
-            name: artist.name,
-            id: artist.id,
-            uri: artist.uri,
-        }
-    }
-}
-
-impl From<artist::FullArtist> for Artist {
-    fn from(artist: artist::FullArtist) -> Self {
-        Self {
-            name: artist.name,
-            id: Some(artist.id),
-            uri: Some(artist.uri),
-        }
-    }
-}
-
-impl From<playlist::SimplifiedPlaylist> for Playlist {
-    fn from(playlist: playlist::SimplifiedPlaylist) -> Self {
+impl From<model::SimplifiedPlaylist> for Playlist {
+    fn from(playlist: model::SimplifiedPlaylist) -> Self {
         Self {
             id: playlist.id,
             name: playlist.name,
-            uri: playlist.uri,
+            owner: (
+                playlist.owner.display_name.unwrap_or_default(),
+                playlist.owner.id,
+            ),
+        }
+    }
+}
+
+impl From<model::FullPlaylist> for Playlist {
+    fn from(playlist: model::FullPlaylist) -> Self {
+        Self {
+            id: playlist.id,
+            name: playlist.name,
             owner: (
                 playlist.owner.display_name.unwrap_or_default(),
                 playlist.owner.id,
@@ -396,26 +420,29 @@ impl ContextSortOrder {
         match *self {
             Self::AddedAt => x.added_at.cmp(&y.added_at),
             Self::TrackName => x.name.cmp(&y.name),
-            Self::Album => x.album.name.cmp(&y.album.name),
+            Self::Album => x.album_info().cmp(&y.album_info()),
             Self::Duration => x.duration.cmp(&y.duration),
-            Self::Artists => x.get_artists_info().cmp(&y.get_artists_info()),
+            Self::Artists => x.artists_info().cmp(&y.artists_info()),
         }
     }
 }
 
 impl Item {
     /// gets the list of possible actions on the current item
-    pub fn actions(&self) -> Vec<Action> {
+    pub fn actions(&self) -> Vec<command::Action> {
         match self {
             Self::Track(_) => vec![
-                Action::BrowseAlbum,
-                Action::BrowseArtist,
-                Action::AddTrackToPlaylist,
-                Action::SaveToLibrary,
+                command::Action::BrowseAlbum,
+                command::Action::BrowseArtist,
+                command::Action::AddTrackToPlaylist,
+                command::Action::SaveToLibrary,
             ],
-            Self::Artist(_) => vec![Action::SaveToLibrary],
-            Self::Album(_) => vec![Action::BrowseArtist, Action::SaveToLibrary],
-            Self::Playlist(_) => vec![Action::SaveToLibrary],
+            Self::Artist(_) => vec![command::Action::SaveToLibrary],
+            Self::Album(_) => vec![
+                command::Action::BrowseArtist,
+                command::Action::SaveToLibrary,
+            ],
+            Self::Playlist(_) => vec![command::Action::SaveToLibrary],
         }
     }
 }

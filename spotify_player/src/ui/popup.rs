@@ -48,7 +48,7 @@ pub fn render_popup(
             }
             PopupState::DeviceList(_) => {
                 let current_device_id = match player.playback {
-                    Some(ref playback) => &playback.device.id,
+                    Some(ref playback) => playback.device.id.as_deref().unwrap_or_default(),
                     None => "",
                 };
                 let items = player
@@ -121,7 +121,7 @@ fn render_list_popup(
     frame.render_stateful_widget(
         widget,
         chunks[1],
-        ui.popup.as_mut().unwrap().get_list_state_mut().unwrap(),
+        ui.popup.as_mut().unwrap().list_state_mut().unwrap(),
     );
 
     chunks[0]

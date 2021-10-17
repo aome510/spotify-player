@@ -24,9 +24,8 @@ pub fn render_search_window(is_active: bool, frame: &mut Frame, ui: &mut UIState
     let tracks_list = {
         let track_items = search_results
             .tracks
-            .items
             .iter()
-            .map(|a| (format!("{} - {}", a.name, a.get_artists_info()), false))
+            .map(|a| (format!("{} - {}", a.name, a.artists_info()), false))
             .collect::<Vec<_>>();
 
         let is_active = is_active && focus_state == SearchFocusState::Tracks;
@@ -43,7 +42,6 @@ pub fn render_search_window(is_active: bool, frame: &mut Frame, ui: &mut UIState
     let albums_list = {
         let album_items = search_results
             .albums
-            .items
             .iter()
             .map(|a| (a.name.clone(), false))
             .collect::<Vec<_>>();
@@ -62,7 +60,6 @@ pub fn render_search_window(is_active: bool, frame: &mut Frame, ui: &mut UIState
     let artists_list = {
         let artist_items = search_results
             .artists
-            .items
             .iter()
             .map(|a| (a.name.clone(), false))
             .collect::<Vec<_>>();
@@ -81,7 +78,6 @@ pub fn render_search_window(is_active: bool, frame: &mut Frame, ui: &mut UIState
     let playlists_list = {
         let playlist_items = search_results
             .playlists
-            .items
             .iter()
             .map(|a| (a.name.clone(), false))
             .collect::<Vec<_>>();

@@ -151,7 +151,7 @@ fn render_playback_window(
 
     let player = state.player.read().unwrap();
     if let Some(ref playback) = player.playback {
-        if let Some(rspotify::model::PlayingItem::Track(ref track)) = playback.item {
+        if let Some(rspotify::model::PlayableItem::Track(ref track)) = playback.item {
             let playback_info = vec![
                 Span::styled(
                     format!(
@@ -172,9 +172,9 @@ fn render_playback_window(
                 Span::styled(
                     format!(
                         "repeat: {} | shuffle: {} | volume: {}% | device: {}",
-                        playback.repeat_state.as_str(),
+                        playback.repeat_state.as_ref(),
                         playback.shuffle_state,
-                        playback.device.volume_percent,
+                        playback.device.volume_percent.unwrap_or_default(),
                         playback.device.name,
                     ),
                     ui.theme.playback_metadata(),
@@ -186,17 +186,16 @@ fn render_playback_window(
                 .wrap(Wrap { trim: true })
                 // .style(theme.text_desc_style())
                 .block(Block::default());
-            let progress_ms =
-                std::cmp::min(player.get_playback_progress().unwrap(), track.duration_ms);
+            let progress = std::cmp::min(player.playback_progress().unwrap(), track.duration);
             let progress_bar = Gauge::default()
                 .block(Block::default())
                 .gauge_style(ui.theme.playback_progress_bar())
-                .ratio((progress_ms as f64) / (track.duration_ms as f64))
+                .ratio(progress.as_secs_f64() / track.duration.as_secs_f64())
                 .label(Span::styled(
                     format!(
                         "{}/{}",
-                        utils::format_duration(progress_ms),
-                        utils::format_duration(track.duration_ms),
+                        utils::format_duration(progress),
+                        utils::format_duration(track.duration),
                     ),
                     Style::default().add_modifier(Modifier::BOLD),
                 ));

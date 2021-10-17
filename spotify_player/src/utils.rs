@@ -3,9 +3,10 @@ use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 use crate::state::{self, ArtistFocusState, WindowState};
 
-/// formats a time duration (in ms) into a "{minutes}:{seconds}" format
-pub fn format_duration(duration: u32) -> String {
-    format!("{}:{:02}", duration / 60000, (duration / 1000) % 60)
+/// formats a time duration into a "{minutes}:{seconds}" format
+pub fn format_duration(duration: std::time::Duration) -> String {
+    let secs = duration.as_secs();
+    format!("{}:{:02}", secs / 60, secs % 60)
 }
 
 /// truncates a string whose length exceeds a given `max_len` length.
@@ -47,21 +48,28 @@ pub fn new_table_state() -> TableState {
 }
 
 /// updates the current playing context
-pub fn update_context(state: &state::SharedState, context_uri: String) {
+pub fn update_context(state: &state::SharedState, context_id: Option<state::ContextId>) {
     std::thread::spawn({
         let state = state.clone();
         move || {
-            log::info!("update state context uri: {}", context_uri);
-            state.player.write().unwrap().context_uri = context_uri;
+            log::info!("update state's context id to {:#?}", context_id);
 
+            let is_none_context = context_id.is_none();
+
+            state.player.write().unwrap().context_id = context_id;
             state.ui.lock().unwrap().window = state::WindowState::Unknown;
+
+            // `None` context, skip pooling
+            if is_none_context {
+                return;
+            }
 
             let refresh_duration =
                 std::time::Duration::from_millis(state.app_config.app_refresh_duration_in_ms);
 
             // spawn a pooling job to check when the context is updated inside the player state
             loop {
-                let window_state = match state.player.read().unwrap().get_context() {
+                let window_state = match state.player.read().unwrap().context() {
                     Some(context) => match context {
                         state::Context::Artist(..) => WindowState::Artist(
                             new_table_state(),
@@ -71,7 +79,6 @@ pub fn update_context(state: &state::SharedState, context_uri: String) {
                         ),
                         state::Context::Album(..) => WindowState::Album(new_table_state()),
                         state::Context::Playlist(..) => WindowState::Playlist(new_table_state()),
-                        state::Context::Unknown(_) => WindowState::Unknown,
                     },
                     None => {
                         std::thread::sleep(refresh_duration);

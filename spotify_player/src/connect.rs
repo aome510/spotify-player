@@ -1,10 +1,11 @@
 use crate::config;
-use librespot_connect::spirc::Spirc;
-use librespot_core::{
-    config::{ConnectConfig, DeviceType, VolumeCtrl},
+use librespot::connect::spirc::Spirc;
+use librespot::core::{
+    config::{ConnectConfig, DeviceType},
     session::Session,
 };
-use librespot_playback::{
+use librespot::playback::mixer::MixerConfig;
+use librespot::playback::{
     audio_backend,
     config::{AudioFormat, Bitrate, PlayerConfig},
     mixer::{self, Mixer},
@@ -22,10 +23,11 @@ pub async fn new_connection(session: Session, device: config::DeviceConfig) {
     let connect_config = ConnectConfig {
         name: device.name,
         device_type: device.device_type.parse::<DeviceType>().unwrap_or_default(),
-        volume,
+        initial_volume: Some(volume),
 
-        // non-configurable fields, we may allow users to configure these fields in a future release
-        volume_ctrl: VolumeCtrl::default(),
+        // non-configurable fields, use default values.
+        // We may allow users to configure these fields in a future release
+        has_volume_ctrl: true,
         autoplay: false,
     };
 
@@ -34,7 +36,8 @@ pub async fn new_connection(session: Session, device: config::DeviceConfig) {
         connect_config
     );
 
-    let mixer = Box::new(mixer::softmixer::SoftMixer::open(None)) as Box<dyn Mixer>;
+    let mixer =
+        Box::new(mixer::softmixer::SoftMixer::open(MixerConfig::default())) as Box<dyn Mixer>;
     mixer.set_volume(volume);
 
     let backend = audio_backend::find(None).unwrap();
@@ -46,8 +49,6 @@ pub async fn new_connection(session: Session, device: config::DeviceConfig) {
             .unwrap_or_default(),
         ..Default::default()
     };
-
-    log::info!("application's player configurations: {:#?}", player_config);
 
     let (player, _channel) = Player::new(
         player_config,
