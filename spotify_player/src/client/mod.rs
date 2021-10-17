@@ -52,19 +52,19 @@ impl Client {
         }
 
         let player = state.player.read().unwrap();
-        let playback = match player.playback {
-            Some(ref playback) => playback,
+        let playback_context = match player.playback {
+            Some(ref context) => context,
             None => {
                 return Err(anyhow!("failed to get the current playback context"));
             }
         };
-        let device_id = playback.device.id.as_deref();
+        let device_id = playback_context.device.id.as_deref();
 
         match request {
             PlayerRequest::NextTrack => self.spotify.next_track(device_id).await?,
             PlayerRequest::PreviousTrack => self.spotify.previous_track(device_id).await?,
             PlayerRequest::ResumePause => {
-                if playback.is_playing {
+                if playback_context.is_playing {
                     self.spotify.resume_playback(device_id, None).await?
                 } else {
                     self.spotify.pause_playback(device_id).await?
@@ -74,7 +74,7 @@ impl Client {
                 self.spotify.seek_track(position_ms, device_id).await?
             }
             PlayerRequest::Repeat => {
-                let next_repeat_state = match playback.repeat_state {
+                let next_repeat_state = match playback_context.repeat_state {
                     model::RepeatState::Off => model::RepeatState::Track,
                     model::RepeatState::Track => model::RepeatState::Context,
                     model::RepeatState::Context => model::RepeatState::Off,
@@ -84,14 +84,13 @@ impl Client {
             }
             PlayerRequest::Shuffle => {
                 self.spotify
-                    .shuffle(!playback.shuffle_state, device_id)
+                    .shuffle(!playback_context.shuffle_state, device_id)
                     .await?
             }
             PlayerRequest::Volume(volume) => self.spotify.volume(volume, device_id).await?,
-            // PlayerRequest::PlayTrack(context_uri, track_uris, offset) => {
-            //     self.start_playback(playback, context_uri, track_uris, offset)
-            //         .await?
-            // }
+            PlayerRequest::StartPlayback(playback) => {
+                self.start_playback(playback_context, playback).await?
+            }
             PlayerRequest::TransferPlayback(..) => unreachable!(),
         };
 
@@ -264,30 +263,46 @@ impl Client {
         Ok(self.clean_up_artist_albums(albums))
     }
 
-    /// plays a track given a context URI
+    /// starts a playback
     pub async fn start_playback(
         &self,
-        playback: &model::CurrentPlaybackContext,
-        context_uri: Option<String>,
-        uris: Option<Vec<String>>,
-        offset: Option<model::Offset>,
+        context: &model::CurrentPlaybackContext,
+        playback: Playback,
     ) -> Result<()> {
-        // self.spotify.start_playback(
-        //     Some(playback.device.id.clone()),
-        //     context_uri,
-        //     uris,
-        //     offset,
-        //     None,
-        // )?;
-        // // NOTE: for some reasons, `librespot` device does not keep the shuffle state
-        // // after starting a playback. A work around for this is to make an additional
-        // // shuffle request to keep the playback's original shuffle state.
+        match playback {
+            Playback::Context(context_id, offset) => match context_id {
+                ContextId::Album(id) => {
+                    self.spotify
+                        .start_context_playback(&id, context.device.id.as_deref(), offset, None)
+                        .await?
+                }
+                ContextId::Artist(id) => {
+                    self.spotify
+                        .start_context_playback(&id, context.device.id.as_deref(), offset, None)
+                        .await?
+                }
+                ContextId::Playlist(id) => {
+                    self.spotify
+                        .start_context_playback(&id, context.device.id.as_deref(), offset, None)
+                        .await?
+                }
+            },
+            Playback::URIs(track_ids, offset) => {
+                self.spotify
+                    .start_uris_playback(
+                        track_ids
+                            .iter()
+                            .map(|id| id as &dyn model::PlayableId)
+                            .collect::<Vec<_>>(),
+                        context.device.id.as_deref(),
+                        offset,
+                        None,
+                    )
+                    .await?
+            }
+        }
 
-        //     self.spotify
-        //         .shuffle(playback.shuffle_state, Some(playback.device.id.clone())),
-        //         Ok(())
-
-        unimplemented!()
+        Ok(())
     }
 
     /// searchs for items (tracks, artists, albums, playlists) that match a given query string.

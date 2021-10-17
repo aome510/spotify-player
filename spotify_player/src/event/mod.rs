@@ -25,6 +25,7 @@ pub enum PlayerRequest {
     Shuffle,
     Volume(u8),
     TransferPlayback(String, bool),
+    StartPlayback(Playback),
 }
 
 #[derive(Debug)]

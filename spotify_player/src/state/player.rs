@@ -41,6 +41,15 @@ pub enum ContextId {
     Artist(ArtistId),
 }
 
+/// A playback which can be either
+/// - a Spotify context
+/// - a vector of track ids
+#[derive(Clone, Debug)]
+pub enum Playback {
+    Context(ContextId, Option<model::Offset>),
+    URIs(Vec<TrackId>, Option<model::Offset>),
+}
+
 /// SearchResults denotes the returned data when searching using Spotify API.
 /// Search results are returned as pages of Spotify objects, which includes
 /// - `tracks`

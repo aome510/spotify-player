@@ -55,13 +55,9 @@ pub fn handle_key_sequence_for_context_window(
                     }
                 };
 
-                unimplemented!()
-
-                // send.send(ClientRequest::Player(PlayerRequest::PlayTrack(
-                //     Some(player.context_id.clone()),
-                //     None,
-                //     offset,
-                // )))?;
+                send.send(ClientRequest::Player(PlayerRequest::StartPlayback(
+                    Playback::Context(player.context_id.clone().unwrap(), offset),
+                )))?;
             }
         }
         _ => {
@@ -233,7 +229,7 @@ pub fn handle_command_for_focused_context_subwindow(
                         send,
                         ui,
                         None,
-                        Some(tracks.iter().map(|t| t.id.uri()).collect::<Vec<_>>()),
+                        Some(tracks.iter().map(|t| &t.id).collect()),
                         ui.search_filtered_items(tracks),
                     ),
                 }
@@ -242,7 +238,7 @@ pub fn handle_command_for_focused_context_subwindow(
                 command,
                 send,
                 ui,
-                Some(album.id.uri()),
+                Some(ContextId::Album(album.id.clone())),
                 None,
                 ui.search_filtered_items(tracks),
             ),
@@ -251,7 +247,7 @@ pub fn handle_command_for_focused_context_subwindow(
                     command,
                     send,
                     ui,
-                    Some(playlist.id.uri()),
+                    Some(ContextId::Playlist(playlist.id.clone())),
                     None,
                     ui.search_filtered_items(tracks),
                 )
@@ -279,8 +275,8 @@ fn handle_command_for_track_table_subwindow(
     command: Command,
     send: &mpsc::Sender<ClientRequest>,
     ui: &mut UIStateGuard,
-    context_uri: Option<String>,
-    track_uris: Option<Vec<String>>,
+    context_id: Option<ContextId>,
+    track_ids: Option<Vec<&TrackId>>,
     tracks: Vec<&Track>,
 ) -> Result<bool> {
     let id = ui.window.selected().unwrap();
@@ -297,22 +293,18 @@ fn handle_command_for_track_table_subwindow(
             }
         }
         Command::ChooseSelected => {
-            unimplemented!()
-            // if track_uris.is_some() {
-            //     // play a track from a list of tracks
-            //     send.send(ClientRequest::Player(PlayerRequest::PlayTrack(
-            //         None,
-            //         track_uris,
-            //         Some(model::Offset::for_uri(&tracks[id].id.uri())),
-            //     )))?;
-            // } else if context_uri.is_some() {
-            //     // play a track from a context
-            //     send.send(ClientRequest::Player(PlayerRequest::PlayTrack(
-            //         context_uri,
-            //         None,
-            //         Some(model::Offset::for_uri(&tracks[id].id.uri())),
-            //     )))?;
-            // }
+            let offset = Some(model::Offset::for_uri(&tracks[id].id.uri()));
+            if track_ids.is_some() {
+                // play a track from a list of tracks
+                send.send(ClientRequest::Player(PlayerRequest::StartPlayback(
+                    Playback::URIs(track_ids.unwrap().into_iter().cloned().collect(), offset),
+                )))?;
+            } else if context_id.is_some() {
+                // play a track from a context
+                send.send(ClientRequest::Player(PlayerRequest::StartPlayback(
+                    Playback::Context(context_id.unwrap(), offset),
+                )))?;
+            }
         }
         Command::ShowActionsOnSelectedItem => {
             ui.popup = Some(PopupState::ActionList(
@@ -345,12 +337,14 @@ fn handle_command_for_track_list_subwindow(
             }
         }
         Command::ChooseSelected => {
-            unimplemented!()
-            // send.send(ClientRequest::Player(PlayerRequest::PlayTrack(
-            //     None,
-            //     Some(vec![tracks[id].id.uri()]),
-            //     None,
-            // )))?;
+            // for the track list, `ChooseSelected` on a track
+            // will start a `URIs` playback containing only that track.
+            // It's different for the track table, in which
+            // `ChooseSelected` on a track will start a `URIs` playback
+            // containing all the tracks in the table.
+            send.send(ClientRequest::Player(PlayerRequest::StartPlayback(
+                Playback::URIs(vec![tracks[id].id.clone()], None),
+            )))?;
         }
         Command::ShowActionsOnSelectedItem => {
             ui.popup = Some(PopupState::ActionList(
