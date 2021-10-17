@@ -216,13 +216,13 @@ pub fn handle_command_for_focused_context_subwindow(
                         command,
                         send,
                         ui,
-                        ui.search_filtered_items(albums),
+                        ui.filtered_items_by_search(albums),
                     ),
                     ArtistFocusState::RelatedArtists => handle_command_for_artist_list_subwindow(
                         command,
                         send,
                         ui,
-                        ui.search_filtered_items(artists),
+                        ui.filtered_items_by_search(artists),
                     ),
                     ArtistFocusState::TopTracks => handle_command_for_track_table_subwindow(
                         command,
@@ -230,7 +230,7 @@ pub fn handle_command_for_focused_context_subwindow(
                         ui,
                         None,
                         Some(tracks.iter().map(|t| &t.id).collect()),
-                        ui.search_filtered_items(tracks),
+                        ui.filtered_items_by_search(tracks),
                     ),
                 }
             }
@@ -240,7 +240,7 @@ pub fn handle_command_for_focused_context_subwindow(
                 ui,
                 Some(ContextId::Album(album.id.clone())),
                 None,
-                ui.search_filtered_items(tracks),
+                ui.filtered_items_by_search(tracks),
             ),
             Context::Playlist(ref playlist, ref tracks) => {
                 handle_command_for_track_table_subwindow(
@@ -249,7 +249,7 @@ pub fn handle_command_for_focused_context_subwindow(
                     ui,
                     Some(ContextId::Playlist(playlist.id.clone())),
                     None,
-                    ui.search_filtered_items(tracks),
+                    ui.filtered_items_by_search(tracks),
                 )
             }
         },

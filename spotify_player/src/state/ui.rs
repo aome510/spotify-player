@@ -104,7 +104,7 @@ impl UIState {
     }
 
     /// gets a list of items possibly filtered by a search query if currently inside a search state
-    pub fn search_filtered_items<'a, T: std::fmt::Display>(&self, items: &'a [T]) -> Vec<&'a T> {
+    pub fn filtered_items_by_search<'a, T: std::fmt::Display>(&self, items: &'a [T]) -> Vec<&'a T> {
         match self.popup {
             Some(PopupState::ContextSearch(ref query)) => items
                 .iter()

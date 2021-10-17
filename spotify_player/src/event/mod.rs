@@ -7,7 +7,7 @@ use crate::{
 use anyhow::Result;
 use crossterm::event::*;
 use rand::Rng;
-use rspotify::model::{self, Id};
+use rspotify::model;
 use std::sync::mpsc;
 use tokio_stream::StreamExt;
 

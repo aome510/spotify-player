@@ -55,7 +55,7 @@ pub fn render_context_window(
                         state,
                         &player,
                         chunks[1],
-                        ui.search_filtered_items(tracks),
+                        ui.filtered_items_by_search(tracks),
                     );
                 }
                 Context::Album(_, ref tracks) => {
@@ -66,7 +66,7 @@ pub fn render_context_window(
                         state,
                         &player,
                         chunks[1],
-                        ui.search_filtered_items(tracks),
+                        ui.filtered_items_by_search(tracks),
                     );
                 }
             }
@@ -100,9 +100,9 @@ fn render_context_artist_widget(
         }
     };
     let (tracks, albums, artists) = (
-        ui.search_filtered_items(data.0),
-        ui.search_filtered_items(data.1),
-        ui.search_filtered_items(data.2),
+        ui.filtered_items_by_search(data.0),
+        ui.filtered_items_by_search(data.1),
+        ui.filtered_items_by_search(data.2),
     );
 
     let rect = {
