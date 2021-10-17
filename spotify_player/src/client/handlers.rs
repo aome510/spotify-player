@@ -1,5 +1,5 @@
 use anyhow::Result;
-use rspotify::model::{self, Id};
+use rspotify::model;
 
 use crate::{
     event::{ClientRequest, PlayerRequest},
@@ -70,14 +70,13 @@ async fn watch_player_events(
     {
         let player = state.player.read().unwrap();
 
-        // if cannot find the current playback, try
-        // to connect the first avaiable device
+        // if cannot find the current playback, try to connect to the first avaiable device
         if player.playback.is_none() && !player.devices.is_empty() {
             log::info!(
                 "no playback found, try to connect the first available device {}",
                 player.devices[0].name
             );
-            // only trying to connect, not transfer the current playback
+            // only transfering the playback to a new device, not forcing to start the playback
             send.send(ClientRequest::Player(PlayerRequest::TransferPlayback(
                 player.devices[0].id.clone(),
                 false,
@@ -101,9 +100,6 @@ async fn watch_player_events(
     // update the player's context based on the UI's page state
     match state.ui.lock().unwrap().current_page() {
         PageState::Searching(..) => {
-            // manually empty the `context_uri` to trigger
-            // context updating when moving from the search page
-            // to a previous context page and vice versa
             state.player.write().unwrap().context_id = None;
         }
         PageState::Browsing(id) => {

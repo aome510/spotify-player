@@ -261,15 +261,15 @@ pub fn handle_command_for_focused_context_subwindow(
 ///
 /// In addition to the command and the application's states,
 /// the function requires
-/// - `tracks`: a list of tracks in the track table
-/// - **either** `track_uris` (a list of track's uris) or `context_uris` (a context's uri):
+/// - `tracks`: a list of tracks in the track table (can already be filtered by a search query)
+/// - **either** `track_ids` or `context_id`
 ///
-/// If `track_uris` is specified, playing a track in the track table will
-/// create a playing context consisting of tracks whose uri is in `track_uris`.
-/// The above case is only used for the top track table in an **Artist** context window.
+/// If `track_ids` is specified, playing a track in the track table will
+/// start a `URIs` playback consisting of tracks whose id is in `track_ids`.
+/// The above case is only used for the top-track table in an **Artist** context window.
 ///
-/// If `context_uri` is specified, playing a track in the track table will
-/// create a playing context representing the context with `context_uri` uri.
+/// If `context_id` is specified, playing a track in the track table will
+/// start a `Context` playback representing a Spotify context.
 /// The above case is used for the track table of a playlist or an album.
 fn handle_command_for_track_table_subwindow(
     command: Command,
