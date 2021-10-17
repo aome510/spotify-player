@@ -269,9 +269,7 @@ impl Context {
 impl Device {
     /// tries to convert from a `rspotify_model::Device` into `Device`
     pub fn try_from_device(device: model::Device) -> Option<Self> {
-        if device.id.is_none() {
-            return None;
-        }
+        device.id.as_ref()?;
         Some(Self {
             id: device.id.unwrap(),
             name: device.name,
@@ -309,9 +307,7 @@ impl Track {
 
     /// tries to convert from a `rspotify_model::SimplifiedTrack` into `Track`
     pub fn try_from_simplified_track(track: model::SimplifiedTrack) -> Option<Self> {
-        if track.id.is_none() {
-            return None;
-        }
+        track.id.as_ref()?;
         Some(Self {
             id: track.id.unwrap(),
             name: track.name,
@@ -345,9 +341,7 @@ impl std::fmt::Display for Track {
 impl Album {
     /// tries to convert from a `rspotify_model::SimplifiedAlbum` into `Album`
     pub fn try_from_simplified_album(album: model::SimplifiedAlbum) -> Option<Self> {
-        if album.id.is_none() {
-            return None;
-        }
+        album.id.as_ref()?;
         Some(Self {
             id: album.id.unwrap(),
             name: album.name,
@@ -377,9 +371,7 @@ impl std::fmt::Display for Album {
 impl Artist {
     /// tries to convert from a `rspotify_model::SimplifiedArtist` into `Artist`
     pub fn try_from_simplified_artist(artist: model::SimplifiedArtist) -> Option<Self> {
-        if artist.id.is_none() {
-            return None;
-        }
+        artist.id.as_ref()?;
         Some(Self {
             id: artist.id.unwrap(),
             name: artist.name,
@@ -408,8 +400,7 @@ fn from_simplified_artists_to_artists(artists: Vec<model::SimplifiedArtist>) -> 
     artists
         .into_iter()
         .map(Artist::try_from_simplified_artist)
-        .filter(Option::is_some)
-        .map(Option::unwrap)
+        .flatten()
         .collect()
 }
 

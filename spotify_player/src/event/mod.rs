@@ -225,8 +225,7 @@ fn handle_global_command(
                     .iter()
                     .filter(|a| a.id.is_some())
                     .map(|a| Artist::try_from_simplified_artist(a.clone()))
-                    .filter(Option::is_some)
-                    .map(Option::unwrap)
+                    .flatten()
                     .collect::<Vec<_>>();
                 ui.popup = Some(PopupState::ArtistList(artists, new_list_state()));
             }

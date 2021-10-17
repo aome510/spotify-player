@@ -60,7 +60,7 @@ impl Client {
         };
         let device_id = playback.device.id.as_deref();
 
-        Ok(match request {
+        match request {
             PlayerRequest::NextTrack => self.spotify.next_track(device_id).await?,
             PlayerRequest::PreviousTrack => self.spotify.previous_track(device_id).await?,
             PlayerRequest::ResumePause => {
@@ -93,7 +93,9 @@ impl Client {
             //         .await?
             // }
             PlayerRequest::TransferPlayback(..) => unreachable!(),
-        })
+        };
+
+        Ok(())
     }
 
     /// handles a client request
@@ -133,8 +135,7 @@ impl Client {
                 state.player.write().unwrap().devices = devices
                     .into_iter()
                     .map(Device::try_from_device)
-                    .filter(Option::is_some)
-                    .map(Option::unwrap)
+                    .flatten()
                     .collect();
             }
             ClientRequest::GetUserPlaylists => {
@@ -257,9 +258,8 @@ impl Client {
         // converts `rspotify_model::SimplifiedAlbum` into `state::Album`
         let albums = albums
             .into_iter()
-            .map(|a| Album::try_from_simplified_album(a))
-            .filter(Option::is_some)
-            .map(Option::unwrap)
+            .map(Album::try_from_simplified_album)
+            .flatten()
             .collect();
         Ok(self.clean_up_artist_albums(albums))
     }
@@ -521,8 +521,7 @@ impl Client {
                     Some(model::PlayableItem::Track(track)) => Some(track.into()),
                     _ => None,
                 })
-                .filter(Option::is_some)
-                .map(Option::unwrap)
+                .flatten()
                 .collect::<Vec<_>>()
         };
 
@@ -589,8 +588,7 @@ impl Client {
                         t
                     })
                 })
-                .filter(Option::is_some)
-                .map(Option::unwrap)
+                .flatten()
                 .collect::<Vec<_>>();
 
             state
@@ -641,12 +639,7 @@ impl Client {
             );
 
             // delay the request for getting artist's albums to not block the UI
-            let albums = self
-                .artist_albums(artist_id)
-                .await?
-                .into_iter()
-                .map(|a| a.into())
-                .collect::<Vec<_>>();
+            let albums = self.artist_albums(artist_id).await?;
 
             if let Some(Context::Artist(_, _, ref mut old, _)) = state
                 .player
