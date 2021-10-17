@@ -1,6 +1,5 @@
 use super::Frame;
 use crate::{state::*, ui::construct_list_widget, utils};
-use rspotify::model::Id;
 use std::sync::RwLockReadGuard;
 use tui::{layout::*, style::*, widgets::*};
 
