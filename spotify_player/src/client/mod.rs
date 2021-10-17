@@ -606,59 +606,59 @@ impl Client {
 
     /// gets an artist context data
     async fn artist_context(&self, artist_id: &ArtistId, state: &SharedState) -> Result<()> {
-        unimplemented!()
-        // let artist_uri = artist_id.uri();
-        // log::info!("get artist context: {}", artist_uri);
+        let artist_uri = artist_id.uri();
+        log::info!("get artist context: {}", artist_uri);
 
-        // if !state
-        //     .player
-        //     .read()
-        //     .unwrap()
-        //     .context_cache
-        //     .contains(&artist_uri)
-        // {
-        //     // get a information, top tracks and all albums
-        //     let artist = self.spotify.artist(artist_id).await?;
-        //     let top_tracks = self
-        //         .spotify
-        //         .artist_top_tracks(artist_id)
-        //         .await?
-        //         .tracks
-        //         .into_iter()
-        //         .map(|t| t.into())
-        //         .collect::<Vec<_>>();
-        //     let related_artists = self
-        //         .spotify
-        //         .related_artists(&artist_uri)?
-        //         .artists
-        //         .into_iter()
-        //         .map(|a| a.into())
-        //         .collect::<Vec<_>>();
+        if !state
+            .player
+            .read()
+            .unwrap()
+            .context_cache
+            .contains(&artist_uri)
+        {
+            // get a information, top tracks and all albums
+            let artist = self.spotify.artist(artist_id).await?.into();
 
-        //     state.player.write().unwrap().context_cache.put(
-        //         artist_uri.clone(),
-        //         Context::Artist(artist, top_tracks, vec![], related_artists),
-        //     );
+            let top_tracks = self
+                .spotify
+                .artist_top_tracks(artist_id, &model::enums::misc::Market::FromToken)
+                .await?
+                .into_iter()
+                .map(|t| t.into())
+                .collect::<Vec<_>>();
 
-        //     // delay the request for getting artist's albums to not block the UI
-        //     let albums = self
-        //         .artist_albums(&artist_uri)
-        //         .await?
-        //         .into_iter()
-        //         .map(|a| a.into())
-        //         .collect::<Vec<_>>();
+            let related_artists = self
+                .spotify
+                .artist_related_artists(artist_id)
+                .await?
+                .into_iter()
+                .map(|a| a.into())
+                .collect::<Vec<_>>();
 
-        //     if let Some(Context::Artist(_, _, ref mut old, _)) = state
-        //         .player
-        //         .write()
-        //         .unwrap()
-        //         .context_cache
-        //         .peek_mut(&artist_uri)
-        //     {
-        //         *old = albums;
-        //     }
-        // }
-        // Ok(())
+            state.player.write().unwrap().context_cache.put(
+                artist_uri.clone(),
+                Context::Artist(artist, top_tracks, vec![], related_artists),
+            );
+
+            // delay the request for getting artist's albums to not block the UI
+            let albums = self
+                .artist_albums(artist_id)
+                .await?
+                .into_iter()
+                .map(|a| a.into())
+                .collect::<Vec<_>>();
+
+            if let Some(Context::Artist(_, _, ref mut old, _)) = state
+                .player
+                .write()
+                .unwrap()
+                .context_cache
+                .peek_mut(&artist_uri)
+            {
+                *old = albums;
+            }
+        }
+        Ok(())
     }
 
     async fn internal_call<T>(&self, url: &str) -> Result<T>
