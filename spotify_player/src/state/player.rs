@@ -56,12 +56,12 @@ pub enum Playback {
 /// - `albums`
 /// - `artists`
 /// - `playlists`
-#[derive(Clone, Debug)]
+#[derive(Default, Clone, Debug)]
 pub struct SearchResults {
-    pub tracks: model::Page<Track>,
-    pub artists: model::Page<Artist>,
-    pub albums: model::Page<Album>,
-    pub playlists: model::Page<Playlist>,
+    pub tracks: Vec<Track>,
+    pub artists: Vec<Artist>,
+    pub albums: Vec<Album>,
+    pub playlists: Vec<Playlist>,
 }
 
 #[derive(Debug)]
@@ -175,30 +175,6 @@ impl ContextId {
             Self::Album(ref id) => id.uri(),
             Self::Artist(ref id) => id.uri(),
             Self::Playlist(ref id) => id.uri(),
-        }
-    }
-}
-
-impl SearchResults {
-    fn empty_page<T>() -> model::Page<T> {
-        model::Page {
-            href: "".to_owned(),
-            items: vec![],
-            limit: 0,
-            next: None,
-            offset: 0,
-            previous: None,
-            total: 0,
-        }
-    }
-
-    // returns an empty search results
-    pub fn empty() -> Self {
-        Self {
-            tracks: Self::empty_page::<Track>(),
-            artists: Self::empty_page::<Artist>(),
-            albums: Self::empty_page::<Album>(),
-            playlists: Self::empty_page::<Playlist>(),
         }
     }
 }

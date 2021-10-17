@@ -3,6 +3,7 @@ use std::sync::Arc;
 use crate::{
     event::{ClientRequest, PlayerRequest},
     state::*,
+    utils,
 };
 use anyhow::{anyhow, Result};
 use librespot::core::session::Session;
@@ -163,7 +164,7 @@ impl Client {
                 };
             }
             ClientRequest::Search(query) => {
-                self.search(state, query)?;
+                self.search(state, query).await?;
             }
             ClientRequest::AddTrackToPlaylist(playlist_id, track_id) => {
                 self.add_track_to_playlist(&playlist_id, &track_id).await?;
@@ -306,133 +307,107 @@ impl Client {
     }
 
     /// searchs for items (tracks, artists, albums, playlists) that match a given query string.
-    pub fn search(&self, state: &SharedState, query: String) -> Result<()> {
-        // // searching for tracks, artists, albums, and playlists that match
-        // // a given query string. Each class of items will be handled separately
-        // // in a separate thread.
-        // let update_ui_states = |results: SearchResults| {
-        //     let mut ui = state.ui.lock().unwrap();
-        //     if let PageState::Searching(_, ref mut state_results) = ui.current_page_mut() {
-        //         *state_results = Box::new(results);
-        //         ui.window = WindowState::Search(
-        //             utils::new_list_state(),
-        //             utils::new_list_state(),
-        //             utils::new_list_state(),
-        //             utils::new_list_state(),
-        //             SearchFocusState::Input,
-        //         );
-        //     }
-        // };
+    pub async fn search(&self, state: &SharedState, query: String) -> Result<()> {
+        // searching for tracks, artists, albums, and playlists that match
+        // a given query string. Each class of items will be handled separately
+        // in a separate thread.
 
-        // // already search the query before, updating the ui page state directly
-        // if let Some(search_results) = state.player.read().unwrap().search_cache.peek(&query) {
-        //     update_ui_states(search_results.clone());
-        //     return Ok(());
-        // }
+        let update_ui_states = |results: SearchResults| {
+            let mut ui = state.ui.lock().unwrap();
+            if let PageState::Searching(_, ref mut state_results) = ui.current_page_mut() {
+                *state_results = Box::new(results);
+                ui.window = WindowState::Search(
+                    utils::new_list_state(),
+                    utils::new_list_state(),
+                    utils::new_list_state(),
+                    utils::new_list_state(),
+                    SearchFocusState::Input,
+                );
+            }
+        };
 
-        // let tracks_thread = thread::spawn({
-        //     let spotify = self.spotify.clone();
-        //     let query = query.clone();
-        //     move || -> Result<_> {
-        //         let search_result = spotify.search(
-        //             &query,
-        //             &model::SearchType::Track,
-        //             None,
-        //             None,
-        //             None,
-        //             None,
-        //         ).await?;
+        // already search the query before, updating the ui page state directly
+        if let Some(search_results) = state.player.read().unwrap().search_cache.peek(&query) {
+            update_ui_states(search_results.clone());
+            return Ok(());
+        }
 
-        //         Ok(match search_result {
-        //             model::SearchResult::Tracks(page) => page,
-        //             _ => unreachable!(),
-        //         })
-        //     }
-        // });
+        let tracks = {
+            let search_result = self
+                .spotify
+                .search(&query, &model::SearchType::Track, None, None, None, None)
+                .await?;
 
-        // let artists_thread = thread::spawn({
-        //     let spotify = self.spotify.clone();
-        //     let query = query.clone();
-        //     move || -> Result<_> {
-        //         let search_result = spotify.search(
-        //             &query,
-        //             &model::SearchType::Artist,
-        //             None,
-        //             None,
-        //             None,
-        //             None,
-        //         )?;
+            match search_result {
+                model::SearchResult::Tracks(page) => {
+                    page.items.into_iter().map(|i| i.into()).collect()
+                }
+                _ => unreachable!(),
+            }
+        };
 
-        //         Ok(match search_result {
-        //             model::SearchResult::Artists(page) => page,
-        //             _ => unreachable!(),
-        //         })
-        //     }
-        // });
+        let artists = {
+            let search_result = self
+                .spotify
+                .search(&query, &model::SearchType::Artist, None, None, None, None)
+                .await?;
 
-        // let albums_thread = thread::spawn({
-        //     let spotify = self.spotify.clone();
-        //     let query = query.clone();
-        //     move || -> Result<_> {
-        //        Self::handle_rspotify_result(spotify.search(
-        //             &query,
-        //             &model::SearchType::Album,
-        //             None,
-        //             None,
-        //             None,
-        //             None,
-        //         )?;
+            match search_result {
+                model::SearchResult::Artists(page) => {
+                    page.items.into_iter().map(|i| i.into()).collect()
+                }
+                _ => unreachable!(),
+            }
+        };
 
-        //         Ok(match search_result {
-        //             model::SearchResult::Albums(page) => page,
-        //             _ => unreachable!(),
-        //         })
-        //     }
-        // });
+        let albums = {
+            let search_result = self
+                .spotify
+                .search(&query, &model::SearchType::Album, None, None, None, None)
+                .await?;
 
-        // let playlists_thread = thread::spawn({
-        //     let spotify = self.spotify.clone();
-        //     let query = query.clone();
-        //     move || -> Result<_> {
-        //        Self::handle_rspotify_result(spotify.search(
-        //             &query,
-        //             &model::SearchType::Playlist,
-        //             None,
-        //             None,
-        //             None,
-        //             None,
-        //         )?;
+            match search_result {
+                model::SearchResult::Albums(page) => page
+                    .items
+                    .into_iter()
+                    .map(Album::try_from_simplified_album)
+                    .flatten()
+                    .collect(),
+                _ => unreachable!(),
+            }
+        };
 
-        //         Ok(match search_result {
-        //             model::SearchResult::Playlists(page) => page,
-        //             _ => unreachable!(),
-        //         })
-        //     }
-        // });
+        let playlists = {
+            let search_result = self
+                .spotify
+                .search(&query, &model::SearchType::Playlist, None, None, None, None)
+                .await?;
 
-        // let tracks = tracks_thread.join().unwrap()?;
-        // let artists = artists_thread.join().unwrap()?;
-        // let albums = albums_thread.join().unwrap()?;
-        // let playlists = playlists_thread.join().unwrap()?;
+            match search_result {
+                model::SearchResult::Playlists(page) => {
+                    page.items.into_iter().map(|i| i.into()).collect()
+                }
+                _ => unreachable!(),
+            }
+        };
 
-        // let search_results = SearchResults {
-        //     tracks: Self::into_page(tracks),
-        //     artists: Self::into_page(artists),
-        //     albums: Self::into_page(albums),
-        //     playlists: Self::into_page(playlists),
-        // };
+        let search_results = SearchResults {
+            tracks,
+            artists,
+            albums,
+            playlists,
+        };
 
-        // // update the search cache stored inside the player state
-        // state
-        //     .player
-        //     .write()
-        //     .unwrap()
-        //     .search_cache
-        //     .put(query, search_results.clone());
+        // update the search cache stored inside the player state
+        state
+            .player
+            .write()
+            .unwrap()
+            .search_cache
+            .put(query, search_results.clone());
 
-        // update_ui_states(search_results);
-        // Ok(())
-        unimplemented!()
+        update_ui_states(search_results);
+        Ok(())
     }
 
     /// adds track to a user's playlist
@@ -502,24 +477,6 @@ impl Client {
             }
         }
         Ok(())
-    }
-
-    /// converts a page of items with type `Y` into a page of items with type `X`
-    /// given that type `Y` can be converted to type `X` through the `Into<X>` trait
-    fn into_page<X, Y: Into<X>>(page_y: model::Page<Y>) -> model::Page<X> {
-        model::Page {
-            items: page_y
-                .items
-                .into_iter()
-                .map(|y| y.into())
-                .collect::<Vec<_>>(),
-            href: page_y.href,
-            limit: page_y.limit,
-            next: page_y.next,
-            offset: page_y.offset,
-            previous: page_y.previous,
-            total: page_y.total,
-        }
     }
 
     /// gets a playlist context data

@@ -19,7 +19,7 @@ pub fn handle_key_sequence_for_context_window(
         Command::SearchPage => {
             ui.history.push(PageState::Searching(
                 "".to_owned(),
-                Box::new(SearchResults::empty()),
+                Box::new(SearchResults::default()),
             ));
             ui.window = WindowState::Search(
                 new_list_state(),
@@ -174,19 +174,19 @@ pub fn handle_key_sequence_for_search_window(
         _ => match focus_state {
             SearchFocusState::Input => Ok(false),
             SearchFocusState::Tracks => {
-                let tracks = search_results.tracks.items.iter().collect::<Vec<_>>();
+                let tracks = search_results.tracks.iter().collect::<Vec<_>>();
                 handle_command_for_track_list_subwindow(command, send, ui, tracks)
             }
             SearchFocusState::Artists => {
-                let artists = search_results.artists.items.iter().collect::<Vec<_>>();
+                let artists = search_results.artists.iter().collect::<Vec<_>>();
                 handle_command_for_artist_list_subwindow(command, send, ui, artists)
             }
             SearchFocusState::Albums => {
-                let albums = search_results.albums.items.iter().collect::<Vec<_>>();
+                let albums = search_results.albums.iter().collect::<Vec<_>>();
                 handle_command_for_album_list_subwindow(command, send, ui, albums)
             }
             SearchFocusState::Playlists => {
-                let playlists = search_results.playlists.items.iter().collect::<Vec<_>>();
+                let playlists = search_results.playlists.iter().collect::<Vec<_>>();
                 handle_command_for_playlist_list(command, send, ui, playlists)
             }
         },
