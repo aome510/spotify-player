@@ -55,11 +55,13 @@ pub fn handle_key_sequence_for_context_window(
                         }
                     };
 
-                    send.send(ClientRequest::Player(PlayerRequest::PlayTrack(
-                        Some(player.context_id.clone()),
-                        None,
-                        offset,
-                    )))?;
+                    unimplemented!()
+
+                    // send.send(ClientRequest::Player(PlayerRequest::PlayTrack(
+                    //     Some(player.context_id.clone()),
+                    //     None,
+                    //     offset,
+                    // )))?;
                 }
             }
         }
@@ -255,7 +257,6 @@ pub fn handle_command_for_focused_context_subwindow(
                     ui.search_filtered_items(tracks),
                 )
             }
-            Context::Unknown(_) => Ok(false),
         },
         None => Ok(false),
     }
@@ -297,21 +298,22 @@ fn handle_command_for_track_table_subwindow(
             }
         }
         Command::ChooseSelected => {
-            if track_uris.is_some() {
-                // play a track from a list of tracks
-                send.send(ClientRequest::Player(PlayerRequest::PlayTrack(
-                    None,
-                    track_uris,
-                    Some(model::Offset::for_uri(&tracks[id].id.uri())),
-                )))?;
-            } else if context_uri.is_some() {
-                // play a track from a context
-                send.send(ClientRequest::Player(PlayerRequest::PlayTrack(
-                    context_uri,
-                    None,
-                    Some(model::Offset::for_uri(&tracks[id].id.uri())),
-                )))?;
-            }
+            unimplemented!()
+            // if track_uris.is_some() {
+            //     // play a track from a list of tracks
+            //     send.send(ClientRequest::Player(PlayerRequest::PlayTrack(
+            //         None,
+            //         track_uris,
+            //         Some(model::Offset::for_uri(&tracks[id].id.uri())),
+            //     )))?;
+            // } else if context_uri.is_some() {
+            //     // play a track from a context
+            //     send.send(ClientRequest::Player(PlayerRequest::PlayTrack(
+            //         context_uri,
+            //         None,
+            //         Some(model::Offset::for_uri(&tracks[id].id.uri())),
+            //     )))?;
+            // }
         }
         Command::ShowActionsOnSelectedItem => {
             ui.popup = Some(PopupState::ActionList(
@@ -344,11 +346,12 @@ fn handle_command_for_track_list_subwindow(
             }
         }
         Command::ChooseSelected => {
-            send.send(ClientRequest::Player(PlayerRequest::PlayTrack(
-                None,
-                Some(vec![tracks[id].id.uri()]),
-                None,
-            )))?;
+            unimplemented!()
+            // send.send(ClientRequest::Player(PlayerRequest::PlayTrack(
+            //     None,
+            //     Some(vec![tracks[id].id.uri()]),
+            //     None,
+            // )))?;
         }
         Command::ShowActionsOnSelectedItem => {
             ui.popup = Some(PopupState::ActionList(
@@ -381,11 +384,9 @@ fn handle_command_for_artist_list_subwindow(
             }
         }
         Command::ChooseSelected => {
-            let uri = artists[id].id.uri();
-            send.send(ClientRequest::GetContext(ContextId::Artist(
-                ArtistId::from_uri(&uri)?,
-            )))?;
-            ui.history.push(PageState::Browsing(uri));
+            let context_id = ContextId::Artist(artists[id].id.clone());
+            send.send(ClientRequest::GetContext(context_id.clone()))?;
+            ui.history.push(PageState::Browsing(context_id));
         }
         Command::ShowActionsOnSelectedItem => {
             ui.popup = Some(PopupState::ActionList(
@@ -418,11 +419,9 @@ fn handle_command_for_album_list_subwindow(
             }
         }
         Command::ChooseSelected => {
-            let uri = albums[id].id.uri();
-            send.send(ClientRequest::GetContext(ContextId::Album(
-                AlbumId::from_uri(&uri)?,
-            )))?;
-            ui.history.push(PageState::Browsing(uri));
+            let context_id = ContextId::Album(albums[id].id.clone());
+            send.send(ClientRequest::GetContext(context_id.clone()))?;
+            ui.history.push(PageState::Browsing(context_id));
         }
         Command::ShowActionsOnSelectedItem => {
             ui.popup = Some(PopupState::ActionList(
@@ -455,11 +454,9 @@ fn handle_command_for_playlist_list(
             }
         }
         Command::ChooseSelected => {
-            let uri = playlists[id].id.uri();
-            send.send(ClientRequest::GetContext(ContextId::Playlist(
-                PlaylistId::from_uri(&uri)?,
-            )))?;
-            ui.history.push(PageState::Browsing(uri));
+            let context_id = ContextId::Playlist(playlists[id].id.clone());
+            send.send(ClientRequest::GetContext(context_id.clone()))?;
+            ui.history.push(PageState::Browsing(context_id));
         }
         Command::ShowActionsOnSelectedItem => {
             ui.popup = Some(PopupState::ActionList(

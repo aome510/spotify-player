@@ -28,13 +28,9 @@ pub fn handle_key_sequence_for_popup(
                     _ => unreachable!(),
                 };
 
-                let uri = artists[id].id.uri();
-
-                send.send(ClientRequest::GetContext(ContextId::Artist(
-                    ArtistId::from_uri(&uri)?,
-                )))?;
-
-                ui.history.push(PageState::Browsing(uri));
+                let context_id = ContextId::Artist(artists[id].id.clone());
+                send.send(ClientRequest::GetContext(context_id.clone()))?;
+                ui.history.push(PageState::Browsing(context_id));
                 ui.popup = None;
                 Ok(())
             },
@@ -275,16 +271,18 @@ fn handle_key_sequence_for_context_browsing_list_popup(
         |_, _| {},
         |ui: &mut UIStateGuard, id: usize| -> Result<()> {
             let uri = uris[id].clone();
-            let context_uri = match context_type {
-                Type::Playlist => ContextId::Playlist(PlaylistId::from_uri(&uri)?),
-                Type::Artist => ContextId::Artist(ArtistId::from_uri(&uri)?),
-                Type::Album => ContextId::Album(AlbumId::from_uri(&uri)?),
-                _ => ContextId::Unknown(uri),
+            let context_id = match context_type {
+                model::Type::Playlist => ContextId::Playlist(PlaylistId::from_uri(&uri)?),
+                model::Type::Artist => ContextId::Artist(ArtistId::from_uri(&uri)?),
+                model::Type::Album => ContextId::Album(AlbumId::from_uri(&uri)?),
+                _ => {
+                    return Ok(());
+                }
             };
 
-            send.send(ClientRequest::GetContext(context_uri))?;
+            send.send(ClientRequest::GetContext(context_id.clone()))?;
 
-            ui.history.push(PageState::Browsing(uris[id].clone()));
+            ui.history.push(PageState::Browsing(context_id));
             ui.popup = None;
             Ok(())
         },
@@ -408,10 +406,9 @@ fn handle_key_sequence_for_action_list_popup(
                     Action::BrowseAlbum => {
                         if let Some(ref album) = track.album {
                             let uri = album.id.uri();
-                            send.send(ClientRequest::GetContext(ContextId::Album(
-                                AlbumId::from_uri(&uri)?,
-                            )))?;
-                            ui.history.push(PageState::Browsing(uri));
+                            let context_id = ContextId::Album(AlbumId::from_uri(&uri)?);
+                            send.send(ClientRequest::GetContext(context_id.clone()))?;
+                            ui.history.push(PageState::Browsing(context_id));
                         }
                     }
                     Action::BrowseArtist => {

@@ -24,7 +24,6 @@ pub enum PlayerRequest {
     Repeat,
     Shuffle,
     Volume(u8),
-    StartPlayback(Option<String>, Option<Vec<String>>, Option<model::Offset>),
     TransferPlayback(String, bool),
 }
 
@@ -213,8 +212,9 @@ fn handle_global_command(
         Command::BrowsePlayingTrackAlbum => {
             if let Some(track) = state.player.read().unwrap().current_playing_track() {
                 if let Some(ref id) = track.album.id {
-                    send.send(ClientRequest::GetContext(ContextId::Album(id.clone())))?;
-                    ui.history.push(PageState::Browsing(id.uri()));
+                    let context_id = ContextId::Album(id.clone());
+                    send.send(ClientRequest::GetContext(context_id.clone()))?;
+                    ui.history.push(PageState::Browsing(context_id));
                 }
             }
         }
