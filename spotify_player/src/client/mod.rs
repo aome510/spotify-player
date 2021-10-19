@@ -329,64 +329,38 @@ impl Client {
             return Ok(());
         }
 
-        let tracks = {
-            let search_result = self
-                .spotify
-                .search(&query, &model::SearchType::Track, None, None, None, None)
-                .await?;
+        let (track_result, artist_result, album_result, playlist_result) = tokio::try_join!(
+            self.search_specific_type(&query, &model::SearchType::Track),
+            self.search_specific_type(&query, &model::SearchType::Artist),
+            self.search_specific_type(&query, &model::SearchType::Album),
+            self.search_specific_type(&query, &model::SearchType::Playlist)
+        )?;
 
-            match search_result {
-                model::SearchResult::Tracks(page) => {
-                    page.items.into_iter().map(|i| i.into()).collect()
-                }
+        let (tracks, artists, albums, playlists) = (
+            match track_result {
+                model::SearchResult::Tracks(p) => p.items.into_iter().map(|i| i.into()).collect(),
                 _ => unreachable!(),
-            }
-        };
-
-        let artists = {
-            let search_result = self
-                .spotify
-                .search(&query, &model::SearchType::Artist, None, None, None, None)
-                .await?;
-
-            match search_result {
-                model::SearchResult::Artists(page) => {
-                    page.items.into_iter().map(|i| i.into()).collect()
-                }
+            },
+            match artist_result {
+                model::SearchResult::Artists(p) => p.items.into_iter().map(|i| i.into()).collect(),
                 _ => unreachable!(),
-            }
-        };
-
-        let albums = {
-            let search_result = self
-                .spotify
-                .search(&query, &model::SearchType::Album, None, None, None, None)
-                .await?;
-
-            match search_result {
-                model::SearchResult::Albums(page) => page
+            },
+            match album_result {
+                model::SearchResult::Albums(p) => p
                     .items
                     .into_iter()
                     .map(Album::try_from_simplified_album)
                     .flatten()
                     .collect(),
                 _ => unreachable!(),
-            }
-        };
-
-        let playlists = {
-            let search_result = self
-                .spotify
-                .search(&query, &model::SearchType::Playlist, None, None, None, None)
-                .await?;
-
-            match search_result {
-                model::SearchResult::Playlists(page) => {
-                    page.items.into_iter().map(|i| i.into()).collect()
+            },
+            match playlist_result {
+                model::SearchResult::Playlists(p) => {
+                    p.items.into_iter().map(|i| i.into()).collect()
                 }
                 _ => unreachable!(),
-            }
-        };
+            },
+        );
 
         let search_results = SearchResults {
             tracks,
@@ -405,6 +379,17 @@ impl Client {
 
         update_ui_states(search_results);
         Ok(())
+    }
+
+    async fn search_specific_type(
+        &self,
+        query: &str,
+        _type: &model::SearchType,
+    ) -> Result<model::SearchResult> {
+        Ok(self
+            .spotify
+            .search(query, _type, None, None, None, None)
+            .await?)
     }
 
     /// adds track to a playlist
