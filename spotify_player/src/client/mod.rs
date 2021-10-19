@@ -657,11 +657,9 @@ impl Client {
     /// updates the current playback state
     async fn update_current_playback_state(&self, state: &SharedState) -> Result<()> {
         let playback = self.spotify.current_playback(None, None::<Vec<_>>).await?;
-        {
-            let mut player = state.player.write().unwrap();
-            player.playback = playback;
-            player.playback_last_updated = Some(std::time::Instant::now());
-        }
+        let mut player = state.player.write().unwrap();
+        player.playback = playback;
+        player.playback_last_updated = Some(std::time::Instant::now());
         Ok(())
     }
 
