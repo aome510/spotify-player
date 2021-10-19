@@ -17,9 +17,13 @@ pub async fn start_client_handler(
     recv: std::sync::mpsc::Receiver<ClientRequest>,
 ) {
     while let Ok(request) = recv.recv() {
-        if let Err(err) = client.handle_request(&state, request).await {
-            log::warn!("{:#?}", err);
-        }
+        let state = state.clone();
+        let client = client.clone();
+        tokio::spawn(async move {
+            if let Err(err) = client.handle_request(&state, request).await {
+                log::warn!("{:#?}", err);
+            }
+        });
     }
 }
 

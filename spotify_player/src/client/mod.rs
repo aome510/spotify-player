@@ -57,14 +57,15 @@ impl Client {
                 .await?);
         }
 
-        let player = state.player.read().unwrap();
-        let playback = match player.playback {
-            Some(ref context) => context,
+        let playback = match state.player.read().unwrap().simplified_playback() {
+            Some(playback) => playback,
             None => {
-                return Err(anyhow!("failed to get the current playback context"));
+                return Err(anyhow!(
+                    "failed to handle the player request: there is no active playback"
+                ));
             }
         };
-        let device_id = playback.device.id.as_deref();
+        let device_id = playback.device_id.as_deref();
 
         match request {
             PlayerRequest::NextTrack => self.spotify.next_track(device_id).await?,
@@ -449,10 +450,18 @@ impl Client {
                 }
             }
             Item::Playlist(playlist) => {
-                if let Some(ref user) = state.player.read().unwrap().user {
+                let user_id = state
+                    .player
+                    .read()
+                    .unwrap()
+                    .user
+                    .as_ref()
+                    .map(|u| u.id.clone());
+
+                if let Some(user_id) = user_id {
                     let follows = self
                         .spotify
-                        .playlist_check_follow(&playlist.id, &[&user.id])
+                        .playlist_check_follow(&playlist.id, &[&user_id])
                         .await?;
                     if !follows[0] {
                         self.spotify.playlist_follow(&playlist.id, None).await?;
@@ -648,9 +657,11 @@ impl Client {
     /// updates the current playback state
     async fn update_current_playback_state(&self, state: &SharedState) -> Result<()> {
         let playback = self.spotify.current_playback(None, None::<Vec<_>>).await?;
-        let mut player = state.player.write().unwrap();
-        player.playback = playback;
-        player.playback_last_updated = Some(std::time::Instant::now());
+        {
+            let mut player = state.player.write().unwrap();
+            player.playback = playback;
+            player.playback_last_updated = Some(std::time::Instant::now());
+        }
         Ok(())
     }
 
