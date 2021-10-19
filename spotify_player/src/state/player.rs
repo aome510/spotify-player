@@ -123,7 +123,26 @@ pub enum Item {
     Playlist(Playlist),
 }
 
+/// A simplified version of `rspotify::CurrentPlaybackContext` containing
+/// only fields needed to handle a `event::PlayerRequest`
+pub struct SimplifiedPlayback {
+    pub device_id: Option<String>,
+    pub is_playing: bool,
+    pub repeat_state: model::RepeatState,
+    pub shuffle_state: bool,
+}
+
 impl PlayerState {
+    /// gets a simplified playback
+    pub fn simplified_playback(&self) -> Option<SimplifiedPlayback> {
+        self.playback.as_ref().map(|p| SimplifiedPlayback {
+            device_id: p.device.id.clone(),
+            is_playing: p.is_playing,
+            repeat_state: p.repeat_state,
+            shuffle_state: p.shuffle_state,
+        })
+    }
+
     /// gets the current playing track
     pub fn current_playing_track(&self) -> Option<&model::FullTrack> {
         match self.playback {

@@ -17,9 +17,13 @@ pub async fn start_client_handler(
     recv: std::sync::mpsc::Receiver<ClientRequest>,
 ) {
     while let Ok(request) = recv.recv() {
-        if let Err(err) = client.handle_request(&state, request).await {
-            log::warn!("{:#?}", err);
-        }
+        let state = state.clone();
+        let client = client.clone();
+        tokio::spawn(async move {
+            if let Err(err) = client.handle_request(&state, request).await {
+                log::warn!("{:#?}", err);
+            }
+        });
     }
 }
 
@@ -121,7 +125,8 @@ async fn watch_player_events(
                             None => true,
                             Some(ref context_id) => context_id.uri() != context.uri,
                         };
-                        if should_update && player.context_cache.peek(&context.uri).is_none() {
+
+                        if should_update {
                             match context._type {
                                 model::Type::Playlist => {
                                     let context_id =
