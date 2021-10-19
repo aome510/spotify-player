@@ -125,7 +125,8 @@ async fn watch_player_events(
                             None => true,
                             Some(ref context_id) => context_id.uri() != context.uri,
                         };
-                        if should_update && player.context_cache.peek(&context.uri).is_none() {
+
+                        if should_update {
                             match context._type {
                                 model::Type::Playlist => {
                                     let context_id =
