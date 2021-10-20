@@ -1,11 +1,11 @@
 use crate::config;
-use librespot::connect::spirc::Spirc;
-use librespot::core::{
+use librespot_connect::spirc::Spirc;
+use librespot_core::{
     config::{ConnectConfig, DeviceType},
     session::Session,
 };
-use librespot::playback::mixer::MixerConfig;
-use librespot::playback::{
+use librespot_playback::mixer::MixerConfig;
+use librespot_playback::{
     audio_backend,
     config::{AudioFormat, Bitrate, PlayerConfig},
     mixer::{self, Mixer},

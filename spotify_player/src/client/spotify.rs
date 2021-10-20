@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Result};
-use librespot::core::session::Session;
+use librespot_core::session::Session;
 use maybe_async::maybe_async;
 use rspotify::{
     clients::{mutex::Mutex, BaseClient, OAuthClient},

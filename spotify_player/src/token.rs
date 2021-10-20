@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use anyhow::{anyhow, Result};
 use chrono::{Duration, Utc};
-use librespot::core::{keymaster, session::Session};
+use librespot_core::{keymaster, session::Session};
 use rspotify::Token;
 
 /// the application authorization token's permission scopes

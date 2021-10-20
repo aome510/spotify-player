@@ -558,18 +558,6 @@ dependencies = [
 
 [[package]]
 name = "env_logger"
-version = "0.8.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a19187fea3ac7e84da7dacf48de0c45d63c6a76f9490dae389aead16c243fce3"
-dependencies = [
- "atty",
- "humantime",
- "log",
- "termcolor",
-]
-
-[[package]]
-name = "env_logger"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b2cf0344971ee6c64c31be0d530793fba457d322dfec2810c453d0ef228f9c3"
@@ -714,15 +702,6 @@ checksum = "501466ecc8a30d1d3b7fc9229b122b2ce8ed6e9d9223f1138d4babb253e51817"
 dependencies = [
  "typenum",
  "version_check",
-]
-
-[[package]]
-name = "getopts"
-version = "0.2.21"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "14dbbfd5c71d70241ecf9e6f13737f7b5ce823821063188d7e46c41d371eebd5"
-dependencies = [
- "unicode-width",
 ]
 
 [[package]]
@@ -966,12 +945,6 @@ checksum = "62b467343b94ba476dcb2500d242dadbb39557df889310ac77c5d99100aaac33"
 dependencies = [
  "libc",
 ]
-
-[[package]]
-name = "hex"
-version = "0.4.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
 
 [[package]]
 name = "hmac"
@@ -1344,33 +1317,6 @@ dependencies = [
  "num-traits",
  "pkg-config",
  "winapi",
-]
-
-[[package]]
-name = "librespot"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2799368da8a21d80061d6b3bb8db5a85a19665e42284a238af5a1700f5509a51"
-dependencies = [
- "base64",
- "env_logger 0.8.4",
- "futures-util",
- "getopts",
- "hex",
- "hyper",
- "librespot-audio",
- "librespot-connect",
- "librespot-core",
- "librespot-discovery",
- "librespot-metadata",
- "librespot-playback",
- "librespot-protocol",
- "log",
- "rpassword",
- "sha-1",
- "thiserror",
- "tokio",
- "url",
 ]
 
 [[package]]
@@ -2601,8 +2547,10 @@ dependencies = [
  "config_parser2",
  "crossterm 0.21.0",
  "dirs-next",
- "env_logger 0.9.0",
- "librespot",
+ "env_logger",
+ "librespot-connect",
+ "librespot-core",
+ "librespot-playback",
  "log",
  "lru",
  "maybe-async",

@@ -6,7 +6,7 @@ use crate::{
     utils,
 };
 use anyhow::{anyhow, Result};
-use librespot::core::session::Session;
+use librespot_core::session::Session;
 use rspotify::{model, prelude::*};
 
 mod handlers;
