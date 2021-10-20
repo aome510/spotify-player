@@ -188,7 +188,7 @@ fn handle_global_command(
         Command::VolumeUp => {
             if let Some(ref playback) = state.player.read().unwrap().playback {
                 if let Some(percent) = playback.device.volume_percent {
-                    let volume = std::cmp::max(percent + 5, 100_u32);
+                    let volume = std::cmp::min(percent + 5, 100_u32);
                     send.send(ClientRequest::Player(PlayerRequest::Volume(volume as u8)))?;
                 }
             }
