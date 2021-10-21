@@ -122,6 +122,7 @@ async fn main() -> anyhow::Result<()> {
 
     // player event watcher thread(s)
     std::thread::spawn({
+        let send = send.clone();
         let state = state.clone();
         move || {
             client::start_player_event_watchers(state, send);
@@ -129,5 +130,5 @@ async fn main() -> anyhow::Result<()> {
     });
 
     // application's UI as the main thread
-    ui::start_ui(state)
+    ui::start_ui(state, send)
 }

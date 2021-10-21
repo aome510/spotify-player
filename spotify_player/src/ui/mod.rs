@@ -1,8 +1,10 @@
 use crate::{
+    event::ClientRequest,
     state::*,
     utils::{self, new_list_state},
 };
 use anyhow::Result;
+use rspotify::model;
 use tui::{layout::*, style::*, text::*, widgets::*};
 
 type Terminal = tui::Terminal<tui::backend::CrosstermBackend<std::io::Stdout>>;
@@ -14,7 +16,7 @@ mod popup;
 mod search;
 
 /// starts the application UI as the main thread
-pub fn start_ui(state: SharedState) -> Result<()> {
+pub fn start_ui(state: SharedState, send: std::sync::mpsc::Sender<ClientRequest>) -> Result<()> {
     // terminal UI initializations
     let mut stdout = std::io::stdout();
     crossterm::terminal::enable_raw_mode()?;
@@ -35,6 +37,8 @@ pub fn start_ui(state: SharedState) -> Result<()> {
             return Ok(());
         }
 
+        handle_page_state_change(&state, &send)?;
+
         terminal.draw(|frame| {
             let ui = state.ui.lock().unwrap();
 
@@ -47,6 +51,95 @@ pub fn start_ui(state: SharedState) -> Result<()> {
 
         std::thread::sleep(ui_refresh_duration);
     }
+}
+
+/// checks the current page state for changes
+/// and updates the window state (and other states) accordingly
+fn handle_page_state_change(
+    state: &SharedState,
+    send: &std::sync::mpsc::Sender<ClientRequest>,
+) -> Result<()> {
+    let mut ui = state.ui.lock().unwrap();
+
+    match ui.current_page() {
+        PageState::Searching(..) => {
+            state.player.write().unwrap().context_id = None;
+            match ui.window {
+                WindowState::Search(..) => {}
+                _ => {
+                    ui.window = WindowState::Search(
+                        new_list_state(),
+                        new_list_state(),
+                        new_list_state(),
+                        new_list_state(),
+                        SearchFocusState::Input,
+                    );
+                }
+            }
+        }
+        PageState::Browsing(id) => {
+            let should_update = match state.player.read().unwrap().context_id {
+                None => true,
+                Some(ref context_id) => context_id != id,
+            };
+            if should_update {
+                utils::update_context(state, Some(id.clone()));
+            }
+        }
+        PageState::CurrentPlaying => {
+            let player = state.player.read().unwrap();
+            // updates the context (album, playlist, etc) tracks based on the current playback
+            if let Some(ref playback) = player.playback {
+                match playback.context {
+                    Some(ref context) => {
+                        let should_update = match player.context_id {
+                            None => true,
+                            Some(ref context_id) => context_id.uri() != context.uri,
+                        };
+
+                        if should_update {
+                            match context._type {
+                                model::Type::Playlist => {
+                                    let context_id =
+                                        ContextId::Playlist(PlaylistId::from_uri(&context.uri)?);
+                                    send.send(ClientRequest::GetContext(context_id.clone()))?;
+                                    utils::update_context(state, Some(context_id));
+                                }
+                                model::Type::Album => {
+                                    let context_id =
+                                        ContextId::Album(AlbumId::from_uri(&context.uri)?);
+                                    send.send(ClientRequest::GetContext(context_id.clone()))?;
+                                    utils::update_context(state, Some(context_id));
+                                }
+                                model::Type::Artist => {
+                                    let context_id =
+                                        ContextId::Artist(ArtistId::from_uri(&context.uri)?);
+                                    send.send(ClientRequest::GetContext(context_id.clone()))?;
+                                    utils::update_context(state, Some(context_id));
+                                }
+                                _ => {
+                                    log::info!(
+                                        "encountered not supported context type: {:#?}",
+                                        context._type
+                                    )
+                                }
+                            };
+                        }
+                    }
+                    None => {
+                        if player.context_id.is_some() {
+                            // the current playback doesn't have a playing context,
+                            // update the state's `context_id` to `None`
+                            utils::update_context(state, None);
+                            log::info!("current playback does not have a playing context");
+                        }
+                    }
+                }
+            };
+        }
+    }
+
+    Ok(())
 }
 
 /// cleans up the resources before quitting the application
@@ -110,20 +203,6 @@ fn render_main_layout(
         PageState::Searching(..) => {
             // make sure that the window state matches the current page state.
             // The mismatch can happen when going back to the search from another page
-            match ui.window {
-                WindowState::Search(..) => {}
-                _ => {
-                    // the current window state doesn't match the current page state,
-                    // this can happen after calling the `PreviousPage` command
-                    ui.window = WindowState::Search(
-                        new_list_state(),
-                        new_list_state(),
-                        new_list_state(),
-                        new_list_state(),
-                        SearchFocusState::Input,
-                    );
-                }
-            }
             search::render_search_window(is_active, frame, ui, chunks[1]);
         }
     };

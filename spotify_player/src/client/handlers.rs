@@ -1,10 +1,8 @@
 use anyhow::Result;
-use rspotify::model;
 
 use crate::{
     event::{ClientRequest, PlayerRequest},
     state::*,
-    utils,
 };
 
 use super::Client;
@@ -100,73 +98,5 @@ async fn watch_player_events(
             }
         }
     }
-
-    // update the player's context based on the UI's page state
-    match state.ui.lock().unwrap().current_page() {
-        PageState::Searching(..) => {
-            state.player.write().unwrap().context_id = None;
-        }
-        PageState::Browsing(id) => {
-            let should_update = match state.player.read().unwrap().context_id {
-                None => true,
-                Some(ref context_id) => context_id != id,
-            };
-            if should_update {
-                utils::update_context(state, Some(id.clone()));
-            }
-        }
-        PageState::CurrentPlaying => {
-            let player = state.player.read().unwrap();
-            // updates the context (album, playlist, etc) tracks based on the current playback
-            if let Some(ref playback) = player.playback {
-                match playback.context {
-                    Some(ref context) => {
-                        let should_update = match player.context_id {
-                            None => true,
-                            Some(ref context_id) => context_id.uri() != context.uri,
-                        };
-
-                        if should_update {
-                            match context._type {
-                                model::Type::Playlist => {
-                                    let context_id =
-                                        ContextId::Playlist(PlaylistId::from_uri(&context.uri)?);
-                                    send.send(ClientRequest::GetContext(context_id.clone()))?;
-                                    utils::update_context(state, Some(context_id));
-                                }
-                                model::Type::Album => {
-                                    let context_id =
-                                        ContextId::Album(AlbumId::from_uri(&context.uri)?);
-                                    send.send(ClientRequest::GetContext(context_id.clone()))?;
-                                    utils::update_context(state, Some(context_id));
-                                }
-                                model::Type::Artist => {
-                                    let context_id =
-                                        ContextId::Artist(ArtistId::from_uri(&context.uri)?);
-                                    send.send(ClientRequest::GetContext(context_id.clone()))?;
-                                    utils::update_context(state, Some(context_id));
-                                }
-                                _ => {
-                                    log::info!(
-                                        "encountered not supported context type: {:#?}",
-                                        context._type
-                                    )
-                                }
-                            };
-                        }
-                    }
-                    None => {
-                        if player.context_id.is_some() {
-                            // the current playback doesn't have a playing context,
-                            // update the state's `context_id` to `None`
-                            utils::update_context(state, None);
-                            log::info!("current playback does not have a playing context");
-                        }
-                    }
-                }
-            };
-        }
-    }
-
     Ok(())
 }

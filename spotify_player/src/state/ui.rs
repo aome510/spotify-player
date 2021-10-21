@@ -27,6 +27,7 @@ pub enum PageState {
     CurrentPlaying,
     Browsing(ContextId),
     Searching(String, Box<SearchResults>),
+    Recommendations(String, Vec<TrackId>),
 }
 
 /// Window state

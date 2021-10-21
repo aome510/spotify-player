@@ -21,13 +21,6 @@ pub fn handle_key_sequence_for_context_window(
                 "".to_owned(),
                 Box::new(SearchResults::default()),
             ));
-            ui.window = WindowState::Search(
-                new_list_state(),
-                new_list_state(),
-                new_list_state(),
-                new_list_state(),
-                SearchFocusState::Input,
-            );
         }
         Command::FocusNextWindow => {
             ui.window.next();
