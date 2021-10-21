@@ -57,6 +57,7 @@ pub enum Action {
     SaveToLibrary,
     BrowseArtist,
     BrowseAlbum,
+    BrowseRecommendations,
 }
 
 impl Command {

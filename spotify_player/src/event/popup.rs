@@ -438,6 +438,7 @@ fn handle_key_sequence_for_action_list_popup(
                         send.send(ClientRequest::SaveToLibrary(item.clone()))?;
                         ui.popup = None;
                     }
+                    Action::BrowseRecommendations => unimplemented!(),
                 },
                 Item::Album(album) => match actions[id] {
                     Action::BrowseArtist => {
@@ -452,12 +453,14 @@ fn handle_key_sequence_for_action_list_popup(
                     }
                     _ => {}
                 },
-                Item::Artist(_) => {
-                    if let Action::SaveToLibrary = actions[id] {
+                Item::Artist(_) => match actions[id] {
+                    Action::SaveToLibrary => {
                         send.send(ClientRequest::SaveToLibrary(item.clone()))?;
                         ui.popup = None;
                     }
-                }
+                    Action::BrowseRecommendations => unimplemented!(),
+                    _ => {}
+                },
                 Item::Playlist(_) => {
                     if let Action::SaveToLibrary = actions[id] {
                         send.send(ClientRequest::SaveToLibrary(item.clone()))?;

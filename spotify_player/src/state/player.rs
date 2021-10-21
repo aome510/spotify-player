@@ -453,10 +453,14 @@ impl Item {
             Self::Track(_) => vec![
                 command::Action::BrowseAlbum,
                 command::Action::BrowseArtist,
+                command::Action::BrowseRecommendations,
                 command::Action::AddTrackToPlaylist,
                 command::Action::SaveToLibrary,
             ],
-            Self::Artist(_) => vec![command::Action::SaveToLibrary],
+            Self::Artist(_) => vec![
+                command::Action::BrowseRecommendations,
+                command::Action::SaveToLibrary,
+            ],
             Self::Album(_) => vec![
                 command::Action::BrowseArtist,
                 command::Action::SaveToLibrary,
