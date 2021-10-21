@@ -77,6 +77,15 @@ fn handle_page_state_change(
                 }
             }
         }
+        PageState::Recommendations(..) => {
+            state.player.write().unwrap().context_id = None;
+            match ui.window {
+                WindowState::Recommendations(..) => {}
+                _ => {
+                    ui.window = WindowState::Recommendations(new_list_state());
+                }
+            }
+        }
         PageState::Browsing(id) => {
             let should_update = match state.player.read().unwrap().context_id {
                 None => true,

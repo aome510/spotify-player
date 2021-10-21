@@ -38,6 +38,7 @@ pub enum ClientRequest {
     GetUserFollowedArtists,
     GetContext(ContextId),
     GetCurrentPlayback,
+    GetRecommendations(SeedItem),
     Search(String),
     AddTrackToPlaylist(PlaylistId, TrackId),
     SaveToLibrary(Item),

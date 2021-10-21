@@ -109,6 +109,7 @@ pub struct Artist {
 }
 
 #[derive(Debug, Clone)]
+/// A simplified version of `rspotify` playlist
 pub struct Playlist {
     pub id: PlaylistId,
     pub name: String,
@@ -116,11 +117,19 @@ pub struct Playlist {
 }
 
 #[derive(Debug, Clone)]
+/// A spotify item (track, album, artist, playlist)
 pub enum Item {
     Track(Track),
     Album(Album),
     Artist(Artist),
     Playlist(Playlist),
+}
+
+#[derive(Debug, Clone)]
+/// A spotify item as the recommendation seed
+pub enum SeedItem {
+    Track(Track),
+    Artist(Artist),
 }
 
 /// A simplified version of `rspotify::CurrentPlaybackContext` containing

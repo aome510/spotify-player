@@ -27,7 +27,7 @@ pub enum PageState {
     CurrentPlaying,
     Browsing(ContextId),
     Searching(String, Box<SearchResults>),
-    Recommendations(String, Vec<TrackId>),
+    Recommendations(SeedItem, Option<Vec<Track>>),
 }
 
 /// Window state
@@ -42,6 +42,8 @@ pub enum WindowState {
     Artist(TableState, ListState, ListState, ArtistFocusState),
     /// tracks, albums, artists, playlists
     Search(ListState, ListState, ListState, ListState, SearchFocusState),
+    /// tracks
+    Recommendations(ListState),
 }
 
 /// Popup state
