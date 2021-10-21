@@ -113,6 +113,19 @@ impl Client {
                 let user = self.spotify.current_user().await?;
                 state.player.write().unwrap().user = Some(user);
             }
+            ClientRequest::GetRecommendations(seed) => {
+                let tracks = self.recommendations(&seed).await?;
+
+                // update the recommendation page state if needed
+                match state.ui.lock().unwrap().current_page_mut() {
+                    PageState::Recommendations(ref state_seed, ref mut state_tracks) => {
+                        if state_seed.uri() == seed.uri() {
+                            *state_tracks = Some(tracks);
+                        }
+                    }
+                    _ => {}
+                }
+            }
             ClientRequest::Player(event) => {
                 self.handle_player_request(state, event).await?;
 
@@ -306,6 +319,44 @@ impl Client {
         }
 
         Ok(())
+    }
+
+    /// gets recommendation tracks from a recommendation seed
+    pub async fn recommendations(&self, seed: &SeedItem) -> Result<Vec<Track>> {
+        let tracks = match seed {
+            SeedItem::Artist(artist) => {
+                self.spotify
+                    .recommendations(
+                        vec![],
+                        Some(vec![&artist.id]),
+                        None::<Vec<_>>,
+                        None::<Vec<_>>,
+                        None,
+                        Some(100),
+                    )
+                    .await?
+                    .tracks
+            }
+            SeedItem::Track(track) => {
+                self.spotify
+                    .recommendations(
+                        vec![],
+                        None::<Vec<_>>,
+                        None::<Vec<_>>,
+                        Some(vec![&track.id]),
+                        None,
+                        Some(100),
+                    )
+                    .await?
+                    .tracks
+            }
+        };
+
+        Ok(tracks
+            .into_iter()
+            .map(Track::try_from_simplified_track)
+            .flatten()
+            .collect())
     }
 
     /// searchs for items (tracks, artists, albums, playlists) that match a given query string.

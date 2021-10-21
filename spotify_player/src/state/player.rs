@@ -478,3 +478,13 @@ impl Item {
         }
     }
 }
+
+impl SeedItem {
+    /// gets the uri of the seed item
+    pub fn uri(&self) -> String {
+        match self {
+            Self::Track(ref track) => track.id.uri(),
+            Self::Artist(ref artist) => artist.id.uri(),
+        }
+    }
+}
