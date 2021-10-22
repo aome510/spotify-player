@@ -387,7 +387,7 @@ fn construct_list_widget<'a>(
     )
 }
 
-/// renders a track table widget
+/// constructs a track table widget
 pub fn construct_track_table_widget<'a>(
     is_active: bool,
     ui: &UIStateGuard,
