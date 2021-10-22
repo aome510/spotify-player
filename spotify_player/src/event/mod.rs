@@ -216,6 +216,14 @@ fn handle_global_command(
         Command::RefreshPlayback => {
             send.send(ClientRequest::GetCurrentPlayback)?;
         }
+        Command::ShowActionsOnCurrentTrack => {
+            if let Some(track) = state.player.read().unwrap().current_playing_track() {
+                ui.popup = Some(PopupState::ActionList(
+                    Item::Track(track.clone().into()),
+                    new_list_state(),
+                ));
+            }
+        }
         Command::BrowsePlayingContext => {
             ui.new_page(PageState::CurrentPlaying);
         }

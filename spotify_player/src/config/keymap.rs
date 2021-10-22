@@ -77,7 +77,7 @@ impl Default for KeymapConfig {
                 },
                 Keymap {
                     key_sequence: "a".into(),
-                    command: Command::ShowActionOnCurrentTrack,
+                    command: Command::ShowActionsOnCurrentTrack,
                 },
                 Keymap {
                     key_sequence: "tab".into(),

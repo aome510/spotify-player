@@ -30,7 +30,7 @@ pub enum Command {
     SearchContext,
 
     ShowActionsOnSelectedItem,
-    ShowActionOnCurrentTrack,
+    ShowActionsOnCurrentTrack,
 
     BrowseUserPlaylists,
     BrowseUserFollowedArtists,
@@ -80,7 +80,7 @@ impl Command {
             Self::ChooseSelected => "choose the selected item and act on it",
             Self::RefreshPlayback => "manually refresh the current playback",
             Self::ShowActionsOnSelectedItem => "show actions on a selected item",
-            Self::ShowActionOnCurrentTrack => "show actions on the currently playing track",
+            Self::ShowActionsOnCurrentTrack => "show actions on the currently playing track",
             Self::FocusNextWindow => "focus the next focusable window (if any)",
             Self::FocusPreviousWindow => "focus the previous focusable window (if any)",
             Self::SwitchTheme => "open a popup for switching theme",
