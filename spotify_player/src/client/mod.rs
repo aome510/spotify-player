@@ -322,11 +322,13 @@ impl Client {
 
     /// gets recommendation tracks from a recommendation seed
     pub async fn recommendations(&self, seed: &SeedItem) -> Result<Vec<Track>> {
+        let attributes = vec![model::RecommendationsAttribute::MinPopularity(50)];
+
         let tracks = match seed {
             SeedItem::Artist(artist) => {
                 self.spotify
                     .recommendations(
-                        vec![],
+                        attributes,
                         Some(vec![&artist.id]),
                         None::<Vec<_>>,
                         None::<Vec<_>>,
@@ -339,7 +341,7 @@ impl Client {
             SeedItem::Track(track) => {
                 self.spotify
                     .recommendations(
-                        vec![],
+                        attributes,
                         Some(track.artists.iter().map(|a| &a.id).collect::<Vec<_>>()),
                         None::<Vec<_>>,
                         Some(vec![&track.id]),
