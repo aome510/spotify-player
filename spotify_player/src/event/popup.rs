@@ -231,17 +231,25 @@ fn handle_key_sequence_for_search_popup(
                 ui.window.select(Some(0));
                 ui.popup = None;
             }
-            Command::FocusNextWindow => {
-                ui.window.next();
-            }
-            Command::FocusPreviousWindow => {
-                ui.window.previous();
-            }
-            _ => {
-                return window::handle_command_for_focused_context_subwindow(
-                    command, send, ui, state,
-                )
-            }
+            _ => match ui.current_page() {
+                PageState::Recommendations(..) => {
+                    return window::handle_key_sequence_for_recommendation_window(
+                        key_sequence,
+                        send,
+                        state,
+                        ui,
+                    );
+                }
+                PageState::Browsing(_) | PageState::CurrentPlaying => {
+                    return window::handle_key_sequence_for_context_window(
+                        key_sequence,
+                        send,
+                        state,
+                        ui,
+                    );
+                }
+                _ => {}
+            },
         },
         None => return Ok(false),
     }
