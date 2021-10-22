@@ -260,6 +260,7 @@ fn handle_global_command(
             if ui.history.len() > 1 {
                 ui.history.pop();
                 ui.popup = None;
+                ui.window = WindowState::Unknown;
             }
         }
         Command::SwitchDevice => {

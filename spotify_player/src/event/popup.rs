@@ -1,4 +1,4 @@
-use crate::command::Action;
+use crate::{command::Action, utils::new_table_state};
 
 use super::*;
 
@@ -450,6 +450,7 @@ fn handle_key_sequence_for_action_list_popup(
                         let seed = SeedItem::Track(track.clone());
                         send.send(ClientRequest::GetRecommendations(seed.clone()))?;
                         ui.new_page(PageState::Recommendations(seed, None));
+                        ui.window = WindowState::Recommendations(new_table_state());
                     }
                 },
                 Item::Album(album) => match actions[id] {
@@ -474,6 +475,7 @@ fn handle_key_sequence_for_action_list_popup(
                         let seed = SeedItem::Artist(artist.clone());
                         send.send(ClientRequest::GetRecommendations(seed.clone()))?;
                         ui.new_page(PageState::Recommendations(seed, None));
+                        ui.window = WindowState::Recommendations(new_table_state());
                     }
                     _ => {}
                 },
