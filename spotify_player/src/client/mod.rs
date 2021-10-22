@@ -331,7 +331,7 @@ impl Client {
                         None::<Vec<_>>,
                         None::<Vec<_>>,
                         None,
-                        None,
+                        Some(50),
                     )
                     .await?
                     .tracks
@@ -340,11 +340,11 @@ impl Client {
                 self.spotify
                     .recommendations(
                         vec![],
-                        None::<Vec<_>>,
+                        Some(track.artists.iter().map(|a| &a.id).collect::<Vec<_>>()),
                         None::<Vec<_>>,
                         Some(vec![&track.id]),
                         None,
-                        None,
+                        Some(50),
                     )
                     .await?
                     .tracks

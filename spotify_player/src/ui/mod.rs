@@ -252,8 +252,8 @@ fn render_recommendation_window(
 
     // render the window's description
     let desc = match seed {
-        SeedItem::Track(ref track) => format!("{} Recommendations", track.name),
-        SeedItem::Artist(ref artist) => format!("{} Recommendations", artist.name),
+        SeedItem::Track(ref track) => format!("{} Radio", track.name),
+        SeedItem::Artist(ref artist) => format!("{} Radio", artist.name),
     };
 
     let chunks = Layout::default()
