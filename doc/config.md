@@ -34,7 +34,7 @@ All configurations are stored inside the application's configuration folder (def
   - `NextTrack`
   - `PreviousTrack`
   - `ResumePause`
-  - `PlayContext`
+  - `PlayRandom`
   - `Repeat`
   - `Shuffle`
   - `SeekTrack` (left-clicking the playback's progress bar)

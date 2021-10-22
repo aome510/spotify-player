@@ -38,6 +38,7 @@ pub enum ClientRequest {
     GetUserFollowedArtists,
     GetContext(ContextId),
     GetCurrentPlayback,
+    GetRecommendations(SeedItem),
     Search(String),
     AddTrackToPlaylist(PlaylistId, TrackId),
     SaveToLibrary(Item),
@@ -117,6 +118,14 @@ fn handle_key_event(
         None => {
             // no popup
             match ui.current_page() {
+                PageState::Recommendations(..) => {
+                    window::handle_key_sequence_for_recommendation_window(
+                        &key_sequence,
+                        send,
+                        state,
+                        &mut ui,
+                    )?
+                }
                 PageState::Browsing(_) | PageState::CurrentPlaying => {
                     window::handle_key_sequence_for_context_window(
                         &key_sequence,
@@ -246,6 +255,19 @@ fn handle_global_command(
         Command::BrowseUserSavedAlbums => {
             send.send(ClientRequest::GetUserSavedAlbums)?;
             ui.popup = Some(PopupState::UserSavedAlbumList(new_list_state()));
+        }
+        Command::SearchPage => {
+            ui.history.push(PageState::Searching(
+                "".to_owned(),
+                Box::new(SearchResults::default()),
+            ));
+            ui.window = WindowState::Search(
+                new_list_state(),
+                new_list_state(),
+                new_list_state(),
+                new_list_state(),
+                SearchFocusState::Input,
+            );
         }
         Command::PreviousPage => {
             if ui.history.len() > 1 {

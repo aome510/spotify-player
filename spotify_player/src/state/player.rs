@@ -109,6 +109,7 @@ pub struct Artist {
 }
 
 #[derive(Debug, Clone)]
+/// A simplified version of `rspotify` playlist
 pub struct Playlist {
     pub id: PlaylistId,
     pub name: String,
@@ -116,11 +117,19 @@ pub struct Playlist {
 }
 
 #[derive(Debug, Clone)]
+/// A spotify item (track, album, artist, playlist)
 pub enum Item {
     Track(Track),
     Album(Album),
     Artist(Artist),
     Playlist(Playlist),
+}
+
+#[derive(Debug, Clone)]
+/// A spotify item as the recommendation seed
+pub enum SeedItem {
+    Track(Track),
+    Artist(Artist),
 }
 
 /// A simplified version of `rspotify::CurrentPlaybackContext` containing
@@ -453,15 +462,29 @@ impl Item {
             Self::Track(_) => vec![
                 command::Action::BrowseAlbum,
                 command::Action::BrowseArtist,
+                command::Action::BrowseRecommendations,
                 command::Action::AddTrackToPlaylist,
                 command::Action::SaveToLibrary,
             ],
-            Self::Artist(_) => vec![command::Action::SaveToLibrary],
+            Self::Artist(_) => vec![
+                command::Action::BrowseRecommendations,
+                command::Action::SaveToLibrary,
+            ],
             Self::Album(_) => vec![
                 command::Action::BrowseArtist,
                 command::Action::SaveToLibrary,
             ],
             Self::Playlist(_) => vec![command::Action::SaveToLibrary],
+        }
+    }
+}
+
+impl SeedItem {
+    /// gets the uri of the seed item
+    pub fn uri(&self) -> String {
+        match self {
+            Self::Track(ref track) => track.id.uri(),
+            Self::Artist(ref artist) => artist.id.uri(),
         }
     }
 }

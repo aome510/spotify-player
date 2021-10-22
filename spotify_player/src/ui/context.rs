@@ -1,7 +1,8 @@
-use super::Frame;
-use crate::{state::*, ui::construct_list_widget, utils};
 use std::sync::RwLockReadGuard;
-use tui::{layout::*, style::*, widgets::*};
+
+use super::{construct_track_table_widget, Frame};
+use crate::{state::*, ui::construct_list_widget};
+use tui::{layout::*, widgets::*};
 
 /// renders the context window which can be
 /// - Current Playing: display the playing context of the current track
@@ -36,7 +37,7 @@ pub fn render_context_window(
 
             match context {
                 Context::Artist(_, ref tracks, ref albums, ref artists) => {
-                    render_context_artist_widget(
+                    render_context_artist_widgets(
                         is_active,
                         frame,
                         ui,
@@ -47,26 +48,30 @@ pub fn render_context_window(
                     );
                 }
                 Context::Playlist(_, ref tracks) => {
-                    render_context_track_table_widget(
+                    let track_table = construct_track_table_widget(
                         is_active,
-                        frame,
                         ui,
                         state,
                         &player,
-                        chunks[1],
                         ui.filtered_items_by_search(tracks),
                     );
+
+                    if let Some(state) = ui.window.track_table_state() {
+                        frame.render_stateful_widget(track_table, chunks[1], state)
+                    }
                 }
                 Context::Album(_, ref tracks) => {
-                    render_context_track_table_widget(
+                    let track_table = construct_track_table_widget(
                         is_active,
-                        frame,
                         ui,
                         state,
                         &player,
-                        chunks[1],
                         ui.filtered_items_by_search(tracks),
                     );
+
+                    if let Some(state) = ui.window.track_table_state() {
+                        frame.render_stateful_widget(track_table, chunks[1], state)
+                    }
                 }
             }
         }
@@ -83,7 +88,11 @@ pub fn render_context_window(
     }
 }
 
-fn render_context_artist_widget(
+/// renders the widgets for the artist context window, which includes
+/// - A top track table
+/// - An album list
+/// - A related artist list
+fn render_context_artist_widgets(
     is_active: bool,
     frame: &mut Frame,
     ui: &mut UIStateGuard,
@@ -111,15 +120,18 @@ fn render_context_artist_widget(
             .direction(Direction::Vertical)
             .constraints([Constraint::Length(12), Constraint::Min(1)].as_ref())
             .split(rect);
-        render_context_track_table_widget(
+
+        let track_table = construct_track_table_widget(
             is_active && focus_state == ArtistFocusState::TopTracks,
-            frame,
             ui,
             state,
             player,
-            chunks[0],
             tracks,
         );
+
+        if let Some(state) = ui.window.track_table_state() {
+            frame.render_stateful_widget(track_table, chunks[0], state)
+        }
         chunks[1]
     };
 
@@ -169,74 +181,4 @@ fn render_context_artist_widget(
 
     frame.render_stateful_widget(albums_list, chunks[0], albums_list_state);
     frame.render_stateful_widget(artists_list, chunks[1], artists_list_state);
-}
-
-/// constructs a track table widget then renders it
-fn render_context_track_table_widget(
-    is_active: bool,
-    frame: &mut Frame,
-    ui: &mut UIStateGuard,
-    state: &SharedState,
-    player: &RwLockReadGuard<PlayerState>,
-    rect: Rect,
-    tracks: Vec<&Track>,
-) {
-    let track_table = {
-        // get the current playing track's URI to
-        // highlight such track (if exists) in the track table
-        let mut playing_track_uri = "".to_string();
-        let mut active_desc = "";
-        if let Some(ref playback) = player.playback {
-            if let Some(rspotify::model::PlayableItem::Track(ref track)) = playback.item {
-                playing_track_uri = track.id.uri();
-                active_desc = if !playback.is_playing { "⏸" } else { "▶" };
-            }
-        }
-
-        let item_max_len = state.app_config.track_table_item_max_len;
-        let rows = tracks
-            .into_iter()
-            .enumerate()
-            .map(|(id, t)| {
-                let (id, style) = if playing_track_uri == t.id.uri() {
-                    (active_desc.to_string(), ui.theme.current_active())
-                } else {
-                    ((id + 1).to_string(), Style::default())
-                };
-                Row::new(vec![
-                    Cell::from(id),
-                    Cell::from(utils::truncate_string(t.name.clone(), item_max_len)),
-                    Cell::from(utils::truncate_string(t.artists_info(), item_max_len)),
-                    Cell::from(utils::truncate_string(t.album_info(), item_max_len)),
-                    Cell::from(utils::format_duration(t.duration)),
-                ])
-                .style(style)
-            })
-            .collect::<Vec<_>>();
-
-        Table::new(rows)
-            .header(
-                Row::new(vec![
-                    Cell::from("#"),
-                    Cell::from("Track"),
-                    Cell::from("Artists"),
-                    Cell::from("Album"),
-                    Cell::from("Duration"),
-                ])
-                .style(ui.theme.context_tracks_table_header()),
-            )
-            .block(Block::default())
-            .widths(&[
-                Constraint::Length(4),
-                Constraint::Percentage(30),
-                Constraint::Percentage(30),
-                Constraint::Percentage(30),
-                Constraint::Percentage(10),
-            ])
-            .highlight_style(ui.theme.selection_style(is_active))
-    };
-
-    if let Some(state) = ui.window.track_table_state() {
-        frame.render_stateful_widget(track_table, rect, state)
-    }
 }

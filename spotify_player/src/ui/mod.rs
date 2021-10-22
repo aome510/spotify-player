@@ -1,8 +1,11 @@
 use crate::{
+    event::ClientRequest,
     state::*,
-    utils::{self, new_list_state},
+    utils::{self, new_list_state, new_table_state},
 };
 use anyhow::Result;
+use rspotify::model;
+use std::sync::RwLockReadGuard;
 use tui::{layout::*, style::*, text::*, widgets::*};
 
 type Terminal = tui::Terminal<tui::backend::CrosstermBackend<std::io::Stdout>>;
@@ -14,7 +17,7 @@ mod popup;
 mod search;
 
 /// starts the application UI as the main thread
-pub fn start_ui(state: SharedState) -> Result<()> {
+pub fn start_ui(state: SharedState, send: std::sync::mpsc::Sender<ClientRequest>) -> Result<()> {
     // terminal UI initializations
     let mut stdout = std::io::stdout();
     crossterm::terminal::enable_raw_mode()?;
@@ -35,6 +38,8 @@ pub fn start_ui(state: SharedState) -> Result<()> {
             return Ok(());
         }
 
+        handle_page_state_change(&state, &send)?;
+
         terminal.draw(|frame| {
             let ui = state.ui.lock().unwrap();
 
@@ -47,6 +52,104 @@ pub fn start_ui(state: SharedState) -> Result<()> {
 
         std::thread::sleep(ui_refresh_duration);
     }
+}
+
+/// checks the current page state for changes
+/// and updates the window state (and other states) accordingly
+fn handle_page_state_change(
+    state: &SharedState,
+    send: &std::sync::mpsc::Sender<ClientRequest>,
+) -> Result<()> {
+    let mut ui = state.ui.lock().unwrap();
+
+    match ui.current_page() {
+        PageState::Searching(..) => {
+            state.player.write().unwrap().context_id = None;
+            match ui.window {
+                WindowState::Search(..) => {}
+                _ => {
+                    ui.window = WindowState::Search(
+                        new_list_state(),
+                        new_list_state(),
+                        new_list_state(),
+                        new_list_state(),
+                        SearchFocusState::Input,
+                    );
+                }
+            }
+        }
+        PageState::Recommendations(..) => {
+            state.player.write().unwrap().context_id = None;
+            match ui.window {
+                WindowState::Recommendations(..) => {}
+                _ => {
+                    ui.window = WindowState::Recommendations(new_table_state());
+                }
+            }
+        }
+        PageState::Browsing(id) => {
+            let should_update = match state.player.read().unwrap().context_id {
+                None => true,
+                Some(ref context_id) => context_id != id,
+            };
+            if should_update {
+                utils::update_context(state, Some(id.clone()));
+            }
+        }
+        PageState::CurrentPlaying => {
+            let player = state.player.read().unwrap();
+            // updates the context (album, playlist, etc) tracks based on the current playback
+            if let Some(ref playback) = player.playback {
+                match playback.context {
+                    Some(ref context) => {
+                        let should_update = match player.context_id {
+                            None => true,
+                            Some(ref context_id) => context_id.uri() != context.uri,
+                        };
+
+                        if should_update {
+                            match context._type {
+                                model::Type::Playlist => {
+                                    let context_id =
+                                        ContextId::Playlist(PlaylistId::from_uri(&context.uri)?);
+                                    send.send(ClientRequest::GetContext(context_id.clone()))?;
+                                    utils::update_context(state, Some(context_id));
+                                }
+                                model::Type::Album => {
+                                    let context_id =
+                                        ContextId::Album(AlbumId::from_uri(&context.uri)?);
+                                    send.send(ClientRequest::GetContext(context_id.clone()))?;
+                                    utils::update_context(state, Some(context_id));
+                                }
+                                model::Type::Artist => {
+                                    let context_id =
+                                        ContextId::Artist(ArtistId::from_uri(&context.uri)?);
+                                    send.send(ClientRequest::GetContext(context_id.clone()))?;
+                                    utils::update_context(state, Some(context_id));
+                                }
+                                _ => {
+                                    log::info!(
+                                        "encountered not supported context type: {:#?}",
+                                        context._type
+                                    )
+                                }
+                            };
+                        }
+                    }
+                    None => {
+                        if player.context_id.is_some() {
+                            // the current playback doesn't have a playing context,
+                            // update the state's `context_id` to `None`
+                            utils::update_context(state, None);
+                            log::info!("current playback does not have a playing context");
+                        }
+                    }
+                }
+            };
+        }
+    }
+
+    Ok(())
 }
 
 /// cleans up the resources before quitting the application
@@ -107,26 +210,72 @@ fn render_main_layout(
                 "Context (Browsing)",
             );
         }
+        PageState::Recommendations(..) => {
+            render_recommendation_window(is_active, frame, ui, state, chunks[1]);
+        }
         PageState::Searching(..) => {
             // make sure that the window state matches the current page state.
             // The mismatch can happen when going back to the search from another page
-            match ui.window {
-                WindowState::Search(..) => {}
-                _ => {
-                    // the current window state doesn't match the current page state,
-                    // this can happen after calling the `PreviousPage` command
-                    ui.window = WindowState::Search(
-                        new_list_state(),
-                        new_list_state(),
-                        new_list_state(),
-                        new_list_state(),
-                        SearchFocusState::Input,
-                    );
-                }
-            }
             search::render_search_window(is_active, frame, ui, chunks[1]);
         }
     };
+}
+
+/// renders the recommendation window
+fn render_recommendation_window(
+    is_active: bool,
+    frame: &mut Frame,
+    ui: &mut UIStateGuard,
+    state: &SharedState,
+    rect: Rect,
+) {
+    let (seed, tracks) = match ui.current_page() {
+        PageState::Recommendations(seed, tracks) => (seed, tracks),
+        _ => unreachable!(),
+    };
+
+    let block = Block::default()
+        .title(ui.theme.block_title_with_style("Recommendations"))
+        .borders(Borders::ALL);
+
+    let tracks = match tracks {
+        Some(ref tracks) => tracks,
+        None => {
+            // recommendation tracks are still loading
+            frame.render_widget(Paragraph::new("loading...").block(block), rect);
+            return;
+        }
+    };
+
+    // render the window's border and title
+    frame.render_widget(block, rect);
+
+    // render the window's description
+    let desc = match seed {
+        SeedItem::Track(ref track) => format!("{} Radio", track.name),
+        SeedItem::Artist(ref artist) => format!("{} Radio", artist.name),
+    };
+
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .margin(1)
+        .constraints([Constraint::Length(1), Constraint::Min(0)].as_ref())
+        .split(rect);
+    let context_desc = Paragraph::new(desc).block(Block::default().style(ui.theme.context_desc()));
+    frame.render_widget(context_desc, chunks[0]);
+
+    let player = state.player.read().unwrap();
+    let track_table = construct_track_table_widget(
+        is_active,
+        ui,
+        state,
+        &player,
+        ui.filtered_items_by_search(tracks),
+    );
+
+    if let Some(state) = ui.window.track_table_state() {
+        frame.render_stateful_widget(track_table, chunks[1], state)
+    }
 }
 
 /// renders a playback window showing information about the current playback such as
@@ -236,4 +385,66 @@ fn construct_list_widget<'a>(
             .title(ui.theme.block_title_with_style(title))
             .borders(borders),
     )
+}
+
+/// constructs a track table widget
+pub fn construct_track_table_widget<'a>(
+    is_active: bool,
+    ui: &UIStateGuard,
+    state: &SharedState,
+    player: &RwLockReadGuard<PlayerState>,
+    tracks: Vec<&Track>,
+) -> Table<'a> {
+    // get the current playing track's URI to
+    // highlight such track (if exists) in the track table
+    let mut playing_track_uri = "".to_string();
+    let mut active_desc = "";
+    if let Some(ref playback) = player.playback {
+        if let Some(rspotify::model::PlayableItem::Track(ref track)) = playback.item {
+            playing_track_uri = track.id.uri();
+            active_desc = if !playback.is_playing { "⏸" } else { "▶" };
+        }
+    }
+
+    let item_max_len = state.app_config.track_table_item_max_len;
+    let rows = tracks
+        .into_iter()
+        .enumerate()
+        .map(|(id, t)| {
+            let (id, style) = if playing_track_uri == t.id.uri() {
+                (active_desc.to_string(), ui.theme.current_active())
+            } else {
+                ((id + 1).to_string(), Style::default())
+            };
+            Row::new(vec![
+                Cell::from(id),
+                Cell::from(utils::truncate_string(t.name.clone(), item_max_len)),
+                Cell::from(utils::truncate_string(t.artists_info(), item_max_len)),
+                Cell::from(utils::truncate_string(t.album_info(), item_max_len)),
+                Cell::from(utils::format_duration(t.duration)),
+            ])
+            .style(style)
+        })
+        .collect::<Vec<_>>();
+
+    Table::new(rows)
+        .header(
+            Row::new(vec![
+                Cell::from("#"),
+                Cell::from("Track"),
+                Cell::from("Artists"),
+                Cell::from("Album"),
+                Cell::from("Duration"),
+            ])
+            .style(ui.theme.context_tracks_table_header()),
+        )
+        .block(Block::default())
+        .widths(&[
+            Constraint::Length(4),
+            Constraint::Percentage(30),
+            Constraint::Percentage(30),
+            Constraint::Percentage(30),
+            Constraint::Percentage(10),
+        ])
+        .highlight_style(ui.theme.selection_style(is_active))
 }

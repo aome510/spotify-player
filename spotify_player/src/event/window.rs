@@ -16,19 +16,6 @@ pub fn handle_key_sequence_for_context_window(
     };
 
     match command {
-        Command::SearchPage => {
-            ui.history.push(PageState::Searching(
-                "".to_owned(),
-                Box::new(SearchResults::default()),
-            ));
-            ui.window = WindowState::Search(
-                new_list_state(),
-                new_list_state(),
-                new_list_state(),
-                new_list_state(),
-                SearchFocusState::Input,
-            );
-        }
         Command::FocusNextWindow => {
             ui.window.next();
         }
@@ -39,7 +26,7 @@ pub fn handle_key_sequence_for_context_window(
             ui.window.select(Some(0));
             ui.popup = Some(PopupState::ContextSearch("".to_owned()));
         }
-        Command::PlayContext => {
+        Command::PlayRandom => {
             let player = state.player.read().unwrap();
             let context = player.context();
 
@@ -102,6 +89,55 @@ pub fn handle_key_sequence_for_context_window(
         }
     }
     Ok(true)
+}
+
+/// handles a key sequence for a recommendation window
+pub fn handle_key_sequence_for_recommendation_window(
+    key_sequence: &KeySequence,
+    send: &mpsc::Sender<ClientRequest>,
+    state: &SharedState,
+    ui: &mut UIStateGuard,
+) -> Result<bool> {
+    let command = match state
+        .keymap_config
+        .find_command_from_key_sequence(key_sequence)
+    {
+        Some(command) => command,
+        None => return Ok(false),
+    };
+
+    let tracks = match ui.current_page() {
+        PageState::Recommendations(_, tracks) => tracks.clone().unwrap_or_default(),
+        _ => unreachable!(),
+    };
+
+    match command {
+        Command::SearchContext => {
+            ui.window.select(Some(0));
+            ui.popup = Some(PopupState::ContextSearch("".to_owned()));
+            Ok(true)
+        }
+        Command::PlayRandom => {
+            // randomly play a song from the list of recommendation tracks
+            let offset = {
+                let id = rand::thread_rng().gen_range(0..tracks.len());
+                Some(model::Offset::for_uri(&tracks[id].id.uri()))
+            };
+            send.send(ClientRequest::Player(PlayerRequest::StartPlayback(
+                Playback::URIs(tracks.iter().map(|t| t.id.clone()).collect(), offset),
+            )))?;
+
+            Ok(true)
+        }
+        _ => handle_command_for_track_table_subwindow(
+            command,
+            send,
+            ui,
+            None,
+            Some(tracks.iter().map(|t| &t.id).collect()),
+            ui.filtered_items_by_search(&tracks),
+        ),
+    }
 }
 
 /// handles a key sequence for a search window
@@ -187,7 +223,7 @@ pub fn handle_key_sequence_for_search_window(
             }
             SearchFocusState::Playlists => {
                 let playlists = search_results.playlists.iter().collect::<Vec<_>>();
-                handle_command_for_playlist_list(command, send, ui, playlists)
+                handle_command_for_playlist_list_subwindow(command, send, ui, playlists)
             }
         },
     }
@@ -427,7 +463,7 @@ fn handle_command_for_album_list_subwindow(
     Ok(true)
 }
 
-fn handle_command_for_playlist_list(
+fn handle_command_for_playlist_list_subwindow(
     command: Command,
     send: &mpsc::Sender<ClientRequest>,
     ui: &mut UIStateGuard,

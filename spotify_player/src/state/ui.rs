@@ -27,6 +27,7 @@ pub enum PageState {
     CurrentPlaying,
     Browsing(ContextId),
     Searching(String, Box<SearchResults>),
+    Recommendations(SeedItem, Option<Vec<Track>>),
 }
 
 /// Window state
@@ -41,6 +42,8 @@ pub enum WindowState {
     Artist(TableState, ListState, ListState, ArtistFocusState),
     /// tracks, albums, artists, playlists
     Search(ListState, ListState, ListState, ListState, SearchFocusState),
+    /// tracks
+    Recommendations(TableState),
 }
 
 /// Popup state
@@ -183,7 +186,8 @@ impl WindowState {
         match self {
             Self::Playlist(ref mut state) => Some(state),
             Self::Album(ref mut state) => Some(state),
-            Self::Artist(ref mut top_tracks, _, _, _) => Some(top_tracks),
+            Self::Artist(ref mut state, _, _, _) => Some(state),
+            Self::Recommendations(ref mut state) => Some(state),
             _ => None,
         }
     }
@@ -217,6 +221,7 @@ impl WindowState {
                 ArtistFocusState::Albums => albums.select(id),
                 ArtistFocusState::RelatedArtists => related_artists.select(id),
             },
+            Self::Recommendations(ref mut state) => state.select(id),
         }
     }
 
@@ -241,6 +246,7 @@ impl WindowState {
                 ArtistFocusState::Albums => albums.selected(),
                 ArtistFocusState::RelatedArtists => related_artists.selected(),
             },
+            Self::Recommendations(ref state) => state.selected(),
         }
     }
 }
