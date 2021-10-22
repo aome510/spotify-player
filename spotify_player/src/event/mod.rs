@@ -216,29 +216,16 @@ fn handle_global_command(
         Command::RefreshPlayback => {
             send.send(ClientRequest::GetCurrentPlayback)?;
         }
+        Command::ShowActionsOnCurrentTrack => {
+            if let Some(track) = state.player.read().unwrap().current_playing_track() {
+                ui.popup = Some(PopupState::ActionList(
+                    Item::Track(track.clone().into()),
+                    new_list_state(),
+                ));
+            }
+        }
         Command::BrowsePlayingContext => {
             ui.new_page(PageState::CurrentPlaying);
-        }
-        Command::BrowsePlayingTrackAlbum => {
-            if let Some(track) = state.player.read().unwrap().current_playing_track() {
-                if let Some(ref id) = track.album.id {
-                    let context_id = ContextId::Album(id.clone());
-                    send.send(ClientRequest::GetContext(context_id.clone()))?;
-                    ui.new_page(PageState::Browsing(context_id));
-                }
-            }
-        }
-        Command::BrowsePlayingTrackArtists => {
-            if let Some(track) = state.player.read().unwrap().current_playing_track() {
-                let artists = track
-                    .artists
-                    .iter()
-                    .filter(|a| a.id.is_some())
-                    .map(|a| Artist::try_from_simplified_artist(a.clone()))
-                    .flatten()
-                    .collect::<Vec<_>>();
-                ui.popup = Some(PopupState::ArtistList(artists, new_list_state()));
-            }
         }
         Command::BrowseUserPlaylists => {
             send.send(ClientRequest::GetUserPlaylists)?;

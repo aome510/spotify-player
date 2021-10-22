@@ -76,6 +76,10 @@ impl Default for KeymapConfig {
                     command: Command::ShowActionsOnSelectedItem,
                 },
                 Keymap {
+                    key_sequence: "a".into(),
+                    command: Command::ShowActionsOnCurrentTrack,
+                },
+                Keymap {
                     key_sequence: "tab".into(),
                     command: Command::FocusNextWindow,
                 },
@@ -102,14 +106,6 @@ impl Default for KeymapConfig {
                 Keymap {
                     key_sequence: "u A".into(),
                     command: Command::BrowseUserSavedAlbums,
-                },
-                Keymap {
-                    key_sequence: "a".into(),
-                    command: Command::BrowsePlayingTrackArtists,
-                },
-                Keymap {
-                    key_sequence: "A".into(),
-                    command: Command::BrowsePlayingTrackAlbum,
                 },
                 Keymap {
                     key_sequence: "g space".into(),

@@ -43,7 +43,7 @@ pub fn render_popup(
                     .map(|a| (format!("{:?}", a), false))
                     .collect();
 
-                let rect = render_list_popup(frame, ui, rect, "User Saved Albums", items, 7);
+                let rect = render_list_popup(frame, ui, rect, "Actions", items, 7);
                 (rect, false)
             }
             PopupState::DeviceList(_) => {

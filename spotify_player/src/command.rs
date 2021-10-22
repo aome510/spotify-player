@@ -30,13 +30,12 @@ pub enum Command {
     SearchContext,
 
     ShowActionsOnSelectedItem,
+    ShowActionsOnCurrentTrack,
 
     BrowseUserPlaylists,
     BrowseUserFollowedArtists,
     BrowseUserSavedAlbums,
 
-    BrowsePlayingTrackArtists,
-    BrowsePlayingTrackAlbum,
     BrowsePlayingContext,
 
     SearchPage,
@@ -81,6 +80,7 @@ impl Command {
             Self::ChooseSelected => "choose the selected item and act on it",
             Self::RefreshPlayback => "manually refresh the current playback",
             Self::ShowActionsOnSelectedItem => "show actions on a selected item",
+            Self::ShowActionsOnCurrentTrack => "show actions on the currently playing track",
             Self::FocusNextWindow => "focus the next focusable window (if any)",
             Self::FocusPreviousWindow => "focus the previous focusable window (if any)",
             Self::SwitchTheme => "open a popup for switching theme",
@@ -89,10 +89,6 @@ impl Command {
             Self::BrowseUserPlaylists => "open a popup for browsing user's playlists",
             Self::BrowseUserFollowedArtists => "open a popup for browsing user's followed artists",
             Self::BrowseUserSavedAlbums => "open a popup for browsing user's saved albums",
-            Self::BrowsePlayingTrackArtists => {
-                "open a popup for browsing current playing track's artists"
-            }
-            Self::BrowsePlayingTrackAlbum => "browse the current playing track's album",
             Self::BrowsePlayingContext => "browse the current playing context",
             Self::SearchPage => "go to the search page",
             Self::PreviousPage => "go to the previous page",
