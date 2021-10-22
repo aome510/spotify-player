@@ -50,7 +50,7 @@ pub async fn start_player_event_watchers(
     }
 
     // start the main event watcher watching for new events every `refresh_duration` ms.
-    let refresh_duration = std::time::Duration::from_millis(500);
+    let refresh_duration = std::time::Duration::from_millis(1000);
     loop {
         watch_player_events(&state, &send)
             .await
@@ -69,33 +69,31 @@ async fn watch_player_events(
     state: &SharedState,
     send: &std::sync::mpsc::Sender<ClientRequest>,
 ) -> Result<()> {
-    {
-        let player = state.player.read().unwrap();
+    let player = state.player.read().unwrap();
 
-        // if cannot find the current playback, try to connect to the first avaiable device
-        if player.playback.is_none() && !player.devices.is_empty() {
-            log::info!(
-                "no playback found, try to connect the first available device {}",
-                player.devices[0].name
-            );
-            // only transfering the playback to a new device, not forcing to start the playback
-            send.send(ClientRequest::Player(PlayerRequest::TransferPlayback(
-                player.devices[0].id.clone(),
-                false,
-            )))?;
-        }
+    // if cannot find the current playback, try to connect to the first avaiable device
+    if player.playback.is_none() && !player.devices.is_empty() {
+        log::info!(
+            "no playback found, try to connect the first available device {}",
+            player.devices[0].name
+        );
+        // only transfering the playback to a new device, not forcing to start the playback
+        send.send(ClientRequest::Player(PlayerRequest::TransferPlayback(
+            player.devices[0].id.clone(),
+            false,
+        )))?;
+    }
 
-        // update the playback when the current track ends
-        let progress_ms = player.playback_progress();
-        let duration_ms = player.current_playing_track().map(|t| t.duration);
-        let is_playing = match player.playback {
-            Some(ref playback) => playback.is_playing,
-            None => false,
-        };
-        if let (Some(progress_ms), Some(duration_ms)) = (progress_ms, duration_ms) {
-            if progress_ms >= duration_ms && is_playing {
-                send.send(ClientRequest::GetCurrentPlayback)?;
-            }
+    // update the playback when the current track ends
+    let progress_ms = player.playback_progress();
+    let duration_ms = player.current_playing_track().map(|t| t.duration);
+    let is_playing = match player.playback {
+        Some(ref playback) => playback.is_playing,
+        None => false,
+    };
+    if let (Some(progress_ms), Some(duration_ms)) = (progress_ms, duration_ms) {
+        if progress_ms >= duration_ms && is_playing {
+            send.send(ClientRequest::GetCurrentPlayback)?;
         }
     }
     Ok(())
