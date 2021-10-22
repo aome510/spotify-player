@@ -153,43 +153,42 @@ To open a command shortcut help popup when running the application, press `?` or
 
 List of supported commands:
 
-| Command                     | Description                                               | Default shortcuts  |
-| --------------------------- | --------------------------------------------------------- | ------------------ |
-| `NextTrack`                 | next track                                                | `n`                |
-| `PreviousTrack`             | previous track                                            | `p`                |
-| `ResumePause`               | resume/pause based on the current playback                | `space`            |
-| `PlayRandom`                | play a random track in the current context                | `.`                |
-| `Repeat`                    | cycle the repeat mode                                     | `C-r`              |
-| `Shuffle`                   | toggle the shuffle mode                                   | `C-s`              |
-| `VolumeUp`                  | increase playback volume                                  | `+`                |
-| `VolumeDown`                | decrease playback volume                                  | `-`                |
-| `Quit`                      | quit the application                                      | `C-c`, `q`         |
-| `OpenCommandHelp`           | open a command help popup                                 | `?`, `C-h`         |
-| `ClosePopup`                | close a popup                                             | `esc`              |
-| `SelectNextOrScrollDown`    | select the next item in a list/table or scroll down       | `j`, `C-j`, `down` |
-| `SelectPreviousOrScrollUp`  | select the previous item in a list/table or scroll up     | `k`, `C-k`, `up`   |
-| `ChooseSelected`            | choose the selected item and act on it                    | `enter`            |
-| `RefreshPlayback`           | manually refresh the current playback                     | `r`                |
-| `ShowActionsOnSelectedItem` | show actions on a selected item                           | `g a`, `C-space`   |
-| `FocusNextWindow`           | focus the next focusable window (if any)                  | `tab`              |
-| `FocusPreviousWindow`       | focus the previous focusable window (if any)              | `backtab`          |
-| `SwitchTheme`               | open a popup for switching theme                          | `T`                |
-| `SwitchDevice`              | open a popup for switching device                         | `D`                |
-| `SearchContext`             | open a popup for searching the current context            | `/`                |
-| `BrowseUserPlaylists`       | open a popup for browsing user's playlists                | `u p`              |
-| `BrowseUserFollowedArtists` | open a popup for browsing user's followed artists         | `u a`              |
-| `BrowseUserSavedAlbums`     | open a popup for browsing user's saved albums             | `u A`              |
-| `BrowsePlayingTrackArtists` | open a popup for browsing current playing track's artists | `a`                |
-| `BrowsePlayingTrackAlbum`   | browse the current playing track's album                  | `A`                |
-| `BrowsePlayingContext`      | browse the current playing context                        | `g space`          |
-| `SearchPage`                | go to the search page                                     | `g s`              |
-| `PreviousPage`              | go to the previous page                                   | `backspace`, `C-p` |
-| `SortTrackByTitle`          | sort the track table (if any) by track's title            | `s t`              |
-| `SortTrackByArtists`        | sort the track table (if any) by track's artists          | `s a`              |
-| `SortTrackByAlbum`          | sort the track table (if any) by track's album            | `s A`              |
-| `SortTrackByDuration`       | sort the track table (if any) by track's duration         | `s d`              |
-| `SortTrackByAddedDate`      | sort the track table (if any) by track's added date       | `s D`              |
-| `ReverseOrder`              | reverse the order of the track table (if any)             | `s r`              |
+| Command                     | Description                                           | Default shortcuts  |
+| --------------------------- | ----------------------------------------------------- | ------------------ |
+| `NextTrack`                 | next track                                            | `n`                |
+| `PreviousTrack`             | previous track                                        | `p`                |
+| `ResumePause`               | resume/pause based on the current playback            | `space`            |
+| `PlayRandom`                | play a random track in the current context            | `.`                |
+| `Repeat`                    | cycle the repeat mode                                 | `C-r`              |
+| `Shuffle`                   | toggle the shuffle mode                               | `C-s`              |
+| `VolumeUp`                  | increase playback volume                              | `+`                |
+| `VolumeDown`                | decrease playback volume                              | `-`                |
+| `Quit`                      | quit the application                                  | `C-c`, `q`         |
+| `OpenCommandHelp`           | open a command help popup                             | `?`, `C-h`         |
+| `ClosePopup`                | close a popup                                         | `esc`              |
+| `SelectNextOrScrollDown`    | select the next item in a list/table or scroll down   | `j`, `C-j`, `down` |
+| `SelectPreviousOrScrollUp`  | select the previous item in a list/table or scroll up | `k`, `C-k`, `up`   |
+| `ChooseSelected`            | choose the selected item and act on it                | `enter`            |
+| `RefreshPlayback`           | manually refresh the current playback                 | `r`                |
+| `ShowActionsOnSelectedItem` | show actions on a selected item                       | `g a`, `C-space`   |
+| `ShowActionsOnCurrentTrack` | show actions on the currently playing track           | `g a`, `C-space`   |
+| `FocusNextWindow`           | focus the next focusable window (if any)              | `tab`              |
+| `FocusPreviousWindow`       | focus the previous focusable window (if any)          | `backtab`          |
+| `SwitchTheme`               | open a popup for switching theme                      | `T`                |
+| `SwitchDevice`              | open a popup for switching device                     | `D`                |
+| `SearchContext`             | open a popup for searching the current context        | `/`                |
+| `BrowseUserPlaylists`       | open a popup for browsing user's playlists            | `u p`              |
+| `BrowseUserFollowedArtists` | open a popup for browsing user's followed artists     | `u a`              |
+| `BrowseUserSavedAlbums`     | open a popup for browsing user's saved albums         | `u A`              |
+| `BrowsePlayingContext`      | browse the current playing context                    | `g space`          |
+| `SearchPage`                | go to the search page                                 | `g s`              |
+| `PreviousPage`              | go to the previous page                               | `backspace`, `C-p` |
+| `SortTrackByTitle`          | sort the track table (if any) by track's title        | `s t`              |
+| `SortTrackByArtists`        | sort the track table (if any) by track's artists      | `s a`              |
+| `SortTrackByAlbum`          | sort the track table (if any) by track's album        | `s A`              |
+| `SortTrackByDuration`       | sort the track table (if any) by track's duration     | `s d`              |
+| `SortTrackByAddedDate`      | sort the track table (if any) by track's added date   | `s D`              |
+| `ReverseOrder`              | reverse the order of the track table (if any)         | `s r`              |
 
 To add new shortcuts or modify the default shortcuts, please refer to the [keymaps section](https://github.com/aome510/spotify-player/blob/master/doc/config.md#keymaps) in the configuration documentation.
 
