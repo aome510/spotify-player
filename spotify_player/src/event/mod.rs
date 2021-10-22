@@ -118,6 +118,14 @@ fn handle_key_event(
         None => {
             // no popup
             match ui.current_page() {
+                PageState::Recommendations(..) => {
+                    window::handle_key_sequence_for_recommendation_window(
+                        &key_sequence,
+                        send,
+                        state,
+                        &mut ui,
+                    )?
+                }
                 PageState::Browsing(_) | PageState::CurrentPlaying => {
                     window::handle_key_sequence_for_context_window(
                         &key_sequence,

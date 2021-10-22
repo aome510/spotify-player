@@ -1,7 +1,7 @@
 use crate::{
     event::ClientRequest,
     state::*,
-    utils::{self, new_list_state},
+    utils::{self, new_list_state, new_table_state},
 };
 use anyhow::Result;
 use rspotify::model;
@@ -83,7 +83,7 @@ fn handle_page_state_change(
             match ui.window {
                 WindowState::Recommendations(..) => {}
                 _ => {
-                    ui.window = WindowState::Recommendations(new_list_state());
+                    ui.window = WindowState::Recommendations(new_table_state());
                 }
             }
         }
@@ -265,13 +265,17 @@ fn render_recommendation_window(
     frame.render_widget(context_desc, chunks[0]);
 
     let player = state.player.read().unwrap();
-    construct_track_table_widget(
+    let track_table = construct_track_table_widget(
         is_active,
         ui,
         state,
         &player,
         ui.filtered_items_by_search(tracks),
     );
+
+    if let Some(state) = ui.window.track_table_state() {
+        frame.render_stateful_widget(track_table, rect, state)
+    }
 }
 
 /// renders a playback window showing information about the current playback such as

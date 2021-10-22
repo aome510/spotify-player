@@ -43,7 +43,7 @@ pub enum WindowState {
     /// tracks, albums, artists, playlists
     Search(ListState, ListState, ListState, ListState, SearchFocusState),
     /// tracks
-    Recommendations(ListState),
+    Recommendations(TableState),
 }
 
 /// Popup state
@@ -186,7 +186,8 @@ impl WindowState {
         match self {
             Self::Playlist(ref mut state) => Some(state),
             Self::Album(ref mut state) => Some(state),
-            Self::Artist(ref mut top_tracks, _, _, _) => Some(top_tracks),
+            Self::Artist(ref mut state, _, _, _) => Some(state),
+            Self::Recommendations(ref mut state) => Some(state),
             _ => None,
         }
     }

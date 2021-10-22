@@ -97,6 +97,32 @@ pub fn handle_key_sequence_for_context_window(
     Ok(true)
 }
 
+/// handles a key sequence for a recommendation window
+pub fn handle_key_sequence_for_recommendation_window(
+    key_sequence: &KeySequence,
+    send: &mpsc::Sender<ClientRequest>,
+    state: &SharedState,
+    ui: &mut UIStateGuard,
+) -> Result<bool> {
+    unimplemented!()
+    // let command = match state
+    //     .keymap_config
+    //     .find_command_from_key_sequence(key_sequence)
+    // {
+    //     Some(command) => command,
+    //     None => return Ok(false),
+    // };
+
+    // handle_command_for_track_table_subwindow(
+    //     command,
+    //     send,
+    //     ui,
+    //     None,
+    //     Some(tracks.iter().map(|t| &t.id).collect()),
+    //     ui.filtered_items_by_search(tracks),
+    // )
+}
+
 /// handles a key sequence for a search window
 pub fn handle_key_sequence_for_search_window(
     key_sequence: &KeySequence,
@@ -180,7 +206,7 @@ pub fn handle_key_sequence_for_search_window(
             }
             SearchFocusState::Playlists => {
                 let playlists = search_results.playlists.iter().collect::<Vec<_>>();
-                handle_command_for_playlist_list(command, send, ui, playlists)
+                handle_command_for_playlist_list_subwindow(command, send, ui, playlists)
             }
         },
     }
@@ -420,7 +446,7 @@ fn handle_command_for_album_list_subwindow(
     Ok(true)
 }
 
-fn handle_command_for_playlist_list(
+fn handle_command_for_playlist_list_subwindow(
     command: Command,
     send: &mpsc::Sender<ClientRequest>,
     ui: &mut UIStateGuard,
