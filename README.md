@@ -18,6 +18,7 @@
   - [Album](#album)
   - [Search](#search)
 - [Commands](#commands)
+  - [Actions](#actions)
   - [Search Page](#search-page)
 - [Mouse support](#mouse-support)
 - [Configurations](#configurations)
@@ -161,17 +162,17 @@ List of supported commands:
 | `PlayRandom`                | play a random track in the current context            | `.`                |
 | `Repeat`                    | cycle the repeat mode                                 | `C-r`              |
 | `Shuffle`                   | toggle the shuffle mode                               | `C-s`              |
-| `VolumeUp`                  | increase playback volume                              | `+`                |
-| `VolumeDown`                | decrease playback volume                              | `-`                |
+| `VolumeUp`                  | increase playback volume by 5%                        | `+`                |
+| `VolumeDown`                | decrease playback volume by 5%                        | `-`                |
 | `Quit`                      | quit the application                                  | `C-c`, `q`         |
 | `OpenCommandHelp`           | open a command help popup                             | `?`, `C-h`         |
 | `ClosePopup`                | close a popup                                         | `esc`              |
 | `SelectNextOrScrollDown`    | select the next item in a list/table or scroll down   | `j`, `C-j`, `down` |
 | `SelectPreviousOrScrollUp`  | select the previous item in a list/table or scroll up | `k`, `C-k`, `up`   |
-| `ChooseSelected`            | choose the selected item and act on it                | `enter`            |
+| `ChooseSelected`            | choose the selected item                              | `enter`            |
 | `RefreshPlayback`           | manually refresh the current playback                 | `r`                |
 | `ShowActionsOnSelectedItem` | show actions on a selected item                       | `g a`, `C-space`   |
-| `ShowActionsOnCurrentTrack` | show actions on the currently playing track           | `g a`, `C-space`   |
+| `ShowActionsOnCurrentTrack` | show actions on the currently playing track           | `a`                |
 | `FocusNextWindow`           | focus the next focusable window (if any)              | `tab`              |
 | `FocusPreviousWindow`       | focus the previous focusable window (if any)          | `backtab`          |
 | `SwitchTheme`               | open a popup for switching theme                      | `T`                |
@@ -191,6 +192,13 @@ List of supported commands:
 | `ReverseOrder`              | reverse the order of the track table (if any)         | `s r`              |
 
 To add new shortcuts or modify the default shortcuts, please refer to the [keymaps section](https://github.com/aome510/spotify-player/blob/master/doc/config.md#keymaps) in the configuration documentation.
+
+### Actions
+
+There will be a list of possible actions depending on the type of the corresponding Spotify item (track, album, artist, or playlist).
+For example, the list of available actions on a track is `[BrowseAlbum, BrowseArtist, BrowseRecommandations, AddTrackToPlaylist, SaveToLibrary]`.
+
+To get the list of actions on an item, call the `ShowActionsOnCurrentTrack` command or `ShowActionsOnSelectedItem` command.
 
 ### Search Page
 
