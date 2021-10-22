@@ -217,14 +217,14 @@ fn handle_global_command(
             send.send(ClientRequest::GetCurrentPlayback)?;
         }
         Command::BrowsePlayingContext => {
-            ui.history.push(PageState::CurrentPlaying);
+            ui.new_page(PageState::CurrentPlaying);
         }
         Command::BrowsePlayingTrackAlbum => {
             if let Some(track) = state.player.read().unwrap().current_playing_track() {
                 if let Some(ref id) = track.album.id {
                     let context_id = ContextId::Album(id.clone());
                     send.send(ClientRequest::GetContext(context_id.clone()))?;
-                    ui.history.push(PageState::Browsing(context_id));
+                    ui.new_page(PageState::Browsing(context_id));
                 }
             }
         }
@@ -257,7 +257,7 @@ fn handle_global_command(
             ui.popup = Some(PopupState::UserSavedAlbumList(new_list_state()));
         }
         Command::SearchPage => {
-            ui.history.push(PageState::Searching(
+            ui.new_page(PageState::Searching(
                 "".to_owned(),
                 Box::new(SearchResults::default()),
             ));
@@ -272,6 +272,7 @@ fn handle_global_command(
         Command::PreviousPage => {
             if ui.history.len() > 1 {
                 ui.history.pop();
+                ui.popup = None;
             }
         }
         Command::SwitchDevice => {

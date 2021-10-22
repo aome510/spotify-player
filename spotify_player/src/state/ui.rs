@@ -116,6 +116,12 @@ impl UIState {
             _ => items.iter().collect::<Vec<_>>(),
         }
     }
+
+    /// creates to a new page
+    pub fn new_page(&mut self, page: PageState) {
+        self.history.push(page);
+        self.popup = None;
+    }
 }
 
 impl Default for UIState {

@@ -415,7 +415,7 @@ fn handle_command_for_artist_list_subwindow(
         Command::ChooseSelected => {
             let context_id = ContextId::Artist(artists[id].id.clone());
             send.send(ClientRequest::GetContext(context_id.clone()))?;
-            ui.history.push(PageState::Browsing(context_id));
+            ui.new_page(PageState::Browsing(context_id));
         }
         Command::ShowActionsOnSelectedItem => {
             ui.popup = Some(PopupState::ActionList(
@@ -450,7 +450,7 @@ fn handle_command_for_album_list_subwindow(
         Command::ChooseSelected => {
             let context_id = ContextId::Album(albums[id].id.clone());
             send.send(ClientRequest::GetContext(context_id.clone()))?;
-            ui.history.push(PageState::Browsing(context_id));
+            ui.new_page(PageState::Browsing(context_id));
         }
         Command::ShowActionsOnSelectedItem => {
             ui.popup = Some(PopupState::ActionList(
@@ -485,7 +485,7 @@ fn handle_command_for_playlist_list_subwindow(
         Command::ChooseSelected => {
             let context_id = ContextId::Playlist(playlists[id].id.clone());
             send.send(ClientRequest::GetContext(context_id.clone()))?;
-            ui.history.push(PageState::Browsing(context_id));
+            ui.new_page(PageState::Browsing(context_id));
         }
         Command::ShowActionsOnSelectedItem => {
             ui.popup = Some(PopupState::ActionList(

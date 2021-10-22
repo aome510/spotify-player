@@ -30,8 +30,8 @@ pub fn handle_key_sequence_for_popup(
 
                 let context_id = ContextId::Artist(artists[id].id.clone());
                 send.send(ClientRequest::GetContext(context_id.clone()))?;
-                ui.history.push(PageState::Browsing(context_id));
-                ui.popup = None;
+                ui.new_page(PageState::Browsing(context_id));
+
                 Ok(())
             },
             |ui: &mut UIStateGuard| {
@@ -290,8 +290,8 @@ fn handle_key_sequence_for_context_browsing_list_popup(
 
             send.send(ClientRequest::GetContext(context_id.clone()))?;
 
-            ui.history.push(PageState::Browsing(context_id));
-            ui.popup = None;
+            ui.new_page(PageState::Browsing(context_id));
+
             Ok(())
         },
         |ui: &mut UIStateGuard| {
@@ -416,7 +416,7 @@ fn handle_key_sequence_for_action_list_popup(
                             let uri = album.id.uri();
                             let context_id = ContextId::Album(AlbumId::from_uri(&uri)?);
                             send.send(ClientRequest::GetContext(context_id.clone()))?;
-                            ui.history.push(PageState::Browsing(context_id));
+                            ui.new_page(PageState::Browsing(context_id));
                         }
                     }
                     Action::BrowseArtist => {
@@ -449,8 +449,7 @@ fn handle_key_sequence_for_action_list_popup(
                     Action::BrowseRecommendations => {
                         let seed = SeedItem::Track(track.clone());
                         send.send(ClientRequest::GetRecommendations(seed.clone()))?;
-                        ui.history.push(PageState::Recommendations(seed, None));
-                        ui.popup = None;
+                        ui.new_page(PageState::Recommendations(seed, None));
                     }
                 },
                 Item::Album(album) => match actions[id] {
@@ -474,8 +473,7 @@ fn handle_key_sequence_for_action_list_popup(
                     Action::BrowseRecommendations => {
                         let seed = SeedItem::Artist(artist.clone());
                         send.send(ClientRequest::GetRecommendations(seed.clone()))?;
-                        ui.history.push(PageState::Recommendations(seed, None));
-                        ui.popup = None;
+                        ui.new_page(PageState::Recommendations(seed, None));
                     }
                     _ => {}
                 },
