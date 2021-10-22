@@ -220,6 +220,7 @@ impl WindowState {
                 ArtistFocusState::Albums => albums.select(id),
                 ArtistFocusState::RelatedArtists => related_artists.select(id),
             },
+            Self::Recommendations(ref mut state) => state.select(id),
         }
     }
 
@@ -244,6 +245,7 @@ impl WindowState {
                 ArtistFocusState::Albums => albums.selected(),
                 ArtistFocusState::RelatedArtists => related_artists.selected(),
             },
+            Self::Recommendations(ref state) => state.selected(),
         }
     }
 }

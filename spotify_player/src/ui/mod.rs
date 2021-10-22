@@ -5,6 +5,7 @@ use crate::{
 };
 use anyhow::Result;
 use rspotify::model;
+use std::sync::RwLockReadGuard;
 use tui::{layout::*, style::*, text::*, widgets::*};
 
 type Terminal = tui::Terminal<tui::backend::CrosstermBackend<std::io::Stdout>>;
@@ -209,12 +210,68 @@ fn render_main_layout(
                 "Context (Browsing)",
             );
         }
+        PageState::Recommendations(..) => {
+            render_recommendation_window(is_active, frame, ui, state, chunks[1]);
+        }
         PageState::Searching(..) => {
             // make sure that the window state matches the current page state.
             // The mismatch can happen when going back to the search from another page
             search::render_search_window(is_active, frame, ui, chunks[1]);
         }
     };
+}
+
+/// renders the recommendation window
+fn render_recommendation_window(
+    is_active: bool,
+    frame: &mut Frame,
+    ui: &mut UIStateGuard,
+    state: &SharedState,
+    rect: Rect,
+) {
+    let (seed, tracks) = match ui.current_page() {
+        PageState::Recommendations(seed, tracks) => (seed, tracks),
+        _ => unreachable!(),
+    };
+
+    let block = Block::default()
+        .title(ui.theme.block_title_with_style("Recommendations"))
+        .borders(Borders::ALL);
+
+    let tracks = match tracks {
+        Some(ref tracks) => tracks,
+        None => {
+            // recommendation tracks are still loading
+            frame.render_widget(Paragraph::new("loading...").block(block), rect);
+            return;
+        }
+    };
+
+    // render the window's border and title
+    frame.render_widget(block, rect);
+
+    // render the window's description
+    let desc = match seed {
+        SeedItem::Track(ref track) => format!("{} Radio", track.name),
+        SeedItem::Artist(ref artist) => format!("{} Radio", artist.name),
+    };
+
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .margin(1)
+        .constraints([Constraint::Length(1), Constraint::Min(0)].as_ref())
+        .split(rect);
+    let context_desc = Paragraph::new(desc).block(Block::default().style(ui.theme.context_desc()));
+    frame.render_widget(context_desc, chunks[0]);
+
+    let player = state.player.read().unwrap();
+    construct_track_table_widget(
+        is_active,
+        ui,
+        state,
+        &player,
+        ui.filtered_items_by_search(tracks),
+    );
 }
 
 /// renders a playback window showing information about the current playback such as
@@ -324,4 +381,66 @@ fn construct_list_widget<'a>(
             .title(ui.theme.block_title_with_style(title))
             .borders(borders),
     )
+}
+
+/// renders a track table widget
+pub fn construct_track_table_widget<'a>(
+    is_active: bool,
+    ui: &UIStateGuard,
+    state: &SharedState,
+    player: &RwLockReadGuard<PlayerState>,
+    tracks: Vec<&Track>,
+) -> Table<'a> {
+    // get the current playing track's URI to
+    // highlight such track (if exists) in the track table
+    let mut playing_track_uri = "".to_string();
+    let mut active_desc = "";
+    if let Some(ref playback) = player.playback {
+        if let Some(rspotify::model::PlayableItem::Track(ref track)) = playback.item {
+            playing_track_uri = track.id.uri();
+            active_desc = if !playback.is_playing { "⏸" } else { "▶" };
+        }
+    }
+
+    let item_max_len = state.app_config.track_table_item_max_len;
+    let rows = tracks
+        .into_iter()
+        .enumerate()
+        .map(|(id, t)| {
+            let (id, style) = if playing_track_uri == t.id.uri() {
+                (active_desc.to_string(), ui.theme.current_active())
+            } else {
+                ((id + 1).to_string(), Style::default())
+            };
+            Row::new(vec![
+                Cell::from(id),
+                Cell::from(utils::truncate_string(t.name.clone(), item_max_len)),
+                Cell::from(utils::truncate_string(t.artists_info(), item_max_len)),
+                Cell::from(utils::truncate_string(t.album_info(), item_max_len)),
+                Cell::from(utils::format_duration(t.duration)),
+            ])
+            .style(style)
+        })
+        .collect::<Vec<_>>();
+
+    Table::new(rows)
+        .header(
+            Row::new(vec![
+                Cell::from("#"),
+                Cell::from("Track"),
+                Cell::from("Artists"),
+                Cell::from("Album"),
+                Cell::from("Duration"),
+            ])
+            .style(ui.theme.context_tracks_table_header()),
+        )
+        .block(Block::default())
+        .widths(&[
+            Constraint::Length(4),
+            Constraint::Percentage(30),
+            Constraint::Percentage(30),
+            Constraint::Percentage(30),
+            Constraint::Percentage(10),
+        ])
+        .highlight_style(ui.theme.selection_style(is_active))
 }
