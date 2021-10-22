@@ -57,7 +57,7 @@ pub fn render_context_window(
                     );
 
                     if let Some(state) = ui.window.track_table_state() {
-                        frame.render_stateful_widget(track_table, rect, state)
+                        frame.render_stateful_widget(track_table, chunks[1], state)
                     }
                 }
                 Context::Album(_, ref tracks) => {
@@ -70,7 +70,7 @@ pub fn render_context_window(
                     );
 
                     if let Some(state) = ui.window.track_table_state() {
-                        frame.render_stateful_widget(track_table, rect, state)
+                        frame.render_stateful_widget(track_table, chunks[1], state)
                     }
                 }
             }
@@ -121,10 +121,10 @@ fn render_context_artist_widgets(
             .constraints([Constraint::Length(12), Constraint::Min(1)].as_ref())
             .split(rect);
 
-        let track_table = construct_track_table_widget(is_active, ui, state, &player, tracks);
+        let track_table = construct_track_table_widget(is_active, ui, state, player, tracks);
 
         if let Some(state) = ui.window.track_table_state() {
-            frame.render_stateful_widget(track_table, rect, state)
+            frame.render_stateful_widget(track_table, chunks[0], state)
         }
         chunks[1]
     };

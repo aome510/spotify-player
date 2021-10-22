@@ -256,6 +256,19 @@ fn handle_global_command(
             send.send(ClientRequest::GetUserSavedAlbums)?;
             ui.popup = Some(PopupState::UserSavedAlbumList(new_list_state()));
         }
+        Command::SearchPage => {
+            ui.history.push(PageState::Searching(
+                "".to_owned(),
+                Box::new(SearchResults::default()),
+            ));
+            ui.window = WindowState::Search(
+                new_list_state(),
+                new_list_state(),
+                new_list_state(),
+                new_list_state(),
+                SearchFocusState::Input,
+            );
+        }
         Command::PreviousPage => {
             if ui.history.len() > 1 {
                 ui.history.pop();

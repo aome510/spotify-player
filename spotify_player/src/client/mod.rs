@@ -117,13 +117,12 @@ impl Client {
                 let tracks = self.recommendations(&seed).await?;
 
                 // update the recommendation page state if needed
-                match state.ui.lock().unwrap().current_page_mut() {
-                    PageState::Recommendations(ref state_seed, ref mut state_tracks) => {
-                        if state_seed.uri() == seed.uri() {
-                            *state_tracks = Some(tracks);
-                        }
+                if let PageState::Recommendations(ref state_seed, ref mut state_tracks) =
+                    state.ui.lock().unwrap().current_page_mut()
+                {
+                    if state_seed.uri() == seed.uri() {
+                        *state_tracks = Some(tracks);
                     }
-                    _ => {}
                 }
             }
             ClientRequest::Player(event) => {
@@ -332,7 +331,7 @@ impl Client {
                         None::<Vec<_>>,
                         None::<Vec<_>>,
                         None,
-                        Some(100),
+                        None,
                     )
                     .await?
                     .tracks
@@ -345,7 +344,7 @@ impl Client {
                         None::<Vec<_>>,
                         Some(vec![&track.id]),
                         None,
-                        Some(100),
+                        None,
                     )
                     .await?
                     .tracks

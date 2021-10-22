@@ -158,7 +158,7 @@ List of supported commands:
 | `NextTrack`                 | next track                                                | `n`                |
 | `PreviousTrack`             | previous track                                            | `p`                |
 | `ResumePause`               | resume/pause based on the current playback                | `space`            |
-| `PlayContext`               | play a random track in the current context                | `.`                |
+| `PlayRandom`                | play a random track in the current context                | `.`                |
 | `Repeat`                    | cycle the repeat mode                                     | `C-r`              |
 | `Shuffle`                   | toggle the shuffle mode                                   | `C-s`              |
 | `VolumeUp`                  | increase playback volume                                  | `+`                |

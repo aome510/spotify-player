@@ -33,7 +33,7 @@ impl Default for KeymapConfig {
                 },
                 Keymap {
                     key_sequence: ".".into(),
-                    command: Command::PlayContext,
+                    command: Command::PlayRandom,
                 },
                 Keymap {
                     key_sequence: "space".into(),
