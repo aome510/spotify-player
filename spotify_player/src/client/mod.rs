@@ -95,8 +95,13 @@ impl Client {
                     .await?
             }
             PlayerRequest::Volume(volume) => self.spotify.volume(volume, device_id).await?,
-            PlayerRequest::StartPlayback(playback) => {
-                self.start_playback(playback, device_id).await?
+            PlayerRequest::StartPlayback(p) => {
+                self.start_playback(p, device_id).await?;
+                // for some reasons, when starting a new playback, the integrated `spotify-player`
+                // client doesn't respect the initial shuffle state, so we need to manually update the state
+                self.spotify
+                    .shuffle(playback.shuffle_state, device_id)
+                    .await?
             }
             PlayerRequest::TransferPlayback(..) => unreachable!(),
         };
