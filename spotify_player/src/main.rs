@@ -20,7 +20,7 @@ async fn main() -> anyhow::Result<()> {
 
     // parse command line arguments
     let matches = clap::App::new("spotify-player")
-        .version("0.3.0")
+        .version("0.4.0")
         .about("A command driven spotify player")
         .author("Thang Pham <phamducthang1234@gmail>")
         .arg(
