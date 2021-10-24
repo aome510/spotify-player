@@ -30,7 +30,7 @@ serde = { version = "1.0.130", features = ["derive"] }
 tokio = { version = "1.12.0", features = ["full"] }
 tokio-stream = "0.1.7"
 toml = "0.5.8"
-tui = { version = "0.16.0", default-features = false, features = ["crossterm", "serde"] }
+tui = { version = "0.15.0", default-features = false, features = ["crossterm", "serde"] }
 unicode-width = "0.1.9"
 rand = "0.8.4"
 maybe-async = "0.2.6"
