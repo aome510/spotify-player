@@ -64,39 +64,15 @@ pub enum WindowState {
 /// Popup state
 #[derive(Debug)]
 pub enum PopupState {
-    CommandHelp {
-        offset: usize,
-    },
-    Search {
-        query: String,
-    },
-    UserPlaylistList {
-        action: PlaylistPopupAction,
-        playlists: Vec<Playlist>,
-        list_state: ListState,
-    },
-    UserFollowedArtistList {
-        list_state: ListState,
-    },
-    UserSavedAlbumList {
-        list_state: ListState,
-    },
-    DeviceList {
-        list_state: ListState,
-    },
-    ArtistList {
-        artists: Vec<Artist>,
-        list_state: ListState,
-    },
-    ThemeList {
-        themes: Vec<config::Theme>,
-        list_state: ListState,
-    },
-    ActionList {
-        item: Item,
-        actions: Vec<crate::command::Action>,
-        list_state: ListState,
-    },
+    CommandHelp { offset: usize },
+    Search { query: String },
+    UserPlaylistList(PlaylistPopupAction, Vec<Playlist>, ListState),
+    UserFollowedArtistList(ListState),
+    UserSavedAlbumList(ListState),
+    DeviceList(ListState),
+    ArtistList(Vec<Artist>, ListState),
+    ThemeList(Vec<config::Theme>, ListState),
+    ActionList(Item, Vec<crate::command::Action>, ListState),
 }
 
 /// An action on a playlist popup list
@@ -196,13 +172,13 @@ impl PopupState {
     /// gets the (immutable) list state of a (list) popup
     pub fn list_state(&self) -> Option<&ListState> {
         match self {
-            Self::DeviceList { ref list_state } => Some(list_state),
-            Self::UserPlaylistList { ref list_state, .. } => Some(list_state),
-            Self::UserFollowedArtistList { ref list_state } => Some(list_state),
-            Self::UserSavedAlbumList { ref list_state } => Some(list_state),
-            Self::ArtistList { ref list_state, .. } => Some(list_state),
-            Self::ThemeList { ref list_state, .. } => Some(list_state),
-            Self::ActionList { ref list_state, .. } => Some(list_state),
+            Self::DeviceList(list_state) => Some(list_state),
+            Self::UserPlaylistList(.., list_state) => Some(list_state),
+            Self::UserFollowedArtistList(list_state) => Some(list_state),
+            Self::UserSavedAlbumList(list_state) => Some(list_state),
+            Self::ArtistList(.., list_state) => Some(list_state),
+            Self::ThemeList(.., list_state) => Some(list_state),
+            Self::ActionList(.., list_state) => Some(list_state),
             Self::CommandHelp { .. } | Self::Search { .. } => None,
         }
     }
@@ -210,21 +186,13 @@ impl PopupState {
     /// gets the (mutable) list state of a (list) popup
     pub fn list_state_mut(&mut self) -> Option<&mut ListState> {
         match self {
-            Self::DeviceList { ref mut list_state } => Some(list_state),
-            Self::UserPlaylistList {
-                ref mut list_state, ..
-            } => Some(list_state),
-            Self::UserFollowedArtistList { ref mut list_state } => Some(list_state),
-            Self::UserSavedAlbumList { ref mut list_state } => Some(list_state),
-            Self::ArtistList {
-                ref mut list_state, ..
-            } => Some(list_state),
-            Self::ThemeList {
-                ref mut list_state, ..
-            } => Some(list_state),
-            Self::ActionList {
-                ref mut list_state, ..
-            } => Some(list_state),
+            Self::DeviceList(list_state) => Some(list_state),
+            Self::UserPlaylistList(.., list_state) => Some(list_state),
+            Self::UserFollowedArtistList(list_state) => Some(list_state),
+            Self::UserSavedAlbumList(list_state) => Some(list_state),
+            Self::ArtistList(.., list_state) => Some(list_state),
+            Self::ThemeList(.., list_state) => Some(list_state),
+            Self::ActionList(.., list_state) => Some(list_state),
             Self::CommandHelp { .. } | Self::Search { .. } => None,
         }
     }

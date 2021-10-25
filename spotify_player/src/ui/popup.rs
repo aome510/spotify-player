@@ -34,7 +34,7 @@ pub fn render_popup(
                 help::render_commands_help_window(frame, ui, state, chunks[1]);
                 (chunks[0], false)
             }
-            PopupState::ActionList { item, actions, .. } => {
+            PopupState::ActionList(item, actions, ..) => {
                 let items = actions
                     .iter()
                     .map(|a| (format!("{:?}", a), false))
@@ -59,13 +59,13 @@ pub fn render_popup(
                 let rect = render_list_popup(frame, ui, rect, "Devices", items, 5);
                 (rect, false)
             }
-            PopupState::ThemeList { themes, .. } => {
+            PopupState::ThemeList(themes, ..) => {
                 let items = themes.iter().map(|t| (t.name.clone(), false)).collect();
 
                 let rect = render_list_popup(frame, ui, rect, "Themes", items, 7);
                 (rect, false)
             }
-            PopupState::UserPlaylistList { playlists, .. } => {
+            PopupState::UserPlaylistList(_, playlists, _) => {
                 let items = playlists.iter().map(|p| (p.name.clone(), false)).collect();
 
                 let rect = render_list_popup(frame, ui, rect, "User Playlists", items, 10);
@@ -99,7 +99,7 @@ pub fn render_popup(
                 let rect = render_list_popup(frame, ui, rect, "User Saved Albums", items, 7);
                 (rect, false)
             }
-            PopupState::ArtistList { artists, .. } => {
+            PopupState::ArtistList(artists, ..) => {
                 let items = artists.iter().map(|a| (a.name.clone(), false)).collect();
 
                 let rect = render_list_popup(frame, ui, rect, "Artists", items, 5);

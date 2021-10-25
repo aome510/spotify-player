@@ -134,7 +134,7 @@ fn handle_key_event(
                         &mut ui,
                     )?
                 }
-                PageState::Searching(..) => window::handle_key_sequence_for_search_window(
+                PageState::Searching { .. } => window::handle_key_sequence_for_search_window(
                     &key_sequence,
                     send,
                     state,
@@ -211,17 +211,20 @@ fn handle_global_command(
             }
         }
         Command::OpenCommandHelp => {
-            ui.popup = Some(PopupState::CommandHelp(0));
+            ui.popup = Some(PopupState::CommandHelp { offset: 0 });
         }
         Command::RefreshPlayback => {
             send.send(ClientRequest::GetCurrentPlayback)?;
         }
         Command::ShowActionsOnCurrentTrack => {
             if let Some(track) = state.player.read().unwrap().current_playing_track() {
-                ui.popup = Some(PopupState::ActionList(
-                    Item::Track(track.clone().into()),
-                    new_list_state(),
-                ));
+                let item = Item::Track(track.clone().into());
+                let actions = item.actions();
+                ui.popup = Some(PopupState::ActionList {
+                    item,
+                    actions,
+                    list_state: new_list_state(),
+                });
             }
         }
         Command::BrowsePlayingContext => {
@@ -229,11 +232,11 @@ fn handle_global_command(
         }
         Command::BrowseUserPlaylists => {
             send.send(ClientRequest::GetUserPlaylists)?;
-            ui.popup = Some(PopupState::UserPlaylistList(
-                PlaylistPopupAction::Browse,
-                state.player.read().unwrap().user_playlists.to_vec(),
-                new_list_state(),
-            ));
+            ui.popup = Some(PopupState::UserPlaylistList {
+                action: PlaylistPopupAction::Browse,
+                playlists: state.data.read().unwrap().user_data.playlists.to_vec(),
+                list_state: new_list_state(),
+            });
         }
         Command::BrowseUserFollowedArtists => {
             send.send(ClientRequest::GetUserFollowedArtists)?;
