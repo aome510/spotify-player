@@ -10,7 +10,7 @@ pub fn handle_key_sequence_for_popup(
     ui: &mut UIStateGuard,
 ) -> Result<bool> {
     match ui.popup.as_ref().unwrap() {
-        PopupState::ContextSearch(_) => {
+        PopupState::Search(_) => {
             handle_key_sequence_for_search_popup(key_sequence, send, state, ui)
         }
         PopupState::ArtistList(..) => handle_key_sequence_for_list_popup(
@@ -30,7 +30,7 @@ pub fn handle_key_sequence_for_popup(
 
                 let context_id = ContextId::Artist(artists[id].id.clone());
                 send.send(ClientRequest::GetContext(context_id.clone()))?;
-                ui.new_page(PageState::Browsing(context_id));
+                ui.create_new_page(PageState::Browsing(context_id));
 
                 Ok(())
             },
@@ -198,7 +198,7 @@ fn handle_key_sequence_for_search_popup(
     ui: &mut UIStateGuard,
 ) -> Result<bool> {
     let query = match ui.popup {
-        Some(PopupState::ContextSearch(ref mut query)) => query,
+        Some(PopupState::Search(ref mut query)) => query,
         _ => unreachable!(),
     };
     if key_sequence.keys.len() == 1 {
@@ -290,7 +290,7 @@ fn handle_key_sequence_for_context_browsing_list_popup(
 
             send.send(ClientRequest::GetContext(context_id.clone()))?;
 
-            ui.new_page(PageState::Browsing(context_id));
+            ui.create_new_page(PageState::Browsing(context_id));
 
             Ok(())
         },
@@ -416,7 +416,7 @@ fn handle_key_sequence_for_action_list_popup(
                             let uri = album.id.uri();
                             let context_id = ContextId::Album(AlbumId::from_uri(&uri)?);
                             send.send(ClientRequest::GetContext(context_id.clone()))?;
-                            ui.new_page(PageState::Browsing(context_id));
+                            ui.create_new_page(PageState::Browsing(context_id));
                         }
                     }
                     Action::BrowseArtist => {
@@ -449,7 +449,7 @@ fn handle_key_sequence_for_action_list_popup(
                     Action::BrowseRecommendations => {
                         let seed = SeedItem::Track(track.clone());
                         send.send(ClientRequest::GetRecommendations(seed.clone()))?;
-                        ui.new_page(PageState::Recommendations(seed, None));
+                        ui.create_new_page(PageState::Recommendations(seed, None));
                         ui.window = WindowState::Recommendations(new_table_state());
                     }
                 },
@@ -474,7 +474,7 @@ fn handle_key_sequence_for_action_list_popup(
                     Action::BrowseRecommendations => {
                         let seed = SeedItem::Artist(artist.clone());
                         send.send(ClientRequest::GetRecommendations(seed.clone()))?;
-                        ui.new_page(PageState::Recommendations(seed, None));
+                        ui.create_new_page(PageState::Recommendations(seed, None));
                         ui.window = WindowState::Recommendations(new_table_state());
                     }
                     _ => {}

@@ -18,7 +18,7 @@ pub fn render_popup(
     match ui.popup {
         None => (rect, true),
         Some(ref popup) => match popup {
-            PopupState::ContextSearch(ref query) => {
+            PopupState::Search(ref query) => {
                 let chunks = Layout::default()
                     .direction(Direction::Vertical)
                     .constraints([Constraint::Min(0), Constraint::Length(3)].as_ref())

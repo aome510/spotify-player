@@ -24,7 +24,7 @@ pub fn handle_key_sequence_for_context_window(
         }
         Command::SearchContext => {
             ui.window.select(Some(0));
-            ui.popup = Some(PopupState::ContextSearch("".to_owned()));
+            ui.popup = Some(PopupState::Search("".to_owned()));
         }
         Command::PlayRandom => {
             let player = state.player.read().unwrap();
@@ -114,7 +114,7 @@ pub fn handle_key_sequence_for_recommendation_window(
     match command {
         Command::SearchContext => {
             ui.window.select(Some(0));
-            ui.popup = Some(PopupState::ContextSearch("".to_owned()));
+            ui.popup = Some(PopupState::Search("".to_owned()));
             Ok(true)
         }
         Command::PlayRandom => {
@@ -415,7 +415,7 @@ fn handle_command_for_artist_list_subwindow(
         Command::ChooseSelected => {
             let context_id = ContextId::Artist(artists[id].id.clone());
             send.send(ClientRequest::GetContext(context_id.clone()))?;
-            ui.new_page(PageState::Browsing(context_id));
+            ui.create_new_page(PageState::Browsing(context_id));
         }
         Command::ShowActionsOnSelectedItem => {
             ui.popup = Some(PopupState::ActionList(
@@ -450,7 +450,7 @@ fn handle_command_for_album_list_subwindow(
         Command::ChooseSelected => {
             let context_id = ContextId::Album(albums[id].id.clone());
             send.send(ClientRequest::GetContext(context_id.clone()))?;
-            ui.new_page(PageState::Browsing(context_id));
+            ui.create_new_page(PageState::Browsing(context_id));
         }
         Command::ShowActionsOnSelectedItem => {
             ui.popup = Some(PopupState::ActionList(
@@ -485,7 +485,7 @@ fn handle_command_for_playlist_list_subwindow(
         Command::ChooseSelected => {
             let context_id = ContextId::Playlist(playlists[id].id.clone());
             send.send(ClientRequest::GetContext(context_id.clone()))?;
-            ui.new_page(PageState::Browsing(context_id));
+            ui.create_new_page(PageState::Browsing(context_id));
         }
         Command::ShowActionsOnSelectedItem => {
             ui.popup = Some(PopupState::ActionList(

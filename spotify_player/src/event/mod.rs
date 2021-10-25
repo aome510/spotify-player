@@ -225,7 +225,7 @@ fn handle_global_command(
             }
         }
         Command::BrowsePlayingContext => {
-            ui.new_page(PageState::CurrentPlaying);
+            ui.create_new_page(PageState::CurrentPlaying);
         }
         Command::BrowseUserPlaylists => {
             send.send(ClientRequest::GetUserPlaylists)?;
@@ -244,7 +244,7 @@ fn handle_global_command(
             ui.popup = Some(PopupState::UserSavedAlbumList(new_list_state()));
         }
         Command::SearchPage => {
-            ui.new_page(PageState::Searching(
+            ui.create_new_page(PageState::Searching(
                 "".to_owned(),
                 Box::new(SearchResults::default()),
             ));

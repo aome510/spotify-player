@@ -16,4 +16,5 @@ pub struct UserData {
 pub struct Caches {
     pub context: lru::LruCache<String, Context>,
     pub search: lru::LruCache<String, SearchResults>,
+    pub recommendation: lru::LruCache<String, Vec<Track>>,
 }

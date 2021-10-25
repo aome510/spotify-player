@@ -1,6 +1,9 @@
+mod data;
+mod model;
 mod player;
 mod ui;
 
+pub use model::*;
 pub use player::*;
 pub use ui::*;
 

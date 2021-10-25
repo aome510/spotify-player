@@ -1,4 +1,4 @@
-use super::player::*;
+use super::model::*;
 use crate::{config, key};
 
 use tui::widgets::{ListState, TableState};
@@ -26,38 +26,77 @@ pub struct UIState {
 pub enum PageState {
     CurrentPlaying,
     Browsing(ContextId),
-    Searching(String, Box<SearchResults>),
-    Recommendations(SeedItem, Option<Vec<Track>>),
+    Searching {
+        input: String,
+        current_query: String,
+    },
+    Recommendations(SeedItem),
 }
 
 /// Window state
 #[derive(Debug)]
 pub enum WindowState {
     Unknown,
-    /// tracks
-    Playlist(TableState),
-    /// tracks
-    Album(TableState),
-    /// top tracks, albums, related artists
-    Artist(TableState, ListState, ListState, ArtistFocusState),
-    /// tracks, albums, artists, playlists
-    Search(ListState, ListState, ListState, ListState, SearchFocusState),
-    /// tracks
-    Recommendations(TableState),
+    Playlist {
+        track_table: TableState,
+    },
+    Album {
+        track_table: TableState,
+    },
+    Artist {
+        top_track_table: TableState,
+        album_list: ListState,
+        related_artist_list: ListState,
+        focus: ArtistFocusState,
+    },
+    Search {
+        track_list: ListState,
+        album_list: ListState,
+        artist_list: ListState,
+        playlist_list: ListState,
+        focus: SearchFocusState,
+    },
+    Recommendations {
+        track_table: TableState,
+    },
 }
 
 /// Popup state
 #[derive(Debug)]
 pub enum PopupState {
-    CommandHelp(usize),
-    ContextSearch(String),
-    UserPlaylistList(PlaylistPopupAction, Vec<Playlist>, ListState),
-    UserFollowedArtistList(ListState),
-    UserSavedAlbumList(ListState),
-    DeviceList(ListState),
-    ArtistList(Vec<Artist>, ListState),
-    ThemeList(Vec<config::Theme>, ListState),
-    ActionList(Item, ListState),
+    CommandHelp {
+        offset: usize,
+    },
+    Search {
+        query: String,
+    },
+    UserPlaylistList {
+        action: PlaylistPopupAction,
+        playlists: Vec<Playlist>,
+        list_state: ListState,
+    },
+    UserFollowedArtistList {
+        list_state: ListState,
+    },
+    UserSavedAlbumList {
+        list_state: ListState,
+    },
+    DeviceList {
+        list_state: ListState,
+    },
+    ArtistList {
+        artists: Vec<Artist>,
+        list_state: ListState,
+    },
+    ThemeList {
+        themes: Vec<config::Theme>,
+        list_state: ListState,
+    },
+    ActionList {
+        item: Item,
+        actions: Vec<crate::command::Action>,
+        list_state: ListState,
+    },
 }
 
 /// An action on a playlist popup list
@@ -92,12 +131,6 @@ pub enum SearchFocusState {
 }
 
 impl UIState {
-    fn query_match(s: &str, query: &str) -> bool {
-        query
-            .split(' ')
-            .fold(true, |acc, cur| acc & s.contains(cur))
-    }
-
     pub fn current_page(&self) -> &PageState {
         self.history.last().expect("History must not be empty")
     }
@@ -106,21 +139,27 @@ impl UIState {
         self.history.last_mut().expect("History must not be empty")
     }
 
-    /// gets a list of items possibly filtered by a search query if currently inside a search state
+    pub fn create_new_page(&mut self, page: PageState) {
+        self.history.push(page);
+        self.popup = None;
+    }
+
+    /// gets a list of items possibly filtered by a search query if exists a search popup
     pub fn filtered_items_by_search<'a, T: std::fmt::Display>(&self, items: &'a [T]) -> Vec<&'a T> {
         match self.popup {
-            Some(PopupState::ContextSearch(ref query)) => items
+            Some(PopupState::Search { query }) => items
                 .iter()
-                .filter(|t| Self::query_match(&t.to_string().to_lowercase(), &query.to_lowercase()))
+                .filter(|t| Self::is_match(&t.to_string().to_lowercase(), &query.to_lowercase()))
                 .collect::<Vec<_>>(),
             _ => items.iter().collect::<Vec<_>>(),
         }
     }
 
-    /// creates to a new page
-    pub fn new_page(&mut self, page: PageState) {
-        self.history.push(page);
-        self.popup = None;
+    /// checks if a string matches a given query
+    fn is_match(s: &str, query: &str) -> bool {
+        query
+            .split(' ')
+            .fold(true, |acc, cur| acc & s.contains(cur))
     }
 }
 
@@ -141,35 +180,43 @@ impl Default for UIState {
 }
 
 impl PopupState {
-    /// gets the state of the current list popup
+    /// gets the (immutable) list state of a (list) popup
     pub fn list_state(&self) -> Option<&ListState> {
         match self {
-            Self::DeviceList(ref state) => Some(state),
-            Self::UserPlaylistList(_, _, ref state) => Some(state),
-            Self::UserFollowedArtistList(ref state) => Some(state),
-            Self::UserSavedAlbumList(ref state) => Some(state),
-            Self::ArtistList(_, ref state) => Some(state),
-            Self::ThemeList(_, ref state) => Some(state),
-            Self::ActionList(_, ref state) => Some(state),
-            Self::CommandHelp(_) | Self::ContextSearch(_) => None,
+            Self::DeviceList { ref list_state } => Some(list_state),
+            Self::UserPlaylistList { ref list_state, .. } => Some(list_state),
+            Self::UserFollowedArtistList { ref list_state } => Some(list_state),
+            Self::UserSavedAlbumList { ref list_state } => Some(list_state),
+            Self::ArtistList { ref list_state, .. } => Some(list_state),
+            Self::ThemeList { ref list_state, .. } => Some(list_state),
+            Self::ActionList { ref list_state, .. } => Some(list_state),
+            Self::CommandHelp { .. } | Self::Search { .. } => None,
         }
     }
 
-    /// gets the (mutable) state of the current list popup
+    /// gets the (mutable) list state of a (list) popup
     pub fn list_state_mut(&mut self) -> Option<&mut ListState> {
         match self {
-            Self::DeviceList(ref mut state) => Some(state),
-            Self::UserPlaylistList(_, _, ref mut state) => Some(state),
-            Self::UserFollowedArtistList(ref mut state) => Some(state),
-            Self::UserSavedAlbumList(ref mut state) => Some(state),
-            Self::ArtistList(_, ref mut state) => Some(state),
-            Self::ThemeList(_, ref mut state) => Some(state),
-            Self::ActionList(_, ref mut state) => Some(state),
-            Self::CommandHelp(_) | Self::ContextSearch(_) => None,
+            Self::DeviceList { ref mut list_state } => Some(list_state),
+            Self::UserPlaylistList {
+                ref mut list_state, ..
+            } => Some(list_state),
+            Self::UserFollowedArtistList { ref mut list_state } => Some(list_state),
+            Self::UserSavedAlbumList { ref mut list_state } => Some(list_state),
+            Self::ArtistList {
+                ref mut list_state, ..
+            } => Some(list_state),
+            Self::ThemeList {
+                ref mut list_state, ..
+            } => Some(list_state),
+            Self::ActionList {
+                ref mut list_state, ..
+            } => Some(list_state),
+            Self::CommandHelp { .. } | Self::Search { .. } => None,
         }
     }
 
-    /// returns the selected position in the current list popup
+    /// gets the selected position of a (list) popup
     pub fn list_selected(&self) -> Option<usize> {
         match self.list_state() {
             None => None,
@@ -177,7 +224,7 @@ impl PopupState {
         }
     }
 
-    /// selects a position in the current list popup
+    /// selects a position in a (list) popup
     pub fn list_select(&mut self, id: Option<usize>) {
         match self.list_state_mut() {
             None => {}
@@ -187,13 +234,22 @@ impl PopupState {
 }
 
 impl WindowState {
-    /// gets the state of the context track table
+    /// gets the state of the track table
     pub fn track_table_state(&mut self) -> Option<&mut TableState> {
         match self {
-            Self::Playlist(ref mut state) => Some(state),
-            Self::Album(ref mut state) => Some(state),
-            Self::Artist(ref mut state, _, _, _) => Some(state),
-            Self::Recommendations(ref mut state) => Some(state),
+            Self::Playlist {
+                ref mut track_table,
+            } => Some(track_table),
+            Self::Album {
+                ref mut track_table,
+            } => Some(track_table),
+            Self::Artist {
+                ref mut top_track_table,
+                ..
+            } => Some(top_track_table),
+            Self::Recommendations {
+                ref mut track_table,
+            } => Some(track_table),
             _ => None,
         }
     }
@@ -202,32 +258,38 @@ impl WindowState {
     pub fn select(&mut self, id: Option<usize>) {
         match self {
             Self::Unknown => {}
-            Self::Search(
-                ref mut tracks,
-                ref mut albums,
-                ref mut artists,
-                ref mut playlists,
+            Self::Search {
+                ref mut track_list,
+                ref mut album_list,
+                ref mut artist_list,
+                ref mut playlist_list,
                 ref focus,
-            ) => match focus {
+            } => match focus {
                 SearchFocusState::Input => {}
-                SearchFocusState::Tracks => tracks.select(id),
-                SearchFocusState::Albums => albums.select(id),
-                SearchFocusState::Artists => artists.select(id),
-                SearchFocusState::Playlists => playlists.select(id),
+                SearchFocusState::Tracks => track_list.select(id),
+                SearchFocusState::Albums => album_list.select(id),
+                SearchFocusState::Artists => artist_list.select(id),
+                SearchFocusState::Playlists => playlist_list.select(id),
             },
-            Self::Playlist(ref mut state) => state.select(id),
-            Self::Album(ref mut state) => state.select(id),
-            Self::Artist(
-                ref mut top_tracks,
-                ref mut albums,
-                ref mut related_artists,
+            Self::Playlist {
+                ref mut track_table,
+            } => track_table.select(id),
+            Self::Album {
+                ref mut track_table,
+            } => track_table.select(id),
+            Self::Artist {
+                ref mut top_track_table,
+                ref mut album_list,
+                ref mut related_artist_list,
                 ref focus,
-            ) => match focus {
-                ArtistFocusState::TopTracks => top_tracks.select(id),
-                ArtistFocusState::Albums => albums.select(id),
-                ArtistFocusState::RelatedArtists => related_artists.select(id),
+            } => match focus {
+                ArtistFocusState::TopTracks => top_track_table.select(id),
+                ArtistFocusState::Albums => album_list.select(id),
+                ArtistFocusState::RelatedArtists => related_artist_list.select(id),
             },
-            Self::Recommendations(ref mut state) => state.select(id),
+            Self::Recommendations {
+                ref mut track_table,
+            } => track_table.select(id),
         }
     }
 
@@ -235,24 +297,32 @@ impl WindowState {
     pub fn selected(&self) -> Option<usize> {
         match self {
             Self::Unknown => None,
-            Self::Search(ref tracks, ref albums, ref artists, ref playlists, ref focus) => {
-                match focus {
-                    &SearchFocusState::Input => None,
-                    SearchFocusState::Tracks => tracks.selected(),
-                    SearchFocusState::Albums => albums.selected(),
-                    SearchFocusState::Artists => artists.selected(),
-                    SearchFocusState::Playlists => playlists.selected(),
-                }
-            }
-            Self::Playlist(ref state) => state.selected(),
-            Self::Album(ref state) => state.selected(),
-            Self::Artist(ref top_tracks, ref albums, ref related_artists, ref focus) => match focus
-            {
-                ArtistFocusState::TopTracks => top_tracks.selected(),
-                ArtistFocusState::Albums => albums.selected(),
-                ArtistFocusState::RelatedArtists => related_artists.selected(),
+            Self::Search {
+                ref track_list,
+                ref album_list,
+                ref artist_list,
+                ref playlist_list,
+                ref focus,
+            } => match focus {
+                SearchFocusState::Input => None,
+                SearchFocusState::Tracks => track_list.selected(),
+                SearchFocusState::Albums => album_list.selected(),
+                SearchFocusState::Artists => artist_list.selected(),
+                SearchFocusState::Playlists => playlist_list.selected(),
             },
-            Self::Recommendations(ref state) => state.selected(),
+            Self::Playlist { ref track_table } => track_table.selected(),
+            Self::Album { ref track_table } => track_table.selected(),
+            Self::Artist {
+                ref top_track_table,
+                ref album_list,
+                ref related_artist_list,
+                ref focus,
+            } => match focus {
+                ArtistFocusState::TopTracks => top_track_table.selected(),
+                ArtistFocusState::Albums => album_list.selected(),
+                ArtistFocusState::RelatedArtists => related_artist_list.selected(),
+            },
+            Self::Recommendations { ref track_table } => track_table.selected(),
         }
     }
 }
@@ -260,16 +330,16 @@ impl WindowState {
 impl Focusable for WindowState {
     fn next(&mut self) {
         match self {
-            Self::Artist(_, _, _, focus) => focus.next(),
-            Self::Search(_, _, _, _, focus) => focus.next(),
+            Self::Artist { focus, .. } => focus.next(),
+            Self::Search { focus, .. } => focus.next(),
             _ => {}
         }
     }
 
     fn previous(&mut self) {
         match self {
-            Self::Artist(_, _, _, focus) => focus.previous(),
-            Self::Search(_, _, _, _, focus) => focus.previous(),
+            Self::Artist { focus, .. } => focus.previous(),
+            Self::Search { focus, .. } => focus.previous(),
             _ => {}
         }
     }
