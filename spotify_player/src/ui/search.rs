@@ -31,20 +31,17 @@ pub fn render_search_window(
 
     let data = state.data.read().unwrap();
 
-    // gets the search results from the data cache
-    // if not exists, use an empty result
-    let empty_results = SearchResults::default();
-    let search_results = match data.caches.search.peek(query) {
-        Some(results) => results,
-        None => &empty_results,
-    };
+    let search_results = data.caches.search.peek(query);
 
     let track_list = {
         let track_items = search_results
-            .tracks
-            .iter()
-            .map(|a| (format!("{} - {}", a.name, a.artists_info()), false))
-            .collect::<Vec<_>>();
+            .map(|s| {
+                s.tracks
+                    .iter()
+                    .map(|a| (format!("{} - {}", a.name, a.artists_info()), false))
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
 
         let is_active = is_active && focus_state == SearchFocusState::Tracks;
 
@@ -59,10 +56,13 @@ pub fn render_search_window(
 
     let album_list = {
         let album_items = search_results
-            .albums
-            .iter()
-            .map(|a| (a.name.clone(), false))
-            .collect::<Vec<_>>();
+            .map(|s| {
+                s.albums
+                    .iter()
+                    .map(|a| (a.name.clone(), false))
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
 
         let is_active = is_active && focus_state == SearchFocusState::Albums;
 
@@ -77,10 +77,13 @@ pub fn render_search_window(
 
     let artist_list = {
         let artist_items = search_results
-            .artists
-            .iter()
-            .map(|a| (a.name.clone(), false))
-            .collect::<Vec<_>>();
+            .map(|s| {
+                s.artists
+                    .iter()
+                    .map(|a| (a.name.clone(), false))
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
 
         let is_active = is_active && focus_state == SearchFocusState::Artists;
 
@@ -95,10 +98,13 @@ pub fn render_search_window(
 
     let playlist_list = {
         let playlist_items = search_results
-            .playlists
-            .iter()
-            .map(|a| (a.name.clone(), false))
-            .collect::<Vec<_>>();
+            .map(|s| {
+                s.playlists
+                    .iter()
+                    .map(|a| (a.name.clone(), false))
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
 
         let is_active = is_active && focus_state == SearchFocusState::Playlists;
 

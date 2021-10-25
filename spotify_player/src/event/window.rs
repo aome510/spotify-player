@@ -24,18 +24,21 @@ pub fn handle_key_sequence_for_context_window(
         }
         Command::SearchContext => {
             ui.window.select(Some(0));
-            ui.popup = Some(PopupState::Search("".to_owned()));
+            ui.popup = Some(PopupState::Search {
+                query: "".to_owned(),
+            });
         }
         Command::PlayRandom => {
             let player = state.player.read().unwrap();
-            let context = player.context();
+            let data = state.data.read().unwrap();
+            let context = player.context(&data.caches);
 
             // randomly play a track from the current context
             if let Some(context) = context {
                 let tracks = context.tracks();
                 let offset = match context {
                     // Spotify does not allow to manually specify `offset` for artist context
-                    Context::Artist(..) => None,
+                    Context::Artist { .. } => None,
                     _ => {
                         let id = rand::thread_rng().gen_range(0..tracks.len());
                         Some(model::Offset::for_uri(&tracks[id].id.uri()))
@@ -48,41 +51,41 @@ pub fn handle_key_sequence_for_context_window(
             }
         }
         _ => {
-            // handles sort/reverse commands separately
-            if state.player.read().unwrap().context().is_some() {
-                let sort_order = match command {
-                    Command::SortTrackByTitle => Some(ContextSortOrder::TrackName),
-                    Command::SortTrackByAlbum => Some(ContextSortOrder::Album),
-                    Command::SortTrackByArtists => Some(ContextSortOrder::Artists),
-                    Command::SortTrackByAddedDate => Some(ContextSortOrder::AddedAt),
-                    Command::SortTrackByDuration => Some(ContextSortOrder::Duration),
-                    _ => None,
-                };
-                match sort_order {
-                    Some(sort_order) => {
-                        state
-                            .player
-                            .write()
-                            .unwrap()
-                            .context_mut()
-                            .unwrap()
-                            .sort_tracks(sort_order);
-                        return Ok(true);
-                    }
-                    None => {
-                        if command == Command::ReverseTrackOrder {
-                            state
-                                .player
-                                .write()
-                                .unwrap()
-                                .context_mut()
-                                .unwrap()
-                                .reverse_tracks();
-                            return Ok(true);
-                        }
-                    }
-                }
-            }
+            // TODO: handles sort/reverse commands separately
+            // if state.player.read().unwrap().context().is_some() {
+            //     let sort_order = match command {
+            //         Command::SortTrackByTitle => Some(ContextSortOrder::TrackName),
+            //         Command::SortTrackByAlbum => Some(ContextSortOrder::Album),
+            //         Command::SortTrackByArtists => Some(ContextSortOrder::Artists),
+            //         Command::SortTrackByAddedDate => Some(ContextSortOrder::AddedAt),
+            //         Command::SortTrackByDuration => Some(ContextSortOrder::Duration),
+            //         _ => None,
+            //     };
+            //     match sort_order {
+            //         Some(sort_order) => {
+            //             state
+            //                 .player
+            //                 .write()
+            //                 .unwrap()
+            //                 .context_mut()
+            //                 .unwrap()
+            //                 .sort_tracks(sort_order);
+            //             return Ok(true);
+            //         }
+            //         None => {
+            //             if command == Command::ReverseTrackOrder {
+            //                 state
+            //                     .player
+            //                     .write()
+            //                     .unwrap()
+            //                     .context_mut()
+            //                     .unwrap()
+            //                     .reverse_tracks();
+            //                 return Ok(true);
+            //             }
+            //         }
+            //     }
+            // }
 
             // the command hasn't been handled, assign the job to the focused subwindow's handler
             return handle_command_for_focused_context_subwindow(command, send, ui, state);
@@ -106,15 +109,23 @@ pub fn handle_key_sequence_for_recommendation_window(
         None => return Ok(false),
     };
 
+    let data = state.data.read().unwrap();
     let tracks = match ui.current_page() {
-        PageState::Recommendations(_, tracks) => tracks.clone().unwrap_or_default(),
+        PageState::Recommendations(seed) => data
+            .caches
+            .recommendation
+            .peek(&seed.uri())
+            .map(|tracks| ui.filtered_items_by_search(&tracks))
+            .unwrap_or_default(),
         _ => unreachable!(),
     };
 
     match command {
         Command::SearchContext => {
             ui.window.select(Some(0));
-            ui.popup = Some(PopupState::Search("".to_owned()));
+            ui.popup = Some(PopupState::Search {
+                query: "".to_owned(),
+            });
             Ok(true)
         }
         Command::PlayRandom => {
@@ -135,7 +146,7 @@ pub fn handle_key_sequence_for_recommendation_window(
             ui,
             None,
             Some(tracks.iter().map(|t| &t.id).collect()),
-            ui.filtered_items_by_search(&tracks),
+            tracks,
         ),
     }
 }
@@ -148,16 +159,17 @@ pub fn handle_key_sequence_for_search_window(
     ui: &mut UIStateGuard,
 ) -> Result<bool> {
     let focus_state = match ui.window {
-        WindowState::Search(_, _, _, _, focus) => focus,
+        WindowState::Search { focus, .. } => focus,
         _ => {
             return Ok(false);
         }
     };
 
-    let (query, search_results) = match ui.current_page_mut() {
-        PageState::Searching(ref mut query, ref mut search_results) => {
-            (query, search_results.clone())
-        }
+    let (input, query) = match ui.current_page_mut() {
+        PageState::Searching {
+            input,
+            current_query,
+        } => (input, current_query),
         _ => unreachable!(),
     };
 
@@ -167,18 +179,18 @@ pub fn handle_key_sequence_for_search_window(
             if let Key::None(c) = key_sequence.keys[0] {
                 match c {
                     KeyCode::Char(c) => {
-                        query.push(c);
+                        input.push(c);
                         return Ok(true);
                     }
                     KeyCode::Backspace => {
-                        if !query.is_empty() {
-                            query.pop().unwrap();
+                        if !input.is_empty() {
+                            input.pop().unwrap();
                         }
                         return Ok(true);
                     }
                     KeyCode::Enter => {
-                        if !query.is_empty() {
-                            send.send(ClientRequest::Search(query.clone()))?;
+                        if !input.is_empty() {
+                            send.send(ClientRequest::Search(input.clone()))?;
                         }
                         return Ok(true);
                     }
@@ -196,6 +208,9 @@ pub fn handle_key_sequence_for_search_window(
         None => return Ok(false),
     };
 
+    let data = state.data.read().unwrap();
+    let search_results = data.caches.search.peek(query);
+
     match command {
         Command::FocusNextWindow => {
             ui.window.next();
@@ -210,19 +225,27 @@ pub fn handle_key_sequence_for_search_window(
         _ => match focus_state {
             SearchFocusState::Input => Ok(false),
             SearchFocusState::Tracks => {
-                let tracks = search_results.tracks.iter().collect::<Vec<_>>();
+                let tracks = search_results
+                    .map(|s| s.tracks.iter().collect())
+                    .unwrap_or_default();
                 handle_command_for_track_list_subwindow(command, send, ui, tracks)
             }
             SearchFocusState::Artists => {
-                let artists = search_results.artists.iter().collect::<Vec<_>>();
+                let artists = search_results
+                    .map(|s| s.artists.iter().collect())
+                    .unwrap_or_default();
                 handle_command_for_artist_list_subwindow(command, send, ui, artists)
             }
             SearchFocusState::Albums => {
-                let albums = search_results.albums.iter().collect::<Vec<_>>();
+                let albums = search_results
+                    .map(|s| s.albums.iter().collect())
+                    .unwrap_or_default();
                 handle_command_for_album_list_subwindow(command, send, ui, albums)
             }
             SearchFocusState::Playlists => {
-                let playlists = search_results.playlists.iter().collect::<Vec<_>>();
+                let playlists = search_results
+                    .map(|s| s.playlists.iter().collect())
+                    .unwrap_or_default();
                 handle_command_for_playlist_list_subwindow(command, send, ui, playlists)
             }
         },
@@ -239,11 +262,18 @@ pub fn handle_command_for_focused_context_subwindow(
     ui: &mut UIStateGuard,
     state: &SharedState,
 ) -> Result<bool> {
-    match state.player.read().unwrap().context() {
+    let data = state.data.read().unwrap();
+
+    match state.player.read().unwrap().context(&data.caches) {
         Some(context) => match context {
-            Context::Artist(_, ref tracks, ref albums, ref artists) => {
+            Context::Artist {
+                top_tracks,
+                albums,
+                related_artists,
+                ..
+            } => {
                 let focus_state = match ui.window {
-                    WindowState::Artist(_, _, _, state) => state,
+                    WindowState::Artist { focus, .. } => focus,
                     _ => unreachable!(),
                 };
 
@@ -258,19 +288,19 @@ pub fn handle_command_for_focused_context_subwindow(
                         command,
                         send,
                         ui,
-                        ui.filtered_items_by_search(artists),
+                        ui.filtered_items_by_search(related_artists),
                     ),
                     ArtistFocusState::TopTracks => handle_command_for_track_table_subwindow(
                         command,
                         send,
                         ui,
                         None,
-                        Some(tracks.iter().map(|t| &t.id).collect()),
-                        ui.filtered_items_by_search(tracks),
+                        Some(top_tracks.iter().map(|t| &t.id).collect()),
+                        ui.filtered_items_by_search(top_tracks),
                     ),
                 }
             }
-            Context::Album(ref album, ref tracks) => handle_command_for_track_table_subwindow(
+            Context::Album { album, tracks } => handle_command_for_track_table_subwindow(
                 command,
                 send,
                 ui,
@@ -278,16 +308,14 @@ pub fn handle_command_for_focused_context_subwindow(
                 None,
                 ui.filtered_items_by_search(tracks),
             ),
-            Context::Playlist(ref playlist, ref tracks) => {
-                handle_command_for_track_table_subwindow(
-                    command,
-                    send,
-                    ui,
-                    Some(ContextId::Playlist(playlist.id.clone())),
-                    None,
-                    ui.filtered_items_by_search(tracks),
-                )
-            }
+            Context::Playlist { playlist, tracks } => handle_command_for_track_table_subwindow(
+                command,
+                send,
+                ui,
+                Some(ContextId::Playlist(playlist.id.clone())),
+                None,
+                ui.filtered_items_by_search(tracks),
+            ),
         },
         None => Ok(false),
     }
@@ -343,10 +371,9 @@ fn handle_command_for_track_table_subwindow(
             }
         }
         Command::ShowActionsOnSelectedItem => {
-            ui.popup = Some(PopupState::ActionList(
-                Item::Track(tracks[id].clone()),
-                new_list_state(),
-            ));
+            let item = Item::Track(tracks[id].clone());
+            let actions = item.actions();
+            ui.popup = Some(PopupState::ActionList(item, actions, new_list_state()));
         }
         _ => return Ok(false),
     }
@@ -383,10 +410,9 @@ fn handle_command_for_track_list_subwindow(
             )))?;
         }
         Command::ShowActionsOnSelectedItem => {
-            ui.popup = Some(PopupState::ActionList(
-                Item::Track(tracks[id].clone()),
-                new_list_state(),
-            ));
+            let item = Item::Track(tracks[id].clone());
+            let actions = item.actions();
+            ui.popup = Some(PopupState::ActionList(item, actions, new_list_state()));
         }
         _ => return Ok(false),
     }
@@ -418,10 +444,9 @@ fn handle_command_for_artist_list_subwindow(
             ui.create_new_page(PageState::Browsing(context_id));
         }
         Command::ShowActionsOnSelectedItem => {
-            ui.popup = Some(PopupState::ActionList(
-                Item::Artist(artists[id].clone()),
-                new_list_state(),
-            ));
+            let item = Item::Artist(artists[id].clone());
+            let actions = item.actions();
+            ui.popup = Some(PopupState::ActionList(item, actions, new_list_state()));
         }
         _ => return Ok(false),
     }
@@ -453,10 +478,9 @@ fn handle_command_for_album_list_subwindow(
             ui.create_new_page(PageState::Browsing(context_id));
         }
         Command::ShowActionsOnSelectedItem => {
-            ui.popup = Some(PopupState::ActionList(
-                Item::Album(albums[id].clone()),
-                new_list_state(),
-            ));
+            let item = Item::Album(albums[id].clone());
+            let actions = item.actions();
+            ui.popup = Some(PopupState::ActionList(item, actions, new_list_state()));
         }
         _ => return Ok(false),
     }
@@ -488,10 +512,9 @@ fn handle_command_for_playlist_list_subwindow(
             ui.create_new_page(PageState::Browsing(context_id));
         }
         Command::ShowActionsOnSelectedItem => {
-            ui.popup = Some(PopupState::ActionList(
-                Item::Playlist(playlists[id].clone()),
-                new_list_state(),
-            ));
+            let item = Item::Playlist(playlists[id].clone());
+            let actions = item.actions();
+            ui.popup = Some(PopupState::ActionList(item, actions, new_list_state()));
         }
         _ => return Ok(false),
     }

@@ -27,6 +27,17 @@ pub struct State {
 }
 
 impl State {
+    /// gets a list of application themes with the current theme as the first element
+    pub fn themes(&self, ui: &std::sync::MutexGuard<UIState>) -> Vec<config::Theme> {
+        let mut themes = self.theme_config.themes.clone();
+        let id = themes.iter().position(|t| t.name == ui.theme.name);
+        if let Some(id) = id {
+            let theme = themes.remove(id);
+            themes.insert(0, theme);
+        }
+        themes
+    }
+
     /// parses application's configurations
     pub fn parse_config_files(
         &mut self,

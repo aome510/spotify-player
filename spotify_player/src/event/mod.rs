@@ -220,11 +220,7 @@ fn handle_global_command(
             if let Some(track) = state.player.read().unwrap().current_playing_track() {
                 let item = Item::Track(track.clone().into());
                 let actions = item.actions();
-                ui.popup = Some(PopupState::ActionList {
-                    item,
-                    actions,
-                    list_state: new_list_state(),
-                });
+                ui.popup = Some(PopupState::ActionList(item, actions, new_list_state()));
             }
         }
         Command::BrowsePlayingContext => {
@@ -232,11 +228,11 @@ fn handle_global_command(
         }
         Command::BrowseUserPlaylists => {
             send.send(ClientRequest::GetUserPlaylists)?;
-            ui.popup = Some(PopupState::UserPlaylistList {
-                action: PlaylistPopupAction::Browse,
-                playlists: state.data.read().unwrap().user_data.playlists.to_vec(),
-                list_state: new_list_state(),
-            });
+            ui.popup = Some(PopupState::UserPlaylistList(
+                PlaylistPopupAction::Browse,
+                state.data.read().unwrap().user_data.playlists.to_vec(),
+                new_list_state(),
+            ));
         }
         Command::BrowseUserFollowedArtists => {
             send.send(ClientRequest::GetUserFollowedArtists)?;
@@ -247,10 +243,10 @@ fn handle_global_command(
             ui.popup = Some(PopupState::UserSavedAlbumList(new_list_state()));
         }
         Command::SearchPage => {
-            ui.create_new_page(PageState::Searching(
-                "".to_owned(),
-                Box::new(SearchResults::default()),
-            ));
+            ui.create_new_page(PageState::Searching {
+                input: "".to_owned(),
+                current_query: "".to_owned(),
+            });
             ui.window = WindowState::new_search_state();
         }
         Command::PreviousPage => {

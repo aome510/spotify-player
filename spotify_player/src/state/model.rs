@@ -38,14 +38,8 @@ pub enum ContextId {
 ///
 /// An offset can be either a track's URI or its absolute offset in the context
 pub enum Playback {
-    Context {
-        id: ContextId,
-        offset: Option<rspotify_model::Offset>,
-    },
-    URIs {
-        track_ids: Vec<TrackId>,
-        offset: Option<rspotify_model::Offset>,
-    },
+    Context(ContextId, Option<rspotify_model::Offset>),
+    URIs(Vec<TrackId>, Option<rspotify_model::Offset>),
 }
 
 #[derive(Default, Clone, Debug)]
