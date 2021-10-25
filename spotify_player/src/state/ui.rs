@@ -254,7 +254,7 @@ impl WindowState {
         }
     }
 
-    /// selects a position in the context track table
+    /// selects a position in the currently focused list/table of the window
     pub fn select(&mut self, id: Option<usize>) {
         match self {
             Self::Unknown => {}
@@ -293,7 +293,7 @@ impl WindowState {
         }
     }
 
-    /// gets the selected position in the context track table
+    /// gets the selected position in the currently focused list/table of the window
     pub fn selected(&self) -> Option<usize> {
         match self {
             Self::Unknown => None,

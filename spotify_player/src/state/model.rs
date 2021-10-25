@@ -16,9 +16,9 @@ pub enum Context {
     },
     Artist {
         artist: Artist,
-        tracks: Vec<Track>,
+        top_tracks: Vec<Track>,
         albums: Vec<Album>,
-        related_artist: Vec<Artist>,
+        related_artists: Vec<Artist>,
     },
 }
 
@@ -181,7 +181,10 @@ impl Context {
         match self {
             Context::Album { ref tracks, .. } => tracks,
             Context::Playlist { ref tracks, .. } => tracks,
-            Context::Artist { ref tracks, .. } => tracks,
+            Context::Artist {
+                top_tracks: ref tracks,
+                ..
+            } => tracks,
         }
     }
 
@@ -190,7 +193,10 @@ impl Context {
         match self {
             Context::Album { ref mut tracks, .. } => tracks,
             Context::Playlist { ref mut tracks, .. } => tracks,
-            Context::Artist { ref mut tracks, .. } => tracks,
+            Context::Artist {
+                top_tracks: ref mut tracks,
+                ..
+            } => tracks,
         }
     }
 }

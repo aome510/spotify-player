@@ -3,6 +3,8 @@ use super::{data, model::*};
 /// Player state
 #[derive(Default, Debug)]
 pub struct PlayerState {
+    pub devices: Vec<Device>,
+
     pub context_id: Option<ContextId>,
 
     pub playback: Option<rspotify_model::CurrentPlaybackContext>,

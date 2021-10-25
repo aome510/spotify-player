@@ -2,14 +2,13 @@ use super::model::*;
 
 #[derive(Default, Debug)]
 pub struct AppData {
-    pub user: UserData,
-    pub devices: Vec<Device>,
+    pub user_data: UserData,
     pub caches: Caches,
 }
 
 #[derive(Default, Debug)]
 pub struct UserData {
-    user: Option<rspotify_model::PrivateUser>,
+    pub user: Option<rspotify_model::PrivateUser>,
     pub playlists: Vec<Playlist>,
     pub followed_artists: Vec<Artist>,
     pub saved_albums: Vec<Album>,

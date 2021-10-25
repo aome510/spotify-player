@@ -116,19 +116,12 @@ impl Client {
         match request {
             ClientRequest::GetCurrentUser => {
                 let user = self.spotify.current_user().await?;
-                state.data.write().unwrap().user = Some(user);
+                state.data.write().unwrap().user_data.user = Some(user);
             }
             ClientRequest::GetRecommendations(seed) => {
                 let tracks = self.recommendations(&seed).await?;
 
-                // update the recommendation page state if needed
-                if let PageState::Recommendations(ref state_seed, ref mut state_tracks) =
-                    state.ui.lock().unwrap().current_page_mut()
-                {
-                    if state_seed.uri() == seed.uri() {
-                        *state_tracks = Some(tracks);
-                    }
-                }
+                todo!("implement the recommendation cache update logic")
             }
             ClientRequest::Player(event) => {
                 self.handle_player_request(state, event).await?;
@@ -163,15 +156,15 @@ impl Client {
             }
             ClientRequest::GetUserPlaylists => {
                 let playlists = self.current_user_playlists().await?;
-                state.player.write().unwrap().user_playlists = playlists;
+                state.data.write().unwrap().user_data.playlists = playlists;
             }
             ClientRequest::GetUserFollowedArtists => {
                 let artists = self.current_user_followed_artists().await?;
-                state.player.write().unwrap().user_followed_artists = artists;
+                state.data.write().unwrap().user_data.followed_artists = artists;
             }
             ClientRequest::GetUserSavedAlbums => {
                 let albums = self.current_user_saved_albums().await?;
-                state.player.write().unwrap().user_saved_albums = albums;
+                state.data.write().unwrap().user_data.saved_albums = albums;
             }
             ClientRequest::GetContext(context) => {
                 match context {
@@ -290,7 +283,7 @@ impl Client {
     /// starts a playback
     pub async fn start_playback(&self, playback: Playback, device_id: Option<&str>) -> Result<()> {
         match playback {
-            Playback::Context(context_id, offset) => match context_id {
+            Playback::Context { id, offset } => match id {
                 ContextId::Album(id) => {
                     self.spotify
                         .start_context_playback(&id, device_id, offset, None)
@@ -307,7 +300,7 @@ impl Client {
                         .await?
                 }
             },
-            Playback::URIs(track_ids, offset) => {
+            Playback::URIs { track_ids, offset } => {
                 self.spotify
                     .start_uris_playback(
                         track_ids
@@ -367,23 +360,27 @@ impl Client {
 
     /// searchs for items (tracks, artists, albums, playlists) that match a given query string.
     pub async fn search(&self, state: &SharedState, query: String) -> Result<()> {
-        let update_ui_states = |results: SearchResults| {
+        let update_ui_states = || {
             let mut ui = state.ui.lock().unwrap();
-            if let PageState::Searching(_, ref mut state_results) = ui.current_page_mut() {
-                *state_results = Box::new(results);
-                ui.window = WindowState::Search(
-                    utils::new_list_state(),
-                    utils::new_list_state(),
-                    utils::new_list_state(),
-                    utils::new_list_state(),
-                    SearchFocusState::Input,
-                );
+            if let PageState::Searching {
+                input,
+                current_query,
+            } = ui.current_page_mut()
+            {
+                *current_query = input.to_string();
+                ui.window = WindowState::Search {
+                    track_list: utils::new_list_state(),
+                    album_list: utils::new_list_state(),
+                    artist_list: utils::new_list_state(),
+                    playlist_list: utils::new_list_state(),
+                    focus: SearchFocusState::Input,
+                };
             }
         };
 
         // already search the query before, updating the ui page state directly
-        if let Some(search_results) = state.player.read().unwrap().search_cache.peek(&query) {
-            update_ui_states(search_results.clone());
+        if let Some(search_results) = state.data.read().unwrap().caches.search.peek(&query) {
+            update_ui_states();
             return Ok(());
         }
 
@@ -429,13 +426,14 @@ impl Client {
 
         // update the search cache stored inside the player state
         state
-            .player
+            .data
             .write()
             .unwrap()
-            .search_cache
-            .put(query, search_results.clone());
+            .caches
+            .search
+            .put(query, search_results);
 
-        update_ui_states(search_results);
+        update_ui_states();
         Ok(())
     }
 
@@ -508,9 +506,10 @@ impl Client {
             }
             Item::Playlist(playlist) => {
                 let user_id = state
-                    .player
+                    .data
                     .read()
                     .unwrap()
+                    .user_data
                     .user
                     .as_ref()
                     .map(|u| u.id.clone());
@@ -548,31 +547,33 @@ impl Client {
         };
 
         if !state
-            .player
+            .data
             .read()
             .unwrap()
-            .context_cache
+            .caches
+            .context
             .contains(&playlist_uri)
         {
             // get the playlist
             let playlist = self.spotify.playlist(playlist_id, None, None).await?;
             let first_page = playlist.tracks.clone();
             // get the playlist's tracks
-            state.player.write().unwrap().context_cache.put(
+            state.data.write().unwrap().caches.context.put(
                 playlist_uri.clone(),
-                Context::Playlist(
-                    playlist.into(),
-                    playlist_items_into_tracks(first_page.items.clone()),
-                ),
+                Context::Playlist {
+                    playlist: playlist.into(),
+                    tracks: playlist_items_into_tracks(first_page.items.clone()),
+                },
             );
 
             let tracks = playlist_items_into_tracks(self.all_paging_items(first_page).await?);
 
-            if let Some(Context::Playlist(_, ref mut old)) = state
-                .player
+            if let Some(Context::Playlist { tracks: old, .. }) = state
+                .data
                 .write()
                 .unwrap()
-                .context_cache
+                .caches
+                .context
                 .peek_mut(&playlist_uri)
             {
                 *old = tracks;
@@ -588,10 +589,11 @@ impl Client {
         log::info!("get album context: {}", album_uri);
 
         if !state
-            .player
+            .data
             .read()
             .unwrap()
-            .context_cache
+            .caches
+            .context
             .contains(&album_uri)
         {
             // get the album
@@ -614,11 +616,12 @@ impl Client {
                 .collect::<Vec<_>>();
 
             state
-                .player
+                .data
                 .write()
                 .unwrap()
-                .context_cache
-                .put(album_uri, Context::Album(album, tracks));
+                .caches
+                .context
+                .put(album_uri, Context::Album { album, tracks });
         }
 
         Ok(())
@@ -630,10 +633,11 @@ impl Client {
         log::info!("get artist context: {}", artist_uri);
 
         if !state
-            .player
+            .data
             .read()
             .unwrap()
-            .context_cache
+            .caches
+            .context
             .contains(&artist_uri)
         {
             // get a information, top tracks and all albums
@@ -655,19 +659,25 @@ impl Client {
                 .map(|a| a.into())
                 .collect::<Vec<_>>();
 
-            state.player.write().unwrap().context_cache.put(
+            state.data.write().unwrap().caches.context.put(
                 artist_uri.clone(),
-                Context::Artist(artist, top_tracks, vec![], related_artists),
+                Context::Artist {
+                    artist,
+                    top_tracks,
+                    albums: vec![],
+                    related_artists,
+                },
             );
 
             // delay the request for getting artist's albums to not block the UI
             let albums = self.artist_albums(artist_id).await?;
 
-            if let Some(Context::Artist(_, _, ref mut old, _)) = state
-                .player
+            if let Some(Context::Artist { albums: old, .. }) = state
+                .data
                 .write()
                 .unwrap()
-                .context_cache
+                .caches
+                .context
                 .peek_mut(&artist_uri)
             {
                 *old = albums;
