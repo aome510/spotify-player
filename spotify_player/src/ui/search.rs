@@ -7,21 +7,39 @@ use {tui::layout::*, tui::widgets::*};
 ///
 /// # Panic
 /// This function will panic if the current UI's `PageState` is not `PageState::Searching`
-pub fn render_search_window(is_active: bool, frame: &mut Frame, ui: &mut UIStateGuard, rect: Rect) {
-    // gets the search query from UI's `PageState`
-    let (query, search_results) = match ui.current_page() {
-        PageState::Searching(ref query, ref search_results) => (query, search_results),
+pub fn render_search_window(
+    is_active: bool,
+    frame: &mut Frame,
+    ui: &mut UIStateGuard,
+    state: &SharedState,
+    rect: Rect,
+) {
+    // gets the current search query from UI's `PageState`
+    let query = match ui.current_page() {
+        PageState::Searching {
+            ref current_query, ..
+        } => current_query,
         _ => unreachable!(),
     };
 
     let focus_state = match ui.window {
-        WindowState::Search(_, _, _, _, focus) => focus,
+        WindowState::Search { focus, .. } => focus,
         _ => {
             return;
         }
     };
 
-    let tracks_list = {
+    let data = state.data.read().unwrap();
+
+    // gets the search results from the data cache
+    // if not exists, use an empty result
+    let empty_results = SearchResults::default();
+    let search_results = match data.caches.search.peek(query) {
+        Some(results) => results,
+        None => &empty_results,
+    };
+
+    let track_list = {
         let track_items = search_results
             .tracks
             .iter()
@@ -39,7 +57,7 @@ pub fn render_search_window(is_active: bool, frame: &mut Frame, ui: &mut UIState
         )
     };
 
-    let albums_list = {
+    let album_list = {
         let album_items = search_results
             .albums
             .iter()
@@ -57,7 +75,7 @@ pub fn render_search_window(is_active: bool, frame: &mut Frame, ui: &mut UIState
         )
     };
 
-    let artists_list = {
+    let artist_list = {
         let artist_items = search_results
             .artists
             .iter()
@@ -75,7 +93,7 @@ pub fn render_search_window(is_active: bool, frame: &mut Frame, ui: &mut UIState
         )
     };
 
-    let playlists_list = {
+    let playlist_list = {
         let playlist_items = search_results
             .playlists
             .iter()
@@ -131,26 +149,22 @@ pub fn render_search_window(is_active: bool, frame: &mut Frame, ui: &mut UIState
         })
         .collect::<Vec<_>>();
 
-    // get the list states inside the UI's `WindowState` to render the search window's sub-windows
-    let (tracks_list_state, albums_list_state, artists_list_state, playlists_list_state) =
+    // get the mutable list states inside the UI's `WindowState`
+    // to render the search window's sub-windows
+    let (track_list_state, album_list_state, artist_list_state, playlist_list_state) =
         match ui.window {
-            WindowState::Search(
-                ref mut tracks_list_state,
-                ref mut albums_list_state,
-                ref mut artists_list_state,
-                ref mut playlists_list_state,
-                _,
-            ) => (
-                tracks_list_state,
-                albums_list_state,
-                artists_list_state,
-                playlists_list_state,
-            ),
+            WindowState::Search {
+                ref mut track_list,
+                ref mut album_list,
+                ref mut artist_list,
+                ref mut playlist_list,
+                ..
+            } => (track_list, album_list, artist_list, playlist_list),
             _ => unreachable!(),
         };
 
-    frame.render_stateful_widget(tracks_list, chunks[0], tracks_list_state);
-    frame.render_stateful_widget(albums_list, chunks[1], albums_list_state);
-    frame.render_stateful_widget(artists_list, chunks[2], artists_list_state);
-    frame.render_stateful_widget(playlists_list, chunks[3], playlists_list_state);
+    frame.render_stateful_widget(track_list, chunks[0], track_list_state);
+    frame.render_stateful_widget(album_list, chunks[1], album_list_state);
+    frame.render_stateful_widget(artist_list, chunks[2], artist_list_state);
+    frame.render_stateful_widget(playlist_list, chunks[3], playlist_list_state);
 }

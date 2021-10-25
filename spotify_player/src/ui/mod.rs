@@ -1,7 +1,7 @@
 use crate::{
     event::ClientRequest,
     state::*,
-    utils::{self, new_list_state, new_table_state},
+    utils::{self, new_table_state},
 };
 use anyhow::Result;
 use rspotify::model;
@@ -75,9 +75,11 @@ fn handle_page_state_change(
         PageState::Recommendations(..) => {
             state.player.write().unwrap().context_id = None;
             match ui.window {
-                WindowState::Recommendations(..) => {}
+                WindowState::Recommendations { .. } => {}
                 _ => {
-                    ui.window = WindowState::Recommendations(new_table_state());
+                    ui.window = WindowState::Recommendations {
+                        track_table: new_table_state(),
+                    };
                 }
             }
         }
@@ -194,7 +196,7 @@ fn render_main_layout(
                 "Context (Current Playing)",
             );
         }
-        PageState::Browsing(_) => {
+        PageState::Browsing { .. } => {
             context::render_context_window(
                 is_active,
                 frame,
@@ -204,13 +206,13 @@ fn render_main_layout(
                 "Context (Browsing)",
             );
         }
-        PageState::Recommendations(..) => {
+        PageState::Recommendations { .. } => {
             render_recommendation_window(is_active, frame, ui, state, chunks[1]);
         }
-        PageState::Searching(..) => {
+        PageState::Searching { .. } => {
             // make sure that the window state matches the current page state.
             // The mismatch can happen when going back to the search from another page
-            search::render_search_window(is_active, frame, ui, chunks[1]);
+            search::render_search_window(is_active, frame, ui, state, chunks[1]);
         }
     };
 }
@@ -223,8 +225,8 @@ fn render_recommendation_window(
     state: &SharedState,
     rect: Rect,
 ) {
-    let (seed, tracks) = match ui.current_page() {
-        PageState::Recommendations(seed, tracks) => (seed, tracks),
+    let seed = match ui.current_page() {
+        PageState::Recommendations(seed) => seed,
         _ => unreachable!(),
     };
 
@@ -232,8 +234,10 @@ fn render_recommendation_window(
         .title(ui.theme.block_title_with_style("Recommendations"))
         .borders(Borders::ALL);
 
-    let tracks = match tracks {
-        Some(ref tracks) => tracks,
+    let data = state.data.read().unwrap();
+
+    let tracks = match data.caches.recommendation.peek(&seed.uri()) {
+        Some(tracks) => tracks,
         None => {
             // recommendation tracks are still loading
             frame.render_widget(Paragraph::new("loading...").block(block), rect);
