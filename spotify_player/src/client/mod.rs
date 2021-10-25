@@ -162,15 +162,7 @@ impl Client {
             }
             ClientRequest::GetContext(context) => {
                 let uri = context.uri();
-                if state
-                    .data
-                    .read()
-                    .unwrap()
-                    .caches
-                    .context
-                    .peek(&uri)
-                    .is_none()
-                {
+                if !state.data.read().unwrap().caches.context.contains(&uri) {
                     let context = match context {
                         ContextId::Playlist(playlist_id) => {
                             self.playlist_context(&playlist_id).await?
@@ -183,15 +175,7 @@ impl Client {
                 }
             }
             ClientRequest::Search(query) => {
-                if state
-                    .data
-                    .read()
-                    .unwrap()
-                    .caches
-                    .search
-                    .peek(&query)
-                    .is_none()
-                {
+                if !state.data.read().unwrap().caches.search.contains(&query) {
                     let results = self.search(&query).await?;
 
                     // update the search cache stored inside the player state
@@ -206,14 +190,13 @@ impl Client {
             }
             ClientRequest::GetRecommendations(seed) => {
                 let uri = seed.uri();
-                if state
+                if !state
                     .data
                     .read()
                     .unwrap()
                     .caches
                     .recommendation
-                    .peek(&uri)
-                    .is_none()
+                    .contains(&uri)
                 {
                     let tracks = self.recommendations(&seed).await?;
 
