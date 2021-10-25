@@ -51,41 +51,36 @@ pub fn handle_key_sequence_for_context_window(
             }
         }
         _ => {
-            // TODO: handles sort/reverse commands separately
-            // if state.player.read().unwrap().context().is_some() {
-            //     let sort_order = match command {
-            //         Command::SortTrackByTitle => Some(ContextSortOrder::TrackName),
-            //         Command::SortTrackByAlbum => Some(ContextSortOrder::Album),
-            //         Command::SortTrackByArtists => Some(ContextSortOrder::Artists),
-            //         Command::SortTrackByAddedDate => Some(ContextSortOrder::AddedAt),
-            //         Command::SortTrackByDuration => Some(ContextSortOrder::Duration),
-            //         _ => None,
-            //     };
-            //     match sort_order {
-            //         Some(sort_order) => {
-            //             state
-            //                 .player
-            //                 .write()
-            //                 .unwrap()
-            //                 .context_mut()
-            //                 .unwrap()
-            //                 .sort_tracks(sort_order);
-            //             return Ok(true);
-            //         }
-            //         None => {
-            //             if command == Command::ReverseTrackOrder {
-            //                 state
-            //                     .player
-            //                     .write()
-            //                     .unwrap()
-            //                     .context_mut()
-            //                     .unwrap()
-            //                     .reverse_tracks();
-            //                 return Ok(true);
-            //             }
-            //         }
-            //     }
-            // }
+            // handle sort/reverse tracks commands
+            let order = match command {
+                Command::SortTrackByTitle => Some(TrackOrder::TrackName),
+                Command::SortTrackByAlbum => Some(TrackOrder::Album),
+                Command::SortTrackByArtists => Some(TrackOrder::Artists),
+                Command::SortTrackByAddedDate => Some(TrackOrder::AddedAt),
+                Command::SortTrackByDuration => Some(TrackOrder::Duration),
+                _ => None,
+            };
+
+            if let Some(order) = order {
+                let player = state.player.read().unwrap();
+                let mut data = state.data.write().unwrap();
+                let context = player.context_mut(&mut data.caches);
+
+                if let Some(context) = context {
+                    context.sort_tracks(order);
+                }
+                return Ok(true);
+            }
+            if command == Command::ReverseTrackOrder {
+                let player = state.player.read().unwrap();
+                let mut data = state.data.write().unwrap();
+                let context = player.context_mut(&mut data.caches);
+
+                if let Some(context) = context {
+                    context.reverse_tracks();
+                }
+                return Ok(true);
+            }
 
             // the command hasn't been handled, assign the job to the focused subwindow's handler
             return handle_command_for_focused_context_subwindow(command, send, ui, state);

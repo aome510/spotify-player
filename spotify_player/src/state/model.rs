@@ -130,8 +130,8 @@ pub struct Playlist {
 
 impl Context {
     /// sorts tracks in the context by a sort oder
-    pub fn sort_tracks(&mut self, sort_oder: TrackOrder) {
-        self.tracks_mut().sort_by(|x, y| sort_oder.compare(x, y));
+    pub fn sort_tracks(&mut self, sort_order: TrackOrder) {
+        self.tracks_mut().sort_by(|x, y| sort_order.compare(x, y));
     }
 
     /// reverses order of tracks in the context
