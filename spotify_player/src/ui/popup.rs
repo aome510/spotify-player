@@ -34,7 +34,7 @@ pub fn render_popup(
                 help::render_commands_help_window(frame, ui, state, chunks[1]);
                 (chunks[0], false)
             }
-            PopupState::ActionList(item, actions, ..) => {
+            PopupState::ActionList(_, actions, _) => {
                 let items = actions
                     .iter()
                     .map(|a| (format!("{:?}", a), false))

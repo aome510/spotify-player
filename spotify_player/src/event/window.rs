@@ -115,7 +115,7 @@ pub fn handle_key_sequence_for_recommendation_window(
             .caches
             .recommendation
             .peek(&seed.uri())
-            .map(|tracks| ui.filtered_items_by_search(&tracks))
+            .map(|tracks| ui.filtered_items_by_search(tracks))
             .unwrap_or_default(),
         _ => unreachable!(),
     };

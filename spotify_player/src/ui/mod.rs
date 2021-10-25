@@ -54,8 +54,8 @@ pub fn start_ui(state: SharedState, send: std::sync::mpsc::Sender<ClientRequest>
     }
 }
 
-/// checks the current page state for changes
-/// and updates the window state (and other states) accordingly
+/// checks the current UI page state for new changes
+/// to update the UI window state and other states accordingly
 fn handle_page_state_change(
     state: &SharedState,
     send: &std::sync::mpsc::Sender<ClientRequest>,
@@ -63,20 +63,22 @@ fn handle_page_state_change(
     let mut ui = state.ui.lock().unwrap();
 
     match ui.current_page() {
-        PageState::Searching { .. } => {
+        PageState::Searching { current_query, .. } => {
             state.player.write().unwrap().context_id = None;
             match ui.window {
                 WindowState::Search { .. } => {}
                 _ => {
+                    send.send(ClientRequest::Search(current_query.clone()))?;
                     ui.window = WindowState::new_search_state();
                 }
             }
         }
-        PageState::Recommendations(..) => {
+        PageState::Recommendations(seed) => {
             state.player.write().unwrap().context_id = None;
             match ui.window {
                 WindowState::Recommendations { .. } => {}
                 _ => {
+                    send.send(ClientRequest::GetRecommendations(seed.clone()))?;
                     ui.window = WindowState::Recommendations {
                         track_table: new_table_state(),
                     };

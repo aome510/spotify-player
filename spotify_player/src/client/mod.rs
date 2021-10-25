@@ -117,11 +117,6 @@ impl Client {
                 let user = self.spotify.current_user().await?;
                 state.data.write().unwrap().user_data.user = Some(user);
             }
-            ClientRequest::GetRecommendations(seed) => {
-                let tracks = self.recommendations(&seed).await?;
-
-                todo!("implement the recommendation cache update logic")
-            }
             ClientRequest::Player(event) => {
                 self.handle_player_request(state, event).await?;
 
@@ -166,20 +161,71 @@ impl Client {
                 state.data.write().unwrap().user_data.saved_albums = albums;
             }
             ClientRequest::GetContext(context) => {
-                match context {
-                    ContextId::Playlist(playlist_id) => {
-                        self.playlist_context(&playlist_id, state).await?;
-                    }
-                    ContextId::Album(album_id) => {
-                        self.album_context(&album_id, state).await?;
-                    }
-                    ContextId::Artist(artist_id) => {
-                        self.artist_context(&artist_id, state).await?;
-                    }
-                };
+                let uri = context.uri();
+                if state
+                    .data
+                    .read()
+                    .unwrap()
+                    .caches
+                    .context
+                    .peek(&uri)
+                    .is_none()
+                {
+                    let context = match context {
+                        ContextId::Playlist(playlist_id) => {
+                            self.playlist_context(&playlist_id).await?
+                        }
+                        ContextId::Album(album_id) => self.album_context(&album_id).await?,
+                        ContextId::Artist(artist_id) => self.artist_context(&artist_id).await?,
+                    };
+
+                    state.data.write().unwrap().caches.context.put(uri, context);
+                }
             }
             ClientRequest::Search(query) => {
-                self.search(state, query).await?;
+                if state
+                    .data
+                    .read()
+                    .unwrap()
+                    .caches
+                    .search
+                    .peek(&query)
+                    .is_none()
+                {
+                    let results = self.search(&query).await?;
+
+                    // update the search cache stored inside the player state
+                    state
+                        .data
+                        .write()
+                        .unwrap()
+                        .caches
+                        .search
+                        .put(query, results);
+                }
+            }
+            ClientRequest::GetRecommendations(seed) => {
+                let uri = seed.uri();
+                if state
+                    .data
+                    .read()
+                    .unwrap()
+                    .caches
+                    .recommendation
+                    .peek(&uri)
+                    .is_none()
+                {
+                    let tracks = self.recommendations(&seed).await?;
+
+                    // update the search cache stored inside the player state
+                    state
+                        .data
+                        .write()
+                        .unwrap()
+                        .caches
+                        .recommendation
+                        .put(uri, tracks);
+                }
             }
             ClientRequest::AddTrackToPlaylist(playlist_id, track_id) => {
                 self.add_track_to_playlist(&playlist_id, &track_id).await?;
@@ -358,30 +404,12 @@ impl Client {
     }
 
     /// searchs for items (tracks, artists, albums, playlists) that match a given query string.
-    pub async fn search(&self, state: &SharedState, query: String) -> Result<()> {
-        let update_ui_states = || {
-            let mut ui = state.ui.lock().unwrap();
-            if let PageState::Searching {
-                input,
-                current_query,
-            } = ui.current_page_mut()
-            {
-                *current_query = input.to_string();
-                ui.window = WindowState::new_search_state();
-            }
-        };
-
-        // already search the query before, updating the ui page state directly
-        if let Some(search_results) = state.data.read().unwrap().caches.search.peek(&query) {
-            update_ui_states();
-            return Ok(());
-        }
-
+    pub async fn search(&self, query: &str) -> Result<SearchResults> {
         let (track_result, artist_result, album_result, playlist_result) = tokio::try_join!(
-            self.search_specific_type(&query, &model::SearchType::Track),
-            self.search_specific_type(&query, &model::SearchType::Artist),
-            self.search_specific_type(&query, &model::SearchType::Album),
-            self.search_specific_type(&query, &model::SearchType::Playlist)
+            self.search_specific_type(query, &model::SearchType::Track),
+            self.search_specific_type(query, &model::SearchType::Artist),
+            self.search_specific_type(query, &model::SearchType::Album),
+            self.search_specific_type(query, &model::SearchType::Playlist)
         )?;
 
         let (tracks, artists, albums, playlists) = (
@@ -410,24 +438,12 @@ impl Client {
             },
         );
 
-        let search_results = SearchResults {
+        Ok(SearchResults {
             tracks,
             artists,
             albums,
             playlists,
-        };
-
-        // update the search cache stored inside the player state
-        state
-            .data
-            .write()
-            .unwrap()
-            .caches
-            .search
-            .put(query, search_results);
-
-        update_ui_states();
-        Ok(())
+        })
     }
 
     async fn search_specific_type(
@@ -522,7 +538,7 @@ impl Client {
     }
 
     /// gets a playlist context data
-    async fn playlist_context(&self, playlist_id: &PlaylistId, state: &SharedState) -> Result<()> {
+    async fn playlist_context(&self, playlist_id: &PlaylistId) -> Result<Context> {
         let playlist_uri = playlist_id.uri();
         log::info!("get playlist context: {}", playlist_uri);
 
@@ -539,144 +555,79 @@ impl Client {
                 .collect::<Vec<_>>()
         };
 
-        if !state
-            .data
-            .read()
-            .unwrap()
-            .caches
-            .context
-            .contains(&playlist_uri)
-        {
-            // get the playlist
-            let playlist = self.spotify.playlist(playlist_id, None, None).await?;
-            let first_page = playlist.tracks.clone();
-            // get the playlist's tracks
-            state.data.write().unwrap().caches.context.put(
-                playlist_uri.clone(),
-                Context::Playlist {
-                    playlist: playlist.into(),
-                    tracks: playlist_items_into_tracks(first_page.items.clone()),
-                },
-            );
+        // get the playlist
+        let playlist = self.spotify.playlist(playlist_id, None, None).await?;
 
-            let tracks = playlist_items_into_tracks(self.all_paging_items(first_page).await?);
+        // get the playlist's tracks
+        let first_page = playlist.tracks.clone();
+        let tracks = playlist_items_into_tracks(self.all_paging_items(first_page).await?);
 
-            if let Some(Context::Playlist { tracks: old, .. }) = state
-                .data
-                .write()
-                .unwrap()
-                .caches
-                .context
-                .peek_mut(&playlist_uri)
-            {
-                *old = tracks;
-            }
-        }
-
-        Ok(())
+        Ok(Context::Playlist {
+            playlist: playlist.into(),
+            tracks,
+        })
     }
 
     /// gets an album context data
-    async fn album_context(&self, album_id: &AlbumId, state: &SharedState) -> Result<()> {
+    async fn album_context(&self, album_id: &AlbumId) -> Result<Context> {
         let album_uri = album_id.uri();
         log::info!("get album context: {}", album_uri);
 
-        if !state
-            .data
-            .read()
-            .unwrap()
-            .caches
-            .context
-            .contains(&album_uri)
-        {
-            // get the album
-            let album = self.spotify.album(album_id).await?;
-            // get the album's tracks
-            let album_tracks = self.all_paging_items(album.tracks.clone()).await?;
+        // get the album
+        let album = self.spotify.album(album_id).await?;
+        // get the album's tracks
+        let album_tracks = self.all_paging_items(album.tracks.clone()).await?;
 
-            // convert the `rspotify::FullAlbum` into `state::Album`
-            let album: Album = album.into();
+        // convert the `rspotify::FullAlbum` into `state::Album`
+        let album: Album = album.into();
 
-            let tracks = album_tracks
-                .into_iter()
-                .map(|t| {
-                    Track::try_from_simplified_track(t).map(|mut t| {
-                        t.album = Some(album.clone());
-                        t
-                    })
+        let tracks = album_tracks
+            .into_iter()
+            .map(|t| {
+                Track::try_from_simplified_track(t).map(|mut t| {
+                    t.album = Some(album.clone());
+                    t
                 })
-                .flatten()
-                .collect::<Vec<_>>();
+            })
+            .flatten()
+            .collect::<Vec<_>>();
 
-            state
-                .data
-                .write()
-                .unwrap()
-                .caches
-                .context
-                .put(album_uri, Context::Album { album, tracks });
-        }
-
-        Ok(())
+        Ok(Context::Album { album, tracks })
     }
 
     /// gets an artist context data
-    async fn artist_context(&self, artist_id: &ArtistId, state: &SharedState) -> Result<()> {
+    async fn artist_context(&self, artist_id: &ArtistId) -> Result<Context> {
         let artist_uri = artist_id.uri();
         log::info!("get artist context: {}", artist_uri);
 
-        if !state
-            .data
-            .read()
-            .unwrap()
-            .caches
-            .context
-            .contains(&artist_uri)
-        {
-            // get a information, top tracks and all albums
-            let artist = self.spotify.artist(artist_id).await?.into();
+        // get a information, top tracks and all albums
+        let artist = self.spotify.artist(artist_id).await?.into();
 
-            let top_tracks = self
-                .spotify
-                .artist_top_tracks(artist_id, &model::enums::misc::Market::FromToken)
-                .await?
-                .into_iter()
-                .map(|t| t.into())
-                .collect::<Vec<_>>();
+        let top_tracks = self
+            .spotify
+            .artist_top_tracks(artist_id, &model::enums::misc::Market::FromToken)
+            .await?
+            .into_iter()
+            .map(|t| t.into())
+            .collect::<Vec<_>>();
 
-            let related_artists = self
-                .spotify
-                .artist_related_artists(artist_id)
-                .await?
-                .into_iter()
-                .map(|a| a.into())
-                .collect::<Vec<_>>();
+        let related_artists = self
+            .spotify
+            .artist_related_artists(artist_id)
+            .await?
+            .into_iter()
+            .map(|a| a.into())
+            .collect::<Vec<_>>();
 
-            state.data.write().unwrap().caches.context.put(
-                artist_uri.clone(),
-                Context::Artist {
-                    artist,
-                    top_tracks,
-                    albums: vec![],
-                    related_artists,
-                },
-            );
+        // delay the request for getting artist's albums to not block the UI
+        let albums = self.artist_albums(artist_id).await?;
 
-            // delay the request for getting artist's albums to not block the UI
-            let albums = self.artist_albums(artist_id).await?;
-
-            if let Some(Context::Artist { albums: old, .. }) = state
-                .data
-                .write()
-                .unwrap()
-                .caches
-                .context
-                .peek_mut(&artist_uri)
-            {
-                *old = albums;
-            }
-        }
-        Ok(())
+        Ok(Context::Artist {
+            artist,
+            top_tracks,
+            albums,
+            related_artists,
+        })
     }
 
     /// calls a GET api to Spotify server by making a http request
