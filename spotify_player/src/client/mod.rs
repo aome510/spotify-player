@@ -116,7 +116,7 @@ impl Client {
         match request {
             ClientRequest::GetCurrentUser => {
                 let user = self.spotify.current_user().await?;
-                state.player.write().unwrap().user = Some(user);
+                state.data.write().unwrap().user = Some(user);
             }
             ClientRequest::GetRecommendations(seed) => {
                 let tracks = self.recommendations(&seed).await?;

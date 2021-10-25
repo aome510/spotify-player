@@ -3,7 +3,10 @@ mod model;
 mod player;
 mod ui;
 
+pub use data::*;
 pub use model::*;
+pub use player::*;
+pub use ui::*;
 
 use crate::config;
 use anyhow::Result;
@@ -18,9 +21,9 @@ pub struct State {
     pub keymap_config: config::KeymapConfig,
     pub theme_config: config::ThemeConfig,
 
-    pub ui: Mutex<ui::UIState>,
-    pub player: RwLock<player::PlayerState>,
-    pub data: RwLock<data::Data>,
+    pub ui: Mutex<UIState>,
+    pub player: RwLock<PlayerState>,
+    pub data: RwLock<AppData>,
 }
 
 impl State {
@@ -56,9 +59,9 @@ impl Default for State {
             theme_config: config::ThemeConfig::default(),
             keymap_config: config::KeymapConfig::default(),
 
-            ui: Mutex::new(ui::UIState::default()),
-            player: RwLock::new(player::PlayerState::default()),
-            data: RwLock::new(data::Data::default()),
+            ui: Mutex::new(UIState::default()),
+            player: RwLock::new(PlayerState::default()),
+            data: RwLock::new(AppData::default()),
         }
     }
 }

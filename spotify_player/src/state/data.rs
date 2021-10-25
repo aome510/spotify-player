@@ -1,7 +1,7 @@
 use super::model::*;
 
 #[derive(Default, Debug)]
-pub struct Data {
+pub struct AppData {
     pub user: UserData,
     pub devices: Vec<Device>,
     pub caches: Caches,
