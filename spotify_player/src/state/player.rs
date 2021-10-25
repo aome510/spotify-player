@@ -1,7 +1,7 @@
-use super::model::*;
+use super::{data, model::*};
 
 /// Player state
-#[derive(Debug)]
+#[derive(Default, Debug)]
 pub struct PlayerState {
     pub context_id: Option<ContextId>,
 
@@ -41,7 +41,7 @@ impl PlayerState {
                         std::time::Instant::now()
                             .saturating_duration_since(self.playback_last_updated.unwrap())
                     } else {
-                        time::Duration::default()
+                        std::time::Duration::default()
                     };
                 Some(progress_ms)
             }
@@ -49,27 +49,18 @@ impl PlayerState {
     }
 
     /// gets the current context
-    pub fn context(&self) -> Option<&Context> {
+    pub fn context<'a>(&self, caches: &'a data::Caches) -> Option<&'a Context> {
         match self.context_id {
-            Some(ref id) => self.context_cache.peek(&id.uri()),
+            Some(ref id) => caches.context.peek(&id.uri()),
             None => None,
         }
     }
 
     /// gets the current context (mutable)
-    pub fn context_mut(&mut self) -> Option<&mut Context> {
+    pub fn context_mut<'a>(&self, caches: &'a data::Caches) -> Option<&'a mut Context> {
         match self.context_id {
-            Some(ref id) => self.context_cache.peek_mut(&id.uri()),
+            Some(ref id) => caches.context.peek_mut(&id.uri()),
             None => None,
-        }
-    }
-}
-impl Default for PlayerState {
-    fn default() -> Self {
-        Self {
-            context_id: None,
-            playback: None,
-            playback_last_updated: None,
         }
     }
 }
