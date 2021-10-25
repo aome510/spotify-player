@@ -63,18 +63,12 @@ fn handle_page_state_change(
     let mut ui = state.ui.lock().unwrap();
 
     match ui.current_page() {
-        PageState::Searching(..) => {
+        PageState::Searching { .. } => {
             state.player.write().unwrap().context_id = None;
             match ui.window {
-                WindowState::Search(..) => {}
+                WindowState::Search { .. } => {}
                 _ => {
-                    ui.window = WindowState::Search(
-                        new_list_state(),
-                        new_list_state(),
-                        new_list_state(),
-                        new_list_state(),
-                        SearchFocusState::Input,
-                    );
+                    ui.window = WindowState::new_search_state();
                 }
             }
         }

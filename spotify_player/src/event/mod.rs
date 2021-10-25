@@ -248,13 +248,7 @@ fn handle_global_command(
                 "".to_owned(),
                 Box::new(SearchResults::default()),
             ));
-            ui.window = WindowState::Search(
-                new_list_state(),
-                new_list_state(),
-                new_list_state(),
-                new_list_state(),
-                SearchFocusState::Input,
-            );
+            ui.window = WindowState::new_search_state();
         }
         Command::PreviousPage => {
             if ui.history.len() > 1 {

@@ -30,7 +30,7 @@ impl Client {
         }
     }
 
-    /// initializes the authorization token stored inside the Spotify client
+    /// initializes the authorization token inside the Spotify client
     pub async fn init_token(&self) -> Result<()> {
         self.spotify.refresh_token().await?;
         log::info!(
@@ -368,13 +368,7 @@ impl Client {
             } = ui.current_page_mut()
             {
                 *current_query = input.to_string();
-                ui.window = WindowState::Search {
-                    track_list: utils::new_list_state(),
-                    album_list: utils::new_list_state(),
-                    artist_list: utils::new_list_state(),
-                    playlist_list: utils::new_list_state(),
-                    focus: SearchFocusState::Input,
-                };
+                ui.window = WindowState::new_search_state();
             }
         };
 

@@ -1,5 +1,5 @@
 use super::model::*;
-use crate::{config, key};
+use crate::{config, key, utils};
 
 use tui::widgets::{ListState, TableState};
 
@@ -175,6 +175,19 @@ impl Default for UIState {
             window: WindowState::Unknown,
 
             progress_bar_rect: tui::layout::Rect::default(),
+        }
+    }
+}
+
+impl WindowState {
+    /// creates a new window search state
+    pub fn new_search_state() -> Self {
+        Self::Search {
+            track_list: utils::new_list_state(),
+            album_list: utils::new_list_state(),
+            artist_list: utils::new_list_state(),
+            playlist_list: utils::new_list_state(),
+            focus: SearchFocusState::Input,
         }
     }
 }
