@@ -3,7 +3,6 @@ use std::sync::Arc;
 use crate::{
     event::{ClientRequest, PlayerRequest},
     state::*,
-    utils,
 };
 use anyhow::{anyhow, Result};
 use librespot_core::session::Session;
@@ -283,7 +282,7 @@ impl Client {
     /// starts a playback
     pub async fn start_playback(&self, playback: Playback, device_id: Option<&str>) -> Result<()> {
         match playback {
-            Playback::Context { id, offset } => match id {
+            Playback::Context(id, offset) => match id {
                 ContextId::Album(id) => {
                     self.spotify
                         .start_context_playback(&id, device_id, offset, None)
@@ -300,7 +299,7 @@ impl Client {
                         .await?
                 }
             },
-            Playback::URIs { track_ids, offset } => {
+            Playback::URIs(track_ids, offset) => {
                 self.spotify
                     .start_uris_playback(
                         track_ids

@@ -123,7 +123,7 @@ impl UIState {
     /// gets a list of items possibly filtered by a search query if exists a search popup
     pub fn filtered_items_by_search<'a, T: std::fmt::Display>(&self, items: &'a [T]) -> Vec<&'a T> {
         match self.popup {
-            Some(PopupState::Search { query }) => items
+            Some(PopupState::Search { ref query }) => items
                 .iter()
                 .filter(|t| Self::is_match(&t.to_string().to_lowercase(), &query.to_lowercase()))
                 .collect::<Vec<_>>(),

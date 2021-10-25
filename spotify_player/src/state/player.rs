@@ -59,7 +59,7 @@ impl PlayerState {
     }
 
     /// gets the current context (mutable)
-    pub fn context_mut<'a>(&self, caches: &'a data::Caches) -> Option<&'a mut Context> {
+    pub fn context_mut<'a>(&self, caches: &'a mut data::Caches) -> Option<&'a mut Context> {
         match self.context_id {
             Some(ref id) => caches.context.peek_mut(&id.uri()),
             None => None,
