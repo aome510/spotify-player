@@ -1,5 +1,3 @@
-use parking_lot::RwLockReadGuard;
-
 use super::{render_track_table_widget, Frame};
 use crate::{state::*, ui::construct_list_widget};
 use tui::{layout::*, widgets::*};
@@ -19,9 +17,8 @@ pub fn render_context_window(
         .borders(Borders::ALL);
 
     let data = state.data.read();
-    let player = state.player.read();
 
-    match player.context(&data.caches) {
+    match state.player.read().context(&data.caches) {
         Some(context) => {
             frame.render_widget(block, rect);
 
@@ -46,7 +43,6 @@ pub fn render_context_window(
                         is_active,
                         frame,
                         state,
-                        &player,
                         chunks[1],
                         (top_tracks, albums, related_artists),
                     );
@@ -57,7 +53,6 @@ pub fn render_context_window(
                         chunks[1],
                         is_active,
                         state,
-                        &player,
                         state.filtered_items_by_search(tracks),
                     );
                 }
@@ -67,14 +62,13 @@ pub fn render_context_window(
                         chunks[1],
                         is_active,
                         state,
-                        &player,
                         state.filtered_items_by_search(tracks),
                     );
                 }
             }
         }
         None => {
-            let desc = if player.context_id.is_none() {
+            let desc = if state.player.read().context_id.is_none() {
                 "Cannot infer the playing context from the current playback"
             } else {
                 // context is not empty, but cannot get context data inside the player state
@@ -94,7 +88,6 @@ fn render_context_artist_widgets(
     is_active: bool,
     frame: &mut Frame,
     state: &SharedState,
-    player: &RwLockReadGuard<PlayerState>,
     rect: Rect,
     data: (&[Track], &[Album], &[Artist]),
 ) {
@@ -124,7 +117,6 @@ fn render_context_artist_widgets(
             chunks[0],
             is_active && focus_state == ArtistFocusState::TopTracks,
             state,
-            player,
             tracks,
         );
 

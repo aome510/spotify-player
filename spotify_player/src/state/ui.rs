@@ -200,19 +200,12 @@ impl WindowState {
     /// gets the state of the track table
     pub fn track_table_state(&mut self) -> Option<&mut TableState> {
         match self {
-            Self::Playlist {
-                ref mut track_table,
-            } => Some(track_table),
-            Self::Album {
-                ref mut track_table,
-            } => Some(track_table),
+            Self::Playlist { track_table } => Some(track_table),
+            Self::Album { track_table } => Some(track_table),
             Self::Artist {
-                ref mut top_track_table,
-                ..
+                top_track_table, ..
             } => Some(top_track_table),
-            Self::Recommendations {
-                ref mut track_table,
-            } => Some(track_table),
+            Self::Recommendations { track_table } => Some(track_table),
             _ => None,
         }
     }
@@ -222,11 +215,11 @@ impl WindowState {
         match self {
             Self::Unknown => {}
             Self::Search {
-                ref mut track_list,
-                ref mut album_list,
-                ref mut artist_list,
-                ref mut playlist_list,
-                ref focus,
+                track_list,
+                album_list,
+                artist_list,
+                playlist_list,
+                focus,
             } => match focus {
                 SearchFocusState::Input => {}
                 SearchFocusState::Tracks => track_list.select(id),
@@ -234,25 +227,19 @@ impl WindowState {
                 SearchFocusState::Artists => artist_list.select(id),
                 SearchFocusState::Playlists => playlist_list.select(id),
             },
-            Self::Playlist {
-                ref mut track_table,
-            } => track_table.select(id),
-            Self::Album {
-                ref mut track_table,
-            } => track_table.select(id),
+            Self::Playlist { track_table } => track_table.select(id),
+            Self::Album { track_table } => track_table.select(id),
             Self::Artist {
-                ref mut top_track_table,
-                ref mut album_list,
-                ref mut related_artist_list,
-                ref focus,
+                top_track_table,
+                album_list,
+                related_artist_list,
+                focus,
             } => match focus {
                 ArtistFocusState::TopTracks => top_track_table.select(id),
                 ArtistFocusState::Albums => album_list.select(id),
                 ArtistFocusState::RelatedArtists => related_artist_list.select(id),
             },
-            Self::Recommendations {
-                ref mut track_table,
-            } => track_table.select(id),
+            Self::Recommendations { track_table } => track_table.select(id),
         }
     }
 
@@ -261,11 +248,11 @@ impl WindowState {
         match self {
             Self::Unknown => None,
             Self::Search {
-                ref track_list,
-                ref album_list,
-                ref artist_list,
-                ref playlist_list,
-                ref focus,
+                track_list,
+                album_list,
+                artist_list,
+                playlist_list,
+                focus,
             } => match focus {
                 SearchFocusState::Input => None,
                 SearchFocusState::Tracks => track_list.selected(),
@@ -273,19 +260,19 @@ impl WindowState {
                 SearchFocusState::Artists => artist_list.selected(),
                 SearchFocusState::Playlists => playlist_list.selected(),
             },
-            Self::Playlist { ref track_table } => track_table.selected(),
-            Self::Album { ref track_table } => track_table.selected(),
+            Self::Playlist { track_table } => track_table.selected(),
+            Self::Album { track_table } => track_table.selected(),
             Self::Artist {
-                ref top_track_table,
-                ref album_list,
-                ref related_artist_list,
-                ref focus,
+                top_track_table,
+                album_list,
+                related_artist_list,
+                focus,
             } => match focus {
                 ArtistFocusState::TopTracks => top_track_table.selected(),
                 ArtistFocusState::Albums => album_list.selected(),
                 ArtistFocusState::RelatedArtists => related_artist_list.selected(),
             },
-            Self::Recommendations { ref track_table } => track_table.selected(),
+            Self::Recommendations { track_table } => track_table.selected(),
         }
     }
 }

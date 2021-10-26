@@ -245,8 +245,8 @@ fn render_recommendation_window(
 
     // render the window's description
     let desc = match seed {
-        SeedItem::Track(ref track) => format!("{} Radio", track.name),
-        SeedItem::Artist(ref artist) => format!("{} Radio", artist.name),
+        SeedItem::Track(track) => format!("{} Radio", track.name),
+        SeedItem::Artist(artist) => format!("{} Radio", artist.name),
     };
 
     let chunks = Layout::default()
@@ -258,13 +258,11 @@ fn render_recommendation_window(
         Paragraph::new(desc).block(Block::default().style(state.ui.lock().theme.context_desc()));
     frame.render_widget(context_desc, chunks[0]);
 
-    let player = state.player.read();
     render_track_table_widget(
         frame,
         chunks[1],
         is_active,
         state,
-        &player,
         state.filtered_items_by_search(tracks),
     );
 }
@@ -382,8 +380,6 @@ pub fn render_track_table_widget(
     rect: Rect,
     is_active: bool,
     state: &SharedState,
-    // TODO: find out way to remove the ReadGuard as function parameter
-    player: &parking_lot::RwLockReadGuard<PlayerState>,
     tracks: Vec<&Track>,
 ) {
     let mut ui = state.ui.lock();
@@ -392,7 +388,7 @@ pub fn render_track_table_widget(
     // highlight such track (if exists) in the track table
     let mut playing_track_uri = "".to_string();
     let mut active_desc = "";
-    if let Some(ref playback) = player.playback {
+    if let Some(ref playback) = state.player.read().playback {
         if let Some(rspotify::model::PlayableItem::Track(ref track)) = playback.item {
             playing_track_uri = track.id.uri();
             active_desc = if !playback.is_playing { "⏸" } else { "▶" };

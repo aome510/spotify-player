@@ -185,11 +185,10 @@ impl Context {
     /// gets context tracks (mutable)
     pub fn tracks_mut(&mut self) -> &mut Vec<Track> {
         match self {
-            Context::Album { ref mut tracks, .. } => tracks,
-            Context::Playlist { ref mut tracks, .. } => tracks,
+            Context::Album { tracks, .. } => tracks,
+            Context::Playlist { tracks, .. } => tracks,
             Context::Artist {
-                top_tracks: ref mut tracks,
-                ..
+                top_tracks: tracks, ..
             } => tracks,
         }
     }
@@ -198,9 +197,9 @@ impl Context {
 impl ContextId {
     pub fn uri(&self) -> String {
         match self {
-            Self::Album(ref id) => id.uri(),
-            Self::Artist(ref id) => id.uri(),
-            Self::Playlist(ref id) => id.uri(),
+            Self::Album(id) => id.uri(),
+            Self::Artist(id) => id.uri(),
+            Self::Playlist(id) => id.uri(),
         }
     }
 }
@@ -245,8 +244,8 @@ impl SeedItem {
     /// gets the uri of the seed item
     pub fn uri(&self) -> String {
         match self {
-            Self::Track(ref track) => track.id.uri(),
-            Self::Artist(ref artist) => artist.id.uri(),
+            Self::Track(track) => track.id.uri(),
+            Self::Artist(artist) => artist.id.uri(),
         }
     }
 }

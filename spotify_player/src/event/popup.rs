@@ -55,7 +55,7 @@ pub fn handle_key_sequence_for_popup(
                         rspotify_model::Type::Playlist,
                     )
                 }
-                PlaylistPopupAction::AddTrack(ref track_id) => {
+                PlaylistPopupAction::AddTrack(track_id) => {
                     let track_id = track_id.clone();
                     let n_items = playlists.len();
 
