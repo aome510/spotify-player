@@ -9,10 +9,11 @@ use {tui::layout::*, tui::widgets::*};
 /// This function will panic if the current UI's `PageState` is not `PageState::Searching`
 pub fn render_search_window(is_active: bool, frame: &mut Frame, state: &SharedState, rect: Rect) {
     // gets the current search query from UI's `PageState`
-    let query = match state.ui.lock().current_page() {
+    let (input, current_query) = match state.ui.lock().current_page() {
         PageState::Searching {
-            ref current_query, ..
-        } => current_query.clone(),
+            input,
+            current_query,
+        } => (input.clone(), current_query.clone()),
         _ => unreachable!(),
     };
 
@@ -25,7 +26,7 @@ pub fn render_search_window(is_active: bool, frame: &mut Frame, state: &SharedSt
 
     let data = state.data.read();
 
-    let search_results = data.caches.search.peek(&query);
+    let search_results = data.caches.search.peek(&current_query);
 
     let track_list = {
         let track_items = search_results
@@ -128,7 +129,7 @@ pub fn render_search_window(is_active: bool, frame: &mut Frame, state: &SharedSt
         let is_active = is_active && focus_state == SearchFocusState::Input;
 
         frame.render_widget(
-            Paragraph::new(query).style(state.ui.lock().theme.selection_style(is_active)),
+            Paragraph::new(input).style(state.ui.lock().theme.selection_style(is_active)),
             chunks[0],
         );
 

@@ -164,7 +164,7 @@ pub fn handle_key_sequence_for_search_window(
         }
     };
 
-    let (input, query) = match ui.current_page_mut() {
+    let (input, current_query) = match ui.current_page_mut() {
         PageState::Searching {
             input,
             current_query,
@@ -189,6 +189,7 @@ pub fn handle_key_sequence_for_search_window(
                     }
                     KeyCode::Enter => {
                         if !input.is_empty() {
+                            *current_query = input.clone();
                             send.send(ClientRequest::Search(input.clone()))?;
                         }
                         return Ok(true);
@@ -208,7 +209,7 @@ pub fn handle_key_sequence_for_search_window(
     };
 
     let data = state.data.read();
-    let search_results = data.caches.search.peek(query);
+    let search_results = data.caches.search.peek(current_query);
 
     match command {
         Command::FocusNextWindow => {
