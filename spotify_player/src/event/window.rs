@@ -222,8 +222,6 @@ pub fn handle_key_sequence_for_search_window(
         // determine the current focused subwindow inside the search window,
         // and assign the handling job to the corresponding handler
         _ => {
-            // drop the UI lock before moving the handling job
-            // to another function
             drop(ui);
 
             match focus_state {
@@ -376,9 +374,10 @@ fn handle_command_for_track_table_subwindow(
             }
         }
         Command::ShowActionsOnSelectedItem => {
-            let item = Item::Track(tracks[id].clone());
-            let actions = item.actions();
-            ui.popup = Some(PopupState::ActionList(item, actions, new_list_state()));
+            ui.popup = Some(PopupState::ActionList(
+                Item::Track(tracks[id].clone()),
+                new_list_state(),
+            ));
         }
         _ => return Ok(false),
     }
@@ -416,9 +415,10 @@ fn handle_command_for_track_list_subwindow(
             )))?;
         }
         Command::ShowActionsOnSelectedItem => {
-            let item = Item::Track(tracks[id].clone());
-            let actions = item.actions();
-            ui.popup = Some(PopupState::ActionList(item, actions, new_list_state()));
+            ui.popup = Some(PopupState::ActionList(
+                Item::Track(tracks[id].clone()),
+                new_list_state(),
+            ));
         }
         _ => return Ok(false),
     }
@@ -451,9 +451,10 @@ fn handle_command_for_artist_list_subwindow(
             ui.create_new_page(PageState::Browsing(context_id));
         }
         Command::ShowActionsOnSelectedItem => {
-            let item = Item::Artist(artists[id].clone());
-            let actions = item.actions();
-            ui.popup = Some(PopupState::ActionList(item, actions, new_list_state()));
+            ui.popup = Some(PopupState::ActionList(
+                Item::Artist(artists[id].clone()),
+                new_list_state(),
+            ));
         }
         _ => return Ok(false),
     }
@@ -486,9 +487,10 @@ fn handle_command_for_album_list_subwindow(
             ui.create_new_page(PageState::Browsing(context_id));
         }
         Command::ShowActionsOnSelectedItem => {
-            let item = Item::Album(albums[id].clone());
-            let actions = item.actions();
-            ui.popup = Some(PopupState::ActionList(item, actions, new_list_state()));
+            ui.popup = Some(PopupState::ActionList(
+                Item::Album(albums[id].clone()),
+                new_list_state(),
+            ));
         }
         _ => return Ok(false),
     }
@@ -521,9 +523,10 @@ fn handle_command_for_playlist_list_subwindow(
             ui.create_new_page(PageState::Browsing(context_id));
         }
         Command::ShowActionsOnSelectedItem => {
-            let item = Item::Playlist(playlists[id].clone());
-            let actions = item.actions();
-            ui.popup = Some(PopupState::ActionList(item, actions, new_list_state()));
+            ui.popup = Some(PopupState::ActionList(
+                Item::Playlist(playlists[id].clone()),
+                new_list_state(),
+            ));
         }
         _ => return Ok(false),
     }

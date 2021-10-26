@@ -113,11 +113,13 @@ fn handle_key_event(
         key_sequence = KeySequence { keys: vec![key] };
     }
 
-    let handled = match state.ui.lock().popup {
+    let ui = state.ui.lock();
+    let handled = match ui.popup {
         None => {
             // no popup
-            match state.ui.lock().current_page() {
+            match ui.current_page() {
                 PageState::Recommendations(..) => {
+                    drop(ui);
                     window::handle_key_sequence_for_recommendation_window(
                         &key_sequence,
                         send,
@@ -125,14 +127,19 @@ fn handle_key_event(
                     )?
                 }
                 PageState::Browsing(_) | PageState::CurrentPlaying => {
+                    drop(ui);
                     window::handle_key_sequence_for_context_window(&key_sequence, send, state)?
                 }
                 PageState::Searching { .. } => {
+                    drop(ui);
                     window::handle_key_sequence_for_search_window(&key_sequence, send, state)?
                 }
             }
         }
-        Some(_) => popup::handle_key_sequence_for_popup(&key_sequence, send, state)?,
+        Some(_) => {
+            drop(ui);
+            popup::handle_key_sequence_for_popup(&key_sequence, send, state)?
+        }
     };
 
     // if the key sequence is not handled, let the global command handler handle it
@@ -209,9 +216,10 @@ fn handle_global_command(
         }
         Command::ShowActionsOnCurrentTrack => {
             if let Some(track) = state.player.read().current_playing_track() {
-                let item = Item::Track(track.clone().into());
-                let actions = item.actions();
-                ui.popup = Some(PopupState::ActionList(item, actions, new_list_state()));
+                ui.popup = Some(PopupState::ActionList(
+                    Item::Track(track.clone().into()),
+                    new_list_state(),
+                ));
             }
         }
         Command::BrowsePlayingContext => {

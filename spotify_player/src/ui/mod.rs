@@ -174,8 +174,10 @@ fn render_main_layout(is_active: bool, frame: &mut Frame, state: &SharedState, r
         .split(rect);
     render_playback_window(frame, state, chunks[0]);
 
-    match state.ui.lock().current_page() {
+    let ui = state.ui.lock();
+    match ui.current_page() {
         PageState::CurrentPlaying => {
+            drop(ui);
             context::render_context_window(
                 is_active,
                 frame,
@@ -185,6 +187,7 @@ fn render_main_layout(is_active: bool, frame: &mut Frame, state: &SharedState, r
             );
         }
         PageState::Browsing { .. } => {
+            drop(ui);
             context::render_context_window(
                 is_active,
                 frame,
@@ -194,9 +197,11 @@ fn render_main_layout(is_active: bool, frame: &mut Frame, state: &SharedState, r
             );
         }
         PageState::Recommendations { .. } => {
+            drop(ui);
             render_recommendation_window(is_active, frame, state, chunks[1]);
         }
         PageState::Searching { .. } => {
+            drop(ui);
             // make sure that the window state matches the current page state.
             // The mismatch can happen when going back to the search from another page
             search::render_search_window(is_active, frame, state, chunks[1]);

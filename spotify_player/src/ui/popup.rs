@@ -36,8 +36,9 @@ pub fn render_popup(frame: &mut Frame, state: &SharedState, rect: Rect) -> (Rect
                 help::render_commands_help_popup(frame, &mut ui, state, chunks[1]);
                 (chunks[0], false)
             }
-            PopupState::ActionList(_, actions, _) => {
-                let items = actions
+            PopupState::ActionList(item, _) => {
+                let items = item
+                    .actions()
                     .iter()
                     .map(|a| (format!("{:?}", a), false))
                     .collect();

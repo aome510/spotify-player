@@ -72,7 +72,7 @@ pub enum PopupState {
     DeviceList(ListState),
     ArtistList(Vec<Artist>, ListState),
     ThemeList(Vec<config::Theme>, ListState),
-    ActionList(Item, Vec<crate::command::Action>, ListState),
+    ActionList(Item, ListState),
 }
 
 /// An action on a playlist popup list

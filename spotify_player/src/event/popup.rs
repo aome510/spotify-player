@@ -8,39 +8,45 @@ pub fn handle_key_sequence_for_popup(
     send: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
 ) -> Result<bool> {
-    match state.ui.lock().popup.as_ref().unwrap() {
+    let ui = state.ui.lock();
+    match ui.popup.as_ref().unwrap() {
         PopupState::Search { .. } => {
+            drop(ui);
             handle_key_sequence_for_search_popup(key_sequence, send, state)
         }
-        PopupState::ArtistList(..) => handle_key_sequence_for_list_popup(
-            key_sequence,
-            state,
-            match state.ui.lock().popup {
-                Some(PopupState::ArtistList(ref artists, _)) => artists.len(),
-                _ => unreachable!(),
-            },
-            |_, _| {},
-            |ui: &mut UIStateGuard, id: usize| -> Result<()> {
-                let artists = match ui.popup {
-                    Some(PopupState::ArtistList(ref artists, _)) => artists,
+        PopupState::ArtistList(..) => {
+            drop(ui);
+            handle_key_sequence_for_list_popup(
+                key_sequence,
+                state,
+                match state.ui.lock().popup {
+                    Some(PopupState::ArtistList(ref artists, _)) => artists.len(),
                     _ => unreachable!(),
-                };
+                },
+                |_, _| {},
+                |ui: &mut UIStateGuard, id: usize| -> Result<()> {
+                    let artists = match ui.popup {
+                        Some(PopupState::ArtistList(ref artists, _)) => artists,
+                        _ => unreachable!(),
+                    };
 
-                let context_id = ContextId::Artist(artists[id].id.clone());
-                send.send(ClientRequest::GetContext(context_id.clone()))?;
-                ui.create_new_page(PageState::Browsing(context_id));
+                    let context_id = ContextId::Artist(artists[id].id.clone());
+                    send.send(ClientRequest::GetContext(context_id.clone()))?;
+                    ui.create_new_page(PageState::Browsing(context_id));
 
-                Ok(())
-            },
-            |ui: &mut UIStateGuard| {
-                ui.popup = None;
-            },
-        ),
+                    Ok(())
+                },
+                |ui: &mut UIStateGuard| {
+                    ui.popup = None;
+                },
+            )
+        }
         PopupState::UserPlaylistList(action, playlists, _) => {
             match action {
                 PlaylistPopupAction::Browse => {
                     let playlist_uris = playlists.iter().map(|p| p.id.uri()).collect::<Vec<_>>();
 
+                    drop(ui);
                     handle_key_sequence_for_context_browsing_list_popup(
                         key_sequence,
                         send,
@@ -52,6 +58,7 @@ pub fn handle_key_sequence_for_popup(
                 PlaylistPopupAction::AddTrack(ref track_id) => {
                     let track_id = track_id.clone();
 
+                    drop(ui);
                     handle_key_sequence_for_list_popup(
                         key_sequence,
                         state,
@@ -105,6 +112,7 @@ pub fn handle_key_sequence_for_popup(
                 .map(|a| a.id.uri())
                 .collect::<Vec<_>>();
 
+            drop(ui);
             handle_key_sequence_for_context_browsing_list_popup(
                 key_sequence,
                 send,
@@ -123,6 +131,7 @@ pub fn handle_key_sequence_for_popup(
                 .map(|a| a.id.uri())
                 .collect::<Vec<_>>();
 
+            drop(ui);
             handle_key_sequence_for_context_browsing_list_popup(
                 key_sequence,
                 send,
@@ -131,34 +140,38 @@ pub fn handle_key_sequence_for_popup(
                 rspotify_model::Type::Album,
             )
         }
-        PopupState::ThemeList(_, _) => handle_key_sequence_for_list_popup(
-            key_sequence,
-            state,
-            match state.ui.lock().popup {
-                Some(PopupState::ThemeList(ref themes, _)) => themes.len(),
-                _ => unreachable!(),
-            },
-            |ui: &mut UIStateGuard, id: usize| {
-                ui.theme = match ui.popup {
-                    Some(PopupState::ThemeList(ref themes, _)) => themes[id].clone(),
+        PopupState::ThemeList(_, _) => {
+            drop(ui);
+            handle_key_sequence_for_list_popup(
+                key_sequence,
+                state,
+                match state.ui.lock().popup {
+                    Some(PopupState::ThemeList(ref themes, _)) => themes.len(),
                     _ => unreachable!(),
-                };
-            },
-            |ui: &mut UIStateGuard, _| -> Result<()> {
-                ui.popup = None;
-                Ok(())
-            },
-            |ui: &mut UIStateGuard| {
-                ui.theme = match ui.popup {
-                    Some(PopupState::ThemeList(ref themes, _)) => themes[0].clone(),
-                    _ => unreachable!(),
-                };
-                ui.popup = None;
-            },
-        ),
+                },
+                |ui: &mut UIStateGuard, id: usize| {
+                    ui.theme = match ui.popup {
+                        Some(PopupState::ThemeList(ref themes, _)) => themes[id].clone(),
+                        _ => unreachable!(),
+                    };
+                },
+                |ui: &mut UIStateGuard, _| -> Result<()> {
+                    ui.popup = None;
+                    Ok(())
+                },
+                |ui: &mut UIStateGuard| {
+                    ui.theme = match ui.popup {
+                        Some(PopupState::ThemeList(ref themes, _)) => themes[0].clone(),
+                        _ => unreachable!(),
+                    };
+                    ui.popup = None;
+                },
+            )
+        }
         PopupState::DeviceList(_) => {
             let player = state.player.read();
 
+            drop(ui);
             handle_key_sequence_for_list_popup(
                 key_sequence,
                 state,
@@ -178,10 +191,13 @@ pub fn handle_key_sequence_for_popup(
             )
         }
         PopupState::CommandHelp { .. } => {
+            drop(ui);
             handle_key_sequence_for_command_help_popup(key_sequence, state)
         }
         PopupState::ActionList(item, ..) => {
-            handle_key_sequence_for_action_list_popup(item.actions(), key_sequence, send, state)
+            let actions = item.actions();
+            drop(ui);
+            handle_key_sequence_for_action_list_popup(actions, key_sequence, send, state)
         }
     }
 }
@@ -192,31 +208,29 @@ fn handle_key_sequence_for_search_popup(
     send: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
 ) -> Result<bool> {
-    {
-        // handle user's input that updates the search query
-        let mut ui = state.ui.lock();
+    // handle user's input that updates the search query
+    let mut ui = state.ui.lock();
 
-        let query = match ui.popup {
-            Some(PopupState::Search { ref mut query }) => query,
-            _ => unreachable!(),
-        };
-        if key_sequence.keys.len() == 1 {
-            if let Key::None(c) = key_sequence.keys[0] {
-                match c {
-                    KeyCode::Char(c) => {
-                        query.push(c);
-                        ui.window.select(Some(0));
-                        return Ok(true);
-                    }
-                    KeyCode::Backspace => {
-                        if !query.is_empty() {
-                            query.pop().unwrap();
-                            ui.window.select(Some(0));
-                        }
-                        return Ok(true);
-                    }
-                    _ => {}
+    let query = match ui.popup {
+        Some(PopupState::Search { ref mut query }) => query,
+        _ => unreachable!(),
+    };
+    if key_sequence.keys.len() == 1 {
+        if let Key::None(c) = key_sequence.keys[0] {
+            match c {
+                KeyCode::Char(c) => {
+                    query.push(c);
+                    ui.window.select(Some(0));
+                    return Ok(true);
                 }
+                KeyCode::Backspace => {
+                    if !query.is_empty() {
+                        query.pop().unwrap();
+                        ui.window.select(Some(0));
+                    }
+                    return Ok(true);
+                }
+                _ => {}
             }
         }
     }
@@ -228,16 +242,17 @@ fn handle_key_sequence_for_search_popup(
     match command {
         Some(command) => match command {
             Command::ClosePopup => {
-                let mut ui = state.ui.lock();
                 ui.window.select(Some(0));
                 ui.popup = None;
                 Ok(true)
             }
-            _ => match state.ui.lock().current_page() {
+            _ => match ui.current_page() {
                 PageState::Recommendations(..) => {
+                    drop(ui);
                     window::handle_key_sequence_for_recommendation_window(key_sequence, send, state)
                 }
                 PageState::Browsing(_) | PageState::CurrentPlaying => {
+                    drop(ui);
                     window::handle_key_sequence_for_context_window(key_sequence, send, state)
                 }
                 _ => Ok(false),
