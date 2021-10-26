@@ -1,6 +1,7 @@
 use crate::{event::ClientRequest, state::*, utils};
 use anyhow::Result;
 use rspotify::model;
+use std::sync::mpsc;
 use tui::{layout::*, style::*, text::*, widgets::*};
 
 type Terminal = tui::Terminal<tui::backend::CrosstermBackend<std::io::Stdout>>;
@@ -12,7 +13,7 @@ mod popup;
 mod search;
 
 /// starts the application UI rendering function(s)
-pub fn start_ui(state: SharedState, send: std::sync::mpsc::Sender<ClientRequest>) -> Result<()> {
+pub fn start_ui(state: SharedState, send: mpsc::Sender<ClientRequest>) -> Result<()> {
     // terminal UI initializations
     let mut stdout = std::io::stdout();
     crossterm::terminal::enable_raw_mode()?;
@@ -49,10 +50,7 @@ pub fn start_ui(state: SharedState, send: std::sync::mpsc::Sender<ClientRequest>
 
 /// checks the current UI page state for new changes
 /// to update the UI window state and other states accordingly
-fn handle_page_state_change(
-    state: &SharedState,
-    send: &std::sync::mpsc::Sender<ClientRequest>,
-) -> Result<()> {
+fn handle_page_state_change(state: &SharedState, send: &mpsc::Sender<ClientRequest>) -> Result<()> {
     let mut ui = state.ui.lock();
 
     match ui.current_page() {
