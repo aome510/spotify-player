@@ -63,7 +63,7 @@ pub fn render_shortcut_help_popup(frame: &mut Frame, state: &SharedState, rect: 
                 .title(ui.theme.block_title_with_style("Shortcuts"))
                 .borders(Borders::ALL),
         );
-        frame.render_widget(help_table, rect);
+        frame.render_widget(help_table, chunks[1]);
         chunks[0]
     }
 }
