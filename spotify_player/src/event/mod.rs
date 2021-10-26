@@ -164,7 +164,7 @@ fn handle_global_command(
     send: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
 ) -> Result<bool> {
-    let ui = state.ui.lock();
+    let mut ui = state.ui.lock();
 
     match command {
         Command::Quit => {

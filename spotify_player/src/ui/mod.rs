@@ -1,10 +1,5 @@
-use crate::{
-    event::ClientRequest,
-    state::*,
-    utils::{self, new_table_state},
-};
+use crate::{event::ClientRequest, state::*, utils};
 use anyhow::Result;
-use parking_lot::RwLockReadGuard;
 use rspotify::model;
 use tui::{layout::*, style::*, text::*, widgets::*};
 
@@ -16,7 +11,7 @@ mod help;
 mod popup;
 mod search;
 
-/// starts the application UI as the main thread
+/// starts the application UI rendering function(s)
 pub fn start_ui(state: SharedState, send: std::sync::mpsc::Sender<ClientRequest>) -> Result<()> {
     // terminal UI initializations
     let mut stdout = std::io::stdout();
@@ -41,13 +36,11 @@ pub fn start_ui(state: SharedState, send: std::sync::mpsc::Sender<ClientRequest>
         handle_page_state_change(&state, &send)?;
 
         terminal.draw(|frame| {
-            let ui = state.ui.lock();
-
             // set the background and foreground colors for the application
-            let block = Block::default().style(ui.theme.app_style());
+            let block = Block::default().style(state.ui.lock().theme.app_style());
             frame.render_widget(block, frame.size());
 
-            render_application(frame, ui, &state, frame.size());
+            render_application(frame, &state, frame.size());
         })?;
 
         std::thread::sleep(ui_refresh_duration);
@@ -80,7 +73,7 @@ fn handle_page_state_change(
                 _ => {
                     send.send(ClientRequest::GetRecommendations(seed.clone()))?;
                     ui.window = WindowState::Recommendations {
-                        track_table: new_table_state(),
+                        track_table: utils::new_table_state(),
                     };
                 }
             }
@@ -163,36 +156,29 @@ fn clean_up(mut terminal: Terminal) -> Result<()> {
 }
 
 /// renders the application
-fn render_application(frame: &mut Frame, mut ui: UIStateGuard, state: &SharedState, rect: Rect) {
-    let rect = help::render_shortcut_help_window(frame, &ui, state, rect);
+fn render_application(frame: &mut Frame, state: &SharedState, rect: Rect) {
+    let rect = help::render_shortcut_help_popup(frame, state, rect);
 
-    let (rect, is_active) = popup::render_popup(frame, &mut ui, state, rect);
+    let (rect, is_active) = popup::render_popup(frame, state, rect);
 
-    render_main_layout(is_active, frame, &mut ui, state, rect);
+    render_main_layout(is_active, frame, state, rect);
 }
 
 /// renders the application's main layout which consists of:
 /// - a playback window on top
 /// - a context window or a search window at bottom depending on the current UI's `PageState`
-fn render_main_layout(
-    is_active: bool,
-    frame: &mut Frame,
-    ui: &mut UIStateGuard,
-    state: &SharedState,
-    rect: Rect,
-) {
+fn render_main_layout(is_active: bool, frame: &mut Frame, state: &SharedState, rect: Rect) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Length(7), Constraint::Min(0)].as_ref())
         .split(rect);
-    render_playback_window(frame, ui, state, chunks[0]);
+    render_playback_window(frame, state, chunks[0]);
 
-    match ui.current_page() {
+    match state.ui.lock().current_page() {
         PageState::CurrentPlaying => {
             context::render_context_window(
                 is_active,
                 frame,
-                ui,
                 state,
                 chunks[1],
                 "Context (Current Playing)",
@@ -202,19 +188,18 @@ fn render_main_layout(
             context::render_context_window(
                 is_active,
                 frame,
-                ui,
                 state,
                 chunks[1],
                 "Context (Browsing)",
             );
         }
         PageState::Recommendations { .. } => {
-            render_recommendation_window(is_active, frame, ui, state, chunks[1]);
+            render_recommendation_window(is_active, frame, state, chunks[1]);
         }
         PageState::Searching { .. } => {
             // make sure that the window state matches the current page state.
             // The mismatch can happen when going back to the search from another page
-            search::render_search_window(is_active, frame, ui, state, chunks[1]);
+            search::render_search_window(is_active, frame, state, chunks[1]);
         }
     };
 }
@@ -223,17 +208,22 @@ fn render_main_layout(
 fn render_recommendation_window(
     is_active: bool,
     frame: &mut Frame,
-    ui: &mut UIStateGuard,
     state: &SharedState,
     rect: Rect,
 ) {
-    let seed = match ui.current_page() {
-        PageState::Recommendations(seed) => seed,
+    let seed = match state.ui.lock().current_page() {
+        PageState::Recommendations(seed) => seed.clone(),
         _ => unreachable!(),
     };
 
     let block = Block::default()
-        .title(ui.theme.block_title_with_style("Recommendations"))
+        .title(
+            state
+                .ui
+                .lock()
+                .theme
+                .block_title_with_style("Recommendations"),
+        )
         .borders(Borders::ALL);
 
     let data = state.data.read();
@@ -261,19 +251,19 @@ fn render_recommendation_window(
         .margin(1)
         .constraints([Constraint::Length(1), Constraint::Min(0)].as_ref())
         .split(rect);
-    let context_desc = Paragraph::new(desc).block(Block::default().style(ui.theme.context_desc()));
+    let context_desc =
+        Paragraph::new(desc).block(Block::default().style(state.ui.lock().theme.context_desc()));
     frame.render_widget(context_desc, chunks[0]);
 
     let player = state.player.read();
     let track_table = construct_track_table_widget(
         is_active,
-        ui,
         state,
         &player,
-state.mod.rs:273:        state.filtered_items_by_search(tracks),
+        state.filtered_items_by_search(tracks),
     );
 
-    if let Some(state) = ui.window.track_table_state() {
+    if let Some(state) = state.ui.lock().window.track_table_state() {
         frame.render_stateful_widget(track_table, chunks[1], state)
     }
 }
@@ -281,12 +271,9 @@ state.mod.rs:273:        state.filtered_items_by_search(tracks),
 /// renders a playback window showing information about the current playback such as
 /// - track title, artists, album
 /// - playback metadata (playing state, repeat state, shuffle state, volume, device, etc)
-fn render_playback_window(
-    frame: &mut Frame,
-    ui: &mut UIStateGuard,
-    state: &SharedState,
-    rect: Rect,
-) {
+fn render_playback_window(frame: &mut Frame, state: &SharedState, rect: Rect) {
+    let mut ui = state.ui.lock();
+
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Min(0), Constraint::Length(1)].as_ref())
@@ -390,11 +377,13 @@ fn construct_list_widget<'a>(
 /// constructs a track table widget
 pub fn construct_track_table_widget<'a>(
     is_active: bool,
-    ui: &UIStateGuard,
     state: &SharedState,
-    player: &RwLockReadGuard<PlayerState>,
+    // TODO: find out way to remove the ReadGuard as function parameter
+    player: &parking_lot::RwLockReadGuard<PlayerState>,
     tracks: Vec<&Track>,
 ) -> Table<'a> {
+    let ui = state.ui.lock();
+
     // get the current playing track's URI to
     // highlight such track (if exists) in the track table
     let mut playing_track_uri = "".to_string();

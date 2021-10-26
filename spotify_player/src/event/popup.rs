@@ -194,7 +194,7 @@ fn handle_key_sequence_for_search_popup(
 ) -> Result<bool> {
     {
         // handle user's input that updates the search query
-        let ui = state.ui.lock();
+        let mut ui = state.ui.lock();
 
         let query = match ui.popup {
             Some(PopupState::Search { ref mut query }) => query,
@@ -228,7 +228,7 @@ fn handle_key_sequence_for_search_popup(
     match command {
         Some(command) => match command {
             Command::ClosePopup => {
-                let ui = state.ui.lock();
+                let mut ui = state.ui.lock();
                 ui.window.select(Some(0));
                 ui.popup = None;
                 Ok(true)

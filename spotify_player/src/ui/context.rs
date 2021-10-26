@@ -10,13 +10,12 @@ use tui::{layout::*, widgets::*};
 pub fn render_context_window(
     is_active: bool,
     frame: &mut Frame,
-    ui: &mut UIStateGuard,
     state: &SharedState,
     rect: Rect,
     title: &str,
 ) {
     let block = Block::default()
-        .title(ui.theme.block_title_with_style(title))
+        .title(state.ui.lock().theme.block_title_with_style(title))
         .borders(Borders::ALL);
 
     let data = state.data.read();
@@ -33,7 +32,7 @@ pub fn render_context_window(
                 .constraints([Constraint::Length(1), Constraint::Min(0)].as_ref())
                 .split(rect);
             let context_desc = Paragraph::new(context.description())
-                .block(Block::default().style(ui.theme.context_desc()));
+                .block(Block::default().style(state.ui.lock().theme.context_desc()));
             frame.render_widget(context_desc, chunks[0]);
 
             match context {
@@ -46,7 +45,6 @@ pub fn render_context_window(
                     render_context_artist_widgets(
                         is_active,
                         frame,
-                        ui,
                         state,
                         &player,
                         chunks[1],
@@ -56,26 +54,24 @@ pub fn render_context_window(
                 Context::Playlist { tracks, .. } => {
                     let track_table = construct_track_table_widget(
                         is_active,
-                        ui,
                         state,
                         &player,
-state.context.rs:62:                        state.filtered_items_by_search(tracks),
+                        state.filtered_items_by_search(tracks),
                     );
 
-                    if let Some(state) = ui.window.track_table_state() {
+                    if let Some(state) = state.ui.lock().window.track_table_state() {
                         frame.render_stateful_widget(track_table, chunks[1], state)
                     }
                 }
                 Context::Album { tracks, .. } => {
                     let track_table = construct_track_table_widget(
                         is_active,
-                        ui,
                         state,
                         &player,
-state.context.rs:75:                        state.filtered_items_by_search(tracks),
+                        state.filtered_items_by_search(tracks),
                     );
 
-                    if let Some(state) = ui.window.track_table_state() {
+                    if let Some(state) = state.ui.lock().window.track_table_state() {
                         frame.render_stateful_widget(track_table, chunks[1], state)
                     }
                 }
@@ -101,23 +97,24 @@ state.context.rs:75:                        state.filtered_items_by_search(track
 fn render_context_artist_widgets(
     is_active: bool,
     frame: &mut Frame,
-    ui: &mut UIStateGuard,
     state: &SharedState,
     player: &RwLockReadGuard<PlayerState>,
     rect: Rect,
     data: (&[Track], &[Album], &[Artist]),
 ) {
+    let (tracks, albums, artists) = (
+        state.filtered_items_by_search(data.0),
+        state.filtered_items_by_search(data.1),
+        state.filtered_items_by_search(data.2),
+    );
+
+    let mut ui = state.ui.lock();
     let focus_state = match ui.window {
         WindowState::Artist { focus, .. } => focus,
         _ => {
             return;
         }
     };
-    let (tracks, albums, artists) = (
-state.context.rs:117:        state.filtered_items_by_search(data.0),
-state.context.rs:118:        state.filtered_items_by_search(data.1),
-state.context.rs:119:        state.filtered_items_by_search(data.2),
-    );
 
     let rect = {
         // render the top tracks table for artist context window
@@ -129,7 +126,6 @@ state.context.rs:119:        state.filtered_items_by_search(data.2),
 
         let track_table = construct_track_table_widget(
             is_active && focus_state == ArtistFocusState::TopTracks,
-            ui,
             state,
             player,
             tracks,
@@ -154,7 +150,7 @@ state.context.rs:119:        state.filtered_items_by_search(data.2),
             .collect::<Vec<_>>();
 
         construct_list_widget(
-            ui,
+            &ui,
             album_items,
             "Albums",
             is_active && focus_state == ArtistFocusState::Albums,
@@ -170,7 +166,7 @@ state.context.rs:119:        state.filtered_items_by_search(data.2),
             .collect::<Vec<_>>();
 
         construct_list_widget(
-            ui,
+            &ui,
             artist_items,
             "Related Artists",
             is_active && focus_state == ArtistFocusState::RelatedArtists,

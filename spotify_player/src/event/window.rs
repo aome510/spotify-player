@@ -22,7 +22,7 @@ pub fn handle_key_sequence_for_context_window(
             state.ui.lock().window.previous();
         }
         Command::SearchContext => {
-            let ui = state.ui.lock();
+            let mut ui = state.ui.lock();
             ui.window.select(Some(0));
             ui.popup = Some(PopupState::Search {
                 query: "".to_owned(),
@@ -119,7 +119,7 @@ pub fn handle_key_sequence_for_recommendation_window(
 
     match command {
         Command::SearchContext => {
-            let ui = state.ui.lock();
+            let mut ui = state.ui.lock();
             ui.window.select(Some(0));
             ui.popup = Some(PopupState::Search {
                 query: "".to_owned(),
@@ -155,7 +155,7 @@ pub fn handle_key_sequence_for_search_window(
     send: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
 ) -> Result<bool> {
-    let ui = state.ui.lock();
+    let mut ui = state.ui.lock();
 
     let focus_state = match ui.window {
         WindowState::Search { focus, .. } => focus,
@@ -347,7 +347,7 @@ fn handle_command_for_track_table_subwindow(
     track_ids: Option<Vec<&TrackId>>,
     tracks: Vec<&Track>,
 ) -> Result<bool> {
-    let ui = state.ui.lock();
+    let mut ui = state.ui.lock();
     let id = ui.window.selected().unwrap();
 
     match command {
@@ -391,7 +391,7 @@ fn handle_command_for_track_list_subwindow(
     state: &SharedState,
     tracks: Vec<&Track>,
 ) -> Result<bool> {
-    let ui = state.ui.lock();
+    let mut ui = state.ui.lock();
     let id = ui.window.selected().unwrap();
 
     match command {
@@ -431,7 +431,7 @@ fn handle_command_for_artist_list_subwindow(
     state: &SharedState,
     artists: Vec<&Artist>,
 ) -> Result<bool> {
-    let ui = state.ui.lock();
+    let mut ui = state.ui.lock();
     let id = ui.window.selected().unwrap();
 
     match command {
@@ -466,7 +466,7 @@ fn handle_command_for_album_list_subwindow(
     state: &SharedState,
     albums: Vec<&Album>,
 ) -> Result<bool> {
-    let ui = state.ui.lock();
+    let mut ui = state.ui.lock();
     let id = ui.window.selected().unwrap();
 
     match command {
@@ -501,7 +501,7 @@ fn handle_command_for_playlist_list_subwindow(
     state: &SharedState,
     playlists: Vec<&Playlist>,
 ) -> Result<bool> {
-    let ui = state.ui.lock();
+    let mut ui = state.ui.lock();
     let id = ui.window.selected().unwrap();
 
     match command {
