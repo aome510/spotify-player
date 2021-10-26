@@ -10,9 +10,11 @@ pub use ui::*;
 
 use crate::config;
 use anyhow::Result;
-use std::sync::{Arc, Mutex, RwLock};
 
-pub type SharedState = Arc<State>;
+pub use parking_lot::{Mutex, RwLock};
+
+/// Application's shared state (wrapped inside an std::sync::Arc)
+pub type SharedState = std::sync::Arc<State>;
 
 /// Application's state
 #[derive(Debug)]
@@ -28,7 +30,7 @@ pub struct State {
 
 impl State {
     /// gets a list of application themes with the current theme as the first element
-    pub fn themes(&self, ui: &std::sync::MutexGuard<UIState>) -> Vec<config::Theme> {
+    pub fn themes(&self, ui: &parking_lot::MutexGuard<UIState>) -> Vec<config::Theme> {
         let mut themes = self.theme_config.themes.clone();
         let id = themes.iter().position(|t| t.name == ui.theme.name);
         if let Some(id) = id {
@@ -48,16 +50,19 @@ impl State {
         if let Some(theme) = theme {
             self.app_config.theme = theme.to_owned();
         };
-        log::info!("app configuartions: {:#?}", self.app_config);
+        log::info!("general configuartions: {:#?}", self.app_config);
 
         self.theme_config.parse_config_file(config_folder)?;
-        if let Some(theme) = self.theme_config.find_theme(&self.app_config.theme) {
-            self.ui.lock().unwrap().theme = theme;
-        }
         log::info!("theme configuartions: {:#?}", self.theme_config);
 
         self.keymap_config.parse_config_file(config_folder)?;
         log::info!("keymap configuartions: {:#?}", self.keymap_config);
+
+        if let Some(theme) = self.theme_config.find_theme(&self.app_config.theme) {
+            // update the UI theme based on the `theme` config option
+            // specified in the app's general configurations
+            self.ui.lock().theme = theme;
+        }
 
         Ok(())
     }

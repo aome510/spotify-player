@@ -75,11 +75,11 @@ fn handle_mouse_event(
     send: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
 ) -> Result<()> {
-    let ui = state.ui.lock().unwrap();
+    let ui = state.ui.lock();
     // a left click event
     if let MouseEventKind::Down(MouseButton::Left) = event.kind {
         if event.row == ui.progress_bar_rect.y {
-            let player = state.player.read().unwrap();
+            let player = state.player.read();
             let track = player.current_playing_track();
             if let Some(track) = track {
                 let position_ms = (track.duration.as_millis() as u32) * (event.column as u32)
@@ -101,7 +101,7 @@ fn handle_key_event(
 
     // lock the UI state because we'll use it many times
     // when handling a terminal event
-    let mut ui = state.ui.lock().unwrap();
+    let mut ui = state.ui.lock();
 
     // parse the key sequence from user's previous inputs
     let mut key_sequence = ui.input_key_sequence.clone();
@@ -195,7 +195,7 @@ fn handle_global_command(
             send.send(ClientRequest::Player(PlayerRequest::Shuffle))?;
         }
         Command::VolumeUp => {
-            if let Some(ref playback) = state.player.read().unwrap().playback {
+            if let Some(ref playback) = state.player.read().playback {
                 if let Some(percent) = playback.device.volume_percent {
                     let volume = std::cmp::min(percent + 5, 100_u32);
                     send.send(ClientRequest::Player(PlayerRequest::Volume(volume as u8)))?;
@@ -203,7 +203,7 @@ fn handle_global_command(
             }
         }
         Command::VolumeDown => {
-            if let Some(ref playback) = state.player.read().unwrap().playback {
+            if let Some(ref playback) = state.player.read().playback {
                 if let Some(percent) = playback.device.volume_percent {
                     let volume = std::cmp::max(percent.saturating_sub(5_u32), 0_u32);
                     send.send(ClientRequest::Player(PlayerRequest::Volume(volume as u8)))?;
@@ -217,7 +217,7 @@ fn handle_global_command(
             send.send(ClientRequest::GetCurrentPlayback)?;
         }
         Command::ShowActionsOnCurrentTrack => {
-            if let Some(track) = state.player.read().unwrap().current_playing_track() {
+            if let Some(track) = state.player.read().current_playing_track() {
                 let item = Item::Track(track.clone().into());
                 let actions = item.actions();
                 ui.popup = Some(PopupState::ActionList(item, actions, new_list_state()));
@@ -230,7 +230,7 @@ fn handle_global_command(
             send.send(ClientRequest::GetUserPlaylists)?;
             ui.popup = Some(PopupState::UserPlaylistList(
                 PlaylistPopupAction::Browse,
-                state.data.read().unwrap().user_data.playlists.to_vec(),
+                state.data.read().user_data.playlists.to_vec(),
                 new_list_state(),
             ));
         }

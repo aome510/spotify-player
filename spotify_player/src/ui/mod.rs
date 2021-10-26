@@ -4,8 +4,8 @@ use crate::{
     utils::{self, new_table_state},
 };
 use anyhow::Result;
+use parking_lot::RwLockReadGuard;
 use rspotify::model;
-use std::sync::RwLockReadGuard;
 use tui::{layout::*, style::*, text::*, widgets::*};
 
 type Terminal = tui::Terminal<tui::backend::CrosstermBackend<std::io::Stdout>>;
@@ -33,7 +33,7 @@ pub fn start_ui(state: SharedState, send: std::sync::mpsc::Sender<ClientRequest>
     let ui_refresh_duration =
         std::time::Duration::from_millis(state.app_config.app_refresh_duration_in_ms);
     loop {
-        if !state.ui.lock().unwrap().is_running {
+        if !state.ui.lock().is_running {
             clean_up(terminal)?;
             return Ok(());
         }
@@ -41,7 +41,7 @@ pub fn start_ui(state: SharedState, send: std::sync::mpsc::Sender<ClientRequest>
         handle_page_state_change(&state, &send)?;
 
         terminal.draw(|frame| {
-            let ui = state.ui.lock().unwrap();
+            let ui = state.ui.lock();
 
             // set the background and foreground colors for the application
             let block = Block::default().style(ui.theme.app_style());
@@ -60,11 +60,11 @@ fn handle_page_state_change(
     state: &SharedState,
     send: &std::sync::mpsc::Sender<ClientRequest>,
 ) -> Result<()> {
-    let mut ui = state.ui.lock().unwrap();
+    let mut ui = state.ui.lock();
 
     match ui.current_page() {
         PageState::Searching { current_query, .. } => {
-            state.player.write().unwrap().context_id = None;
+            state.player.write().context_id = None;
             match ui.window {
                 WindowState::Search { .. } => {}
                 _ => {
@@ -74,7 +74,7 @@ fn handle_page_state_change(
             }
         }
         PageState::Recommendations(seed) => {
-            state.player.write().unwrap().context_id = None;
+            state.player.write().context_id = None;
             match ui.window {
                 WindowState::Recommendations { .. } => {}
                 _ => {
@@ -86,7 +86,7 @@ fn handle_page_state_change(
             }
         }
         PageState::Browsing(id) => {
-            let should_update = match state.player.read().unwrap().context_id {
+            let should_update = match state.player.read().context_id {
                 None => true,
                 Some(ref context_id) => context_id != id,
             };
@@ -95,7 +95,7 @@ fn handle_page_state_change(
             }
         }
         PageState::CurrentPlaying => {
-            let player = state.player.read().unwrap();
+            let player = state.player.read();
             // updates the context (album, playlist, etc) tracks based on the current playback
             if let Some(ref playback) = player.playback {
                 match playback.context {
@@ -236,7 +236,7 @@ fn render_recommendation_window(
         .title(ui.theme.block_title_with_style("Recommendations"))
         .borders(Borders::ALL);
 
-    let data = state.data.read().unwrap();
+    let data = state.data.read();
 
     let tracks = match data.caches.recommendation.peek(&seed.uri()) {
         Some(tracks) => tracks,
@@ -264,7 +264,7 @@ fn render_recommendation_window(
     let context_desc = Paragraph::new(desc).block(Block::default().style(ui.theme.context_desc()));
     frame.render_widget(context_desc, chunks[0]);
 
-    let player = state.player.read().unwrap();
+    let player = state.player.read();
     let track_table = construct_track_table_widget(
         is_active,
         ui,
@@ -298,7 +298,7 @@ fn render_playback_window(
         .borders(Borders::ALL);
     frame.render_widget(block, rect);
 
-    let player = state.player.read().unwrap();
+    let player = state.player.read();
     if let Some(ref playback) = player.playback {
         if let Some(rspotify::model::PlayableItem::Track(ref track)) = playback.item {
             let playback_info = vec![

@@ -1,4 +1,4 @@
-use std::sync::RwLockReadGuard;
+use parking_lot::RwLockReadGuard;
 
 use super::{construct_track_table_widget, Frame};
 use crate::{state::*, ui::construct_list_widget};
@@ -19,8 +19,8 @@ pub fn render_context_window(
         .title(ui.theme.block_title_with_style(title))
         .borders(Borders::ALL);
 
-    let data = state.data.read().unwrap();
-    let player = state.player.read().unwrap();
+    let data = state.data.read();
+    let player = state.player.read();
 
     match player.context(&data.caches) {
         Some(context) => {

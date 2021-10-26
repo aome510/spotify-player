@@ -3,7 +3,7 @@ use crate::{config, key, utils};
 
 use tui::widgets::{ListState, TableState};
 
-pub type UIStateGuard<'a> = std::sync::MutexGuard<'a, UIState>;
+pub type UIStateGuard<'a> = parking_lot::MutexGuard<'a, UIState>;
 
 // TODO: improve the documentation for UI states' struct
 

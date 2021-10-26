@@ -6,7 +6,7 @@ use crate::{
 };
 use anyhow::{anyhow, Result};
 use librespot_core::session::Session;
-use rspotify::{model, prelude::*};
+use rspotify::prelude::*;
 
 mod handlers;
 mod spotify;
@@ -56,7 +56,7 @@ impl Client {
                 .await?);
         }
 
-        let playback = match state.player.read().unwrap().simplified_playback() {
+        let playback = match state.player.read().simplified_playback() {
             Some(playback) => playback,
             None => {
                 return Err(anyhow!(
@@ -81,9 +81,9 @@ impl Client {
             }
             PlayerRequest::Repeat => {
                 let next_repeat_state = match playback.repeat_state {
-                    model::RepeatState::Off => model::RepeatState::Track,
-                    model::RepeatState::Track => model::RepeatState::Context,
-                    model::RepeatState::Context => model::RepeatState::Off,
+                    rspotify_model::RepeatState::Off => rspotify_model::RepeatState::Track,
+                    rspotify_model::RepeatState::Track => rspotify_model::RepeatState::Context,
+                    rspotify_model::RepeatState::Context => rspotify_model::RepeatState::Off,
                 };
 
                 self.spotify.repeat(&next_repeat_state, device_id).await?
@@ -115,7 +115,7 @@ impl Client {
         match request {
             ClientRequest::GetCurrentUser => {
                 let user = self.spotify.current_user().await?;
-                state.data.write().unwrap().user_data.user = Some(user);
+                state.data.write().user_data.user = Some(user);
             }
             ClientRequest::Player(event) => {
                 self.handle_player_request(state, event).await?;
@@ -142,7 +142,7 @@ impl Client {
             }
             ClientRequest::GetDevices => {
                 let devices = self.spotify.device().await?;
-                state.player.write().unwrap().devices = devices
+                state.player.write().devices = devices
                     .into_iter()
                     .map(Device::try_from_device)
                     .flatten()
@@ -150,19 +150,19 @@ impl Client {
             }
             ClientRequest::GetUserPlaylists => {
                 let playlists = self.current_user_playlists().await?;
-                state.data.write().unwrap().user_data.playlists = playlists;
+                state.data.write().user_data.playlists = playlists;
             }
             ClientRequest::GetUserFollowedArtists => {
                 let artists = self.current_user_followed_artists().await?;
-                state.data.write().unwrap().user_data.followed_artists = artists;
+                state.data.write().user_data.followed_artists = artists;
             }
             ClientRequest::GetUserSavedAlbums => {
                 let albums = self.current_user_saved_albums().await?;
-                state.data.write().unwrap().user_data.saved_albums = albums;
+                state.data.write().user_data.saved_albums = albums;
             }
             ClientRequest::GetContext(context) => {
                 let uri = context.uri();
-                if !state.data.read().unwrap().caches.context.contains(&uri) {
+                if !state.data.read().caches.context.contains(&uri) {
                     let context = match context {
                         ContextId::Playlist(playlist_id) => {
                             self.playlist_context(&playlist_id).await?
@@ -171,41 +171,22 @@ impl Client {
                         ContextId::Artist(artist_id) => self.artist_context(&artist_id).await?,
                     };
 
-                    state.data.write().unwrap().caches.context.put(uri, context);
+                    state.data.write().caches.context.put(uri, context);
                 }
             }
             ClientRequest::Search(query) => {
-                if !state.data.read().unwrap().caches.search.contains(&query) {
+                if !state.data.read().caches.search.contains(&query) {
                     let results = self.search(&query).await?;
 
-                    state
-                        .data
-                        .write()
-                        .unwrap()
-                        .caches
-                        .search
-                        .put(query, results);
+                    state.data.write().caches.search.put(query, results);
                 }
             }
             ClientRequest::GetRecommendations(seed) => {
                 let uri = seed.uri();
-                if !state
-                    .data
-                    .read()
-                    .unwrap()
-                    .caches
-                    .recommendation
-                    .contains(&uri)
-                {
+                if !state.data.read().caches.recommendation.contains(&uri) {
                     let tracks = self.recommendations(&seed).await?;
 
-                    state
-                        .data
-                        .write()
-                        .unwrap()
-                        .caches
-                        .recommendation
-                        .put(uri, tracks);
+                    state.data.write().caches.recommendation.put(uri, tracks);
                 }
             }
             ClientRequest::AddTrackToPlaylist(playlist_id, track_id) => {
@@ -243,7 +224,7 @@ impl Client {
         let mut maybe_next = first_page.next;
         while let Some(url) = maybe_next {
             let mut next_page = self
-                .internal_call::<model::CursorPageFullArtists>(&url)
+                .internal_call::<rspotify_model::CursorPageFullArtists>(&url)
                 .await?
                 .artists;
             artists.append(&mut next_page.items);
@@ -274,7 +255,7 @@ impl Client {
                 .spotify
                 .artist_albums_manual(
                     artist_id,
-                    Some(&model::AlbumType::Single),
+                    Some(&rspotify_model::AlbumType::Single),
                     None,
                     Some(50),
                     None,
@@ -287,7 +268,7 @@ impl Client {
                 .spotify
                 .artist_albums_manual(
                     artist_id,
-                    Some(&model::AlbumType::Album),
+                    Some(&rspotify_model::AlbumType::Album),
                     None,
                     Some(50),
                     None,
@@ -331,7 +312,7 @@ impl Client {
                     .start_uris_playback(
                         track_ids
                             .iter()
-                            .map(|id| id as &dyn model::PlayableId)
+                            .map(|id| id as &dyn rspotify_model::PlayableId)
                             .collect::<Vec<_>>(),
                         device_id,
                         offset,
@@ -346,7 +327,7 @@ impl Client {
 
     /// gets recommendation tracks from a recommendation seed
     pub async fn recommendations(&self, seed: &SeedItem) -> Result<Vec<Track>> {
-        let attributes = vec![model::RecommendationsAttribute::MinPopularity(50)];
+        let attributes = vec![rspotify_model::RecommendationsAttribute::MinPopularity(50)];
 
         let tracks = match seed {
             SeedItem::Artist(artist) => {
@@ -387,23 +368,27 @@ impl Client {
     /// searchs for items (tracks, artists, albums, playlists) that match a given query string.
     pub async fn search(&self, query: &str) -> Result<SearchResults> {
         let (track_result, artist_result, album_result, playlist_result) = tokio::try_join!(
-            self.search_specific_type(query, &model::SearchType::Track),
-            self.search_specific_type(query, &model::SearchType::Artist),
-            self.search_specific_type(query, &model::SearchType::Album),
-            self.search_specific_type(query, &model::SearchType::Playlist)
+            self.search_specific_type(query, &rspotify_model::SearchType::Track),
+            self.search_specific_type(query, &rspotify_model::SearchType::Artist),
+            self.search_specific_type(query, &rspotify_model::SearchType::Album),
+            self.search_specific_type(query, &rspotify_model::SearchType::Playlist)
         )?;
 
         let (tracks, artists, albums, playlists) = (
             match track_result {
-                model::SearchResult::Tracks(p) => p.items.into_iter().map(|i| i.into()).collect(),
+                rspotify_model::SearchResult::Tracks(p) => {
+                    p.items.into_iter().map(|i| i.into()).collect()
+                }
                 _ => unreachable!(),
             },
             match artist_result {
-                model::SearchResult::Artists(p) => p.items.into_iter().map(|i| i.into()).collect(),
+                rspotify_model::SearchResult::Artists(p) => {
+                    p.items.into_iter().map(|i| i.into()).collect()
+                }
                 _ => unreachable!(),
             },
             match album_result {
-                model::SearchResult::Albums(p) => p
+                rspotify_model::SearchResult::Albums(p) => p
                     .items
                     .into_iter()
                     .map(Album::try_from_simplified_album)
@@ -412,7 +397,7 @@ impl Client {
                 _ => unreachable!(),
             },
             match playlist_result {
-                model::SearchResult::Playlists(p) => {
+                rspotify_model::SearchResult::Playlists(p) => {
                     p.items.into_iter().map(|i| i.into()).collect()
                 }
                 _ => unreachable!(),
@@ -430,8 +415,8 @@ impl Client {
     async fn search_specific_type(
         &self,
         query: &str,
-        _type: &model::SearchType,
-    ) -> Result<model::SearchResult> {
+        _type: &rspotify_model::SearchType,
+    ) -> Result<rspotify_model::SearchResult> {
         Ok(self
             .spotify
             .search(query, _type, None, None, None, None)
@@ -498,7 +483,6 @@ impl Client {
                 let user_id = state
                     .data
                     .read()
-                    .unwrap()
                     .user_data
                     .user
                     .as_ref()
@@ -532,7 +516,7 @@ impl Client {
             .await?
             .into_iter()
             .map(|item| match item.track {
-                Some(model::PlayableItem::Track(track)) => Some(track.into()),
+                Some(rspotify_model::PlayableItem::Track(track)) => Some(track.into()),
                 _ => None,
             })
             .flatten()
@@ -585,7 +569,7 @@ impl Client {
 
         let top_tracks = self
             .spotify
-            .artist_top_tracks(artist_id, &model::enums::misc::Market::FromToken)
+            .artist_top_tracks(artist_id, &rspotify_model::enums::misc::Market::FromToken)
             .await?
             .into_iter()
             .map(|t| t.into())
@@ -630,14 +614,14 @@ impl Client {
     }
 
     /// gets all paging items starting from a pagination object of the first page
-    async fn all_paging_items<T>(&self, first_page: model::Page<T>) -> Result<Vec<T>>
+    async fn all_paging_items<T>(&self, first_page: rspotify_model::Page<T>) -> Result<Vec<T>>
     where
         T: serde::de::DeserializeOwned,
     {
         let mut items = first_page.items;
         let mut maybe_next = first_page.next;
         while let Some(url) = maybe_next {
-            let mut next_page = self.internal_call::<model::Page<T>>(&url).await?;
+            let mut next_page = self.internal_call::<rspotify_model::Page<T>>(&url).await?;
             items.append(&mut next_page.items);
             maybe_next = next_page.next;
         }
@@ -647,7 +631,7 @@ impl Client {
     /// updates the current playback state
     async fn update_current_playback_state(&self, state: &SharedState) -> Result<()> {
         let playback = self.spotify.current_playback(None, None::<Vec<_>>).await?;
-        let mut player = state.player.write().unwrap();
+        let mut player = state.player.write();
         player.playback = playback;
         player.playback_last_updated = Some(std::time::Instant::now());
         Ok(())

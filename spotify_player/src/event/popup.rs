@@ -81,7 +81,6 @@ pub fn handle_key_sequence_for_popup(
                             state
                                 .data
                                 .write()
-                                .unwrap()
                                 .caches
                                 .context
                                 .pop(&playlists[id].id.uri());
@@ -104,7 +103,6 @@ pub fn handle_key_sequence_for_popup(
             let artist_uris = state
                 .data
                 .read()
-                .unwrap()
                 .user_data
                 .followed_artists
                 .iter()
@@ -124,7 +122,6 @@ pub fn handle_key_sequence_for_popup(
             let album_uris = state
                 .data
                 .read()
-                .unwrap()
                 .user_data
                 .saved_albums
                 .iter()
@@ -167,7 +164,7 @@ pub fn handle_key_sequence_for_popup(
             },
         ),
         PopupState::DeviceList(_) => {
-            let player = state.player.read().unwrap();
+            let player = state.player.read();
 
             handle_key_sequence_for_list_popup(
                 key_sequence,
@@ -433,7 +430,7 @@ fn handle_key_sequence_for_action_list_popup(
                         ));
                     }
                     Action::AddTrackToPlaylist => {
-                        let data = state.data.read().unwrap();
+                        let data = state.data.read();
                         if let Some(ref user) = data.user_data.user {
                             let playlists = data
                                 .user_data

@@ -29,7 +29,7 @@ pub fn render_search_window(
         }
     };
 
-    let data = state.data.read().unwrap();
+    let data = state.data.read();
 
     let search_results = data.caches.search.peek(query);
 

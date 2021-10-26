@@ -69,7 +69,7 @@ async fn watch_player_events(
     state: &SharedState,
     send: &std::sync::mpsc::Sender<ClientRequest>,
 ) -> Result<()> {
-    let player = state.player.read().unwrap();
+    let player = state.player.read();
 
     // if cannot find the current playback, try to connect to the first avaiable device
     if player.playback.is_none() && !player.devices.is_empty() {

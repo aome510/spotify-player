@@ -29,8 +29,8 @@ pub fn handle_key_sequence_for_context_window(
             });
         }
         Command::PlayRandom => {
-            let player = state.player.read().unwrap();
-            let data = state.data.read().unwrap();
+            let player = state.player.read();
+            let data = state.data.read();
             let context = player.context(&data.caches);
 
             // randomly play a track from the current context
@@ -62,8 +62,8 @@ pub fn handle_key_sequence_for_context_window(
             };
 
             if let Some(order) = order {
-                let player = state.player.read().unwrap();
-                let mut data = state.data.write().unwrap();
+                let player = state.player.read();
+                let mut data = state.data.write();
                 let context = player.context_mut(&mut data.caches);
 
                 if let Some(context) = context {
@@ -72,8 +72,8 @@ pub fn handle_key_sequence_for_context_window(
                 return Ok(true);
             }
             if command == Command::ReverseTrackOrder {
-                let player = state.player.read().unwrap();
-                let mut data = state.data.write().unwrap();
+                let player = state.player.read();
+                let mut data = state.data.write();
                 let context = player.context_mut(&mut data.caches);
 
                 if let Some(context) = context {
@@ -104,7 +104,7 @@ pub fn handle_key_sequence_for_recommendation_window(
         None => return Ok(false),
     };
 
-    let data = state.data.read().unwrap();
+    let data = state.data.read();
     let tracks = match ui.current_page() {
         PageState::Recommendations(seed) => data
             .caches
@@ -203,7 +203,7 @@ pub fn handle_key_sequence_for_search_window(
         None => return Ok(false),
     };
 
-    let data = state.data.read().unwrap();
+    let data = state.data.read();
     let search_results = data.caches.search.peek(query);
 
     match command {
@@ -257,9 +257,9 @@ pub fn handle_command_for_focused_context_subwindow(
     ui: &mut UIStateGuard,
     state: &SharedState,
 ) -> Result<bool> {
-    let data = state.data.read().unwrap();
+    let data = state.data.read();
 
-    match state.player.read().unwrap().context(&data.caches) {
+    match state.player.read().context(&data.caches) {
         Some(context) => match context {
             Context::Artist {
                 top_tracks,

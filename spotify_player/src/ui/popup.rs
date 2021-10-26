@@ -44,7 +44,7 @@ pub fn render_popup(
                 (rect, false)
             }
             PopupState::DeviceList { .. } => {
-                let player = state.player.read().unwrap();
+                let player = state.player.read();
 
                 let current_device_id = match player.playback {
                     Some(ref playback) => playback.device.id.as_deref().unwrap_or_default(),
@@ -75,7 +75,6 @@ pub fn render_popup(
                 let items = state
                     .data
                     .read()
-                    .unwrap()
                     .user_data
                     .followed_artists
                     .iter()
@@ -89,7 +88,6 @@ pub fn render_popup(
                 let items = state
                     .data
                     .read()
-                    .unwrap()
                     .user_data
                     .saved_albums
                     .iter()
