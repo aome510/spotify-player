@@ -29,17 +29,6 @@ pub struct State {
 }
 
 impl State {
-    /// gets a list of application themes with the current theme as the first element
-    pub fn themes(&self, ui: &parking_lot::MutexGuard<UIState>) -> Vec<config::Theme> {
-        let mut themes = self.theme_config.themes.clone();
-        let id = themes.iter().position(|t| t.name == ui.theme.name);
-        if let Some(id) = id {
-            let theme = themes.remove(id);
-            themes.insert(0, theme);
-        }
-        themes
-    }
-
     /// parses application's configurations
     pub fn parse_config_files(
         &mut self,
@@ -65,6 +54,24 @@ impl State {
         }
 
         Ok(())
+    }
+
+    /// gets a list of items possibly filtered by a search query if exists a search popup
+    pub fn filtered_items_by_search<'a, T: std::fmt::Display>(&self, items: &'a [T]) -> Vec<&'a T> {
+        match self.ui.lock().popup {
+            Some(PopupState::Search { ref query }) => items
+                .iter()
+                .filter(|t| Self::is_match(&t.to_string().to_lowercase(), &query.to_lowercase()))
+                .collect::<Vec<_>>(),
+            _ => items.iter().collect::<Vec<_>>(),
+        }
+    }
+
+    /// checks if a string matches a given query
+    fn is_match(s: &str, query: &str) -> bool {
+        query
+            .split(' ')
+            .fold(true, |acc, cur| acc & s.contains(cur))
     }
 }
 

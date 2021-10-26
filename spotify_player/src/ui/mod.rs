@@ -270,7 +270,7 @@ fn render_recommendation_window(
         ui,
         state,
         &player,
-        ui.filtered_items_by_search(tracks),
+state.mod.rs:273:        state.filtered_items_by_search(tracks),
     );
 
     if let Some(state) = ui.window.track_table_state() {

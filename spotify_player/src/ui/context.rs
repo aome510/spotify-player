@@ -59,7 +59,7 @@ pub fn render_context_window(
                         ui,
                         state,
                         &player,
-                        ui.filtered_items_by_search(tracks),
+state.context.rs:62:                        state.filtered_items_by_search(tracks),
                     );
 
                     if let Some(state) = ui.window.track_table_state() {
@@ -72,7 +72,7 @@ pub fn render_context_window(
                         ui,
                         state,
                         &player,
-                        ui.filtered_items_by_search(tracks),
+state.context.rs:75:                        state.filtered_items_by_search(tracks),
                     );
 
                     if let Some(state) = ui.window.track_table_state() {
@@ -114,9 +114,9 @@ fn render_context_artist_widgets(
         }
     };
     let (tracks, albums, artists) = (
-        ui.filtered_items_by_search(data.0),
-        ui.filtered_items_by_search(data.1),
-        ui.filtered_items_by_search(data.2),
+state.context.rs:117:        state.filtered_items_by_search(data.0),
+state.context.rs:118:        state.filtered_items_by_search(data.1),
+state.context.rs:119:        state.filtered_items_by_search(data.2),
     );
 
     let rect = {
