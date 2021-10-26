@@ -24,7 +24,7 @@ pub fn render_popup(frame: &mut Frame, state: &SharedState, rect: Rect) -> (Rect
                         .borders(Borders::ALL)
                         .title(ui.theme.block_title_with_style("Search")),
                 );
-                frame.render_widget(widget, rect);
+                frame.render_widget(widget, chunks[1]);
                 (chunks[0], true)
             }
             PopupState::CommandHelp { .. } => {
