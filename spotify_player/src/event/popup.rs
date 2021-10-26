@@ -15,15 +15,14 @@ pub fn handle_key_sequence_for_popup(
             drop(ui);
             handle_key_sequence_for_search_popup(key_sequence, send, state)
         }
-        PopupState::ArtistList(..) => {
+        PopupState::ArtistList(artists, _) => {
+            let n_items = artists.len();
+
             drop(ui);
             handle_key_sequence_for_list_popup(
                 key_sequence,
                 state,
-                match state.ui.lock().popup {
-                    Some(PopupState::ArtistList(ref artists, _)) => artists.len(),
-                    _ => unreachable!(),
-                },
+                n_items,
                 |_, _| {},
                 |ui: &mut UIStateGuard, id: usize| -> Result<()> {
                     let artists = match ui.popup {
@@ -58,19 +57,13 @@ pub fn handle_key_sequence_for_popup(
                 }
                 PlaylistPopupAction::AddTrack(ref track_id) => {
                     let track_id = track_id.clone();
+                    let n_items = playlists.len();
 
                     drop(ui);
                     handle_key_sequence_for_list_popup(
                         key_sequence,
                         state,
-                        {
-                            match state.ui.lock().popup {
-                                Some(PopupState::UserPlaylistList(_, ref playlists, _)) => {
-                                    playlists.len()
-                                }
-                                _ => unreachable!(),
-                            }
-                        },
+                        n_items,
                         |_, _| {},
                         |ui: &mut UIStateGuard, id: usize| -> Result<()> {
                             let playlists = match ui.popup {
@@ -141,15 +134,14 @@ pub fn handle_key_sequence_for_popup(
                 rspotify_model::Type::Album,
             )
         }
-        PopupState::ThemeList(_, _) => {
+        PopupState::ThemeList(themes, _) => {
+            let n_items = themes.len();
+
             drop(ui);
             handle_key_sequence_for_list_popup(
                 key_sequence,
                 state,
-                match state.ui.lock().popup {
-                    Some(PopupState::ThemeList(ref themes, _)) => themes.len(),
-                    _ => unreachable!(),
-                },
+                n_items,
                 |ui: &mut UIStateGuard, id: usize| {
                     ui.theme = match ui.popup {
                         Some(PopupState::ThemeList(ref themes, _)) => themes[id].clone(),
