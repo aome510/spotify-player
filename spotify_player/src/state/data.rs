@@ -1,12 +1,14 @@
 use super::model::*;
 
 #[derive(Default, Debug)]
+/// the application's data
 pub struct AppData {
     pub user_data: UserData,
     pub caches: Caches,
 }
 
 #[derive(Default, Debug)]
+/// current user's data
 pub struct UserData {
     pub user: Option<rspotify_model::PrivateUser>,
     pub playlists: Vec<Playlist>,
@@ -15,6 +17,7 @@ pub struct UserData {
 }
 
 #[derive(Debug)]
+/// the application's caches
 pub struct Caches {
     pub context: lru::LruCache<String, Context>,
     pub search: lru::LruCache<String, SearchResults>,
