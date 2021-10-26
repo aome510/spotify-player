@@ -48,7 +48,7 @@ impl Client {
         log::info!("handle player request: {:?}", request);
 
         // `TransferPlayback` needs to be handled separately
-        // because it doesn't require an active playback
+        // because it doesn't require an active playback like other player requests
         if let PlayerRequest::TransferPlayback(device_id, force_play) = request {
             return Ok(self
                 .spotify
@@ -178,7 +178,6 @@ impl Client {
                 if !state.data.read().unwrap().caches.search.contains(&query) {
                     let results = self.search(&query).await?;
 
-                    // update the search cache stored inside the player state
                     state
                         .data
                         .write()
@@ -200,7 +199,6 @@ impl Client {
                 {
                     let tracks = self.recommendations(&seed).await?;
 
-                    // update the search cache stored inside the player state
                     state
                         .data
                         .write()
@@ -525,25 +523,20 @@ impl Client {
         let playlist_uri = playlist_id.uri();
         log::info!("get playlist context: {}", playlist_uri);
 
-        // a helper closure that converts a vector of `rspotify_model::PlaylistItem`
-        // into a vector of `state::Track`.
-        let playlist_items_into_tracks = |items: Vec<model::PlaylistItem>| -> Vec<Track> {
-            items
-                .into_iter()
-                .map(|item| match item.track {
-                    Some(model::PlayableItem::Track(track)) => Some(track.into()),
-                    _ => None,
-                })
-                .flatten()
-                .collect::<Vec<_>>()
-        };
-
-        // get the playlist
         let playlist = self.spotify.playlist(playlist_id, None, None).await?;
 
         // get the playlist's tracks
         let first_page = playlist.tracks.clone();
-        let tracks = playlist_items_into_tracks(self.all_paging_items(first_page).await?);
+        let tracks = self
+            .all_paging_items(first_page)
+            .await?
+            .into_iter()
+            .map(|item| match item.track {
+                Some(model::PlayableItem::Track(track)) => Some(track.into()),
+                _ => None,
+            })
+            .flatten()
+            .collect::<Vec<_>>();
 
         Ok(Context::Playlist {
             playlist: playlist.into(),
@@ -556,17 +549,21 @@ impl Client {
         let album_uri = album_id.uri();
         log::info!("get album context: {}", album_uri);
 
-        // get the album
         let album = self.spotify.album(album_id).await?;
-        // get the album's tracks
-        let album_tracks = self.all_paging_items(album.tracks.clone()).await?;
+        let first_page = album.tracks.clone();
 
-        // convert the `rspotify::FullAlbum` into `state::Album`
+        // converts `rspotify_model::FullAlbum` into `state::Album`
         let album: Album = album.into();
 
-        let tracks = album_tracks
+        // get the album's tracks
+        let tracks = self
+            .all_paging_items(first_page)
+            .await?
             .into_iter()
             .map(|t| {
+                // simplified track doesn't have album so
+                // we need to manually include one during
+                // converting into `state::Track`
                 Track::try_from_simplified_track(t).map(|mut t| {
                     t.album = Some(album.clone());
                     t
@@ -583,7 +580,7 @@ impl Client {
         let artist_uri = artist_id.uri();
         log::info!("get artist context: {}", artist_uri);
 
-        // get a information, top tracks and all albums
+        // get the artist's information, top tracks, related artists and albums
         let artist = self.spotify.artist(artist_id).await?.into();
 
         let top_tracks = self
@@ -602,7 +599,6 @@ impl Client {
             .map(|a| a.into())
             .collect::<Vec<_>>();
 
-        // delay the request for getting artist's albums to not block the UI
         let albums = self.artist_albums(artist_id).await?;
 
         Ok(Context::Artist {
@@ -613,8 +609,8 @@ impl Client {
         })
     }
 
-    /// calls a GET api to Spotify server by making a http request
-    /// and parses the JSON response into a specific return type `T`.
+    /// calls a GET HTTP request to the Spotify server,
+    /// and parses the response into a specific type `T`.
     async fn internal_call<T>(&self, url: &str) -> Result<T>
     where
         T: serde::de::DeserializeOwned,

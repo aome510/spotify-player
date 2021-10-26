@@ -50,7 +50,7 @@ impl PlayerState {
         }
     }
 
-    /// gets the current context
+    /// gets the current context (immutable)
     pub fn context<'a>(&self, caches: &'a data::Caches) -> Option<&'a Context> {
         match self.context_id {
             Some(ref id) => caches.context.peek(&id.uri()),
