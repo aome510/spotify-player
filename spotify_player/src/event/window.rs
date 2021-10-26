@@ -14,15 +14,15 @@ pub fn handle_key_sequence_for_context_window(
         None => return Ok(false),
     };
 
+    let mut ui = state.ui.lock();
     match command {
         Command::FocusNextWindow => {
-            state.ui.lock().window.next();
+            ui.window.next();
         }
         Command::FocusPreviousWindow => {
-            state.ui.lock().window.previous();
+            ui.window.previous();
         }
         Command::SearchContext => {
-            let mut ui = state.ui.lock();
             ui.window.select(Some(0));
             ui.popup = Some(PopupState::Search {
                 query: "".to_owned(),
@@ -51,6 +51,8 @@ pub fn handle_key_sequence_for_context_window(
             }
         }
         _ => {
+            drop(ui);
+
             // handle sort/reverse tracks commands
             let order = match command {
                 Command::SortTrackByTitle => Some(TrackOrder::TrackName),

@@ -284,6 +284,7 @@ impl Focusable for WindowState {
             Self::Search { focus, .. } => focus.next(),
             _ => {}
         }
+        self.select(Some(0));
     }
 
     fn previous(&mut self) {
@@ -292,6 +293,7 @@ impl Focusable for WindowState {
             Self::Search { focus, .. } => focus.previous(),
             _ => {}
         }
+        self.select(Some(0));
     }
 }
 
