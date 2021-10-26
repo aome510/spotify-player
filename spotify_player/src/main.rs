@@ -1,5 +1,3 @@
-use event::ClientRequest;
-
 mod auth;
 mod client;
 mod command;
@@ -80,14 +78,14 @@ async fn main() -> anyhow::Result<()> {
     std::thread::spawn({
         let send = send.clone();
         move || {
-            send.send(ClientRequest::GetCurrentUser).unwrap();
-            send.send(ClientRequest::GetCurrentPlayback).unwrap();
-            send.send(ClientRequest::GetUserPlaylists).unwrap();
+            send.send(event::ClientRequest::GetCurrentUser).unwrap();
+            send.send(event::ClientRequest::GetCurrentPlayback).unwrap();
+            send.send(event::ClientRequest::GetUserPlaylists).unwrap();
 
             // wait for 1 second before getting the device list
             // because it may take time to intialize the integrated Spotify client
             std::thread::sleep(std::time::Duration::from_millis(1000));
-            send.send(ClientRequest::GetDevices).unwrap();
+            send.send(event::ClientRequest::GetDevices).unwrap();
         }
     });
 

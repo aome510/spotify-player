@@ -10,7 +10,7 @@ pub fn handle_key_sequence_for_popup(
     ui: &mut UIStateGuard,
 ) -> Result<bool> {
     match ui.popup.as_ref().unwrap() {
-        PopupState::ContextSearch(_) => {
+        PopupState::Search { .. } => {
             handle_key_sequence_for_search_popup(key_sequence, send, state, ui)
         }
         PopupState::ArtistList(..) => handle_key_sequence_for_list_popup(
@@ -30,7 +30,7 @@ pub fn handle_key_sequence_for_popup(
 
                 let context_id = ContextId::Artist(artists[id].id.clone());
                 send.send(ClientRequest::GetContext(context_id.clone()))?;
-                ui.new_page(PageState::Browsing(context_id));
+                ui.create_new_page(PageState::Browsing(context_id));
 
                 Ok(())
             },
@@ -79,10 +79,11 @@ pub fn handle_key_sequence_for_popup(
                             // when adding a new track to a playlist, we need to remove
                             // the cache for that playlist
                             state
-                                .player
+                                .data
                                 .write()
                                 .unwrap()
-                                .context_cache
+                                .caches
+                                .context
                                 .pop(&playlists[id].id.uri());
 
                             send.send(ClientRequest::AddTrackToPlaylist(
@@ -100,9 +101,12 @@ pub fn handle_key_sequence_for_popup(
             }
         }
         PopupState::UserFollowedArtistList(_) => {
-            let player = state.player.read().unwrap();
-            let artist_uris = player
-                .user_followed_artists
+            let artist_uris = state
+                .data
+                .read()
+                .unwrap()
+                .user_data
+                .followed_artists
                 .iter()
                 .map(|a| a.id.uri())
                 .collect::<Vec<_>>();
@@ -117,9 +121,12 @@ pub fn handle_key_sequence_for_popup(
             )
         }
         PopupState::UserSavedAlbumList(_) => {
-            let player = state.player.read().unwrap();
-            let album_uris = player
-                .user_saved_albums
+            let album_uris = state
+                .data
+                .read()
+                .unwrap()
+                .user_data
+                .saved_albums
                 .iter()
                 .map(|a| a.id.uri())
                 .collect::<Vec<_>>();
@@ -181,10 +188,10 @@ pub fn handle_key_sequence_for_popup(
                 },
             )
         }
-        PopupState::CommandHelp(_) => {
+        PopupState::CommandHelp { .. } => {
             handle_key_sequence_for_command_help_popup(key_sequence, state, ui)
         }
-        PopupState::ActionList(ref item, _) => {
+        PopupState::ActionList(item, ..) => {
             handle_key_sequence_for_action_list_popup(item.actions(), key_sequence, send, state, ui)
         }
     }
@@ -198,7 +205,7 @@ fn handle_key_sequence_for_search_popup(
     ui: &mut UIStateGuard,
 ) -> Result<bool> {
     let query = match ui.popup {
-        Some(PopupState::ContextSearch(ref mut query)) => query,
+        Some(PopupState::Search { ref mut query }) => query,
         _ => unreachable!(),
     };
     if key_sequence.keys.len() == 1 {
@@ -290,7 +297,7 @@ fn handle_key_sequence_for_context_browsing_list_popup(
 
             send.send(ClientRequest::GetContext(context_id.clone()))?;
 
-            ui.new_page(PageState::Browsing(context_id));
+            ui.create_new_page(PageState::Browsing(context_id));
 
             Ok(())
         },
@@ -369,7 +376,7 @@ fn handle_key_sequence_for_command_help_popup(
     };
 
     let offset = match ui.popup {
-        Some(PopupState::CommandHelp(ref mut offset)) => offset,
+        Some(PopupState::CommandHelp { ref mut offset }) => offset,
         _ => unreachable!(),
     };
     match command {
@@ -405,7 +412,7 @@ fn handle_key_sequence_for_action_list_popup(
         |_, _| {},
         |ui: &mut UIStateGuard, id: usize| -> Result<()> {
             let item = match ui.popup {
-                Some(PopupState::ActionList(ref item, _)) => item,
+                Some(PopupState::ActionList(ref item, ..)) => item,
                 _ => unreachable!(),
             };
 
@@ -416,7 +423,7 @@ fn handle_key_sequence_for_action_list_popup(
                             let uri = album.id.uri();
                             let context_id = ContextId::Album(AlbumId::from_uri(&uri)?);
                             send.send(ClientRequest::GetContext(context_id.clone()))?;
-                            ui.new_page(PageState::Browsing(context_id));
+                            ui.create_new_page(PageState::Browsing(context_id));
                         }
                     }
                     Action::BrowseArtist => {
@@ -426,10 +433,11 @@ fn handle_key_sequence_for_action_list_popup(
                         ));
                     }
                     Action::AddTrackToPlaylist => {
-                        let player = state.player.read().unwrap();
-                        if let Some(ref user) = player.user {
-                            let playlists = player
-                                .user_playlists
+                        let data = state.data.read().unwrap();
+                        if let Some(ref user) = data.user_data.user {
+                            let playlists = data
+                                .user_data
+                                .playlists
                                 .iter()
                                 .filter(|p| p.owner.1 == user.id)
                                 .cloned()
@@ -449,8 +457,10 @@ fn handle_key_sequence_for_action_list_popup(
                     Action::BrowseRecommendations => {
                         let seed = SeedItem::Track(track.clone());
                         send.send(ClientRequest::GetRecommendations(seed.clone()))?;
-                        ui.new_page(PageState::Recommendations(seed, None));
-                        ui.window = WindowState::Recommendations(new_table_state());
+                        ui.create_new_page(PageState::Recommendations(seed));
+                        ui.window = WindowState::Recommendations {
+                            track_table: new_table_state(),
+                        };
                     }
                 },
                 Item::Album(album) => match actions[id] {
@@ -474,8 +484,10 @@ fn handle_key_sequence_for_action_list_popup(
                     Action::BrowseRecommendations => {
                         let seed = SeedItem::Artist(artist.clone());
                         send.send(ClientRequest::GetRecommendations(seed.clone()))?;
-                        ui.new_page(PageState::Recommendations(seed, None));
-                        ui.window = WindowState::Recommendations(new_table_state());
+                        ui.create_new_page(PageState::Recommendations(seed));
+                        ui.window = WindowState::Recommendations {
+                            track_table: new_table_state(),
+                        };
                     }
                     _ => {}
                 },

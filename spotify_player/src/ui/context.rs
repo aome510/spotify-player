@@ -19,9 +19,10 @@ pub fn render_context_window(
         .title(ui.theme.block_title_with_style(title))
         .borders(Borders::ALL);
 
+    let data = state.data.read().unwrap();
     let player = state.player.read().unwrap();
 
-    match player.context() {
+    match player.context(&data.caches) {
         Some(context) => {
             frame.render_widget(block, rect);
 
@@ -36,7 +37,12 @@ pub fn render_context_window(
             frame.render_widget(context_desc, chunks[0]);
 
             match context {
-                Context::Artist(_, ref tracks, ref albums, ref artists) => {
+                Context::Artist {
+                    top_tracks,
+                    albums,
+                    related_artists,
+                    ..
+                } => {
                     render_context_artist_widgets(
                         is_active,
                         frame,
@@ -44,10 +50,10 @@ pub fn render_context_window(
                         state,
                         &player,
                         chunks[1],
-                        (tracks, albums, artists),
+                        (top_tracks, albums, related_artists),
                     );
                 }
-                Context::Playlist(_, ref tracks) => {
+                Context::Playlist { tracks, .. } => {
                     let track_table = construct_track_table_widget(
                         is_active,
                         ui,
@@ -60,7 +66,7 @@ pub fn render_context_window(
                         frame.render_stateful_widget(track_table, chunks[1], state)
                     }
                 }
-                Context::Album(_, ref tracks) => {
+                Context::Album { tracks, .. } => {
                     let track_table = construct_track_table_widget(
                         is_active,
                         ui,
@@ -102,7 +108,7 @@ fn render_context_artist_widgets(
     data: (&[Track], &[Album], &[Artist]),
 ) {
     let focus_state = match ui.window {
-        WindowState::Artist(_, _, _, focus_state) => focus_state,
+        WindowState::Artist { focus, .. } => focus,
         _ => {
             return;
         }
@@ -141,7 +147,7 @@ fn render_context_artist_widgets(
         .split(rect);
 
     // construct album list widget
-    let albums_list = {
+    let album_list = {
         let album_items = albums
             .into_iter()
             .map(|a| (a.name.clone(), false))
@@ -157,7 +163,7 @@ fn render_context_artist_widgets(
     };
 
     // construct artist list widget
-    let artists_list = {
+    let artist_list = {
         let artist_items = artists
             .into_iter()
             .map(|a| (a.name.clone(), false))
@@ -172,13 +178,15 @@ fn render_context_artist_widgets(
         )
     };
 
-    let (albums_list_state, artists_list_state) = match ui.window {
-        WindowState::Artist(_, ref mut albums_list_state, ref mut artists_list_state, _) => {
-            (albums_list_state, artists_list_state)
-        }
+    let (album_list_state, artist_list_state) = match ui.window {
+        WindowState::Artist {
+            ref mut album_list,
+            ref mut related_artist_list,
+            ..
+        } => (album_list, related_artist_list),
         _ => unreachable!(),
     };
 
-    frame.render_stateful_widget(albums_list, chunks[0], albums_list_state);
-    frame.render_stateful_widget(artists_list, chunks[1], artists_list_state);
+    frame.render_stateful_widget(album_list, chunks[0], album_list_state);
+    frame.render_stateful_widget(artist_list, chunks[1], artist_list_state);
 }

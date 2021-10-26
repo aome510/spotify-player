@@ -1,6 +1,10 @@
+mod data;
+mod model;
 mod player;
 mod ui;
 
+pub use data::*;
+pub use model::*;
 pub use player::*;
 pub use ui::*;
 
@@ -17,8 +21,9 @@ pub struct State {
     pub keymap_config: config::KeymapConfig,
     pub theme_config: config::ThemeConfig,
 
-    pub player: RwLock<PlayerState>,
     pub ui: Mutex<UIState>,
+    pub player: RwLock<PlayerState>,
+    pub data: RwLock<AppData>,
 }
 
 impl State {
@@ -65,9 +70,9 @@ impl Default for State {
             theme_config: config::ThemeConfig::default(),
             keymap_config: config::KeymapConfig::default(),
 
-            player: RwLock::new(PlayerState::default()),
-
             ui: Mutex::new(UIState::default()),
+            player: RwLock::new(PlayerState::default()),
+            data: RwLock::new(AppData::default()),
         }
     }
 }

@@ -134,7 +134,7 @@ fn handle_key_event(
                         &mut ui,
                     )?
                 }
-                PageState::Searching(..) => window::handle_key_sequence_for_search_window(
+                PageState::Searching { .. } => window::handle_key_sequence_for_search_window(
                     &key_sequence,
                     send,
                     state,
@@ -211,27 +211,26 @@ fn handle_global_command(
             }
         }
         Command::OpenCommandHelp => {
-            ui.popup = Some(PopupState::CommandHelp(0));
+            ui.popup = Some(PopupState::CommandHelp { offset: 0 });
         }
         Command::RefreshPlayback => {
             send.send(ClientRequest::GetCurrentPlayback)?;
         }
         Command::ShowActionsOnCurrentTrack => {
             if let Some(track) = state.player.read().unwrap().current_playing_track() {
-                ui.popup = Some(PopupState::ActionList(
-                    Item::Track(track.clone().into()),
-                    new_list_state(),
-                ));
+                let item = Item::Track(track.clone().into());
+                let actions = item.actions();
+                ui.popup = Some(PopupState::ActionList(item, actions, new_list_state()));
             }
         }
         Command::BrowsePlayingContext => {
-            ui.new_page(PageState::CurrentPlaying);
+            ui.create_new_page(PageState::CurrentPlaying);
         }
         Command::BrowseUserPlaylists => {
             send.send(ClientRequest::GetUserPlaylists)?;
             ui.popup = Some(PopupState::UserPlaylistList(
                 PlaylistPopupAction::Browse,
-                state.player.read().unwrap().user_playlists.to_vec(),
+                state.data.read().unwrap().user_data.playlists.to_vec(),
                 new_list_state(),
             ));
         }
@@ -244,17 +243,11 @@ fn handle_global_command(
             ui.popup = Some(PopupState::UserSavedAlbumList(new_list_state()));
         }
         Command::SearchPage => {
-            ui.new_page(PageState::Searching(
-                "".to_owned(),
-                Box::new(SearchResults::default()),
-            ));
-            ui.window = WindowState::Search(
-                new_list_state(),
-                new_list_state(),
-                new_list_state(),
-                new_list_state(),
-                SearchFocusState::Input,
-            );
+            ui.create_new_page(PageState::Searching {
+                input: "".to_owned(),
+                current_query: "".to_owned(),
+            });
+            ui.window = WindowState::new_search_state();
         }
         Command::PreviousPage => {
             if ui.history.len() > 1 {

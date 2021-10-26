@@ -3,7 +3,6 @@ use std::sync::Arc;
 use crate::{
     event::{ClientRequest, PlayerRequest},
     state::*,
-    utils,
 };
 use anyhow::{anyhow, Result};
 use librespot_core::session::Session;
@@ -30,7 +29,7 @@ impl Client {
         }
     }
 
-    /// initializes the authorization token stored inside the Spotify client
+    /// initializes the authorization token inside the Spotify client
     pub async fn init_token(&self) -> Result<()> {
         self.spotify.refresh_token().await?;
         log::info!(
@@ -49,7 +48,7 @@ impl Client {
         log::info!("handle player request: {:?}", request);
 
         // `TransferPlayback` needs to be handled separately
-        // because it doesn't require an active playback
+        // because it doesn't require an active playback like other player requests
         if let PlayerRequest::TransferPlayback(device_id, force_play) = request {
             return Ok(self
                 .spotify
@@ -116,19 +115,7 @@ impl Client {
         match request {
             ClientRequest::GetCurrentUser => {
                 let user = self.spotify.current_user().await?;
-                state.player.write().unwrap().user = Some(user);
-            }
-            ClientRequest::GetRecommendations(seed) => {
-                let tracks = self.recommendations(&seed).await?;
-
-                // update the recommendation page state if needed
-                if let PageState::Recommendations(ref state_seed, ref mut state_tracks) =
-                    state.ui.lock().unwrap().current_page_mut()
-                {
-                    if state_seed.uri() == seed.uri() {
-                        *state_tracks = Some(tracks);
-                    }
-                }
+                state.data.write().unwrap().user_data.user = Some(user);
             }
             ClientRequest::Player(event) => {
                 self.handle_player_request(state, event).await?;
@@ -163,31 +150,63 @@ impl Client {
             }
             ClientRequest::GetUserPlaylists => {
                 let playlists = self.current_user_playlists().await?;
-                state.player.write().unwrap().user_playlists = playlists;
+                state.data.write().unwrap().user_data.playlists = playlists;
             }
             ClientRequest::GetUserFollowedArtists => {
                 let artists = self.current_user_followed_artists().await?;
-                state.player.write().unwrap().user_followed_artists = artists;
+                state.data.write().unwrap().user_data.followed_artists = artists;
             }
             ClientRequest::GetUserSavedAlbums => {
                 let albums = self.current_user_saved_albums().await?;
-                state.player.write().unwrap().user_saved_albums = albums;
+                state.data.write().unwrap().user_data.saved_albums = albums;
             }
             ClientRequest::GetContext(context) => {
-                match context {
-                    ContextId::Playlist(playlist_id) => {
-                        self.playlist_context(&playlist_id, state).await?;
-                    }
-                    ContextId::Album(album_id) => {
-                        self.album_context(&album_id, state).await?;
-                    }
-                    ContextId::Artist(artist_id) => {
-                        self.artist_context(&artist_id, state).await?;
-                    }
-                };
+                let uri = context.uri();
+                if !state.data.read().unwrap().caches.context.contains(&uri) {
+                    let context = match context {
+                        ContextId::Playlist(playlist_id) => {
+                            self.playlist_context(&playlist_id).await?
+                        }
+                        ContextId::Album(album_id) => self.album_context(&album_id).await?,
+                        ContextId::Artist(artist_id) => self.artist_context(&artist_id).await?,
+                    };
+
+                    state.data.write().unwrap().caches.context.put(uri, context);
+                }
             }
             ClientRequest::Search(query) => {
-                self.search(state, query).await?;
+                if !state.data.read().unwrap().caches.search.contains(&query) {
+                    let results = self.search(&query).await?;
+
+                    state
+                        .data
+                        .write()
+                        .unwrap()
+                        .caches
+                        .search
+                        .put(query, results);
+                }
+            }
+            ClientRequest::GetRecommendations(seed) => {
+                let uri = seed.uri();
+                if !state
+                    .data
+                    .read()
+                    .unwrap()
+                    .caches
+                    .recommendation
+                    .contains(&uri)
+                {
+                    let tracks = self.recommendations(&seed).await?;
+
+                    state
+                        .data
+                        .write()
+                        .unwrap()
+                        .caches
+                        .recommendation
+                        .put(uri, tracks);
+                }
             }
             ClientRequest::AddTrackToPlaylist(playlist_id, track_id) => {
                 self.add_track_to_playlist(&playlist_id, &track_id).await?;
@@ -290,7 +309,7 @@ impl Client {
     /// starts a playback
     pub async fn start_playback(&self, playback: Playback, device_id: Option<&str>) -> Result<()> {
         match playback {
-            Playback::Context(context_id, offset) => match context_id {
+            Playback::Context(id, offset) => match id {
                 ContextId::Album(id) => {
                     self.spotify
                         .start_context_playback(&id, device_id, offset, None)
@@ -366,32 +385,12 @@ impl Client {
     }
 
     /// searchs for items (tracks, artists, albums, playlists) that match a given query string.
-    pub async fn search(&self, state: &SharedState, query: String) -> Result<()> {
-        let update_ui_states = |results: SearchResults| {
-            let mut ui = state.ui.lock().unwrap();
-            if let PageState::Searching(_, ref mut state_results) = ui.current_page_mut() {
-                *state_results = Box::new(results);
-                ui.window = WindowState::Search(
-                    utils::new_list_state(),
-                    utils::new_list_state(),
-                    utils::new_list_state(),
-                    utils::new_list_state(),
-                    SearchFocusState::Input,
-                );
-            }
-        };
-
-        // already search the query before, updating the ui page state directly
-        if let Some(search_results) = state.player.read().unwrap().search_cache.peek(&query) {
-            update_ui_states(search_results.clone());
-            return Ok(());
-        }
-
+    pub async fn search(&self, query: &str) -> Result<SearchResults> {
         let (track_result, artist_result, album_result, playlist_result) = tokio::try_join!(
-            self.search_specific_type(&query, &model::SearchType::Track),
-            self.search_specific_type(&query, &model::SearchType::Artist),
-            self.search_specific_type(&query, &model::SearchType::Album),
-            self.search_specific_type(&query, &model::SearchType::Playlist)
+            self.search_specific_type(query, &model::SearchType::Track),
+            self.search_specific_type(query, &model::SearchType::Artist),
+            self.search_specific_type(query, &model::SearchType::Album),
+            self.search_specific_type(query, &model::SearchType::Playlist)
         )?;
 
         let (tracks, artists, albums, playlists) = (
@@ -420,23 +419,12 @@ impl Client {
             },
         );
 
-        let search_results = SearchResults {
+        Ok(SearchResults {
             tracks,
             artists,
             albums,
             playlists,
-        };
-
-        // update the search cache stored inside the player state
-        state
-            .player
-            .write()
-            .unwrap()
-            .search_cache
-            .put(query, search_results.clone());
-
-        update_ui_states(search_results);
-        Ok(())
+        })
     }
 
     async fn search_specific_type(
@@ -508,9 +496,10 @@ impl Client {
             }
             Item::Playlist(playlist) => {
                 let user_id = state
-                    .player
+                    .data
                     .read()
                     .unwrap()
+                    .user_data
                     .user
                     .as_ref()
                     .map(|u| u.id.clone());
@@ -530,154 +519,98 @@ impl Client {
     }
 
     /// gets a playlist context data
-    async fn playlist_context(&self, playlist_id: &PlaylistId, state: &SharedState) -> Result<()> {
+    async fn playlist_context(&self, playlist_id: &PlaylistId) -> Result<Context> {
         let playlist_uri = playlist_id.uri();
         log::info!("get playlist context: {}", playlist_uri);
 
-        // a helper closure that converts a vector of `rspotify_model::PlaylistItem`
-        // into a vector of `state::Track`.
-        let playlist_items_into_tracks = |items: Vec<model::PlaylistItem>| -> Vec<Track> {
-            items
-                .into_iter()
-                .map(|item| match item.track {
-                    Some(model::PlayableItem::Track(track)) => Some(track.into()),
-                    _ => None,
-                })
-                .flatten()
-                .collect::<Vec<_>>()
-        };
+        let playlist = self.spotify.playlist(playlist_id, None, None).await?;
 
-        if !state
-            .player
-            .read()
-            .unwrap()
-            .context_cache
-            .contains(&playlist_uri)
-        {
-            // get the playlist
-            let playlist = self.spotify.playlist(playlist_id, None, None).await?;
-            let first_page = playlist.tracks.clone();
-            // get the playlist's tracks
-            state.player.write().unwrap().context_cache.put(
-                playlist_uri.clone(),
-                Context::Playlist(
-                    playlist.into(),
-                    playlist_items_into_tracks(first_page.items.clone()),
-                ),
-            );
+        // get the playlist's tracks
+        let first_page = playlist.tracks.clone();
+        let tracks = self
+            .all_paging_items(first_page)
+            .await?
+            .into_iter()
+            .map(|item| match item.track {
+                Some(model::PlayableItem::Track(track)) => Some(track.into()),
+                _ => None,
+            })
+            .flatten()
+            .collect::<Vec<_>>();
 
-            let tracks = playlist_items_into_tracks(self.all_paging_items(first_page).await?);
-
-            if let Some(Context::Playlist(_, ref mut old)) = state
-                .player
-                .write()
-                .unwrap()
-                .context_cache
-                .peek_mut(&playlist_uri)
-            {
-                *old = tracks;
-            }
-        }
-
-        Ok(())
+        Ok(Context::Playlist {
+            playlist: playlist.into(),
+            tracks,
+        })
     }
 
     /// gets an album context data
-    async fn album_context(&self, album_id: &AlbumId, state: &SharedState) -> Result<()> {
+    async fn album_context(&self, album_id: &AlbumId) -> Result<Context> {
         let album_uri = album_id.uri();
         log::info!("get album context: {}", album_uri);
 
-        if !state
-            .player
-            .read()
-            .unwrap()
-            .context_cache
-            .contains(&album_uri)
-        {
-            // get the album
-            let album = self.spotify.album(album_id).await?;
-            // get the album's tracks
-            let album_tracks = self.all_paging_items(album.tracks.clone()).await?;
+        let album = self.spotify.album(album_id).await?;
+        let first_page = album.tracks.clone();
 
-            // convert the `rspotify::FullAlbum` into `state::Album`
-            let album: Album = album.into();
+        // converts `rspotify_model::FullAlbum` into `state::Album`
+        let album: Album = album.into();
 
-            let tracks = album_tracks
-                .into_iter()
-                .map(|t| {
-                    Track::try_from_simplified_track(t).map(|mut t| {
-                        t.album = Some(album.clone());
-                        t
-                    })
+        // get the album's tracks
+        let tracks = self
+            .all_paging_items(first_page)
+            .await?
+            .into_iter()
+            .map(|t| {
+                // simplified track doesn't have album so
+                // we need to manually include one during
+                // converting into `state::Track`
+                Track::try_from_simplified_track(t).map(|mut t| {
+                    t.album = Some(album.clone());
+                    t
                 })
-                .flatten()
-                .collect::<Vec<_>>();
+            })
+            .flatten()
+            .collect::<Vec<_>>();
 
-            state
-                .player
-                .write()
-                .unwrap()
-                .context_cache
-                .put(album_uri, Context::Album(album, tracks));
-        }
-
-        Ok(())
+        Ok(Context::Album { album, tracks })
     }
 
     /// gets an artist context data
-    async fn artist_context(&self, artist_id: &ArtistId, state: &SharedState) -> Result<()> {
+    async fn artist_context(&self, artist_id: &ArtistId) -> Result<Context> {
         let artist_uri = artist_id.uri();
         log::info!("get artist context: {}", artist_uri);
 
-        if !state
-            .player
-            .read()
-            .unwrap()
-            .context_cache
-            .contains(&artist_uri)
-        {
-            // get a information, top tracks and all albums
-            let artist = self.spotify.artist(artist_id).await?.into();
+        // get the artist's information, top tracks, related artists and albums
+        let artist = self.spotify.artist(artist_id).await?.into();
 
-            let top_tracks = self
-                .spotify
-                .artist_top_tracks(artist_id, &model::enums::misc::Market::FromToken)
-                .await?
-                .into_iter()
-                .map(|t| t.into())
-                .collect::<Vec<_>>();
+        let top_tracks = self
+            .spotify
+            .artist_top_tracks(artist_id, &model::enums::misc::Market::FromToken)
+            .await?
+            .into_iter()
+            .map(|t| t.into())
+            .collect::<Vec<_>>();
 
-            let related_artists = self
-                .spotify
-                .artist_related_artists(artist_id)
-                .await?
-                .into_iter()
-                .map(|a| a.into())
-                .collect::<Vec<_>>();
+        let related_artists = self
+            .spotify
+            .artist_related_artists(artist_id)
+            .await?
+            .into_iter()
+            .map(|a| a.into())
+            .collect::<Vec<_>>();
 
-            state.player.write().unwrap().context_cache.put(
-                artist_uri.clone(),
-                Context::Artist(artist, top_tracks, vec![], related_artists),
-            );
+        let albums = self.artist_albums(artist_id).await?;
 
-            // delay the request for getting artist's albums to not block the UI
-            let albums = self.artist_albums(artist_id).await?;
-
-            if let Some(Context::Artist(_, _, ref mut old, _)) = state
-                .player
-                .write()
-                .unwrap()
-                .context_cache
-                .peek_mut(&artist_uri)
-            {
-                *old = albums;
-            }
-        }
-        Ok(())
+        Ok(Context::Artist {
+            artist,
+            top_tracks,
+            albums,
+            related_artists,
+        })
     }
 
-    /// calls a GET api to Spotify server by making a http request
-    /// and parses the JSON response into a specific return type `T`.
+    /// calls a GET HTTP request to the Spotify server,
+    /// and parses the response into a specific type `T`.
     async fn internal_call<T>(&self, url: &str) -> Result<T>
     where
         T: serde::de::DeserializeOwned,

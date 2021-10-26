@@ -69,20 +69,28 @@ pub fn update_context(state: &state::SharedState, context_id: Option<state::Cont
 
             // spawn a pooling job to check when the context is updated inside the player state
             loop {
-                let window_state = match state.player.read().unwrap().context() {
-                    Some(context) => match context {
-                        state::Context::Artist(..) => WindowState::Artist(
-                            new_table_state(),
-                            new_list_state(),
-                            new_list_state(),
-                            ArtistFocusState::TopTracks,
-                        ),
-                        state::Context::Album(..) => WindowState::Album(new_table_state()),
-                        state::Context::Playlist(..) => WindowState::Playlist(new_table_state()),
-                    },
-                    None => {
-                        std::thread::sleep(refresh_duration);
-                        continue;
+                let window_state = {
+                    let data = state.data.read().unwrap();
+                    let player = state.player.read().unwrap();
+                    match player.context(&data.caches) {
+                        Some(context) => match context {
+                            state::Context::Artist { .. } => WindowState::Artist {
+                                top_track_table: new_table_state(),
+                                album_list: new_list_state(),
+                                related_artist_list: new_list_state(),
+                                focus: ArtistFocusState::TopTracks,
+                            },
+                            state::Context::Album { .. } => WindowState::Album {
+                                track_table: new_table_state(),
+                            },
+                            state::Context::Playlist { .. } => WindowState::Playlist {
+                                track_table: new_table_state(),
+                            },
+                        },
+                        None => {
+                            std::thread::sleep(refresh_duration);
+                            continue;
+                        }
                     }
                 };
 
