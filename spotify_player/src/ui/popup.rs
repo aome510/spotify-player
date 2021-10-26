@@ -8,7 +8,7 @@ use tui::{layout::*, widgets::*};
 /// The function returns a rectangle area to render the main layout
 /// and a boolean `is_active` determining whether the focus is **not** placed on the popup.
 pub fn render_popup(frame: &mut Frame, state: &SharedState, rect: Rect) -> (Rect, bool) {
-    let mut ui = state.ui.lock();
+    let ui = state.ui.lock();
 
     match ui.popup {
         None => (rect, true),
@@ -33,7 +33,8 @@ pub fn render_popup(frame: &mut Frame, state: &SharedState, rect: Rect) -> (Rect
                     .constraints([Constraint::Length(7), Constraint::Min(0)].as_ref())
                     .split(rect);
 
-                help::render_commands_help_popup(frame, &mut ui, state, chunks[1]);
+                drop(ui);
+                help::render_commands_help_popup(frame, state, chunks[1]);
                 (chunks[0], false)
             }
             PopupState::ActionList(item, _) => {
@@ -43,7 +44,8 @@ pub fn render_popup(frame: &mut Frame, state: &SharedState, rect: Rect) -> (Rect
                     .map(|a| (format!("{:?}", a), false))
                     .collect();
 
-                let rect = render_list_popup(frame, &mut ui, rect, "Actions", items, 7);
+                drop(ui);
+                let rect = render_list_popup(frame, state, rect, "Actions", items, 7);
                 (rect, false)
             }
             PopupState::DeviceList { .. } => {
@@ -59,19 +61,22 @@ pub fn render_popup(frame: &mut Frame, state: &SharedState, rect: Rect) -> (Rect
                     .map(|d| (format!("{} | {}", d.name, d.id), current_device_id == d.id))
                     .collect();
 
-                let rect = render_list_popup(frame, &mut ui, rect, "Devices", items, 5);
+                drop(ui);
+                let rect = render_list_popup(frame, state, rect, "Devices", items, 5);
                 (rect, false)
             }
             PopupState::ThemeList(themes, ..) => {
                 let items = themes.iter().map(|t| (t.name.clone(), false)).collect();
 
-                let rect = render_list_popup(frame, &mut ui, rect, "Themes", items, 7);
+                drop(ui);
+                let rect = render_list_popup(frame, state, rect, "Themes", items, 7);
                 (rect, false)
             }
             PopupState::UserPlaylistList(_, playlists, _) => {
                 let items = playlists.iter().map(|p| (p.name.clone(), false)).collect();
 
-                let rect = render_list_popup(frame, &mut ui, rect, "User Playlists", items, 10);
+                drop(ui);
+                let rect = render_list_popup(frame, state, rect, "User Playlists", items, 10);
                 (rect, false)
             }
             PopupState::UserFollowedArtistList { .. } => {
@@ -84,8 +89,8 @@ pub fn render_popup(frame: &mut Frame, state: &SharedState, rect: Rect) -> (Rect
                     .map(|a| (a.name.clone(), false))
                     .collect();
 
-                let rect =
-                    render_list_popup(frame, &mut ui, rect, "User Followed Artists", items, 7);
+                drop(ui);
+                let rect = render_list_popup(frame, state, rect, "User Followed Artists", items, 7);
                 (rect, false)
             }
             PopupState::UserSavedAlbumList { .. } => {
@@ -98,13 +103,15 @@ pub fn render_popup(frame: &mut Frame, state: &SharedState, rect: Rect) -> (Rect
                     .map(|a| (a.name.clone(), false))
                     .collect();
 
-                let rect = render_list_popup(frame, &mut ui, rect, "User Saved Albums", items, 7);
+                drop(ui);
+                let rect = render_list_popup(frame, state, rect, "User Saved Albums", items, 7);
                 (rect, false)
             }
             PopupState::ArtistList(artists, ..) => {
                 let items = artists.iter().map(|a| (a.name.clone(), false)).collect();
 
-                let rect = render_list_popup(frame, &mut ui, rect, "Artists", items, 5);
+                drop(ui);
+                let rect = render_list_popup(frame, state, rect, "Artists", items, 5);
                 (rect, false)
             }
         },
@@ -114,7 +121,7 @@ pub fn render_popup(frame: &mut Frame, state: &SharedState, rect: Rect) -> (Rect
 /// a helper function to render a list popup
 fn render_list_popup(
     frame: &mut Frame,
-    ui: &mut UIStateGuard,
+    state: &SharedState,
     rect: Rect,
     title: &'static str,
     items: Vec<(String, bool)>,
@@ -125,12 +132,19 @@ fn render_list_popup(
         .constraints([Constraint::Min(0), Constraint::Length(length)].as_ref())
         .split(rect);
 
-    let widget = construct_list_widget(ui, items, title, true, None);
+    let widget = construct_list_widget(state, items, title, true, None);
 
     frame.render_stateful_widget(
         widget,
         chunks[1],
-        ui.popup.as_mut().unwrap().list_state_mut().unwrap(),
+        state
+            .ui
+            .lock()
+            .popup
+            .as_mut()
+            .unwrap()
+            .list_state_mut()
+            .unwrap(),
     );
 
     chunks[0]

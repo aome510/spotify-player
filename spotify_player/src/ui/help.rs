@@ -69,12 +69,9 @@ pub fn render_shortcut_help_popup(frame: &mut Frame, state: &SharedState, rect: 
 }
 
 /// renders a command help popup listing all key shortcuts and corresponding descriptions
-pub fn render_commands_help_popup(
-    frame: &mut Frame,
-    ui: &mut UIStateGuard,
-    state: &SharedState,
-    rect: Rect,
-) {
+pub fn render_commands_help_popup(frame: &mut Frame, state: &SharedState, rect: Rect) {
+    let mut ui = state.ui.lock();
+
     let offset = match ui.popup {
         Some(PopupState::CommandHelp { ref mut offset }) => offset,
         _ => unreachable!(),

@@ -351,12 +351,13 @@ fn render_playback_window(frame: &mut Frame, state: &SharedState, rect: Rect) {
 
 /// constructs a generic list widget
 fn construct_list_widget<'a>(
-    ui: &UIStateGuard,
+    state: &SharedState,
     items: Vec<(String, bool)>,
     title: &str,
     is_active: bool,
     borders: Option<Borders>,
 ) -> List<'a> {
+    let ui = state.ui.lock();
     let borders = borders.unwrap_or(Borders::ALL);
 
     List::new(

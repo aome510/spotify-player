@@ -94,9 +94,7 @@ pub fn update_context(state: &state::SharedState, context_id: Option<state::Cont
                     }
                 };
 
-                // update the UI states based on the new playing context
-                let mut ui = state.ui.lock();
-                ui.window = window_state;
+                state.ui.lock().window = window_state;
                 break;
             }
         }

@@ -108,8 +108,7 @@ fn render_context_artist_widgets(
         state.filtered_items_by_search(data.2),
     );
 
-    let mut ui = state.ui.lock();
-    let focus_state = match ui.window {
+    let focus_state = match state.ui.lock().window {
         WindowState::Artist { focus, .. } => focus,
         _ => {
             return;
@@ -131,7 +130,7 @@ fn render_context_artist_widgets(
             tracks,
         );
 
-        if let Some(state) = ui.window.track_table_state() {
+        if let Some(state) = state.ui.lock().window.track_table_state() {
             frame.render_stateful_widget(track_table, chunks[0], state)
         }
         chunks[1]
@@ -150,7 +149,7 @@ fn render_context_artist_widgets(
             .collect::<Vec<_>>();
 
         construct_list_widget(
-            &ui,
+            state,
             album_items,
             "Albums",
             is_active && focus_state == ArtistFocusState::Albums,
@@ -166,7 +165,7 @@ fn render_context_artist_widgets(
             .collect::<Vec<_>>();
 
         construct_list_widget(
-            &ui,
+            state,
             artist_items,
             "Related Artists",
             is_active && focus_state == ArtistFocusState::RelatedArtists,
@@ -174,6 +173,7 @@ fn render_context_artist_widgets(
         )
     };
 
+    let mut ui = state.ui.lock();
     let (album_list_state, artist_list_state) = match ui.window {
         WindowState::Artist {
             ref mut album_list,
