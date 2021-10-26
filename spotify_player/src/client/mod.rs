@@ -327,7 +327,7 @@ impl Client {
 
     /// gets recommendation tracks from a recommendation seed
     pub async fn recommendations(&self, seed: &SeedItem) -> Result<Vec<Track>> {
-        let attributes = vec![rspotify_model::RecommendationsAttribute::MinPopularity(50)];
+        let attributes = vec![];
 
         let tracks = match seed {
             SeedItem::Artist(artist) => {
