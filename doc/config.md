@@ -144,7 +144,7 @@ key_sequence = "g n"
 command = "PreviousTrack"
 key_sequence = "g p"
 [[keymaps]]
-command = "SearchContextTracks"
+command = "SearchContext"
 key_sequence = "C-c C-x /"
 [[keymaps]]
 command = "ResumePause"

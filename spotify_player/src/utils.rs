@@ -56,8 +56,8 @@ pub fn update_context(state: &state::SharedState, context_id: Option<state::Cont
 
             let is_none_context = context_id.is_none();
 
-            state.player.write().unwrap().context_id = context_id;
-            state.ui.lock().unwrap().window = state::WindowState::Unknown;
+            state.player.write().context_id = context_id;
+            state.ui.lock().window = state::WindowState::Unknown;
 
             // `None` context, skip pooling
             if is_none_context {
@@ -70,8 +70,8 @@ pub fn update_context(state: &state::SharedState, context_id: Option<state::Cont
             // spawn a pooling job to check when the context is updated inside the player state
             loop {
                 let window_state = {
-                    let data = state.data.read().unwrap();
-                    let player = state.player.read().unwrap();
+                    let data = state.data.read();
+                    let player = state.player.read();
                     match player.context(&data.caches) {
                         Some(context) => match context {
                             state::Context::Artist { .. } => WindowState::Artist {
@@ -94,9 +94,7 @@ pub fn update_context(state: &state::SharedState, context_id: Option<state::Cont
                     }
                 };
 
-                // update the UI states based on the new playing context
-                let mut ui = state.ui.lock().unwrap();
-                ui.window = window_state;
+                state.ui.lock().window = window_state;
                 break;
             }
         }

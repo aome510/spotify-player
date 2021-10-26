@@ -35,6 +35,7 @@ unicode-width = "0.1.9"
 rand = "0.8.4"
 maybe-async = "0.2.6"
 async-trait = "0.1.51"
+parking_lot = "0.11.2"
 
 [features]
 alsa-backend = ["streaming", "librespot-playback/alsa-backend"]

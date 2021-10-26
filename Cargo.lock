@@ -2574,6 +2574,7 @@ dependencies = [
  "log",
  "lru",
  "maybe-async",
+ "parking_lot",
  "rand",
  "reqwest",
  "rpassword",

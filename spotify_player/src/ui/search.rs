@@ -7,31 +7,26 @@ use {tui::layout::*, tui::widgets::*};
 ///
 /// # Panic
 /// This function will panic if the current UI's `PageState` is not `PageState::Searching`
-pub fn render_search_window(
-    is_active: bool,
-    frame: &mut Frame,
-    ui: &mut UIStateGuard,
-    state: &SharedState,
-    rect: Rect,
-) {
+pub fn render_search_window(is_active: bool, frame: &mut Frame, state: &SharedState, rect: Rect) {
     // gets the current search query from UI's `PageState`
-    let query = match ui.current_page() {
+    let (input, current_query) = match state.ui.lock().current_page() {
         PageState::Searching {
-            ref current_query, ..
-        } => current_query,
+            input,
+            current_query,
+        } => (input.clone(), current_query.clone()),
         _ => unreachable!(),
     };
 
-    let focus_state = match ui.window {
+    let focus_state = match state.ui.lock().window {
         WindowState::Search { focus, .. } => focus,
         _ => {
             return;
         }
     };
 
-    let data = state.data.read().unwrap();
+    let data = state.data.read();
 
-    let search_results = data.caches.search.peek(query);
+    let search_results = data.caches.search.peek(&current_query);
 
     let track_list = {
         let track_items = search_results
@@ -46,7 +41,7 @@ pub fn render_search_window(
         let is_active = is_active && focus_state == SearchFocusState::Tracks;
 
         construct_list_widget(
-            ui,
+            state,
             track_items,
             &format!("Tracks{}", if is_active { " [*]" } else { "" }),
             is_active,
@@ -67,7 +62,7 @@ pub fn render_search_window(
         let is_active = is_active && focus_state == SearchFocusState::Albums;
 
         construct_list_widget(
-            ui,
+            state,
             album_items,
             &format!("Albums{}", if is_active { " [*]" } else { "" }),
             is_active,
@@ -88,7 +83,7 @@ pub fn render_search_window(
         let is_active = is_active && focus_state == SearchFocusState::Artists;
 
         construct_list_widget(
-            ui,
+            state,
             artist_items,
             &format!("Artists{}", if is_active { " [*]" } else { "" }),
             is_active,
@@ -109,7 +104,7 @@ pub fn render_search_window(
         let is_active = is_active && focus_state == SearchFocusState::Playlists;
 
         construct_list_widget(
-            ui,
+            state,
             playlist_items,
             &format!("Playlists{}", if is_active { " [*]" } else { "" }),
             is_active,
@@ -119,7 +114,7 @@ pub fn render_search_window(
 
     // renders borders with title
     let block = Block::default()
-        .title(ui.theme.block_title_with_style("Search"))
+        .title(state.ui.lock().theme.block_title_with_style("Search"))
         .borders(Borders::ALL);
     frame.render_widget(block, rect);
 
@@ -134,7 +129,7 @@ pub fn render_search_window(
         let is_active = is_active && focus_state == SearchFocusState::Input;
 
         frame.render_widget(
-            Paragraph::new(query.clone()).style(ui.theme.selection_style(is_active)),
+            Paragraph::new(input).style(state.ui.lock().theme.selection_style(is_active)),
             chunks[0],
         );
 
@@ -157,6 +152,7 @@ pub fn render_search_window(
 
     // get the mutable list states inside the UI's `WindowState`
     // to render the search window's sub-windows
+    let mut ui = state.ui.lock();
     let (track_list_state, album_list_state, artist_list_state, playlist_list_state) =
         match ui.window {
             WindowState::Search {

@@ -1,4 +1,5 @@
 use anyhow::Result;
+use std::sync::mpsc;
 
 use crate::{
     event::{ClientRequest, PlayerRequest},
@@ -12,7 +13,7 @@ use super::Client;
 pub async fn start_client_handler(
     state: SharedState,
     client: Client,
-    recv: std::sync::mpsc::Receiver<ClientRequest>,
+    recv: mpsc::Receiver<ClientRequest>,
 ) {
     while let Ok(request) = recv.recv() {
         let state = state.clone();
@@ -29,10 +30,7 @@ pub async fn start_client_handler(
 // to player events and notifying the client
 // to make additional update requests if needed
 #[tokio::main]
-pub async fn start_player_event_watchers(
-    state: SharedState,
-    send: std::sync::mpsc::Sender<ClientRequest>,
-) {
+pub async fn start_player_event_watchers(state: SharedState, send: mpsc::Sender<ClientRequest>) {
     // start a watcher thread that updates the current playback every `playback_refresh_duration_in_ms` ms.
     // A positive value of `playback_refresh_duration_in_ms` is required to start the watcher.
     if state.app_config.playback_refresh_duration_in_ms > 0 {
@@ -67,9 +65,9 @@ pub async fn start_player_event_watchers(
 
 async fn watch_player_events(
     state: &SharedState,
-    send: &std::sync::mpsc::Sender<ClientRequest>,
+    send: &mpsc::Sender<ClientRequest>,
 ) -> Result<()> {
-    let player = state.player.read().unwrap();
+    let player = state.player.read();
 
     // if cannot find the current playback, try to connect to the first avaiable device
     if player.playback.is_none() && !player.devices.is_empty() {

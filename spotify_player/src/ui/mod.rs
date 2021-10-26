@@ -1,11 +1,7 @@
-use crate::{
-    event::ClientRequest,
-    state::*,
-    utils::{self, new_table_state},
-};
+use crate::{event::ClientRequest, state::*, utils};
 use anyhow::Result;
 use rspotify::model;
-use std::sync::RwLockReadGuard;
+use std::sync::mpsc;
 use tui::{layout::*, style::*, text::*, widgets::*};
 
 type Terminal = tui::Terminal<tui::backend::CrosstermBackend<std::io::Stdout>>;
@@ -16,8 +12,8 @@ mod help;
 mod popup;
 mod search;
 
-/// starts the application UI as the main thread
-pub fn start_ui(state: SharedState, send: std::sync::mpsc::Sender<ClientRequest>) -> Result<()> {
+/// starts the application UI rendering function(s)
+pub fn start_ui(state: SharedState, send: mpsc::Sender<ClientRequest>) -> Result<()> {
     // terminal UI initializations
     let mut stdout = std::io::stdout();
     crossterm::terminal::enable_raw_mode()?;
@@ -33,7 +29,7 @@ pub fn start_ui(state: SharedState, send: std::sync::mpsc::Sender<ClientRequest>
     let ui_refresh_duration =
         std::time::Duration::from_millis(state.app_config.app_refresh_duration_in_ms);
     loop {
-        if !state.ui.lock().unwrap().is_running {
+        if !state.ui.lock().is_running {
             clean_up(terminal)?;
             return Ok(());
         }
@@ -41,13 +37,11 @@ pub fn start_ui(state: SharedState, send: std::sync::mpsc::Sender<ClientRequest>
         handle_page_state_change(&state, &send)?;
 
         terminal.draw(|frame| {
-            let ui = state.ui.lock().unwrap();
-
             // set the background and foreground colors for the application
-            let block = Block::default().style(ui.theme.app_style());
+            let block = Block::default().style(state.ui.lock().theme.app_style());
             frame.render_widget(block, frame.size());
 
-            render_application(frame, ui, &state, frame.size());
+            render_application(frame, &state, frame.size());
         })?;
 
         std::thread::sleep(ui_refresh_duration);
@@ -56,15 +50,12 @@ pub fn start_ui(state: SharedState, send: std::sync::mpsc::Sender<ClientRequest>
 
 /// checks the current UI page state for new changes
 /// to update the UI window state and other states accordingly
-fn handle_page_state_change(
-    state: &SharedState,
-    send: &std::sync::mpsc::Sender<ClientRequest>,
-) -> Result<()> {
-    let mut ui = state.ui.lock().unwrap();
+fn handle_page_state_change(state: &SharedState, send: &mpsc::Sender<ClientRequest>) -> Result<()> {
+    let mut ui = state.ui.lock();
 
     match ui.current_page() {
         PageState::Searching { current_query, .. } => {
-            state.player.write().unwrap().context_id = None;
+            state.player.write().context_id = None;
             match ui.window {
                 WindowState::Search { .. } => {}
                 _ => {
@@ -74,19 +65,19 @@ fn handle_page_state_change(
             }
         }
         PageState::Recommendations(seed) => {
-            state.player.write().unwrap().context_id = None;
+            state.player.write().context_id = None;
             match ui.window {
                 WindowState::Recommendations { .. } => {}
                 _ => {
                     send.send(ClientRequest::GetRecommendations(seed.clone()))?;
                     ui.window = WindowState::Recommendations {
-                        track_table: new_table_state(),
+                        track_table: utils::new_table_state(),
                     };
                 }
             }
         }
         PageState::Browsing(id) => {
-            let should_update = match state.player.read().unwrap().context_id {
+            let should_update = match state.player.read().context_id {
                 None => true,
                 Some(ref context_id) => context_id != id,
             };
@@ -95,7 +86,7 @@ fn handle_page_state_change(
             }
         }
         PageState::CurrentPlaying => {
-            let player = state.player.read().unwrap();
+            let player = state.player.read();
             // updates the context (album, playlist, etc) tracks based on the current playback
             if let Some(ref playback) = player.playback {
                 match playback.context {
@@ -163,58 +154,55 @@ fn clean_up(mut terminal: Terminal) -> Result<()> {
 }
 
 /// renders the application
-fn render_application(frame: &mut Frame, mut ui: UIStateGuard, state: &SharedState, rect: Rect) {
-    let rect = help::render_shortcut_help_window(frame, &ui, state, rect);
+fn render_application(frame: &mut Frame, state: &SharedState, rect: Rect) {
+    let rect = help::render_shortcut_help_popup(frame, state, rect);
 
-    let (rect, is_active) = popup::render_popup(frame, &mut ui, state, rect);
+    let (rect, is_active) = popup::render_popup(frame, state, rect);
 
-    render_main_layout(is_active, frame, &mut ui, state, rect);
+    render_main_layout(is_active, frame, state, rect);
 }
 
 /// renders the application's main layout which consists of:
 /// - a playback window on top
 /// - a context window or a search window at bottom depending on the current UI's `PageState`
-fn render_main_layout(
-    is_active: bool,
-    frame: &mut Frame,
-    ui: &mut UIStateGuard,
-    state: &SharedState,
-    rect: Rect,
-) {
+fn render_main_layout(is_active: bool, frame: &mut Frame, state: &SharedState, rect: Rect) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Length(7), Constraint::Min(0)].as_ref())
         .split(rect);
-    render_playback_window(frame, ui, state, chunks[0]);
+    render_playback_window(frame, state, chunks[0]);
 
+    let ui = state.ui.lock();
     match ui.current_page() {
         PageState::CurrentPlaying => {
+            drop(ui);
             context::render_context_window(
                 is_active,
                 frame,
-                ui,
                 state,
                 chunks[1],
                 "Context (Current Playing)",
             );
         }
         PageState::Browsing { .. } => {
+            drop(ui);
             context::render_context_window(
                 is_active,
                 frame,
-                ui,
                 state,
                 chunks[1],
                 "Context (Browsing)",
             );
         }
         PageState::Recommendations { .. } => {
-            render_recommendation_window(is_active, frame, ui, state, chunks[1]);
+            drop(ui);
+            render_recommendation_window(is_active, frame, state, chunks[1]);
         }
         PageState::Searching { .. } => {
+            drop(ui);
             // make sure that the window state matches the current page state.
             // The mismatch can happen when going back to the search from another page
-            search::render_search_window(is_active, frame, ui, state, chunks[1]);
+            search::render_search_window(is_active, frame, state, chunks[1]);
         }
     };
 }
@@ -223,20 +211,25 @@ fn render_main_layout(
 fn render_recommendation_window(
     is_active: bool,
     frame: &mut Frame,
-    ui: &mut UIStateGuard,
     state: &SharedState,
     rect: Rect,
 ) {
-    let seed = match ui.current_page() {
-        PageState::Recommendations(seed) => seed,
+    let seed = match state.ui.lock().current_page() {
+        PageState::Recommendations(seed) => seed.clone(),
         _ => unreachable!(),
     };
 
     let block = Block::default()
-        .title(ui.theme.block_title_with_style("Recommendations"))
+        .title(
+            state
+                .ui
+                .lock()
+                .theme
+                .block_title_with_style("Recommendations"),
+        )
         .borders(Borders::ALL);
 
-    let data = state.data.read().unwrap();
+    let data = state.data.read();
 
     let tracks = match data.caches.recommendation.peek(&seed.uri()) {
         Some(tracks) => tracks,
@@ -252,8 +245,8 @@ fn render_recommendation_window(
 
     // render the window's description
     let desc = match seed {
-        SeedItem::Track(ref track) => format!("{} Radio", track.name),
-        SeedItem::Artist(ref artist) => format!("{} Radio", artist.name),
+        SeedItem::Track(track) => format!("{} Radio", track.name),
+        SeedItem::Artist(artist) => format!("{} Radio", artist.name),
     };
 
     let chunks = Layout::default()
@@ -261,32 +254,25 @@ fn render_recommendation_window(
         .margin(1)
         .constraints([Constraint::Length(1), Constraint::Min(0)].as_ref())
         .split(rect);
-    let context_desc = Paragraph::new(desc).block(Block::default().style(ui.theme.context_desc()));
+    let context_desc =
+        Paragraph::new(desc).block(Block::default().style(state.ui.lock().theme.context_desc()));
     frame.render_widget(context_desc, chunks[0]);
 
-    let player = state.player.read().unwrap();
-    let track_table = construct_track_table_widget(
+    render_track_table_widget(
+        frame,
+        chunks[1],
         is_active,
-        ui,
         state,
-        &player,
-        ui.filtered_items_by_search(tracks),
+        state.filtered_items_by_search(tracks),
     );
-
-    if let Some(state) = ui.window.track_table_state() {
-        frame.render_stateful_widget(track_table, chunks[1], state)
-    }
 }
 
 /// renders a playback window showing information about the current playback such as
 /// - track title, artists, album
 /// - playback metadata (playing state, repeat state, shuffle state, volume, device, etc)
-fn render_playback_window(
-    frame: &mut Frame,
-    ui: &mut UIStateGuard,
-    state: &SharedState,
-    rect: Rect,
-) {
+fn render_playback_window(frame: &mut Frame, state: &SharedState, rect: Rect) {
+    let mut ui = state.ui.lock();
+
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Min(0), Constraint::Length(1)].as_ref())
@@ -298,7 +284,7 @@ fn render_playback_window(
         .borders(Borders::ALL);
     frame.render_widget(block, rect);
 
-    let player = state.player.read().unwrap();
+    let player = state.player.read();
     if let Some(ref playback) = player.playback {
         if let Some(rspotify::model::PlayableItem::Track(ref track)) = playback.item {
             let playback_info = vec![
@@ -359,12 +345,13 @@ fn render_playback_window(
 
 /// constructs a generic list widget
 fn construct_list_widget<'a>(
-    ui: &UIStateGuard,
+    state: &SharedState,
     items: Vec<(String, bool)>,
     title: &str,
     is_active: bool,
     borders: Option<Borders>,
 ) -> List<'a> {
+    let ui = state.ui.lock();
     let borders = borders.unwrap_or(Borders::ALL);
 
     List::new(
@@ -387,19 +374,21 @@ fn construct_list_widget<'a>(
     )
 }
 
-/// constructs a track table widget
-pub fn construct_track_table_widget<'a>(
+/// renders a track table widget
+pub fn render_track_table_widget(
+    frame: &mut Frame,
+    rect: Rect,
     is_active: bool,
-    ui: &UIStateGuard,
     state: &SharedState,
-    player: &RwLockReadGuard<PlayerState>,
     tracks: Vec<&Track>,
-) -> Table<'a> {
+) {
+    let mut ui = state.ui.lock();
+
     // get the current playing track's URI to
     // highlight such track (if exists) in the track table
     let mut playing_track_uri = "".to_string();
     let mut active_desc = "";
-    if let Some(ref playback) = player.playback {
+    if let Some(ref playback) = state.player.read().playback {
         if let Some(rspotify::model::PlayableItem::Track(ref track)) = playback.item {
             playing_track_uri = track.id.uri();
             active_desc = if !playback.is_playing { "⏸" } else { "▶" };
@@ -427,7 +416,7 @@ pub fn construct_track_table_widget<'a>(
         })
         .collect::<Vec<_>>();
 
-    Table::new(rows)
+    let table = Table::new(rows)
         .header(
             Row::new(vec![
                 Cell::from("#"),
@@ -446,5 +435,9 @@ pub fn construct_track_table_widget<'a>(
             Constraint::Percentage(30),
             Constraint::Percentage(10),
         ])
-        .highlight_style(ui.theme.selection_style(is_active))
+        .highlight_style(ui.theme.selection_style(is_active));
+
+    if let Some(state) = ui.window.track_table_state() {
+        frame.render_stateful_widget(table, rect, state)
+    }
 }
