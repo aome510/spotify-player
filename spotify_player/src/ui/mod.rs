@@ -261,16 +261,14 @@ fn render_recommendation_window(
     frame.render_widget(context_desc, chunks[0]);
 
     let player = state.player.read();
-    let track_table = construct_track_table_widget(
+    render_track_table_widget(
+        frame,
+        chunks[1],
         is_active,
         state,
         &player,
         state.filtered_items_by_search(tracks),
     );
-
-    if let Some(state) = state.ui.lock().window.track_table_state() {
-        frame.render_stateful_widget(track_table, chunks[1], state)
-    }
 }
 
 /// renders a playback window showing information about the current playback such as
@@ -380,15 +378,17 @@ fn construct_list_widget<'a>(
     )
 }
 
-/// constructs a track table widget
-pub fn construct_track_table_widget<'a>(
+/// renders a track table widget
+pub fn render_track_table_widget(
+    frame: &mut Frame,
+    rect: Rect,
     is_active: bool,
     state: &SharedState,
     // TODO: find out way to remove the ReadGuard as function parameter
     player: &parking_lot::RwLockReadGuard<PlayerState>,
     tracks: Vec<&Track>,
-) -> Table<'a> {
-    let ui = state.ui.lock();
+) {
+    let mut ui = state.ui.lock();
 
     // get the current playing track's URI to
     // highlight such track (if exists) in the track table
@@ -422,7 +422,7 @@ pub fn construct_track_table_widget<'a>(
         })
         .collect::<Vec<_>>();
 
-    Table::new(rows)
+    let table = Table::new(rows)
         .header(
             Row::new(vec![
                 Cell::from("#"),
@@ -441,5 +441,9 @@ pub fn construct_track_table_widget<'a>(
             Constraint::Percentage(30),
             Constraint::Percentage(10),
         ])
-        .highlight_style(ui.theme.selection_style(is_active))
+        .highlight_style(ui.theme.selection_style(is_active));
+
+    if let Some(state) = ui.window.track_table_state() {
+        frame.render_stateful_widget(table, rect, state)
+    }
 }

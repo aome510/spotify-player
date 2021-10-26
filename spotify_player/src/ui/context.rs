@@ -1,6 +1,6 @@
 use parking_lot::RwLockReadGuard;
 
-use super::{construct_track_table_widget, Frame};
+use super::{render_track_table_widget, Frame};
 use crate::{state::*, ui::construct_list_widget};
 use tui::{layout::*, widgets::*};
 
@@ -52,28 +52,24 @@ pub fn render_context_window(
                     );
                 }
                 Context::Playlist { tracks, .. } => {
-                    let track_table = construct_track_table_widget(
+                    render_track_table_widget(
+                        frame,
+                        chunks[1],
                         is_active,
                         state,
                         &player,
                         state.filtered_items_by_search(tracks),
                     );
-
-                    if let Some(state) = state.ui.lock().window.track_table_state() {
-                        frame.render_stateful_widget(track_table, chunks[1], state)
-                    }
                 }
                 Context::Album { tracks, .. } => {
-                    let track_table = construct_track_table_widget(
+                    render_track_table_widget(
+                        frame,
+                        chunks[1],
                         is_active,
                         state,
                         &player,
                         state.filtered_items_by_search(tracks),
                     );
-
-                    if let Some(state) = state.ui.lock().window.track_table_state() {
-                        frame.render_stateful_widget(track_table, chunks[1], state)
-                    }
                 }
             }
         }
@@ -123,16 +119,15 @@ fn render_context_artist_widgets(
             .constraints([Constraint::Length(12), Constraint::Min(1)].as_ref())
             .split(rect);
 
-        let track_table = construct_track_table_widget(
+        render_track_table_widget(
+            frame,
+            chunks[0],
             is_active && focus_state == ArtistFocusState::TopTracks,
             state,
             player,
             tracks,
         );
 
-        if let Some(state) = state.ui.lock().window.track_table_state() {
-            frame.render_stateful_widget(track_table, chunks[0], state)
-        }
         chunks[1]
     };
 

@@ -9,6 +9,7 @@ pub fn handle_key_sequence_for_popup(
     state: &SharedState,
 ) -> Result<bool> {
     let ui = state.ui.lock();
+
     match ui.popup.as_ref().unwrap() {
         PopupState::Search { .. } => {
             drop(ui);
@@ -208,9 +209,9 @@ fn handle_key_sequence_for_search_popup(
     send: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
 ) -> Result<bool> {
-    // handle user's input that updates the search query
     let mut ui = state.ui.lock();
 
+    // handle user's input that updates the search query
     let query = match ui.popup {
         Some(PopupState::Search { ref mut query }) => query,
         _ => unreachable!(),
