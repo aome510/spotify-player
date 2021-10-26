@@ -405,6 +405,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "crossbeam-channel"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "06ed27e177f16d65f0f0c22a213e17c696ace5dd64b14258b52f9417ccb52db4"
+dependencies = [
+ "cfg-if 1.0.0",
+ "crossbeam-utils",
+]
+
+[[package]]
+name = "crossbeam-utils"
+version = "0.8.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d82cfc11ce7f2c3faef78d8a684447b40d503d9681acebed6cb728d45940c4db"
+dependencies = [
+ "cfg-if 1.0.0",
+ "lazy_static",
+]
+
+[[package]]
 name = "crossterm"
 version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2565,6 +2585,7 @@ dependencies = [
  "chrono",
  "clap",
  "config_parser2",
+ "crossbeam-channel",
  "crossterm 0.21.0",
  "dirs-next",
  "env_logger",
@@ -2574,6 +2595,7 @@ dependencies = [
  "log",
  "lru",
  "maybe-async",
+ "parking_lot",
  "rand",
  "reqwest",
  "rpassword",
