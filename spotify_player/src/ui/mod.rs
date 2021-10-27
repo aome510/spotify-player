@@ -118,7 +118,7 @@ fn handle_page_state_change(state: &SharedState, send: &mpsc::Sender<ClientReque
                                 }
                                 _ => {
                                     log::info!(
-                                        "encountered not supported context type: {:#?}",
+                                        "encountered not supported context type: {:?}",
                                         context._type
                                     )
                                 }

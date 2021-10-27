@@ -23,6 +23,7 @@ pub enum PlayerRequest {
     Repeat,
     Shuffle,
     Volume(u8),
+    Reconnect,
     TransferPlayback(String, bool),
     StartPlayback(Playback),
 }
@@ -59,11 +60,11 @@ pub async fn start_event_handler(send: mpsc::Sender<ClientRequest>, state: Share
                     Event::Key(event) => handle_key_event(event, &send, &state),
                     _ => Ok(()),
                 } {
-                    log::warn!("failed to handle event: {:#}", err);
+                    log::warn!("failed to handle event: {}", err);
                 }
             }
             Err(err) => {
-                log::warn!("failed to get event: {:#}", err);
+                log::warn!("failed to get event: {}", err);
             }
         }
     }
@@ -229,7 +230,6 @@ fn handle_global_command(
             send.send(ClientRequest::GetUserPlaylists)?;
             ui.popup = Some(PopupState::UserPlaylistList(
                 PlaylistPopupAction::Browse,
-                state.data.read().user_data.playlists.to_vec(),
                 new_list_state(),
             ));
         }

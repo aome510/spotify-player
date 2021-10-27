@@ -203,7 +203,7 @@ impl KeymapConfig {
         match std::fs::read_to_string(path.join(super::KEYMAP_CONFIG_FILE)) {
             Err(err) => {
                 log::warn!(
-                    "failed to open the keymap config file: {:#?}...\nUse the default configurations instead...",
+                    "failed to open the keymap config file: {:?}...\nUse the default configurations instead...",
                     err
                 );
             }

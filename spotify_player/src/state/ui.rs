@@ -66,7 +66,7 @@ pub enum WindowState {
 pub enum PopupState {
     CommandHelp { offset: usize },
     Search { query: String },
-    UserPlaylistList(PlaylistPopupAction, Vec<Playlist>, ListState),
+    UserPlaylistList(PlaylistPopupAction, ListState),
     UserFollowedArtistList(ListState),
     UserSavedAlbumList(ListState),
     DeviceList(ListState),

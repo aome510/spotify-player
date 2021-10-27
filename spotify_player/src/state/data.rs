@@ -33,3 +33,17 @@ impl Default for Caches {
         }
     }
 }
+
+impl UserData {
+    /// returns a list of playlists created by the current user
+    pub fn playlists_created_by_user(&self) -> Vec<&Playlist> {
+        match self.user {
+            None => vec![],
+            Some(ref u) => self
+                .playlists
+                .iter()
+                .filter(|p| p.owner.1 == u.id)
+                .collect(),
+        }
+    }
+}

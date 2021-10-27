@@ -29,11 +29,11 @@
 - `spotify-player` is a fast, easy to use, and [configurable](https://github.com/aome510/spotify-player/blob/master/doc/config.md) Spotify player.
 - `spotify-player` is designed to be a player, not a fully-fledged Spotify clone, so it does not aim to support all possible Spotify features. Its main goal is to provide a quick and intuitive way to control music using [commands](#commands).
 - `spotify-player` is built on top of [tui](https://github.com/fdehau/tui-rs), [rspotify](https://github.com/ramsayleung/rspotify), and [librespot](https://github.com/librespot-org/librespot) libraries. It's inspired by [spotify-tui](https://github.com/Rigellute/spotify-tui) and [ncspot](https://github.com/hrkfdn/ncspot).
-- `spotify-player` can be used as either a remote player to control a running Spotify client or a [local player](#streaming) with an integrated Spotify client. On startup, the application will connect to the currently running Spotify client. If not exist such client, user will need to use [Spotify connect](#spotify-connect) to connect to an available client.
+- `spotify-player` can be used as either a remote player to control a running Spotify client or a [local player](#streaming) with an integrated Spotify client. On startup, the application will connect to a running Spotify client. If there is no such client, user will need to use [Spotify connect](#spotify-connect) to connect to an available client.
 
 ### Requirements
 
-User will need to have a Spotify Premium account to use all application's supported features.
+A Spotify Premium account is recommended to enable all application's supported features.
 
 ### Spotify Connect
 
@@ -41,15 +41,11 @@ To enable [Spotify connect](https://www.spotify.com/us/connect/) support, user w
 
 More details on registering a Spotify application can be found in the [Spotify documentation](https://developer.spotify.com/documentation/general/guides/app-settings/).
 
-**Note**: when using the default value for `client_id`, `spotify-player` can still be used as a remote player but it requires to have a running Spotify client before starting the application.
-
-When `spotify_player` runs with your own `client_id`, press **D** (default shortcut for `SwitchDevice` command) to get the list of available devices then press **enter** (default shortcut for `ChooseSelected` command) to connect to the selected device.
+If `spotify_player` runs with your own `client_id`, press **D** (default shortcut for `SwitchDevice` command) to get the list of available devices, then press **enter** (default shortcut for `ChooseSelected` command) to connect to the selected device.
 
 ### Streaming
 
-`spotify-player` supports streaming by using [librespot](https://github.com/librespot-org/librespot) library to create an integrated Spotify client while running. User will need to use their own `client_id` to connect to the integrated client as described in the [Spotify Connect](#spotify-connect) section. By default, the integrated client will create a Spotify device under `spotify-player` name.
-
-**Note:** using an integrated client can result in a slow startup time to connect to the player and retrieve the playback data. I'm still investigating on how to improve the startup time.
+`spotify-player` supports streaming by using [librespot](https://github.com/librespot-org/librespot) library to create an integrated Spotify client. By default, the integrated client will create a Spotify speaker device under the `spotify-player` name.
 
 The integrated client will use [rodio](https://github.com/RustAudio/rodio) as the default [audio backend](https://github.com/librespot-org/librespot/wiki/Audio-Backends). List of available backends:
 
@@ -68,9 +64,9 @@ User can change the audio backend when building the application by specifying th
 cargo build --release --no-default-features --features pulseaudio-backend
 ```
 
-**Note**: user will need additional dependencies depending on the selected audio backend. More details on compiling can be found in the [Librespot documentation](https://github.com/librespot-org/librespot/wiki/Compiling#general-dependencies).
+**Note**: user will need additional dependencies depending on the selected audio backend. More details can be found in the [Librespot documentation](https://github.com/librespot-org/librespot/wiki/Compiling#general-dependencies).
 
-User can also disable the `streaming` feature by running
+User can also disable the `streaming` feature by running (to use the application as a remote player only)
 
 ```shell
 cargo build --release --no-default-features
@@ -99,7 +95,7 @@ make install
 
 ### Docker
 
-**Note**: [streaming](#streaming) feature is disabled when using docker image.
+**Note**: [streaming](#streaming) feature is disabled when using the docker image.
 
 You can download the binary image of the latest build from the `master` branch by running
 

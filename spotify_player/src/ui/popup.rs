@@ -19,7 +19,7 @@ pub fn render_popup(frame: &mut Frame, state: &SharedState, rect: Rect) -> (Rect
                     .constraints([Constraint::Min(0), Constraint::Length(3)].as_ref())
                     .split(rect);
 
-                let widget = Paragraph::new(query.as_ref()).block(
+                let widget = Paragraph::new(format!("/{}", query)).block(
                     Block::default()
                         .borders(Borders::ALL)
                         .title(ui.theme.block_title_with_style("Search")),
@@ -72,8 +72,16 @@ pub fn render_popup(frame: &mut Frame, state: &SharedState, rect: Rect) -> (Rect
                 let rect = render_list_popup(frame, state, rect, "Themes", items, 7);
                 (rect, false)
             }
-            PopupState::UserPlaylistList(_, playlists, _) => {
-                let items = playlists.iter().map(|p| (p.name.clone(), false)).collect();
+            PopupState::UserPlaylistList(action, _) => {
+                let data = state.data.read();
+                let playlists = match action {
+                    PlaylistPopupAction::Browse => data.user_data.playlists.iter().collect(),
+                    PlaylistPopupAction::AddTrack(_) => data.user_data.playlists_created_by_user(),
+                };
+                let items = playlists
+                    .into_iter()
+                    .map(|p| (p.name.clone(), false))
+                    .collect();
 
                 drop(ui);
                 let rect = render_list_popup(frame, state, rect, "User Playlists", items, 10);
