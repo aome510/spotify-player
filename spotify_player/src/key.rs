@@ -3,6 +3,7 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 #[derive(Clone, Debug, PartialEq, Eq)]
 /// Key represents a key received from user's input
 pub enum Key {
+    Unknown,
     None(KeyCode),
     Ctrl(KeyCode),
     Alt(KeyCode),
@@ -130,6 +131,7 @@ impl std::fmt::Display for Key {
             Key::Ctrl(k) => write!(f, "C-{}", key_code_to_string(k)),
             Key::Alt(k) => write!(f, "M-{}", key_code_to_string(k)),
             Key::None(k) => write!(f, "{}", key_code_to_string(k)),
+            Key::Unknown => write!(f, "unkown key"),
         }
     }
 }
@@ -174,12 +176,18 @@ impl KeySequence {
 
 impl From<KeyEvent> for Key {
     fn from(event: KeyEvent) -> Self {
-        match event.modifiers {
+        let mut modifiers = event.modifiers;
+        // if the key combination contains `SHIFT`, remove it
+        // because the `event.code` already represents the with-SHIFT key code
+        if modifiers & KeyModifiers::SHIFT == KeyModifiers::SHIFT {
+            modifiers ^= KeyModifiers::SHIFT;
+        }
+
+        match modifiers {
             KeyModifiers::NONE => Key::None(event.code),
             KeyModifiers::ALT => Key::Alt(event.code),
             KeyModifiers::CONTROL => Key::Ctrl(event.code),
-            KeyModifiers::SHIFT => Key::None(event.code),
-            _ => unreachable!(),
+            _ => Key::Unknown,
         }
     }
 }
