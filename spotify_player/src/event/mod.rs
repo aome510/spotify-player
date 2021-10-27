@@ -230,7 +230,6 @@ fn handle_global_command(
             send.send(ClientRequest::GetUserPlaylists)?;
             ui.popup = Some(PopupState::UserPlaylistList(
                 PlaylistPopupAction::Browse,
-                state.data.read().user_data.playlists.to_vec(),
                 new_list_state(),
             ));
         }

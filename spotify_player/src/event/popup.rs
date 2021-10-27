@@ -41,10 +41,17 @@ pub fn handle_key_sequence_for_popup(
                 },
             )
         }
-        PopupState::UserPlaylistList(action, playlists, _) => {
+        PopupState::UserPlaylistList(action, _) => {
             match action {
                 PlaylistPopupAction::Browse => {
-                    let playlist_uris = playlists.iter().map(|p| p.id.uri()).collect::<Vec<_>>();
+                    let playlist_uris = state
+                        .data
+                        .read()
+                        .user_data
+                        .playlists
+                        .iter()
+                        .map(|p| p.id.uri())
+                        .collect::<Vec<_>>();
 
                     drop(ui);
                     handle_key_sequence_for_context_browsing_list_popup(
@@ -57,22 +64,22 @@ pub fn handle_key_sequence_for_popup(
                 }
                 PlaylistPopupAction::AddTrack(track_id) => {
                     let track_id = track_id.clone();
-                    let n_items = playlists.len();
+                    let playlist_ids = state
+                        .data
+                        .read()
+                        .user_data
+                        .playlists_created_by_user()
+                        .into_iter()
+                        .map(|p| p.id.clone())
+                        .collect::<Vec<_>>();
 
                     drop(ui);
                     handle_key_sequence_for_list_popup(
                         key_sequence,
                         state,
-                        n_items,
+                        playlist_ids.len(),
                         |_, _| {},
                         |ui: &mut UIStateGuard, id: usize| -> Result<()> {
-                            let playlists = match ui.popup {
-                                Some(PopupState::UserPlaylistList(_, ref playlists, _)) => {
-                                    playlists
-                                }
-                                _ => unreachable!(),
-                            };
-
                             // when adding a new track to a playlist, we need to remove
                             // the cache for that playlist
                             state
@@ -80,10 +87,10 @@ pub fn handle_key_sequence_for_popup(
                                 .write()
                                 .caches
                                 .context
-                                .pop(&playlists[id].id.uri());
+                                .pop(&playlist_ids[id].uri());
 
                             send.send(ClientRequest::AddTrackToPlaylist(
-                                playlists[id].id.clone(),
+                                playlist_ids[id].clone(),
                                 track_id.clone(),
                             ))?;
                             ui.popup = None;
@@ -423,22 +430,11 @@ fn handle_key_sequence_for_action_list_popup(
                         ));
                     }
                     Action::AddTrackToPlaylist => {
-                        let data = state.data.read();
-                        if let Some(ref user) = data.user_data.user {
-                            let playlists = data
-                                .user_data
-                                .playlists
-                                .iter()
-                                .filter(|p| p.owner.1 == user.id)
-                                .cloned()
-                                .collect();
-
-                            ui.popup = Some(PopupState::UserPlaylistList(
-                                PlaylistPopupAction::AddTrack(track.id.clone()),
-                                playlists,
-                                new_list_state(),
-                            ));
-                        }
+                        send.send(ClientRequest::GetUserPlaylists)?;
+                        ui.popup = Some(PopupState::UserPlaylistList(
+                            PlaylistPopupAction::AddTrack(track.id.clone()),
+                            new_list_state(),
+                        ));
                     }
                     Action::SaveToLibrary => {
                         send.send(ClientRequest::SaveToLibrary(item.clone()))?;
