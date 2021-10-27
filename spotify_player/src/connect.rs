@@ -31,10 +31,7 @@ pub async fn new_connection(session: Session, device: config::DeviceConfig) {
         autoplay: false,
     };
 
-    log::info!(
-        "application's connect configurations: {:?}",
-        connect_config
-    );
+    log::info!("application's connect configurations: {:?}", connect_config);
 
     let mixer =
         Box::new(mixer::softmixer::SoftMixer::open(MixerConfig::default())) as Box<dyn Mixer>;
