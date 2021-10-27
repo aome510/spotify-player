@@ -19,7 +19,7 @@ pub fn render_popup(frame: &mut Frame, state: &SharedState, rect: Rect) -> (Rect
                     .constraints([Constraint::Min(0), Constraint::Length(3)].as_ref())
                     .split(rect);
 
-                let widget = Paragraph::new(query.as_ref()).block(
+                let widget = Paragraph::new(format!("/{}", query)).block(
                     Block::default()
                         .borders(Borders::ALL)
                         .title(ui.theme.block_title_with_style("Search")),

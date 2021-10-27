@@ -50,29 +50,27 @@ pub async fn start_player_event_watchers(state: SharedState, send: mpsc::Sender<
     // the main thread that watches new player events every `refresh_duration` ms.
     let refresh_duration = std::time::Duration::from_millis(1000);
     loop {
-        {
-            let player = state.player.read();
+        std::thread::sleep(refresh_duration);
 
-            // update the playback when the current track ends
-            let progress_ms = player.playback_progress();
-            let duration_ms = player.current_playing_track().map(|t| t.duration);
-            let is_playing = match player.playback {
-                Some(ref playback) => playback.is_playing,
-                None => false,
-            };
-            if let (Some(progress_ms), Some(duration_ms)) = (progress_ms, duration_ms) {
-                if progress_ms >= duration_ms && is_playing {
-                    send.send(ClientRequest::GetCurrentPlayback).unwrap();
-                }
-            }
+        let player = state.player.read();
 
-            // try to reconnect if there is no playback
-            if player.playback.is_none() {
-                send.send(ClientRequest::Player(PlayerRequest::Reconnect))
-                    .unwrap();
+        // update the playback when the current track ends
+        let progress_ms = player.playback_progress();
+        let duration_ms = player.current_playing_track().map(|t| t.duration);
+        let is_playing = match player.playback {
+            Some(ref playback) => playback.is_playing,
+            None => false,
+        };
+        if let (Some(progress_ms), Some(duration_ms)) = (progress_ms, duration_ms) {
+            if progress_ms >= duration_ms && is_playing {
+                send.send(ClientRequest::GetCurrentPlayback).unwrap();
             }
         }
 
-        std::thread::sleep(refresh_duration);
+        // try to reconnect if there is no playback
+        if player.playback.is_none() {
+            send.send(ClientRequest::Player(PlayerRequest::Reconnect))
+                .unwrap();
+        }
     }
 }
