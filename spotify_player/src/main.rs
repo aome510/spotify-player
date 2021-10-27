@@ -74,20 +74,9 @@ async fn main() -> anyhow::Result<()> {
     // start application's threads
     let (send, recv) = std::sync::mpsc::channel::<event::ClientRequest>();
 
-    // init thread to get necessary data to render the player on startup
-    std::thread::spawn({
-        let send = send.clone();
-        move || {
-            send.send(event::ClientRequest::GetCurrentUser).unwrap();
-            send.send(event::ClientRequest::GetCurrentPlayback).unwrap();
-            send.send(event::ClientRequest::GetUserPlaylists).unwrap();
-
-            // wait for 1 second before getting the device list
-            // because it may take time to intialize the integrated Spotify client
-            std::thread::sleep(std::time::Duration::from_millis(1000));
-            send.send(event::ClientRequest::GetDevices).unwrap();
-        }
-    });
+    // get some prior information
+    send.send(event::ClientRequest::GetCurrentUser)?;
+    send.send(event::ClientRequest::GetCurrentPlayback)?;
 
     // connection thread (used to initialize the integrated Spotify client using librespot)
     #[cfg(feature = "streaming")]
