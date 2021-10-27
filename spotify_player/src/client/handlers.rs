@@ -1,7 +1,10 @@
 use anyhow::Result;
 use std::sync::mpsc;
 
-use crate::{event::ClientRequest, state::*};
+use crate::{
+    event::{ClientRequest, PlayerRequest},
+    state::*,
+};
 
 use super::Client;
 
@@ -48,8 +51,9 @@ pub async fn start_player_event_watchers(state: SharedState, send: mpsc::Sender<
     let refresh_duration = std::time::Duration::from_millis(1000);
     loop {
         {
-            // update the playback when the current track ends
             let player = state.player.read();
+
+            // update the playback when the current track ends
             let progress_ms = player.playback_progress();
             let duration_ms = player.current_playing_track().map(|t| t.duration);
             let is_playing = match player.playback {
@@ -60,6 +64,12 @@ pub async fn start_player_event_watchers(state: SharedState, send: mpsc::Sender<
                 if progress_ms >= duration_ms && is_playing {
                     send.send(ClientRequest::GetCurrentPlayback).unwrap();
                 }
+            }
+
+            // try to reconnect if there is no playback
+            if player.playback.is_none() {
+                send.send(ClientRequest::Player(PlayerRequest::Reconnect))
+                    .unwrap();
             }
         }
 

@@ -47,13 +47,47 @@ impl Client {
     ) -> Result<()> {
         log::info!("handle player request: {:?}", request);
 
-        // `TransferPlayback` needs to be handled separately
-        // because it doesn't require an active playback like other player requests
+        // `TransferPlayback` and `Reconnect` need to be handled separately
+        // from other play requests because they don't require an active playback
+
+        // transfer the current playback to another device
         if let PlayerRequest::TransferPlayback(device_id, force_play) = request {
-            return Ok(self
-                .spotify
+            self.spotify
                 .transfer_playback(&device_id, Some(force_play))
-                .await?);
+                .await?;
+
+            log::info!("transfered the playback to device with {} id", device_id);
+            return Ok(());
+        }
+        // trying to reconnect to the first available device
+        if let PlayerRequest::Reconnect = request {
+            let device_id = self.spotify.device().await?.into_iter().find_map(|d| d.id);
+
+            match device_id {
+                Some(id) => {
+                    log::info!(
+                        "transfered the playback to the first available device (id={})",
+                        id
+                    );
+                    self.spotify.transfer_playback(&id, None).await?;
+                }
+                None => {
+                    // if the streaming is available and no device is found,
+                    // which is probably because user doesn't specify their own client ID,
+                    // try to connect to the integrated client's device ID
+                    #[cfg(feature = "streaming")]
+                    {
+                        let device_id = self.spotify.session.session()?.device_id();
+                        self.spotify.transfer_playback(device_id, None).await?;
+                        log::info!(
+                            "transfered the playback to the integrated client's device (id={})",
+                            device_id
+                        );
+                    }
+                }
+            }
+
+            return Ok(());
         }
 
         let playback = match state.player.read().simplified_playback() {
@@ -103,6 +137,7 @@ impl Client {
                     .await?
             }
             PlayerRequest::TransferPlayback(..) => unreachable!(),
+            PlayerRequest::Reconnect => unreachable!(),
         };
 
         Ok(())

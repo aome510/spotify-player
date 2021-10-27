@@ -23,6 +23,7 @@ pub enum PlayerRequest {
     Repeat,
     Shuffle,
     Volume(u8),
+    Reconnect,
     TransferPlayback(String, bool),
     StartPlayback(Playback),
 }
