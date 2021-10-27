@@ -33,7 +33,7 @@ impl Client {
     pub async fn init_token(&self) -> Result<()> {
         self.spotify.refresh_token().await?;
         log::info!(
-            "auth token: {:#?}",
+            "auth token: {:?}",
             self.spotify.get_token().lock().await.unwrap()
         );
         Ok(())

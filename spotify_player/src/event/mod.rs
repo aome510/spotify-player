@@ -59,11 +59,11 @@ pub async fn start_event_handler(send: mpsc::Sender<ClientRequest>, state: Share
                     Event::Key(event) => handle_key_event(event, &send, &state),
                     _ => Ok(()),
                 } {
-                    log::warn!("failed to handle event: {:#}", err);
+                    log::warn!("failed to handle event: {}", err);
                 }
             }
             Err(err) => {
-                log::warn!("failed to get event: {:#}", err);
+                log::warn!("failed to get event: {}", err);
             }
         }
     }

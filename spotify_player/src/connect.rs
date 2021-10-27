@@ -32,7 +32,7 @@ pub async fn new_connection(session: Session, device: config::DeviceConfig) {
     };
 
     log::info!(
-        "application's connect configurations: {:#?}",
+        "application's connect configurations: {:?}",
         connect_config
     );
 
