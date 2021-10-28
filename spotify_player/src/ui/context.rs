@@ -17,8 +17,9 @@ pub fn render_context_window(
         .borders(Borders::ALL);
 
     let data = state.data.read();
+    let context = state.player.read().context(&data.caches);
 
-    match state.player.read().context(&data.caches) {
+    match context {
         Some(context) => {
             frame.render_widget(block, rect);
 

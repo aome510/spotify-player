@@ -268,8 +268,9 @@ pub fn handle_command_for_focused_context_subwindow(
     state: &SharedState,
 ) -> Result<bool> {
     let data = state.data.read();
+    let context = state.player.read().context(&data.caches);
 
-    match state.player.read().context(&data.caches) {
+    match context {
         Some(context) => match context {
             Context::Artist {
                 top_tracks,
