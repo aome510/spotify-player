@@ -22,6 +22,8 @@
   - [Search Page](#search-page)
 - [Mouse support](#mouse-support)
 - [Configurations](#configurations)
+- [Caches](#caches)
+  - [Logging](#logging)
 - [Roadmap](#roadmap)
 
 ## Introduction
@@ -211,6 +213,14 @@ Currently, the only use case of mouse is to seek to a position of the current pl
 By default, `spotify-player` will look into `$HOME/.config/spotify-player` for application's configuration files. This can be changed by either specifying `-c <FOLDER_PATH>` or `--config-folder <FOLDER_PATH>` option.
 
 Please refer to [the configuration documentation](https://github.com/aome510/spotify-player/blob/master/doc/config.md) for more details on the configuration options.
+
+## Caches
+
+By default, `spotify-player` will look into `$HOME/.cache/spotify-player` for application's cache files, which include log file, spotify's authorization credentials, audio cache files, etc.
+
+### Logging
+
+`spotify-player` uses `RUST_LOG` environment variable to define the application's [logging level](https://docs.rs/log/0.4.14/log/enum.Level.html) (default to be `INFO`). By default, the application stores logs inside `$APP_CACHE_FOLDER/spotify-player.log` file which can be configured by specifying the `log-file` CLI argument.
 
 ## Roadmap
 

@@ -44,7 +44,7 @@ fn init_app_cli_arguments() -> clap::ArgMatches<'static> {
                 .short("l")
                 .long("log-file")
                 .value_name("FOLDER")
-                .help("Path to the application's log file (default: $HOME/.cache/spotify-player/spotify-player.log)")
+                .help("Path to the application's log file (default: $APP_CACHE_FOLDER/spotify-player.log)")
                 .next_line_help(true)
         ).get_matches()
 }
