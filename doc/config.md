@@ -21,7 +21,7 @@ All configurations are stored inside the application's configuration folder (def
 | `theme`                                    | application's theme                                              | `dracula`                          |
 | `n_refreshes_each_playback_update`         | number of refresh requests in each playback update               | `5`                                |
 | `refresh_delay_in_ms_each_playback_update` | delay in ms between two refresh requests in each playback update | `500`                              |
-| `app_refresh_duration_in_ms`               | duration in ms for re-rendering the application's UI             | `100`                              |
+| `app_refresh_duration_in_ms`               | duration in ms for re-rendering the application's UI             | `32`                               |
 | `playback_refresh_duration_in_ms`          | duration in ms for refreshing the player's playback periodically | `0`                                |
 | `track_table_item_max_len`                 | maximum length for a column in a track table                     | `32`                               |
 

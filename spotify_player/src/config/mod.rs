@@ -47,7 +47,7 @@ impl Default for AppConfig {
             client_id: "65b708073fc0480ea92a077233ca87bd".to_string(),
             n_refreshes_each_playback_update: 5,
             refresh_delay_in_ms_each_playback_update: 500,
-            app_refresh_duration_in_ms: 100,
+            app_refresh_duration_in_ms: 32,
             playback_refresh_duration_in_ms: 0,
             track_table_item_max_len: 32,
 
