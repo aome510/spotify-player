@@ -122,7 +122,7 @@ impl BaseClient for Spotify {
         match self.retrieve_token().await {
             Ok(token) => Ok(Some(token)),
             Err(err) => {
-                log::warn!("{}", err);
+                tracing::warn!("{}", err);
                 Ok(None)
             }
         }

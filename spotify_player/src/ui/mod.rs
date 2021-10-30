@@ -117,7 +117,7 @@ fn handle_page_state_change(state: &SharedState, send: &mpsc::Sender<ClientReque
                                     utils::update_context(state, Some(context_id));
                                 }
                                 _ => {
-                                    log::info!(
+                                    tracing::info!(
                                         "encountered not supported context type: {:?}",
                                         context._type
                                     )
@@ -130,7 +130,7 @@ fn handle_page_state_change(state: &SharedState, send: &mpsc::Sender<ClientReque
                             // the current playback doesn't have a playing context,
                             // update the state's `context_id` to `None`
                             utils::update_context(state, None);
-                            log::info!("current playback does not have a playing context");
+                            tracing::info!("current playback does not have a playing context");
                         }
                     }
                 }

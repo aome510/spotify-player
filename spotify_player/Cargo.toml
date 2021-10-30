@@ -16,7 +16,6 @@ clap = "2.33.3"
 config_parser2 = "0.1.2"
 crossterm = { version = "0.22.1", features = ["event-stream"] }
 dirs-next = "2.0.0"
-env_logger = "0.9.0"
 librespot-connect = { version = "0.3.1", optional = true }
 librespot-playback = { version = "0.3.1", optional = true }
 librespot-core = "0.3.1"
@@ -36,6 +35,8 @@ rand = "0.8.4"
 maybe-async = "0.2.6"
 async-trait = "0.1.51"
 parking_lot = "0.11.2"
+tracing = "0.1.29"
+tracing-subscriber = { version = "0.3.1", features = ["env-filter"] }
 
 [features]
 alsa-backend = ["streaming", "librespot-playback/alsa-backend"]

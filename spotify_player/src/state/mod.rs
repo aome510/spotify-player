@@ -39,13 +39,13 @@ impl State {
         if let Some(theme) = theme {
             self.app_config.theme = theme.to_owned();
         };
-        log::info!("general configurations: {:?}", self.app_config);
+        tracing::info!("general configurations: {:?}", self.app_config);
 
         self.theme_config.parse_config_file(config_folder)?;
-        log::info!("theme configurations: {:?}", self.theme_config);
+        tracing::info!("theme configurations: {:?}", self.theme_config);
 
         self.keymap_config.parse_config_file(config_folder)?;
-        log::info!("keymap configurations: {:?}", self.keymap_config);
+        tracing::info!("keymap configurations: {:?}", self.keymap_config);
 
         if let Some(theme) = self.theme_config.find_theme(&self.app_config.theme) {
             // update the UI theme based on the `theme` config option

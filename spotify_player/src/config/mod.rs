@@ -47,7 +47,7 @@ impl Default for AppConfig {
             client_id: "65b708073fc0480ea92a077233ca87bd".to_string(),
             n_refreshes_each_playback_update: 5,
             refresh_delay_in_ms_each_playback_update: 500,
-            app_refresh_duration_in_ms: 100,
+            app_refresh_duration_in_ms: 32,
             playback_refresh_duration_in_ms: 0,
             track_table_item_max_len: 32,
 
@@ -74,7 +74,7 @@ impl AppConfig {
     pub fn parse_config_file(&mut self, path: &Path) -> Result<()> {
         match std::fs::read_to_string(path.join(APP_CONFIG_FILE)) {
             Err(err) => {
-                log::warn!(
+                tracing::warn!(
                     "failed to open the application config file: {:?}...\nUse the default configurations instead...",
                     err
                 );

@@ -31,7 +31,7 @@ fn read_user_auth_details(user: Option<String>) -> Result<(String, String)> {
 }
 
 async fn new_session_with_new_creds(cache: &Cache) -> Result<Session> {
-    log::info!("creating a new session with new authentication credentials");
+    tracing::info!("creating a new session with new authentication credentials");
 
     println!("Authentication token not found or invalid, please reauthenticate.");
 
@@ -53,7 +53,7 @@ async fn new_session_with_new_creds(cache: &Cache) -> Result<Session> {
             }
             Err(err) => {
                 println!("Failed to authenticate, {} tries left", 2 - i);
-                log::warn!("failed to authenticate: {}", err)
+                tracing::warn!("failed to authenticate: {}", err)
             }
         }
     }
@@ -81,12 +81,12 @@ pub async fn new_session(cache_folder: &std::path::Path, audio_cache: bool) -> R
         Some(creds) => {
             match Session::connect(SessionConfig::default(), creds, Some(cache.clone())).await {
                 Ok(session) => {
-                    log::info!("use the cached credentials");
+                    tracing::info!("use the cached credentials");
                     Ok(session)
                 }
                 Err(err) => match err {
                     SessionError::AuthenticationError(err) => {
-                        log::warn!("authentication error: {}", err);
+                        tracing::warn!("authentication error: {}", err);
                         new_session_with_new_creds(&cache).await
                     }
                     SessionError::IoError(err) => Err(anyhow!(format!(
