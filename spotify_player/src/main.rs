@@ -11,16 +11,18 @@ mod token;
 mod ui;
 mod utils;
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
-    // disable logging by default
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("off")).init();
-
-    // parse command line arguments
-    let matches = clap::App::new("spotify-player")
+fn init_app_cli_arguments() -> clap::ArgMatches<'static> {
+    clap::App::new("spotify-player")
         .version("0.4.0")
         .about("A command driven spotify player")
         .author("Thang Pham <phamducthang1234@gmail>")
+        .arg(
+            clap::Arg::with_name("theme")
+                .short("t")
+                .long("theme")
+                .value_name("THEME")
+                .help("Application theme (default: dracula)")
+        )
         .arg(
             clap::Arg::with_name("config-folder")
                 .short("c")
@@ -28,7 +30,8 @@ async fn main() -> anyhow::Result<()> {
                 .value_name("FOLDER")
                 .help("Path to the application's config folder (default: $HOME/.config/spotify-player)")
                 .next_line_help(true)
-        ).arg(
+        )
+        .arg(
             clap::Arg::with_name("cache-folder")
                 .short("C")
                 .long("cache-folder")
@@ -37,19 +40,26 @@ async fn main() -> anyhow::Result<()> {
                 .next_line_help(true)
         )
         .arg(
-            clap::Arg::with_name("theme")
-                .short("t")
-                .long("theme")
-                .value_name("THEME")
-                .help("Application theme (default: dracula)")
-        )
-        .get_matches();
+            clap::Arg::with_name("log-file")
+                .short("l")
+                .long("log-file")
+                .value_name("FOLDER")
+                .help("Path to the application's log file (default: $HOME/.cache/spotify-player/spotify-player.log)")
+                .next_line_help(true)
+        ).get_matches()
+}
 
-    let config_folder = match matches.value_of("config-folder") {
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    // parse command line arguments
+    let args = init_app_cli_arguments();
+
+    // initialize the application's cache folders and config folder
+    let config_folder = match args.value_of("config-folder") {
         Some(path) => path.into(),
         None => config::get_config_folder_path()?,
     };
-    let cache_folder = match matches.value_of("cache-folder") {
+    let cache_folder = match args.value_of("cache-folder") {
         Some(path) => path.into(),
         None => config::get_cache_folder_path()?,
     };
@@ -62,10 +72,25 @@ async fn main() -> anyhow::Result<()> {
         std::fs::create_dir_all(&cache_audio_folder)?;
     }
 
+    // initialize the application's logging
+    if std::env::var("RUST_LOG").is_err() {
+        std::env::set_var("RUST_LOG", "info")
+    }
+    let log_file_path = match args.value_of("log-file") {
+        Some(path) => path.into(),
+        None => cache_folder.join("spotify-player.log"),
+    };
+    let log_file = std::fs::File::create(log_file_path)?;
+    tracing_subscriber::fmt::fmt()
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .with_ansi(false)
+        .with_writer(std::sync::Mutex::new(log_file))
+        .init();
+
     // initialize the application state
     let mut state = state::State::default();
     // parse config options from the config files into application's state
-    state.parse_config_files(&config_folder, matches.value_of("theme"))?;
+    state.parse_config_files(&config_folder, args.value_of("theme"))?;
     let state = std::sync::Arc::new(state);
 
     // initialize a librespot session

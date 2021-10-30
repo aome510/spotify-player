@@ -31,7 +31,7 @@ pub async fn new_connection(session: Session, device: config::DeviceConfig) {
         autoplay: false,
     };
 
-    log::info!("application's connect configurations: {:?}", connect_config);
+    tracing::info!("application's connect configurations: {:?}", connect_config);
 
     let mixer =
         Box::new(mixer::softmixer::SoftMixer::open(MixerConfig::default())) as Box<dyn Mixer>;
@@ -54,7 +54,7 @@ pub async fn new_connection(session: Session, device: config::DeviceConfig) {
         move || backend(None, AudioFormat::default()),
     );
 
-    log::info!("starting an integrated Spotify client using librespot's spirc protocol...");
+    tracing::info!("starting an integrated Spotify client using librespot's spirc protocol...");
 
     let (_spirc, spirc_task) = Spirc::new(connect_config, session, player, mixer);
     spirc_task.await;

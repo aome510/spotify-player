@@ -53,18 +53,18 @@ pub async fn start_event_handler(send: mpsc::Sender<ClientRequest>, state: Share
     while let Some(event) = event_stream.next().await {
         match event {
             Ok(event) => {
-                log::info!("got a terminal event: {:?}", event);
+                tracing::info!("got a terminal event: {:?}", event);
 
                 if let Err(err) = match event {
                     Event::Mouse(event) => handle_mouse_event(event, &send, &state),
                     Event::Key(event) => handle_key_event(event, &send, &state),
                     _ => Ok(()),
                 } {
-                    log::warn!("failed to handle event: {}", err);
+                    tracing::warn!("failed to handle event: {}", err);
                 }
             }
             Err(err) => {
-                log::warn!("failed to get event: {}", err);
+                tracing::warn!("failed to get event: {}", err);
             }
         }
     }

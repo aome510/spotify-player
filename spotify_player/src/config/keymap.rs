@@ -202,7 +202,7 @@ impl KeymapConfig {
     pub fn parse_config_file(&mut self, path: &std::path::Path) -> Result<()> {
         match std::fs::read_to_string(path.join(super::KEYMAP_CONFIG_FILE)) {
             Err(err) => {
-                log::warn!(
+                tracing::warn!(
                     "failed to open the keymap config file: {:?}...\nUse the default configurations instead...",
                     err
                 );

@@ -32,7 +32,7 @@ impl Client {
     /// initializes the authorization token inside the Spotify client
     pub async fn init_token(&self) -> Result<()> {
         self.spotify.refresh_token().await?;
-        log::info!(
+        tracing::info!(
             "auth token: {:?}",
             self.spotify.get_token().lock().await.unwrap()
         );
@@ -45,7 +45,7 @@ impl Client {
         state: &SharedState,
         request: PlayerRequest,
     ) -> Result<()> {
-        log::info!("handle player request: {:?}", request);
+        tracing::info!("handle player request: {:?}", request);
 
         // `TransferPlayback` and `Reconnect` need to be handled separately
         // from other play requests because they don't require an active playback
@@ -56,7 +56,7 @@ impl Client {
                 .transfer_playback(&device_id, Some(force_play))
                 .await?;
 
-            log::info!("transfered the playback to device with {} id", device_id);
+            tracing::info!("transfered the playback to device with {} id", device_id);
             return Ok(());
         }
         // trying to reconnect to the first available device
@@ -65,7 +65,7 @@ impl Client {
 
             match device_id {
                 Some(id) => {
-                    log::info!(
+                    tracing::info!(
                         "transfered the playback to the first available device (id={})",
                         id
                     );
@@ -79,7 +79,7 @@ impl Client {
                     {
                         let device_id = self.spotify.session.session()?.device_id();
                         self.spotify.transfer_playback(device_id, None).await?;
-                        log::info!(
+                        tracing::info!(
                             "transfered the playback to the integrated client's device (id={})",
                             device_id
                         );
@@ -145,7 +145,7 @@ impl Client {
 
     /// handles a client request
     pub async fn handle_request(&self, state: &SharedState, request: ClientRequest) -> Result<()> {
-        log::info!("handle client request {:?}", request);
+        tracing::info!("handle client request {:?}", request);
 
         match request {
             ClientRequest::GetCurrentUser => {
@@ -540,7 +540,7 @@ impl Client {
     /// gets a playlist context data
     async fn playlist_context(&self, playlist_id: &PlaylistId) -> Result<Context> {
         let playlist_uri = playlist_id.uri();
-        log::info!("get playlist context: {}", playlist_uri);
+        tracing::info!("get playlist context: {}", playlist_uri);
 
         let playlist = self.spotify.playlist(playlist_id, None, None).await?;
 
@@ -566,7 +566,7 @@ impl Client {
     /// gets an album context data
     async fn album_context(&self, album_id: &AlbumId) -> Result<Context> {
         let album_uri = album_id.uri();
-        log::info!("get album context: {}", album_uri);
+        tracing::info!("get album context: {}", album_uri);
 
         let album = self.spotify.album(album_id).await?;
         let first_page = album.tracks.clone();
@@ -597,7 +597,7 @@ impl Client {
     /// gets an artist context data
     async fn artist_context(&self, artist_id: &ArtistId) -> Result<Context> {
         let artist_uri = artist_id.uri();
-        log::info!("get artist context: {}", artist_uri);
+        tracing::info!("get artist context: {}", artist_uri);
 
         // get the artist's information, top tracks, related artists and albums
         let artist = self.spotify.artist(artist_id).await?.into();

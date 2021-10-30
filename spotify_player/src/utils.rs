@@ -52,7 +52,7 @@ pub fn update_context(state: &state::SharedState, context_id: Option<state::Cont
     std::thread::spawn({
         let state = state.clone();
         move || {
-            log::info!("update state's context id to {:?}", context_id);
+            tracing::info!("update state's context id to {:?}", context_id);
 
             let is_none_context = context_id.is_none();
 
