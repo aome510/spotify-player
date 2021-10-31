@@ -151,7 +151,7 @@ pub fn render_search_window(is_active: bool, frame: &mut Frame, state: &SharedSt
         .collect::<Vec<_>>();
 
     // get the mutable list states inside the UI's `WindowState`
-    // to render the search window's sub-windows
+    // to render the search window's subwindows
     let mut ui = state.ui.lock();
     let (track_list_state, album_list_state, artist_list_state, playlist_list_state) =
         match ui.window {
@@ -248,6 +248,92 @@ pub fn render_context_window(
             frame.render_widget(Paragraph::new(desc).block(block), rect);
         }
     }
+}
+
+/// renders the library window
+pub fn render_library_window(is_active: bool, frame: &mut Frame, state: &SharedState, rect: Rect) {
+    let focus_state = match state.ui.lock().window {
+        WindowState::Library { focus, .. } => focus,
+        _ => unreachable!(),
+    };
+
+    let block = Block::default()
+        .title(state.ui.lock().theme.block_title_with_style("Library"))
+        .borders(Borders::ALL);
+
+    // render the window's border and title
+    frame.render_widget(block, rect);
+
+    // split the main window into 3 subwindows
+    // the top half consists of a playlists subwindow
+    // the bottom half consists of a saved albums window and
+    // a followed artists subwindow splitted equally by horizontal direction
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .margin(1)
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
+        .split(rect);
+    let playlist_rect = chunks[0];
+    let chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
+        .split(chunks[1]);
+    let (album_rect, artist_rect) = (chunks[0], chunks[1]);
+
+    let data = state.data.read();
+
+    // construct the playlist subwindow
+    let playlist_list = construct_list_widget(
+        state,
+        data.user_data
+            .playlists
+            .iter()
+            .map(|p| (p.name.clone(), false))
+            .collect(),
+        "Playlists",
+        is_active && focus_state == LibraryFocusState::Playlists,
+        None,
+    );
+    // construct the saved album subwindow
+    let album_list = construct_list_widget(
+        state,
+        data.user_data
+            .saved_albums
+            .iter()
+            .map(|a| (a.name.clone(), false))
+            .collect(),
+        "Albums",
+        is_active && focus_state == LibraryFocusState::SavedAlbums,
+        Some(Borders::TOP),
+    );
+    // construct the followed artist subwindow
+    let artist_list = construct_list_widget(
+        state,
+        data.user_data
+            .followed_artists
+            .iter()
+            .map(|a| (a.name.clone(), false))
+            .collect(),
+        "Artists",
+        is_active && focus_state == LibraryFocusState::FollowedArtists,
+        Some(Borders::TOP | Borders::LEFT),
+    );
+
+    // render subwindows
+    let mut ui = state.ui.lock();
+    let (playlist_list_state, album_list_state, artist_list_state) = match ui.window {
+        WindowState::Library {
+            ref mut playlist_list,
+            ref mut saved_album_list,
+            ref mut followed_artist_list,
+            ..
+        } => (playlist_list, saved_album_list, followed_artist_list),
+        _ => unreachable!(),
+    };
+
+    frame.render_stateful_widget(playlist_list, playlist_rect, playlist_list_state);
+    frame.render_stateful_widget(album_list, album_rect, album_list_state);
+    frame.render_stateful_widget(artist_list, artist_rect, artist_list_state);
 }
 
 /// renders the recommendation window

@@ -119,6 +119,10 @@ fn handle_key_event(
         None => {
             // no popup
             match ui.current_page() {
+                PageState::Library => {
+                    drop(ui);
+                    false
+                }
                 PageState::Recommendations(..) => {
                     drop(ui);
                     window::handle_key_sequence_for_recommendation_window(

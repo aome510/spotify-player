@@ -143,7 +143,7 @@ impl Default for UIState {
             theme: config::Theme::default(),
             input_key_sequence: key::KeySequence { keys: vec![] },
 
-            history: vec![PageState::CurrentPlaying],
+            history: vec![PageState::Library],
             popup: None,
             window: WindowState::Unknown,
 

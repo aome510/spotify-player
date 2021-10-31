@@ -187,6 +187,10 @@ fn render_main_layout(is_active: bool, frame: &mut Frame, state: &SharedState, r
 
     let ui = state.ui.lock();
     match ui.current_page() {
+        PageState::Library => {
+            drop(ui);
+            window::render_library_window(is_active, frame, state, chunks[1]);
+        }
         PageState::CurrentPlaying => {
             drop(ui);
             window::render_context_window(
