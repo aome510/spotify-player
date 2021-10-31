@@ -121,7 +121,7 @@ fn handle_key_event(
             match ui.current_page() {
                 PageState::Library => {
                     drop(ui);
-                    window::handle_key_sequence_for_library_window(&key_sequence, send, state)?
+                    window::handle_key_sequence_for_library_window(&key_sequence, state)?
                 }
                 PageState::Recommendations(..) => {
                     drop(ui);

@@ -96,7 +96,6 @@ pub fn handle_key_sequence_for_context_window(
 /// handles a key sequence for a library window
 pub fn handle_key_sequence_for_library_window(
     key_sequence: &KeySequence,
-    send: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
 ) -> Result<bool> {
     let command = match state
@@ -134,19 +133,16 @@ pub fn handle_key_sequence_for_library_window(
             match focus_state {
                 LibraryFocusState::Playlists => handle_command_for_playlist_list_subwindow(
                     command,
-                    send,
                     state,
                     state.filtered_items_by_search(&data.user_data.playlists),
                 ),
                 LibraryFocusState::SavedAlbums => handle_command_for_album_list_subwindow(
                     command,
-                    send,
                     state,
                     state.filtered_items_by_search(&data.user_data.saved_albums),
                 ),
                 LibraryFocusState::FollowedArtists => handle_command_for_artist_list_subwindow(
                     command,
-                    send,
                     state,
                     state.filtered_items_by_search(&data.user_data.followed_artists),
                 ),
@@ -303,19 +299,19 @@ pub fn handle_key_sequence_for_search_window(
                     let artists = search_results
                         .map(|s| s.artists.iter().collect())
                         .unwrap_or_default();
-                    handle_command_for_artist_list_subwindow(command, send, state, artists)
+                    handle_command_for_artist_list_subwindow(command, state, artists)
                 }
                 SearchFocusState::Albums => {
                     let albums = search_results
                         .map(|s| s.albums.iter().collect())
                         .unwrap_or_default();
-                    handle_command_for_album_list_subwindow(command, send, state, albums)
+                    handle_command_for_album_list_subwindow(command, state, albums)
                 }
                 SearchFocusState::Playlists => {
                     let playlists = search_results
                         .map(|s| s.playlists.iter().collect())
                         .unwrap_or_default();
-                    handle_command_for_playlist_list_subwindow(command, send, state, playlists)
+                    handle_command_for_playlist_list_subwindow(command, state, playlists)
                 }
             }
         }
@@ -352,13 +348,11 @@ pub fn handle_command_for_focused_context_subwindow(
                 match focus_state {
                     ArtistFocusState::Albums => handle_command_for_album_list_subwindow(
                         command,
-                        send,
                         state,
                         state.filtered_items_by_search(albums),
                     ),
                     ArtistFocusState::RelatedArtists => handle_command_for_artist_list_subwindow(
                         command,
-                        send,
                         state,
                         state.filtered_items_by_search(related_artists),
                     ),
@@ -497,7 +491,6 @@ fn handle_command_for_track_list_subwindow(
 
 fn handle_command_for_artist_list_subwindow(
     command: Command,
-    send: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
     artists: Vec<&Artist>,
 ) -> Result<bool> {
@@ -535,7 +528,6 @@ fn handle_command_for_artist_list_subwindow(
 
 fn handle_command_for_album_list_subwindow(
     command: Command,
-    send: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
     albums: Vec<&Album>,
 ) -> Result<bool> {
@@ -573,7 +565,6 @@ fn handle_command_for_album_list_subwindow(
 
 fn handle_command_for_playlist_list_subwindow(
     command: Command,
-    send: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
     playlists: Vec<&Playlist>,
 ) -> Result<bool> {

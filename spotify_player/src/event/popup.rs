@@ -58,7 +58,6 @@ pub fn handle_key_sequence_for_popup(
                     drop(ui);
                     handle_key_sequence_for_context_browsing_list_popup(
                         key_sequence,
-                        send,
                         state,
                         playlist_uris,
                         rspotify_model::Type::Playlist,
@@ -118,7 +117,6 @@ pub fn handle_key_sequence_for_popup(
             drop(ui);
             handle_key_sequence_for_context_browsing_list_popup(
                 key_sequence,
-                send,
                 state,
                 artist_uris,
                 rspotify_model::Type::Artist,
@@ -137,7 +135,6 @@ pub fn handle_key_sequence_for_popup(
             drop(ui);
             handle_key_sequence_for_context_browsing_list_popup(
                 key_sequence,
-                send,
                 state,
                 album_uris,
                 rspotify_model::Type::Album,
@@ -251,7 +248,7 @@ fn handle_key_sequence_for_search_popup(
             _ => match ui.current_page() {
                 PageState::Library => {
                     drop(ui);
-                    window::handle_key_sequence_for_library_window(key_sequence, send, state)
+                    window::handle_key_sequence_for_library_window(key_sequence, state)
                 }
                 PageState::Recommendations(..) => {
                     drop(ui);
@@ -277,7 +274,6 @@ fn handle_key_sequence_for_search_popup(
 /// - `uri_type`: an enum represents the type of a context in the list (`playlist`, `artist`, etc)
 fn handle_key_sequence_for_context_browsing_list_popup(
     key_sequence: &KeySequence,
-    send: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
     uris: Vec<String>,
     context_type: rspotify_model::Type,
