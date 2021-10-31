@@ -271,14 +271,16 @@ pub fn render_library_window(is_active: bool, frame: &mut Frame, state: &SharedS
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .margin(1)
-        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
+        .constraints(
+            [
+                Constraint::Percentage(40),
+                Constraint::Percentage(30),
+                Constraint::Percentage(30),
+            ]
+            .as_ref(),
+        )
         .split(rect);
-    let playlist_rect = chunks[0];
-    let chunks = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
-        .split(chunks[1]);
-    let (album_rect, artist_rect) = (chunks[0], chunks[1]);
+    let (playlist_rect, album_rect, artist_rect) = (chunks[0], chunks[1], chunks[2]);
 
     let data = state.data.read();
 
@@ -304,7 +306,7 @@ pub fn render_library_window(is_active: bool, frame: &mut Frame, state: &SharedS
             .collect(),
         "Albums",
         is_active && focus_state == LibraryFocusState::SavedAlbums,
-        Some(Borders::TOP),
+        None,
     );
     // construct the followed artist subwindow
     let artist_list = construct_list_widget(
@@ -316,7 +318,7 @@ pub fn render_library_window(is_active: bool, frame: &mut Frame, state: &SharedS
             .collect(),
         "Artists",
         is_active && focus_state == LibraryFocusState::FollowedArtists,
-        Some(Borders::TOP | Borders::LEFT),
+        None,
     );
 
     // render subwindows
