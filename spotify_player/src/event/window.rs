@@ -22,7 +22,7 @@ pub fn handle_key_sequence_for_context_window(
         Command::FocusPreviousWindow => {
             ui.window.previous();
         }
-        Command::SearchContext => {
+        Command::Search => {
             ui.window.select(Some(0));
             ui.popup = Some(PopupState::Search {
                 query: "".to_owned(),
@@ -119,7 +119,7 @@ pub fn handle_key_sequence_for_library_window(
             state.ui.lock().window.previous();
             Ok(true)
         }
-        Command::SearchContext => {
+        Command::Search => {
             let mut ui = state.ui.lock();
             ui.window.select(Some(0));
             ui.popup = Some(PopupState::Search {
@@ -182,7 +182,7 @@ pub fn handle_key_sequence_for_recommendation_window(
         .unwrap_or_default();
 
     match command {
-        Command::SearchContext => {
+        Command::Search => {
             let mut ui = state.ui.lock();
             ui.window.select(Some(0));
             ui.popup = Some(PopupState::Search {

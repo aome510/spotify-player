@@ -65,7 +65,7 @@ impl Default for KeymapConfig {
                 },
                 Keymap {
                     key_sequence: "/".into(),
-                    command: Command::SearchContext,
+                    command: Command::Search,
                 },
                 Keymap {
                     key_sequence: "C-space".into(),
