@@ -185,10 +185,18 @@ pub fn render_context_window(
         .title(state.ui.lock().theme.block_title_with_style(title))
         .borders(Borders::ALL);
 
-    let data = state.data.read();
-    let context = state.player.read().context(&data.caches);
+    let context_uri = match state.ui.lock().current_page().context_uri() {
+        None => {
+            frame.render_widget(
+                Paragraph::new("Cannot determine the current page's context").block(block),
+                rect,
+            );
+            return;
+        }
+        Some(context_uri) => context_uri,
+    };
 
-    match context {
+    match state.data.read().caches.context.peek(&context_uri) {
         Some(context) => {
             frame.render_widget(block, rect);
 
@@ -238,14 +246,7 @@ pub fn render_context_window(
             }
         }
         None => {
-            let desc = if state.player.read().context_id.is_none() {
-                "Cannot infer the playing context from the current playback"
-            } else {
-                // context is not empty, but cannot get context data inside the player state
-                // => still loading the context data
-                "Loading..."
-            };
-            frame.render_widget(Paragraph::new(desc).block(block), rect);
+            frame.render_widget(Paragraph::new("Loading...").block(block), rect);
         }
     }
 }

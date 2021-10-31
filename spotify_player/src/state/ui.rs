@@ -161,7 +161,7 @@ impl PageState {
     /// returns the context URI of the current page (if is a context page)
     pub fn context_uri(&self) -> Option<String> {
         match self {
-            Self::Context(context_id, _) => context_id.map(|id| id.uri()),
+            Self::Context(context_id, _) => context_id.as_ref().map(|id| id.uri()),
             _ => None,
         }
     }

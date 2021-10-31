@@ -1,4 +1,4 @@
-use super::{data, model::*};
+use super::model::*;
 
 /// Player state
 #[derive(Default, Debug)]
@@ -10,7 +10,7 @@ pub struct PlayerState {
 }
 
 impl PlayerState {
-    /// gets a simplified playback
+    /// gets a simplified version of the current playback
     pub fn simplified_playback(&self) -> Option<SimplifiedPlayback> {
         self.playback.as_ref().map(|p| SimplifiedPlayback {
             device_id: p.device.id.clone(),
@@ -45,6 +45,28 @@ impl PlayerState {
                     };
                 Some(progress_ms)
             }
+        }
+    }
+
+    /// gets the current playing context's ID
+    pub fn playing_context_id(&self) -> Option<ContextId> {
+        match self.playback {
+            Some(ref playback) => match playback.context {
+                Some(ref context) => match context._type {
+                    rspotify_model::Type::Playlist => Some(ContextId::Playlist(
+                        PlaylistId::from_uri(&context.uri).expect("invalid playing context URI"),
+                    )),
+                    rspotify_model::Type::Album => Some(ContextId::Album(
+                        AlbumId::from_uri(&context.uri).expect("invalid playing context URI"),
+                    )),
+                    rspotify_model::Type::Artist => Some(ContextId::Artist(
+                        ArtistId::from_uri(&context.uri).expect("invalid playing context URI"),
+                    )),
+                    _ => None,
+                },
+                None => None,
+            },
+            None => None,
         }
     }
 }
