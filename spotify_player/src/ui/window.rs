@@ -257,23 +257,12 @@ pub fn render_library_window(is_active: bool, frame: &mut Frame, state: &SharedS
         _ => unreachable!(),
     };
 
-    let block = Block::default()
-        .title(state.ui.lock().theme.block_title_with_style("Library"))
-        .borders(Borders::ALL);
-
-    // render the window's border and title
-    frame.render_widget(block, rect);
-    let page_desc =
-        Paragraph::new(desc).block(Block::default().style(state.ui.lock().theme.page_desc()));
-    frame.render_widget(page_desc, chunks[0]);
-
     // split the main window into 3 subwindows
     // the top half consists of a playlists subwindow
     // the bottom half consists of a saved albums window and
     // a followed artists subwindow splitted equally by horizontal direction
     let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .margin(1)
+        .direction(Direction::Horizontal)
         .constraints(
             [
                 Constraint::Percentage(40),
@@ -297,7 +286,7 @@ pub fn render_library_window(is_active: bool, frame: &mut Frame, state: &SharedS
             .collect(),
         "Playlists",
         is_active && focus_state == LibraryFocusState::Playlists,
-        None,
+        Some((Borders::TOP | Borders::LEFT) | Borders::BOTTOM),
     );
     // construct the saved album subwindow
     let album_list = construct_list_widget(
@@ -309,7 +298,7 @@ pub fn render_library_window(is_active: bool, frame: &mut Frame, state: &SharedS
             .collect(),
         "Albums",
         is_active && focus_state == LibraryFocusState::SavedAlbums,
-        None,
+        Some((Borders::TOP | Borders::LEFT) | Borders::BOTTOM),
     );
     // construct the followed artist subwindow
     let artist_list = construct_list_widget(
