@@ -317,6 +317,7 @@ impl Focusable for WindowState {
         match self {
             Self::Artist { focus, .. } => focus.next(),
             Self::Search { focus, .. } => focus.next(),
+            Self::Library { focus, .. } => focus.next(),
             _ => {}
         }
         self.select(Some(0));
@@ -326,6 +327,7 @@ impl Focusable for WindowState {
         match self {
             Self::Artist { focus, .. } => focus.previous(),
             Self::Search { focus, .. } => focus.previous(),
+            Self::Library { focus, .. } => focus.previous(),
             _ => {}
         }
         self.select(Some(0));

@@ -287,9 +287,9 @@ pub fn render_library_window(is_active: bool, frame: &mut Frame, state: &SharedS
     // construct the playlist subwindow
     let playlist_list = construct_list_widget(
         state,
-        data.user_data
-            .playlists
-            .iter()
+        state
+            .filtered_items_by_search(&data.user_data.playlists)
+            .into_iter()
             .map(|p| (p.name.clone(), false))
             .collect(),
         "Playlists",
@@ -299,9 +299,9 @@ pub fn render_library_window(is_active: bool, frame: &mut Frame, state: &SharedS
     // construct the saved album subwindow
     let album_list = construct_list_widget(
         state,
-        data.user_data
-            .saved_albums
-            .iter()
+        state
+            .filtered_items_by_search(&data.user_data.saved_albums)
+            .into_iter()
             .map(|a| (a.name.clone(), false))
             .collect(),
         "Albums",
@@ -311,9 +311,9 @@ pub fn render_library_window(is_active: bool, frame: &mut Frame, state: &SharedS
     // construct the followed artist subwindow
     let artist_list = construct_list_widget(
         state,
-        data.user_data
-            .followed_artists
-            .iter()
+        state
+            .filtered_items_by_search(&data.user_data.followed_artists)
+            .into_iter()
             .map(|a| (a.name.clone(), false))
             .collect(),
         "Artists",

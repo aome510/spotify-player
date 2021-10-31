@@ -91,6 +91,68 @@ pub fn handle_key_sequence_for_context_window(
     Ok(true)
 }
 
+/// handles a key sequence for a library window
+pub fn handle_key_sequence_for_library_window(
+    key_sequence: &KeySequence,
+    send: &mpsc::Sender<ClientRequest>,
+    state: &SharedState,
+) -> Result<bool> {
+    let command = match state
+        .keymap_config
+        .find_command_from_key_sequence(key_sequence)
+    {
+        Some(command) => command,
+        None => return Ok(false),
+    };
+
+    let focus_state = match state.ui.lock().window {
+        WindowState::Library { focus, .. } => focus,
+        _ => return Ok(false),
+    };
+
+    match command {
+        Command::FocusNextWindow => {
+            state.ui.lock().window.next();
+            Ok(true)
+        }
+        Command::FocusPreviousWindow => {
+            state.ui.lock().window.previous();
+            Ok(true)
+        }
+        Command::SearchContext => {
+            let mut ui = state.ui.lock();
+            ui.window.select(Some(0));
+            ui.popup = Some(PopupState::Search {
+                query: "".to_owned(),
+            });
+            Ok(true)
+        }
+        _ => {
+            let data = state.data.read();
+            match focus_state {
+                LibraryFocusState::Playlists => handle_command_for_playlist_list_subwindow(
+                    command,
+                    send,
+                    state,
+                    state.filtered_items_by_search(&data.user_data.playlists),
+                ),
+                LibraryFocusState::SavedAlbums => handle_command_for_album_list_subwindow(
+                    command,
+                    send,
+                    state,
+                    state.filtered_items_by_search(&data.user_data.saved_albums),
+                ),
+                LibraryFocusState::FollowedArtists => handle_command_for_artist_list_subwindow(
+                    command,
+                    send,
+                    state,
+                    state.filtered_items_by_search(&data.user_data.followed_artists),
+                ),
+            }
+        }
+    }
+}
+
 /// handles a key sequence for a recommendation window
 pub fn handle_key_sequence_for_recommendation_window(
     key_sequence: &KeySequence,
