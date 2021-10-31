@@ -198,9 +198,9 @@ pub fn render_context_window(
                 .margin(1)
                 .constraints([Constraint::Length(1), Constraint::Min(0)].as_ref())
                 .split(rect);
-            let context_desc = Paragraph::new(context.description())
-                .block(Block::default().style(state.ui.lock().theme.context_desc()));
-            frame.render_widget(context_desc, chunks[0]);
+            let page_desc = Paragraph::new(context.description())
+                .block(Block::default().style(state.ui.lock().theme.page_desc()));
+            frame.render_widget(page_desc, chunks[0]);
 
             match context {
                 Context::Artist {
@@ -263,6 +263,9 @@ pub fn render_library_window(is_active: bool, frame: &mut Frame, state: &SharedS
 
     // render the window's border and title
     frame.render_widget(block, rect);
+    let page_desc =
+        Paragraph::new(desc).block(Block::default().style(state.ui.lock().theme.page_desc()));
+    frame.render_widget(page_desc, chunks[0]);
 
     // split the main window into 3 subwindows
     // the top half consists of a playlists subwindow
@@ -385,9 +388,9 @@ pub fn render_recommendation_window(
         .margin(1)
         .constraints([Constraint::Length(1), Constraint::Min(0)].as_ref())
         .split(rect);
-    let context_desc =
-        Paragraph::new(desc).block(Block::default().style(state.ui.lock().theme.context_desc()));
-    frame.render_widget(context_desc, chunks[0]);
+    let page_desc =
+        Paragraph::new(desc).block(Block::default().style(state.ui.lock().theme.page_desc()));
+    frame.render_widget(page_desc, chunks[0]);
 
     render_track_table_widget(
         frame,

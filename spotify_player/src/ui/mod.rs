@@ -234,7 +234,7 @@ fn construct_list_widget<'a>(
             .into_iter()
             .map(|(s, is_active)| {
                 ListItem::new(s).style(if is_active {
-                    ui.theme.current_active()
+                    ui.theme.current_playing()
                 } else {
                     Style::default()
                 })
@@ -276,7 +276,7 @@ pub fn render_track_table_widget(
         .enumerate()
         .map(|(id, t)| {
             let (id, style) = if playing_track_uri == t.id.uri() {
-                (active_desc.to_string(), ui.theme.current_active())
+                (active_desc.to_string(), ui.theme.current_playing())
             } else {
                 ((id + 1).to_string(), Style::default())
             };
@@ -300,7 +300,7 @@ pub fn render_track_table_widget(
                 Cell::from("Album"),
                 Cell::from("Duration"),
             ])
-            .style(ui.theme.context_tracks_table_header()),
+            .style(ui.theme.table_header()),
         )
         .block(Block::default())
         .widths(&[

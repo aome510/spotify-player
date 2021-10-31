@@ -54,10 +54,10 @@ pub struct ComponentStyle {
     pub playback_metadata: Style,
     pub playback_progress_bar: Style,
 
-    pub current_active: Style,
+    pub current_playing: Style,
 
-    pub context_desc: Style,
-    pub context_tracks_table_header: Style,
+    pub page_desc: Style,
+    pub table_header: Style,
 }
 
 #[derive(Default, Clone, Debug, Deserialize)]
@@ -188,9 +188,9 @@ impl Theme {
         playback_album,
         playback_metadata,
         playback_progress_bar,
-        current_active,
-        context_desc,
-        context_tracks_table_header
+        current_playing,
+        page_desc,
+        table_header
     );
 }
 
@@ -447,14 +447,14 @@ impl Default for ComponentStyle {
                 .bg(StyleColor::Green)
                 .modifiers(vec![StyleModifier::Italic]),
 
-            current_active: Style::default()
+            current_playing: Style::default()
                 .fg(StyleColor::Green)
                 .modifiers(vec![StyleModifier::Bold]),
 
-            context_desc: Style::default()
+            page_desc: Style::default()
                 .fg(StyleColor::Cyan)
                 .modifiers(vec![StyleModifier::Bold]),
-            context_tracks_table_header: Style::default().fg(StyleColor::Blue),
+            table_header: Style::default().fg(StyleColor::Blue),
         }
     }
 }

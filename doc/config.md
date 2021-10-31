@@ -113,9 +113,9 @@ To define application's component styles, user needs to specify **all** the belo
 - `playback_album`
 - `playback_metadata`
 - `playback_progress_bar`
-- `current_active`
-- `context_desc`
-- `context_tracks_table_header`
+- `current_playing`
+- `page_desc`
+- `table_header`
 
 A field in the component styles is a `Style` struct which has three optional fields: `fg`, `bg` and `modifiers`. `fg` and `bg` can be either a palette's color (string in pascal case) or a custom RGB color using the following format: `fg = { Rgb { r = 0, g = 0, b = 0} }`. `modifiers` can only be either `Italic` or `Bold`.
 
@@ -127,9 +127,9 @@ playback_track = { fg = "Cyan", modifiers = ["Bold"] }
 playback_album = { fg = "Yellow" }
 playback_metadata = { fg = "BrightBlack" }
 playback_progress_bar = { fg = "SelectionBackground", bg = "Green", modifiers = ["Italic"] }
-current_active = { fg = "Green", modifiers = ["Bold"] }
-context_desc = { fg = "Cyan", modifiers = ["Bold"] }
-context_tracks_table_header = { fg = "Blue" }
+current_playing = { fg = "Green", modifiers = ["Bold"] }
+page_desc = { fg = "Cyan", modifiers = ["Bold"] }
+table_header = { fg = "Blue" }
 ```
 
 ## Keymaps

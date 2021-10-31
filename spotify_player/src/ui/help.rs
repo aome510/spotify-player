@@ -113,7 +113,7 @@ pub fn render_commands_help_popup(frame: &mut Frame, state: &SharedState, rect: 
             Cell::from("Shortcuts"),
             Cell::from("Description"),
         ])
-        .style(ui.theme.context_tracks_table_header()),
+        .style(ui.theme.table_header()),
     )
     .widths(&COMMAND_TABLE_CONSTRAINTS)
     .block(

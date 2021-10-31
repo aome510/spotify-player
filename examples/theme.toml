@@ -34,9 +34,9 @@ playback_track = { fg = "Cyan", modifiers = ["Bold"] }
 playback_album = { fg = "Yellow" }
 playback_metadata = { fg = "BrightBlack" }
 playback_progress_bar = { fg = "SelectionBackground", bg = "Green", modifiers = ["Italic"] }
-current_active = { fg = "Green", modifiers = ["Bold"] }
-context_desc = { fg = "Cyan", modifiers = ["Bold"] }
-context_tracks_table_header = { fg = "Blue" }
+current_playing = { fg = "Green", modifiers = ["Bold"] }
+page_desc = { fg = "Cyan", modifiers = ["Bold"] }
+table_header = { fg = "Blue" }
     
 [[themes]]
 name = "solarized_dark"
