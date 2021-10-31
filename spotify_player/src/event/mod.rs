@@ -119,6 +119,10 @@ fn handle_key_event(
         None => {
             // no popup
             match ui.current_page() {
+                PageState::Library => {
+                    drop(ui);
+                    window::handle_key_sequence_for_library_window(&key_sequence, send, state)?
+                }
                 PageState::Recommendations(..) => {
                     drop(ui);
                     window::handle_key_sequence_for_recommendation_window(
@@ -240,6 +244,9 @@ fn handle_global_command(
         Command::BrowseUserSavedAlbums => {
             send.send(ClientRequest::GetUserSavedAlbums)?;
             ui.popup = Some(PopupState::UserSavedAlbumList(new_list_state()));
+        }
+        Command::LibraryPage => {
+            ui.create_new_page(PageState::Library);
         }
         Command::SearchPage => {
             ui.create_new_page(PageState::Searching {

@@ -247,6 +247,10 @@ fn handle_key_sequence_for_search_popup(
                 Ok(true)
             }
             _ => match ui.current_page() {
+                PageState::Library => {
+                    drop(ui);
+                    window::handle_key_sequence_for_library_window(key_sequence, send, state)
+                }
                 PageState::Recommendations(..) => {
                     drop(ui);
                     window::handle_key_sequence_for_recommendation_window(key_sequence, send, state)
@@ -255,7 +259,7 @@ fn handle_key_sequence_for_search_popup(
                     drop(ui);
                     window::handle_key_sequence_for_context_window(key_sequence, send, state)
                 }
-                _ => Ok(false),
+                PageState::Searching { .. } => Ok(false),
             },
         },
         None => Ok(false),

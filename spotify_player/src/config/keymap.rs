@@ -65,7 +65,7 @@ impl Default for KeymapConfig {
                 },
                 Keymap {
                     key_sequence: "/".into(),
-                    command: Command::SearchContext,
+                    command: Command::Search,
                 },
                 Keymap {
                     key_sequence: "C-space".into(),
@@ -110,6 +110,10 @@ impl Default for KeymapConfig {
                 Keymap {
                     key_sequence: "g space".into(),
                     command: Command::BrowsePlayingContext,
+                },
+                Keymap {
+                    key_sequence: "g l".into(),
+                    command: Command::LibraryPage,
                 },
                 Keymap {
                     key_sequence: "g s".into(),

@@ -24,6 +24,7 @@ pub struct UIState {
 /// Page state
 #[derive(Clone, Debug)]
 pub enum PageState {
+    Library,
     CurrentPlaying,
     Browsing(ContextId),
     Searching {
@@ -37,6 +38,12 @@ pub enum PageState {
 #[derive(Debug)]
 pub enum WindowState {
     Unknown,
+    Library {
+        playlist_list: ListState,
+        saved_album_list: ListState,
+        followed_artist_list: ListState,
+        focus: LibraryFocusState,
+    },
     Playlist {
         track_table: TableState,
     },
@@ -90,6 +97,14 @@ pub trait Focusable {
 
 /// Artist Focus state
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum LibraryFocusState {
+    Playlists,
+    SavedAlbums,
+    FollowedArtists,
+}
+
+/// Artist Focus state
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ArtistFocusState {
     TopTracks,
     Albums,
@@ -128,7 +143,7 @@ impl Default for UIState {
             theme: config::Theme::default(),
             input_key_sequence: key::KeySequence { keys: vec![] },
 
-            history: vec![PageState::CurrentPlaying],
+            history: vec![PageState::Library],
             popup: None,
             window: WindowState::Unknown,
 
@@ -214,6 +229,16 @@ impl WindowState {
     pub fn select(&mut self, id: Option<usize>) {
         match self {
             Self::Unknown => {}
+            Self::Library {
+                playlist_list,
+                saved_album_list,
+                followed_artist_list,
+                focus,
+            } => match focus {
+                LibraryFocusState::Playlists => playlist_list.select(id),
+                LibraryFocusState::SavedAlbums => saved_album_list.select(id),
+                LibraryFocusState::FollowedArtists => followed_artist_list.select(id),
+            },
             Self::Search {
                 track_list,
                 album_list,
@@ -247,6 +272,16 @@ impl WindowState {
     pub fn selected(&self) -> Option<usize> {
         match self {
             Self::Unknown => None,
+            Self::Library {
+                playlist_list,
+                saved_album_list,
+                followed_artist_list,
+                focus,
+            } => match focus {
+                LibraryFocusState::Playlists => playlist_list.selected(),
+                LibraryFocusState::SavedAlbums => saved_album_list.selected(),
+                LibraryFocusState::FollowedArtists => followed_artist_list.selected(),
+            },
             Self::Search {
                 track_list,
                 album_list,
@@ -282,6 +317,7 @@ impl Focusable for WindowState {
         match self {
             Self::Artist { focus, .. } => focus.next(),
             Self::Search { focus, .. } => focus.next(),
+            Self::Library { focus, .. } => focus.next(),
             _ => {}
         }
         self.select(Some(0));
@@ -291,6 +327,7 @@ impl Focusable for WindowState {
         match self {
             Self::Artist { focus, .. } => focus.previous(),
             Self::Search { focus, .. } => focus.previous(),
+            Self::Library { focus, .. } => focus.previous(),
             _ => {}
         }
         self.select(Some(0));
@@ -318,6 +355,13 @@ macro_rules! impl_focusable {
         }
 	};
 }
+
+impl_focusable!(
+    LibraryFocusState,
+    [Playlists, SavedAlbums],
+    [SavedAlbums, FollowedArtists],
+    [FollowedArtists, Playlists]
+);
 
 impl_focusable!(
     ArtistFocusState,
