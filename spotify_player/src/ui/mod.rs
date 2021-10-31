@@ -1,16 +1,14 @@
 use crate::{event::ClientRequest, state::*, utils};
 use anyhow::Result;
-use rspotify::model;
 use std::sync::mpsc;
-use tui::{layout::*, style::*, text::*, widgets::*};
+use tui::{layout::*, style::*, widgets::*};
 
 type Terminal = tui::Terminal<tui::backend::CrosstermBackend<std::io::Stdout>>;
 type Frame<'a> = tui::Frame<'a, tui::backend::CrosstermBackend<std::io::Stdout>>;
 
-mod context;
 mod help;
 mod popup;
-mod search;
+mod window;
 
 /// starts the application UI rendering function(s)
 pub fn start_ui(state: SharedState, send: mpsc::Sender<ClientRequest>) -> Result<()> {
@@ -54,6 +52,21 @@ fn handle_page_state_change(state: &SharedState, send: &mpsc::Sender<ClientReque
     let mut ui = state.ui.lock();
 
     match ui.current_page() {
+        PageState::Library => match ui.window {
+            WindowState::Library { .. } => {}
+            _ => {
+                send.send(ClientRequest::GetUserPlaylists)?;
+                send.send(ClientRequest::GetUserSavedAlbums)?;
+                send.send(ClientRequest::GetUserFollowedArtists)?;
+
+                ui.window = WindowState::Library {
+                    playlist_list: utils::new_list_state(),
+                    saved_album_list: utils::new_list_state(),
+                    followed_artist_list: utils::new_list_state(),
+                    focus: LibraryFocusState::Playlists,
+                }
+            }
+        },
         PageState::Searching { current_query, .. } => {
             state.player.write().context_id = None;
             match ui.window {
@@ -98,19 +111,19 @@ fn handle_page_state_change(state: &SharedState, send: &mpsc::Sender<ClientReque
 
                         if should_update {
                             match context._type {
-                                model::Type::Playlist => {
+                                rspotify_model::Type::Playlist => {
                                     let context_id =
                                         ContextId::Playlist(PlaylistId::from_uri(&context.uri)?);
                                     send.send(ClientRequest::GetContext(context_id.clone()))?;
                                     utils::update_context(state, Some(context_id));
                                 }
-                                model::Type::Album => {
+                                rspotify_model::Type::Album => {
                                     let context_id =
                                         ContextId::Album(AlbumId::from_uri(&context.uri)?);
                                     send.send(ClientRequest::GetContext(context_id.clone()))?;
                                     utils::update_context(state, Some(context_id));
                                 }
-                                model::Type::Artist => {
+                                rspotify_model::Type::Artist => {
                                     let context_id =
                                         ContextId::Artist(ArtistId::from_uri(&context.uri)?);
                                     send.send(ClientRequest::GetContext(context_id.clone()))?;
@@ -170,13 +183,13 @@ fn render_main_layout(is_active: bool, frame: &mut Frame, state: &SharedState, r
         .direction(Direction::Vertical)
         .constraints([Constraint::Length(7), Constraint::Min(0)].as_ref())
         .split(rect);
-    render_playback_window(frame, state, chunks[0]);
+    window::render_playback_window(frame, state, chunks[0]);
 
     let ui = state.ui.lock();
     match ui.current_page() {
         PageState::CurrentPlaying => {
             drop(ui);
-            context::render_context_window(
+            window::render_context_window(
                 is_active,
                 frame,
                 state,
@@ -186,159 +199,17 @@ fn render_main_layout(is_active: bool, frame: &mut Frame, state: &SharedState, r
         }
         PageState::Browsing { .. } => {
             drop(ui);
-            context::render_context_window(
-                is_active,
-                frame,
-                state,
-                chunks[1],
-                "Context (Browsing)",
-            );
+            window::render_context_window(is_active, frame, state, chunks[1], "Context (Browsing)");
         }
         PageState::Recommendations { .. } => {
             drop(ui);
-            render_recommendation_window(is_active, frame, state, chunks[1]);
+            window::render_recommendation_window(is_active, frame, state, chunks[1]);
         }
         PageState::Searching { .. } => {
             drop(ui);
             // make sure that the window state matches the current page state.
             // The mismatch can happen when going back to the search from another page
-            search::render_search_window(is_active, frame, state, chunks[1]);
-        }
-    };
-}
-
-/// renders the recommendation window
-fn render_recommendation_window(
-    is_active: bool,
-    frame: &mut Frame,
-    state: &SharedState,
-    rect: Rect,
-) {
-    let seed = match state.ui.lock().current_page() {
-        PageState::Recommendations(seed) => seed.clone(),
-        _ => unreachable!(),
-    };
-
-    let block = Block::default()
-        .title(
-            state
-                .ui
-                .lock()
-                .theme
-                .block_title_with_style("Recommendations"),
-        )
-        .borders(Borders::ALL);
-
-    let data = state.data.read();
-
-    let tracks = match data.caches.recommendation.peek(&seed.uri()) {
-        Some(tracks) => tracks,
-        None => {
-            // recommendation tracks are still loading
-            frame.render_widget(Paragraph::new("loading...").block(block), rect);
-            return;
-        }
-    };
-
-    // render the window's border and title
-    frame.render_widget(block, rect);
-
-    // render the window's description
-    let desc = match seed {
-        SeedItem::Track(track) => format!("{} Radio", track.name),
-        SeedItem::Artist(artist) => format!("{} Radio", artist.name),
-    };
-
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .margin(1)
-        .constraints([Constraint::Length(1), Constraint::Min(0)].as_ref())
-        .split(rect);
-    let context_desc =
-        Paragraph::new(desc).block(Block::default().style(state.ui.lock().theme.context_desc()));
-    frame.render_widget(context_desc, chunks[0]);
-
-    render_track_table_widget(
-        frame,
-        chunks[1],
-        is_active,
-        state,
-        state.filtered_items_by_search(tracks),
-    );
-}
-
-/// renders a playback window showing information about the current playback such as
-/// - track title, artists, album
-/// - playback metadata (playing state, repeat state, shuffle state, volume, device, etc)
-fn render_playback_window(frame: &mut Frame, state: &SharedState, rect: Rect) {
-    let mut ui = state.ui.lock();
-
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Min(0), Constraint::Length(1)].as_ref())
-        .margin(1)
-        .split(rect);
-
-    let block = Block::default()
-        .title(ui.theme.block_title_with_style("Playback"))
-        .borders(Borders::ALL);
-    frame.render_widget(block, rect);
-
-    let player = state.player.read();
-    if let Some(ref playback) = player.playback {
-        if let Some(rspotify::model::PlayableItem::Track(ref track)) = playback.item {
-            let playback_info = vec![
-                Span::styled(
-                    format!(
-                        "{}  {} by {}",
-                        if !playback.is_playing { "⏸" } else { "▶" },
-                        track.name,
-                        track
-                            .artists
-                            .iter()
-                            .map(|a| a.name.clone())
-                            .collect::<Vec<_>>()
-                            .join(","),
-                    ),
-                    ui.theme.playback_track(),
-                )
-                .into(),
-                Span::styled(track.album.name.to_string(), ui.theme.playback_album()).into(),
-                Span::styled(
-                    format!(
-                        "repeat: {} | shuffle: {} | volume: {}% | device: {}",
-                        playback.repeat_state.as_ref(),
-                        playback.shuffle_state,
-                        playback.device.volume_percent.unwrap_or_default(),
-                        playback.device.name,
-                    ),
-                    ui.theme.playback_metadata(),
-                )
-                .into(),
-            ];
-
-            let playback_desc = Paragraph::new(playback_info)
-                .wrap(Wrap { trim: true })
-                // .style(theme.text_desc_style())
-                .block(Block::default());
-            let progress = std::cmp::min(player.playback_progress().unwrap(), track.duration);
-            let progress_bar = Gauge::default()
-                .block(Block::default())
-                .gauge_style(ui.theme.playback_progress_bar())
-                .ratio(progress.as_secs_f64() / track.duration.as_secs_f64())
-                .label(Span::styled(
-                    format!(
-                        "{}/{}",
-                        utils::format_duration(progress),
-                        utils::format_duration(track.duration),
-                    ),
-                    Style::default().add_modifier(Modifier::BOLD),
-                ));
-
-            ui.progress_bar_rect = chunks[1];
-
-            frame.render_widget(playback_desc, chunks[0]);
-            frame.render_widget(progress_bar, chunks[1]);
+            window::render_search_window(is_active, frame, state, chunks[1]);
         }
     };
 }
@@ -389,7 +260,7 @@ pub fn render_track_table_widget(
     let mut playing_track_uri = "".to_string();
     let mut active_desc = "";
     if let Some(ref playback) = state.player.read().playback {
-        if let Some(rspotify::model::PlayableItem::Track(ref track)) = playback.item {
+        if let Some(rspotify_model::PlayableItem::Track(ref track)) = playback.item {
             playing_track_uri = track.id.uri();
             active_desc = if !playback.is_playing { "⏸" } else { "▶" };
         }
