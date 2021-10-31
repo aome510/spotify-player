@@ -25,13 +25,18 @@ pub struct UIState {
 #[derive(Clone, Debug)]
 pub enum PageState {
     Library,
-    CurrentPlaying,
-    Browsing(ContextId),
+    Context(Option<ContextId>, ContextPageType),
     Searching {
         input: String,
         current_query: String,
     },
     Recommendations(SeedItem),
+}
+
+#[derive(Clone, Debug)]
+pub enum ContextPageType {
+    CurrentPlaying,
+    Browsing(ContextId),
 }
 
 /// Window state
@@ -148,6 +153,16 @@ impl Default for UIState {
             window: WindowState::Unknown,
 
             progress_bar_rect: tui::layout::Rect::default(),
+        }
+    }
+}
+
+impl PageState {
+    /// returns the context URI of the current page (if is a context page)
+    pub fn context_uri(&self) -> Option<String> {
+        match self {
+            Self::Context(context_id, _) => context_id.map(|id| id.uri()),
+            _ => None,
         }
     }
 }
