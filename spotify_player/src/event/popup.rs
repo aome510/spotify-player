@@ -31,8 +31,10 @@ pub fn handle_key_sequence_for_popup(
                     };
 
                     let context_id = ContextId::Artist(artists[id].id.clone());
-                    send.send(ClientRequest::GetContext(context_id.clone()))?;
-                    ui.create_new_page(PageState::Browsing(context_id));
+                    ui.create_new_page(PageState::Context(
+                        None,
+                        ContextPageType::Browsing(context_id),
+                    ));
 
                     Ok(())
                 },
@@ -255,7 +257,7 @@ fn handle_key_sequence_for_search_popup(
                     drop(ui);
                     window::handle_key_sequence_for_recommendation_window(key_sequence, send, state)
                 }
-                PageState::Browsing(_) | PageState::CurrentPlaying => {
+                PageState::Context(..) => {
                     drop(ui);
                     window::handle_key_sequence_for_context_window(key_sequence, send, state)
                 }
@@ -296,9 +298,10 @@ fn handle_key_sequence_for_context_browsing_list_popup(
                 }
             };
 
-            send.send(ClientRequest::GetContext(context_id.clone()))?;
-
-            ui.create_new_page(PageState::Browsing(context_id));
+            ui.create_new_page(PageState::Context(
+                None,
+                ContextPageType::Browsing(context_id),
+            ));
 
             Ok(())
         },
@@ -423,8 +426,10 @@ fn handle_key_sequence_for_action_list_popup(
                         if let Some(ref album) = track.album {
                             let uri = album.id.uri();
                             let context_id = ContextId::Album(AlbumId::from_uri(&uri)?);
-                            send.send(ClientRequest::GetContext(context_id.clone()))?;
-                            ui.create_new_page(PageState::Browsing(context_id));
+                            ui.create_new_page(PageState::Context(
+                                None,
+                                ContextPageType::Browsing(context_id),
+                            ));
                         }
                     }
                     Action::BrowseArtist => {

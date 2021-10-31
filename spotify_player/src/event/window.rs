@@ -29,30 +29,33 @@ pub fn handle_key_sequence_for_context_window(
             });
         }
         Command::PlayRandom => {
-            let player = state.player.read();
-            let data = state.data.read();
-            let context = player.context(&data.caches);
+            if let Some(uri) = ui.current_page().context_uri() {
+                let data = state.data.read();
 
-            // randomly play a track from the current context
-            if let Some(context) = context {
-                let tracks = context.tracks();
-                let offset = match context {
-                    // Spotify does not allow to manually specify `offset` for artist context
-                    Context::Artist { .. } => None,
-                    _ => {
-                        let id = rand::thread_rng().gen_range(0..tracks.len());
-                        Some(rspotify_model::Offset::for_uri(&tracks[id].id.uri()))
-                    }
-                };
+                // randomly play a track from the current context
+                if let Some(context) = data.caches.context.peek(&uri) {
+                    let tracks = context.tracks();
+                    let offset = match context {
+                        // Spotify does not allow to manually specify `offset` for artist context
+                        Context::Artist { .. } => None,
+                        _ => {
+                            let id = rand::thread_rng().gen_range(0..tracks.len());
+                            Some(rspotify_model::Offset::for_uri(&tracks[id].id.uri()))
+                        }
+                    };
 
-                send.send(ClientRequest::Player(PlayerRequest::StartPlayback(
-                    Playback::Context(player.context_id.clone().unwrap(), offset),
-                )))?;
+                    let context_id = match ui.current_page() {
+                        PageState::Context(context_id, _) => context_id.clone().unwrap(),
+                        _ => unreachable!(),
+                    };
+
+                    send.send(ClientRequest::Player(PlayerRequest::StartPlayback(
+                        Playback::Context(context_id, offset),
+                    )))?;
+                }
             }
         }
         _ => {
-            drop(ui);
-
             // handle sort/reverse tracks commands
             let order = match command {
                 Command::SortTrackByTitle => Some(TrackOrder::TrackName),
@@ -64,27 +67,26 @@ pub fn handle_key_sequence_for_context_window(
             };
 
             if let Some(order) = order {
-                let player = state.player.read();
-                let mut data = state.data.write();
-                let context = player.context_mut(&mut data.caches);
-
-                if let Some(context) = context {
-                    context.sort_tracks(order);
+                if let Some(uri) = ui.current_page().context_uri() {
+                    let mut data = state.data.write();
+                    if let Some(context) = data.caches.context.peek_mut(&uri) {
+                        context.sort_tracks(order);
+                    }
                 }
                 return Ok(true);
             }
             if command == Command::ReverseTrackOrder {
-                let player = state.player.read();
-                let mut data = state.data.write();
-                let context = player.context_mut(&mut data.caches);
-
-                if let Some(context) = context {
-                    context.reverse_tracks();
+                if let Some(uri) = ui.current_page().context_uri() {
+                    let mut data = state.data.write();
+                    if let Some(context) = data.caches.context.peek_mut(&uri) {
+                        context.reverse_tracks();
+                    }
                 }
                 return Ok(true);
             }
 
             // the command hasn't been handled, assign the job to the focused subwindow's handler
+            drop(ui);
             return handle_command_for_focused_context_subwindow(command, send, state);
         }
     }
@@ -329,10 +331,12 @@ pub fn handle_command_for_focused_context_subwindow(
     send: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
 ) -> Result<bool> {
-    let data = state.data.read();
-    let context = state.player.read().context(&data.caches);
+    let uri = match state.ui.lock().current_page().context_uri() {
+        Some(uri) => uri,
+        None => return Ok(false),
+    };
 
-    match context {
+    match state.data.read().caches.context.peek(&uri) {
         Some(context) => match context {
             Context::Artist {
                 top_tracks,
@@ -513,8 +517,10 @@ fn handle_command_for_artist_list_subwindow(
         }
         Command::ChooseSelected => {
             let context_id = ContextId::Artist(artists[id].id.clone());
-            send.send(ClientRequest::GetContext(context_id.clone()))?;
-            ui.create_new_page(PageState::Browsing(context_id));
+            ui.create_new_page(PageState::Context(
+                None,
+                ContextPageType::Browsing(context_id),
+            ));
         }
         Command::ShowActionsOnSelectedItem => {
             ui.popup = Some(PopupState::ActionList(
@@ -549,8 +555,10 @@ fn handle_command_for_album_list_subwindow(
         }
         Command::ChooseSelected => {
             let context_id = ContextId::Album(albums[id].id.clone());
-            send.send(ClientRequest::GetContext(context_id.clone()))?;
-            ui.create_new_page(PageState::Browsing(context_id));
+            ui.create_new_page(PageState::Context(
+                None,
+                ContextPageType::Browsing(context_id),
+            ));
         }
         Command::ShowActionsOnSelectedItem => {
             ui.popup = Some(PopupState::ActionList(
@@ -585,8 +593,10 @@ fn handle_command_for_playlist_list_subwindow(
         }
         Command::ChooseSelected => {
             let context_id = ContextId::Playlist(playlists[id].id.clone());
-            send.send(ClientRequest::GetContext(context_id.clone()))?;
-            ui.create_new_page(PageState::Browsing(context_id));
+            ui.create_new_page(PageState::Context(
+                None,
+                ContextPageType::Browsing(context_id),
+            ));
         }
         Command::ShowActionsOnSelectedItem => {
             ui.popup = Some(PopupState::ActionList(
