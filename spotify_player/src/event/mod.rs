@@ -245,6 +245,9 @@ fn handle_global_command(
             send.send(ClientRequest::GetUserSavedAlbums)?;
             ui.popup = Some(PopupState::UserSavedAlbumList(new_list_state()));
         }
+        Command::LibraryPage => {
+            ui.create_new_page(PageState::Library);
+        }
         Command::SearchPage => {
             ui.create_new_page(PageState::Searching {
                 input: "".to_owned(),

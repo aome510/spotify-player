@@ -176,6 +176,7 @@ List of supported commands:
 | `BrowseUserFollowedArtists` | open a popup for browsing user's followed artists           | `u a`              |
 | `BrowseUserSavedAlbums`     | open a popup for browsing user's saved albums               | `u A`              |
 | `BrowsePlayingContext`      | browse the current playing context                          | `g space`          |
+| `LibraryPage`               | go the user library page                                    | `g l`              |
 | `SearchPage`                | go to the search page                                       | `g s`              |
 | `PreviousPage`              | go to the previous page                                     | `backspace`, `C-p` |
 | `SortTrackByTitle`          | sort the track table (if any) by track's title              | `s t`              |

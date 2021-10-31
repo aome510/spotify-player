@@ -112,6 +112,10 @@ impl Default for KeymapConfig {
                     command: Command::BrowsePlayingContext,
                 },
                 Keymap {
+                    key_sequence: "g l".into(),
+                    command: Command::LibraryPage,
+                },
+                Keymap {
                     key_sequence: "g s".into(),
                     command: Command::SearchPage,
                 },
