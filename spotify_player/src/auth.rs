@@ -14,10 +14,9 @@ fn read_user_auth_details(user: Option<String>) -> Result<(String, String)> {
     write!(
         stdout,
         "Username{}: ",
-        if user.is_none() {
-            "".to_string()
-        } else {
-            format!(" (default {})", user.clone().unwrap())
+        match user {
+            None => "",
+            Some(ref u) => u,
         }
     )?;
     stdout.flush()?;

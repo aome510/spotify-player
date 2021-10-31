@@ -14,7 +14,7 @@ pub fn render_search_window(is_active: bool, frame: &mut Frame, state: &SharedSt
             input,
             current_query,
         } => (input.clone(), current_query.clone()),
-        _ => unreachable!(),
+        _ => return,
     };
 
     let focus_state = match state.ui.lock().window {
@@ -162,7 +162,7 @@ pub fn render_search_window(is_active: bool, frame: &mut Frame, state: &SharedSt
                 ref mut playlist_list,
                 ..
             } => (track_list, album_list, artist_list, playlist_list),
-            _ => unreachable!(),
+            _ => return,
         };
 
     frame.render_stateful_widget(track_list, chunks[0], track_list_state);
@@ -255,7 +255,7 @@ pub fn render_context_window(
 pub fn render_library_window(is_active: bool, frame: &mut Frame, state: &SharedState, rect: Rect) {
     let focus_state = match state.ui.lock().window {
         WindowState::Library { focus, .. } => focus,
-        _ => unreachable!(),
+        _ => return,
     };
 
     // split the main window into 3 subwindows
@@ -323,7 +323,7 @@ pub fn render_library_window(is_active: bool, frame: &mut Frame, state: &SharedS
             ref mut followed_artist_list,
             ..
         } => (playlist_list, saved_album_list, followed_artist_list),
-        _ => unreachable!(),
+        _ => return,
     };
 
     frame.render_stateful_widget(playlist_list, playlist_rect, playlist_list_state);
@@ -340,7 +340,7 @@ pub fn render_recommendation_window(
 ) {
     let seed = match state.ui.lock().current_page() {
         PageState::Recommendations(seed) => seed.clone(),
-        _ => unreachable!(),
+        _ => return,
     };
 
     let block = Block::default()
@@ -554,7 +554,7 @@ fn render_context_artist_widgets(
             ref mut related_artist_list,
             ..
         } => (album_list, related_artist_list),
-        _ => unreachable!(),
+        _ => return,
     };
 
     frame.render_stateful_widget(album_list, chunks[0], album_list_state);

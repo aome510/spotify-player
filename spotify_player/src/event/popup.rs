@@ -27,7 +27,7 @@ pub fn handle_key_sequence_for_popup(
                 |ui: &mut UIStateGuard, id: usize| -> Result<()> {
                     let artists = match ui.popup {
                         Some(PopupState::ArtistList(ref artists, _)) => artists,
-                        _ => unreachable!(),
+                        _ => return Ok(()),
                     };
 
                     let context_id = ContextId::Artist(artists[id].id.clone());
@@ -151,7 +151,7 @@ pub fn handle_key_sequence_for_popup(
                 |ui: &mut UIStateGuard, id: usize| {
                     ui.theme = match ui.popup {
                         Some(PopupState::ThemeList(ref themes, _)) => themes[id].clone(),
-                        _ => unreachable!(),
+                        _ => return,
                     };
                 },
                 |ui: &mut UIStateGuard, _| -> Result<()> {
@@ -161,7 +161,7 @@ pub fn handle_key_sequence_for_popup(
                 |ui: &mut UIStateGuard| {
                     ui.theme = match ui.popup {
                         Some(PopupState::ThemeList(ref themes, _)) => themes[0].clone(),
-                        _ => unreachable!(),
+                        _ => return,
                     };
                     ui.popup = None;
                 },
@@ -212,7 +212,7 @@ fn handle_key_sequence_for_search_popup(
     // handle user's input that updates the search query
     let query = match ui.popup {
         Some(PopupState::Search { ref mut query }) => query,
-        _ => unreachable!(),
+        _ => return Ok(false),
     };
     if key_sequence.keys.len() == 1 {
         if let Key::None(c) = key_sequence.keys[0] {
@@ -379,7 +379,7 @@ fn handle_key_sequence_for_command_help_popup(
 
     let offset = match ui.popup {
         Some(PopupState::CommandHelp { ref mut offset }) => offset,
-        _ => unreachable!(),
+        _ => return Ok(false),
     };
     match command {
         Command::ClosePopup => {
@@ -413,7 +413,7 @@ fn handle_key_sequence_for_action_list_popup(
         |ui: &mut UIStateGuard, id: usize| -> Result<()> {
             let item = match ui.popup {
                 Some(PopupState::ActionList(ref item, ..)) => item,
-                _ => unreachable!(),
+                _ => return Ok(()),
             };
 
             match item {

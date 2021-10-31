@@ -74,7 +74,7 @@ pub fn render_commands_help_popup(frame: &mut Frame, state: &SharedState, rect: 
 
     let offset = match ui.popup {
         Some(PopupState::CommandHelp { ref mut offset }) => offset,
-        _ => unreachable!(),
+        _ => return,
     };
 
     let mut map = BTreeMap::new();

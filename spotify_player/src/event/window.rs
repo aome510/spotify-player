@@ -46,7 +46,7 @@ pub fn handle_key_sequence_for_context_window(
 
                     let context_id = match ui.current_page() {
                         PageState::Context(context_id, _) => context_id.clone().unwrap(),
-                        _ => unreachable!(),
+                        _ => return Ok(false),
                     };
 
                     send.send(ClientRequest::Player(PlayerRequest::StartPlayback(
@@ -170,7 +170,7 @@ pub fn handle_key_sequence_for_recommendation_window(
     // get the recommendation tracks from the cache
     let seed_uri = match state.ui.lock().current_page() {
         PageState::Recommendations(seed) => seed.uri(),
-        _ => unreachable!(),
+        _ => return Ok(false),
     };
     let tracks = data
         .caches
@@ -231,7 +231,7 @@ pub fn handle_key_sequence_for_search_window(
             input,
             current_query,
         } => (input, current_query),
-        _ => unreachable!(),
+        _ => return Ok(false),
     };
 
     // handle user's input
@@ -342,7 +342,7 @@ pub fn handle_command_for_focused_context_subwindow(
             } => {
                 let focus_state = match state.ui.lock().window {
                     WindowState::Artist { focus, .. } => focus,
-                    _ => unreachable!(),
+                    _ => return Ok(false),
                 };
 
                 match focus_state {
@@ -410,7 +410,7 @@ fn handle_command_for_track_table_subwindow(
     tracks: Vec<&Track>,
 ) -> Result<bool> {
     let mut ui = state.ui.lock();
-    let id = ui.window.selected().unwrap();
+    let id = ui.window.selected().unwrap_or_default();
 
     match command {
         Command::SelectNextOrScrollDown => {
@@ -455,7 +455,7 @@ fn handle_command_for_track_list_subwindow(
     tracks: Vec<&Track>,
 ) -> Result<bool> {
     let mut ui = state.ui.lock();
-    let id = ui.window.selected().unwrap();
+    let id = ui.window.selected().unwrap_or_default();
 
     match command {
         Command::SelectNextOrScrollDown => {
@@ -495,7 +495,7 @@ fn handle_command_for_artist_list_subwindow(
     artists: Vec<&Artist>,
 ) -> Result<bool> {
     let mut ui = state.ui.lock();
-    let id = ui.window.selected().unwrap();
+    let id = ui.window.selected().unwrap_or_default();
 
     match command {
         Command::SelectNextOrScrollDown => {
@@ -532,7 +532,7 @@ fn handle_command_for_album_list_subwindow(
     albums: Vec<&Album>,
 ) -> Result<bool> {
     let mut ui = state.ui.lock();
-    let id = ui.window.selected().unwrap();
+    let id = ui.window.selected().unwrap_or_default();
 
     match command {
         Command::SelectNextOrScrollDown => {
@@ -569,7 +569,7 @@ fn handle_command_for_playlist_list_subwindow(
     playlists: Vec<&Playlist>,
 ) -> Result<bool> {
     let mut ui = state.ui.lock();
-    let id = ui.window.selected().unwrap();
+    let id = ui.window.selected().unwrap_or_default();
 
     match command {
         Command::SelectNextOrScrollDown => {
