@@ -1,4 +1,4 @@
-use crate::{command::Action, utils::new_table_state};
+use crate::command::Action;
 
 use super::*;
 
@@ -31,8 +31,10 @@ pub fn handle_key_sequence_for_popup(
                     };
 
                     let context_id = ContextId::Artist(artists[id].id.clone());
-                    send.send(ClientRequest::GetContext(context_id.clone()))?;
-                    ui.create_new_page(PageState::Browsing(context_id));
+                    ui.create_new_page(PageState::Context(
+                        None,
+                        ContextPageType::Browsing(context_id),
+                    ));
 
                     Ok(())
                 },
@@ -56,7 +58,6 @@ pub fn handle_key_sequence_for_popup(
                     drop(ui);
                     handle_key_sequence_for_context_browsing_list_popup(
                         key_sequence,
-                        send,
                         state,
                         playlist_uris,
                         rspotify_model::Type::Playlist,
@@ -116,7 +117,6 @@ pub fn handle_key_sequence_for_popup(
             drop(ui);
             handle_key_sequence_for_context_browsing_list_popup(
                 key_sequence,
-                send,
                 state,
                 artist_uris,
                 rspotify_model::Type::Artist,
@@ -135,7 +135,6 @@ pub fn handle_key_sequence_for_popup(
             drop(ui);
             handle_key_sequence_for_context_browsing_list_popup(
                 key_sequence,
-                send,
                 state,
                 album_uris,
                 rspotify_model::Type::Album,
@@ -249,13 +248,13 @@ fn handle_key_sequence_for_search_popup(
             _ => match ui.current_page() {
                 PageState::Library => {
                     drop(ui);
-                    window::handle_key_sequence_for_library_window(key_sequence, send, state)
+                    window::handle_key_sequence_for_library_window(key_sequence, state)
                 }
                 PageState::Recommendations(..) => {
                     drop(ui);
                     window::handle_key_sequence_for_recommendation_window(key_sequence, send, state)
                 }
-                PageState::Browsing(_) | PageState::CurrentPlaying => {
+                PageState::Context(..) => {
                     drop(ui);
                     window::handle_key_sequence_for_context_window(key_sequence, send, state)
                 }
@@ -275,7 +274,6 @@ fn handle_key_sequence_for_search_popup(
 /// - `uri_type`: an enum represents the type of a context in the list (`playlist`, `artist`, etc)
 fn handle_key_sequence_for_context_browsing_list_popup(
     key_sequence: &KeySequence,
-    send: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
     uris: Vec<String>,
     context_type: rspotify_model::Type,
@@ -296,9 +294,10 @@ fn handle_key_sequence_for_context_browsing_list_popup(
                 }
             };
 
-            send.send(ClientRequest::GetContext(context_id.clone()))?;
-
-            ui.create_new_page(PageState::Browsing(context_id));
+            ui.create_new_page(PageState::Context(
+                None,
+                ContextPageType::Browsing(context_id),
+            ));
 
             Ok(())
         },
@@ -423,8 +422,10 @@ fn handle_key_sequence_for_action_list_popup(
                         if let Some(ref album) = track.album {
                             let uri = album.id.uri();
                             let context_id = ContextId::Album(AlbumId::from_uri(&uri)?);
-                            send.send(ClientRequest::GetContext(context_id.clone()))?;
-                            ui.create_new_page(PageState::Browsing(context_id));
+                            ui.create_new_page(PageState::Context(
+                                None,
+                                ContextPageType::Browsing(context_id),
+                            ));
                         }
                     }
                     Action::BrowseArtist => {
@@ -448,9 +449,6 @@ fn handle_key_sequence_for_action_list_popup(
                         let seed = SeedItem::Track(track.clone());
                         send.send(ClientRequest::GetRecommendations(seed.clone()))?;
                         ui.create_new_page(PageState::Recommendations(seed));
-                        ui.window = WindowState::Recommendations {
-                            track_table: new_table_state(),
-                        };
                     }
                 },
                 Item::Album(album) => match actions[id] {
@@ -475,9 +473,6 @@ fn handle_key_sequence_for_action_list_popup(
                         let seed = SeedItem::Artist(artist.clone());
                         send.send(ClientRequest::GetRecommendations(seed.clone()))?;
                         ui.create_new_page(PageState::Recommendations(seed));
-                        ui.window = WindowState::Recommendations {
-                            track_table: new_table_state(),
-                        };
                     }
                     _ => {}
                 },

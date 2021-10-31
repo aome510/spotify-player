@@ -67,87 +67,58 @@ fn handle_page_state_change(state: &SharedState, send: &mpsc::Sender<ClientReque
                 }
             }
         },
-        PageState::Searching { current_query, .. } => {
-            state.player.write().context_id = None;
-            match ui.window {
-                WindowState::Search { .. } => {}
-                _ => {
-                    send.send(ClientRequest::Search(current_query.clone()))?;
-                    ui.window = WindowState::new_search_state();
-                }
+        PageState::Searching { current_query, .. } => match ui.window {
+            WindowState::Search { .. } => {}
+            _ => {
+                send.send(ClientRequest::Search(current_query.clone()))?;
+                ui.window = WindowState::new_search_state();
             }
-        }
-        PageState::Recommendations(seed) => {
-            state.player.write().context_id = None;
-            match ui.window {
-                WindowState::Recommendations { .. } => {}
-                _ => {
-                    send.send(ClientRequest::GetRecommendations(seed.clone()))?;
-                    ui.window = WindowState::Recommendations {
-                        track_table: utils::new_table_state(),
+        },
+        PageState::Recommendations(seed) => match ui.window {
+            WindowState::Recommendations { .. } => {}
+            _ => {
+                send.send(ClientRequest::GetRecommendations(seed.clone()))?;
+                ui.window = WindowState::Recommendations {
+                    track_table: utils::new_table_state(),
+                };
+            }
+        },
+        PageState::Context(context_id, context_type) => {
+            let expected_context_id = match context_type {
+                ContextPageType::Browsing(context_id) => Some(context_id.clone()),
+                ContextPageType::CurrentPlaying => state.player.read().playing_context_id(),
+            };
+
+            if *context_id != expected_context_id {
+                tracing::info!(
+                    "update current page's context_id to {:?}",
+                    expected_context_id
+                );
+
+                if let Some(ref id) = expected_context_id {
+                    send.send(ClientRequest::GetContext(id.clone()))?;
+
+                    ui.window = match id {
+                        ContextId::Artist { .. } => WindowState::Artist {
+                            top_track_table: utils::new_table_state(),
+                            album_list: utils::new_list_state(),
+                            related_artist_list: utils::new_list_state(),
+                            focus: ArtistFocusState::TopTracks,
+                        },
+                        ContextId::Album { .. } => WindowState::Album {
+                            track_table: utils::new_table_state(),
+                        },
+                        ContextId::Playlist { .. } => WindowState::Playlist {
+                            track_table: utils::new_table_state(),
+                        },
                     };
                 }
-            }
-        }
-        PageState::Browsing(id) => {
-            let should_update = match state.player.read().context_id {
-                None => true,
-                Some(ref context_id) => context_id != id,
-            };
-            if should_update {
-                utils::update_context(state, Some(id.clone()));
-            }
-        }
-        PageState::CurrentPlaying => {
-            let player = state.player.read();
-            // updates the context (album, playlist, etc) tracks based on the current playback
-            if let Some(ref playback) = player.playback {
-                match playback.context {
-                    Some(ref context) => {
-                        let should_update = match player.context_id {
-                            None => true,
-                            Some(ref context_id) => context_id.uri() != context.uri,
-                        };
 
-                        if should_update {
-                            match context._type {
-                                rspotify_model::Type::Playlist => {
-                                    let context_id =
-                                        ContextId::Playlist(PlaylistId::from_uri(&context.uri)?);
-                                    send.send(ClientRequest::GetContext(context_id.clone()))?;
-                                    utils::update_context(state, Some(context_id));
-                                }
-                                rspotify_model::Type::Album => {
-                                    let context_id =
-                                        ContextId::Album(AlbumId::from_uri(&context.uri)?);
-                                    send.send(ClientRequest::GetContext(context_id.clone()))?;
-                                    utils::update_context(state, Some(context_id));
-                                }
-                                rspotify_model::Type::Artist => {
-                                    let context_id =
-                                        ContextId::Artist(ArtistId::from_uri(&context.uri)?);
-                                    send.send(ClientRequest::GetContext(context_id.clone()))?;
-                                    utils::update_context(state, Some(context_id));
-                                }
-                                _ => {
-                                    tracing::info!(
-                                        "encountered not supported context type: {:?}",
-                                        context._type
-                                    )
-                                }
-                            };
-                        }
-                    }
-                    None => {
-                        if player.context_id.is_some() {
-                            // the current playback doesn't have a playing context,
-                            // update the state's `context_id` to `None`
-                            utils::update_context(state, None);
-                            tracing::info!("current playback does not have a playing context");
-                        }
-                    }
+                // update the current context page's `context_id`
+                if let PageState::Context(ref mut context_id, _) = ui.current_page_mut() {
+                    *context_id = expected_context_id;
                 }
-            };
+            }
         }
     }
 
@@ -191,19 +162,13 @@ fn render_main_layout(is_active: bool, frame: &mut Frame, state: &SharedState, r
             drop(ui);
             window::render_library_window(is_active, frame, state, chunks[1]);
         }
-        PageState::CurrentPlaying => {
+        PageState::Context(_, context_type) => {
+            let title = match context_type {
+                ContextPageType::CurrentPlaying => "Context (Current Playing)",
+                ContextPageType::Browsing(_) => "Context (Browsing)",
+            };
             drop(ui);
-            window::render_context_window(
-                is_active,
-                frame,
-                state,
-                chunks[1],
-                "Context (Current Playing)",
-            );
-        }
-        PageState::Browsing { .. } => {
-            drop(ui);
-            window::render_context_window(is_active, frame, state, chunks[1], "Context (Browsing)");
+            window::render_context_window(is_active, frame, state, chunks[1], title);
         }
         PageState::Recommendations { .. } => {
             drop(ui);

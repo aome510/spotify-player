@@ -121,7 +121,7 @@ fn handle_key_event(
             match ui.current_page() {
                 PageState::Library => {
                     drop(ui);
-                    window::handle_key_sequence_for_library_window(&key_sequence, send, state)?
+                    window::handle_key_sequence_for_library_window(&key_sequence, state)?
                 }
                 PageState::Recommendations(..) => {
                     drop(ui);
@@ -131,7 +131,7 @@ fn handle_key_event(
                         state,
                     )?
                 }
-                PageState::Browsing(_) | PageState::CurrentPlaying => {
+                PageState::Context(..) => {
                     drop(ui);
                     window::handle_key_sequence_for_context_window(&key_sequence, send, state)?
                 }
@@ -228,7 +228,7 @@ fn handle_global_command(
             }
         }
         Command::BrowsePlayingContext => {
-            ui.create_new_page(PageState::CurrentPlaying);
+            ui.create_new_page(PageState::Context(None, ContextPageType::CurrentPlaying));
         }
         Command::BrowseUserPlaylists => {
             send.send(ClientRequest::GetUserPlaylists)?;
@@ -253,13 +253,18 @@ fn handle_global_command(
                 input: "".to_owned(),
                 current_query: "".to_owned(),
             });
-            ui.window = WindowState::new_search_state();
         }
         Command::PreviousPage => {
             if ui.history.len() > 1 {
                 ui.history.pop();
                 ui.popup = None;
                 ui.window = WindowState::Unknown;
+
+                // empty the previous page's `context_id` to force
+                // updating the context page's window state and requesting the context data
+                if let PageState::Context(ref mut context_id, _) = ui.current_page_mut() {
+                    *context_id = None;
+                }
             }
         }
         Command::SwitchDevice => {

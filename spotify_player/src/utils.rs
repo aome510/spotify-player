@@ -1,8 +1,6 @@
 use tui::widgets::{ListState, TableState};
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
-use crate::state::{self, ArtistFocusState, WindowState};
-
 /// formats a time duration into a "{minutes}:{seconds}" format
 pub fn format_duration(duration: std::time::Duration) -> String {
     let secs = duration.as_secs();
@@ -45,58 +43,4 @@ pub fn new_table_state() -> TableState {
     let mut state = TableState::default();
     state.select(Some(0));
     state
-}
-
-/// updates the current playing context
-pub fn update_context(state: &state::SharedState, context_id: Option<state::ContextId>) {
-    std::thread::spawn({
-        let state = state.clone();
-        move || {
-            tracing::info!("update state's context id to {:?}", context_id);
-
-            let is_none_context = context_id.is_none();
-
-            state.player.write().context_id = context_id;
-            state.ui.lock().window = state::WindowState::Unknown;
-
-            // `None` context, skip pooling
-            if is_none_context {
-                return;
-            }
-
-            let refresh_duration =
-                std::time::Duration::from_millis(state.app_config.app_refresh_duration_in_ms);
-
-            // spawn a pooling job to check when the context is updated inside the player state
-            loop {
-                let window_state = {
-                    let data = state.data.read();
-                    let player = state.player.read();
-                    match player.context(&data.caches) {
-                        Some(context) => match context {
-                            state::Context::Artist { .. } => WindowState::Artist {
-                                top_track_table: new_table_state(),
-                                album_list: new_list_state(),
-                                related_artist_list: new_list_state(),
-                                focus: ArtistFocusState::TopTracks,
-                            },
-                            state::Context::Album { .. } => WindowState::Album {
-                                track_table: new_table_state(),
-                            },
-                            state::Context::Playlist { .. } => WindowState::Playlist {
-                                track_table: new_table_state(),
-                            },
-                        },
-                        None => {
-                            std::thread::sleep(refresh_duration);
-                            continue;
-                        }
-                    }
-                };
-
-                state.ui.lock().window = window_state;
-                break;
-            }
-        }
-    });
 }
