@@ -107,9 +107,10 @@ async fn main() -> anyhow::Result<()> {
     #[cfg(feature = "streaming")]
     std::thread::spawn({
         let session = session.clone();
+        let send = send.clone();
         let device = state.app_config.device.clone();
         move || {
-            connect::new_connection(session, device);
+            connect::new_connection(session, send, device);
         }
     });
 

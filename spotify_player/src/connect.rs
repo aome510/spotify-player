@@ -1,4 +1,6 @@
-use crate::config;
+use std::sync::mpsc;
+
+use crate::{config, event::ClientRequest};
 use librespot_connect::spirc::Spirc;
 use librespot_core::{
     config::{ConnectConfig, DeviceType},
@@ -14,7 +16,11 @@ use librespot_playback::{
 
 #[tokio::main]
 /// create a new librespot connection running in the background
-pub async fn new_connection(session: Session, device: config::DeviceConfig) {
+pub async fn new_connection(
+    session: Session,
+    send: mpsc::Sender<ClientRequest>,
+    device: config::DeviceConfig,
+) {
     // librespot volume is a u16 number ranging from 0 to 65535,
     // while a percentage volume value (from 0 to 100) is used for the device configuration.
     // So we need to convert from one format to another
@@ -47,12 +53,19 @@ pub async fn new_connection(session: Session, device: config::DeviceConfig) {
         ..Default::default()
     };
 
-    let (player, _channel) = Player::new(
+    let (player, mut channel) = Player::new(
         player_config,
         session.clone(),
         mixer.get_audio_filter(),
         move || backend(None, AudioFormat::default()),
     );
+
+    tokio::spawn(async move {
+        while let Some(event) = channel.recv().await {
+            tracing::info!("got a librespot player event: {:?}", event);
+            send.send(ClientRequest::GetCurrentPlayback).unwrap();
+        }
+    });
 
     tracing::info!("starting an integrated Spotify client using librespot's spirc protocol...");
 
