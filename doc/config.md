@@ -9,27 +9,29 @@
   - [Component Styles](#component-styles)
 - [Keymaps](#keymaps)
 
-All configurations are stored inside the application's configuration folder (default to be `$HOME/.config/spotify-player`).
+All configuration files should be placed inside the application's configuration folder (default to be `$HOME/.config/spotify-player`).
 
 ## General
 
-`spotify-player` uses `app.toml` to store general application configurations:
+`spotify-player` uses `app.toml` to configure general application configurations:
 
 | Option                                     | Description                                                      | Default                            |
 | ------------------------------------------ | ---------------------------------------------------------------- | ---------------------------------- |
 | `client_id`                                | the application's client ID that interacts with Spotify APIs     | `65b708073fc0480ea92a077233ca87bd` |
-| `theme`                                    | application's theme                                              | `dracula`                          |
+| `theme`                                    | the application's theme                                          | `dracula`                          |
 | `n_refreshes_each_playback_update`         | number of refresh requests in each playback update               | `5`                                |
 | `refresh_delay_in_ms_each_playback_update` | delay in ms between two refresh requests in each playback update | `500`                              |
 | `app_refresh_duration_in_ms`               | duration in ms for re-rendering the application's UI             | `32`                               |
-| `playback_refresh_duration_in_ms`          | duration in ms for refreshing the player's playback periodically | `0`                                |
-| `track_table_item_max_len`                 | maximum length for a column in a track table                     | `32`                               |
+| `playback_refresh_duration_in_ms`          | duration in ms for refreshing the playback periodically          | `0`                                |
+| `track_table_item_max_len`                 | maximum length of a column in a track table                      | `32`                               |
+
+The default `app.toml` can be found in the example [`app.toml`](https://github.com/aome510/spotify-player/blob/master/examples/app.toml) file
 
 **Note**:
 
-- By default, the application uses the official Spotify Web app's client ID (`65b708073fc0480ea92a077233ca87bd`). It's recommended to use [your own Client ID](https://developer.spotify.com/documentation/general/guides/app-settings/) to avoid possible rate limit and to allow a full [Spotify connect](https://www.spotify.com/us/connect/) support.
-- Positive-value `app_refresh_duration_in_ms` is used to refresh the current playback (making a Spotify API call) every `app_refresh_duration_in_ms` ms. This can result in hitting Spotify rate limit if the player is running for a long period of time.
-- To prevent the rate limit, `spotify-player` sets `playback_refresh_duration_in_ms=0` by default and relies on `n_refreshes_each_playback_update` and `refresh_delay_in_ms_each_playback_update` for refreshing the playback each time a command or event updates the player's playback.
+- By default, the application uses the official Spotify Web app's client ID (`65b708073fc0480ea92a077233ca87bd`). It's recommended to specify [your own Client ID](https://developer.spotify.com/documentation/general/guides/authorization/app-settings/) to avoid possible rate limit and to allow a full [Spotify connect](https://www.spotify.com/us/connect/) support.
+- Positive-value `app_refresh_duration_in_ms` is used to refresh the current playback (making a Spotify API call) every `app_refresh_duration_in_ms` ms. This can result in hitting Spotify rate limit if the player is running for a long time.
+- To prevent the rate limit, `spotify-player` sets `playback_refresh_duration_in_ms=0` and uses `n_refreshes_each_playback_update` and `refresh_delay_in_ms_each_playback_update` to update the playback each time a command or event triggers a playback update.
 - List of commands that triggers a playback update:
   - `NextTrack`
   - `PreviousTrack`
@@ -43,15 +45,15 @@ All configurations are stored inside the application's configuration folder (def
 
 ### Device configurations
 
-[Librespot](https://github.com/librespot-org/librespot) device configuration options are configured under the `[device]` section in the `app.toml` file:
+The configuration options for the [Librespot](https://github.com/librespot-org/librespot) integrated device are specified under the `[device]` section in the `app.toml` file:
 
-| Option        | Description                                                      | Default          |
-| ------------- | ---------------------------------------------------------------- | ---------------- |
-| `name`        | The librespot device's name                                      | `spotify-player` |
-| `device_type` | The librespot device's type displayed in Spotify clients         | `speaker`        |
-| `volume`      | Initial volume (in percentage) of the device                     | `50`             |
-| `bitrate`     | Bitrate in kbps (`96`, `160`, `320`)                             | `160`            |
-| `audio_cache` | Enable caching audio files (store in `$APP_CACHE_FOLDER/audio/`) | `false`          |
+| Option        | Description                                                             | Default          |
+| ------------- | ----------------------------------------------------------------------- | ---------------- |
+| `name`        | The librespot device's name                                             | `spotify-player` |
+| `device_type` | The librespot device's type                                             | `speaker`        |
+| `volume`      | Initial volume (in percentage) of the device                            | `50`             |
+| `bitrate`     | Bitrate in kbps (`96`, `160`, `320`)                                    | `160`            |
+| `audio_cache` | Enable caching audio files (store in `$APP_CACHE_FOLDER/audio/` folder) | `false`          |
 
 More details on the above configuration options can be found under the [Librespot wiki page](https://github.com/librespot-org/librespot/wiki/Options).
 
