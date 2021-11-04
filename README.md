@@ -41,7 +41,9 @@ More details on registering a Spotify application can be found in the [Spotify d
 
 If `spotify_player` runs with your own `client_id`, press **D** (default shortcut for `SwitchDevice` command) to get the list of available devices, then press **enter** (default shortcut for `ChooseSelected` command) to connect to the selected device.
 
-![Spotify Connect](https://user-images.githubusercontent.com/40011582/140253386-05e00daf-8079-4319-bb4d-95b23a35abc0.gif)
+An example of using Spotify connect to interact with Spotify's official client:
+
+![Spotify Connect Example](https://user-images.githubusercontent.com/40011582/140323795-8a7ed2bb-7bda-4db2-9672-6036eac6e771.gif)
 
 ### Streaming
 
