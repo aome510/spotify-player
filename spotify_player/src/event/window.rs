@@ -68,6 +68,7 @@ pub fn handle_key_sequence_for_context_window(
 
             if let Some(order) = order {
                 if let Some(uri) = ui.current_page().context_uri() {
+                    drop(ui);
                     let mut data = state.data.write();
                     if let Some(context) = data.caches.context.peek_mut(&uri) {
                         context.sort_tracks(order);
@@ -77,6 +78,7 @@ pub fn handle_key_sequence_for_context_window(
             }
             if command == Command::ReverseTrackOrder {
                 if let Some(uri) = ui.current_page().context_uri() {
+                    drop(ui);
                     let mut data = state.data.write();
                     if let Some(context) = data.caches.context.peek_mut(&uri) {
                         context.reverse_tracks();
