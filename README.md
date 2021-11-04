@@ -41,6 +41,8 @@ More details on registering a Spotify application can be found in the [Spotify d
 
 If `spotify_player` runs with your own `client_id`, press **D** (default shortcut for `SwitchDevice` command) to get the list of available devices, then press **enter** (default shortcut for `ChooseSelected` command) to connect to the selected device.
 
+![Spotify Connect](https://user-images.githubusercontent.com/40011582/140253386-05e00daf-8079-4319-bb4d-95b23a35abc0.gif)
+
 ### Streaming
 
 `spotify-player` supports streaming by using [librespot](https://github.com/librespot-org/librespot) library to create an integrated Spotify client. By default, the integrated client will create a Spotify speaker device under the `spotify-player` name.
@@ -122,25 +124,25 @@ docker run --rm \
 
 ### Demo
 
-A demo of `spotify-player v0.1.0`:
+A demo of `spotify-player v0.5.0-pre-release` on [youtube](https://www.youtube.com/shorts/Jbfe9GLNWbA) or on [asciicast](https://asciinema.org/a/446913):
 
-[![asciicast](https://asciinema.org/a/430335.svg)](https://asciinema.org/a/430335)
+[![asciicast](https://asciinema.org/a/446913.svg)](https://asciinema.org/a/446913)
 
 ### Playlist
 
-![Playlist context example](https://raw.githubusercontent.com/aome510/spotify-player/master/examples/playlist.png)
+![Playlist context example](https://user-images.githubusercontent.com/40011582/140253591-706d15d4-08c9-4527-997a-79fac73dee20.png)
 
 ### Artist
 
-![Artist context example](https://raw.githubusercontent.com/aome510/spotify-player/master/examples/artist.png)
+![Artist context example](https://user-images.githubusercontent.com/40011582/140253630-d958c5ea-23bc-4528-b40b-aa6fa68b5735.png)
 
 ### Album
 
-![Album context example](https://raw.githubusercontent.com/aome510/spotify-player/master/examples/album.png)
+![Album context example](https://user-images.githubusercontent.com/40011582/140253687-fd036da9-3b71-443b-a7f9-dad7721f01bf.png)
 
 ### Search
 
-![Search page example](https://raw.githubusercontent.com/aome510/spotify-player/master/examples/search.png)
+![Search page example](https://user-images.githubusercontent.com/40011582/140253653-5b156a8f-538b-4e68-9d52-0a379477574f.png)
 
 ## Commands
 
