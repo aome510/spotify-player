@@ -39,8 +39,12 @@ pub fn handle_key_sequence_for_context_window(
                         // Spotify does not allow to manually specify `offset` for artist context
                         Context::Artist { .. } => None,
                         _ => {
-                            let id = rand::thread_rng().gen_range(0..tracks.len());
-                            Some(rspotify_model::Offset::for_uri(&tracks[id].id.uri()))
+                            if tracks.is_empty() {
+                                None
+                            } else {
+                                let id = rand::thread_rng().gen_range(0..tracks.len());
+                                Some(rspotify_model::Offset::for_uri(&tracks[id].id.uri()))
+                            }
                         }
                     };
 
@@ -413,6 +417,9 @@ fn handle_command_for_track_table_subwindow(
 ) -> Result<bool> {
     let mut ui = state.ui.lock();
     let id = ui.window.selected().unwrap_or_default();
+    if id >= tracks.len() {
+        return Ok(false);
+    }
 
     match command {
         Command::SelectNextOrScrollDown => {
@@ -458,6 +465,9 @@ fn handle_command_for_track_list_subwindow(
 ) -> Result<bool> {
     let mut ui = state.ui.lock();
     let id = ui.window.selected().unwrap_or_default();
+    if id >= tracks.len() {
+        return Ok(false);
+    }
 
     match command {
         Command::SelectNextOrScrollDown => {
@@ -498,6 +508,9 @@ fn handle_command_for_artist_list_subwindow(
 ) -> Result<bool> {
     let mut ui = state.ui.lock();
     let id = ui.window.selected().unwrap_or_default();
+    if id >= artists.len() {
+        return Ok(false);
+    }
 
     match command {
         Command::SelectNextOrScrollDown => {
@@ -535,6 +548,9 @@ fn handle_command_for_album_list_subwindow(
 ) -> Result<bool> {
     let mut ui = state.ui.lock();
     let id = ui.window.selected().unwrap_or_default();
+    if id >= albums.len() {
+        return Ok(false);
+    }
 
     match command {
         Command::SelectNextOrScrollDown => {
@@ -572,6 +588,9 @@ fn handle_command_for_playlist_list_subwindow(
 ) -> Result<bool> {
     let mut ui = state.ui.lock();
     let id = ui.window.selected().unwrap_or_default();
+    if id >= playlists.len() {
+        return Ok(false);
+    }
 
     match command {
         Command::SelectNextOrScrollDown => {

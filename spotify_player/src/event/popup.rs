@@ -334,7 +334,10 @@ fn handle_key_sequence_for_list_popup(
     let mut ui = state.ui.lock();
 
     let popup = ui.popup.as_mut().unwrap();
-    let current_id = popup.list_selected().unwrap();
+    let current_id = popup.list_selected().unwrap_or_default();
+    if current_id >= n_items {
+        return Ok(false);
+    }
 
     match command {
         Command::SelectPreviousOrScrollUp => {
