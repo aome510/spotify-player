@@ -11,14 +11,10 @@ use librespot_core::{
 fn read_user_auth_details(user: Option<String>) -> Result<(String, String)> {
     let mut username = String::new();
     let mut stdout = std::io::stdout();
-    write!(
-        stdout,
-        "Username{}: ",
-        match user {
-            None => "",
-            Some(ref u) => u,
-        }
-    )?;
+    match user {
+        None => write!(stdout, "Username: ")?,
+        Some(ref u) => write!(stdout, "Username (default: {}): ", u)?,
+    }
     stdout.flush()?;
     std::io::stdin().read_line(&mut username)?;
     username = username.trim_end().to_string();

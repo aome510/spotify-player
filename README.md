@@ -54,7 +54,7 @@ A demo of `spotify-player` `v0.5.0-pre-release` on [youtube](https://www.youtube
 
 ### Requirements
 
-A Spotify Premium account is recommended to enable all application's supported features.
+A Spotify Premium account is **required**.
 
 To build and run the application, besides [Rust and cargo](https://www.rust-lang.org/tools/install) as the build requirements, Linux users will also need to install additional dependencies such as `openssl` and `alsa-lib`.
 
