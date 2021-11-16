@@ -220,7 +220,7 @@ By default, `spotify-player` will look into `$HOME/.cache/spotify-player` for ap
 
 ### Logging
 
-`spotify-player` uses `RUST_LOG` environment variable to define the application's [logging level](https://docs.rs/log/0.4.14/log/enum.Level.html) (default to be `INFO`). The application stores logs inside the `$APP_CACHE_FOLDER/spotify-player.log` file which can be configured by specifying the `-l <FILE_PATH>` or `--log-file <FILE_PATH>` option.
+`spotify-player` uses `RUST_LOG` environment variable to define the application's [logging level](https://docs.rs/log/0.4.14/log/enum.Level.html) (default to be `INFO`). The application stores logs inside the `$APP_CACHE_FOLDER/spotify-player.log` file.
 
 ## Roadmap
 

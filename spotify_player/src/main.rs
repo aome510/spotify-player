@@ -39,14 +39,7 @@ fn init_app_cli_arguments() -> clap::ArgMatches<'static> {
                 .help("Path to the application's cache folder (default: $HOME/.cache/spotify-player)")
                 .next_line_help(true)
         )
-        .arg(
-            clap::Arg::with_name("log-file")
-                .short("l")
-                .long("log-file")
-                .value_name("FOLDER")
-                .help("Path to the application's log file (default: $APP_CACHE_FOLDER/spotify-player.log)")
-                .next_line_help(true)
-        ).get_matches()
+        .get_matches()
 }
 
 #[tokio::main]
@@ -76,11 +69,7 @@ async fn main() -> anyhow::Result<()> {
     if std::env::var("RUST_LOG").is_err() {
         std::env::set_var("RUST_LOG", "info")
     }
-    let log_file_path = match args.value_of("log-file") {
-        Some(path) => path.into(),
-        None => cache_folder.join("spotify-player.log"),
-    };
-    let log_file = std::fs::File::create(log_file_path)?;
+    let log_file = std::fs::File::create(cache_folder.join("spotify-player.log"))?;
     tracing_subscriber::fmt::fmt()
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .with_ansi(false)
