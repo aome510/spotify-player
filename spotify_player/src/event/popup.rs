@@ -335,9 +335,6 @@ fn handle_key_sequence_for_list_popup(
 
     let popup = ui.popup.as_mut().unwrap();
     let current_id = popup.list_selected().unwrap_or_default();
-    if current_id >= n_items {
-        return Ok(false);
-    }
 
     match command {
         Command::SelectPreviousOrScrollUp => {
@@ -353,7 +350,9 @@ fn handle_key_sequence_for_list_popup(
             }
         }
         Command::ChooseSelected => {
-            on_choose_func(&mut ui, current_id)?;
+            if current_id < n_items {
+                on_choose_func(&mut ui, current_id)?;
+            }
         }
         Command::ClosePopup => {
             on_close_func(&mut ui);
