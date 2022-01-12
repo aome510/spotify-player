@@ -13,7 +13,7 @@ mod utils;
 
 fn init_app_cli_arguments() -> clap::ArgMatches {
     clap::App::new("spotify-player")
-        .version("0.5.1")
+        .version("0.5.2")
         .about("A command driven spotify player")
         .author("Thang Pham <phamducthang1234@gmail>")
         .arg(
