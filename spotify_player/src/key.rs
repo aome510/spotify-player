@@ -160,7 +160,7 @@ impl KeySequence {
             return None;
         }
         keys.into_iter()
-            .map(|s| Key::from_str(s))
+            .map(Key::from_str)
             .collect::<Option<Vec<_>>>()
             .map(|keys| Self { keys })
     }

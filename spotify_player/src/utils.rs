@@ -1,4 +1,4 @@
-use tui::widgets::{ListState, TableState};
+use tui::widgets::*;
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 /// formats a time duration into a "{minutes}:{seconds}" format

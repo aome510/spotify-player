@@ -230,7 +230,8 @@ pub fn render_track_table_widget(
     let mut active_desc = "";
     if let Some(ref playback) = state.player.read().playback {
         if let Some(rspotify_model::PlayableItem::Track(ref track)) = playback.item {
-            playing_track_uri = track.id.uri();
+            playing_track_uri = track.id.as_ref().map(|id| id.uri()).unwrap_or_default();
+
             active_desc = if !playback.is_playing { "⏸" } else { "▶" };
         }
     }

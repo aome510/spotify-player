@@ -301,18 +301,18 @@ impl Track {
             added_at: 0,
         })
     }
-}
 
-impl From<rspotify_model::FullTrack> for Track {
-    fn from(track: rspotify_model::FullTrack) -> Self {
-        Self {
-            id: track.id,
+    /// tries to convert from a `rspotify_model::FullTrack` into `Track`
+    pub fn try_from_full_track(track: rspotify_model::FullTrack) -> Option<Self> {
+        track.id.as_ref()?;
+        Some(Self {
+            id: track.id.unwrap(),
             name: track.name,
             artists: from_simplified_artists_to_artists(track.artists),
             album: Album::try_from_simplified_album(track.album),
             duration: track.duration,
             added_at: 0,
-        }
+        })
     }
 }
 

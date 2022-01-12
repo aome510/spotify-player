@@ -11,29 +11,29 @@ mod token;
 mod ui;
 mod utils;
 
-fn init_app_cli_arguments() -> clap::ArgMatches<'static> {
+fn init_app_cli_arguments() -> clap::ArgMatches {
     clap::App::new("spotify-player")
         .version("0.5.1")
         .about("A command driven spotify player")
         .author("Thang Pham <phamducthang1234@gmail>")
         .arg(
-            clap::Arg::with_name("theme")
-                .short("t")
+            clap::Arg::new("theme")
+                .short('t')
                 .long("theme")
                 .value_name("THEME")
                 .help("Application theme (default: dracula)")
         )
         .arg(
-            clap::Arg::with_name("config-folder")
-                .short("c")
+            clap::Arg::new("config-folder")
+                .short('c')
                 .long("config-folder")
                 .value_name("FOLDER")
                 .help("Path to the application's config folder (default: $HOME/.config/spotify-player)")
                 .next_line_help(true)
         )
         .arg(
-            clap::Arg::with_name("cache-folder")
-                .short("C")
+            clap::Arg::new("cache-folder")
+                .short('C')
                 .long("cache-folder")
                 .value_name("FOLDER")
                 .help("Path to the application's cache folder (default: $HOME/.cache/spotify-player)")

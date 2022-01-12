@@ -221,10 +221,9 @@ fn handle_global_command(
         }
         Command::ShowActionsOnCurrentTrack => {
             if let Some(track) = state.player.read().current_playing_track() {
-                ui.popup = Some(PopupState::ActionList(
-                    Item::Track(track.clone().into()),
-                    new_list_state(),
-                ));
+                if let Some(track) = Track::try_from_full_track(track.clone()) {
+                    ui.popup = Some(PopupState::ActionList(Item::Track(track), new_list_state()));
+                }
             }
         }
         Command::BrowsePlayingContext => {

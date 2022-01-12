@@ -411,14 +411,17 @@ impl Client {
 
         let (tracks, artists, albums, playlists) = (
             match track_result {
-                rspotify_model::SearchResult::Tracks(p) => {
-                    p.items.into_iter().map(|i| i.into()).collect()
-                }
+                rspotify_model::SearchResult::Tracks(p) => p
+                    .items
+                    .into_iter()
+                    .map(Track::try_from_full_track)
+                    .flatten()
+                    .collect(),
                 _ => unreachable!(),
             },
             match artist_result {
                 rspotify_model::SearchResult::Artists(p) => {
-                    p.items.into_iter().map(|i| i.into()).collect()
+                    p.items.into_iter().map(|a| a.into()).collect()
                 }
                 _ => unreachable!(),
             },
@@ -551,7 +554,9 @@ impl Client {
             .await?
             .into_iter()
             .map(|item| match item.track {
-                Some(rspotify_model::PlayableItem::Track(track)) => Some(track.into()),
+                Some(rspotify_model::PlayableItem::Track(track)) => {
+                    Track::try_from_full_track(track)
+                }
                 _ => None,
             })
             .flatten()
@@ -607,7 +612,8 @@ impl Client {
             .artist_top_tracks(artist_id, &rspotify_model::enums::misc::Market::FromToken)
             .await?
             .into_iter()
-            .map(|t| t.into())
+            .map(Track::try_from_full_track)
+            .flatten()
             .collect::<Vec<_>>();
 
         let related_artists = self

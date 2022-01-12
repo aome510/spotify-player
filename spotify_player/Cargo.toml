@@ -8,11 +8,10 @@ description = "A command driven spotify player"
 repository = "https://github.com/aome510/spotify-player"
 keywords = ["spotify", "tui", "player"]
 readme = "../README.md"
-include = ["src/**/*", "LICENSE", "../README.*"]
 
 [dependencies]
-anyhow = "1.0.45"
-clap = "2.33.3"
+anyhow = "1.0.52"
+clap = "3.0.6"
 config_parser2 = "0.1.2"
 crossterm = { version = "0.22.1", features = ["event-stream"] }
 dirs-next = "2.0.0"
@@ -20,23 +19,23 @@ librespot-connect = { version = "0.3.1", optional = true }
 librespot-playback = { version = "0.3.1", optional = true }
 librespot-core = "0.3.1"
 log = "0.4.14"
-lru = "0.7.0"
+lru = "0.7.2"
 chrono = "0.4.19"
-reqwest = { version = "0.11.6", features = ["json"] }
+reqwest = { version = "0.11.9", features = ["json"] }
 rpassword = "5.0.1"
-rspotify = "0.11.2"
-serde = { version = "1.0.130", features = ["derive"] }
-tokio = { version = "1.13.0", features = ["rt", "rt-multi-thread", "macros"] }
+rspotify = "0.11.3"
+serde = { version = "1.0.133", features = ["derive"] }
+tokio = { version = "1.15.0", features = ["rt", "rt-multi-thread", "macros"] }
 tokio-stream = "0.1.8"
 toml = "0.5.8"
-tui = { version = "0.15.0", default-features = false, features = ["crossterm", "serde"] }
+tui = { version = "0.16.0", default-features = false, features = ["crossterm", "serde"] }
 unicode-width = "0.1.9"
 rand = "0.8.4"
 maybe-async = "0.2.6"
-async-trait = "0.1.51"
+async-trait = "0.1.52"
 parking_lot = "0.11.2"
 tracing = "0.1.29"
-tracing-subscriber = { version = "0.3.1", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3.5", features = ["env-filter"] }
 
 [features]
 alsa-backend = ["streaming", "librespot-playback/alsa-backend"]

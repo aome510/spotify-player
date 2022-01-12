@@ -1,7 +1,7 @@
 use super::model::*;
 use crate::{config, key, utils};
 
-use tui::widgets::{ListState, TableState};
+use tui::widgets::*;
 
 pub type UIStateGuard<'a> = parking_lot::MutexGuard<'a, UIState>;
 
