@@ -50,7 +50,7 @@ block_title = {{ fg = "Magenta"  }}
 playback_track = {{ fg = "Cyan", modifiers = ["Bold"] }}
 playback_album = {{ fg = "Yellow" }}
 playback_metadata = {{ fg = "BrightBlack" }}
-playback_progress_bar = {{ fg = "SelectionBackground", bg = "Green", modifiers = ["Italic"] }}
+playback_progress_bar = {{ bg = "SelectionBackground", fg = "Green" }}
 current_playing = {{ fg = "Green", modifiers = ["Bold"] }}
 page_desc = {{ fg = "Cyan", modifiers = ["Bold"] }}
 table_header = {{ fg = "Blue" }}

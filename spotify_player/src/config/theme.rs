@@ -443,9 +443,8 @@ impl Default for ComponentStyle {
             playback_album: Style::default().fg(StyleColor::Yellow),
             playback_metadata: Style::default().fg(StyleColor::BrightBlack),
             playback_progress_bar: Style::default()
-                .fg(StyleColor::SelectionBackground)
-                .bg(StyleColor::Green)
-                .modifiers(vec![StyleModifier::Italic]),
+                .bg(StyleColor::SelectionBackground)
+                .fg(StyleColor::Green),
 
             current_playing: Style::default()
                 .fg(StyleColor::Green)
