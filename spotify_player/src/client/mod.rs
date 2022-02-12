@@ -168,6 +168,7 @@ impl Client {
         tracing::info!("handle client request {:?}", request);
 
         match request {
+            #[cfg(feature = "streaming")]
             ClientRequest::NewConnection => {
                 unreachable!("request should be already handled by the caller function");
             }

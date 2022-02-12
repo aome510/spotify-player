@@ -89,6 +89,7 @@ async fn main() -> anyhow::Result<()> {
     let (send, recv) = std::sync::mpsc::channel::<event::ClientRequest>();
 
     // get some prior information
+    #[cfg(feature = "streaming")]
     send.send(event::ClientRequest::NewConnection)?;
     send.send(event::ClientRequest::GetCurrentUser)?;
     send.send(event::ClientRequest::GetCurrentPlayback)?;

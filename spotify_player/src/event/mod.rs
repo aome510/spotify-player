@@ -43,6 +43,7 @@ pub enum ClientRequest {
     AddTrackToPlaylist(PlaylistId, TrackId),
     SaveToLibrary(Item),
     Player(PlayerRequest),
+    #[cfg(feature = "streaming")]
     NewConnection,
 }
 

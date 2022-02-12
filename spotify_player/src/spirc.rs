@@ -19,7 +19,7 @@ pub async fn new_connection(
     session: Session,
     device: config::DeviceConfig,
     send: mpsc::Sender<ClientRequest>,
-    mut reconnect_recv: tokio::sync::broadcast::Receiver<()>,
+    mut spirc_sub: tokio::sync::broadcast::Receiver<()>,
 ) {
     // librespot volume is a u16 number ranging from 0 to 65535,
     // while a percentage volume value (from 0 to 100) is used for the device configuration.
@@ -75,7 +75,7 @@ pub async fn new_connection(
     let (spirc, spirc_task) = Spirc::new(connect_config, session, player, mixer);
     tokio::select! {
         _ = spirc_task => {}
-        _ = reconnect_recv.recv() => {
+        _ = spirc_sub.recv() => {
             tracing::info!("got reconnect request, shutdown the current connection to create a new spirc connection...");
             spirc.shutdown();
         }
