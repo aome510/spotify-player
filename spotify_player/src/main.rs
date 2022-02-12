@@ -2,10 +2,10 @@ mod auth;
 mod client;
 mod command;
 mod config;
-#[cfg(feature = "streaming")]
-mod connect;
 mod event;
 mod key;
+#[cfg(feature = "streaming")]
+mod spirc;
 mod state;
 mod token;
 mod ui;
@@ -89,27 +89,24 @@ async fn main() -> anyhow::Result<()> {
     let (send, recv) = std::sync::mpsc::channel::<event::ClientRequest>();
 
     // get some prior information
+    send.send(event::ClientRequest::NewConnection)?;
     send.send(event::ClientRequest::GetCurrentUser)?;
     send.send(event::ClientRequest::GetCurrentPlayback)?;
 
-    // connection thread (used to initialize the integrated Spotify client using librespot)
-    #[cfg(feature = "streaming")]
-    std::thread::spawn({
-        let session = session.clone();
-        let send = send.clone();
-        let device = state.app_config.device.clone();
-        move || {
-            connect::new_connection(session, send, device);
-        }
-    });
+    let (spirc_pub, _) = tokio::sync::broadcast::channel::<()>(16);
 
     // client event handler thread
     std::thread::spawn({
         let state = state.clone();
-        let client = client::Client::new(session, state.app_config.client_id.clone());
+        let client = client::Client::new(
+            session.clone(),
+            state.app_config.device.clone(),
+            state.app_config.client_id.clone(),
+        );
+        let send = send.clone();
         client.init_token().await?;
         move || {
-            client::start_client_handler(state, client, recv);
+            client::start_client_handler(state, client, send, recv, spirc_pub);
         }
     });
 

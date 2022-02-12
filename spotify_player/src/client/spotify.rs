@@ -8,7 +8,7 @@ use rspotify::{
 };
 use std::{fmt, sync::Arc};
 
-use crate::token;
+use crate::{config, token};
 
 #[derive(Clone, Default)]
 /// A Spotify client to interact with Spotify API server
@@ -19,7 +19,8 @@ pub struct Spotify {
     pub token: Arc<Mutex<Option<Token>>>,
     pub client_id: String,
     pub http: HttpClient,
-    pub session: Option<Arc<Session>>,
+    pub device: config::DeviceConfig,
+    pub session: Option<Session>,
 }
 
 impl fmt::Debug for Spotify {
@@ -36,7 +37,7 @@ impl fmt::Debug for Spotify {
 
 impl Spotify {
     /// creates a new Spotify client
-    pub fn new(session: Arc<Session>, client_id: String) -> Spotify {
+    pub fn new(session: Session, device: config::DeviceConfig, client_id: String) -> Spotify {
         Self {
             creds: Credentials::default(),
             oauth: OAuth::default(),
@@ -47,6 +48,7 @@ impl Spotify {
             token: Arc::new(Mutex::new(None)),
             http: HttpClient::default(),
             session: Some(session),
+            device,
             client_id,
         }
     }
@@ -99,9 +101,9 @@ impl BaseClient for Spotify {
                 tracing::warn!("there is no session inside the spotify client");
                 return Ok(None);
             }
-            Some(session) => session,
+            Some(ref session) => session,
         };
-        match token::get_token(session.as_ref(), &self.client_id).await {
+        match token::get_token(session, &self.client_id).await {
             Ok(token) => Ok(Some(token)),
             Err(err) => {
                 tracing::warn!("{}", err);

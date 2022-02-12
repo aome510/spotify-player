@@ -13,16 +13,25 @@ use super::Client;
 pub async fn start_client_handler(
     state: SharedState,
     client: Client,
-    recv: mpsc::Receiver<ClientRequest>,
+    client_pub: mpsc::Sender<ClientRequest>,
+    client_sub: mpsc::Receiver<ClientRequest>,
+    spirc_pub: tokio::sync::broadcast::Sender<()>,
 ) {
-    while let Ok(request) = recv.recv() {
-        let state = state.clone();
-        let client = client.clone();
-        tokio::spawn(async move {
-            if let Err(err) = client.handle_request(&state, request).await {
-                tracing::warn!("failed to handle client request: {:?}", err);
+    while let Ok(request) = client_sub.recv() {
+        match request {
+            ClientRequest::NewConnection => {
+                client.new_spirc_connection(spirc_pub.subscribe(), client_pub.clone());
             }
-        });
+            _ => {
+                let state = state.clone();
+                let client = client.clone();
+                tokio::spawn(async move {
+                    if let Err(err) = client.handle_request(&state, request).await {
+                        tracing::warn!("failed to handle client request: {:?}", err);
+                    }
+                });
+            }
+        }
     }
 }
 
