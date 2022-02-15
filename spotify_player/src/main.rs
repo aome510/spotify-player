@@ -100,7 +100,7 @@ async fn main() -> anyhow::Result<()> {
         .send(event::ClientRequest::GetCurrentPlayback)
         .await?;
 
-    // client event handler thread
+    // client event handler task
     tokio::task::spawn({
         let state = state.clone();
         let client = client::Client::new(
@@ -115,16 +115,16 @@ async fn main() -> anyhow::Result<()> {
         }
     });
 
-    // terminal event handler thread
+    // terminal event handler task
     tokio::task::spawn({
         let client_pub = client_pub.clone();
         let state = state.clone();
         async move {
-            event::start_event_handler(client_pub, state);
+            event::start_event_handler(state, client_pub);
         }
     });
 
-    // player event watcher thread(s)
+    // player event watcher task
     tokio::task::spawn({
         let client_pub = client_pub.clone();
         let state = state.clone();
@@ -133,6 +133,6 @@ async fn main() -> anyhow::Result<()> {
         }
     });
 
-    // application's UI as the main thread
+    // application's UI as the main task
     ui::start_ui(state, client_pub).await
 }
