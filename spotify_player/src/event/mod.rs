@@ -150,7 +150,7 @@ async fn handle_key_event(
         }
         Some(_) => {
             drop(ui);
-            popup::handle_key_sequence_for_popup(&key_sequence, client_pub, state)?
+            popup::handle_key_sequence_for_popup(&key_sequence, client_pub, state).await?
         }
     };
 
