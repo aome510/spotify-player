@@ -1,6 +1,6 @@
 use crate::{event::ClientRequest, state::*, utils};
 use anyhow::Result;
-use std::sync::mpsc;
+use tokio::sync::mpsc;
 use tui::{layout::*, style::*, widgets::*};
 
 type Terminal = tui::Terminal<tui::backend::CrosstermBackend<std::io::Stdout>>;
@@ -11,7 +11,7 @@ mod popup;
 mod window;
 
 /// starts the application UI rendering function(s)
-pub fn start_ui(state: SharedState, send: mpsc::Sender<ClientRequest>) -> Result<()> {
+pub async fn start_ui(state: SharedState, client_pub: mpsc::Sender<ClientRequest>) -> Result<()> {
     // terminal UI initializations
     let mut stdout = std::io::stdout();
     crossterm::terminal::enable_raw_mode()?;
@@ -32,7 +32,7 @@ pub fn start_ui(state: SharedState, send: mpsc::Sender<ClientRequest>) -> Result
             return Ok(());
         }
 
-        handle_page_state_change(&state, &send)?;
+        handle_page_state_change(&state, &client_pub).await?;
 
         terminal.draw(|frame| {
             // set the background and foreground colors for the application
@@ -48,16 +48,21 @@ pub fn start_ui(state: SharedState, send: mpsc::Sender<ClientRequest>) -> Result
 
 /// checks the current UI page state for new changes
 /// to update the UI window state and other states accordingly
-fn handle_page_state_change(state: &SharedState, send: &mpsc::Sender<ClientRequest>) -> Result<()> {
+async fn handle_page_state_change(
+    state: &SharedState,
+    client_pub: &mpsc::Sender<ClientRequest>,
+) -> Result<()> {
     let mut ui = state.ui.lock();
 
     match ui.current_page() {
         PageState::Library => match ui.window {
             WindowState::Library { .. } => {}
             _ => {
-                send.send(ClientRequest::GetUserPlaylists)?;
-                send.send(ClientRequest::GetUserSavedAlbums)?;
-                send.send(ClientRequest::GetUserFollowedArtists)?;
+                client_pub.send(ClientRequest::GetUserPlaylists).await?;
+                client_pub.send(ClientRequest::GetUserSavedAlbums).await?;
+                client_pub
+                    .send(ClientRequest::GetUserFollowedArtists)
+                    .await?;
 
                 ui.window = WindowState::Library {
                     playlist_list: utils::new_list_state(),
@@ -70,14 +75,18 @@ fn handle_page_state_change(state: &SharedState, send: &mpsc::Sender<ClientReque
         PageState::Searching { current_query, .. } => match ui.window {
             WindowState::Search { .. } => {}
             _ => {
-                send.send(ClientRequest::Search(current_query.clone()))?;
+                client_pub
+                    .send(ClientRequest::Search(current_query.clone()))
+                    .await?;
                 ui.window = WindowState::new_search_state();
             }
         },
         PageState::Recommendations(seed) => match ui.window {
             WindowState::Recommendations { .. } => {}
             _ => {
-                send.send(ClientRequest::GetRecommendations(seed.clone()))?;
+                client_pub
+                    .send(ClientRequest::GetRecommendations(seed.clone()))
+                    .await?;
                 ui.window = WindowState::Recommendations {
                     track_table: utils::new_table_state(),
                 };
@@ -96,7 +105,9 @@ fn handle_page_state_change(state: &SharedState, send: &mpsc::Sender<ClientReque
                 );
 
                 if let Some(ref id) = expected_context_id {
-                    send.send(ClientRequest::GetContext(id.clone()))?;
+                    client_pub
+                        .send(ClientRequest::GetContext(id.clone()))
+                        .await?;
 
                     ui.window = match id {
                         ContextId::Artist { .. } => WindowState::Artist {

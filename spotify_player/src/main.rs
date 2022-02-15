@@ -134,5 +134,5 @@ async fn main() -> anyhow::Result<()> {
     });
 
     // application's UI as the main thread
-    ui::start_ui(state, client_pub)
+    ui::start_ui(state, client_pub).await
 }
