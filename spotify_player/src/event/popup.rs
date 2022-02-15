@@ -90,7 +90,7 @@ pub fn handle_key_sequence_for_popup(
                                 .context
                                 .pop(&playlist_ids[id].uri());
 
-                            client_pub.send(ClientRequest::AddTrackToPlaylist(
+                            client_pub.blocking_send(ClientRequest::AddTrackToPlaylist(
                                 playlist_ids[id].clone(),
                                 track_id.clone(),
                             ))?;
@@ -177,10 +177,9 @@ pub fn handle_key_sequence_for_popup(
                 player.devices.len(),
                 |_, _| {},
                 |ui: &mut UIStateGuard, id: usize| -> Result<()> {
-                    client_pub.send(ClientRequest::Player(PlayerRequest::TransferPlayback(
-                        player.devices[id].id.clone(),
-                        true,
-                    )))?;
+                    client_pub.blocking_send(ClientRequest::Player(
+                        PlayerRequest::TransferPlayback(player.devices[id].id.clone(), true),
+                    ))?;
                     ui.popup = None;
                     Ok(())
                 },
@@ -217,12 +216,12 @@ fn handle_key_sequence_for_search_popup(
     if key_sequence.keys.len() == 1 {
         if let Key::None(c) = key_sequence.keys[0] {
             match c {
-                KeyCode::Char(c) => {
+                crossterm::event::KeyCode::Char(c) => {
                     query.push(c);
                     ui.window.select(Some(0));
                     return Ok(true);
                 }
-                KeyCode::Backspace => {
+                crossterm::event::KeyCode::Backspace => {
                     if !query.is_empty() {
                         query.pop().unwrap();
                         ui.window.select(Some(0));
@@ -441,19 +440,20 @@ fn handle_key_sequence_for_action_list_popup(
                         ));
                     }
                     Action::AddTrackToPlaylist => {
-                        client_pub.send(ClientRequest::GetUserPlaylists)?;
+                        client_pub.blocking_send(ClientRequest::GetUserPlaylists)?;
                         ui.popup = Some(PopupState::UserPlaylistList(
                             PlaylistPopupAction::AddTrack(track.id.clone()),
                             new_list_state(),
                         ));
                     }
                     Action::SaveToLibrary => {
-                        client_pub.send(ClientRequest::SaveToLibrary(item.clone()))?;
+                        client_pub.blocking_send(ClientRequest::SaveToLibrary(item.clone()))?;
                         ui.popup = None;
                     }
                     Action::BrowseRecommendations => {
                         let seed = SeedItem::Track(track.clone());
-                        client_pub.send(ClientRequest::GetRecommendations(seed.clone()))?;
+                        client_pub
+                            .blocking_send(ClientRequest::GetRecommendations(seed.clone()))?;
                         ui.create_new_page(PageState::Recommendations(seed));
                     }
                 },
@@ -465,26 +465,27 @@ fn handle_key_sequence_for_action_list_popup(
                         ));
                     }
                     Action::SaveToLibrary => {
-                        client_pub.send(ClientRequest::SaveToLibrary(item.clone()))?;
+                        client_pub.blocking_send(ClientRequest::SaveToLibrary(item.clone()))?;
                         ui.popup = None;
                     }
                     _ => {}
                 },
                 Item::Artist(artist) => match actions[id] {
                     Action::SaveToLibrary => {
-                        client_pub.send(ClientRequest::SaveToLibrary(item.clone()))?;
+                        client_pub.blocking_send(ClientRequest::SaveToLibrary(item.clone()))?;
                         ui.popup = None;
                     }
                     Action::BrowseRecommendations => {
                         let seed = SeedItem::Artist(artist.clone());
-                        client_pub.send(ClientRequest::GetRecommendations(seed.clone()))?;
+                        client_pub
+                            .blocking_send(ClientRequest::GetRecommendations(seed.clone()))?;
                         ui.create_new_page(PageState::Recommendations(seed));
                     }
                     _ => {}
                 },
                 Item::Playlist(_) => {
                     if let Action::SaveToLibrary = actions[id] {
-                        client_pub.send(ClientRequest::SaveToLibrary(item.clone()))?;
+                        client_pub.blocking_send(ClientRequest::SaveToLibrary(item.clone()))?;
                         ui.popup = None;
                     }
                 }

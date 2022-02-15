@@ -85,17 +85,23 @@ async fn main() -> anyhow::Result<()> {
     let session = auth::new_session(&cache_folder, state.app_config.device.audio_cache).await?;
 
     // application's channels
-    let (client_pub, client_sub) = std::sync::mpsc::channel::<event::ClientRequest>();
+    let (client_pub, client_sub) = tokio::sync::mpsc::channel::<event::ClientRequest>(16);
     let (spirc_pub, _) = tokio::sync::broadcast::channel::<()>(16);
 
     // get some prior information
     #[cfg(feature = "streaming")]
-    client_pub.send(event::ClientRequest::NewSpircConnection)?;
-    client_pub.send(event::ClientRequest::GetCurrentUser)?;
-    client_pub.send(event::ClientRequest::GetCurrentPlayback)?;
+    client_pub
+        .send(event::ClientRequest::NewSpircConnection)
+        .await?;
+    client_pub
+        .send(event::ClientRequest::GetCurrentUser)
+        .await?;
+    client_pub
+        .send(event::ClientRequest::GetCurrentPlayback)
+        .await?;
 
     // client event handler task
-    tokio::task::spawn_blocking({
+    tokio::task::spawn({
         let state = state.clone();
         let client = client::Client::new(
             session.clone(),
@@ -104,17 +110,17 @@ async fn main() -> anyhow::Result<()> {
         );
         let client_pub = client_pub.clone();
         client.init_token().await?;
-        move || {
-            client::start_client_handler(state, client, client_pub, client_sub, spirc_pub);
+        async move {
+            client::start_client_handler(state, client, client_pub, client_sub, spirc_pub).await;
         }
     });
 
     // terminal event handler task
-    tokio::task::spawn({
+    tokio::task::spawn_blocking({
         let client_pub = client_pub.clone();
         let state = state.clone();
-        async move {
-            event::start_event_handler(state, client_pub).await;
+        move || {
+            event::start_event_handler(state, client_pub);
         }
     });
 
@@ -128,5 +134,9 @@ async fn main() -> anyhow::Result<()> {
     });
 
     // application's UI as the main task
-    ui::start_ui(state, client_pub)
+    tokio::task::spawn_blocking(move || {
+        ui::start_ui(state, client_pub).unwrap();
+    })
+    .await?;
+    std::process::exit(0);
 }

@@ -53,9 +53,9 @@ pub fn handle_key_sequence_for_context_window(
                         _ => return Ok(false),
                     };
 
-                    client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
-                        Playback::Context(context_id, offset),
-                    )))?;
+                    client_pub.blocking_send(ClientRequest::Player(
+                        PlayerRequest::StartPlayback(Playback::Context(context_id, offset)),
+                    ))?;
                 }
             }
         }
@@ -200,7 +200,7 @@ pub fn handle_key_sequence_for_recommendation_window(
                 let id = rand::thread_rng().gen_range(0..tracks.len());
                 Some(rspotify_model::Offset::for_uri(&tracks[id].id.uri()))
             };
-            client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
+            client_pub.blocking_send(ClientRequest::Player(PlayerRequest::StartPlayback(
                 Playback::URIs(tracks.iter().map(|t| t.id.clone()).collect(), offset),
             )))?;
 
@@ -245,20 +245,20 @@ pub fn handle_key_sequence_for_search_window(
         if key_sequence.keys.len() == 1 {
             if let Key::None(c) = key_sequence.keys[0] {
                 match c {
-                    KeyCode::Char(c) => {
+                    crossterm::event::KeyCode::Char(c) => {
                         input.push(c);
                         return Ok(true);
                     }
-                    KeyCode::Backspace => {
+                    crossterm::event::KeyCode::Backspace => {
                         if !input.is_empty() {
                             input.pop().unwrap();
                         }
                         return Ok(true);
                     }
-                    KeyCode::Enter => {
+                    crossterm::event::KeyCode::Enter => {
                         if !input.is_empty() {
                             *current_query = input.clone();
-                            client_pub.send(ClientRequest::Search(input.clone()))?;
+                            client_pub.blocking_send(ClientRequest::Search(input.clone()))?;
                         }
                         return Ok(true);
                     }
@@ -436,12 +436,12 @@ fn handle_command_for_track_table_subwindow(
             let offset = Some(rspotify_model::Offset::for_uri(&tracks[id].id.uri()));
             if track_ids.is_some() {
                 // play a track from a list of tracks
-                client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
+                client_pub.blocking_send(ClientRequest::Player(PlayerRequest::StartPlayback(
                     Playback::URIs(track_ids.unwrap().into_iter().cloned().collect(), offset),
                 )))?;
             } else if context_id.is_some() {
                 // play a track from a context
-                client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
+                client_pub.blocking_send(ClientRequest::Player(PlayerRequest::StartPlayback(
                     Playback::Context(context_id.unwrap(), offset),
                 )))?;
             }
@@ -486,7 +486,7 @@ fn handle_command_for_track_list_subwindow(
             // It's different for the track table, in which
             // `ChooseSelected` on a track will start a `URIs` playback
             // containing all the tracks in the table.
-            client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
+            client_pub.blocking_send(ClientRequest::Player(PlayerRequest::StartPlayback(
                 Playback::URIs(vec![tracks[id].id.clone()], None),
             )))?;
         }

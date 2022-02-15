@@ -1,6 +1,4 @@
-use std::sync::mpsc;
-
-use tokio::sync::broadcast;
+use tokio::sync::{broadcast, mpsc};
 
 use crate::{
     event::{ClientRequest, PlayerRequest},
@@ -10,14 +8,14 @@ use crate::{
 use super::Client;
 
 /// starts the client's request handler
-pub fn start_client_handler(
+pub async fn start_client_handler(
     state: SharedState,
     client: Client,
     client_pub: mpsc::Sender<ClientRequest>,
-    client_sub: mpsc::Receiver<ClientRequest>,
+    mut client_sub: mpsc::Receiver<ClientRequest>,
     spirc_pub: broadcast::Sender<()>,
 ) {
-    while let Ok(request) = client_sub.recv() {
+    while let Some(request) = client_sub.recv().await {
         match request {
             #[cfg(feature = "streaming")]
             ClientRequest::NewSpircConnection => {
@@ -28,7 +26,7 @@ pub fn start_client_handler(
             _ => {
                 let state = state.clone();
                 let client = client.clone();
-                tokio::spawn(async move {
+                tokio::task::spawn(async move {
                     if let Err(err) = client.handle_request(&state, request).await {
                         tracing::warn!("failed to handle client request: {:?}", err);
                     }
@@ -51,7 +49,7 @@ pub fn start_player_event_watchers(state: SharedState, client_pub: mpsc::Sender<
                 std::time::Duration::from_millis(state.app_config.playback_refresh_duration_in_ms);
             move || loop {
                 client_pub
-                    .send(ClientRequest::GetCurrentPlayback)
+                    .blocking_send(ClientRequest::GetCurrentPlayback)
                     .unwrap_or_default();
                 std::thread::sleep(playback_refresh_duration);
             }
@@ -75,7 +73,7 @@ pub fn start_player_event_watchers(state: SharedState, client_pub: mpsc::Sender<
         if let (Some(progress_ms), Some(duration_ms)) = (progress_ms, duration_ms) {
             if progress_ms >= duration_ms && is_playing {
                 client_pub
-                    .send(ClientRequest::GetCurrentPlayback)
+                    .blocking_send(ClientRequest::GetCurrentPlayback)
                     .unwrap_or_default();
             }
         }
@@ -83,7 +81,7 @@ pub fn start_player_event_watchers(state: SharedState, client_pub: mpsc::Sender<
         // try to reconnect if there is no playback
         if player.playback.is_none() {
             client_pub
-                .send(ClientRequest::Player(PlayerRequest::Reconnect))
+                .blocking_send(ClientRequest::Player(PlayerRequest::Reconnect))
                 .unwrap_or_default();
         }
     }

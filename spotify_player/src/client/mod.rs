@@ -1,4 +1,4 @@
-use std::sync::{mpsc, Arc};
+use std::sync::Arc;
 
 use crate::{
     config,
@@ -14,7 +14,7 @@ mod handlers;
 mod spotify;
 
 pub use handlers::*;
-use tokio::sync::broadcast;
+use tokio::sync::{broadcast, mpsc};
 
 /// The application's client
 #[derive(Clone)]
@@ -43,7 +43,7 @@ impl Client {
             Some(ref session) => session.clone(),
         };
         let device = self.spotify.device.clone();
-        tokio::spawn(async move {
+        tokio::task::spawn(async move {
             spirc::new_connection(session, device, client_pub, spirc_sub).await;
         });
     }

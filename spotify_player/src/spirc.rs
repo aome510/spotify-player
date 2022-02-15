@@ -1,5 +1,3 @@
-use std::sync::mpsc;
-
 use crate::{config, event::ClientRequest};
 use librespot_connect::spirc::Spirc;
 use librespot_core::{
@@ -13,7 +11,7 @@ use librespot_playback::{
     mixer::{self, Mixer},
     player::Player,
 };
-use tokio::sync::broadcast;
+use tokio::sync::{broadcast, mpsc};
 
 /// create a new spirc connection running in the background
 pub async fn new_connection(
@@ -61,13 +59,14 @@ pub async fn new_connection(
         move || backend(None, AudioFormat::default()),
     );
 
-    tokio::spawn({
+    tokio::task::spawn({
         let client_pub = client_pub.clone();
         async move {
             while let Some(event) = channel.recv().await {
                 tracing::info!("got a librespot player event: {:?}", event);
                 client_pub
                     .send(ClientRequest::GetCurrentPlayback)
+                    .await
                     .unwrap_or_default();
             }
         }

@@ -1,7 +1,6 @@
-use std::sync::mpsc;
-
 use crate::{event::ClientRequest, state::*, utils};
 use anyhow::Result;
+use tokio::sync::mpsc;
 use tui::{layout::*, style::*, widgets::*};
 
 type Terminal = tui::Terminal<tui::backend::CrosstermBackend<std::io::Stdout>>;
@@ -63,9 +62,9 @@ fn handle_page_state_change(
         PageState::Library => match ui.window {
             WindowState::Library { .. } => {}
             _ => {
-                client_pub.send(ClientRequest::GetUserPlaylists)?;
-                client_pub.send(ClientRequest::GetUserSavedAlbums)?;
-                client_pub.send(ClientRequest::GetUserFollowedArtists)?;
+                client_pub.blocking_send(ClientRequest::GetUserPlaylists)?;
+                client_pub.blocking_send(ClientRequest::GetUserSavedAlbums)?;
+                client_pub.blocking_send(ClientRequest::GetUserFollowedArtists)?;
 
                 ui.window = WindowState::Library {
                     playlist_list: utils::new_list_state(),
@@ -78,14 +77,14 @@ fn handle_page_state_change(
         PageState::Searching { current_query, .. } => match ui.window {
             WindowState::Search { .. } => {}
             _ => {
-                client_pub.send(ClientRequest::Search(current_query.clone()))?;
+                client_pub.blocking_send(ClientRequest::Search(current_query.clone()))?;
                 ui.window = WindowState::new_search_state();
             }
         },
         PageState::Recommendations(seed) => match ui.window {
             WindowState::Recommendations { .. } => {}
             _ => {
-                client_pub.send(ClientRequest::GetRecommendations(seed.clone()))?;
+                client_pub.blocking_send(ClientRequest::GetRecommendations(seed.clone()))?;
                 ui.window = WindowState::Recommendations {
                     track_table: utils::new_table_state(),
                 };
@@ -104,7 +103,7 @@ fn handle_page_state_change(
                 );
 
                 if let Some(ref id) = expected_context_id {
-                    client_pub.send(ClientRequest::GetContext(id.clone()))?;
+                    client_pub.blocking_send(ClientRequest::GetContext(id.clone()))?;
 
                     ui.window = match id {
                         ContextId::Artist { .. } => WindowState::Artist {
