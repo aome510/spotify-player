@@ -13,7 +13,7 @@ pub async fn handle_key_sequence_for_popup(
     match ui.popup.as_ref().unwrap() {
         PopupState::Search { .. } => {
             drop(ui);
-            handle_key_sequence_for_search_popup(key_sequence, client_pub, state)
+            handle_key_sequence_for_search_popup(key_sequence, client_pub, state).await
         }
         PopupState::ArtistList(artists, _) => {
             let n_items = artists.len();
@@ -201,7 +201,7 @@ pub async fn handle_key_sequence_for_popup(
 }
 
 /// handles a key sequence for a context search popup
-fn handle_key_sequence_for_search_popup(
+async fn handle_key_sequence_for_search_popup(
     key_sequence: &KeySequence,
     client_pub: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
@@ -256,10 +256,12 @@ fn handle_key_sequence_for_search_popup(
                         client_pub,
                         state,
                     )
+                    .await
                 }
                 PageState::Context(..) => {
                     drop(ui);
                     window::handle_key_sequence_for_context_window(key_sequence, client_pub, state)
+                        .await
                 }
                 PageState::Searching { .. } => Ok(false),
             },

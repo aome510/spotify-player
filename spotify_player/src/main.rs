@@ -111,7 +111,7 @@ async fn main() -> anyhow::Result<()> {
         let client_pub = client_pub.clone();
         client.init_token().await?;
         async move {
-            client::start_client_handler(state, client, client_pub, client_sub, spirc_pub);
+            client::start_client_handler(state, client, client_pub, client_sub, spirc_pub).await;
         }
     });
 
@@ -120,7 +120,7 @@ async fn main() -> anyhow::Result<()> {
         let client_pub = client_pub.clone();
         let state = state.clone();
         async move {
-            event::start_event_handler(state, client_pub);
+            event::start_event_handler(state, client_pub).await;
         }
     });
 
@@ -129,7 +129,7 @@ async fn main() -> anyhow::Result<()> {
         let client_pub = client_pub.clone();
         let state = state.clone();
         async move {
-            client::start_player_event_watchers(state, client_pub);
+            client::start_player_event_watchers(state, client_pub).await;
         }
     });
 

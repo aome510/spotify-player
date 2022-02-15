@@ -1,9 +1,9 @@
 use super::*;
 
 /// handles a key sequence for a context window
-pub fn handle_key_sequence_for_context_window(
+pub async fn handle_key_sequence_for_context_window(
     key_sequence: &KeySequence,
-    send: &mpsc::Sender<ClientRequest>,
+    client_pub: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
 ) -> Result<bool> {
     let command = match state
@@ -53,9 +53,11 @@ pub fn handle_key_sequence_for_context_window(
                         _ => return Ok(false),
                     };
 
-                    send.send(ClientRequest::Player(PlayerRequest::StartPlayback(
-                        Playback::Context(context_id, offset),
-                    )))?;
+                    client_pub
+                        .send(ClientRequest::Player(PlayerRequest::StartPlayback(
+                            Playback::Context(context_id, offset),
+                        )))
+                        .await?;
                 }
             }
         }
@@ -93,7 +95,7 @@ pub fn handle_key_sequence_for_context_window(
 
             // the command hasn't been handled, assign the job to the focused subwindow's handler
             drop(ui);
-            return handle_command_for_focused_context_subwindow(command, send, state);
+            return handle_command_for_focused_context_subwindow(command, client_pub, state).await;
         }
     }
     Ok(true)
@@ -158,9 +160,9 @@ pub fn handle_key_sequence_for_library_window(
 }
 
 /// handles a key sequence for a recommendation window
-pub fn handle_key_sequence_for_recommendation_window(
+pub async fn handle_key_sequence_for_recommendation_window(
     key_sequence: &KeySequence,
-    send: &mpsc::Sender<ClientRequest>,
+    client_pub: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
 ) -> Result<bool> {
     let command = match state
@@ -200,27 +202,32 @@ pub fn handle_key_sequence_for_recommendation_window(
                 let id = rand::thread_rng().gen_range(0..tracks.len());
                 Some(rspotify_model::Offset::for_uri(&tracks[id].id.uri()))
             };
-            send.send(ClientRequest::Player(PlayerRequest::StartPlayback(
-                Playback::URIs(tracks.iter().map(|t| t.id.clone()).collect(), offset),
-            )))?;
+            client_pub
+                .send(ClientRequest::Player(PlayerRequest::StartPlayback(
+                    Playback::URIs(tracks.iter().map(|t| t.id.clone()).collect(), offset),
+                )))
+                .await?;
 
             Ok(true)
         }
-        _ => handle_command_for_track_table_subwindow(
-            command,
-            send,
-            state,
-            None,
-            Some(tracks.iter().map(|t| &t.id).collect()),
-            tracks,
-        ),
+        _ => {
+            handle_command_for_track_table_subwindow(
+                command,
+                client_pub,
+                state,
+                None,
+                Some(tracks.iter().map(|t| &t.id).collect()),
+                tracks,
+            )
+            .await
+        }
     }
 }
 
 /// handles a key sequence for a search window
-pub fn handle_key_sequence_for_search_window(
+pub async fn handle_key_sequence_for_search_window(
     key_sequence: &KeySequence,
-    send: &mpsc::Sender<ClientRequest>,
+    client_pub: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
 ) -> Result<bool> {
     let mut ui = state.ui.lock();
@@ -258,7 +265,9 @@ pub fn handle_key_sequence_for_search_window(
                     KeyCode::Enter => {
                         if !input.is_empty() {
                             *current_query = input.clone();
-                            send.send(ClientRequest::Search(input.clone()))?;
+                            client_pub
+                                .send(ClientRequest::Search(input.clone()))
+                                .await?;
                         }
                         return Ok(true);
                     }
@@ -299,7 +308,8 @@ pub fn handle_key_sequence_for_search_window(
                     let tracks = search_results
                         .map(|s| s.tracks.iter().collect())
                         .unwrap_or_default();
-                    handle_command_for_track_list_subwindow(command, send, state, tracks)
+                    handle_command_for_track_list_subwindow(command, client_pub, state, tracks)
+                        .await
                 }
                 SearchFocusState::Artists => {
                     let artists = search_results
@@ -328,9 +338,9 @@ pub fn handle_key_sequence_for_search_window(
 ///
 /// The function will need to determine the focused subwindow then
 /// assign the handling job to such subwindow's command handler
-pub fn handle_command_for_focused_context_subwindow(
+pub async fn handle_command_for_focused_context_subwindow(
     command: Command,
-    send: &mpsc::Sender<ClientRequest>,
+    client_pub: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
 ) -> Result<bool> {
     let uri = match state.ui.lock().current_page().context_uri() {
@@ -362,32 +372,41 @@ pub fn handle_command_for_focused_context_subwindow(
                         state,
                         state.filtered_items_by_search(related_artists),
                     ),
-                    ArtistFocusState::TopTracks => handle_command_for_track_table_subwindow(
-                        command,
-                        send,
-                        state,
-                        None,
-                        Some(top_tracks.iter().map(|t| &t.id).collect()),
-                        state.filtered_items_by_search(top_tracks),
-                    ),
+                    ArtistFocusState::TopTracks => {
+                        handle_command_for_track_table_subwindow(
+                            command,
+                            client_pub,
+                            state,
+                            None,
+                            Some(top_tracks.iter().map(|t| &t.id).collect()),
+                            state.filtered_items_by_search(top_tracks),
+                        )
+                        .await
+                    }
                 }
             }
-            Context::Album { album, tracks } => handle_command_for_track_table_subwindow(
-                command,
-                send,
-                state,
-                Some(ContextId::Album(album.id.clone())),
-                None,
-                state.filtered_items_by_search(tracks),
-            ),
-            Context::Playlist { playlist, tracks } => handle_command_for_track_table_subwindow(
-                command,
-                send,
-                state,
-                Some(ContextId::Playlist(playlist.id.clone())),
-                None,
-                state.filtered_items_by_search(tracks),
-            ),
+            Context::Album { album, tracks } => {
+                handle_command_for_track_table_subwindow(
+                    command,
+                    client_pub,
+                    state,
+                    Some(ContextId::Album(album.id.clone())),
+                    None,
+                    state.filtered_items_by_search(tracks),
+                )
+                .await
+            }
+            Context::Playlist { playlist, tracks } => {
+                handle_command_for_track_table_subwindow(
+                    command,
+                    client_pub,
+                    state,
+                    Some(ContextId::Playlist(playlist.id.clone())),
+                    None,
+                    state.filtered_items_by_search(tracks),
+                )
+                .await
+            }
         },
         None => Ok(false),
     }
@@ -407,9 +426,9 @@ pub fn handle_command_for_focused_context_subwindow(
 /// If `context_id` is specified, playing a track in the track table will
 /// start a `Context` playback representing a Spotify context.
 /// The above case is used for the track table of a playlist or an album.
-fn handle_command_for_track_table_subwindow(
+async fn handle_command_for_track_table_subwindow(
     command: Command,
-    send: &mpsc::Sender<ClientRequest>,
+    client_pub: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
     context_id: Option<ContextId>,
     track_ids: Option<Vec<&TrackId>>,
@@ -436,14 +455,18 @@ fn handle_command_for_track_table_subwindow(
             let offset = Some(rspotify_model::Offset::for_uri(&tracks[id].id.uri()));
             if track_ids.is_some() {
                 // play a track from a list of tracks
-                send.send(ClientRequest::Player(PlayerRequest::StartPlayback(
-                    Playback::URIs(track_ids.unwrap().into_iter().cloned().collect(), offset),
-                )))?;
+                client_pub
+                    .send(ClientRequest::Player(PlayerRequest::StartPlayback(
+                        Playback::URIs(track_ids.unwrap().into_iter().cloned().collect(), offset),
+                    )))
+                    .await?;
             } else if context_id.is_some() {
                 // play a track from a context
-                send.send(ClientRequest::Player(PlayerRequest::StartPlayback(
-                    Playback::Context(context_id.unwrap(), offset),
-                )))?;
+                client_pub
+                    .send(ClientRequest::Player(PlayerRequest::StartPlayback(
+                        Playback::Context(context_id.unwrap(), offset),
+                    )))
+                    .await?;
             }
         }
         Command::ShowActionsOnSelectedItem => {
@@ -457,9 +480,9 @@ fn handle_command_for_track_table_subwindow(
     Ok(true)
 }
 
-fn handle_command_for_track_list_subwindow(
+async fn handle_command_for_track_list_subwindow(
     command: Command,
-    send: &mpsc::Sender<ClientRequest>,
+    client_pub: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
     tracks: Vec<&Track>,
 ) -> Result<bool> {
@@ -486,9 +509,11 @@ fn handle_command_for_track_list_subwindow(
             // It's different for the track table, in which
             // `ChooseSelected` on a track will start a `URIs` playback
             // containing all the tracks in the table.
-            send.send(ClientRequest::Player(PlayerRequest::StartPlayback(
-                Playback::URIs(vec![tracks[id].id.clone()], None),
-            )))?;
+            client_pub
+                .send(ClientRequest::Player(PlayerRequest::StartPlayback(
+                    Playback::URIs(vec![tracks[id].id.clone()], None),
+                )))
+                .await?;
         }
         Command::ShowActionsOnSelectedItem => {
             ui.popup = Some(PopupState::ActionList(
