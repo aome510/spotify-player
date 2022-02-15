@@ -90,9 +90,9 @@ async fn main() -> anyhow::Result<()> {
 
     // get some prior information
     #[cfg(feature = "streaming")]
-    client_pub.send(event::ClientRequest::NewConnection);
-    client_pub.send(event::ClientRequest::GetCurrentUser);
-    client_pub.send(event::ClientRequest::GetCurrentPlayback);
+    client_pub.send(event::ClientRequest::NewSpircConnection)?;
+    client_pub.send(event::ClientRequest::GetCurrentUser)?;
+    client_pub.send(event::ClientRequest::GetCurrentPlayback)?;
 
     // client event handler task
     tokio::task::spawn_blocking({
@@ -110,11 +110,11 @@ async fn main() -> anyhow::Result<()> {
     });
 
     // terminal event handler task
-    tokio::task::spawn_blocking({
+    tokio::task::spawn({
         let client_pub = client_pub.clone();
         let state = state.clone();
-        move || {
-            event::start_event_handler(state, client_pub);
+        async move {
+            event::start_event_handler(state, client_pub).await;
         }
     });
 

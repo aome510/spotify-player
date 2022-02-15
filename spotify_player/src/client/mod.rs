@@ -170,7 +170,7 @@ impl Client {
 
         match request {
             #[cfg(feature = "streaming")]
-            ClientRequest::NewConnection => {
+            ClientRequest::NewSpircConnection => {
                 unreachable!("request should be already handled by the caller function");
             }
             ClientRequest::GetCurrentUser => {

@@ -45,7 +45,7 @@ pub enum ClientRequest {
     SaveToLibrary(Item),
     Player(PlayerRequest),
     #[cfg(feature = "streaming")]
-    NewConnection,
+    NewSpircConnection,
 }
 
 /// starts a terminal event handler (key pressed, mouse clicked, etc)
@@ -58,8 +58,8 @@ pub async fn start_event_handler(state: SharedState, client_pub: mpsc::Sender<Cl
                 tracing::info!("got a terminal event: {:?}", event);
 
                 if let Err(err) = match event {
-                    Event::Mouse(event) => handle_mouse_event(event, &client_pub, &state).await,
-                    Event::Key(event) => handle_key_event(event, &client_pub, &state).await,
+                    Event::Mouse(event) => handle_mouse_event(event, &client_pub, &state),
+                    Event::Key(event) => handle_key_event(event, &client_pub, &state),
                     _ => Ok(()),
                 } {
                     tracing::warn!("failed to handle event: {}", err);
@@ -73,7 +73,7 @@ pub async fn start_event_handler(state: SharedState, client_pub: mpsc::Sender<Cl
 }
 
 // handles a terminal mouse event
-async fn handle_mouse_event(
+fn handle_mouse_event(
     event: MouseEvent,
     client_pub: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
@@ -98,7 +98,7 @@ async fn handle_mouse_event(
 }
 
 // handle a terminal key pressed event
-async fn handle_key_event(
+fn handle_key_event(
     event: KeyEvent,
     client_pub: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
@@ -149,7 +149,7 @@ async fn handle_key_event(
         }
         Some(_) => {
             drop(ui);
-            popup::handle_key_sequence_for_popup(&key_sequence, client_pub, state).await?
+            popup::handle_key_sequence_for_popup(&key_sequence, client_pub, state)?
         }
     };
 
@@ -159,7 +159,7 @@ async fn handle_key_event(
             .keymap_config
             .find_command_from_key_sequence(&key_sequence)
         {
-            Some(command) => handle_global_command(command, client_pub, state).await?,
+            Some(command) => handle_global_command(command, client_pub, state)?,
             None => false,
         }
     } else {
@@ -177,7 +177,7 @@ async fn handle_key_event(
 }
 
 /// handles a global command
-async fn handle_global_command(
+fn handle_global_command(
     command: Command,
     client_pub: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
@@ -189,37 +189,25 @@ async fn handle_global_command(
             ui.is_running = false;
         }
         Command::NextTrack => {
-            client_pub
-                .send(ClientRequest::Player(PlayerRequest::NextTrack))
-                .await?;
+            client_pub.send(ClientRequest::Player(PlayerRequest::NextTrack))?;
         }
         Command::PreviousTrack => {
-            client_pub
-                .send(ClientRequest::Player(PlayerRequest::PreviousTrack))
-                .await?;
+            client_pub.send(ClientRequest::Player(PlayerRequest::PreviousTrack))?;
         }
         Command::ResumePause => {
-            client_pub
-                .send(ClientRequest::Player(PlayerRequest::ResumePause))
-                .await?;
+            client_pub.send(ClientRequest::Player(PlayerRequest::ResumePause))?;
         }
         Command::Repeat => {
-            client_pub
-                .send(ClientRequest::Player(PlayerRequest::Repeat))
-                .await?;
+            client_pub.send(ClientRequest::Player(PlayerRequest::Repeat))?;
         }
         Command::Shuffle => {
-            client_pub
-                .send(ClientRequest::Player(PlayerRequest::Shuffle))
-                .await?;
+            client_pub.send(ClientRequest::Player(PlayerRequest::Shuffle))?;
         }
         Command::VolumeUp => {
             if let Some(ref playback) = state.player.read().playback {
                 if let Some(percent) = playback.device.volume_percent {
                     let volume = std::cmp::min(percent + 5, 100_u32);
-                    client_pub
-                        .send(ClientRequest::Player(PlayerRequest::Volume(volume as u8)))
-                        .await?;
+                    client_pub.send(ClientRequest::Player(PlayerRequest::Volume(volume as u8)))?;
                 }
             }
         }
@@ -227,9 +215,7 @@ async fn handle_global_command(
             if let Some(ref playback) = state.player.read().playback {
                 if let Some(percent) = playback.device.volume_percent {
                     let volume = std::cmp::max(percent.saturating_sub(5_u32), 0_u32);
-                    client_pub
-                        .send(ClientRequest::Player(PlayerRequest::Volume(volume as u8)))
-                        .await?;
+                    client_pub.send(ClientRequest::Player(PlayerRequest::Volume(volume as u8)))?;
                 }
             }
         }
@@ -237,7 +223,7 @@ async fn handle_global_command(
             ui.popup = Some(PopupState::CommandHelp { offset: 0 });
         }
         Command::RefreshPlayback => {
-            client_pub.send(ClientRequest::GetCurrentPlayback).await?;
+            client_pub.send(ClientRequest::GetCurrentPlayback)?;
         }
         Command::ShowActionsOnCurrentTrack => {
             if let Some(track) = state.player.read().current_playing_track() {
@@ -250,20 +236,18 @@ async fn handle_global_command(
             ui.create_new_page(PageState::Context(None, ContextPageType::CurrentPlaying));
         }
         Command::BrowseUserPlaylists => {
-            client_pub.send(ClientRequest::GetUserPlaylists).await?;
+            client_pub.send(ClientRequest::GetUserPlaylists)?;
             ui.popup = Some(PopupState::UserPlaylistList(
                 PlaylistPopupAction::Browse,
                 new_list_state(),
             ));
         }
         Command::BrowseUserFollowedArtists => {
-            client_pub
-                .send(ClientRequest::GetUserFollowedArtists)
-                .await?;
+            client_pub.send(ClientRequest::GetUserFollowedArtists)?;
             ui.popup = Some(PopupState::UserFollowedArtistList(new_list_state()));
         }
         Command::BrowseUserSavedAlbums => {
-            client_pub.send(ClientRequest::GetUserSavedAlbums).await?;
+            client_pub.send(ClientRequest::GetUserSavedAlbums)?;
             ui.popup = Some(PopupState::UserSavedAlbumList(new_list_state()));
         }
         Command::LibraryPage => {
@@ -290,7 +274,7 @@ async fn handle_global_command(
         }
         Command::SwitchDevice => {
             ui.popup = Some(PopupState::DeviceList(new_list_state()));
-            client_pub.send(ClientRequest::GetDevices).await?;
+            client_pub.send(ClientRequest::GetDevices)?;
         }
         Command::SwitchTheme => {
             // get the available themes with the current theme moved to the first position

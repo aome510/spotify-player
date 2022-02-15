@@ -20,7 +20,7 @@ pub fn start_client_handler(
     while let Ok(request) = client_sub.recv() {
         match request {
             #[cfg(feature = "streaming")]
-            ClientRequest::NewConnection => {
+            ClientRequest::NewSpircConnection => {
                 // send a notification to current spirc subcribers to shutdown all running spirc connections
                 spirc_pub.send(()).unwrap_or_default();
                 client.new_spirc_connection(spirc_pub.subscribe(), client_pub.clone());
