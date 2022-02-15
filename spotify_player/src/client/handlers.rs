@@ -1,5 +1,4 @@
-use anyhow::Result;
-use std::sync::mpsc;
+use tokio::sync::{broadcast, mpsc};
 
 use crate::{
     event::{ClientRequest, PlayerRequest},
@@ -15,9 +14,9 @@ pub async fn start_client_handler(
     client: Client,
     client_pub: mpsc::Sender<ClientRequest>,
     client_sub: mpsc::Receiver<ClientRequest>,
-    spirc_pub: tokio::sync::broadcast::Sender<()>,
+    spirc_pub: broadcast::Sender<()>,
 ) {
-    while let Ok(request) = client_sub.recv() {
+    while let Some(request) = client_sub.recv().await {
         match request {
             #[cfg(feature = "streaming")]
             ClientRequest::NewConnection => {
@@ -42,17 +41,23 @@ pub async fn start_client_handler(
 /// to player events and notifying the client
 /// to make additional update requests if needed
 #[tokio::main]
-pub async fn start_player_event_watchers(state: SharedState, send: mpsc::Sender<ClientRequest>) {
+pub async fn start_player_event_watchers(
+    state: SharedState,
+    client_pub: mpsc::Sender<ClientRequest>,
+) {
     // start a thread that updates the current playback every `playback_refresh_duration_in_ms` ms.
     // A positive value of `playback_refresh_duration_in_ms` is required to start the watcher.
     if state.app_config.playback_refresh_duration_in_ms > 0 {
-        std::thread::spawn({
-            let send = send.clone();
+        tokio::task::spawn({
+            let client_pub = client_pub.clone();
             let playback_refresh_duration =
                 std::time::Duration::from_millis(state.app_config.playback_refresh_duration_in_ms);
-            move || -> Result<()> {
+            async move {
                 loop {
-                    send.send(ClientRequest::GetCurrentPlayback).unwrap();
+                    client_pub
+                        .send(ClientRequest::GetCurrentPlayback)
+                        .await
+                        .unwrap_or_default();
                     std::thread::sleep(playback_refresh_duration);
                 }
             }
@@ -75,14 +80,19 @@ pub async fn start_player_event_watchers(state: SharedState, send: mpsc::Sender<
         };
         if let (Some(progress_ms), Some(duration_ms)) = (progress_ms, duration_ms) {
             if progress_ms >= duration_ms && is_playing {
-                send.send(ClientRequest::GetCurrentPlayback).unwrap();
+                client_pub
+                    .send(ClientRequest::GetCurrentPlayback)
+                    .await
+                    .unwrap_or_default();
             }
         }
 
         // try to reconnect if there is no playback
         if player.playback.is_none() {
-            send.send(ClientRequest::Player(PlayerRequest::Reconnect))
-                .unwrap();
+            client_pub
+                .send(ClientRequest::Player(PlayerRequest::Reconnect))
+                .await
+                .unwrap_or_default();
         }
     }
 }

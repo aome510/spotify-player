@@ -1,3 +1,5 @@
+use tokio::sync::mpsc;
+
 mod auth;
 mod client;
 mod command;
@@ -47,7 +49,7 @@ async fn main() -> anyhow::Result<()> {
     // parse command line arguments
     let args = init_app_cli_arguments();
 
-    // initialize the application's cache folders and config folder
+    // initialize the application's cache folder and config folder
     let config_folder = match args.value_of("config-folder") {
         Some(path) => path.into(),
         None => config::get_config_folder_path()?,
@@ -56,7 +58,6 @@ async fn main() -> anyhow::Result<()> {
         Some(path) => path.into(),
         None => config::get_cache_folder_path()?,
     };
-
     if !config_folder.exists() {
         std::fs::create_dir_all(&config_folder)?;
     }
@@ -85,50 +86,53 @@ async fn main() -> anyhow::Result<()> {
     // initialize a librespot session
     let session = auth::new_session(&cache_folder, state.app_config.device.audio_cache).await?;
 
-    // start application's threads
-    let (send, recv) = std::sync::mpsc::channel::<event::ClientRequest>();
+    // application's channels
+    let (client_pub, client_sub) = mpsc::channel::<event::ClientRequest>(8);
+    let (spirc_pub, _) = tokio::sync::broadcast::channel::<()>(16);
 
     // get some prior information
     #[cfg(feature = "streaming")]
-    send.send(event::ClientRequest::NewConnection)?;
-    send.send(event::ClientRequest::GetCurrentUser)?;
-    send.send(event::ClientRequest::GetCurrentPlayback)?;
-
-    let (spirc_pub, _) = tokio::sync::broadcast::channel::<()>(16);
+    client_pub.send(event::ClientRequest::NewConnection).await?;
+    client_pub
+        .send(event::ClientRequest::GetCurrentUser)
+        .await?;
+    client_pub
+        .send(event::ClientRequest::GetCurrentPlayback)
+        .await?;
 
     // client event handler thread
-    std::thread::spawn({
+    tokio::task::spawn({
         let state = state.clone();
         let client = client::Client::new(
             session.clone(),
             state.app_config.device.clone(),
             state.app_config.client_id.clone(),
         );
-        let send = send.clone();
+        let client_pub = client_pub.clone();
         client.init_token().await?;
-        move || {
-            client::start_client_handler(state, client, send, recv, spirc_pub);
+        async move {
+            client::start_client_handler(state, client, client_pub, client_sub, spirc_pub);
         }
     });
 
     // terminal event handler thread
     std::thread::spawn({
-        let send = send.clone();
+        let client_pub = client_pub.clone();
         let state = state.clone();
         move || {
-            event::start_event_handler(send, state);
+            event::start_event_handler(client_pub, state);
         }
     });
 
     // player event watcher thread(s)
     std::thread::spawn({
-        let send = send.clone();
+        let client_pub = client_pub.clone();
         let state = state.clone();
         move || {
-            client::start_player_event_watchers(state, send);
+            client::start_player_event_watchers(state, client_pub);
         }
     });
 
     // application's UI as the main thread
-    ui::start_ui(state, send)
+    ui::start_ui(state, client_pub)
 }

@@ -1,5 +1,3 @@
-use std::sync::mpsc;
-
 use crate::{config, event::ClientRequest};
 use librespot_connect::spirc::Spirc;
 use librespot_core::{
@@ -13,13 +11,14 @@ use librespot_playback::{
     mixer::{self, Mixer},
     player::Player,
 };
+use tokio::sync::{broadcast, mpsc};
 
 /// create a new spirc connection running in the background
 pub async fn new_connection(
     session: Session,
     device: config::DeviceConfig,
     send: mpsc::Sender<ClientRequest>,
-    mut spirc_sub: tokio::sync::broadcast::Receiver<()>,
+    mut spirc_sub: broadcast::Receiver<()>,
 ) {
     // librespot volume is a u16 number ranging from 0 to 65535,
     // while a percentage volume value (from 0 to 100) is used for the device configuration.
@@ -65,7 +64,9 @@ pub async fn new_connection(
         async move {
             while let Some(event) = channel.recv().await {
                 tracing::info!("got a librespot player event: {:?}", event);
-                send.send(ClientRequest::GetCurrentPlayback).unwrap();
+                send.send(ClientRequest::GetCurrentPlayback)
+                    .await
+                    .unwrap_or_default();
             }
         }
     });

@@ -1,4 +1,4 @@
-use std::sync::{mpsc, Arc};
+use std::sync::Arc;
 
 use crate::{
     config,
@@ -14,6 +14,7 @@ mod handlers;
 mod spotify;
 
 pub use handlers::*;
+use tokio::sync::{broadcast, mpsc};
 
 /// The application's client
 #[derive(Clone)]
@@ -34,7 +35,7 @@ impl Client {
     /// creates a new Librespot's spirc connection
     pub fn new_spirc_connection(
         &self,
-        spirc_sub: tokio::sync::broadcast::Receiver<()>,
+        spirc_sub: broadcast::Receiver<()>,
         client_pub: mpsc::Sender<ClientRequest>,
     ) {
         let session = match self.spotify.session {
