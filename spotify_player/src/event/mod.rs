@@ -1,3 +1,5 @@
+use std::sync::mpsc;
+
 use crate::{
     command::Command,
     key::{Key, KeySequence},
@@ -7,7 +9,6 @@ use crate::{
 use anyhow::Result;
 use crossterm::event::*;
 use rand::Rng;
-use tokio::sync::mpsc;
 use tokio_stream::StreamExt;
 
 mod popup;
@@ -89,9 +90,7 @@ async fn handle_mouse_event(
             if let Some(track) = track {
                 let position_ms = (track.duration.as_millis() as u32) * (event.column as u32)
                     / (ui.progress_bar_rect.width as u32);
-                client_pub
-                    .send(ClientRequest::Player(PlayerRequest::SeekTrack(position_ms)))
-                    .await?;
+                client_pub.send(ClientRequest::Player(PlayerRequest::SeekTrack(position_ms)))?;
             }
         }
     }

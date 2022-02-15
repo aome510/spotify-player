@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{mpsc, Arc};
 
 use crate::{
     config,
@@ -14,7 +14,7 @@ mod handlers;
 mod spotify;
 
 pub use handlers::*;
-use tokio::sync::{broadcast, mpsc};
+use tokio::sync::broadcast;
 
 /// The application's client
 #[derive(Clone)]

@@ -1,4 +1,6 @@
-use tokio::sync::{broadcast, mpsc};
+use std::sync::mpsc;
+
+use tokio::sync::broadcast;
 
 use crate::{
     event::{ClientRequest, PlayerRequest},
@@ -8,14 +10,14 @@ use crate::{
 use super::Client;
 
 /// starts the client's request handler
-pub async fn start_client_handler(
+pub fn start_client_handler(
     state: SharedState,
     client: Client,
     client_pub: mpsc::Sender<ClientRequest>,
-    mut client_sub: mpsc::Receiver<ClientRequest>,
+    client_sub: mpsc::Receiver<ClientRequest>,
     spirc_pub: broadcast::Sender<()>,
 ) {
-    while let Some(request) = client_sub.recv().await {
+    while let Ok(request) = client_sub.recv() {
         match request {
             #[cfg(feature = "streaming")]
             ClientRequest::NewConnection => {
@@ -39,25 +41,19 @@ pub async fn start_client_handler(
 /// starts multiple event watchers listening
 /// to player events and notifying the client
 /// to make additional update requests if needed
-pub async fn start_player_event_watchers(
-    state: SharedState,
-    client_pub: mpsc::Sender<ClientRequest>,
-) {
+pub fn start_player_event_watchers(state: SharedState, client_pub: mpsc::Sender<ClientRequest>) {
     // start a thread that updates the current playback every `playback_refresh_duration_in_ms` ms.
     // A positive value of `playback_refresh_duration_in_ms` is required to start the watcher.
     if state.app_config.playback_refresh_duration_in_ms > 0 {
-        tokio::task::spawn({
+        tokio::task::spawn_blocking({
             let client_pub = client_pub.clone();
             let playback_refresh_duration =
                 std::time::Duration::from_millis(state.app_config.playback_refresh_duration_in_ms);
-            async move {
-                loop {
-                    client_pub
-                        .send(ClientRequest::GetCurrentPlayback)
-                        .await
-                        .unwrap_or_default();
-                    std::thread::sleep(playback_refresh_duration);
-                }
+            move || loop {
+                client_pub
+                    .send(ClientRequest::GetCurrentPlayback)
+                    .unwrap_or_default();
+                std::thread::sleep(playback_refresh_duration);
             }
         });
     }
@@ -80,7 +76,6 @@ pub async fn start_player_event_watchers(
             if progress_ms >= duration_ms && is_playing {
                 client_pub
                     .send(ClientRequest::GetCurrentPlayback)
-                    .await
                     .unwrap_or_default();
             }
         }
@@ -89,7 +84,6 @@ pub async fn start_player_event_watchers(
         if player.playback.is_none() {
             client_pub
                 .send(ClientRequest::Player(PlayerRequest::Reconnect))
-                .await
                 .unwrap_or_default();
         }
     }

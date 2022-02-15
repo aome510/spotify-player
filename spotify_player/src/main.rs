@@ -1,5 +1,3 @@
-use tokio::sync::mpsc;
-
 mod auth;
 mod client;
 mod command;
@@ -87,21 +85,17 @@ async fn main() -> anyhow::Result<()> {
     let session = auth::new_session(&cache_folder, state.app_config.device.audio_cache).await?;
 
     // application's channels
-    let (client_pub, client_sub) = mpsc::channel::<event::ClientRequest>(8);
+    let (client_pub, client_sub) = std::sync::mpsc::channel::<event::ClientRequest>();
     let (spirc_pub, _) = tokio::sync::broadcast::channel::<()>(16);
 
     // get some prior information
     #[cfg(feature = "streaming")]
-    client_pub.send(event::ClientRequest::NewConnection).await?;
-    client_pub
-        .send(event::ClientRequest::GetCurrentUser)
-        .await?;
-    client_pub
-        .send(event::ClientRequest::GetCurrentPlayback)
-        .await?;
+    client_pub.send(event::ClientRequest::NewConnection);
+    client_pub.send(event::ClientRequest::GetCurrentUser);
+    client_pub.send(event::ClientRequest::GetCurrentPlayback);
 
     // client event handler task
-    tokio::task::spawn({
+    tokio::task::spawn_blocking({
         let state = state.clone();
         let client = client::Client::new(
             session.clone(),
@@ -110,29 +104,29 @@ async fn main() -> anyhow::Result<()> {
         );
         let client_pub = client_pub.clone();
         client.init_token().await?;
-        async move {
-            client::start_client_handler(state, client, client_pub, client_sub, spirc_pub).await;
+        move || {
+            client::start_client_handler(state, client, client_pub, client_sub, spirc_pub);
         }
     });
 
     // terminal event handler task
-    tokio::task::spawn({
+    tokio::task::spawn_blocking({
         let client_pub = client_pub.clone();
         let state = state.clone();
-        async move {
-            event::start_event_handler(state, client_pub).await;
+        move || {
+            event::start_event_handler(state, client_pub);
         }
     });
 
     // player event watcher task
-    tokio::task::spawn({
+    tokio::task::spawn_blocking({
         let client_pub = client_pub.clone();
         let state = state.clone();
-        async move {
-            client::start_player_event_watchers(state, client_pub).await;
+        move || {
+            client::start_player_event_watchers(state, client_pub);
         }
     });
 
     // application's UI as the main task
-    ui::start_ui(state, client_pub).await
+    ui::start_ui(state, client_pub)
 }
