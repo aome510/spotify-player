@@ -8,12 +8,11 @@ use crate::{
 use super::Client;
 
 /// starts the client's request handler
-#[tokio::main]
 pub async fn start_client_handler(
     state: SharedState,
     client: Client,
     client_pub: mpsc::Sender<ClientRequest>,
-    client_sub: mpsc::Receiver<ClientRequest>,
+    mut client_sub: mpsc::Receiver<ClientRequest>,
     spirc_pub: broadcast::Sender<()>,
 ) {
     while let Some(request) = client_sub.recv().await {
@@ -40,7 +39,6 @@ pub async fn start_client_handler(
 /// starts multiple event watchers listening
 /// to player events and notifying the client
 /// to make additional update requests if needed
-#[tokio::main]
 pub async fn start_player_event_watchers(
     state: SharedState,
     client_pub: mpsc::Sender<ClientRequest>,

@@ -47,7 +47,6 @@ pub enum ClientRequest {
     NewConnection,
 }
 
-#[tokio::main]
 /// starts a terminal event handler (key pressed, mouse clicked, etc)
 pub async fn start_event_handler(send: mpsc::Sender<ClientRequest>, state: SharedState) {
     let mut event_stream = EventStream::new();

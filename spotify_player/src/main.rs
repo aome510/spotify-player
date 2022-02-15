@@ -116,19 +116,19 @@ async fn main() -> anyhow::Result<()> {
     });
 
     // terminal event handler thread
-    std::thread::spawn({
+    tokio::task::spawn({
         let client_pub = client_pub.clone();
         let state = state.clone();
-        move || {
+        async move {
             event::start_event_handler(client_pub, state);
         }
     });
 
     // player event watcher thread(s)
-    std::thread::spawn({
+    tokio::task::spawn({
         let client_pub = client_pub.clone();
         let state = state.clone();
-        move || {
+        async move {
             client::start_player_event_watchers(state, client_pub);
         }
     });
