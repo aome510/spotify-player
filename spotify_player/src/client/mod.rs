@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
+#[cfg(feature = "streaming")]
+use crate::spirc;
 use crate::{
     config,
     event::{ClientRequest, PlayerRequest},
-    spirc,
     state::*,
 };
 use anyhow::{anyhow, Result};
@@ -33,6 +34,7 @@ impl Client {
     }
 
     /// creates a new Librespot's spirc connection
+    #[cfg(feature = "streaming")]
     pub fn new_spirc_connection(
         &self,
         spirc_sub: broadcast::Receiver<()>,
