@@ -179,15 +179,12 @@ fn handle_global_command(
             ui.is_running = false;
         }
         Command::NextTrack => {
-            tracing::info!("sent client request...");
             client_pub.blocking_send(ClientRequest::Player(PlayerRequest::NextTrack))?;
         }
         Command::PreviousTrack => {
-            tracing::info!("sent client request...");
             client_pub.blocking_send(ClientRequest::Player(PlayerRequest::PreviousTrack))?;
         }
         Command::ResumePause => {
-            tracing::info!("sent client request...");
             client_pub.blocking_send(ClientRequest::Player(PlayerRequest::ResumePause))?;
         }
         Command::Repeat => {
