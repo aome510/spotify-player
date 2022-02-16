@@ -168,6 +168,7 @@ List of supported commands:
 | `SelectPreviousOrScrollUp`  | select the previous item in a list/table or scroll up       | `k`, `C-k`, `up`   |
 | `ChooseSelected`            | choose the selected item                                    | `enter`            |
 | `RefreshPlayback`           | manually refresh the current playback                       | `r`                |
+| `ReconnectIntegratedClient` | reconnect the integrated librespot client                   | `R`                |
 | `ShowActionsOnSelectedItem` | open a popup showing actions on a selected item             | `g a`, `C-space`   |
 | `ShowActionsOnCurrentTrack` | open a popup showing actions on the currently playing track | `a`                |
 | `FocusNextWindow`           | focus the next focusable window (if any)                    | `tab`              |
