@@ -80,6 +80,10 @@ impl Default for KeymapConfig {
                     command: Command::ShowActionsOnCurrentTrack,
                 },
                 Keymap {
+                    key_sequence: "R".into(),
+                    command: Command::ReconnectIntegratedClient,
+                },
+                Keymap {
                     key_sequence: "tab".into(),
                     command: Command::FocusNextWindow,
                 },

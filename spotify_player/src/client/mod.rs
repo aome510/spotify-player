@@ -1,6 +1,9 @@
 use std::sync::Arc;
 
+#[cfg(feature = "streaming")]
+use crate::spirc;
 use crate::{
+    config,
     event::{ClientRequest, PlayerRequest},
     state::*,
 };
@@ -12,6 +15,7 @@ mod handlers;
 mod spotify;
 
 pub use handlers::*;
+use tokio::sync::{broadcast, mpsc};
 
 /// The application's client
 #[derive(Clone)]
@@ -22,11 +26,28 @@ pub struct Client {
 
 impl Client {
     /// creates a new client
-    pub fn new(session: Session, client_id: String) -> Self {
+    pub fn new(session: Session, device: config::DeviceConfig, client_id: String) -> Self {
         Self {
-            spotify: Arc::new(spotify::Spotify::new(session, client_id)),
+            spotify: Arc::new(spotify::Spotify::new(session, device, client_id)),
             http: reqwest::Client::new(),
         }
+    }
+
+    /// creates a new Librespot's spirc connection
+    #[cfg(feature = "streaming")]
+    pub fn new_spirc_connection(
+        &self,
+        spirc_sub: broadcast::Receiver<()>,
+        client_pub: mpsc::Sender<ClientRequest>,
+    ) {
+        let session = match self.spotify.session {
+            None => return,
+            Some(ref session) => session.clone(),
+        };
+        let device = self.spotify.device.clone();
+        tokio::task::spawn(async move {
+            spirc::new_connection(session, device, client_pub, spirc_sub).await;
+        });
     }
 
     /// initializes the authorization token inside the Spotify client
@@ -77,12 +98,14 @@ impl Client {
                     // try to connect to the integrated client's device ID
                     #[cfg(feature = "streaming")]
                     {
-                        let device_id = self.spotify.session.session()?.device_id();
-                        self.spotify.transfer_playback(device_id, None).await?;
-                        tracing::info!(
-                            "transfered the playback to the integrated client's device (id={})",
-                            device_id
-                        );
+                        if let Some(ref session) = self.spotify.session {
+                            let device_id = session.device_id();
+                            self.spotify.transfer_playback(device_id, None).await?;
+                            tracing::info!(
+                                "transfered the playback to the integrated client's device (id={})",
+                                device_id
+                            );
+                        }
                     }
                 }
             }
@@ -148,6 +171,10 @@ impl Client {
         tracing::info!("handle client request {:?}", request);
 
         match request {
+            #[cfg(feature = "streaming")]
+            ClientRequest::NewSpircConnection => {
+                unreachable!("request should be already handled by the caller function");
+            }
             ClientRequest::GetCurrentUser => {
                 let user = self.spotify.current_user().await?;
                 state.data.write().user_data.user = Some(user);

@@ -3,7 +3,7 @@ use super::*;
 /// handles a key sequence for a context window
 pub fn handle_key_sequence_for_context_window(
     key_sequence: &KeySequence,
-    send: &mpsc::Sender<ClientRequest>,
+    client_pub: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
 ) -> Result<bool> {
     let command = match state
@@ -53,9 +53,9 @@ pub fn handle_key_sequence_for_context_window(
                         _ => return Ok(false),
                     };
 
-                    send.send(ClientRequest::Player(PlayerRequest::StartPlayback(
-                        Playback::Context(context_id, offset),
-                    )))?;
+                    client_pub.blocking_send(ClientRequest::Player(
+                        PlayerRequest::StartPlayback(Playback::Context(context_id, offset)),
+                    ))?;
                 }
             }
         }
@@ -93,7 +93,7 @@ pub fn handle_key_sequence_for_context_window(
 
             // the command hasn't been handled, assign the job to the focused subwindow's handler
             drop(ui);
-            return handle_command_for_focused_context_subwindow(command, send, state);
+            return handle_command_for_focused_context_subwindow(command, client_pub, state);
         }
     }
     Ok(true)
@@ -160,7 +160,7 @@ pub fn handle_key_sequence_for_library_window(
 /// handles a key sequence for a recommendation window
 pub fn handle_key_sequence_for_recommendation_window(
     key_sequence: &KeySequence,
-    send: &mpsc::Sender<ClientRequest>,
+    client_pub: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
 ) -> Result<bool> {
     let command = match state
@@ -200,7 +200,7 @@ pub fn handle_key_sequence_for_recommendation_window(
                 let id = rand::thread_rng().gen_range(0..tracks.len());
                 Some(rspotify_model::Offset::for_uri(&tracks[id].id.uri()))
             };
-            send.send(ClientRequest::Player(PlayerRequest::StartPlayback(
+            client_pub.blocking_send(ClientRequest::Player(PlayerRequest::StartPlayback(
                 Playback::URIs(tracks.iter().map(|t| t.id.clone()).collect(), offset),
             )))?;
 
@@ -208,7 +208,7 @@ pub fn handle_key_sequence_for_recommendation_window(
         }
         _ => handle_command_for_track_table_subwindow(
             command,
-            send,
+            client_pub,
             state,
             None,
             Some(tracks.iter().map(|t| &t.id).collect()),
@@ -220,7 +220,7 @@ pub fn handle_key_sequence_for_recommendation_window(
 /// handles a key sequence for a search window
 pub fn handle_key_sequence_for_search_window(
     key_sequence: &KeySequence,
-    send: &mpsc::Sender<ClientRequest>,
+    client_pub: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
 ) -> Result<bool> {
     let mut ui = state.ui.lock();
@@ -245,20 +245,20 @@ pub fn handle_key_sequence_for_search_window(
         if key_sequence.keys.len() == 1 {
             if let Key::None(c) = key_sequence.keys[0] {
                 match c {
-                    KeyCode::Char(c) => {
+                    crossterm::event::KeyCode::Char(c) => {
                         input.push(c);
                         return Ok(true);
                     }
-                    KeyCode::Backspace => {
+                    crossterm::event::KeyCode::Backspace => {
                         if !input.is_empty() {
                             input.pop().unwrap();
                         }
                         return Ok(true);
                     }
-                    KeyCode::Enter => {
+                    crossterm::event::KeyCode::Enter => {
                         if !input.is_empty() {
                             *current_query = input.clone();
-                            send.send(ClientRequest::Search(input.clone()))?;
+                            client_pub.blocking_send(ClientRequest::Search(input.clone()))?;
                         }
                         return Ok(true);
                     }
@@ -299,7 +299,7 @@ pub fn handle_key_sequence_for_search_window(
                     let tracks = search_results
                         .map(|s| s.tracks.iter().collect())
                         .unwrap_or_default();
-                    handle_command_for_track_list_subwindow(command, send, state, tracks)
+                    handle_command_for_track_list_subwindow(command, client_pub, state, tracks)
                 }
                 SearchFocusState::Artists => {
                     let artists = search_results
@@ -330,7 +330,7 @@ pub fn handle_key_sequence_for_search_window(
 /// assign the handling job to such subwindow's command handler
 pub fn handle_command_for_focused_context_subwindow(
     command: Command,
-    send: &mpsc::Sender<ClientRequest>,
+    client_pub: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
 ) -> Result<bool> {
     let uri = match state.ui.lock().current_page().context_uri() {
@@ -364,7 +364,7 @@ pub fn handle_command_for_focused_context_subwindow(
                     ),
                     ArtistFocusState::TopTracks => handle_command_for_track_table_subwindow(
                         command,
-                        send,
+                        client_pub,
                         state,
                         None,
                         Some(top_tracks.iter().map(|t| &t.id).collect()),
@@ -374,7 +374,7 @@ pub fn handle_command_for_focused_context_subwindow(
             }
             Context::Album { album, tracks } => handle_command_for_track_table_subwindow(
                 command,
-                send,
+                client_pub,
                 state,
                 Some(ContextId::Album(album.id.clone())),
                 None,
@@ -382,7 +382,7 @@ pub fn handle_command_for_focused_context_subwindow(
             ),
             Context::Playlist { playlist, tracks } => handle_command_for_track_table_subwindow(
                 command,
-                send,
+                client_pub,
                 state,
                 Some(ContextId::Playlist(playlist.id.clone())),
                 None,
@@ -409,7 +409,7 @@ pub fn handle_command_for_focused_context_subwindow(
 /// The above case is used for the track table of a playlist or an album.
 fn handle_command_for_track_table_subwindow(
     command: Command,
-    send: &mpsc::Sender<ClientRequest>,
+    client_pub: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
     context_id: Option<ContextId>,
     track_ids: Option<Vec<&TrackId>>,
@@ -436,12 +436,12 @@ fn handle_command_for_track_table_subwindow(
             let offset = Some(rspotify_model::Offset::for_uri(&tracks[id].id.uri()));
             if track_ids.is_some() {
                 // play a track from a list of tracks
-                send.send(ClientRequest::Player(PlayerRequest::StartPlayback(
+                client_pub.blocking_send(ClientRequest::Player(PlayerRequest::StartPlayback(
                     Playback::URIs(track_ids.unwrap().into_iter().cloned().collect(), offset),
                 )))?;
             } else if context_id.is_some() {
                 // play a track from a context
-                send.send(ClientRequest::Player(PlayerRequest::StartPlayback(
+                client_pub.blocking_send(ClientRequest::Player(PlayerRequest::StartPlayback(
                     Playback::Context(context_id.unwrap(), offset),
                 )))?;
             }
@@ -459,7 +459,7 @@ fn handle_command_for_track_table_subwindow(
 
 fn handle_command_for_track_list_subwindow(
     command: Command,
-    send: &mpsc::Sender<ClientRequest>,
+    client_pub: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
     tracks: Vec<&Track>,
 ) -> Result<bool> {
@@ -486,7 +486,7 @@ fn handle_command_for_track_list_subwindow(
             // It's different for the track table, in which
             // `ChooseSelected` on a track will start a `URIs` playback
             // containing all the tracks in the table.
-            send.send(ClientRequest::Player(PlayerRequest::StartPlayback(
+            client_pub.blocking_send(ClientRequest::Player(PlayerRequest::StartPlayback(
                 Playback::URIs(vec![tracks[id].id.clone()], None),
             )))?;
         }

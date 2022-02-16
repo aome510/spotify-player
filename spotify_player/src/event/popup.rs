@@ -5,7 +5,7 @@ use super::*;
 /// handles a key sequence for a popup
 pub fn handle_key_sequence_for_popup(
     key_sequence: &KeySequence,
-    send: &mpsc::Sender<ClientRequest>,
+    client_pub: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
 ) -> Result<bool> {
     let ui = state.ui.lock();
@@ -13,7 +13,7 @@ pub fn handle_key_sequence_for_popup(
     match ui.popup.as_ref().unwrap() {
         PopupState::Search { .. } => {
             drop(ui);
-            handle_key_sequence_for_search_popup(key_sequence, send, state)
+            handle_key_sequence_for_search_popup(key_sequence, client_pub, state)
         }
         PopupState::ArtistList(artists, _) => {
             let n_items = artists.len();
@@ -90,7 +90,7 @@ pub fn handle_key_sequence_for_popup(
                                 .context
                                 .pop(&playlist_ids[id].uri());
 
-                            send.send(ClientRequest::AddTrackToPlaylist(
+                            client_pub.blocking_send(ClientRequest::AddTrackToPlaylist(
                                 playlist_ids[id].clone(),
                                 track_id.clone(),
                             ))?;
@@ -177,10 +177,9 @@ pub fn handle_key_sequence_for_popup(
                 player.devices.len(),
                 |_, _| {},
                 |ui: &mut UIStateGuard, id: usize| -> Result<()> {
-                    send.send(ClientRequest::Player(PlayerRequest::TransferPlayback(
-                        player.devices[id].id.clone(),
-                        true,
-                    )))?;
+                    client_pub.blocking_send(ClientRequest::Player(
+                        PlayerRequest::TransferPlayback(player.devices[id].id.clone(), true),
+                    ))?;
                     ui.popup = None;
                     Ok(())
                 },
@@ -196,7 +195,7 @@ pub fn handle_key_sequence_for_popup(
         PopupState::ActionList(item, ..) => {
             let actions = item.actions();
             drop(ui);
-            handle_key_sequence_for_action_list_popup(actions, key_sequence, send, state)
+            handle_key_sequence_for_action_list_popup(actions, key_sequence, client_pub, state)
         }
     }
 }
@@ -204,7 +203,7 @@ pub fn handle_key_sequence_for_popup(
 /// handles a key sequence for a context search popup
 fn handle_key_sequence_for_search_popup(
     key_sequence: &KeySequence,
-    send: &mpsc::Sender<ClientRequest>,
+    client_pub: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
 ) -> Result<bool> {
     let mut ui = state.ui.lock();
@@ -217,12 +216,12 @@ fn handle_key_sequence_for_search_popup(
     if key_sequence.keys.len() == 1 {
         if let Key::None(c) = key_sequence.keys[0] {
             match c {
-                KeyCode::Char(c) => {
+                crossterm::event::KeyCode::Char(c) => {
                     query.push(c);
                     ui.window.select(Some(0));
                     return Ok(true);
                 }
-                KeyCode::Backspace => {
+                crossterm::event::KeyCode::Backspace => {
                     if !query.is_empty() {
                         query.pop().unwrap();
                         ui.window.select(Some(0));
@@ -252,11 +251,15 @@ fn handle_key_sequence_for_search_popup(
                 }
                 PageState::Recommendations(..) => {
                     drop(ui);
-                    window::handle_key_sequence_for_recommendation_window(key_sequence, send, state)
+                    window::handle_key_sequence_for_recommendation_window(
+                        key_sequence,
+                        client_pub,
+                        state,
+                    )
                 }
                 PageState::Context(..) => {
                     drop(ui);
-                    window::handle_key_sequence_for_context_window(key_sequence, send, state)
+                    window::handle_key_sequence_for_context_window(key_sequence, client_pub, state)
                 }
                 PageState::Searching { .. } => Ok(false),
             },
@@ -404,7 +407,7 @@ fn handle_key_sequence_for_command_help_popup(
 fn handle_key_sequence_for_action_list_popup(
     actions: Vec<Action>,
     key_sequence: &KeySequence,
-    send: &mpsc::Sender<ClientRequest>,
+    client_pub: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
 ) -> Result<bool> {
     handle_key_sequence_for_list_popup(
@@ -437,19 +440,20 @@ fn handle_key_sequence_for_action_list_popup(
                         ));
                     }
                     Action::AddTrackToPlaylist => {
-                        send.send(ClientRequest::GetUserPlaylists)?;
+                        client_pub.blocking_send(ClientRequest::GetUserPlaylists)?;
                         ui.popup = Some(PopupState::UserPlaylistList(
                             PlaylistPopupAction::AddTrack(track.id.clone()),
                             new_list_state(),
                         ));
                     }
                     Action::SaveToLibrary => {
-                        send.send(ClientRequest::SaveToLibrary(item.clone()))?;
+                        client_pub.blocking_send(ClientRequest::SaveToLibrary(item.clone()))?;
                         ui.popup = None;
                     }
                     Action::BrowseRecommendations => {
                         let seed = SeedItem::Track(track.clone());
-                        send.send(ClientRequest::GetRecommendations(seed.clone()))?;
+                        client_pub
+                            .blocking_send(ClientRequest::GetRecommendations(seed.clone()))?;
                         ui.create_new_page(PageState::Recommendations(seed));
                     }
                 },
@@ -461,26 +465,27 @@ fn handle_key_sequence_for_action_list_popup(
                         ));
                     }
                     Action::SaveToLibrary => {
-                        send.send(ClientRequest::SaveToLibrary(item.clone()))?;
+                        client_pub.blocking_send(ClientRequest::SaveToLibrary(item.clone()))?;
                         ui.popup = None;
                     }
                     _ => {}
                 },
                 Item::Artist(artist) => match actions[id] {
                     Action::SaveToLibrary => {
-                        send.send(ClientRequest::SaveToLibrary(item.clone()))?;
+                        client_pub.blocking_send(ClientRequest::SaveToLibrary(item.clone()))?;
                         ui.popup = None;
                     }
                     Action::BrowseRecommendations => {
                         let seed = SeedItem::Artist(artist.clone());
-                        send.send(ClientRequest::GetRecommendations(seed.clone()))?;
+                        client_pub
+                            .blocking_send(ClientRequest::GetRecommendations(seed.clone()))?;
                         ui.create_new_page(PageState::Recommendations(seed));
                     }
                     _ => {}
                 },
                 Item::Playlist(_) => {
                     if let Action::SaveToLibrary = actions[id] {
-                        send.send(ClientRequest::SaveToLibrary(item.clone()))?;
+                        client_pub.blocking_send(ClientRequest::SaveToLibrary(item.clone()))?;
                         ui.popup = None;
                     }
                 }

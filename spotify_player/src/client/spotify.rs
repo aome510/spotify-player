@@ -6,57 +6,38 @@ use rspotify::{
     http::HttpClient,
     ClientResult, Config, Credentials, OAuth, Token,
 };
-use std::sync::Arc;
+use std::{fmt, sync::Arc};
 
-use crate::token;
+use crate::{config, token};
 
-/// A wrapper struct for `librespot::Session` that implements
-/// `Debug` and `Default` traits.
-/// These above traits are required to implement
-/// `rspotify::BaseClient` and `rspotify::OauthClient` traits.
 #[derive(Clone, Default)]
-pub struct SessionWrapper {
-    session: Option<Session>,
-}
-
-impl std::fmt::Debug for SessionWrapper {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str("{ session: ... }")
-    }
-}
-
-impl SessionWrapper {
-    fn new(session: Session) -> Self {
-        Self {
-            session: Some(session),
-        }
-    }
-
-    /// gets the librespot session stored inside the wrapper struct.
-    /// It returns an eror if there is no such session.
-    pub fn session(&self) -> Result<&Session> {
-        match self.session {
-            Some(ref session) => Ok(session),
-            None => Err(anyhow!("failed to get the wrapped librespot session.")),
-        }
-    }
-}
-
-#[derive(Clone, Debug, Default)]
 /// A Spotify client to interact with Spotify API server
 pub struct Spotify {
     pub creds: Credentials,
     pub oauth: OAuth,
     pub config: Config,
     pub token: Arc<Mutex<Option<Token>>>,
-    pub http: HttpClient,
-    pub session: SessionWrapper,
     pub client_id: String,
+    pub http: HttpClient,
+    pub device: config::DeviceConfig,
+    pub session: Option<Session>,
+}
+
+impl fmt::Debug for Spotify {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Spotify")
+            .field("creds", &self.creds)
+            .field("oauth", &self.oauth)
+            .field("config", &self.config)
+            .field("token", &self.token)
+            .field("client_id", &self.client_id)
+            .finish()
+    }
 }
 
 impl Spotify {
     /// creates a new Spotify client
-    pub fn new(session: Session, client_id: String) -> Spotify {
+    pub fn new(session: Session, device: config::DeviceConfig, client_id: String) -> Spotify {
         Self {
             creds: Credentials::default(),
             oauth: OAuth::default(),
@@ -66,7 +47,8 @@ impl Spotify {
             },
             token: Arc::new(Mutex::new(None)),
             http: HttpClient::default(),
-            session: SessionWrapper::new(session),
+            session: Some(session),
+            device,
             client_id,
         }
     }
@@ -89,11 +71,6 @@ impl Spotify {
                 "failed to get the authorization token stored inside the client."
             )),
         }
-    }
-
-    /// retrieves an authorization token
-    pub async fn retrieve_token(&self) -> Result<Token> {
-        Ok(token::get_token(self.session.session()?, &self.client_id).await?)
     }
 }
 
@@ -119,7 +96,14 @@ impl BaseClient for Spotify {
     }
 
     async fn refetch_token(&self) -> ClientResult<Option<Token>> {
-        match self.retrieve_token().await {
+        let session = match self.session {
+            None => {
+                tracing::warn!("there is no session inside the spotify client");
+                return Ok(None);
+            }
+            Some(ref session) => session,
+        };
+        match token::get_token(session, &self.client_id).await {
             Ok(token) => Ok(Some(token)),
             Err(err) => {
                 tracing::warn!("{}", err);

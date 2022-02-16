@@ -2,10 +2,10 @@ mod auth;
 mod client;
 mod command;
 mod config;
-#[cfg(feature = "streaming")]
-mod connect;
 mod event;
 mod key;
+#[cfg(feature = "streaming")]
+mod spirc;
 mod state;
 mod token;
 mod ui;
@@ -47,7 +47,7 @@ async fn main() -> anyhow::Result<()> {
     // parse command line arguments
     let args = init_app_cli_arguments();
 
-    // initialize the application's cache folders and config folder
+    // initialize the application's cache folder and config folder
     let config_folder = match args.value_of("config-folder") {
         Some(path) => path.into(),
         None => config::get_config_folder_path()?,
@@ -56,7 +56,6 @@ async fn main() -> anyhow::Result<()> {
         Some(path) => path.into(),
         None => config::get_cache_folder_path()?,
     };
-
     if !config_folder.exists() {
         std::fs::create_dir_all(&config_folder)?;
     }
@@ -85,52 +84,59 @@ async fn main() -> anyhow::Result<()> {
     // initialize a librespot session
     let session = auth::new_session(&cache_folder, state.app_config.device.audio_cache).await?;
 
-    // start application's threads
-    let (send, recv) = std::sync::mpsc::channel::<event::ClientRequest>();
+    // application's channels
+    let (client_pub, client_sub) = tokio::sync::mpsc::channel::<event::ClientRequest>(16);
+    let (spirc_pub, _) = tokio::sync::broadcast::channel::<()>(16);
 
     // get some prior information
-    send.send(event::ClientRequest::GetCurrentUser)?;
-    send.send(event::ClientRequest::GetCurrentPlayback)?;
-
-    // connection thread (used to initialize the integrated Spotify client using librespot)
     #[cfg(feature = "streaming")]
-    std::thread::spawn({
-        let session = session.clone();
-        let send = send.clone();
-        let device = state.app_config.device.clone();
-        move || {
-            connect::new_connection(session, send, device);
-        }
-    });
+    client_pub
+        .send(event::ClientRequest::NewSpircConnection)
+        .await?;
+    client_pub
+        .send(event::ClientRequest::GetCurrentUser)
+        .await?;
+    client_pub
+        .send(event::ClientRequest::GetCurrentPlayback)
+        .await?;
 
-    // client event handler thread
-    std::thread::spawn({
+    // client event handler task
+    tokio::task::spawn({
         let state = state.clone();
-        let client = client::Client::new(session, state.app_config.client_id.clone());
+        let client = client::Client::new(
+            session.clone(),
+            state.app_config.device.clone(),
+            state.app_config.client_id.clone(),
+        );
+        let client_pub = client_pub.clone();
         client.init_token().await?;
-        move || {
-            client::start_client_handler(state, client, recv);
+        async move {
+            client::start_client_handler(state, client, client_pub, client_sub, spirc_pub).await;
         }
     });
 
-    // terminal event handler thread
-    std::thread::spawn({
-        let send = send.clone();
+    // terminal event handler task
+    tokio::task::spawn_blocking({
+        let client_pub = client_pub.clone();
         let state = state.clone();
         move || {
-            event::start_event_handler(send, state);
+            event::start_event_handler(state, client_pub);
         }
     });
 
-    // player event watcher thread(s)
-    std::thread::spawn({
-        let send = send.clone();
+    // player event watcher task
+    tokio::task::spawn_blocking({
+        let client_pub = client_pub.clone();
         let state = state.clone();
         move || {
-            client::start_player_event_watchers(state, send);
+            client::start_player_event_watchers(state, client_pub);
         }
     });
 
-    // application's UI as the main thread
-    ui::start_ui(state, send)
+    // application's UI as the main task
+    tokio::task::spawn_blocking(move || {
+        ui::start_ui(state, client_pub).unwrap();
+    })
+    .await?;
+    std::process::exit(0);
 }

@@ -5,10 +5,8 @@ use crate::{
     utils::new_list_state,
 };
 use anyhow::Result;
-use crossterm::event::*;
 use rand::Rng;
-use std::sync::mpsc;
-use tokio_stream::StreamExt;
+use tokio::sync::mpsc;
 
 mod popup;
 mod window;
@@ -43,42 +41,35 @@ pub enum ClientRequest {
     AddTrackToPlaylist(PlaylistId, TrackId),
     SaveToLibrary(Item),
     Player(PlayerRequest),
+    #[cfg(feature = "streaming")]
+    NewSpircConnection,
 }
 
-#[tokio::main]
 /// starts a terminal event handler (key pressed, mouse clicked, etc)
-pub async fn start_event_handler(send: mpsc::Sender<ClientRequest>, state: SharedState) {
-    let mut event_stream = EventStream::new();
+pub fn start_event_handler(state: SharedState, client_pub: mpsc::Sender<ClientRequest>) {
+    while let Ok(event) = crossterm::event::read() {
+        tracing::info!("got a terminal event: {:?}", event);
 
-    while let Some(event) = event_stream.next().await {
-        match event {
-            Ok(event) => {
-                tracing::info!("got a terminal event: {:?}", event);
-
-                if let Err(err) = match event {
-                    Event::Mouse(event) => handle_mouse_event(event, &send, &state),
-                    Event::Key(event) => handle_key_event(event, &send, &state),
-                    _ => Ok(()),
-                } {
-                    tracing::warn!("failed to handle event: {}", err);
-                }
-            }
-            Err(err) => {
-                tracing::warn!("failed to get event: {}", err);
-            }
+        if let Err(err) = match event {
+            crossterm::event::Event::Mouse(event) => handle_mouse_event(event, &client_pub, &state),
+            crossterm::event::Event::Key(event) => handle_key_event(event, &client_pub, &state),
+            _ => Ok(()),
+        } {
+            tracing::warn!("failed to handle event: {}", err);
         }
     }
 }
 
 // handles a terminal mouse event
 fn handle_mouse_event(
-    event: MouseEvent,
-    send: &mpsc::Sender<ClientRequest>,
+    event: crossterm::event::MouseEvent,
+    client_pub: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
 ) -> Result<()> {
     let ui = state.ui.lock();
     // a left click event
-    if let MouseEventKind::Down(MouseButton::Left) = event.kind {
+    if let crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left) = event.kind
+    {
         if event.row == ui.progress_bar_rect.y {
             // calculate the seek position (in ms) based on the clicked position,
             // the progress bar's width and the track's duration (in ms)
@@ -88,7 +79,8 @@ fn handle_mouse_event(
             if let Some(track) = track {
                 let position_ms = (track.duration.as_millis() as u32) * (event.column as u32)
                     / (ui.progress_bar_rect.width as u32);
-                send.send(ClientRequest::Player(PlayerRequest::SeekTrack(position_ms)))?;
+                client_pub
+                    .blocking_send(ClientRequest::Player(PlayerRequest::SeekTrack(position_ms)))?;
             }
         }
     }
@@ -97,8 +89,8 @@ fn handle_mouse_event(
 
 // handle a terminal key pressed event
 fn handle_key_event(
-    event: KeyEvent,
-    send: &mpsc::Sender<ClientRequest>,
+    event: crossterm::event::KeyEvent,
+    client_pub: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
 ) -> Result<()> {
     let key: Key = event.into();
@@ -127,23 +119,27 @@ fn handle_key_event(
                     drop(ui);
                     window::handle_key_sequence_for_recommendation_window(
                         &key_sequence,
-                        send,
+                        client_pub,
                         state,
                     )?
                 }
                 PageState::Context(..) => {
                     drop(ui);
-                    window::handle_key_sequence_for_context_window(&key_sequence, send, state)?
+                    window::handle_key_sequence_for_context_window(
+                        &key_sequence,
+                        client_pub,
+                        state,
+                    )?
                 }
                 PageState::Searching { .. } => {
                     drop(ui);
-                    window::handle_key_sequence_for_search_window(&key_sequence, send, state)?
+                    window::handle_key_sequence_for_search_window(&key_sequence, client_pub, state)?
                 }
             }
         }
         Some(_) => {
             drop(ui);
-            popup::handle_key_sequence_for_popup(&key_sequence, send, state)?
+            popup::handle_key_sequence_for_popup(&key_sequence, client_pub, state)?
         }
     };
 
@@ -153,7 +149,7 @@ fn handle_key_event(
             .keymap_config
             .find_command_from_key_sequence(&key_sequence)
         {
-            Some(command) => handle_global_command(command, send, state)?,
+            Some(command) => handle_global_command(command, client_pub, state)?,
             None => false,
         }
     } else {
@@ -173,7 +169,7 @@ fn handle_key_event(
 /// handles a global command
 fn handle_global_command(
     command: Command,
-    send: &mpsc::Sender<ClientRequest>,
+    client_pub: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
 ) -> Result<bool> {
     let mut ui = state.ui.lock();
@@ -183,25 +179,27 @@ fn handle_global_command(
             ui.is_running = false;
         }
         Command::NextTrack => {
-            send.send(ClientRequest::Player(PlayerRequest::NextTrack))?;
+            client_pub.blocking_send(ClientRequest::Player(PlayerRequest::NextTrack))?;
         }
         Command::PreviousTrack => {
-            send.send(ClientRequest::Player(PlayerRequest::PreviousTrack))?;
+            client_pub.blocking_send(ClientRequest::Player(PlayerRequest::PreviousTrack))?;
         }
         Command::ResumePause => {
-            send.send(ClientRequest::Player(PlayerRequest::ResumePause))?;
+            client_pub.blocking_send(ClientRequest::Player(PlayerRequest::ResumePause))?;
         }
         Command::Repeat => {
-            send.send(ClientRequest::Player(PlayerRequest::Repeat))?;
+            client_pub.blocking_send(ClientRequest::Player(PlayerRequest::Repeat))?;
         }
         Command::Shuffle => {
-            send.send(ClientRequest::Player(PlayerRequest::Shuffle))?;
+            client_pub.blocking_send(ClientRequest::Player(PlayerRequest::Shuffle))?;
         }
         Command::VolumeUp => {
             if let Some(ref playback) = state.player.read().playback {
                 if let Some(percent) = playback.device.volume_percent {
                     let volume = std::cmp::min(percent + 5, 100_u32);
-                    send.send(ClientRequest::Player(PlayerRequest::Volume(volume as u8)))?;
+                    client_pub.blocking_send(ClientRequest::Player(PlayerRequest::Volume(
+                        volume as u8,
+                    )))?;
                 }
             }
         }
@@ -209,7 +207,9 @@ fn handle_global_command(
             if let Some(ref playback) = state.player.read().playback {
                 if let Some(percent) = playback.device.volume_percent {
                     let volume = std::cmp::max(percent.saturating_sub(5_u32), 0_u32);
-                    send.send(ClientRequest::Player(PlayerRequest::Volume(volume as u8)))?;
+                    client_pub.blocking_send(ClientRequest::Player(PlayerRequest::Volume(
+                        volume as u8,
+                    )))?;
                 }
             }
         }
@@ -217,7 +217,7 @@ fn handle_global_command(
             ui.popup = Some(PopupState::CommandHelp { offset: 0 });
         }
         Command::RefreshPlayback => {
-            send.send(ClientRequest::GetCurrentPlayback)?;
+            client_pub.blocking_send(ClientRequest::GetCurrentPlayback)?;
         }
         Command::ShowActionsOnCurrentTrack => {
             if let Some(track) = state.player.read().current_playing_track() {
@@ -230,18 +230,18 @@ fn handle_global_command(
             ui.create_new_page(PageState::Context(None, ContextPageType::CurrentPlaying));
         }
         Command::BrowseUserPlaylists => {
-            send.send(ClientRequest::GetUserPlaylists)?;
+            client_pub.blocking_send(ClientRequest::GetUserPlaylists)?;
             ui.popup = Some(PopupState::UserPlaylistList(
                 PlaylistPopupAction::Browse,
                 new_list_state(),
             ));
         }
         Command::BrowseUserFollowedArtists => {
-            send.send(ClientRequest::GetUserFollowedArtists)?;
+            client_pub.blocking_send(ClientRequest::GetUserFollowedArtists)?;
             ui.popup = Some(PopupState::UserFollowedArtistList(new_list_state()));
         }
         Command::BrowseUserSavedAlbums => {
-            send.send(ClientRequest::GetUserSavedAlbums)?;
+            client_pub.blocking_send(ClientRequest::GetUserSavedAlbums)?;
             ui.popup = Some(PopupState::UserSavedAlbumList(new_list_state()));
         }
         Command::LibraryPage => {
@@ -268,7 +268,7 @@ fn handle_global_command(
         }
         Command::SwitchDevice => {
             ui.popup = Some(PopupState::DeviceList(new_list_state()));
-            send.send(ClientRequest::GetDevices)?;
+            client_pub.blocking_send(ClientRequest::GetDevices)?;
         }
         Command::SwitchTheme => {
             // get the available themes with the current theme moved to the first position
@@ -280,6 +280,10 @@ fn handle_global_command(
             }
 
             ui.popup = Some(PopupState::ThemeList(themes, new_list_state()));
+        }
+        Command::ReconnectIntegratedClient => {
+            #[cfg(feature = "streaming")]
+            client_pub.blocking_send(ClientRequest::NewSpircConnection)?;
         }
         _ => return Ok(false),
     }

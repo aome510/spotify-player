@@ -1,6 +1,6 @@
 use crate::{event::ClientRequest, state::*, utils};
 use anyhow::Result;
-use std::sync::mpsc;
+use tokio::sync::mpsc;
 use tui::{layout::*, style::*, widgets::*};
 
 type Terminal = tui::Terminal<tui::backend::CrosstermBackend<std::io::Stdout>>;
@@ -11,7 +11,7 @@ mod popup;
 mod window;
 
 /// starts the application UI rendering function(s)
-pub fn start_ui(state: SharedState, send: mpsc::Sender<ClientRequest>) -> Result<()> {
+pub fn start_ui(state: SharedState, client_pub: mpsc::Sender<ClientRequest>) -> Result<()> {
     // terminal UI initializations
     let mut stdout = std::io::stdout();
     crossterm::terminal::enable_raw_mode()?;
@@ -32,15 +32,19 @@ pub fn start_ui(state: SharedState, send: mpsc::Sender<ClientRequest>) -> Result
             return Ok(());
         }
 
-        handle_page_state_change(&state, &send)?;
+        if let Err(err) = handle_page_state_change(&state, &client_pub) {
+            tracing::warn!("failed to handle page state change events: {}", err);
+        }
 
-        terminal.draw(|frame| {
+        if let Err(err) = terminal.draw(|frame| {
             // set the background and foreground colors for the application
             let block = Block::default().style(state.ui.lock().theme.app_style());
             frame.render_widget(block, frame.size());
 
             render_application(frame, &state, frame.size());
-        })?;
+        }) {
+            tracing::warn!("failed to draw the application: {}", err);
+        }
 
         std::thread::sleep(ui_refresh_duration);
     }
@@ -48,16 +52,19 @@ pub fn start_ui(state: SharedState, send: mpsc::Sender<ClientRequest>) -> Result
 
 /// checks the current UI page state for new changes
 /// to update the UI window state and other states accordingly
-fn handle_page_state_change(state: &SharedState, send: &mpsc::Sender<ClientRequest>) -> Result<()> {
+fn handle_page_state_change(
+    state: &SharedState,
+    client_pub: &mpsc::Sender<ClientRequest>,
+) -> Result<()> {
     let mut ui = state.ui.lock();
 
     match ui.current_page() {
         PageState::Library => match ui.window {
             WindowState::Library { .. } => {}
             _ => {
-                send.send(ClientRequest::GetUserPlaylists)?;
-                send.send(ClientRequest::GetUserSavedAlbums)?;
-                send.send(ClientRequest::GetUserFollowedArtists)?;
+                client_pub.blocking_send(ClientRequest::GetUserPlaylists)?;
+                client_pub.blocking_send(ClientRequest::GetUserSavedAlbums)?;
+                client_pub.blocking_send(ClientRequest::GetUserFollowedArtists)?;
 
                 ui.window = WindowState::Library {
                     playlist_list: utils::new_list_state(),
@@ -70,14 +77,14 @@ fn handle_page_state_change(state: &SharedState, send: &mpsc::Sender<ClientReque
         PageState::Searching { current_query, .. } => match ui.window {
             WindowState::Search { .. } => {}
             _ => {
-                send.send(ClientRequest::Search(current_query.clone()))?;
+                client_pub.blocking_send(ClientRequest::Search(current_query.clone()))?;
                 ui.window = WindowState::new_search_state();
             }
         },
         PageState::Recommendations(seed) => match ui.window {
             WindowState::Recommendations { .. } => {}
             _ => {
-                send.send(ClientRequest::GetRecommendations(seed.clone()))?;
+                client_pub.blocking_send(ClientRequest::GetRecommendations(seed.clone()))?;
                 ui.window = WindowState::Recommendations {
                     track_table: utils::new_table_state(),
                 };
@@ -96,7 +103,7 @@ fn handle_page_state_change(state: &SharedState, send: &mpsc::Sender<ClientReque
                 );
 
                 if let Some(ref id) = expected_context_id {
-                    send.send(ClientRequest::GetContext(id.clone()))?;
+                    client_pub.blocking_send(ClientRequest::GetContext(id.clone()))?;
 
                     ui.window = match id {
                         ContextId::Artist { .. } => WindowState::Artist {

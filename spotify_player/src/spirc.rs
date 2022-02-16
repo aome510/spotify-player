@@ -1,5 +1,3 @@
-use std::sync::mpsc;
-
 use crate::{config, event::ClientRequest};
 use librespot_connect::spirc::Spirc;
 use librespot_core::{
@@ -13,13 +11,14 @@ use librespot_playback::{
     mixer::{self, Mixer},
     player::Player,
 };
+use tokio::sync::{broadcast, mpsc};
 
-#[tokio::main]
-/// create a new librespot connection running in the background
+/// create a new spirc connection running in the background
 pub async fn new_connection(
     session: Session,
-    send: mpsc::Sender<ClientRequest>,
     device: config::DeviceConfig,
+    client_pub: mpsc::Sender<ClientRequest>,
+    mut spirc_sub: broadcast::Receiver<()>,
 ) {
     // librespot volume is a u16 number ranging from 0 to 65535,
     // while a percentage volume value (from 0 to 100) is used for the device configuration.
@@ -60,15 +59,27 @@ pub async fn new_connection(
         move || backend(None, AudioFormat::default()),
     );
 
-    tokio::spawn(async move {
-        while let Some(event) = channel.recv().await {
-            tracing::info!("got a librespot player event: {:?}", event);
-            send.send(ClientRequest::GetCurrentPlayback).unwrap();
+    tokio::task::spawn({
+        let client_pub = client_pub.clone();
+        async move {
+            while let Some(event) = channel.recv().await {
+                tracing::info!("got a librespot player event: {:?}", event);
+                client_pub
+                    .send(ClientRequest::GetCurrentPlayback)
+                    .await
+                    .unwrap_or_default();
+            }
         }
     });
 
     tracing::info!("starting an integrated Spotify client using librespot's spirc protocol...");
 
-    let (_spirc, spirc_task) = Spirc::new(connect_config, session, player, mixer);
-    spirc_task.await;
+    let (spirc, spirc_task) = Spirc::new(connect_config, session, player, mixer);
+    tokio::select! {
+        _ = spirc_task => {}
+        _ = spirc_sub.recv() => {
+            tracing::info!("got reconnect request, shutdown the current connection to create a new spirc connection...");
+            spirc.shutdown();
+        }
+    }
 }

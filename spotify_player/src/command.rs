@@ -22,6 +22,8 @@ pub enum Command {
 
     RefreshPlayback,
 
+    ReconnectIntegratedClient,
+
     FocusNextWindow,
     FocusPreviousWindow,
 
@@ -74,6 +76,7 @@ impl Command {
             Self::Quit => "quit the application",
             Self::OpenCommandHelp => "open a command help popup",
             Self::ClosePopup => "close a popup",
+            Self::ReconnectIntegratedClient => "reconnect the integrated librespot client",
             Self::SelectNextOrScrollDown => "select the next item in a list/table or scroll down",
             Self::SelectPreviousOrScrollUp => {
                 "select the previous item in a list/table or scroll up"
