@@ -5,9 +5,8 @@ use tui::widgets::*;
 
 pub type UIStateGuard<'a> = parking_lot::MutexGuard<'a, UIState>;
 
-// TODO: improve the documentation for UI states' struct
-
-/// UI state
+/// Application's UI state which consists of multiple smaller, separate states
+/// (window, page, popup, current input, etc).
 #[derive(Debug)]
 pub struct UIState {
     pub is_running: bool,
@@ -18,10 +17,12 @@ pub struct UIState {
     pub popup: Option<PopupState>,
     pub window: WindowState,
 
+    // the rectangle representing the player's progress bar position,
+    // which is mainly used to handle mouse click events (for track seeking)
     pub progress_bar_rect: tui::layout::Rect,
 }
 
-/// Page state
+/// A state representation of a UI page.
 #[derive(Clone, Debug)]
 pub enum PageState {
     Library,
@@ -39,7 +40,11 @@ pub enum ContextPageType {
     Browsing(ContextId),
 }
 
-/// Window state
+/// A state representation of a UI window.
+///
+/// A window is a component of a page which can consist of multiple sub-windows.
+/// A window with more than one sub-window will need to have a variable representing
+/// the focusing state/the currently focused sub-window of that window.
 #[derive(Debug)]
 pub enum WindowState {
     Unknown,
@@ -73,7 +78,10 @@ pub enum WindowState {
     },
 }
 
-/// Popup state
+/// A state representation of a UI popup.
+///
+/// A popup is often used to represent a temporary interaction
+/// with the application to make a request or get additional information.
 #[derive(Debug)]
 pub enum PopupState {
     CommandHelp { offset: usize },
@@ -94,13 +102,13 @@ pub enum PlaylistPopupAction {
     AddTrack(TrackId),
 }
 
-/// A trait representing a focusable state
+/// A trait representing a focusable component
 pub trait Focusable {
     fn next(&mut self);
     fn previous(&mut self);
 }
 
-/// Artist Focus state
+/// Library page focus state
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum LibraryFocusState {
     Playlists,
@@ -108,7 +116,7 @@ pub enum LibraryFocusState {
     FollowedArtists,
 }
 
-/// Artist Focus state
+/// Artist page focus state
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ArtistFocusState {
     TopTracks,
@@ -116,7 +124,7 @@ pub enum ArtistFocusState {
     RelatedArtists,
 }
 
-/// Search Focus state
+/// Search page focus state
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum SearchFocusState {
     Input,
@@ -158,7 +166,8 @@ impl Default for UIState {
 }
 
 impl PageState {
-    /// returns the context URI of the current page (if is a context page)
+    /// The context URI of the current page.
+    /// Returns `None` if the current page is not a context page.
     pub fn context_uri(&self) -> Option<String> {
         match self {
             Self::Context(context_id, _) => context_id.as_ref().map(|id| id.uri()),
