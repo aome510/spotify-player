@@ -233,7 +233,7 @@ pub fn handle_key_sequence_for_search_window(
     };
 
     let (input, current_query) = match ui.current_page_mut() {
-        PageState::Searching {
+        PageState::Search {
             input,
             current_query,
         } => (input, current_query),

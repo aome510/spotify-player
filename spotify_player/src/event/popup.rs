@@ -261,7 +261,7 @@ fn handle_key_sequence_for_search_popup(
                     drop(ui);
                     window::handle_key_sequence_for_context_window(key_sequence, client_pub, state)
                 }
-                PageState::Searching { .. } => Ok(false),
+                PageState::Search { .. } => Ok(false),
             },
         },
         None => Ok(false),

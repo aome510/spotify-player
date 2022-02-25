@@ -5,8 +5,7 @@ use tui::widgets::*;
 
 pub type UIStateGuard<'a> = parking_lot::MutexGuard<'a, UIState>;
 
-/// Application's UI state which consists of multiple smaller, separate states
-/// (window, page, popup, current input, etc).
+/// Application's UI state
 #[derive(Debug)]
 pub struct UIState {
     pub is_running: bool,
@@ -15,7 +14,6 @@ pub struct UIState {
 
     pub history: Vec<PageState>,
     pub popup: Option<PopupState>,
-    pub window: WindowState,
 
     // the rectangle representing the player's progress bar position,
     // which is mainly used to handle mouse click events (for track seeking)
@@ -25,35 +23,41 @@ pub struct UIState {
 /// A state representation of a UI page.
 #[derive(Clone, Debug)]
 pub enum PageState {
-    Library,
-    Context(Option<ContextId>, ContextPageType),
-    Searching {
-        input: String,
-        current_query: String,
-    },
-    Recommendations(SeedItem),
-}
-
-#[derive(Clone, Debug)]
-pub enum ContextPageType {
-    CurrentPlaying,
-    Browsing(ContextId),
-}
-
-/// A state representation of a UI window.
-///
-/// A window is a component of a page which can consist of multiple sub-windows.
-/// A window with more than one sub-window will need to have a variable representing
-/// the focusing state/the currently focused sub-window of that window.
-#[derive(Debug)]
-pub enum WindowState {
-    Unknown,
     Library {
         playlist_list: ListState,
         saved_album_list: ListState,
         followed_artist_list: ListState,
         focus: LibraryFocusState,
     },
+    Context {
+        id: Option<ContextId>,
+        context_page_type: ContextPageType,
+        state: ContextPageState,
+    },
+    Search {
+        input: String,
+        current_query: String,
+        track_list: ListState,
+        album_list: ListState,
+        artist_list: ListState,
+        playlist_list: ListState,
+        focus: SearchFocusState,
+    },
+    Tracks {
+        title: String,
+        desc: String,
+        track_list: ListState,
+    },
+}
+
+#[derive(Clone, Debug)]
+pub enum ContextPageType {
+    CurrentPlaying,
+    Browsing,
+}
+
+#[derive(Clone, Debug)]
+pub enum ContextPageState {
     Playlist {
         track_table: TableState,
     },
@@ -66,22 +70,8 @@ pub enum WindowState {
         related_artist_list: ListState,
         focus: ArtistFocusState,
     },
-    Search {
-        track_list: ListState,
-        album_list: ListState,
-        artist_list: ListState,
-        playlist_list: ListState,
-        focus: SearchFocusState,
-    },
-    Recommendations {
-        track_table: TableState,
-    },
 }
 
-/// A state representation of a UI popup.
-///
-/// A popup is often used to represent a temporary interaction
-/// with the application to make a request or get additional information.
 #[derive(Debug)]
 pub enum PopupState {
     CommandHelp { offset: usize },
@@ -100,12 +90,6 @@ pub enum PopupState {
 pub enum PlaylistPopupAction {
     Browse,
     AddTrack(TrackId),
-}
-
-/// A trait representing a focusable component
-pub trait Focusable {
-    fn next(&mut self);
-    fn previous(&mut self);
 }
 
 /// Library page focus state
@@ -134,6 +118,11 @@ pub enum SearchFocusState {
     Playlists,
 }
 
+pub enum MutableWindowState<'a> {
+    Table(&'a mut TableState),
+    List(&'a mut ListState),
+}
+
 impl UIState {
     pub fn current_page(&self) -> &PageState {
         self.history.last().expect("History must not be empty")
@@ -156,9 +145,8 @@ impl Default for UIState {
             theme: config::Theme::default(),
             input_key_sequence: key::KeySequence { keys: vec![] },
 
-            history: vec![PageState::Library],
+            history: vec![PageState::new_library()],
             popup: None,
-            window: WindowState::Unknown,
 
             progress_bar_rect: tui::layout::Rect::default(),
         }
@@ -170,21 +158,91 @@ impl PageState {
     /// Returns `None` if the current page is not a context page.
     pub fn context_uri(&self) -> Option<String> {
         match self {
-            Self::Context(context_id, _) => context_id.as_ref().map(|id| id.uri()),
+            Self::Context { id, .. } => id.as_ref().map(|id| id.uri()),
             _ => None,
         }
     }
-}
 
-impl WindowState {
-    /// creates a new window search state
-    pub fn new_search_state() -> Self {
-        Self::Search {
+    pub fn new_library() -> PageState {
+        PageState::Library {
+            playlist_list: utils::new_list_state(),
+            saved_album_list: utils::new_list_state(),
+            followed_artist_list: utils::new_list_state(),
+            focus: LibraryFocusState::Playlists,
+        }
+    }
+
+    pub fn new_search() -> PageState {
+        PageState::Search {
+            input: String::new(),
+            current_query: String::new(),
             track_list: utils::new_list_state(),
             album_list: utils::new_list_state(),
             artist_list: utils::new_list_state(),
             playlist_list: utils::new_list_state(),
             focus: SearchFocusState::Input,
+        }
+    }
+
+    /// focus a window in the current page
+    pub fn focus_window_state_mut<'a>(&'a mut self) -> Option<MutableWindowState<'a>> {
+        match self {
+            Self::Library {
+                playlist_list,
+                saved_album_list,
+                followed_artist_list,
+                focus,
+            } => match focus {
+                LibraryFocusState::Playlists => Some(MutableWindowState::List(saved_album_list)),
+                LibraryFocusState::SavedAlbums => Some(MutableWindowState::List(saved_album_list)),
+                LibraryFocusState::FollowedArtists => {
+                    Some(MutableWindowState::List(followed_artist_list))
+                }
+            },
+            Self::Search {
+                track_list,
+                album_list,
+                artist_list,
+                playlist_list,
+                focus,
+                ..
+            } => match focus {
+                SearchFocusState::Input => None,
+                SearchFocusState::Tracks => Some(MutableWindowState::List(track_list)),
+                SearchFocusState::Albums => Some(MutableWindowState::List(album_list)),
+                SearchFocusState::Artists => Some(MutableWindowState::List(artist_list)),
+                SearchFocusState::Playlists => Some(MutableWindowState::List(playlist_list)),
+            },
+            // Self::Playlist { track_table } => track_table.select(id),
+            // Self::Album { track_table } => track_table.select(id),
+            // Self::Artist {
+            //     top_track_table,
+            //     album_list,
+            //     related_artist_list,
+            //     focus,
+            // } => match focus {
+            //     ArtistFocusState::TopTracks => top_track_table.select(id),
+            //     ArtistFocusState::Albums => album_list.select(id),
+            //     ArtistFocusState::RelatedArtists => related_artist_list.select(id),
+            // },
+            // TODO: handle this!
+            _ => unreachable!(),
+        }
+    }
+}
+
+impl<'a> MutableWindowState<'a> {
+    pub fn select(&self, id: usize) {
+        match self {
+            Self::List(state) => state.select(Some(id)),
+            Self::Table(state) => state.select(Some(id)),
+        }
+    }
+
+    pub fn selected(&self) -> Option<usize> {
+        match self {
+            Self::List(state) => state.selected(),
+            Self::Table(state) => state.selected(),
         }
     }
 }
@@ -235,126 +293,34 @@ impl PopupState {
     }
 }
 
-impl WindowState {
-    /// gets the state of the track table
-    pub fn track_table_state(&mut self) -> Option<&mut TableState> {
-        match self {
-            Self::Playlist { track_table } => Some(track_table),
-            Self::Album { track_table } => Some(track_table),
-            Self::Artist {
-                top_track_table, ..
-            } => Some(top_track_table),
-            Self::Recommendations { track_table } => Some(track_table),
-            _ => None,
-        }
-    }
-
-    /// selects a position in the currently focused list/table of the window
-    pub fn select(&mut self, id: Option<usize>) {
-        match self {
-            Self::Unknown => {}
-            Self::Library {
-                playlist_list,
-                saved_album_list,
-                followed_artist_list,
-                focus,
-            } => match focus {
-                LibraryFocusState::Playlists => playlist_list.select(id),
-                LibraryFocusState::SavedAlbums => saved_album_list.select(id),
-                LibraryFocusState::FollowedArtists => followed_artist_list.select(id),
-            },
-            Self::Search {
-                track_list,
-                album_list,
-                artist_list,
-                playlist_list,
-                focus,
-            } => match focus {
-                SearchFocusState::Input => {}
-                SearchFocusState::Tracks => track_list.select(id),
-                SearchFocusState::Albums => album_list.select(id),
-                SearchFocusState::Artists => artist_list.select(id),
-                SearchFocusState::Playlists => playlist_list.select(id),
-            },
-            Self::Playlist { track_table } => track_table.select(id),
-            Self::Album { track_table } => track_table.select(id),
-            Self::Artist {
-                top_track_table,
-                album_list,
-                related_artist_list,
-                focus,
-            } => match focus {
-                ArtistFocusState::TopTracks => top_track_table.select(id),
-                ArtistFocusState::Albums => album_list.select(id),
-                ArtistFocusState::RelatedArtists => related_artist_list.select(id),
-            },
-            Self::Recommendations { track_table } => track_table.select(id),
-        }
-    }
-
-    /// gets the selected position in the currently focused list/table of the window
-    pub fn selected(&self) -> Option<usize> {
-        match self {
-            Self::Unknown => None,
-            Self::Library {
-                playlist_list,
-                saved_album_list,
-                followed_artist_list,
-                focus,
-            } => match focus {
-                LibraryFocusState::Playlists => playlist_list.selected(),
-                LibraryFocusState::SavedAlbums => saved_album_list.selected(),
-                LibraryFocusState::FollowedArtists => followed_artist_list.selected(),
-            },
-            Self::Search {
-                track_list,
-                album_list,
-                artist_list,
-                playlist_list,
-                focus,
-            } => match focus {
-                SearchFocusState::Input => None,
-                SearchFocusState::Tracks => track_list.selected(),
-                SearchFocusState::Albums => album_list.selected(),
-                SearchFocusState::Artists => artist_list.selected(),
-                SearchFocusState::Playlists => playlist_list.selected(),
-            },
-            Self::Playlist { track_table } => track_table.selected(),
-            Self::Album { track_table } => track_table.selected(),
-            Self::Artist {
-                top_track_table,
-                album_list,
-                related_artist_list,
-                focus,
-            } => match focus {
-                ArtistFocusState::TopTracks => top_track_table.selected(),
-                ArtistFocusState::Albums => album_list.selected(),
-                ArtistFocusState::RelatedArtists => related_artist_list.selected(),
-            },
-            Self::Recommendations { track_table } => track_table.selected(),
-        }
-    }
+pub trait Focusable {
+    fn next(&mut self);
+    fn previous(&mut self);
 }
 
-impl Focusable for WindowState {
+impl Focusable for PageState {
     fn next(&mut self) {
         match self {
-            Self::Artist { focus, .. } => focus.next(),
             Self::Search { focus, .. } => focus.next(),
             Self::Library { focus, .. } => focus.next(),
+            // TODO: handle this!
             _ => {}
         }
-        self.select(Some(0));
+
+        // reset the list/table state of the focus window
+        self.focus_window_state_mut().map(|state| state.select(0));
     }
 
     fn previous(&mut self) {
         match self {
-            Self::Artist { focus, .. } => focus.previous(),
             Self::Search { focus, .. } => focus.previous(),
             Self::Library { focus, .. } => focus.previous(),
+            // TODO: handle this!
             _ => {}
         }
-        self.select(Some(0));
+
+        // reset the list/table state of the focus window
+        self.focus_window_state_mut().map(|state| state.select(0));
     }
 }
 

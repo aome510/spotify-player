@@ -10,7 +10,7 @@ use tui::{layout::*, style::*, text::*, widgets::*};
 pub fn render_search_window(is_active: bool, frame: &mut Frame, state: &SharedState, rect: Rect) {
     // gets the current search query from UI's `PageState`
     let (input, current_query) = match state.ui.lock().current_page() {
-        PageState::Searching {
+        PageState::Search {
             input,
             current_query,
         } => (input.clone(), current_query.clone()),

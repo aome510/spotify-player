@@ -74,7 +74,7 @@ fn handle_page_state_change(
                 }
             }
         },
-        PageState::Searching { current_query, .. } => match ui.window {
+        PageState::Search { current_query, .. } => match ui.window {
             WindowState::Search { .. } => {}
             _ => {
                 client_pub.blocking_send(ClientRequest::Search(current_query.clone()))?;
@@ -181,7 +181,7 @@ fn render_main_layout(is_active: bool, frame: &mut Frame, state: &SharedState, r
             drop(ui);
             window::render_recommendation_window(is_active, frame, state, chunks[1]);
         }
-        PageState::Searching { .. } => {
+        PageState::Search { .. } => {
             drop(ui);
             // make sure that the window state matches the current page state.
             // The mismatch can happen when going back to the search from another page

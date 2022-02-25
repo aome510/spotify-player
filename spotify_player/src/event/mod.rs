@@ -131,7 +131,7 @@ fn handle_key_event(
                         state,
                     )?
                 }
-                PageState::Searching { .. } => {
+                PageState::Search { .. } => {
                     drop(ui);
                     window::handle_key_sequence_for_search_window(&key_sequence, client_pub, state)?
                 }
@@ -248,7 +248,7 @@ fn handle_global_command(
             ui.create_new_page(PageState::Library);
         }
         Command::SearchPage => {
-            ui.create_new_page(PageState::Searching {
+            ui.create_new_page(PageState::Search {
                 input: "".to_owned(),
                 current_query: "".to_owned(),
             });
