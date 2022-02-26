@@ -209,12 +209,24 @@ pub fn render_context_window(is_active: bool, frame: &mut Frame, state: &SharedS
                     );
                 }
                 Context::Playlist { tracks, .. } => {
-                    let items = ui.search_filtered_items(tracks);
-                    render_track_table_window(frame, chunks[1], is_active, state, &mut ui, items);
+                    render_track_table_window(
+                        frame,
+                        chunks[1],
+                        is_active,
+                        state,
+                        ui.search_filtered_items(tracks),
+                        &mut ui,
+                    );
                 }
                 Context::Album { tracks, .. } => {
-                    let items = ui.search_filtered_items(tracks);
-                    render_track_table_window(frame, chunks[1], is_active, state, &mut ui, items);
+                    render_track_table_window(
+                        frame,
+                        chunks[1],
+                        is_active,
+                        state,
+                        ui.search_filtered_items(tracks),
+                        &mut ui,
+                    );
                 }
             }
         }
@@ -398,8 +410,8 @@ fn render_artist_context_page_windows(
             chunks[0],
             is_active && focus_state == ArtistFocusState::TopTracks,
             state,
-            &mut ui,
             tracks,
+            &mut ui,
         );
 
         chunks[1]
@@ -464,8 +476,8 @@ pub fn render_track_table_window(
     rect: Rect,
     is_active: bool,
     state: &SharedState,
-    ui: &mut UIStateGuard,
     tracks: Vec<&Track>,
+    ui: &mut UIStateGuard,
 ) {
     // get the current playing track's URI to
     // highlight such track (if exists) in the track table

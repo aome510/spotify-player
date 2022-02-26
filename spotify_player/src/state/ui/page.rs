@@ -132,13 +132,13 @@ impl PageState {
                         followed_artist_list,
                         focus,
                     },
-            } => match focus {
-                LibraryFocusState::Playlists => Some(MutableWindowState::List(playlist_list)),
-                LibraryFocusState::SavedAlbums => Some(MutableWindowState::List(saved_album_list)),
+            } => Some(match focus {
+                LibraryFocusState::Playlists => MutableWindowState::List(playlist_list),
+                LibraryFocusState::SavedAlbums => MutableWindowState::List(saved_album_list),
                 LibraryFocusState::FollowedArtists => {
-                    Some(MutableWindowState::List(followed_artist_list))
+                    MutableWindowState::List(followed_artist_list)
                 }
-            },
+            }),
             Self::Search {
                 state:
                     SearchPageUIState {
@@ -156,18 +156,29 @@ impl PageState {
                 SearchFocusState::Artists => Some(MutableWindowState::List(artist_list)),
                 SearchFocusState::Playlists => Some(MutableWindowState::List(playlist_list)),
             },
-            // Self::Playlist { track_table } => track_table.select(id),
-            // Self::Album { track_table } => track_table.select(id),
-            // Self::Artist {
-            //     top_track_table,
-            //     album_list,
-            //     related_artist_list,
-            //     focus,
-            // } => match focus {
-            //     ArtistFocusState::TopTracks => top_track_table.select(id),
-            //     ArtistFocusState::Albums => album_list.select(id),
-            //     ArtistFocusState::RelatedArtists => related_artist_list.select(id),
-            // },
+            Self::Context { state, .. } => match state {
+                None => None,
+                Some(state) => Some(match state {
+                    ContextPageUIState::Playlist { track_table } => {
+                        MutableWindowState::Table(track_table)
+                    }
+                    ContextPageUIState::Album { track_table } => {
+                        MutableWindowState::Table(track_table)
+                    }
+                    ContextPageUIState::Artist {
+                        top_track_table,
+                        album_list,
+                        related_artist_list,
+                        focus,
+                    } => match focus {
+                        ArtistFocusState::TopTracks => MutableWindowState::Table(top_track_table),
+                        ArtistFocusState::Albums => MutableWindowState::List(album_list),
+                        ArtistFocusState::RelatedArtists => {
+                            MutableWindowState::List(related_artist_list)
+                        }
+                    },
+                }),
+            },
             // TODO: handle this!
             _ => unreachable!(),
         }

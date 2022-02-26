@@ -114,6 +114,9 @@ fn handle_key_event(
             PageType::Search => {
                 page::handle_key_sequence_for_search_page(&key_sequence, client_pub, state)?
             }
+            PageType::Context => {
+                page::handle_key_sequence_for_context_page(&key_sequence, client_pub, state)?
+            }
             // TODO: handle this
             _ => false, // PageState::Context(..) => {
                         //     drop(ui);
