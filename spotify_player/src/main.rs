@@ -116,13 +116,13 @@ async fn main() -> anyhow::Result<()> {
     });
 
     // terminal event handler task
-    tokio::task::spawn_blocking({
-        let client_pub = client_pub.clone();
-        let state = state.clone();
-        move || {
-            event::start_event_handler(state, client_pub);
-        }
-    });
+    // tokio::task::spawn_blocking({
+    //     let client_pub = client_pub.clone();
+    //     let state = state.clone();
+    //     move || {
+    //         event::start_event_handler(state, client_pub);
+    //     }
+    // });
 
     // player event watcher task
     tokio::task::spawn_blocking({
@@ -134,9 +134,9 @@ async fn main() -> anyhow::Result<()> {
     });
 
     // application's UI as the main task
-    tokio::task::spawn_blocking(move || {
-        ui::start_ui(state, client_pub).unwrap();
-    })
-    .await?;
+    // tokio::task::spawn_blocking(move || {
+    //     ui::start_ui(state, client_pub).unwrap();
+    // })
+    // .await?;
     std::process::exit(0);
 }
