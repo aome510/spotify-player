@@ -74,16 +74,28 @@ fn render_main_layout(is_active: bool, frame: &mut Frame, state: &SharedState, r
         .split(rect);
     render_playback_window(frame, state, chunks[0]);
 
-    let ui = state.ui.lock();
-    match ui.current_page() {
-        PageState::Library { .. } => {
-            page::render_library_window(is_active, frame, state, chunks[1]);
-        }
-        PageState::Context { .. } => {
-            page::render_context_window(is_active, frame, state, chunks[1]);
-        }
-        PageState::Search { .. } => {
-            page::render_search_window(is_active, frame, state, chunks[1]);
+    let mut ui = state.ui.lock();
+    match ui.current_page_mut() {
+        // PageState::Library {  } => {
+        //     page::render_library_window(is_active, frame, state, chunks[1]);
+        // }
+        // PageState::Context { .. } => {
+        //     page::render_context_window(is_active, frame, state, chunks[1]);
+        // }
+        PageState::Search {
+            current_query,
+            input,
+            state: page_ui_state,
+        } => {
+            page::render_search_page(
+                is_active,
+                frame,
+                chunks[1],
+                state,
+                input,
+                current_query,
+                page_ui_state,
+            );
         }
         // TODO: handle this!
         _ => {}
