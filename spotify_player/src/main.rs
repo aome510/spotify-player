@@ -99,6 +99,15 @@ async fn main() -> anyhow::Result<()> {
     client_pub
         .send(event::ClientRequest::GetCurrentPlayback)
         .await?;
+    client_pub
+        .send(event::ClientRequest::GetUserPlaylists)
+        .await?;
+    client_pub
+        .send(event::ClientRequest::GetUserFollowedArtists)
+        .await?;
+    client_pub
+        .send(event::ClientRequest::GetUserSavedAlbums)
+        .await?;
 
     // client event handler task
     tokio::task::spawn({
