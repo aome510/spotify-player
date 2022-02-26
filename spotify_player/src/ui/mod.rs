@@ -77,23 +77,11 @@ fn render_main_layout(is_active: bool, frame: &mut Frame, state: &SharedState, r
         PageType::Library => {
             page::render_library_page(is_active, frame, state, chunks[1]);
         }
+        PageType::Search => {
+            page::render_search_page(is_active, frame, state, chunks[1]);
+        }
         // PageState::Context { .. } => {
         //     page::render_context_window(is_active, frame, state, chunks[1]);
-        // }
-        // PageState::Search {
-        //     current_query,
-        //     input,
-        //     state: page_ui_state,
-        // } => {
-        //     page::render_search_page(
-        //         is_active,
-        //         frame,
-        //         chunks[1],
-        //         state,
-        //         input,
-        //         current_query,
-        //         page_ui_state,
-        //     );
         // }
         // TODO: handle this!
         _ => {}

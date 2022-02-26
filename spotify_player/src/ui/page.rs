@@ -1,145 +1,153 @@
 use super::*;
 
-// pub fn render_search_page(
-//     is_active: bool,
-//     frame: &mut Frame,
-//     rect: Rect,
-//     state: &SharedState,
-//     input: &str,
-//     current_query: &str,
-//     page_ui_state: &mut SearchPageUIState,
-// ) {
-//     let data = state.data.read();
+pub fn render_search_page(is_active: bool, frame: &mut Frame, state: &SharedState, rect: Rect) {
+    let mut ui = state.ui.lock();
+    let data = state.data.read();
 
-//     let search_results = data.caches.search.peek(current_query);
+    let (focus_state, current_query, input) = match ui.current_page() {
+        PageState::Search {
+            state,
+            current_query,
+            input,
+        } => (state.focus, current_query, input),
+        _ => unreachable!("expect a library page state"),
+    };
 
-//     let track_list = {
-//         let track_items = search_results
-//             .map(|s| {
-//                 s.tracks
-//                     .iter()
-//                     .map(|a| (format!("{} - {}", a.name, a.artists_info()), false))
-//                     .collect::<Vec<_>>()
-//             })
-//             .unwrap_or_default();
+    let search_results = data.caches.search.peek(current_query);
 
-//         let is_active = is_active && page_ui_state.focus == SearchFocusState::Tracks;
+    let track_list = {
+        let track_items = search_results
+            .map(|s| {
+                s.tracks
+                    .iter()
+                    .map(|a| (format!("{} - {}", a.name, a.artists_info()), false))
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
 
-//         construct_list_widget(
-//             state,
-//             track_items,
-//             &format!("Tracks{}", if is_active { " [*]" } else { "" }),
-//             is_active,
-//             Some(Borders::TOP | Borders::RIGHT),
-//         )
-//     };
+        let is_active = is_active && focus_state == SearchFocusState::Tracks;
 
-//     let album_list = {
-//         let album_items = search_results
-//             .map(|s| {
-//                 s.albums
-//                     .iter()
-//                     .map(|a| (a.name.clone(), false))
-//                     .collect::<Vec<_>>()
-//             })
-//             .unwrap_or_default();
+        construct_list_widget(
+            &ui.theme,
+            track_items,
+            &format!("Tracks{}", if is_active { " [*]" } else { "" }),
+            is_active,
+            Some(Borders::TOP | Borders::RIGHT),
+        )
+    };
 
-//         let is_active = is_active && page_ui_state.focus == SearchFocusState::Albums;
+    let album_list = {
+        let album_items = search_results
+            .map(|s| {
+                s.albums
+                    .iter()
+                    .map(|a| (a.name.clone(), false))
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
 
-//         construct_list_widget(
-//             state,
-//             album_items,
-//             &format!("Albums{}", if is_active { " [*]" } else { "" }),
-//             is_active,
-//             Some(Borders::TOP),
-//         )
-//     };
+        let is_active = is_active && focus_state == SearchFocusState::Albums;
 
-//     let artist_list = {
-//         let artist_items = search_results
-//             .map(|s| {
-//                 s.artists
-//                     .iter()
-//                     .map(|a| (a.name.clone(), false))
-//                     .collect::<Vec<_>>()
-//             })
-//             .unwrap_or_default();
+        construct_list_widget(
+            &ui.theme,
+            album_items,
+            &format!("Albums{}", if is_active { " [*]" } else { "" }),
+            is_active,
+            Some(Borders::TOP),
+        )
+    };
 
-//         let is_active = is_active && page_ui_state.focus == SearchFocusState::Artists;
+    let artist_list = {
+        let artist_items = search_results
+            .map(|s| {
+                s.artists
+                    .iter()
+                    .map(|a| (a.name.clone(), false))
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
 
-//         construct_list_widget(
-//             state,
-//             artist_items,
-//             &format!("Artists{}", if is_active { " [*]" } else { "" }),
-//             is_active,
-//             Some(Borders::TOP | Borders::RIGHT),
-//         )
-//     };
+        let is_active = is_active && focus_state == SearchFocusState::Artists;
 
-//     let playlist_list = {
-//         let playlist_items = search_results
-//             .map(|s| {
-//                 s.playlists
-//                     .iter()
-//                     .map(|a| (a.name.clone(), false))
-//                     .collect::<Vec<_>>()
-//             })
-//             .unwrap_or_default();
+        construct_list_widget(
+            &ui.theme,
+            artist_items,
+            &format!("Artists{}", if is_active { " [*]" } else { "" }),
+            is_active,
+            Some(Borders::TOP | Borders::RIGHT),
+        )
+    };
 
-//         let is_active = is_active && page_ui_state.focus == SearchFocusState::Playlists;
+    let playlist_list = {
+        let playlist_items = search_results
+            .map(|s| {
+                s.playlists
+                    .iter()
+                    .map(|a| (a.name.clone(), false))
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
 
-//         construct_list_widget(
-//             state,
-//             playlist_items,
-//             &format!("Playlists{}", if is_active { " [*]" } else { "" }),
-//             is_active,
-//             Some(Borders::TOP),
-//         )
-//     };
+        let is_active = is_active && focus_state == SearchFocusState::Playlists;
 
-//     // renders borders with title
-//     let block = Block::default()
-//         .title(state.ui.lock().theme.block_title_with_style("Search"))
-//         .borders(Borders::ALL);
-//     frame.render_widget(block, rect);
+        construct_list_widget(
+            &ui.theme,
+            playlist_items,
+            &format!("Playlists{}", if is_active { " [*]" } else { "" }),
+            is_active,
+            Some(Borders::TOP),
+        )
+    };
 
-//     // renders the query input box
-//     let rect = {
-//         let chunks = Layout::default()
-//             .direction(Direction::Vertical)
-//             .margin(1)
-//             .constraints([Constraint::Length(1), Constraint::Min(0)].as_ref())
-//             .split(rect);
+    // renders borders with title
+    let block = Block::default()
+        .title(ui.theme.block_title_with_style("Search"))
+        .borders(Borders::ALL);
+    frame.render_widget(block, rect);
 
-//         let is_active = is_active && page_ui_state.focus == SearchFocusState::Input;
+    // renders the query input box
+    let rect = {
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .margin(1)
+            .constraints([Constraint::Length(1), Constraint::Min(0)].as_ref())
+            .split(rect);
 
-//         frame.render_widget(
-//             Paragraph::new(input).style(state.ui.lock().theme.selection_style(is_active)),
-//             chunks[0],
-//         );
+        let is_active = is_active && focus_state == SearchFocusState::Input;
 
-//         chunks[1]
-//     };
+        frame.render_widget(
+            Paragraph::new(input.clone()).style(ui.theme.selection_style(is_active)),
+            chunks[0],
+        );
 
-//     // split the given `rect` layout into a 2x2 layout consiting of 4 chunks
-//     let chunks = Layout::default()
-//         .direction(Direction::Vertical)
-//         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
-//         .split(rect)
-//         .into_iter()
-//         .flat_map(|rect| {
-//             Layout::default()
-//                 .direction(Direction::Horizontal)
-//                 .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
-//                 .split(rect)
-//         })
-//         .collect::<Vec<_>>();
+        chunks[1]
+    };
 
-//     frame.render_stateful_widget(track_list, chunks[0], &mut page_ui_state.track_list);
-//     frame.render_stateful_widget(album_list, chunks[1], &mut page_ui_state.album_list);
-//     frame.render_stateful_widget(artist_list, chunks[2], &mut page_ui_state.artist_list);
-//     frame.render_stateful_widget(playlist_list, chunks[3], &mut page_ui_state.playlist_list);
-// }
+    // split the given `rect` layout into a 2x2 layout consiting of 4 chunks
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
+        .split(rect)
+        .into_iter()
+        .flat_map(|rect| {
+            Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
+                .split(rect)
+        })
+        .collect::<Vec<_>>();
+
+    // Render the search page's windows.
+    // Will need mutable access to the list/table states stored inside the page state for rendering.
+    let page_state = match ui.current_page_mut() {
+        PageState::Search { state, .. } => state,
+        _ => unreachable!("expect a library page state"),
+    };
+    frame.render_stateful_widget(track_list, chunks[0], &mut page_state.track_list);
+    frame.render_stateful_widget(album_list, chunks[1], &mut page_state.album_list);
+    frame.render_stateful_widget(artist_list, chunks[2], &mut page_state.artist_list);
+    frame.render_stateful_widget(playlist_list, chunks[3], &mut page_state.playlist_list);
+}
 
 // // pub fn render_context_window(is_active: bool, frame: &mut Frame, state: &SharedState, rect: Rect) {
 // //     let block = Block::default()
