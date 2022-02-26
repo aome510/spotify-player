@@ -44,8 +44,7 @@ pub fn render_popup(frame: &mut Frame, state: &SharedState, rect: Rect) -> (Rect
                     .constraints([Constraint::Length(7), Constraint::Min(0)].as_ref())
                     .split(rect);
 
-                drop(ui);
-                render_commands_help_popup(frame, state, chunks[1]);
+                render_commands_help_popup(frame, state, ui, chunks[1]);
                 (chunks[0], false)
             }
             PopupState::ActionList(item, _) => {
@@ -55,8 +54,7 @@ pub fn render_popup(frame: &mut Frame, state: &SharedState, rect: Rect) -> (Rect
                     .map(|a| (format!("{:?}", a), false))
                     .collect();
 
-                drop(ui);
-                let rect = render_list_popup(frame, state, rect, "Actions", items, 7);
+                let rect = render_list_popup(frame, ui, rect, "Actions", items, 7);
                 (rect, false)
             }
             PopupState::DeviceList { .. } => {
@@ -72,15 +70,13 @@ pub fn render_popup(frame: &mut Frame, state: &SharedState, rect: Rect) -> (Rect
                     .map(|d| (format!("{} | {}", d.name, d.id), current_device_id == d.id))
                     .collect();
 
-                drop(ui);
-                let rect = render_list_popup(frame, state, rect, "Devices", items, 5);
+                let rect = render_list_popup(frame, ui, rect, "Devices", items, 5);
                 (rect, false)
             }
             PopupState::ThemeList(themes, ..) => {
                 let items = themes.iter().map(|t| (t.name.clone(), false)).collect();
 
-                drop(ui);
-                let rect = render_list_popup(frame, state, rect, "Themes", items, 7);
+                let rect = render_list_popup(frame, ui, rect, "Themes", items, 7);
                 (rect, false)
             }
             PopupState::UserPlaylistList(action, _) => {
@@ -94,8 +90,7 @@ pub fn render_popup(frame: &mut Frame, state: &SharedState, rect: Rect) -> (Rect
                     .map(|p| (p.name.clone(), false))
                     .collect();
 
-                drop(ui);
-                let rect = render_list_popup(frame, state, rect, "User Playlists", items, 10);
+                let rect = render_list_popup(frame, ui, rect, "User Playlists", items, 10);
                 (rect, false)
             }
             PopupState::UserFollowedArtistList { .. } => {
@@ -108,8 +103,7 @@ pub fn render_popup(frame: &mut Frame, state: &SharedState, rect: Rect) -> (Rect
                     .map(|a| (a.name.clone(), false))
                     .collect();
 
-                drop(ui);
-                let rect = render_list_popup(frame, state, rect, "User Followed Artists", items, 7);
+                let rect = render_list_popup(frame, ui, rect, "User Followed Artists", items, 7);
                 (rect, false)
             }
             PopupState::UserSavedAlbumList { .. } => {
@@ -122,15 +116,13 @@ pub fn render_popup(frame: &mut Frame, state: &SharedState, rect: Rect) -> (Rect
                     .map(|a| (a.name.clone(), false))
                     .collect();
 
-                drop(ui);
-                let rect = render_list_popup(frame, state, rect, "User Saved Albums", items, 7);
+                let rect = render_list_popup(frame, ui, rect, "User Saved Albums", items, 7);
                 (rect, false)
             }
             PopupState::ArtistList(artists, ..) => {
                 let items = artists.iter().map(|a| (a.name.clone(), false)).collect();
 
-                drop(ui);
-                let rect = render_list_popup(frame, state, rect, "Artists", items, 5);
+                let rect = render_list_popup(frame, ui, rect, "Artists", items, 5);
                 (rect, false)
             }
         },
@@ -140,7 +132,7 @@ pub fn render_popup(frame: &mut Frame, state: &SharedState, rect: Rect) -> (Rect
 /// a helper function to render a list popup
 fn render_list_popup(
     frame: &mut Frame,
-    state: &SharedState,
+    mut ui: UIStateGuard,
     rect: Rect,
     title: &'static str,
     items: Vec<(String, bool)>,
@@ -151,7 +143,6 @@ fn render_list_popup(
         .constraints([Constraint::Min(0), Constraint::Length(length)].as_ref())
         .split(rect);
 
-    let mut ui = state.ui.lock();
     let widget = construct_list_widget(&ui.theme, items, title, true, None);
 
     frame.render_stateful_widget(
@@ -217,9 +208,12 @@ pub fn render_shortcut_help_popup(frame: &mut Frame, state: &SharedState, rect: 
 }
 
 /// renders a command help popup listing all key shortcuts and corresponding descriptions
-pub fn render_commands_help_popup(frame: &mut Frame, state: &SharedState, rect: Rect) {
-    let mut ui = state.ui.lock();
-
+pub fn render_commands_help_popup(
+    frame: &mut Frame,
+    state: &SharedState,
+    mut ui: UIStateGuard,
+    rect: Rect,
+) {
     let offset = match ui.popup {
         Some(PopupState::CommandHelp { ref mut offset }) => offset,
         _ => return,
