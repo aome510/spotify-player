@@ -246,12 +246,12 @@ fn handle_key_sequence_for_search_popup(
     // the popup should be moved to the current page's event handler
     let page_type = state.ui.lock().current_page().page_type();
     match page_type {
-        PageType::Library => page::handle_key_sequence_for_library_page(&key_sequence, state),
+        PageType::Library => page::handle_key_sequence_for_library_page(key_sequence, state),
         PageType::Search => {
-            page::handle_key_sequence_for_search_page(&key_sequence, client_pub, state)
+            page::handle_key_sequence_for_search_page(key_sequence, client_pub, state)
         }
         PageType::Context => {
-            page::handle_key_sequence_for_context_page(&key_sequence, client_pub, state)
+            page::handle_key_sequence_for_context_page(key_sequence, client_pub, state)
         }
         // TODO: handle this
         _ => Ok(false),

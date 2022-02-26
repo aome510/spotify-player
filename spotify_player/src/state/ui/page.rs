@@ -156,29 +156,24 @@ impl PageState {
                 SearchFocusState::Artists => Some(MutableWindowState::List(artist_list)),
                 SearchFocusState::Playlists => Some(MutableWindowState::List(playlist_list)),
             },
-            Self::Context { state, .. } => match state {
-                None => None,
-                Some(state) => Some(match state {
-                    ContextPageUIState::Playlist { track_table } => {
-                        MutableWindowState::Table(track_table)
+            Self::Context { state, .. } => state.as_mut().map(|state| match state {
+                ContextPageUIState::Playlist { track_table } => {
+                    MutableWindowState::Table(track_table)
+                }
+                ContextPageUIState::Album { track_table } => MutableWindowState::Table(track_table),
+                ContextPageUIState::Artist {
+                    top_track_table,
+                    album_list,
+                    related_artist_list,
+                    focus,
+                } => match focus {
+                    ArtistFocusState::TopTracks => MutableWindowState::Table(top_track_table),
+                    ArtistFocusState::Albums => MutableWindowState::List(album_list),
+                    ArtistFocusState::RelatedArtists => {
+                        MutableWindowState::List(related_artist_list)
                     }
-                    ContextPageUIState::Album { track_table } => {
-                        MutableWindowState::Table(track_table)
-                    }
-                    ContextPageUIState::Artist {
-                        top_track_table,
-                        album_list,
-                        related_artist_list,
-                        focus,
-                    } => match focus {
-                        ArtistFocusState::TopTracks => MutableWindowState::Table(top_track_table),
-                        ArtistFocusState::Albums => MutableWindowState::List(album_list),
-                        ArtistFocusState::RelatedArtists => {
-                            MutableWindowState::List(related_artist_list)
-                        }
-                    },
-                }),
-            },
+                },
+            }),
             // TODO: handle this!
             _ => unreachable!(),
         }
