@@ -1,4 +1,5 @@
-// use super::*;
+use super::*;
+use crate::state::UIStateGuard;
 
 // /// handles a key sequence for a context window
 // pub fn handle_key_sequence_for_context_window(
@@ -443,122 +444,122 @@
 //     Ok(true)
 // }
 
-// fn handle_command_for_artist_list_subwindow(
-//     command: Command,
-//     state: &SharedState,
-//     artists: Vec<&Artist>,
-// ) -> Result<bool> {
-//     let mut ui = state.ui.lock();
-//     let id = ui.window.selected().unwrap_or_default();
-//     if id >= artists.len() {
-//         return Ok(false);
-//     }
+pub fn handle_command_for_artist_list_window(
+    command: Command,
+    mut ui: UIStateGuard,
+    artists: Vec<&Artist>,
+) -> Result<bool> {
+    let id = ui.current_page_mut().selected().unwrap_or_default();
+    if id >= artists.len() {
+        return Ok(false);
+    }
 
-//     match command {
-//         Command::SelectNextOrScrollDown => {
-//             if id + 1 < artists.len() {
-//                 ui.window.select(Some(id + 1));
-//             }
-//         }
-//         Command::SelectPreviousOrScrollUp => {
-//             if id > 0 {
-//                 ui.window.select(Some(id - 1));
-//             }
-//         }
-//         Command::ChooseSelected => {
-//             let context_id = ContextId::Artist(artists[id].id.clone());
-//             ui.create_new_page(PageState::Context(
-//                 None,
-//                 ContextPageType::Browsing(context_id),
-//             ));
-//         }
-//         Command::ShowActionsOnSelectedItem => {
-//             ui.popup = Some(PopupState::ActionList(
-//                 Item::Artist(artists[id].clone()),
-//                 new_list_state(),
-//             ));
-//         }
-//         _ => return Ok(false),
-//     }
-//     Ok(true)
-// }
+    match command {
+        Command::SelectNextOrScrollDown => {
+            if id + 1 < artists.len() {
+                ui.current_page_mut().select(id + 1);
+            }
+        }
+        Command::SelectPreviousOrScrollUp => {
+            if id > 0 {
+                ui.current_page_mut().select(id - 1);
+            }
+        }
+        Command::ChooseSelected => {
+            let context_id = ContextId::Artist(artists[id].id.clone());
+            ui.create_new_page(PageState::Context {
+                id: None,
+                context_page_type: ContextPageType::Browsing(context_id),
+                state: None,
+            });
+        }
+        Command::ShowActionsOnSelectedItem => {
+            ui.popup = Some(PopupState::ActionList(
+                Item::Artist(artists[id].clone()),
+                new_list_state(),
+            ));
+        }
+        _ => return Ok(false),
+    }
+    Ok(true)
+}
 
-// fn handle_command_for_album_list_subwindow(
-//     command: Command,
-//     state: &SharedState,
-//     albums: Vec<&Album>,
-// ) -> Result<bool> {
-//     let mut ui = state.ui.lock();
-//     let id = ui.window.selected().unwrap_or_default();
-//     if id >= albums.len() {
-//         return Ok(false);
-//     }
+pub fn handle_command_for_album_list_window(
+    command: Command,
+    mut ui: UIStateGuard,
+    albums: Vec<&Album>,
+) -> Result<bool> {
+    let id = ui.current_page_mut().selected().unwrap_or_default();
+    if id >= albums.len() {
+        return Ok(false);
+    }
 
-//     match command {
-//         Command::SelectNextOrScrollDown => {
-//             if id + 1 < albums.len() {
-//                 ui.window.select(Some(id + 1));
-//             }
-//         }
-//         Command::SelectPreviousOrScrollUp => {
-//             if id > 0 {
-//                 ui.window.select(Some(id - 1));
-//             }
-//         }
-//         Command::ChooseSelected => {
-//             let context_id = ContextId::Album(albums[id].id.clone());
-//             ui.create_new_page(PageState::Context(
-//                 None,
-//                 ContextPageType::Browsing(context_id),
-//             ));
-//         }
-//         Command::ShowActionsOnSelectedItem => {
-//             ui.popup = Some(PopupState::ActionList(
-//                 Item::Album(albums[id].clone()),
-//                 new_list_state(),
-//             ));
-//         }
-//         _ => return Ok(false),
-//     }
-//     Ok(true)
-// }
+    match command {
+        Command::SelectNextOrScrollDown => {
+            if id + 1 < albums.len() {
+                ui.current_page_mut().select(id + 1);
+            }
+        }
+        Command::SelectPreviousOrScrollUp => {
+            if id > 0 {
+                ui.current_page_mut().select(id - 1);
+            }
+        }
+        Command::ChooseSelected => {
+            let context_id = ContextId::Album(albums[id].id.clone());
+            ui.create_new_page(PageState::Context {
+                id: None,
+                context_page_type: ContextPageType::Browsing(context_id),
+                state: None,
+            });
+        }
+        Command::ShowActionsOnSelectedItem => {
+            ui.popup = Some(PopupState::ActionList(
+                Item::Album(albums[id].clone()),
+                new_list_state(),
+            ));
+        }
+        _ => return Ok(false),
+    }
+    Ok(true)
+}
 
-// fn handle_command_for_playlist_list_subwindow(
-//     command: Command,
-//     state: &SharedState,
-//     playlists: Vec<&Playlist>,
-// ) -> Result<bool> {
-//     let mut ui = state.ui.lock();
-//     let id = ui.window.selected().unwrap_or_default();
-//     if id >= playlists.len() {
-//         return Ok(false);
-//     }
+pub fn handle_command_for_playlist_list_window(
+    command: Command,
+    mut ui: UIStateGuard,
+    playlists: Vec<&Playlist>,
+) -> Result<bool> {
+    let id = ui.current_page_mut().selected().unwrap_or_default();
+    if id >= playlists.len() {
+        return Ok(false);
+    }
 
-//     match command {
-//         Command::SelectNextOrScrollDown => {
-//             if id + 1 < playlists.len() {
-//                 ui.window.select(Some(id + 1));
-//             }
-//         }
-//         Command::SelectPreviousOrScrollUp => {
-//             if id > 0 {
-//                 ui.window.select(Some(id - 1));
-//             }
-//         }
-//         Command::ChooseSelected => {
-//             let context_id = ContextId::Playlist(playlists[id].id.clone());
-//             ui.create_new_page(PageState::Context(
-//                 None,
-//                 ContextPageType::Browsing(context_id),
-//             ));
-//         }
-//         Command::ShowActionsOnSelectedItem => {
-//             ui.popup = Some(PopupState::ActionList(
-//                 Item::Playlist(playlists[id].clone()),
-//                 new_list_state(),
-//             ));
-//         }
-//         _ => return Ok(false),
-//     }
-//     Ok(true)
-// }
+    match command {
+        Command::SelectNextOrScrollDown => {
+            if id + 1 < playlists.len() {
+                ui.current_page_mut().select(id + 1);
+            }
+        }
+        Command::SelectPreviousOrScrollUp => {
+            if id > 0 {
+                ui.current_page_mut().select(id - 1);
+            }
+        }
+        Command::ChooseSelected => {
+            let context_id = ContextId::Playlist(playlists[id].id.clone());
+            ui.create_new_page(PageState::Context {
+                id: None,
+                context_page_type: ContextPageType::Browsing(context_id),
+                state: None,
+            });
+        }
+        Command::ShowActionsOnSelectedItem => {
+            ui.popup = Some(PopupState::ActionList(
+                Item::Playlist(playlists[id].clone()),
+                new_list_state(),
+            ));
+        }
+        _ => return Ok(false),
+    }
+    Ok(true)
+}

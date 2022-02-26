@@ -7,9 +7,9 @@ use crate::{
 use anyhow::Result;
 use tokio::sync::mpsc;
 
-// mod page;
+mod page;
 mod popup;
-// mod window;
+mod window;
 
 #[derive(Debug)]
 /// A request that modifies the player's playback
@@ -108,29 +108,23 @@ fn handle_key_event(
 
     let handled = if state.ui.lock().popup.is_none() {
         // no popup
-        // match ui.current_page() {
-        //     PageState::Library {
-        //         state: page_ui_state,
-        //     } => window::handle_key_sequence_for_library_window(
-        //         &key_sequence,
-        //         state,
-        //         page_ui_state,
-        //     )?,
-        //     // TODO: handle this
-        //     _ => {} // PageState::Context(..) => {
-        //             //     drop(ui);
-        //             //     window::handle_key_sequence_for_context_window(
-        //             //         &key_sequence,
-        //             //         client_pub,
-        //             //         state,
-        //             //     )?
-        //             // }
-        //             // PageState::Search { .. } => {
-        //             //     drop(ui);
-        //             //     window::handle_key_sequence_for_search_window(&key_sequence, client_pub, state)?
-        //             // }
-        // }
-        false
+        let page_type = state.ui.lock().current_page().page_type();
+        match page_type {
+            PageType::Library => page::handle_key_sequence_for_library_page(&key_sequence, state)?,
+            // TODO: handle this
+            _ => false, // PageState::Context(..) => {
+                        //     drop(ui);
+                        //     window::handle_key_sequence_for_context_window(
+                        //         &key_sequence,
+                        //         client_pub,
+                        //         state,
+                        //     )?
+                        // }
+                        // PageState::Search { .. } => {
+                        //     drop(ui);
+                        //     window::handle_key_sequence_for_search_window(&key_sequence, client_pub, state)?
+                        // }
+        }
     } else {
         popup::handle_key_sequence_for_popup(&key_sequence, client_pub, state)?
     };
@@ -283,6 +277,16 @@ fn handle_global_command(
         Command::ReconnectIntegratedClient => {
             #[cfg(feature = "streaming")]
             client_pub.blocking_send(ClientRequest::NewSpircConnection)?;
+        }
+        Command::FocusNextWindow => {
+            if ui.popup.is_none() {
+                ui.current_page_mut().next()
+            }
+        }
+        Command::FocusPreviousWindow => {
+            if ui.popup.is_none() {
+                ui.current_page_mut().previous()
+            }
         }
         _ => return Ok(false),
     }
