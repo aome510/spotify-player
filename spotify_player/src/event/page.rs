@@ -12,9 +12,9 @@ pub fn handle_key_sequence_for_library_page(
         None => return Ok(false),
     };
 
+    let mut ui = state.ui.lock();
     match command {
         Command::Search => {
-            let mut ui = state.ui.lock();
             ui.current_page_mut().select(0);
             ui.popup = Some(PopupState::Search {
                 query: "".to_owned(),
@@ -22,7 +22,6 @@ pub fn handle_key_sequence_for_library_page(
             Ok(true)
         }
         _ => {
-            let ui = state.ui.lock();
             let data = state.data.read();
             let focus_state = match ui.current_page() {
                 PageState::Library { state } => state.focus,

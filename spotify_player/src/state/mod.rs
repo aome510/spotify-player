@@ -10,7 +10,6 @@ pub use ui::*;
 
 use crate::config;
 use anyhow::Result;
-use std::collections::{btree_map::Entry, BTreeMap};
 
 pub use parking_lot::{Mutex, RwLock};
 
