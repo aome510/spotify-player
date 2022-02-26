@@ -24,30 +24,40 @@ pub struct UIState {
 #[derive(Clone, Debug)]
 pub enum PageState {
     Library {
-        playlist_list: ListState,
-        saved_album_list: ListState,
-        followed_artist_list: ListState,
-        focus: LibraryFocusState,
+        state: LibraryPageUIState,
     },
     Context {
         id: Option<ContextId>,
         context_page_type: ContextPageType,
-        state: ContextPageState,
+        state: ContextPageUIState,
     },
     Search {
         input: String,
         current_query: String,
-        track_list: ListState,
-        album_list: ListState,
-        artist_list: ListState,
-        playlist_list: ListState,
-        focus: SearchFocusState,
+        state: SearchPageUIState,
     },
     Tracks {
         title: String,
         desc: String,
-        track_list: ListState,
+        state: ListState,
     },
+}
+
+#[derive(Clone, Debug)]
+pub struct LibraryPageUIState {
+    pub playlist_list: ListState,
+    pub saved_album_list: ListState,
+    pub followed_artist_list: ListState,
+    pub focus: LibraryFocusState,
+}
+
+#[derive(Clone, Debug)]
+pub struct SearchPageUIState {
+    pub track_list: ListState,
+    pub album_list: ListState,
+    pub artist_list: ListState,
+    pub playlist_list: ListState,
+    pub focus: SearchFocusState,
 }
 
 #[derive(Clone, Debug)]
@@ -57,7 +67,7 @@ pub enum ContextPageType {
 }
 
 #[derive(Clone, Debug)]
-pub enum ContextPageState {
+pub enum ContextPageUIState {
     Playlist {
         track_table: TableState,
     },
