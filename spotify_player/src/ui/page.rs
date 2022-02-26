@@ -216,8 +216,6 @@ pub fn render_library_page(is_active: bool, frame: &mut Frame, state: &SharedSta
     let mut ui = state.ui.lock();
     let data = state.data.read();
 
-    tracing::info!("reach this");
-
     let focus_state = match ui.current_page() {
         PageState::Library { state } => state.focus,
         _ => unreachable!("expect a library page state"),

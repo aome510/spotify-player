@@ -9,7 +9,7 @@ pub enum PageState {
     Context {
         id: Option<ContextId>,
         context_page_type: ContextPageType,
-        state: ContextPageUIState,
+        state: Option<ContextPageUIState>,
     },
     Search {
         input: String,
@@ -50,7 +50,7 @@ pub struct SearchPageUIState {
 #[derive(Clone, Debug)]
 pub enum ContextPageType {
     CurrentPlaying,
-    Browsing,
+    Browsing(ContextId),
 }
 
 #[derive(Clone, Debug)]
@@ -117,8 +117,21 @@ impl PageState {
         }
     }
 
+    /// Select a `id`-th item in the currently focused window of the page.
+    pub fn select(&mut self, id: usize) {
+        if let Some(mut state) = self.focus_window_state_mut() {
+            state.select(id)
+        }
+    }
+
+    /// The selected item's position in the currently focused window of the page.
+    pub fn selected(&mut self) -> Option<usize> {
+        self.focus_window_state_mut()
+            .map(|state| state.selected())?
+    }
+
     /// The currently focused window state of the page.
-    pub fn focus_window_state_mut(&mut self) -> Option<MutableWindowState> {
+    fn focus_window_state_mut(&mut self) -> Option<MutableWindowState> {
         match self {
             Self::Library {
                 state:
@@ -253,9 +266,6 @@ impl Focusable for PageState {
         }
 
         // reset the list/table state of the focus window
-        if let Some(mut state) = self.focus_window_state_mut() {
-            state.select(0)
-        }
     }
 
     fn previous(&mut self) {
