@@ -1,6 +1,6 @@
-use crate::command::Action;
-
 use super::*;
+use crate::command::Action;
+use std::collections::{btree_map::Entry, BTreeMap};
 
 /// handles a key sequence for a popup
 pub fn handle_key_sequence_for_popup(
