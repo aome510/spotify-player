@@ -23,6 +23,13 @@ pub enum PageState {
     },
 }
 
+pub enum PageType {
+    Library,
+    Context,
+    Search,
+    Tracks,
+}
+
 #[derive(Clone, Debug)]
 pub struct LibraryPageUIState {
     pub playlist_list: ListState,
@@ -91,6 +98,16 @@ pub enum MutableWindowState<'a> {
 }
 
 impl PageState {
+    /// The type of the page.
+    pub fn page_type(&self) -> PageType {
+        match self {
+            PageState::Library { .. } => PageType::Library,
+            PageState::Context { .. } => PageType::Context,
+            PageState::Search { .. } => PageType::Search,
+            PageState::Tracks { .. } => PageType::Tracks,
+        }
+    }
+
     /// The context URI of the page.
     /// Returns `None` if the page is not a context page.
     pub fn context_uri(&self) -> Option<String> {

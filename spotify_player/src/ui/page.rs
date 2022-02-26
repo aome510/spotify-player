@@ -1,6 +1,5 @@
-// use super::*;
+use super::*;
 
-// /// Render a search page
 // pub fn render_search_page(
 //     is_active: bool,
 //     frame: &mut Frame,
@@ -213,86 +212,82 @@
 // //     }
 // // }
 
-// // /// Renders a library page
-// // pub fn render_library_window(
-// //     is_active: bool,
-// //     frame: &mut Frame,
-// //     rect: Rect,
-// //     data_state: &RwLock<AppData>,
-// //     page_ui_state: &mut LibraryPageUIState,
-// // ) {
-// //     let data = data_state.read();
+pub fn render_library_page(is_active: bool, frame: &mut Frame, state: &SharedState, rect: Rect) {
+    let mut ui = state.ui.lock();
+    let data = state.data.read();
 
-// //     // split the main window into 3 subwindows
-// //     // the top half consists of a playlists subwindow
-// //     // the bottom half consists of a saved albums window and
-// //     // a followed artists subwindow splitted equally by horizontal direction
-// //     let chunks = Layout::default()
-// //         .direction(Direction::Horizontal)
-// //         .constraints(
-// //             [
-// //                 Constraint::Percentage(40),
-// //                 Constraint::Percentage(30),
-// //                 Constraint::Percentage(30),
-// //             ]
-// //             .as_ref(),
-// //         )
-// //         .split(rect);
-// //     let (playlist_rect, album_rect, artist_rect) = (chunks[0], chunks[1], chunks[2]);
+    tracing::info!("reach this");
 
-// //     // construct the playlist subwindow
-// //     let playlist_list = construct_list_widget(
-// //         state,
-// //         state
-// //             .filtered_items_by_search(&data.user_data.playlists)
-// //             .into_iter()
-// //             .map(|p| (p.name.clone(), false))
-// //             .collect(),
-// //         "Playlists",
-// //         is_active && focus_state == LibraryFocusState::Playlists,
-// //         Some((Borders::TOP | Borders::LEFT) | Borders::BOTTOM),
-// //     );
-// //     // construct the saved album subwindow
-// //     let album_list = construct_list_widget(
-// //         state,
-// //         state
-// //             .filtered_items_by_search(&data.user_data.saved_albums)
-// //             .into_iter()
-// //             .map(|a| (a.name.clone(), false))
-// //             .collect(),
-// //         "Albums",
-// //         is_active && focus_state == LibraryFocusState::SavedAlbums,
-// //         Some((Borders::TOP | Borders::LEFT) | Borders::BOTTOM),
-// //     );
-// //     // construct the followed artist subwindow
-// //     let artist_list = construct_list_widget(
-// //         state,
-// //         state
-// //             .filtered_items_by_search(&data.user_data.followed_artists)
-// //             .into_iter()
-// //             .map(|a| (a.name.clone(), false))
-// //             .collect(),
-// //         "Artists",
-// //         is_active && focus_state == LibraryFocusState::FollowedArtists,
-// //         None,
-// //     );
+    let focus_state = match ui.current_page() {
+        PageState::Library { state } => state.focus,
+        _ => unreachable!("expect a library page state"),
+    };
 
-// //     // render subwindows
-// //     let mut ui = state.ui.lock();
-// //     let (playlist_list_state, album_list_state, artist_list_state) = match ui.window {
-// //         WindowState::Library {
-// //             ref mut playlist_list,
-// //             ref mut saved_album_list,
-// //             ref mut followed_artist_list,
-// //             ..
-// //         } => (playlist_list, saved_album_list, followed_artist_list),
-// //         _ => return,
-// //     };
+    // Horizontally split the library page into 3 windows:
+    // - a playlists window
+    // - a saved albums window
+    // - a followed artists window
+    let chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints(
+            [
+                Constraint::Percentage(40),
+                Constraint::Percentage(30),
+                Constraint::Percentage(30),
+            ]
+            .as_ref(),
+        )
+        .split(rect);
+    let (playlist_rect, album_rect, artist_rect) = (chunks[0], chunks[1], chunks[2]);
 
-// //     frame.render_stateful_widget(playlist_list, playlist_rect, playlist_list_state);
-// //     frame.render_stateful_widget(album_list, album_rect, album_list_state);
-// //     frame.render_stateful_widget(artist_list, artist_rect, artist_list_state);
-// // }
+    // Construct the playlist window
+    let playlist_list = construct_list_widget(
+        &ui.theme,
+        ui.search_filtered_items(&data.user_data.playlists)
+            .into_iter()
+            .map(|p| (p.name.clone(), false))
+            .collect(),
+        "Playlists",
+        is_active && focus_state == LibraryFocusState::Playlists,
+        Some((Borders::TOP | Borders::LEFT) | Borders::BOTTOM),
+    );
+    // Construct the saved album window
+    let album_list = construct_list_widget(
+        &ui.theme,
+        ui.search_filtered_items(&data.user_data.saved_albums)
+            .into_iter()
+            .map(|a| (a.name.clone(), false))
+            .collect(),
+        "Albums",
+        is_active && focus_state == LibraryFocusState::SavedAlbums,
+        Some((Borders::TOP | Borders::LEFT) | Borders::BOTTOM),
+    );
+    // Construct the followed artist window
+    let artist_list = construct_list_widget(
+        &ui.theme,
+        ui.search_filtered_items(&data.user_data.followed_artists)
+            .into_iter()
+            .map(|a| (a.name.clone(), false))
+            .collect(),
+        "Artists",
+        is_active && focus_state == LibraryFocusState::FollowedArtists,
+        None,
+    );
+
+    // Render the library page's windows.
+    // Will need mutable access to the list/table states stored inside the page state for rendering.
+    let page_state = match ui.current_page_mut() {
+        PageState::Library { state } => state,
+        _ => unreachable!("expect a library page state"),
+    };
+    frame.render_stateful_widget(playlist_list, playlist_rect, &mut page_state.playlist_list);
+    frame.render_stateful_widget(album_list, album_rect, &mut page_state.saved_album_list);
+    frame.render_stateful_widget(
+        artist_list,
+        artist_rect,
+        &mut page_state.followed_artist_list,
+    );
+}
 
 // // /// renders the recommendation window
 // // pub fn render_recommendation_window(
