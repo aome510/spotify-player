@@ -274,12 +274,12 @@ fn handle_global_command(
             client_pub.blocking_send(ClientRequest::NewSpircConnection)?;
         }
         Command::FocusNextWindow => {
-            if ui.popup.is_none() {
+            if !ui.has_focused_popup() {
                 ui.current_page_mut().next()
             }
         }
         Command::FocusPreviousWindow => {
-            if ui.popup.is_none() {
+            if !ui.has_focused_popup() {
                 ui.current_page_mut().previous()
             }
         }

@@ -37,6 +37,16 @@ impl UIState {
         self.popup = None;
     }
 
+    /// Returns whether there exists a focused popup.
+    ///
+    /// Currently, only search popup is not focused when it's opened.
+    pub fn has_focused_popup(&self) -> bool {
+        match self.popup.as_ref() {
+            None => false,
+            Some(popup) => !matches!(popup, PopupState::Search { .. }),
+        }
+    }
+
     /// Gets a list of items possibly filtered by a search query if exists a search popup
     pub fn search_filtered_items<'a, T: std::fmt::Display>(&self, items: &'a [T]) -> Vec<&'a T> {
         match self.popup {

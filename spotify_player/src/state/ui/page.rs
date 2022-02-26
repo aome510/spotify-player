@@ -263,7 +263,10 @@ impl Focusable for PageState {
                 state: LibraryPageUIState { focus, .. },
                 ..
             } => focus.next(),
-            // TODO: handle this!
+            Self::Context {
+                state: Some(ContextPageUIState::Artist { focus, .. }),
+                ..
+            } => focus.next(),
             _ => {}
         }
 
@@ -280,7 +283,10 @@ impl Focusable for PageState {
                 state: LibraryPageUIState { focus, .. },
                 ..
             } => focus.previous(),
-            // TODO: handle this!
+            Self::Context {
+                state: Some(ContextPageUIState::Artist { focus, .. }),
+                ..
+            } => focus.previous(),
             _ => {}
         }
 
