@@ -108,15 +108,6 @@ impl PageState {
         }
     }
 
-    /// The context URI of the page.
-    /// Returns `None` if the page is not a context page.
-    pub fn context_uri(&self) -> Option<String> {
-        match self {
-            Self::Context { id, .. } => id.as_ref().map(|id| id.uri()),
-            _ => None,
-        }
-    }
-
     /// Select a `id`-th item in the currently focused window of the page.
     pub fn select(&mut self, id: usize) {
         if let Some(mut state) = self.focus_window_state_mut() {

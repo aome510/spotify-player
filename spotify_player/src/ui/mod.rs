@@ -80,9 +80,9 @@ fn render_main_layout(is_active: bool, frame: &mut Frame, state: &SharedState, r
         PageType::Search => {
             page::render_search_page(is_active, frame, state, chunks[1]);
         }
-        // PageState::Context { .. } => {
-        //     page::render_context_window(is_active, frame, state, chunks[1]);
-        // }
+        PageType::Context => {
+            page::render_context_window(is_active, frame, state, chunks[1]);
+        }
         // TODO: handle this!
         _ => {}
     };

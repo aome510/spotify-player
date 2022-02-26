@@ -149,76 +149,80 @@ pub fn render_search_page(is_active: bool, frame: &mut Frame, state: &SharedStat
     frame.render_stateful_widget(playlist_list, chunks[3], &mut page_state.playlist_list);
 }
 
-// // pub fn render_context_window(is_active: bool, frame: &mut Frame, state: &SharedState, rect: Rect) {
-// //     let block = Block::default()
-// //         .title(state.ui.lock().theme.block_title_with_style(title))
-// //         .borders(Borders::ALL);
+pub fn render_context_window(is_active: bool, frame: &mut Frame, state: &SharedState, rect: Rect) {
+    let mut ui = state.ui.lock();
+    let (id, context_page_type) = match ui.current_page() {
+        PageState::Context {
+            id,
+            context_page_type,
+            ..
+        } => (id, context_page_type),
+        _ => unreachable!("expect a context page"),
+    };
 
-// //     let context_uri = match state.ui.lock().current_page().context_uri() {
-// //         None => {
-// //             frame.render_widget(
-// //                 Paragraph::new("Cannot determine the current page's context").block(block),
-// //                 rect,
-// //             );
-// //             return;
-// //         }
-// //         Some(context_uri) => context_uri,
-// //     };
+    let block = Block::default()
+        .title(ui.theme.block_title_with_style(match context_page_type {
+            ContextPageType::CurrentPlaying => "Context (Current Playing)",
+            ContextPageType::Browsing(_) => "Context (Browing)",
+        }))
+        .borders(Borders::ALL);
 
-// //     match state.data.read().caches.context.peek(&context_uri) {
-// //         Some(context) => {
-// //             frame.render_widget(block, rect);
+    let context_uri = match id {
+        None => {
+            frame.render_widget(
+                Paragraph::new("Cannot determine the current page's context").block(block),
+                rect,
+            );
+            return;
+        }
+        Some(id) => id.uri(),
+    };
 
-// //             // render context description
-// //             let chunks = Layout::default()
-// //                 .direction(Direction::Vertical)
-// //                 .margin(1)
-// //                 .constraints([Constraint::Length(1), Constraint::Min(0)].as_ref())
-// //                 .split(rect);
-// //             let page_desc = Paragraph::new(context.description())
-// //                 .block(Block::default().style(state.ui.lock().theme.page_desc()));
-// //             frame.render_widget(page_desc, chunks[0]);
+    match state.data.read().caches.context.peek(&context_uri) {
+        Some(context) => {
+            frame.render_widget(block, rect);
 
-// //             match context {
-// //                 Context::Artist {
-// //                     top_tracks,
-// //                     albums,
-// //                     related_artists,
-// //                     ..
-// //                 } => {
-// //                     render_context_artist_widgets(
-// //                         is_active,
-// //                         frame,
-// //                         state,
-// //                         chunks[1],
-// //                         (top_tracks, albums, related_artists),
-// //                     );
-// //                 }
-// //                 Context::Playlist { tracks, .. } => {
-// //                     render_track_table_widget(
-// //                         frame,
-// //                         chunks[1],
-// //                         is_active,
-// //                         state,
-// //                         state.filtered_items_by_search(tracks),
-// //                     );
-// //                 }
-// //                 Context::Album { tracks, .. } => {
-// //                     render_track_table_widget(
-// //                         frame,
-// //                         chunks[1],
-// //                         is_active,
-// //                         state,
-// //                         state.filtered_items_by_search(tracks),
-// //                     );
-// //                 }
-// //             }
-// //         }
-// //         None => {
-// //             frame.render_widget(Paragraph::new("Loading...").block(block), rect);
-// //         }
-// //     }
-// // }
+            // render context description
+            let chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .margin(1)
+                .constraints([Constraint::Length(1), Constraint::Min(0)].as_ref())
+                .split(rect);
+            let page_desc = Paragraph::new(context.description())
+                .block(Block::default().style(ui.theme.page_desc()));
+            frame.render_widget(page_desc, chunks[0]);
+
+            match context {
+                Context::Artist {
+                    top_tracks,
+                    albums,
+                    related_artists,
+                    ..
+                } => {
+                    render_artist_context_page_windows(
+                        is_active,
+                        frame,
+                        state,
+                        ui,
+                        chunks[1],
+                        (top_tracks, albums, related_artists),
+                    );
+                }
+                Context::Playlist { tracks, .. } => {
+                    let items = ui.search_filtered_items(tracks);
+                    render_track_table_window(frame, chunks[1], is_active, state, &mut ui, items);
+                }
+                Context::Album { tracks, .. } => {
+                    let items = ui.search_filtered_items(tracks);
+                    render_track_table_window(frame, chunks[1], is_active, state, &mut ui, items);
+                }
+            }
+        }
+        None => {
+            frame.render_widget(Paragraph::new("Loading...").block(block), rect);
+        }
+    }
+}
 
 pub fn render_library_page(is_active: bool, frame: &mut Frame, state: &SharedState, rect: Rect) {
     let mut ui = state.ui.lock();
@@ -355,165 +359,181 @@ pub fn render_library_page(is_active: bool, frame: &mut Frame, state: &SharedSta
 // //     );
 // // }
 
-// // /// renders the widgets for the artist context window, which includes
-// // /// - A top track table
-// // /// - An album list
-// // /// - A related artist list
-// // fn render_context_artist_widgets(
-// //     is_active: bool,
-// //     frame: &mut Frame,
-// //     state: &SharedState,
-// //     rect: Rect,
-// //     data: (&[Track], &[Album], &[Artist]),
-// // ) {
-// //     let (tracks, albums, artists) = (
-// //         state.filtered_items_by_search(data.0),
-// //         state.filtered_items_by_search(data.1),
-// //         state.filtered_items_by_search(data.2),
-// //     );
+/// Renders windows for an artist context page, which includes
+/// - A top track table
+/// - An album list
+/// - A related artist list
+fn render_artist_context_page_windows(
+    is_active: bool,
+    frame: &mut Frame,
+    state: &SharedState,
+    mut ui: UIStateGuard,
+    rect: Rect,
+    data: (&[Track], &[Album], &[Artist]),
+) {
+    let (tracks, albums, artists) = (
+        ui.search_filtered_items(data.0),
+        ui.search_filtered_items(data.1),
+        ui.search_filtered_items(data.2),
+    );
 
-// //     let focus_state = match state.ui.lock().window {
-// //         WindowState::Artist { focus, .. } => focus,
-// //         _ => {
-// //             return;
-// //         }
-// //     };
+    let focus_state = match ui.current_page() {
+        PageState::Context {
+            state: Some(ContextPageUIState::Artist { focus, .. }),
+            ..
+        } => *focus,
+        _ => unreachable!("expect an artist context page"),
+    };
 
-// //     let rect = {
-// //         // render the top tracks table for artist context window
+    let rect = {
+        // render the top tracks table for artist context window
 
-// //         let chunks = Layout::default()
-// //             .direction(Direction::Vertical)
-// //             .constraints([Constraint::Length(12), Constraint::Min(1)].as_ref())
-// //             .split(rect);
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Length(12), Constraint::Min(1)].as_ref())
+            .split(rect);
 
-// //         render_track_table_widget(
-// //             frame,
-// //             chunks[0],
-// //             is_active && focus_state == ArtistFocusState::TopTracks,
-// //             state,
-// //             tracks,
-// //         );
+        render_track_table_window(
+            frame,
+            chunks[0],
+            is_active && focus_state == ArtistFocusState::TopTracks,
+            state,
+            &mut ui,
+            tracks,
+        );
 
-// //         chunks[1]
-// //     };
+        chunks[1]
+    };
 
-// //     let chunks = Layout::default()
-// //         .direction(Direction::Horizontal)
-// //         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
-// //         .split(rect);
+    let chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
+        .split(rect);
 
-// //     // construct album list widget
-// //     let album_list = {
-// //         let album_items = albums
-// //             .into_iter()
-// //             .map(|a| (a.name.clone(), false))
-// //             .collect::<Vec<_>>();
+    // construct album list widget
+    let album_list = {
+        let album_items = albums
+            .into_iter()
+            .map(|a| (a.name.clone(), false))
+            .collect::<Vec<_>>();
 
-// //         construct_list_widget(
-// //             state,
-// //             album_items,
-// //             "Albums",
-// //             is_active && focus_state == ArtistFocusState::Albums,
-// //             Some(Borders::TOP),
-// //         )
-// //     };
+        construct_list_widget(
+            &ui.theme,
+            album_items,
+            "Albums",
+            is_active && focus_state == ArtistFocusState::Albums,
+            Some(Borders::TOP),
+        )
+    };
 
-// //     // construct artist list widget
-// //     let artist_list = {
-// //         let artist_items = artists
-// //             .into_iter()
-// //             .map(|a| (a.name.clone(), false))
-// //             .collect::<Vec<_>>();
+    // construct artist list widget
+    let artist_list = {
+        let artist_items = artists
+            .into_iter()
+            .map(|a| (a.name.clone(), false))
+            .collect::<Vec<_>>();
 
-// //         construct_list_widget(
-// //             state,
-// //             artist_items,
-// //             "Related Artists",
-// //             is_active && focus_state == ArtistFocusState::RelatedArtists,
-// //             Some(Borders::TOP | Borders::LEFT),
-// //         )
-// //     };
+        construct_list_widget(
+            &ui.theme,
+            artist_items,
+            "Related Artists",
+            is_active && focus_state == ArtistFocusState::RelatedArtists,
+            Some(Borders::TOP | Borders::LEFT),
+        )
+    };
 
-// //     let mut ui = state.ui.lock();
-// //     let (album_list_state, artist_list_state) = match ui.window {
-// //         WindowState::Artist {
-// //             ref mut album_list,
-// //             ref mut related_artist_list,
-// //             ..
-// //         } => (album_list, related_artist_list),
-// //         _ => return,
-// //     };
+    let (album_list_state, artist_list_state) = match ui.current_page_mut() {
+        PageState::Context {
+            state:
+                Some(ContextPageUIState::Artist {
+                    album_list,
+                    related_artist_list,
+                    ..
+                }),
+            ..
+        } => (album_list, related_artist_list),
+        _ => unreachable!("expect an artist context page with a state"),
+    };
 
-// //     frame.render_stateful_widget(album_list, chunks[0], album_list_state);
-// //     frame.render_stateful_widget(artist_list, chunks[1], artist_list_state);
-// // }
+    frame.render_stateful_widget(album_list, chunks[0], album_list_state);
+    frame.render_stateful_widget(artist_list, chunks[1], artist_list_state);
+}
 
-// // /// renders a track table widget
-// // pub fn render_track_table_widget(
-// //     frame: &mut Frame,
-// //     rect: Rect,
-// //     is_active: bool,
-// //     state: &SharedState,
-// //     tracks: Vec<&Track>,
-// // ) {
-// //     let mut ui = state.ui.lock();
+pub fn render_track_table_window(
+    frame: &mut Frame,
+    rect: Rect,
+    is_active: bool,
+    state: &SharedState,
+    ui: &mut UIStateGuard,
+    tracks: Vec<&Track>,
+) {
+    // get the current playing track's URI to
+    // highlight such track (if exists) in the track table
+    let mut playing_track_uri = "".to_string();
+    let mut active_desc = "";
+    if let Some(ref playback) = state.player.read().playback {
+        if let Some(rspotify_model::PlayableItem::Track(ref track)) = playback.item {
+            playing_track_uri = track.id.as_ref().map(|id| id.uri()).unwrap_or_default();
 
-// //     // get the current playing track's URI to
-// //     // highlight such track (if exists) in the track table
-// //     let mut playing_track_uri = "".to_string();
-// //     let mut active_desc = "";
-// //     if let Some(ref playback) = state.player.read().playback {
-// //         if let Some(rspotify_model::PlayableItem::Track(ref track)) = playback.item {
-// //             playing_track_uri = track.id.as_ref().map(|id| id.uri()).unwrap_or_default();
+            active_desc = if !playback.is_playing { "⏸" } else { "▶" };
+        }
+    }
 
-// //             active_desc = if !playback.is_playing { "⏸" } else { "▶" };
-// //         }
-// //     }
+    let item_max_len = state.app_config.track_table_item_max_len;
+    let rows = tracks
+        .into_iter()
+        .enumerate()
+        .map(|(id, t)| {
+            let (id, style) = if playing_track_uri == t.id.uri() {
+                (active_desc.to_string(), ui.theme.current_playing())
+            } else {
+                ((id + 1).to_string(), Style::default())
+            };
+            Row::new(vec![
+                Cell::from(id),
+                Cell::from(utils::truncate_string(t.name.clone(), item_max_len)),
+                Cell::from(utils::truncate_string(t.artists_info(), item_max_len)),
+                Cell::from(utils::truncate_string(t.album_info(), item_max_len)),
+                Cell::from(utils::format_duration(t.duration)),
+            ])
+            .style(style)
+        })
+        .collect::<Vec<_>>();
 
-// //     let item_max_len = state.app_config.track_table_item_max_len;
-// //     let rows = tracks
-// //         .into_iter()
-// //         .enumerate()
-// //         .map(|(id, t)| {
-// //             let (id, style) = if playing_track_uri == t.id.uri() {
-// //                 (active_desc.to_string(), ui.theme.current_playing())
-// //             } else {
-// //                 ((id + 1).to_string(), Style::default())
-// //             };
-// //             Row::new(vec![
-// //                 Cell::from(id),
-// //                 Cell::from(utils::truncate_string(t.name.clone(), item_max_len)),
-// //                 Cell::from(utils::truncate_string(t.artists_info(), item_max_len)),
-// //                 Cell::from(utils::truncate_string(t.album_info(), item_max_len)),
-// //                 Cell::from(utils::format_duration(t.duration)),
-// //             ])
-// //             .style(style)
-// //         })
-// //         .collect::<Vec<_>>();
+    let track_table = Table::new(rows)
+        .header(
+            Row::new(vec![
+                Cell::from("#"),
+                Cell::from("Track"),
+                Cell::from("Artists"),
+                Cell::from("Album"),
+                Cell::from("Duration"),
+            ])
+            .style(ui.theme.table_header()),
+        )
+        .block(Block::default())
+        .widths(&[
+            Constraint::Length(4),
+            Constraint::Percentage(30),
+            Constraint::Percentage(30),
+            Constraint::Percentage(30),
+            Constraint::Percentage(10),
+        ])
+        .highlight_style(ui.theme.selection_style(is_active));
 
-// //     let table = Table::new(rows)
-// //         .header(
-// //             Row::new(vec![
-// //                 Cell::from("#"),
-// //                 Cell::from("Track"),
-// //                 Cell::from("Artists"),
-// //                 Cell::from("Album"),
-// //                 Cell::from("Duration"),
-// //             ])
-// //             .style(ui.theme.table_header()),
-// //         )
-// //         .block(Block::default())
-// //         .widths(&[
-// //             Constraint::Length(4),
-// //             Constraint::Percentage(30),
-// //             Constraint::Percentage(30),
-// //             Constraint::Percentage(30),
-// //             Constraint::Percentage(10),
-// //         ])
-// //         .highlight_style(ui.theme.selection_style(is_active));
-
-// //     if let Some(state) = ui.window.track_table_state() {
-// //         frame.render_stateful_widget(table, rect, state)
-// //     }
-// // }
+    match ui.current_page_mut() {
+        PageState::Context {
+            state: Some(state), ..
+        } => {
+            let track_table_state = match state {
+                ContextPageUIState::Artist {
+                    top_track_table, ..
+                } => top_track_table,
+                ContextPageUIState::Playlist { track_table } => track_table,
+                ContextPageUIState::Album { track_table } => track_table,
+            };
+            frame.render_stateful_widget(track_table, rect, track_table_state);
+        }
+        _ => unreachable!("expect a context page with a state"),
+    }
+}
