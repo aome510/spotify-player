@@ -118,18 +118,7 @@ fn handle_key_event(
                 page::handle_key_sequence_for_context_page(&key_sequence, client_pub, state)?
             }
             // TODO: handle this
-            _ => false, // PageState::Context(..) => {
-                        //     drop(ui);
-                        //     window::handle_key_sequence_for_context_window(
-                        //         &key_sequence,
-                        //         client_pub,
-                        //         state,
-                        //     )?
-                        // }
-                        // PageState::Search { .. } => {
-                        //     drop(ui);
-                        //     window::handle_key_sequence_for_search_window(&key_sequence, client_pub, state)?
-                        // }
+            _ => false,
         }
     } else {
         popup::handle_key_sequence_for_popup(&key_sequence, client_pub, state)?

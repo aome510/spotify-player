@@ -11,7 +11,8 @@ pub fn handle_key_sequence_for_popup(
     let popup = ui.popup.as_ref().unwrap();
 
     if let PopupState::Search { .. } = popup {
-        return handle_key_sequence_for_search_popup(key_sequence, client_pub, ui, state);
+        drop(ui);
+        return handle_key_sequence_for_search_popup(key_sequence, client_pub, state);
     }
 
     let command = match state
@@ -203,30 +204,32 @@ pub fn handle_key_sequence_for_popup(
 fn handle_key_sequence_for_search_popup(
     key_sequence: &KeySequence,
     client_pub: &mpsc::Sender<ClientRequest>,
-    mut ui: UIStateGuard,
     state: &SharedState,
 ) -> Result<bool> {
     // handle user's input that updates the search query
-    let query = match ui.popup {
-        Some(PopupState::Search { ref mut query }) => query,
-        _ => return Ok(false),
-    };
-    if key_sequence.keys.len() == 1 {
-        if let Key::None(c) = key_sequence.keys[0] {
-            match c {
-                crossterm::event::KeyCode::Char(c) => {
-                    query.push(c);
-                    ui.current_page_mut().select(0);
-                    return Ok(true);
-                }
-                crossterm::event::KeyCode::Backspace => {
-                    if !query.is_empty() {
-                        query.pop().unwrap();
+    {
+        let mut ui = state.ui.lock();
+        let query = match ui.popup {
+            Some(PopupState::Search { ref mut query }) => query,
+            _ => return Ok(false),
+        };
+        if key_sequence.keys.len() == 1 {
+            if let Key::None(c) = key_sequence.keys[0] {
+                match c {
+                    crossterm::event::KeyCode::Char(c) => {
+                        query.push(c);
                         ui.current_page_mut().select(0);
+                        return Ok(true);
                     }
-                    return Ok(true);
+                    crossterm::event::KeyCode::Backspace => {
+                        if !query.is_empty() {
+                            query.pop().unwrap();
+                            ui.current_page_mut().select(0);
+                        }
+                        return Ok(true);
+                    }
+                    _ => {}
                 }
-                _ => {}
             }
         }
     }
@@ -234,36 +237,24 @@ fn handle_key_sequence_for_search_popup(
     let command = state
         .keymap_config
         .find_command_from_key_sequence(key_sequence);
+    if let Some(Command::ClosePopup) = command {
+        state.ui.lock().popup = None;
+        return Ok(true);
+    }
 
-    match command {
-        Some(command) => match command {
-            Command::ClosePopup => {
-                ui.popup = None;
-                Ok(true)
-            }
-            // TODO: handle this
-            _ => Ok(false),
-            // _ => match ui.current_page() {
-            //     PageState::Library => {
-            //         drop(ui);
-            //         window::handle_key_sequence_for_library_window(key_sequence, state)
-            //     }
-            //     PageState::Recommendations(..) => {
-            //         drop(ui);
-            //         window::handle_key_sequence_for_recommendation_window(
-            //             key_sequence,
-            //             client_pub,
-            //             state,
-            //         )
-            //     }
-            //     PageState::Context(..) => {
-            //         drop(ui);
-            //         window::handle_key_sequence_for_context_window(key_sequence, client_pub, state)
-            //     }
-            //     PageState::Search { .. } => Ok(false),
-            // },
-        },
-        None => Ok(false),
+    // there is no focus placed on the search popup, so commands not handle by
+    // the popup should be moved to the current page's event handler
+    let page_type = state.ui.lock().current_page().page_type();
+    match page_type {
+        PageType::Library => page::handle_key_sequence_for_library_page(&key_sequence, state),
+        PageType::Search => {
+            page::handle_key_sequence_for_search_page(&key_sequence, client_pub, state)
+        }
+        PageType::Context => {
+            page::handle_key_sequence_for_context_page(&key_sequence, client_pub, state)
+        }
+        // TODO: handle this
+        _ => Ok(false),
     }
 }
 
@@ -275,7 +266,7 @@ fn handle_key_sequence_for_search_popup(
 /// - `uri_type`: an enum represents the type of a context in the list (`playlist`, `artist`, etc)
 fn handle_command_for_context_browsing_list_popup(
     command: Command,
-    mut ui: UIStateGuard,
+    ui: UIStateGuard,
     uris: Vec<String>,
     context_type: rspotify_model::Type,
 ) -> Result<bool> {
@@ -382,7 +373,7 @@ fn handle_command_for_action_list_popup(
     actions: Vec<Action>,
     command: Command,
     client_pub: &mpsc::Sender<ClientRequest>,
-    mut ui: UIStateGuard,
+    ui: UIStateGuard,
 ) -> Result<bool> {
     handle_command_for_list_popup(
         command,
