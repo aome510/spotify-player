@@ -6,7 +6,7 @@ type Terminal = tui::Terminal<tui::backend::CrosstermBackend<std::io::Stdout>>;
 type Frame<'a> = tui::Frame<'a, tui::backend::CrosstermBackend<std::io::Stdout>>;
 
 mod page;
-// mod popup;
+mod popup;
 
 /// starts the application UI rendering function(s)
 pub fn start_ui(state: SharedState) -> Result<()> {
@@ -58,10 +58,8 @@ fn clean_up(mut terminal: Terminal) -> Result<()> {
 
 /// renders the application
 fn render_application(frame: &mut Frame, state: &SharedState, rect: Rect) {
-    // let rect = popup::render_shortcut_help_popup(frame, state, rect);
-
-    // let (rect, is_active) = popup::render_popup(frame, state, rect);
-    let is_active = true;
+    let rect = popup::render_shortcut_help_popup(frame, state, rect);
+    let (rect, is_active) = popup::render_popup(frame, state, rect);
 
     render_main_layout(is_active, frame, state, rect);
 }
