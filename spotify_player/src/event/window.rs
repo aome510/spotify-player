@@ -160,113 +160,6 @@ use crate::state::UIStateGuard;
 //     }
 // }
 
-// /// handles a key sequence for a search window
-// pub fn handle_key_sequence_for_search_window(
-//     key_sequence: &KeySequence,
-//     client_pub: &mpsc::Sender<ClientRequest>,
-//     state: &SharedState,
-// ) -> Result<bool> {
-//     let mut ui = state.ui.lock();
-
-//     let focus_state = match ui.window {
-//         WindowState::Search { focus, .. } => focus,
-//         _ => {
-//             return Ok(false);
-//         }
-//     };
-
-//     let (input, current_query) = match ui.current_page_mut() {
-//         PageState::Search {
-//             input,
-//             current_query,
-//         } => (input, current_query),
-//         _ => return Ok(false),
-//     };
-
-//     // handle user's input
-//     if let SearchFocusState::Input = focus_state {
-//         if key_sequence.keys.len() == 1 {
-//             if let Key::None(c) = key_sequence.keys[0] {
-//                 match c {
-//                     crossterm::event::KeyCode::Char(c) => {
-//                         input.push(c);
-//                         return Ok(true);
-//                     }
-//                     crossterm::event::KeyCode::Backspace => {
-//                         if !input.is_empty() {
-//                             input.pop().unwrap();
-//                         }
-//                         return Ok(true);
-//                     }
-//                     crossterm::event::KeyCode::Enter => {
-//                         if !input.is_empty() {
-//                             *current_query = input.clone();
-//                             client_pub.blocking_send(ClientRequest::Search(input.clone()))?;
-//                         }
-//                         return Ok(true);
-//                     }
-//                     _ => {}
-//                 }
-//             }
-//         }
-//     }
-
-//     let command = match state
-//         .keymap_config
-//         .find_command_from_key_sequence(key_sequence)
-//     {
-//         Some(command) => command,
-//         None => return Ok(false),
-//     };
-
-//     let data = state.data.read();
-//     let search_results = data.caches.search.peek(current_query);
-
-//     match command {
-//         Command::FocusNextWindow => {
-//             ui.window.next();
-//             Ok(true)
-//         }
-//         Command::FocusPreviousWindow => {
-//             ui.window.previous();
-//             Ok(true)
-//         }
-//         // determine the current focused subwindow inside the search window,
-//         // and assign the handling job to the corresponding handler
-//         _ => {
-//             drop(ui);
-
-//             match focus_state {
-//                 SearchFocusState::Input => Ok(false),
-//                 SearchFocusState::Tracks => {
-//                     let tracks = search_results
-//                         .map(|s| s.tracks.iter().collect())
-//                         .unwrap_or_default();
-//                     handle_command_for_track_list_subwindow(command, client_pub, state, tracks)
-//                 }
-//                 SearchFocusState::Artists => {
-//                     let artists = search_results
-//                         .map(|s| s.artists.iter().collect())
-//                         .unwrap_or_default();
-//                     handle_command_for_artist_list_subwindow(command, state, artists)
-//                 }
-//                 SearchFocusState::Albums => {
-//                     let albums = search_results
-//                         .map(|s| s.albums.iter().collect())
-//                         .unwrap_or_default();
-//                     handle_command_for_album_list_subwindow(command, state, albums)
-//                 }
-//                 SearchFocusState::Playlists => {
-//                     let playlists = search_results
-//                         .map(|s| s.playlists.iter().collect())
-//                         .unwrap_or_default();
-//                     handle_command_for_playlist_list_subwindow(command, state, playlists)
-//                 }
-//             }
-//         }
-//     }
-// }
-
 // /// handles a command for the currently focused context subwindow
 // ///
 // /// The function will need to determine the focused subwindow then
@@ -367,12 +260,12 @@ use crate::state::UIStateGuard;
 //     match command {
 //         Command::SelectNextOrScrollDown => {
 //             if id + 1 < tracks.len() {
-//                 ui.window.select(Some(id + 1));
+//                 ui.window.select(id + 1);
 //             }
 //         }
 //         Command::SelectPreviousOrScrollUp => {
 //             if id > 0 {
-//                 ui.window.select(Some(id - 1));
+//                 ui.window.select(id - 1);
 //             }
 //         }
 //         Command::ChooseSelected => {
@@ -400,49 +293,48 @@ use crate::state::UIStateGuard;
 //     Ok(true)
 // }
 
-// fn handle_command_for_track_list_subwindow(
-//     command: Command,
-//     client_pub: &mpsc::Sender<ClientRequest>,
-//     state: &SharedState,
-//     tracks: Vec<&Track>,
-// ) -> Result<bool> {
-//     let mut ui = state.ui.lock();
-//     let id = ui.window.selected().unwrap_or_default();
-//     if id >= tracks.len() {
-//         return Ok(false);
-//     }
+pub fn handle_command_for_track_list_window(
+    command: Command,
+    client_pub: &mpsc::Sender<ClientRequest>,
+    mut ui: UIStateGuard,
+    tracks: Vec<&Track>,
+) -> Result<bool> {
+    let id = ui.current_page_mut().selected().unwrap_or_default();
+    if id >= tracks.len() {
+        return Ok(false);
+    }
 
-//     match command {
-//         Command::SelectNextOrScrollDown => {
-//             if id + 1 < tracks.len() {
-//                 ui.window.select(Some(id + 1));
-//             }
-//         }
-//         Command::SelectPreviousOrScrollUp => {
-//             if id > 0 {
-//                 ui.window.select(Some(id - 1));
-//             }
-//         }
-//         Command::ChooseSelected => {
-//             // for the track list, `ChooseSelected` on a track
-//             // will start a `URIs` playback containing only that track.
-//             // It's different for the track table, in which
-//             // `ChooseSelected` on a track will start a `URIs` playback
-//             // containing all the tracks in the table.
-//             client_pub.blocking_send(ClientRequest::Player(PlayerRequest::StartPlayback(
-//                 Playback::URIs(vec![tracks[id].id.clone()], None),
-//             )))?;
-//         }
-//         Command::ShowActionsOnSelectedItem => {
-//             ui.popup = Some(PopupState::ActionList(
-//                 Item::Track(tracks[id].clone()),
-//                 new_list_state(),
-//             ));
-//         }
-//         _ => return Ok(false),
-//     }
-//     Ok(true)
-// }
+    match command {
+        Command::SelectNextOrScrollDown => {
+            if id + 1 < tracks.len() {
+                ui.current_page_mut().select(id + 1);
+            }
+        }
+        Command::SelectPreviousOrScrollUp => {
+            if id > 0 {
+                ui.current_page_mut().select(id - 1);
+            }
+        }
+        Command::ChooseSelected => {
+            // for the track list, `ChooseSelected` on a track
+            // will start a `URIs` playback containing only that track.
+            // It's different for the track table, in which
+            // `ChooseSelected` on a track will start a `URIs` playback
+            // containing all the tracks in the table.
+            client_pub.blocking_send(ClientRequest::Player(PlayerRequest::StartPlayback(
+                Playback::URIs(vec![tracks[id].id.clone()], None),
+            )))?;
+        }
+        Command::ShowActionsOnSelectedItem => {
+            ui.popup = Some(PopupState::ActionList(
+                Item::Track(tracks[id].clone()),
+                new_list_state(),
+            ));
+        }
+        _ => return Ok(false),
+    }
+    Ok(true)
+}
 
 pub fn handle_command_for_artist_list_window(
     command: Command,

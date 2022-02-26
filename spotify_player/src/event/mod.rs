@@ -111,7 +111,9 @@ fn handle_key_event(
         let page_type = state.ui.lock().current_page().page_type();
         match page_type {
             PageType::Library => page::handle_key_sequence_for_library_page(&key_sequence, state)?,
-            // PageType::Search => page::handle_key_sequence_for_search_page(&key_sequence, state)?,
+            PageType::Search => {
+                page::handle_key_sequence_for_search_page(&key_sequence, client_pub, state)?
+            }
             // TODO: handle this
             _ => false, // PageState::Context(..) => {
                         //     drop(ui);
