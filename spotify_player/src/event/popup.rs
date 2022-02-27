@@ -259,7 +259,7 @@ fn handle_key_sequence_for_search_popup(
     }
 }
 
-/// handles a command for a context list popup in which each item represents a context
+/// Handles a command for a context list popup in which each item represents a context
 ///
 /// In addition to application's states and the key sequence,
 /// the function requires to specify:
@@ -301,7 +301,7 @@ fn handle_command_for_context_browsing_list_popup(
     )
 }
 
-/// Handles a command the function requires to specify
+/// Handles a command for a generic list popup.
 ///
 /// - `n_items`: the number of items in the list
 /// - `on_select_func`: the callback when selecting an item
@@ -369,7 +369,7 @@ fn handle_command_for_command_help_popup(command: Command, mut ui: UIStateGuard)
     Ok(true)
 }
 
-/// handles a key sequence for an action list popup
+/// handles a command for an action list popup
 fn handle_command_for_action_list_popup(
     actions: Vec<Action>,
     command: Command,

@@ -137,7 +137,6 @@ pub fn handle_key_sequence_for_search_page(
     }
 }
 
-/// handles a key sequence for a context page
 pub fn handle_key_sequence_for_context_page(
     key_sequence: &KeySequence,
     client_pub: &mpsc::Sender<ClientRequest>,
