@@ -245,13 +245,6 @@ fn handle_global_command(
             if ui.history.len() > 1 {
                 ui.history.pop();
                 ui.popup = None;
-
-                // TODO: handle this
-                // // empty the previous page's `context_id` to force
-                // // updating the context page's window state and requesting the context data
-                // if let PageState::Context(ref mut context_id, _) = ui.current_page_mut() {
-                //     *context_id = None;
-                // }
             }
         }
         Command::SwitchDevice => {

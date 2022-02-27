@@ -1,5 +1,5 @@
 use super::*;
-use crate::command::Action;
+use crate::{command::Action, utils::new_table_state};
 
 /// handles a key sequence for a popup
 pub fn handle_key_sequence_for_popup(
@@ -417,11 +417,16 @@ fn handle_command_for_action_list_popup(
                         ui.popup = None;
                     }
                     Action::BrowseRecommendations => {
-                        // TODO: handle this!
-                        // let seed = SeedItem::Track(track.clone());
-                        // client_pub
-                        //     .blocking_send(ClientRequest::GetRecommendations(seed.clone()))?;
-                        // ui.create_new_page(PageState::Recommendations(seed));
+                        client_pub.blocking_send(ClientRequest::GetRecommendations(
+                            SeedItem::Track(track.clone()),
+                        ))?;
+                        let new_page = PageState::Tracks {
+                            id: format!("recommendations::{}", track.id.uri()),
+                            title: "Recommendations".to_string(),
+                            desc: format!("{} Radio", track.name),
+                            state: new_table_state(),
+                        };
+                        ui.create_new_page(new_page);
                     }
                 },
                 Item::Album(album) => match actions[id] {
@@ -443,11 +448,16 @@ fn handle_command_for_action_list_popup(
                         ui.popup = None;
                     }
                     Action::BrowseRecommendations => {
-                        // TODO: handle this!
-                        // let seed = SeedItem::Artist(artist.clone());
-                        // client_pub
-                        //     .blocking_send(ClientRequest::GetRecommendations(seed.clone()))?;
-                        // ui.create_new_page(PageState::Recommendations(seed));
+                        client_pub.blocking_send(ClientRequest::GetRecommendations(
+                            SeedItem::Artist(artist.clone()),
+                        ))?;
+                        let new_page = PageState::Tracks {
+                            id: format!("recommendations::{}", artist.id.uri()),
+                            title: "Recommendations".to_string(),
+                            desc: format!("{} Radio", artist.name),
+                            state: new_table_state(),
+                        };
+                        ui.create_new_page(new_page);
                     }
                     _ => {}
                 },

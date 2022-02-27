@@ -244,11 +244,11 @@ impl Client {
                 }
             }
             ClientRequest::GetRecommendations(seed) => {
-                let uri = seed.uri();
-                if !state.data.read().caches.tracks.contains(&uri) {
+                let id = format!("recommendations::{}", seed.uri());
+                if !state.data.read().caches.tracks.contains(&id) {
                     let tracks = self.recommendations(&seed).await?;
 
-                    state.data.write().caches.tracks.put(uri, tracks);
+                    state.data.write().caches.tracks.put(id, tracks);
                 }
             }
             ClientRequest::AddTrackToPlaylist(playlist_id, track_id) => {

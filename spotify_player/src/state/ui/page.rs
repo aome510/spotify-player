@@ -20,7 +20,7 @@ pub enum PageState {
         id: String,
         title: String,
         desc: String,
-        state: ListState,
+        state: TableState,
     },
 }
 
@@ -175,7 +175,7 @@ impl PageState {
                     }
                 },
             }),
-            PageState::Tracks { state, .. } => Some(MutableWindowState::List(state)),
+            PageState::Tracks { state, .. } => Some(MutableWindowState::Table(state)),
         }
     }
 }

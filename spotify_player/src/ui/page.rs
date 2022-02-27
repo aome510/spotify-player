@@ -344,8 +344,8 @@ pub fn render_tracks_page(is_active: bool, frame: &mut Frame, state: &SharedStat
         .margin(1)
         .constraints([Constraint::Length(1), Constraint::Min(0)].as_ref())
         .split(rect);
-    let page_desc = Paragraph::new(desc.clone())
-        .block(Block::default().style(state.ui.lock().theme.page_desc()));
+    let page_desc =
+        Paragraph::new(desc.clone()).block(Block::default().style(ui.theme.page_desc()));
     frame.render_widget(page_desc, chunks[0]);
 
     render_track_table_window(
@@ -533,6 +533,9 @@ pub fn render_track_table_window(
             };
             frame.render_stateful_widget(track_table, rect, track_table_state);
         }
-        _ => unreachable!("expect a context page with a state"),
+        PageState::Tracks { state, .. } => {
+            frame.render_stateful_widget(track_table, rect, state);
+        }
+        _ => unreachable!("reach unsupported page state for rendering track table"),
     }
 }
