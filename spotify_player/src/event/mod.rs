@@ -117,8 +117,9 @@ fn handle_key_event(
             PageType::Context => {
                 page::handle_key_sequence_for_context_page(&key_sequence, client_pub, state)?
             }
-            // TODO: handle this
-            _ => false,
+            PageType::Tracks => {
+                page::handle_key_sequence_for_tracks_page(&key_sequence, client_pub, state)?
+            }
         }
     } else {
         popup::handle_key_sequence_for_popup(&key_sequence, client_pub, state)?

@@ -1,66 +1,6 @@
 use super::*;
 use crate::state::UIStateGuard;
 
-// /// handles a key sequence for a recommendation window
-// pub fn handle_key_sequence_for_recommendation_window(
-//     key_sequence: &KeySequence,
-//     client_pub: &mpsc::Sender<ClientRequest>,
-//     state: &SharedState,
-// ) -> Result<bool> {
-//     let command = match state
-//         .keymap_config
-//         .find_command_from_key_sequence(key_sequence)
-//     {
-//         Some(command) => command,
-//         None => return Ok(false),
-//     };
-
-//     let data = state.data.read();
-
-//     // get the recommendation tracks from the cache
-//     let seed_uri = match state.ui.lock().current_page() {
-//         PageState::Recommendations(seed) => seed.uri(),
-//         _ => return Ok(false),
-//     };
-//     let tracks = data
-//         .caches
-//         .recommendation
-//         .peek(&seed_uri)
-//         .map(|tracks| state.filtered_items_by_search(tracks))
-//         .unwrap_or_default();
-
-//     match command {
-//         Command::Search => {
-//             let mut ui = state.ui.lock();
-//             ui.window.select(Some(0));
-//             ui.popup = Some(PopupState::Search {
-//                 query: "".to_owned(),
-//             });
-//             Ok(true)
-//         }
-//         Command::PlayRandom => {
-//             // randomly play a song from the list of recommendation tracks
-//             let offset = {
-//                 let id = rand::thread_rng().gen_range(0..tracks.len());
-//                 Some(rspotify_model::Offset::for_uri(&tracks[id].id.uri()))
-//             };
-//             client_pub.blocking_send(ClientRequest::Player(PlayerRequest::StartPlayback(
-//                 Playback::URIs(tracks.iter().map(|t| t.id.clone()).collect(), offset),
-//             )))?;
-
-//             Ok(true)
-//         }
-//         _ => handle_command_for_track_table_subwindow(
-//             command,
-//             client_pub,
-//             state,
-//             None,
-//             Some(tracks.iter().map(|t| &t.id).collect()),
-//             tracks,
-//         ),
-//     }
-// }
-
 /// Handles a command for the currently focused context window
 ///
 /// The function will need to determine the focused window then
@@ -151,7 +91,7 @@ pub fn handle_command_for_focused_context_window(
 /// If `context_id` is specified, playing a track in the track table will
 /// start a `Context` playback representing a Spotify context.
 /// The above case is used for the track table of a playlist or an album.
-fn handle_command_for_track_table_window(
+pub fn handle_command_for_track_table_window(
     command: Command,
     client_pub: &mpsc::Sender<ClientRequest>,
     context_id: Option<ContextId>,

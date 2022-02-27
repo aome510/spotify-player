@@ -226,3 +226,62 @@ pub fn handle_key_sequence_for_context_page(
     }
     Ok(true)
 }
+
+pub fn handle_key_sequence_for_tracks_page(
+    key_sequence: &KeySequence,
+    client_pub: &mpsc::Sender<ClientRequest>,
+    state: &SharedState,
+) -> Result<bool> {
+    let command = match state
+        .keymap_config
+        .find_command_from_key_sequence(key_sequence)
+    {
+        Some(command) => command,
+        None => return Ok(false),
+    };
+
+    let mut ui = state.ui.lock();
+    let data = state.data.read();
+
+    let id = match ui.current_page() {
+        PageState::Tracks { id, .. } => id,
+        _ => unreachable!("expect a tracks page"),
+    };
+
+    let tracks = data
+        .caches
+        .tracks
+        .peek(id)
+        .map(|tracks| ui.search_filtered_items(tracks))
+        .unwrap_or_default();
+
+    match command {
+        Command::Search => {
+            ui.current_page_mut().select(0);
+            ui.popup = Some(PopupState::Search {
+                query: "".to_owned(),
+            });
+            Ok(true)
+        }
+        Command::PlayRandom => {
+            // randomly play a song from the list of recommendation tracks
+            let offset = {
+                let id = rand::thread_rng().gen_range(0..tracks.len());
+                Some(rspotify_model::Offset::for_uri(&tracks[id].id.uri()))
+            };
+            client_pub.blocking_send(ClientRequest::Player(PlayerRequest::StartPlayback(
+                Playback::URIs(tracks.iter().map(|t| t.id.clone()).collect(), offset),
+            )))?;
+
+            Ok(true)
+        }
+        _ => window::handle_command_for_track_table_window(
+            command,
+            client_pub,
+            None,
+            Some(tracks.iter().map(|t| &t.id).collect()),
+            tracks,
+            ui,
+        ),
+    }
+}
