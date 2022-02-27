@@ -17,6 +17,7 @@ pub enum PageState {
         state: SearchPageUIState,
     },
     Tracks {
+        id: String,
         title: String,
         desc: String,
         state: ListState,
@@ -174,8 +175,7 @@ impl PageState {
                     }
                 },
             }),
-            // TODO: handle this!
-            _ => unreachable!(),
+            PageState::Tracks { state, .. } => Some(MutableWindowState::List(state)),
         }
     }
 }

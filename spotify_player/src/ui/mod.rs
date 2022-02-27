@@ -81,10 +81,11 @@ fn render_main_layout(is_active: bool, frame: &mut Frame, state: &SharedState, r
             page::render_search_page(is_active, frame, state, chunks[1]);
         }
         PageType::Context => {
-            page::render_context_window(is_active, frame, state, chunks[1]);
+            page::render_context_page(is_active, frame, state, chunks[1]);
         }
-        // TODO: handle this!
-        _ => {}
+        PageType::Tracks => {
+            page::render_tracks_page(is_active, frame, state, chunks[1]);
+        }
     };
 }
 

@@ -149,7 +149,7 @@ pub fn render_search_page(is_active: bool, frame: &mut Frame, state: &SharedStat
     frame.render_stateful_widget(playlist_list, chunks[3], &mut page_state.playlist_list);
 }
 
-pub fn render_context_window(is_active: bool, frame: &mut Frame, state: &SharedState, rect: Rect) {
+pub fn render_context_page(is_active: bool, frame: &mut Frame, state: &SharedState, rect: Rect) {
     let mut ui = state.ui.lock();
     let (id, context_page_type) = match ui.current_page() {
         PageState::Context {
@@ -311,65 +311,52 @@ pub fn render_library_page(is_active: bool, frame: &mut Frame, state: &SharedSta
     );
 }
 
-// // /// renders the recommendation window
-// // pub fn render_recommendation_window(
-// //     is_active: bool,
-// //     frame: &mut Frame,
-// //     state: &SharedState,
-// //     rect: Rect,
-// // ) {
-// //     let seed = match state.ui.lock().current_page() {
-// //         PageState::Recommendations(seed) => seed.clone(),
-// //         _ => return,
-// //     };
+pub fn render_tracks_page(is_active: bool, frame: &mut Frame, state: &SharedState, rect: Rect) {
+    let mut ui = state.ui.lock();
+    let data = state.data.read();
 
-// //     let block = Block::default()
-// //         .title(
-// //             state
-// //                 .ui
-// //                 .lock()
-// //                 .theme
-// //                 .block_title_with_style("Recommendations"),
-// //         )
-// //         .borders(Borders::ALL);
+    let (id, title, desc) = match ui.current_page() {
+        PageState::Tracks {
+            id, title, desc, ..
+        } => (id, title, desc),
+        _ => unreachable!("expect a tracks page"),
+    };
 
-// //     let data = state.data.read();
+    let block = Block::default()
+        .title(ui.theme.block_title_with_style(title))
+        .borders(Borders::ALL);
 
-// //     let tracks = match data.caches.recommendation.peek(&seed.uri()) {
-// //         Some(tracks) => tracks,
-// //         None => {
-// //             // recommendation tracks are still loading
-// //             frame.render_widget(Paragraph::new("loading...").block(block), rect);
-// //             return;
-// //         }
-// //     };
+    let tracks = match data.caches.tracks.peek(id) {
+        Some(tracks) => tracks,
+        None => {
+            // tracks are still loading
+            frame.render_widget(Paragraph::new("loading...").block(block), rect);
+            return;
+        }
+    };
 
-// //     // render the window's border and title
-// //     frame.render_widget(block, rect);
+    // render the window's border and title
+    frame.render_widget(block, rect);
 
-// //     // render the window's description
-// //     let desc = match seed {
-// //         SeedItem::Track(track) => format!("{} Radio", track.name),
-// //         SeedItem::Artist(artist) => format!("{} Radio", artist.name),
-// //     };
+    // render the window's description
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .margin(1)
+        .constraints([Constraint::Length(1), Constraint::Min(0)].as_ref())
+        .split(rect);
+    let page_desc = Paragraph::new(desc.clone())
+        .block(Block::default().style(state.ui.lock().theme.page_desc()));
+    frame.render_widget(page_desc, chunks[0]);
 
-// //     let chunks = Layout::default()
-// //         .direction(Direction::Vertical)
-// //         .margin(1)
-// //         .constraints([Constraint::Length(1), Constraint::Min(0)].as_ref())
-// //         .split(rect);
-// //     let page_desc =
-// //         Paragraph::new(desc).block(Block::default().style(state.ui.lock().theme.page_desc()));
-// //     frame.render_widget(page_desc, chunks[0]);
-
-// //     render_track_table_widget(
-// //         frame,
-// //         chunks[1],
-// //         is_active,
-// //         state,
-// //         state.filtered_items_by_search(tracks),
-// //     );
-// // }
+    render_track_table_window(
+        frame,
+        chunks[1],
+        is_active,
+        state,
+        ui.search_filtered_items(tracks),
+        &mut ui,
+    );
+}
 
 /// Renders windows for an artist context page, which includes
 /// - A top track table

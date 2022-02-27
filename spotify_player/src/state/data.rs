@@ -21,7 +21,7 @@ pub struct UserData {
 pub struct Caches {
     pub context: lru::LruCache<String, Context>,
     pub search: lru::LruCache<String, SearchResults>,
-    pub recommendation: lru::LruCache<String, Vec<Track>>,
+    pub tracks: lru::LruCache<String, Vec<Track>>,
 }
 
 impl Default for Caches {
@@ -29,7 +29,7 @@ impl Default for Caches {
         Self {
             context: lru::LruCache::new(64),
             search: lru::LruCache::new(64),
-            recommendation: lru::LruCache::new(64),
+            tracks: lru::LruCache::new(64),
         }
     }
 }
