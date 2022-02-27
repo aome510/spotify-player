@@ -385,8 +385,7 @@ fn from_simplified_artists_to_artists(
 ) -> Vec<Artist> {
     artists
         .into_iter()
-        .map(Artist::try_from_simplified_artist)
-        .flatten()
+        .filter_map(Artist::try_from_simplified_artist)
         .collect()
 }
 

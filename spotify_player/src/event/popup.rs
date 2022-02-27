@@ -1,6 +1,5 @@
-use crate::command::Action;
-
 use super::*;
+use crate::{command::Action, utils::new_table_state};
 
 /// handles a key sequence for a popup
 pub fn handle_key_sequence_for_popup(
@@ -9,19 +8,29 @@ pub fn handle_key_sequence_for_popup(
     state: &SharedState,
 ) -> Result<bool> {
     let ui = state.ui.lock();
+    let popup = ui.popup.as_ref().unwrap();
+
+    if let PopupState::Search { .. } = popup {
+        drop(ui);
+        return handle_key_sequence_for_search_popup(key_sequence, client_pub, state);
+    }
+
+    let command = match state
+        .keymap_config
+        .find_command_from_key_sequence(key_sequence)
+    {
+        Some(command) => command,
+        None => return Ok(false),
+    };
 
     match ui.popup.as_ref().unwrap() {
-        PopupState::Search { .. } => {
-            drop(ui);
-            handle_key_sequence_for_search_popup(key_sequence, client_pub, state)
-        }
+        PopupState::Search { .. } => unreachable!("should be handled before"),
         PopupState::ArtistList(artists, _) => {
             let n_items = artists.len();
 
-            drop(ui);
-            handle_key_sequence_for_list_popup(
-                key_sequence,
-                state,
+            handle_command_for_list_popup(
+                command,
+                ui,
                 n_items,
                 |_, _| {},
                 |ui: &mut UIStateGuard, id: usize| -> Result<()> {
@@ -31,10 +40,11 @@ pub fn handle_key_sequence_for_popup(
                     };
 
                     let context_id = ContextId::Artist(artists[id].id.clone());
-                    ui.create_new_page(PageState::Context(
-                        None,
-                        ContextPageType::Browsing(context_id),
-                    ));
+                    ui.create_new_page(PageState::Context {
+                        id: None,
+                        context_page_type: ContextPageType::Browsing(context_id),
+                        state: None,
+                    });
 
                     Ok(())
                 },
@@ -55,10 +65,9 @@ pub fn handle_key_sequence_for_popup(
                         .map(|p| p.id.uri())
                         .collect::<Vec<_>>();
 
-                    drop(ui);
-                    handle_key_sequence_for_context_browsing_list_popup(
-                        key_sequence,
-                        state,
+                    handle_command_for_context_browsing_list_popup(
+                        command,
+                        ui,
                         playlist_uris,
                         rspotify_model::Type::Playlist,
                     )
@@ -74,10 +83,9 @@ pub fn handle_key_sequence_for_popup(
                         .map(|p| p.id.clone())
                         .collect::<Vec<_>>();
 
-                    drop(ui);
-                    handle_key_sequence_for_list_popup(
-                        key_sequence,
-                        state,
+                    handle_command_for_list_popup(
+                        command,
+                        ui,
                         playlist_ids.len(),
                         |_, _| {},
                         |ui: &mut UIStateGuard, id: usize| -> Result<()> {
@@ -114,10 +122,9 @@ pub fn handle_key_sequence_for_popup(
                 .map(|a| a.id.uri())
                 .collect::<Vec<_>>();
 
-            drop(ui);
-            handle_key_sequence_for_context_browsing_list_popup(
-                key_sequence,
-                state,
+            handle_command_for_context_browsing_list_popup(
+                command,
+                ui,
                 artist_uris,
                 rspotify_model::Type::Artist,
             )
@@ -132,10 +139,9 @@ pub fn handle_key_sequence_for_popup(
                 .map(|a| a.id.uri())
                 .collect::<Vec<_>>();
 
-            drop(ui);
-            handle_key_sequence_for_context_browsing_list_popup(
-                key_sequence,
-                state,
+            handle_command_for_context_browsing_list_popup(
+                command,
+                ui,
                 album_uris,
                 rspotify_model::Type::Album,
             )
@@ -143,10 +149,9 @@ pub fn handle_key_sequence_for_popup(
         PopupState::ThemeList(themes, _) => {
             let n_items = themes.len();
 
-            drop(ui);
-            handle_key_sequence_for_list_popup(
-                key_sequence,
-                state,
+            handle_command_for_list_popup(
+                command,
+                ui,
                 n_items,
                 |ui: &mut UIStateGuard, id: usize| {
                     ui.theme = match ui.popup {
@@ -170,10 +175,9 @@ pub fn handle_key_sequence_for_popup(
         PopupState::DeviceList(_) => {
             let player = state.player.read();
 
-            drop(ui);
-            handle_key_sequence_for_list_popup(
-                key_sequence,
-                state,
+            handle_command_for_list_popup(
+                command,
+                ui,
                 player.devices.len(),
                 |_, _| {},
                 |ui: &mut UIStateGuard, id: usize| -> Result<()> {
@@ -188,14 +192,10 @@ pub fn handle_key_sequence_for_popup(
                 },
             )
         }
-        PopupState::CommandHelp { .. } => {
-            drop(ui);
-            handle_key_sequence_for_command_help_popup(key_sequence, state)
-        }
+        PopupState::CommandHelp { .. } => handle_command_for_command_help_popup(command, ui),
         PopupState::ActionList(item, ..) => {
             let actions = item.actions();
-            drop(ui);
-            handle_key_sequence_for_action_list_popup(actions, key_sequence, client_pub, state)
+            handle_command_for_action_list_popup(actions, command, client_pub, ui)
         }
     }
 }
@@ -206,29 +206,30 @@ fn handle_key_sequence_for_search_popup(
     client_pub: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
 ) -> Result<bool> {
-    let mut ui = state.ui.lock();
-
     // handle user's input that updates the search query
-    let query = match ui.popup {
-        Some(PopupState::Search { ref mut query }) => query,
-        _ => return Ok(false),
-    };
-    if key_sequence.keys.len() == 1 {
-        if let Key::None(c) = key_sequence.keys[0] {
-            match c {
-                crossterm::event::KeyCode::Char(c) => {
-                    query.push(c);
-                    ui.window.select(Some(0));
-                    return Ok(true);
-                }
-                crossterm::event::KeyCode::Backspace => {
-                    if !query.is_empty() {
-                        query.pop().unwrap();
-                        ui.window.select(Some(0));
+    {
+        let mut ui = state.ui.lock();
+        let query = match ui.popup {
+            Some(PopupState::Search { ref mut query }) => query,
+            _ => return Ok(false),
+        };
+        if key_sequence.keys.len() == 1 {
+            if let Key::None(c) = key_sequence.keys[0] {
+                match c {
+                    crossterm::event::KeyCode::Char(c) => {
+                        query.push(c);
+                        ui.current_page_mut().select(0);
+                        return Ok(true);
                     }
-                    return Ok(true);
+                    crossterm::event::KeyCode::Backspace => {
+                        if !query.is_empty() {
+                            query.pop().unwrap();
+                            ui.current_page_mut().select(0);
+                        }
+                        return Ok(true);
+                    }
+                    _ => {}
                 }
-                _ => {}
             }
         }
     }
@@ -236,54 +237,43 @@ fn handle_key_sequence_for_search_popup(
     let command = state
         .keymap_config
         .find_command_from_key_sequence(key_sequence);
+    if let Some(Command::ClosePopup) = command {
+        state.ui.lock().popup = None;
+        return Ok(true);
+    }
 
-    match command {
-        Some(command) => match command {
-            Command::ClosePopup => {
-                ui.window.select(Some(0));
-                ui.popup = None;
-                Ok(true)
-            }
-            _ => match ui.current_page() {
-                PageState::Library => {
-                    drop(ui);
-                    window::handle_key_sequence_for_library_window(key_sequence, state)
-                }
-                PageState::Recommendations(..) => {
-                    drop(ui);
-                    window::handle_key_sequence_for_recommendation_window(
-                        key_sequence,
-                        client_pub,
-                        state,
-                    )
-                }
-                PageState::Context(..) => {
-                    drop(ui);
-                    window::handle_key_sequence_for_context_window(key_sequence, client_pub, state)
-                }
-                PageState::Searching { .. } => Ok(false),
-            },
-        },
-        None => Ok(false),
+    // there is no focus placed on the search popup, so commands not handle by
+    // the popup should be moved to the current page's event handler
+    let page_type = state.ui.lock().current_page().page_type();
+    match page_type {
+        PageType::Library => page::handle_key_sequence_for_library_page(key_sequence, state),
+        PageType::Search => {
+            page::handle_key_sequence_for_search_page(key_sequence, client_pub, state)
+        }
+        PageType::Context => {
+            page::handle_key_sequence_for_context_page(key_sequence, client_pub, state)
+        }
+        PageType::Tracks => {
+            page::handle_key_sequence_for_tracks_page(key_sequence, client_pub, state)
+        }
     }
 }
 
-/// handles a key sequence for a context list popup in which
-/// each item represents a context
+/// Handles a command for a context list popup in which each item represents a context
 ///
 /// In addition to application's states and the key sequence,
 /// the function requires to specify:
 /// - `uris`: a list of context URIs
 /// - `uri_type`: an enum represents the type of a context in the list (`playlist`, `artist`, etc)
-fn handle_key_sequence_for_context_browsing_list_popup(
-    key_sequence: &KeySequence,
-    state: &SharedState,
+fn handle_command_for_context_browsing_list_popup(
+    command: Command,
+    ui: UIStateGuard,
     uris: Vec<String>,
     context_type: rspotify_model::Type,
 ) -> Result<bool> {
-    handle_key_sequence_for_list_popup(
-        key_sequence,
-        state,
+    handle_command_for_list_popup(
+        command,
+        ui,
         uris.len(),
         |_, _| {},
         |ui: &mut UIStateGuard, id: usize| -> Result<()> {
@@ -297,10 +287,11 @@ fn handle_key_sequence_for_context_browsing_list_popup(
                 }
             };
 
-            ui.create_new_page(PageState::Context(
-                None,
-                ContextPageType::Browsing(context_id),
-            ));
+            ui.create_new_page(PageState::Context {
+                id: None,
+                context_page_type: ContextPageType::Browsing(context_id),
+                state: None,
+            });
 
             Ok(())
         },
@@ -310,32 +301,20 @@ fn handle_key_sequence_for_context_browsing_list_popup(
     )
 }
 
-/// handles a key sequence for a generic list popup.
+/// Handles a command for a generic list popup.
 ///
-/// In addition the the application states and the key sequence,
-/// the function requires to specify
 /// - `n_items`: the number of items in the list
 /// - `on_select_func`: the callback when selecting an item
 /// - `on_choose_func`: the callback when choosing an item
 /// - `on_close_func`: the callback when closing the popup
-fn handle_key_sequence_for_list_popup(
-    key_sequence: &KeySequence,
-    state: &SharedState,
+fn handle_command_for_list_popup(
+    command: Command,
+    mut ui: UIStateGuard,
     n_items: usize,
     on_select_func: impl Fn(&mut UIStateGuard, usize),
     on_choose_func: impl Fn(&mut UIStateGuard, usize) -> Result<()>,
     on_close_func: impl Fn(&mut UIStateGuard),
 ) -> Result<bool> {
-    let command = match state
-        .keymap_config
-        .find_command_from_key_sequence(key_sequence)
-    {
-        Some(command) => command,
-        None => return Ok(false),
-    };
-
-    let mut ui = state.ui.lock();
-
     let popup = ui.popup.as_mut().unwrap();
     let current_id = popup.list_selected().unwrap_or_default();
 
@@ -367,21 +346,8 @@ fn handle_key_sequence_for_list_popup(
     Ok(true)
 }
 
-/// handles a key sequence for a command shortcut help popup
-fn handle_key_sequence_for_command_help_popup(
-    key_sequence: &KeySequence,
-    state: &SharedState,
-) -> Result<bool> {
-    let command = match state
-        .keymap_config
-        .find_command_from_key_sequence(key_sequence)
-    {
-        Some(command) => command,
-        None => return Ok(false),
-    };
-
-    let mut ui = state.ui.lock();
-
+/// handles a command for a command shortcut help popup
+fn handle_command_for_command_help_popup(command: Command, mut ui: UIStateGuard) -> Result<bool> {
     let offset = match ui.popup {
         Some(PopupState::CommandHelp { ref mut offset }) => offset,
         _ => return Ok(false),
@@ -403,16 +369,16 @@ fn handle_key_sequence_for_command_help_popup(
     Ok(true)
 }
 
-/// handles a key sequence for an action list popup
-fn handle_key_sequence_for_action_list_popup(
+/// handles a command for an action list popup
+fn handle_command_for_action_list_popup(
     actions: Vec<Action>,
-    key_sequence: &KeySequence,
+    command: Command,
     client_pub: &mpsc::Sender<ClientRequest>,
-    state: &SharedState,
+    ui: UIStateGuard,
 ) -> Result<bool> {
-    handle_key_sequence_for_list_popup(
-        key_sequence,
-        state,
+    handle_command_for_list_popup(
+        command,
+        ui,
         actions.len(),
         |_, _| {},
         |ui: &mut UIStateGuard, id: usize| -> Result<()> {
@@ -427,10 +393,11 @@ fn handle_key_sequence_for_action_list_popup(
                         if let Some(ref album) = track.album {
                             let uri = album.id.uri();
                             let context_id = ContextId::Album(AlbumId::from_uri(&uri)?);
-                            ui.create_new_page(PageState::Context(
-                                None,
-                                ContextPageType::Browsing(context_id),
-                            ));
+                            ui.create_new_page(PageState::Context {
+                                id: None,
+                                context_page_type: ContextPageType::Browsing(context_id),
+                                state: None,
+                            });
                         }
                     }
                     Action::BrowseArtist => {
@@ -451,10 +418,16 @@ fn handle_key_sequence_for_action_list_popup(
                         ui.popup = None;
                     }
                     Action::BrowseRecommendations => {
-                        let seed = SeedItem::Track(track.clone());
-                        client_pub
-                            .blocking_send(ClientRequest::GetRecommendations(seed.clone()))?;
-                        ui.create_new_page(PageState::Recommendations(seed));
+                        client_pub.blocking_send(ClientRequest::GetRecommendations(
+                            SeedItem::Track(track.clone()),
+                        ))?;
+                        let new_page = PageState::Tracks {
+                            id: format!("recommendations::{}", track.id.uri()),
+                            title: "Recommendations".to_string(),
+                            desc: format!("{} Radio", track.name),
+                            state: new_table_state(),
+                        };
+                        ui.create_new_page(new_page);
                     }
                 },
                 Item::Album(album) => match actions[id] {
@@ -476,10 +449,16 @@ fn handle_key_sequence_for_action_list_popup(
                         ui.popup = None;
                     }
                     Action::BrowseRecommendations => {
-                        let seed = SeedItem::Artist(artist.clone());
-                        client_pub
-                            .blocking_send(ClientRequest::GetRecommendations(seed.clone()))?;
-                        ui.create_new_page(PageState::Recommendations(seed));
+                        client_pub.blocking_send(ClientRequest::GetRecommendations(
+                            SeedItem::Artist(artist.clone()),
+                        ))?;
+                        let new_page = PageState::Tracks {
+                            id: format!("recommendations::{}", artist.id.uri()),
+                            title: "Recommendations".to_string(),
+                            desc: format!("{} Radio", artist.name),
+                            state: new_table_state(),
+                        };
+                        ui.create_new_page(new_page);
                     }
                     _ => {}
                 },

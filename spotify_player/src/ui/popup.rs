@@ -1,6 +1,17 @@
-use super::{construct_list_widget, help, Frame};
-use crate::state::*;
-use tui::{layout::*, widgets::*};
+use super::*;
+use std::collections::{btree_map::Entry, BTreeMap};
+
+const SHORTCUT_TABLE_N_COLUMNS: usize = 3;
+const SHORTCUT_TABLE_CONSTRAINS: [Constraint; SHORTCUT_TABLE_N_COLUMNS] = [
+    Constraint::Percentage(33),
+    Constraint::Percentage(33),
+    Constraint::Percentage(33),
+];
+const COMMAND_TABLE_CONSTRAINTS: [Constraint; 3] = [
+    Constraint::Percentage(25),
+    Constraint::Percentage(25),
+    Constraint::Percentage(50),
+];
 
 /// renders a popup (if any) to handle a command or show additional information
 /// depending on the current popup state.
@@ -33,8 +44,7 @@ pub fn render_popup(frame: &mut Frame, state: &SharedState, rect: Rect) -> (Rect
                     .constraints([Constraint::Length(7), Constraint::Min(0)].as_ref())
                     .split(rect);
 
-                drop(ui);
-                help::render_commands_help_popup(frame, state, chunks[1]);
+                render_commands_help_popup(frame, state, ui, chunks[1]);
                 (chunks[0], false)
             }
             PopupState::ActionList(item, _) => {
@@ -44,8 +54,7 @@ pub fn render_popup(frame: &mut Frame, state: &SharedState, rect: Rect) -> (Rect
                     .map(|a| (format!("{:?}", a), false))
                     .collect();
 
-                drop(ui);
-                let rect = render_list_popup(frame, state, rect, "Actions", items, 7);
+                let rect = render_list_popup(frame, ui, rect, "Actions", items, 7);
                 (rect, false)
             }
             PopupState::DeviceList { .. } => {
@@ -61,15 +70,13 @@ pub fn render_popup(frame: &mut Frame, state: &SharedState, rect: Rect) -> (Rect
                     .map(|d| (format!("{} | {}", d.name, d.id), current_device_id == d.id))
                     .collect();
 
-                drop(ui);
-                let rect = render_list_popup(frame, state, rect, "Devices", items, 5);
+                let rect = render_list_popup(frame, ui, rect, "Devices", items, 5);
                 (rect, false)
             }
             PopupState::ThemeList(themes, ..) => {
                 let items = themes.iter().map(|t| (t.name.clone(), false)).collect();
 
-                drop(ui);
-                let rect = render_list_popup(frame, state, rect, "Themes", items, 7);
+                let rect = render_list_popup(frame, ui, rect, "Themes", items, 7);
                 (rect, false)
             }
             PopupState::UserPlaylistList(action, _) => {
@@ -83,8 +90,7 @@ pub fn render_popup(frame: &mut Frame, state: &SharedState, rect: Rect) -> (Rect
                     .map(|p| (p.name.clone(), false))
                     .collect();
 
-                drop(ui);
-                let rect = render_list_popup(frame, state, rect, "User Playlists", items, 10);
+                let rect = render_list_popup(frame, ui, rect, "User Playlists", items, 10);
                 (rect, false)
             }
             PopupState::UserFollowedArtistList { .. } => {
@@ -97,8 +103,7 @@ pub fn render_popup(frame: &mut Frame, state: &SharedState, rect: Rect) -> (Rect
                     .map(|a| (a.name.clone(), false))
                     .collect();
 
-                drop(ui);
-                let rect = render_list_popup(frame, state, rect, "User Followed Artists", items, 7);
+                let rect = render_list_popup(frame, ui, rect, "User Followed Artists", items, 7);
                 (rect, false)
             }
             PopupState::UserSavedAlbumList { .. } => {
@@ -111,15 +116,13 @@ pub fn render_popup(frame: &mut Frame, state: &SharedState, rect: Rect) -> (Rect
                     .map(|a| (a.name.clone(), false))
                     .collect();
 
-                drop(ui);
-                let rect = render_list_popup(frame, state, rect, "User Saved Albums", items, 7);
+                let rect = render_list_popup(frame, ui, rect, "User Saved Albums", items, 7);
                 (rect, false)
             }
             PopupState::ArtistList(artists, ..) => {
                 let items = artists.iter().map(|a| (a.name.clone(), false)).collect();
 
-                drop(ui);
-                let rect = render_list_popup(frame, state, rect, "Artists", items, 5);
+                let rect = render_list_popup(frame, ui, rect, "Artists", items, 5);
                 (rect, false)
             }
         },
@@ -129,7 +132,7 @@ pub fn render_popup(frame: &mut Frame, state: &SharedState, rect: Rect) -> (Rect
 /// a helper function to render a list popup
 fn render_list_popup(
     frame: &mut Frame,
-    state: &SharedState,
+    mut ui: UIStateGuard,
     rect: Rect,
     title: &'static str,
     items: Vec<(String, bool)>,
@@ -140,20 +143,125 @@ fn render_list_popup(
         .constraints([Constraint::Min(0), Constraint::Length(length)].as_ref())
         .split(rect);
 
-    let widget = construct_list_widget(state, items, title, true, None);
+    let widget = construct_list_widget(&ui.theme, items, title, true, None);
 
     frame.render_stateful_widget(
         widget,
         chunks[1],
-        state
-            .ui
-            .lock()
-            .popup
-            .as_mut()
-            .unwrap()
-            .list_state_mut()
-            .unwrap(),
+        ui.popup.as_mut().unwrap().list_state_mut().unwrap(),
     );
 
     chunks[0]
+}
+
+/// renders a shortcut help popup to show the available shortcuts based on user's inputs
+pub fn render_shortcut_help_popup(frame: &mut Frame, state: &SharedState, rect: Rect) -> Rect {
+    let ui = state.ui.lock();
+    let input = &ui.input_key_sequence;
+
+    // get the matches (keymaps) from the current key sequence input,
+    // if there is at lease one match, render the shortcut help popup
+    let matches = {
+        if input.keys.is_empty() {
+            vec![]
+        } else {
+            state
+                .keymap_config
+                .find_matched_prefix_keymaps(input)
+                .into_iter()
+                .map(|keymap| {
+                    let mut keymap = keymap.clone();
+                    keymap.key_sequence.keys.drain(0..input.keys.len());
+                    keymap
+                })
+                .filter(|keymap| !keymap.key_sequence.keys.is_empty())
+                .collect::<Vec<_>>()
+        }
+    };
+
+    if matches.is_empty() {
+        rect
+    } else {
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Min(0), Constraint::Length(7)].as_ref())
+            .split(rect);
+
+        let help_table = Table::new(
+            matches
+                .into_iter()
+                .map(|km| format!("{}: {:?}", km.key_sequence, km.command))
+                .collect::<Vec<_>>()
+                .chunks(SHORTCUT_TABLE_N_COLUMNS)
+                .map(|c| Row::new(c.iter().map(|i| Cell::from(i.to_owned()))))
+                .collect::<Vec<_>>(),
+        )
+        .widths(&SHORTCUT_TABLE_CONSTRAINS)
+        .block(
+            Block::default()
+                .title(ui.theme.block_title_with_style("Shortcuts"))
+                .borders(Borders::ALL),
+        );
+        frame.render_widget(help_table, chunks[1]);
+        chunks[0]
+    }
+}
+
+/// renders a command help popup listing all key shortcuts and corresponding descriptions
+pub fn render_commands_help_popup(
+    frame: &mut Frame,
+    state: &SharedState,
+    mut ui: UIStateGuard,
+    rect: Rect,
+) {
+    let offset = match ui.popup {
+        Some(PopupState::CommandHelp { ref mut offset }) => offset,
+        _ => return,
+    };
+
+    let mut map = BTreeMap::new();
+    state.keymap_config.keymaps.iter().for_each(|km| {
+        let v = map.entry(km.command);
+        match v {
+            Entry::Vacant(v) => {
+                v.insert(format!("\"{}\"", km.key_sequence));
+            }
+            Entry::Occupied(mut v) => {
+                let desc = format!("{}, \"{}\"", v.get(), km.key_sequence);
+                *v.get_mut() = desc;
+            }
+        }
+    });
+
+    // offset should not be greater than or equal the number of available commands
+    if *offset >= map.len() {
+        *offset = map.len() - 1
+    }
+    let help_table = Table::new(
+        map.into_iter()
+            .skip(*offset)
+            .map(|(c, k)| {
+                Row::new(vec![
+                    Cell::from(format!("{:?}", c)),
+                    Cell::from(format!("[{}]", k)),
+                    Cell::from(c.desc()),
+                ])
+            })
+            .collect::<Vec<_>>(),
+    )
+    .header(
+        Row::new(vec![
+            Cell::from("Command"),
+            Cell::from("Shortcuts"),
+            Cell::from("Description"),
+        ])
+        .style(ui.theme.table_header()),
+    )
+    .widths(&COMMAND_TABLE_CONSTRAINTS)
+    .block(
+        Block::default()
+            .title(ui.theme.block_title_with_style("Commands"))
+            .borders(Borders::ALL),
+    );
+    frame.render_widget(help_table, rect);
 }

@@ -36,11 +36,10 @@ pub async fn start_client_handler(
     }
 }
 
-/// starts multiple event watchers listening
-/// to player events and notifying the client
-/// to make additional update requests if needed
+/// Starts multiple event watchers listening to events and
+/// notifying the client to make update requests if needed
 pub fn start_player_event_watchers(state: SharedState, client_pub: mpsc::Sender<ClientRequest>) {
-    // start a thread that updates the current playback every `playback_refresh_duration_in_ms` ms.
+    // Start a watcher task that updates the playback every `playback_refresh_duration_in_ms` ms.
     // A positive value of `playback_refresh_duration_in_ms` is required to start the watcher.
     if state.app_config.playback_refresh_duration_in_ms > 0 {
         tokio::task::spawn_blocking({
@@ -56,11 +55,13 @@ pub fn start_player_event_watchers(state: SharedState, client_pub: mpsc::Sender<
         });
     }
 
-    // the main thread that watches new player events every `refresh_duration` ms.
-    let refresh_duration = std::time::Duration::from_millis(1000);
+    // Main watcher task
+    // TODO: make the below `refresh_duration` configurable
+    let refresh_duration = std::time::Duration::from_millis(100);
     loop {
         std::thread::sleep(refresh_duration);
 
+        let mut ui = state.ui.lock();
         let player = state.player.read();
 
         // update the playback when the current track ends
@@ -83,6 +84,40 @@ pub fn start_player_event_watchers(state: SharedState, client_pub: mpsc::Sender<
             client_pub
                 .blocking_send(ClientRequest::Player(PlayerRequest::Reconnect))
                 .unwrap_or_default();
+        }
+
+        // update the context state and request new data when moving to a new context page
+        if let PageState::Context {
+            id,
+            context_page_type,
+            state,
+        } = ui.current_page_mut()
+        {
+            let expected_id = match context_page_type {
+                ContextPageType::Browsing(context_id) => Some(context_id.clone()),
+                ContextPageType::CurrentPlaying => player.playing_context_id(),
+            };
+
+            if *id != expected_id {
+                tracing::info!("current context ID ({:?}) is different from the expected ID ({:?}), update the context state...", id, expected_id);
+
+                *id = expected_id.clone();
+                match expected_id {
+                    Some(id) => {
+                        client_pub
+                            .blocking_send(ClientRequest::GetContext(id.clone()))
+                            .unwrap_or_default();
+                        *state = Some(match id {
+                            ContextId::Album(_) => ContextPageUIState::new_album(),
+                            ContextId::Artist(_) => ContextPageUIState::new_artist(),
+                            ContextId::Playlist(_) => ContextPageUIState::new_playlist(),
+                        });
+                    }
+                    None => {
+                        *state = None;
+                    }
+                }
+            }
         }
     }
 }

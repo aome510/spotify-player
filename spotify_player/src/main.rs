@@ -99,6 +99,15 @@ async fn main() -> anyhow::Result<()> {
     client_pub
         .send(event::ClientRequest::GetCurrentPlayback)
         .await?;
+    client_pub
+        .send(event::ClientRequest::GetUserPlaylists)
+        .await?;
+    client_pub
+        .send(event::ClientRequest::GetUserFollowedArtists)
+        .await?;
+    client_pub
+        .send(event::ClientRequest::GetUserSavedAlbums)
+        .await?;
 
     // client event handler task
     tokio::task::spawn({
@@ -126,7 +135,6 @@ async fn main() -> anyhow::Result<()> {
 
     // player event watcher task
     tokio::task::spawn_blocking({
-        let client_pub = client_pub.clone();
         let state = state.clone();
         move || {
             client::start_player_event_watchers(state, client_pub);
@@ -135,7 +143,7 @@ async fn main() -> anyhow::Result<()> {
 
     // application's UI as the main task
     tokio::task::spawn_blocking(move || {
-        ui::start_ui(state, client_pub).unwrap();
+        ui::start_ui(state).unwrap();
     })
     .await?;
     std::process::exit(0);

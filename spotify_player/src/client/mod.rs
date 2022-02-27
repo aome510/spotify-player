@@ -206,8 +206,7 @@ impl Client {
                 let devices = self.spotify.device().await?;
                 state.player.write().devices = devices
                     .into_iter()
-                    .map(Device::try_from_device)
-                    .flatten()
+                    .filter_map(Device::try_from_device)
                     .collect();
             }
             ClientRequest::GetUserPlaylists => {
@@ -244,11 +243,11 @@ impl Client {
                 }
             }
             ClientRequest::GetRecommendations(seed) => {
-                let uri = seed.uri();
-                if !state.data.read().caches.recommendation.contains(&uri) {
+                let id = format!("recommendations::{}", seed.uri());
+                if !state.data.read().caches.tracks.contains(&id) {
                     let tracks = self.recommendations(&seed).await?;
 
-                    state.data.write().caches.recommendation.put(uri, tracks);
+                    state.data.write().caches.tracks.put(id, tracks);
                 }
             }
             ClientRequest::AddTrackToPlaylist(playlist_id, track_id) => {
@@ -343,8 +342,7 @@ impl Client {
         // converts `rspotify_model::SimplifiedAlbum` into `state::Album`
         let albums = albums
             .into_iter()
-            .map(Album::try_from_simplified_album)
-            .flatten()
+            .filter_map(Album::try_from_simplified_album)
             .collect();
         Ok(self.clean_up_artist_albums(albums))
     }
@@ -422,8 +420,7 @@ impl Client {
 
         Ok(tracks
             .into_iter()
-            .map(Track::try_from_simplified_track)
-            .flatten()
+            .filter_map(Track::try_from_simplified_track)
             .collect())
     }
 
@@ -441,8 +438,7 @@ impl Client {
                 rspotify_model::SearchResult::Tracks(p) => p
                     .items
                     .into_iter()
-                    .map(Track::try_from_full_track)
-                    .flatten()
+                    .filter_map(Track::try_from_full_track)
                     .collect(),
                 _ => unreachable!(),
             },
@@ -456,8 +452,7 @@ impl Client {
                 rspotify_model::SearchResult::Albums(p) => p
                     .items
                     .into_iter()
-                    .map(Album::try_from_simplified_album)
-                    .flatten()
+                    .filter_map(Album::try_from_simplified_album)
                     .collect(),
                 _ => unreachable!(),
             },
@@ -580,13 +575,12 @@ impl Client {
             .all_paging_items(first_page)
             .await?
             .into_iter()
-            .map(|item| match item.track {
+            .filter_map(|item| match item.track {
                 Some(rspotify_model::PlayableItem::Track(track)) => {
                     Track::try_from_full_track(track)
                 }
                 _ => None,
             })
-            .flatten()
             .collect::<Vec<_>>();
 
         Ok(Context::Playlist {
@@ -611,7 +605,7 @@ impl Client {
             .all_paging_items(first_page)
             .await?
             .into_iter()
-            .map(|t| {
+            .filter_map(|t| {
                 // simplified track doesn't have album so
                 // we need to manually include one during
                 // converting into `state::Track`
@@ -620,7 +614,6 @@ impl Client {
                     t
                 })
             })
-            .flatten()
             .collect::<Vec<_>>();
 
         Ok(Context::Album { album, tracks })
@@ -639,8 +632,7 @@ impl Client {
             .artist_top_tracks(artist_id, &rspotify_model::enums::misc::Market::FromToken)
             .await?
             .into_iter()
-            .map(Track::try_from_full_track)
-            .flatten()
+            .filter_map(Track::try_from_full_track)
             .collect::<Vec<_>>();
 
         let related_artists = self

@@ -5,9 +5,9 @@ use crate::{
     utils::new_list_state,
 };
 use anyhow::Result;
-use rand::Rng;
 use tokio::sync::mpsc;
 
+mod page;
 mod popup;
 mod window;
 
@@ -106,41 +106,23 @@ fn handle_key_event(
         key_sequence = KeySequence { keys: vec![key] };
     }
 
-    let ui = state.ui.lock();
-    let handled = match ui.popup {
-        None => {
-            // no popup
-            match ui.current_page() {
-                PageState::Library => {
-                    drop(ui);
-                    window::handle_key_sequence_for_library_window(&key_sequence, state)?
-                }
-                PageState::Recommendations(..) => {
-                    drop(ui);
-                    window::handle_key_sequence_for_recommendation_window(
-                        &key_sequence,
-                        client_pub,
-                        state,
-                    )?
-                }
-                PageState::Context(..) => {
-                    drop(ui);
-                    window::handle_key_sequence_for_context_window(
-                        &key_sequence,
-                        client_pub,
-                        state,
-                    )?
-                }
-                PageState::Searching { .. } => {
-                    drop(ui);
-                    window::handle_key_sequence_for_search_window(&key_sequence, client_pub, state)?
-                }
+    let handled = if state.ui.lock().popup.is_none() {
+        // no popup
+        let page_type = state.ui.lock().current_page().page_type();
+        match page_type {
+            PageType::Library => page::handle_key_sequence_for_library_page(&key_sequence, state)?,
+            PageType::Search => {
+                page::handle_key_sequence_for_search_page(&key_sequence, client_pub, state)?
+            }
+            PageType::Context => {
+                page::handle_key_sequence_for_context_page(&key_sequence, client_pub, state)?
+            }
+            PageType::Tracks => {
+                page::handle_key_sequence_for_tracks_page(&key_sequence, client_pub, state)?
             }
         }
-        Some(_) => {
-            drop(ui);
-            popup::handle_key_sequence_for_popup(&key_sequence, client_pub, state)?
-        }
+    } else {
+        popup::handle_key_sequence_for_popup(&key_sequence, client_pub, state)?
     };
 
     // if the key sequence is not handled, let the global command handler handle it
@@ -227,7 +209,11 @@ fn handle_global_command(
             }
         }
         Command::BrowsePlayingContext => {
-            ui.create_new_page(PageState::Context(None, ContextPageType::CurrentPlaying));
+            ui.create_new_page(PageState::Context {
+                id: None,
+                context_page_type: ContextPageType::CurrentPlaying,
+                state: None,
+            });
         }
         Command::BrowseUserPlaylists => {
             client_pub.blocking_send(ClientRequest::GetUserPlaylists)?;
@@ -245,25 +231,21 @@ fn handle_global_command(
             ui.popup = Some(PopupState::UserSavedAlbumList(new_list_state()));
         }
         Command::LibraryPage => {
-            ui.create_new_page(PageState::Library);
+            ui.create_new_page(PageState::Library {
+                state: LibraryPageUIState::new(),
+            });
         }
         Command::SearchPage => {
-            ui.create_new_page(PageState::Searching {
-                input: "".to_owned(),
-                current_query: "".to_owned(),
+            ui.create_new_page(PageState::Search {
+                input: String::new(),
+                current_query: String::new(),
+                state: SearchPageUIState::new(),
             });
         }
         Command::PreviousPage => {
             if ui.history.len() > 1 {
                 ui.history.pop();
                 ui.popup = None;
-                ui.window = WindowState::Unknown;
-
-                // empty the previous page's `context_id` to force
-                // updating the context page's window state and requesting the context data
-                if let PageState::Context(ref mut context_id, _) = ui.current_page_mut() {
-                    *context_id = None;
-                }
             }
         }
         Command::SwitchDevice => {
@@ -284,6 +266,16 @@ fn handle_global_command(
         Command::ReconnectIntegratedClient => {
             #[cfg(feature = "streaming")]
             client_pub.blocking_send(ClientRequest::NewSpircConnection)?;
+        }
+        Command::FocusNextWindow => {
+            if !ui.has_focused_popup() {
+                ui.current_page_mut().next()
+            }
+        }
+        Command::FocusPreviousWindow => {
+            if !ui.has_focused_popup() {
+                ui.current_page_mut().previous()
+            }
         }
         _ => return Ok(false),
     }
