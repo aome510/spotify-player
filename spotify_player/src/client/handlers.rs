@@ -56,7 +56,7 @@ pub fn start_player_event_watchers(state: SharedState, client_pub: mpsc::Sender<
     }
 
     // the main thread that watches new events every `refresh_duration` ms.
-    let refresh_duration = std::time::Duration::from_millis(1000);
+    let refresh_duration = std::time::Duration::from_millis(100);
     loop {
         std::thread::sleep(refresh_duration);
 
