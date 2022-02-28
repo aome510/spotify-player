@@ -238,6 +238,16 @@ impl Item {
             Self::Playlist(_) => vec![command::Action::SaveToLibrary],
         }
     }
+
+    /// gets the name of the spotify item
+    pub fn name(&self) -> &str {
+        match self {
+            Self::Track(track) => &track.name,
+            Self::Artist(artist) => &artist.name,
+            Self::Album(album) => &album.name,
+            Self::Playlist(playlist) => &playlist.name,
+        }
+    }
 }
 
 impl SeedItem {
