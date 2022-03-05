@@ -42,6 +42,46 @@ fn init_app_cli_arguments() -> clap::ArgMatches {
         .get_matches()
 }
 
+async fn init_spotify(
+    client_pub: &tokio::sync::mpsc::Sender<event::ClientRequest>,
+    spirc_pub: &tokio::sync::broadcast::Sender<()>,
+    client: &client::Client,
+    state: &state::SharedState,
+) -> anyhow::Result<()> {
+    client.init_token().await?;
+    client.update_current_playback_state(state).await?;
+
+    // if `streaming` feature is enabled, create new Spirc connection
+    #[cfg(feature = "streaming")]
+    client.new_spirc_connection(spirc_pub.subscribe(), client_pub.clone());
+
+    if state.player.read().playback.is_none() {
+        tracing::info!(
+            "no playback found on startup, trying to connect to the first available device..."
+        );
+        client.connect_to_first_available_device().await?;
+    }
+
+    // Request user data
+
+    client_pub
+        .send(event::ClientRequest::GetCurrentUser)
+        .await?;
+
+    // request data needed to render the Library page (default page when starting the application)
+    client_pub
+        .send(event::ClientRequest::GetUserPlaylists)
+        .await?;
+    client_pub
+        .send(event::ClientRequest::GetUserFollowedArtists)
+        .await?;
+    client_pub
+        .send(event::ClientRequest::GetUserSavedAlbums)
+        .await?;
+
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // parse command line arguments
@@ -81,44 +121,29 @@ async fn main() -> anyhow::Result<()> {
     state.parse_config_files(&config_folder, args.value_of("theme"))?;
     let state = std::sync::Arc::new(state);
 
-    // initialize a librespot session
+    // create a librespot session
     let session = auth::new_session(&cache_folder, state.app_config.device.audio_cache).await?;
 
-    // application's channels
+    // create a spotify API client
+    let client = client::Client::new(
+        session.clone(),
+        state.app_config.device.clone(),
+        state.app_config.client_id.clone(),
+    );
+
+    // create application's channels
     let (client_pub, client_sub) = tokio::sync::mpsc::channel::<event::ClientRequest>(16);
     let (spirc_pub, _) = tokio::sync::broadcast::channel::<()>(16);
 
-    // get some prior information
-    #[cfg(feature = "streaming")]
-    client_pub
-        .send(event::ClientRequest::GetCurrentPlayback)
-        .await?;
-    client_pub
-        .send(event::ClientRequest::NewSpircConnection)
-        .await?;
-    client_pub
-        .send(event::ClientRequest::GetCurrentUser)
-        .await?;
-    client_pub
-        .send(event::ClientRequest::GetUserPlaylists)
-        .await?;
-    client_pub
-        .send(event::ClientRequest::GetUserFollowedArtists)
-        .await?;
-    client_pub
-        .send(event::ClientRequest::GetUserSavedAlbums)
-        .await?;
+    // initialize Spotify-related stuff
+    init_spotify(&client_pub, &spirc_pub, &client, &state).await?;
+
+    // Spawn application's tasks
 
     // client event handler task
     tokio::task::spawn({
         let state = state.clone();
-        let client = client::Client::new(
-            session.clone(),
-            state.app_config.device.clone(),
-            state.app_config.client_id.clone(),
-        );
         let client_pub = client_pub.clone();
-        client.init_token().await?;
         async move {
             client::start_client_handler(state, client, client_pub, client_sub, spirc_pub).await;
         }

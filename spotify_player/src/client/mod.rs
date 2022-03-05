@@ -228,6 +228,38 @@ impl Client {
         Ok(())
     }
 
+    // connects to the first available device
+    pub async fn connect_to_first_available_device(&self) -> Result<()> {
+        let device_id = self.spotify.device().await?.into_iter().find_map(|d| d.id);
+
+        match device_id {
+            Some(id) => {
+                tracing::info!(
+                    "transfered the playback to the first available device (id={})",
+                    id
+                );
+                self.spotify.transfer_playback(&id, None).await?;
+            }
+            None => {
+                // if the streaming is available and no device is found,
+                // try to connect to the integrated client's device
+                #[cfg(feature = "streaming")]
+                {
+                    if let Some(ref session) = self.spotify.session {
+                        let device_id = session.device_id();
+                        self.spotify.transfer_playback(device_id, None).await?;
+                        tracing::info!(
+                            "transfered the playback to the integrated client's device (id={})",
+                            device_id
+                        );
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     /// gets all playlists of the current user
     pub async fn current_user_playlists(&self) -> Result<Vec<Playlist>> {
         let first_page = self
@@ -656,7 +688,7 @@ impl Client {
     }
 
     /// updates the current playback state
-    async fn update_current_playback_state(&self, state: &SharedState) -> Result<()> {
+    pub async fn update_current_playback_state(&self, state: &SharedState) -> Result<()> {
         let playback = self.spotify.current_playback(None, None::<Vec<_>>).await?;
         let mut player = state.player.write();
         player.playback = playback;
