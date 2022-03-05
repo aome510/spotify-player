@@ -113,7 +113,7 @@ impl Default for KeymapConfig {
                 },
                 Keymap {
                     key_sequence: "g space".into(),
-                    command: Command::BrowsePlayingContext,
+                    command: Command::CurrentlyPlayingContextPage,
                 },
                 Keymap {
                     key_sequence: "g l".into(),

@@ -208,7 +208,7 @@ fn handle_global_command(
                 }
             }
         }
-        Command::BrowsePlayingContext => {
+        Command::CurrentlyPlayingContextPage => {
             ui.create_new_page(PageState::Context {
                 id: None,
                 context_page_type: ContextPageType::CurrentPlaying,
