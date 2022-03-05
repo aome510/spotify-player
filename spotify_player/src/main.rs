@@ -91,13 +91,13 @@ async fn main() -> anyhow::Result<()> {
     // get some prior information
     #[cfg(feature = "streaming")]
     client_pub
+        .send(event::ClientRequest::GetCurrentPlayback)
+        .await?;
+    client_pub
         .send(event::ClientRequest::NewSpircConnection)
         .await?;
     client_pub
         .send(event::ClientRequest::GetCurrentUser)
-        .await?;
-    client_pub
-        .send(event::ClientRequest::GetCurrentPlayback)
         .await?;
     client_pub
         .send(event::ClientRequest::GetUserPlaylists)

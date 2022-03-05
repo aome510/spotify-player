@@ -1,9 +1,6 @@
 use tokio::sync::{broadcast, mpsc};
 
-use crate::{
-    event::{ClientRequest, PlayerRequest},
-    state::*,
-};
+use crate::{event::ClientRequest, state::*};
 
 use super::Client;
 
@@ -77,13 +74,6 @@ pub fn start_player_event_watchers(state: SharedState, client_pub: mpsc::Sender<
                     .blocking_send(ClientRequest::GetCurrentPlayback)
                     .unwrap_or_default();
             }
-        }
-
-        // try to reconnect if there is no playback
-        if player.playback.is_none() {
-            client_pub
-                .blocking_send(ClientRequest::Player(PlayerRequest::Reconnect))
-                .unwrap_or_default();
         }
 
         // update the context state and request new data when moving to a new context page

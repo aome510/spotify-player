@@ -192,5 +192,15 @@ fn render_playback_window(frame: &mut Frame, state: &SharedState, rect: Rect) {
             frame.render_widget(playback_desc, chunks[0]);
             frame.render_widget(progress_bar, chunks[1]);
         }
+    } else {
+        frame.render_widget(
+            Paragraph::new(
+                "No playback found. \
+                 Please make sure there is a running Spotify client and try to connect to it using the `SwitchDevice` command."
+            )
+            .wrap(Wrap { trim: true })
+            .block(Block::default()),
+            chunks[0],
+        );
     };
 }

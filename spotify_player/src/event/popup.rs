@@ -181,8 +181,13 @@ pub fn handle_key_sequence_for_popup(
                 player.devices.len(),
                 |_, _| {},
                 |ui: &mut UIStateGuard, id: usize| -> Result<()> {
+                    let is_playing = player
+                        .playback
+                        .as_ref()
+                        .map(|p| p.is_playing)
+                        .unwrap_or(false);
                     client_pub.blocking_send(ClientRequest::Player(
-                        PlayerRequest::TransferPlayback(player.devices[id].id.clone(), true),
+                        PlayerRequest::TransferPlayback(player.devices[id].id.clone(), is_playing),
                     ))?;
                     ui.popup = None;
                     Ok(())
