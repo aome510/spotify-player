@@ -418,10 +418,22 @@ impl Client {
             }
         };
 
-        Ok(tracks
+        let mut tracks = tracks
             .into_iter()
             .filter_map(Track::try_from_simplified_track)
-            .collect())
+            .collect::<Vec<_>>();
+
+        // for track recommendation seed, add the track seed to the returned recommended tracks
+        if let SeedItem::Track(track) = seed {
+            let mut seed_track = track.clone();
+            // recommended tracks returned from the API are represented by `SimplifiedTrack` struct,
+            // which doesn't have `album` field specified. So, we need to change the seed track's
+            // `album` field for consistency with other tracks in the list.
+            seed_track.album = None;
+            tracks.insert(0, seed_track);
+        }
+
+        Ok(tracks)
     }
 
     /// searchs for items (tracks, artists, albums, playlists) that match a given query string.
