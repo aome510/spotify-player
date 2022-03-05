@@ -261,6 +261,34 @@ impl Client {
         Ok(())
     }
 
+    /// gets the recently played tracks of the current user
+    pub async fn current_user_recently_played_tracks(&self) -> Result<Vec<Track>> {
+        let first_page = self
+            .spotify
+            .current_user_recently_played(Some(50), None)
+            .await?;
+
+        let play_histories = self.all_cursor_based_paging_items(first_page).await?;
+        Ok(play_histories
+            .into_iter()
+            .filter_map(|h| Track::try_from_full_track(h.track))
+            .collect())
+    }
+
+    /// gets the top tracks of the current user
+    pub async fn current_user_top_tracks(&self) -> Result<Vec<Track>> {
+        let first_page = self
+            .spotify
+            .current_user_top_tracks_manual(None, Some(50), None)
+            .await?;
+
+        let tracks = self.all_paging_items(first_page).await?;
+        Ok(tracks
+            .into_iter()
+            .filter_map(Track::try_from_full_track)
+            .collect())
+    }
+
     /// gets all playlists of the current user
     pub async fn current_user_playlists(&self) -> Result<Vec<Playlist>> {
         let first_page = self
@@ -694,6 +722,25 @@ impl Client {
         let mut maybe_next = first_page.next;
         while let Some(url) = maybe_next {
             let mut next_page = self.internal_call::<rspotify_model::Page<T>>(&url).await?;
+            items.append(&mut next_page.items);
+            maybe_next = next_page.next;
+        }
+        Ok(items)
+    }
+
+    /// gets all cursor-based paging items starting from a pagination object of the first page
+    async fn all_cursor_based_paging_items<T>(
+        &self,
+        first_page: rspotify_model::CursorBasedPage<T>,
+    ) -> Result<Vec<T>>
+    where
+        T: serde::de::DeserializeOwned,
+    {
+        let mut items = first_page.items;
+        let mut maybe_next = first_page.next;
+        while let Some(url) = maybe_next {
+            tracing::info!("url: {url}");
+            let mut next_page = self.internal_call::<CursorBasedPage<T>>(&url).await?;
             items.append(&mut next_page.items);
             maybe_next = next_page.next;
         }
