@@ -180,6 +180,8 @@ List of supported commands:
 | `BrowseUserFollowedArtists`   | open a popup for browsing user's followed artists                  | `u a`              |
 | `BrowseUserSavedAlbums`       | open a popup for browsing user's saved albums                      | `u A`              |
 | `CurrentlyPlayingContextPage` | go to the currently playing context page                           | `g space`          |
+| `TopTrackPage`                | go to the user top track page                                      | `g t`              |
+| `RecentlyPlayedTrackPage`     | go to the user recently played track page                          | `g r`              |
 | `LibraryPage`                 | go to the user library page                                        | `g l`              |
 | `SearchPage`                  | go to the search page                                              | `g s`              |
 | `PreviousPage`                | go to the previous page                                            | `backspace`, `C-p` |

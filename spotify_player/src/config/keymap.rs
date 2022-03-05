@@ -116,6 +116,14 @@ impl Default for KeymapConfig {
                     command: Command::CurrentlyPlayingContextPage,
                 },
                 Keymap {
+                    key_sequence: "g t".into(),
+                    command: Command::TopTrackPage,
+                },
+                Keymap {
+                    key_sequence: "g r".into(),
+                    command: Command::RecentlyPlayedTrackPage,
+                },
+                Keymap {
                     key_sequence: "g l".into(),
                     command: Command::LibraryPage,
                 },
