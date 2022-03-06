@@ -196,6 +196,20 @@ impl Client {
                 let albums = self.current_user_saved_albums().await?;
                 state.data.write().user_data.saved_albums = albums;
             }
+            ClientRequest::GetUserTopTracks => {
+                let id = "top-tracks";
+                if !state.data.read().caches.tracks.contains(id) {
+                    let tracks = self.current_user_top_tracks().await?;
+                    state.data.write().caches.tracks.put(id.to_string(), tracks);
+                }
+            }
+            ClientRequest::GetUserRecentlyPlayedTracks => {
+                let id = "recently-played-tracks";
+                if !state.data.read().caches.tracks.contains(id) {
+                    let tracks = self.current_user_recently_played_tracks().await?;
+                    state.data.write().caches.tracks.put(id.to_string(), tracks);
+                }
+            }
             ClientRequest::GetContext(context) => {
                 let uri = context.uri();
                 if !state.data.read().caches.context.contains(&uri) {

@@ -2,7 +2,7 @@ use crate::{
     command::Command,
     key::{Key, KeySequence},
     state::*,
-    utils::new_list_state,
+    utils::{new_list_state, new_table_state},
 };
 use anyhow::Result;
 use tokio::sync::mpsc;
@@ -33,6 +33,8 @@ pub enum ClientRequest {
     GetUserPlaylists,
     GetUserSavedAlbums,
     GetUserFollowedArtists,
+    GetUserTopTracks,
+    GetUserRecentlyPlayedTracks,
     GetContext(ContextId),
     GetCurrentPlayback,
     GetRecommendations(SeedItem),
@@ -228,6 +230,24 @@ fn handle_global_command(
         Command::BrowseUserSavedAlbums => {
             client_pub.blocking_send(ClientRequest::GetUserSavedAlbums)?;
             ui.popup = Some(PopupState::UserSavedAlbumList(new_list_state()));
+        }
+        Command::TopTrackPage => {
+            ui.create_new_page(PageState::Tracks {
+                id: "top-tracks".to_string(),
+                title: "Top Tracks".to_string(),
+                desc: "User's top tracks".to_string(),
+                state: new_table_state(),
+            });
+            client_pub.blocking_send(ClientRequest::GetUserTopTracks)?;
+        }
+        Command::RecentlyPlayedTrackPage => {
+            ui.create_new_page(PageState::Tracks {
+                id: "recently-played-tracks".to_string(),
+                title: "Recently Played Tracks".to_string(),
+                desc: "User's recently played tracks".to_string(),
+                state: new_table_state(),
+            });
+            client_pub.blocking_send(ClientRequest::GetUserRecentlyPlayedTracks)?;
         }
         Command::LibraryPage => {
             ui.create_new_page(PageState::Library {
