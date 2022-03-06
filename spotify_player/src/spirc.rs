@@ -14,7 +14,7 @@ use librespot_playback::{
 use tokio::sync::{broadcast, mpsc};
 
 /// create a new spirc connection running in the background
-pub async fn new_connection(
+pub fn new_connection(
     session: Session,
     device: config::DeviceConfig,
     client_pub: mpsc::Sender<ClientRequest>,
@@ -60,7 +60,6 @@ pub async fn new_connection(
     );
 
     tokio::task::spawn({
-        let client_pub = client_pub.clone();
         async move {
             while let Some(event) = channel.recv().await {
                 tracing::info!("got a librespot player event: {:?}", event);
@@ -75,11 +74,15 @@ pub async fn new_connection(
     tracing::info!("starting an integrated Spotify client using librespot's spirc protocol...");
 
     let (spirc, spirc_task) = Spirc::new(connect_config, session, player, mixer);
-    tokio::select! {
-        _ = spirc_task => {}
-        _ = spirc_sub.recv() => {
-            tracing::info!("got reconnect request, shutdown the current connection to create a new spirc connection...");
-            spirc.shutdown();
+    tokio::task::spawn({
+        async move {
+            tokio::select! {
+                _ = spirc_task => {}
+                _ = spirc_sub.recv() => {
+                    tracing::info!("got reconnect request, shutdown the current connection to create a new spirc connection...");
+                    spirc.shutdown();
+                }
+            }
         }
-    }
+    });
 }

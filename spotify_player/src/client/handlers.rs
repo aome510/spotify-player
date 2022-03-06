@@ -1,9 +1,6 @@
 use tokio::sync::{broadcast, mpsc};
 
-use crate::{
-    event::{ClientRequest, PlayerRequest},
-    state::*,
-};
+use crate::{event::ClientRequest, state::*};
 
 use super::Client;
 
@@ -21,7 +18,15 @@ pub async fn start_client_handler(
             ClientRequest::NewSpircConnection => {
                 // send a notification to current spirc subcribers to shutdown all running spirc connections
                 spirc_pub.send(()).unwrap_or_default();
-                client.new_spirc_connection(spirc_pub.subscribe(), client_pub.clone());
+                if let Err(err) = client
+                    .new_spirc_connection(spirc_pub.subscribe(), client_pub.clone(), true)
+                    .await
+                {
+                    tracing::warn!(
+                        "encounter error when creating new spirc connection: {}",
+                        err
+                    );
+                }
             }
             _ => {
                 let state = state.clone();
@@ -77,13 +82,6 @@ pub fn start_player_event_watchers(state: SharedState, client_pub: mpsc::Sender<
                     .blocking_send(ClientRequest::GetCurrentPlayback)
                     .unwrap_or_default();
             }
-        }
-
-        // try to reconnect if there is no playback
-        if player.playback.is_none() {
-            client_pub
-                .blocking_send(ClientRequest::Player(PlayerRequest::Reconnect))
-                .unwrap_or_default();
         }
 
         // update the context state and request new data when moving to a new context page

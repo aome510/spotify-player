@@ -35,19 +35,27 @@ impl Client {
 
     /// creates a new Librespot's spirc connection
     #[cfg(feature = "streaming")]
-    pub fn new_spirc_connection(
+    pub async fn new_spirc_connection(
         &self,
         spirc_sub: broadcast::Receiver<()>,
         client_pub: mpsc::Sender<ClientRequest>,
-    ) {
+        should_connect: bool,
+    ) -> Result<()> {
         let session = match self.spotify.session {
-            None => return,
+            None => return Ok(()),
             Some(ref session) => session.clone(),
         };
         let device = self.spotify.device.clone();
-        tokio::task::spawn(async move {
-            spirc::new_connection(session, device, client_pub, spirc_sub).await;
-        });
+        let device_id = session.device_id().to_string();
+        spirc::new_connection(session, device, client_pub, spirc_sub);
+
+        // whether should we connect to the new spirc client upon its creation
+        if should_connect {
+            tracing::info!("transfer playback to the new spirc client with id = {device_id}");
+            self.spotify.transfer_playback(&device_id, None).await?;
+        }
+
+        Ok(())
     }
 
     /// initializes the authorization token inside the Spotify client
@@ -68,7 +76,7 @@ impl Client {
     ) -> Result<()> {
         tracing::info!("handle player request: {:?}", request);
 
-        // `TransferPlayback` and `Reconnect` need to be handled separately
+        // `TransferPlayback` needs to be handled separately
         // from other play requests because they don't require an active playback
 
         // transfer the current playback to another device
@@ -78,38 +86,6 @@ impl Client {
                 .await?;
 
             tracing::info!("transfered the playback to device with {} id", device_id);
-            return Ok(());
-        }
-        // trying to reconnect to the first available device
-        if let PlayerRequest::Reconnect = request {
-            let device_id = self.spotify.device().await?.into_iter().find_map(|d| d.id);
-
-            match device_id {
-                Some(id) => {
-                    tracing::info!(
-                        "transfered the playback to the first available device (id={})",
-                        id
-                    );
-                    self.spotify.transfer_playback(&id, None).await?;
-                }
-                None => {
-                    // if the streaming is available and no device is found,
-                    // which is probably because user doesn't specify their own client ID,
-                    // try to connect to the integrated client's device ID
-                    #[cfg(feature = "streaming")]
-                    {
-                        if let Some(ref session) = self.spotify.session {
-                            let device_id = session.device_id();
-                            self.spotify.transfer_playback(device_id, None).await?;
-                            tracing::info!(
-                                "transfered the playback to the integrated client's device (id={})",
-                                device_id
-                            );
-                        }
-                    }
-                }
-            }
-
             return Ok(());
         }
 
@@ -160,7 +136,6 @@ impl Client {
                     .await?
             }
             PlayerRequest::TransferPlayback(..) => unreachable!(),
-            PlayerRequest::Reconnect => unreachable!(),
         };
 
         Ok(())
@@ -257,6 +232,38 @@ impl Client {
                 self.save_to_library(state, item).await?;
             }
         };
+
+        Ok(())
+    }
+
+    // connects to the first available device
+    pub async fn connect_to_first_available_device(&self) -> Result<()> {
+        let device_id = self.spotify.device().await?.into_iter().find_map(|d| d.id);
+
+        match device_id {
+            Some(id) => {
+                tracing::info!(
+                    "transfered the playback to the first available device (id={})",
+                    id
+                );
+                self.spotify.transfer_playback(&id, None).await?;
+            }
+            None => {
+                // if the streaming is available and no device is found,
+                // try to connect to the integrated client's device
+                #[cfg(feature = "streaming")]
+                {
+                    if let Some(ref session) = self.spotify.session {
+                        let device_id = session.device_id();
+                        self.spotify.transfer_playback(device_id, None).await?;
+                        tracing::info!(
+                            "transfered the playback to the integrated client's device (id={})",
+                            device_id
+                        );
+                    }
+                }
+            }
+        }
 
         Ok(())
     }
@@ -689,7 +696,7 @@ impl Client {
     }
 
     /// updates the current playback state
-    async fn update_current_playback_state(&self, state: &SharedState) -> Result<()> {
+    pub async fn update_current_playback_state(&self, state: &SharedState) -> Result<()> {
         let playback = self.spotify.current_playback(None, None::<Vec<_>>).await?;
         let mut player = state.player.write();
         player.playback = playback;
