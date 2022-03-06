@@ -253,6 +253,9 @@ fn handle_global_command(
             ui.create_new_page(PageState::Library {
                 state: LibraryPageUIState::new(),
             });
+            client_pub.blocking_send(ClientRequest::GetUserPlaylists)?;
+            client_pub.blocking_send(ClientRequest::GetUserFollowedArtists)?;
+            client_pub.blocking_send(ClientRequest::GetUserSavedAlbums)?;
         }
         Command::SearchPage => {
             ui.create_new_page(PageState::Search {
