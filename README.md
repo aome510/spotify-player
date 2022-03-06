@@ -230,7 +230,7 @@ By default, `spotify-player` will look into `$HOME/.cache/spotify-player` for ap
 - [x] integrate Spotify's [search APIs](https://developer.spotify.com/documentation/web-api/reference/#category-search)
 - [x] integrate Spotify's [recommendation API](https://developer.spotify.com/console/get-recommendations/)
 - [x] add supports for add track to playlist, save album, follow artist, and related commands.
-- [ ] integrate Spotify's [recently played API](https://developer.spotify.com/console/get-recently-played/)
+- [x] integrate Spotify's [recently played API](https://developer.spotify.com/console/get-recently-played/)
 - [ ] handle networking error when running
 - [x] add a (optional?) integrated spotify client (possibly use [librespot](https://github.com/librespot-org/librespot))
   - [ ] implement a custom connection logic to replace librespot's [spirc](https://github.com/librespot-org/librespot/blob/dev/connect/src/spirc.rs).
