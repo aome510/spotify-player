@@ -1,6 +1,6 @@
 [package]
 name = "spotify_player"
-version = "0.5.2"
+version = "0.6.0"
 authors = ["Thang Pham <phamducthang1234@gmail.com>"]
 edition = "2021"
 license = "MIT"
@@ -11,7 +11,7 @@ readme = "../README.md"
 
 [dependencies]
 anyhow = "1.0.55"
-clap = "3.1.2"
+clap = "3.1.5"
 config_parser2 = "0.1.2"
 crossterm = { version = "0.23.0", features = ["event-stream"] }
 dirs-next = "2.0.0"
@@ -19,7 +19,7 @@ librespot-connect = { version = "0.3.1", optional = true }
 librespot-playback = { version = "0.3.1", optional = true }
 librespot-core = "0.3.1"
 log = "0.4.14"
-lru = "0.7.2"
+lru = "0.7.3"
 chrono = "0.4.19"
 reqwest = { version = "0.11.9", features = ["json"] }
 rpassword = "5.0.1"
