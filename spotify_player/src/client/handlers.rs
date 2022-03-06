@@ -19,6 +19,7 @@ pub async fn start_client_handler(
                 // send a notification to current spirc subcribers to shutdown all running spirc connections
                 spirc_pub.send(()).unwrap_or_default();
                 client.new_spirc_connection(spirc_pub.subscribe(), client_pub.clone());
+                // TODO: handle no playback when reconnect integrated spotify
             }
             _ => {
                 let state = state.clone();

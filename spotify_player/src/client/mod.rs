@@ -45,9 +45,7 @@ impl Client {
             Some(ref session) => session.clone(),
         };
         let device = self.spotify.device.clone();
-        tokio::task::spawn(async move {
-            spirc::new_connection(session, device, client_pub, spirc_sub).await;
-        });
+        spirc::new_connection(session, device, client_pub, spirc_sub);
     }
 
     /// initializes the authorization token inside the Spotify client
