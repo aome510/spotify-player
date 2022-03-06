@@ -54,7 +54,14 @@ pub fn render_popup(frame: &mut Frame, state: &SharedState, rect: Rect) -> (Rect
                     .map(|a| (format!("{:?}", a), false))
                     .collect();
 
-                let rect = render_list_popup(frame, ui, rect, "Actions", items, 7);
+                let rect = render_list_popup(
+                    frame,
+                    rect,
+                    &format!("Actions on {}", item.name()),
+                    items,
+                    7,
+                    ui,
+                );
                 (rect, false)
             }
             PopupState::DeviceList { .. } => {
@@ -70,13 +77,13 @@ pub fn render_popup(frame: &mut Frame, state: &SharedState, rect: Rect) -> (Rect
                     .map(|d| (format!("{} | {}", d.name, d.id), current_device_id == d.id))
                     .collect();
 
-                let rect = render_list_popup(frame, ui, rect, "Devices", items, 5);
+                let rect = render_list_popup(frame, rect, "Devices", items, 5, ui);
                 (rect, false)
             }
             PopupState::ThemeList(themes, ..) => {
                 let items = themes.iter().map(|t| (t.name.clone(), false)).collect();
 
-                let rect = render_list_popup(frame, ui, rect, "Themes", items, 7);
+                let rect = render_list_popup(frame, rect, "Themes", items, 7, ui);
                 (rect, false)
             }
             PopupState::UserPlaylistList(action, _) => {
@@ -90,7 +97,7 @@ pub fn render_popup(frame: &mut Frame, state: &SharedState, rect: Rect) -> (Rect
                     .map(|p| (p.name.clone(), false))
                     .collect();
 
-                let rect = render_list_popup(frame, ui, rect, "User Playlists", items, 10);
+                let rect = render_list_popup(frame, rect, "User Playlists", items, 10, ui);
                 (rect, false)
             }
             PopupState::UserFollowedArtistList { .. } => {
@@ -103,7 +110,7 @@ pub fn render_popup(frame: &mut Frame, state: &SharedState, rect: Rect) -> (Rect
                     .map(|a| (a.name.clone(), false))
                     .collect();
 
-                let rect = render_list_popup(frame, ui, rect, "User Followed Artists", items, 7);
+                let rect = render_list_popup(frame, rect, "User Followed Artists", items, 7, ui);
                 (rect, false)
             }
             PopupState::UserSavedAlbumList { .. } => {
@@ -116,13 +123,13 @@ pub fn render_popup(frame: &mut Frame, state: &SharedState, rect: Rect) -> (Rect
                     .map(|a| (a.name.clone(), false))
                     .collect();
 
-                let rect = render_list_popup(frame, ui, rect, "User Saved Albums", items, 7);
+                let rect = render_list_popup(frame, rect, "User Saved Albums", items, 7, ui);
                 (rect, false)
             }
             PopupState::ArtistList(artists, ..) => {
                 let items = artists.iter().map(|a| (a.name.clone(), false)).collect();
 
-                let rect = render_list_popup(frame, ui, rect, "Artists", items, 5);
+                let rect = render_list_popup(frame, rect, "Artists", items, 5, ui);
                 (rect, false)
             }
         },
@@ -132,11 +139,11 @@ pub fn render_popup(frame: &mut Frame, state: &SharedState, rect: Rect) -> (Rect
 /// a helper function to render a list popup
 fn render_list_popup(
     frame: &mut Frame,
-    mut ui: UIStateGuard,
     rect: Rect,
-    title: &'static str,
+    title: &str,
     items: Vec<(String, bool)>,
     length: u16,
+    mut ui: UIStateGuard,
 ) -> Rect {
     let chunks = Layout::default()
         .direction(Direction::Vertical)

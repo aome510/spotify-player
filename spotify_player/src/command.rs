@@ -38,8 +38,9 @@ pub enum Command {
     BrowseUserFollowedArtists,
     BrowseUserSavedAlbums,
 
-    BrowsePlayingContext,
-
+    CurrentlyPlayingContextPage,
+    TopTrackPage,
+    RecentlyPlayedTrackPage,
     LibraryPage,
     SearchPage,
     PreviousPage,
@@ -95,7 +96,9 @@ impl Command {
             Self::BrowseUserPlaylists => "open a popup for browsing user's playlists",
             Self::BrowseUserFollowedArtists => "open a popup for browsing user's followed artists",
             Self::BrowseUserSavedAlbums => "open a popup for browsing user's saved albums",
-            Self::BrowsePlayingContext => "browse the current playing context",
+            Self::CurrentlyPlayingContextPage => "go to the currently playing context page",
+            Self::TopTrackPage => "go to the user top track page",
+            Self::RecentlyPlayedTrackPage => "go to the user recently played track page",
             Self::LibraryPage => "go to the user libary page",
             Self::SearchPage => "go to the search page",
             Self::PreviousPage => "go to the previous page",

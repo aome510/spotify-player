@@ -196,6 +196,20 @@ impl Client {
                 let albums = self.current_user_saved_albums().await?;
                 state.data.write().user_data.saved_albums = albums;
             }
+            ClientRequest::GetUserTopTracks => {
+                let id = "top-tracks";
+                if !state.data.read().caches.tracks.contains(id) {
+                    let tracks = self.current_user_top_tracks().await?;
+                    state.data.write().caches.tracks.put(id.to_string(), tracks);
+                }
+            }
+            ClientRequest::GetUserRecentlyPlayedTracks => {
+                let id = "recently-played-tracks";
+                if !state.data.read().caches.tracks.contains(id) {
+                    let tracks = self.current_user_recently_played_tracks().await?;
+                    state.data.write().caches.tracks.put(id.to_string(), tracks);
+                }
+            }
             ClientRequest::GetContext(context) => {
                 let uri = context.uri();
                 if !state.data.read().caches.context.contains(&uri) {
@@ -266,6 +280,41 @@ impl Client {
         }
 
         Ok(())
+    }
+
+    /// gets the recently played tracks of the current user
+    pub async fn current_user_recently_played_tracks(&self) -> Result<Vec<Track>> {
+        let first_page = self
+            .spotify
+            .current_user_recently_played(Some(50), None)
+            .await?;
+
+        let play_histories = self.all_cursor_based_paging_items(first_page).await?;
+
+        // de-duplicate the tracks returned from the recently-played API
+        let mut tracks = Vec::<Track>::new();
+        for history in play_histories {
+            if !tracks.iter().any(|t| t.name == history.track.name) {
+                if let Some(track) = Track::try_from_full_track(history.track) {
+                    tracks.push(track);
+                }
+            }
+        }
+        Ok(tracks)
+    }
+
+    /// gets the top tracks of the current user
+    pub async fn current_user_top_tracks(&self) -> Result<Vec<Track>> {
+        let first_page = self
+            .spotify
+            .current_user_top_tracks_manual(None, Some(50), None)
+            .await?;
+
+        let tracks = self.all_paging_items(first_page).await?;
+        Ok(tracks
+            .into_iter()
+            .filter_map(Track::try_from_full_track)
+            .collect())
     }
 
     /// gets all playlists of the current user
@@ -425,10 +474,22 @@ impl Client {
             }
         };
 
-        Ok(tracks
+        let mut tracks = tracks
             .into_iter()
             .filter_map(Track::try_from_simplified_track)
-            .collect())
+            .collect::<Vec<_>>();
+
+        // for track recommendation seed, add the track seed to the returned recommended tracks
+        if let SeedItem::Track(track) = seed {
+            let mut seed_track = track.clone();
+            // recommended tracks returned from the API are represented by `SimplifiedTrack` struct,
+            // which doesn't have `album` field specified. So, we need to change the seed track's
+            // `album` field for consistency with other tracks in the list.
+            seed_track.album = None;
+            tracks.insert(0, seed_track);
+        }
+
+        Ok(tracks)
     }
 
     /// searchs for items (tracks, artists, albums, playlists) that match a given query string.
@@ -689,6 +750,25 @@ impl Client {
         let mut maybe_next = first_page.next;
         while let Some(url) = maybe_next {
             let mut next_page = self.internal_call::<rspotify_model::Page<T>>(&url).await?;
+            items.append(&mut next_page.items);
+            maybe_next = next_page.next;
+        }
+        Ok(items)
+    }
+
+    /// gets all cursor-based paging items starting from a pagination object of the first page
+    async fn all_cursor_based_paging_items<T>(
+        &self,
+        first_page: rspotify_model::CursorBasedPage<T>,
+    ) -> Result<Vec<T>>
+    where
+        T: serde::de::DeserializeOwned,
+    {
+        let mut items = first_page.items;
+        let mut maybe_next = first_page.next;
+        while let Some(url) = maybe_next {
+            tracing::info!("url: {url}");
+            let mut next_page = self.internal_call::<CursorBasedPage<T>>(&url).await?;
             items.append(&mut next_page.items);
             maybe_next = next_page.next;
         }

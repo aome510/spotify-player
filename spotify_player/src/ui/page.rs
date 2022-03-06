@@ -466,8 +466,7 @@ pub fn render_track_table_window(
     tracks: Vec<&Track>,
     ui: &mut UIStateGuard,
 ) {
-    // get the current playing track's URI to
-    // highlight such track (if exists) in the track table
+    // get the current playing track's URI to decorate such track (if exists) in the track table
     let mut playing_track_uri = "".to_string();
     let mut active_desc = "";
     if let Some(ref playback) = state.player.read().playback {
@@ -512,11 +511,11 @@ pub fn render_track_table_window(
         )
         .block(Block::default())
         .widths(&[
-            Constraint::Length(4),
+            Constraint::Length(5),
+            Constraint::Percentage(25),
+            Constraint::Percentage(25),
             Constraint::Percentage(30),
-            Constraint::Percentage(30),
-            Constraint::Percentage(30),
-            Constraint::Percentage(10),
+            Constraint::Percentage(15),
         ])
         .highlight_style(ui.theme.selection_style(is_active));
 
