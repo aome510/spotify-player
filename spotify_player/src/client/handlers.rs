@@ -18,8 +18,15 @@ pub async fn start_client_handler(
             ClientRequest::NewSpircConnection => {
                 // send a notification to current spirc subcribers to shutdown all running spirc connections
                 spirc_pub.send(()).unwrap_or_default();
-                client.new_spirc_connection(spirc_pub.subscribe(), client_pub.clone());
-                // TODO: handle no playback when reconnect integrated spotify
+                if let Err(err) = client
+                    .new_spirc_connection(spirc_pub.subscribe(), client_pub.clone(), true)
+                    .await
+                {
+                    tracing::warn!(
+                        "encounter error when creating new spirc connection: {}",
+                        err
+                    );
+                }
             }
             _ => {
                 let state = state.clone();

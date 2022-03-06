@@ -53,7 +53,9 @@ async fn init_spotify(
 
     // if `streaming` feature is enabled, create new Spirc connection
     #[cfg(feature = "streaming")]
-    client.new_spirc_connection(spirc_pub.subscribe(), client_pub.clone());
+    client
+        .new_spirc_connection(spirc_pub.subscribe(), client_pub.clone(), false)
+        .await?;
 
     if state.player.read().playback.is_none() {
         tracing::info!(

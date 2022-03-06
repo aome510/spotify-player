@@ -35,17 +35,27 @@ impl Client {
 
     /// creates a new Librespot's spirc connection
     #[cfg(feature = "streaming")]
-    pub fn new_spirc_connection(
+    pub async fn new_spirc_connection(
         &self,
         spirc_sub: broadcast::Receiver<()>,
         client_pub: mpsc::Sender<ClientRequest>,
-    ) {
+        should_connect: bool,
+    ) -> Result<()> {
         let session = match self.spotify.session {
-            None => return,
+            None => return Ok(()),
             Some(ref session) => session.clone(),
         };
         let device = self.spotify.device.clone();
+        let device_id = session.device_id().to_string();
         spirc::new_connection(session, device, client_pub, spirc_sub);
+
+        // whether should we connect to the new spirc client upon its creation
+        if should_connect {
+            tracing::info!("transfer playback to the new spirc client with id = {device_id}");
+            self.spotify.transfer_playback(&device_id, None).await?;
+        }
+
+        Ok(())
     }
 
     /// initializes the authorization token inside the Spotify client
