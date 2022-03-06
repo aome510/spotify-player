@@ -290,10 +290,17 @@ impl Client {
             .await?;
 
         let play_histories = self.all_cursor_based_paging_items(first_page).await?;
-        Ok(play_histories
-            .into_iter()
-            .filter_map(|h| Track::try_from_full_track(h.track))
-            .collect())
+
+        // de-duplicate the tracks returned from the recently-played API
+        let mut tracks = Vec::<Track>::new();
+        for history in play_histories {
+            if !tracks.iter().any(|t| t.name == history.track.name) {
+                if let Some(track) = Track::try_from_full_track(history.track) {
+                    tracks.push(track);
+                }
+            }
+        }
+        Ok(tracks)
     }
 
     /// gets the top tracks of the current user
