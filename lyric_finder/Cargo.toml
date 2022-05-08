@@ -9,6 +9,12 @@ repository = "https://github.com/aome510/spotify-player/lyric_finder"
 keywords = ["lyric", "song", "track"]
 
 [dependencies]
+anyhow = "1.0.57"
+html2text = "0.4.2"
+reqwest = "0.11.10"
+
+[dev-dependencies]
+tokio = { version = "1.17.0", features = ["rt", "rt-multi-thread", "macros"] }
 
 [[example]]
 name = "lyric-finder"
