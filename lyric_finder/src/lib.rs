@@ -48,10 +48,7 @@ impl Client {
 
     pub async fn retrieve_lyric(&self, url: &str) -> anyhow::Result<String> {
         let html = self.http.get(url).send().await?.text().await?;
-
-        let text = parse::parse(html)?;
-        println!("text: {text}");
-        Ok(String::new())
+        parse::parse(html)
     }
 
     pub async fn get_lyric(&self, query: &str) -> anyhow::Result<String> {
@@ -104,6 +101,13 @@ mod parse {
             NodeData::Text { contents } => {
                 if should_parse {
                     s.push_str(&contents.borrow().to_string());
+                }
+            }
+            NodeData::Element { ref name, .. } => {
+                if let expanded_name!(html "br") = name.expanded() {
+                    if should_parse {
+                        s.push('\n');
+                    }
                 }
             }
             _ => {}
