@@ -49,7 +49,8 @@ impl Client {
     pub async fn retrieve_lyric(&self, url: &str) -> anyhow::Result<String> {
         let html = self.http.get(url).send().await?.text().await?;
 
-        println!("content: {html}");
+        let text = parse::parse(html)?;
+        println!("text: {text}");
         Ok(String::new())
     }
 
@@ -70,33 +71,49 @@ mod parse {
     use html5ever::*;
     use markup5ever_rcdom::{Handle, NodeData, RcDom};
 
-    pub fn parse(html: String) -> anyhow::Result<()> {
+    pub fn parse(html: String) -> anyhow::Result<String> {
         // parse HTML content into DOM node(s)
         let dom = parse_document(RcDom::default(), Default::default())
             .from_utf8()
             .read_from(&mut (html.as_bytes()))?;
 
-        Ok(())
+        let filter = |data: &NodeData| match data {
+            NodeData::Element { ref attrs, .. } => attrs
+                .borrow()
+                .iter()
+                .any(|attr| attr.name.local.to_string() == "data-lyrics-container"),
+            _ => false,
+        };
+
+        Ok(parse_dom_node(dom.document, &Some(filter), false))
     }
 
-    fn parse_dom_node(node: Handle) {
+    fn parse_dom_node<F>(node: Handle, filter: &Option<F>, mut should_parse: bool) -> String
+    where
+        F: Fn(&NodeData) -> bool,
+    {
+        if !should_parse {
+            if let Some(f) = filter {
+                should_parse = f(&node.data);
+            }
+        }
+
+        let mut s = String::new();
+
         match &node.data {
             NodeData::Text { contents } => {
-                todo!()
-            }
-            NodeData::Element {
-                ref name,
-                ref attrs,
-                ..
-            } => {
-                todo!()
+                if should_parse {
+                    s.push_str(&contents.borrow().to_string());
+                }
             }
             _ => {}
         }
 
         node.children.borrow().iter().for_each(|node| {
-            parse_dom_node(node.clone());
+            s.push_str(&parse_dom_node(node.clone(), filter, should_parse));
         });
+
+        s
     }
 }
 
