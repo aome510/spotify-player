@@ -9,3 +9,7 @@ repository = "https://github.com/aome510/spotify-player/lyric_finder"
 keywords = ["lyric", "song", "track"]
 
 [dependencies]
+
+[[example]]
+name = "lyric-finder"
+path = "examples/lyric-finder.rs"
