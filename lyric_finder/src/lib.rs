@@ -48,12 +48,14 @@ impl Client {
 
     pub async fn retrieve_lyric(&self, url: &str) -> anyhow::Result<String> {
         let html = self.http.get(url).send().await?.text().await?;
+        log::debug!("html: {html}");
         let lyric = parse::parse(html)?;
         Ok(lyric.trim().to_string())
     }
 
     pub async fn get_lyric(&self, query: &str) -> anyhow::Result<String> {
         let urls = self.search_lyric_urls(query).await?;
+        log::debug!("urls: {urls:?}");
         self.retrieve_lyric(&urls[0]).await
     }
 }
@@ -83,15 +85,10 @@ mod parse {
             _ => false,
         };
 
-        Ok(parse_dom_node(dom.document, &Some(filter), false, "\n"))
+        Ok(parse_dom_node(dom.document, &Some(filter), false))
     }
 
-    fn parse_dom_node<F>(
-        node: Handle,
-        filter: &Option<F>,
-        mut should_parse: bool,
-        sep: &str,
-    ) -> String
+    fn parse_dom_node<F>(node: Handle, filter: &Option<F>, mut should_parse: bool) -> String
     where
         F: Fn(&NodeData) -> bool,
     {
@@ -100,9 +97,6 @@ mod parse {
         if !should_parse {
             if let Some(f) = filter {
                 should_parse = f(&node.data);
-                if should_parse {
-                    s.push_str(sep);
-                }
             }
         }
 
@@ -123,7 +117,7 @@ mod parse {
         }
 
         node.children.borrow().iter().for_each(|node| {
-            s.push_str(&parse_dom_node(node.clone(), filter, should_parse, sep));
+            s.push_str(&parse_dom_node(node.clone(), filter, should_parse));
         });
 
         s

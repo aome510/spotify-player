@@ -2,6 +2,8 @@ extern crate lyric_finder;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    env_logger::init();
+
     let args = std::env::args().collect::<Vec<_>>();
 
     if args.len() < 2 {
