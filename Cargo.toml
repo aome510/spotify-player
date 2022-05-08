@@ -1,2 +1,2 @@
 [workspace]
-members = ["spotify_player"]
+members = ["spotify_player", "lyric_finder"]

@@ -1528,6 +1528,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "lyric_finder"
+version = "0.1.0"
+
+[[package]]
 name = "mach"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
