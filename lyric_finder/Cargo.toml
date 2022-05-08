@@ -11,7 +11,8 @@ keywords = ["lyric", "song", "track"]
 [dependencies]
 anyhow = "1.0.57"
 html2text = "0.4.2"
-reqwest = "0.11.10"
+reqwest = { version = "0.11.9", features = ["json"] }
+serde = { version = "1.0.136", features = ["derive"] }
 
 [dev-dependencies]
 tokio = { version = "1.17.0", features = ["rt", "rt-multi-thread", "macros"] }
