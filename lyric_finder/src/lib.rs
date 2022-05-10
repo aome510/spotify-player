@@ -8,6 +8,13 @@ pub struct Client {
     http: reqwest::Client,
 }
 
+#[derive(Debug)]
+pub struct LyricResult {
+    pub title: String,
+    pub artist_names: String,
+    pub lyric: String,
+}
+
 impl Client {
     pub fn new() -> Self {
         Self {
@@ -15,7 +22,7 @@ impl Client {
         }
     }
 
-    pub async fn search_lyric_urls(&self, query: &str) -> anyhow::Result<Vec<String>> {
+    pub async fn search_lyric(&self, query: &str) -> anyhow::Result<Vec<search::Result>> {
         let body = self
             .http
             .get(format!("{SEARCH_BASE_URL}?q={query}"))
@@ -36,13 +43,21 @@ impl Client {
             r.hits
                 .into_iter()
                 .filter(|hit| hit.ty == "song")
-                .map(|hit| hit.result.url)
+                .map(|hit| hit.result)
                 .collect::<Vec<_>>()
         });
 
+        let not_found_err = anyhow::anyhow!("lyric not found for query {}", query);
+
         match urls {
-            Some(v) => Ok(v),
-            None => Err(anyhow::anyhow!("lyric not found for query {}", query)),
+            Some(v) => {
+                if v.is_empty() {
+                    Err(not_found_err)
+                } else {
+                    Ok(v)
+                }
+            }
+            None => Err(not_found_err),
         }
     }
 
@@ -53,10 +68,19 @@ impl Client {
         Ok(lyric.trim().to_string())
     }
 
-    pub async fn get_lyric(&self, query: &str) -> anyhow::Result<String> {
-        let urls = self.search_lyric_urls(query).await?;
-        log::debug!("urls: {urls:?}");
-        self.retrieve_lyric(&urls[0]).await
+    pub async fn get_lyric(&self, query: &str) -> anyhow::Result<LyricResult> {
+        let result = {
+            let mut results = self.search_lyric(query).await?;
+            log::debug!("hits: {results:?}");
+            results.remove(0)
+        };
+        let lyric = self.retrieve_lyric(&result.url).await?;
+
+        Ok(LyricResult {
+            title: result.title,
+            artist_names: result.artist_names,
+            lyric,
+        })
     }
 }
 
@@ -154,5 +178,7 @@ mod search {
     #[derive(Debug, Deserialize)]
     pub struct Result {
         pub url: String,
+        pub title: String,
+        pub artist_names: String,
     }
 }

@@ -12,8 +12,11 @@ async fn main() -> anyhow::Result<()> {
     }
 
     let client = lyric_finder::Client::new();
-    let lyric = client.get_lyric(&args[1]).await?;
-    println!("lyric: {}", lyric);
+    let result = client.get_lyric(&args[1]).await?;
+    println!(
+        "{} by {}'s lyric:\n{}",
+        result.title, result.artist_names, result.lyric
+    );
 
     Ok(())
 }
