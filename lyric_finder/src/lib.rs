@@ -1,6 +1,24 @@
-//! Find lyric for songs.
+//! # lyric_finder
 //!
-//! This crate provides Rust APIs to retrieve a song lyric.
+//! This crate provides a [`Client`](Client) struct for retrieving a song's lyric.
+//!
+//! It ultilizes the [Genius](https://genius.com) website and its APIs to get lyric data.
+//!
+//! ## Example
+//!
+//! ```rust
+//! # use anyhow::Result;
+//! #
+//! # async fn run() -> Result<()> {
+//! let client =  lyric_finder::Client::new();
+//! let result = client.get_lyric("shape of you").await?;
+//! println!(
+//!     "{} by {}'s lyric:\n{}",
+//!     result.title, result.artist_names, result.lyric
+//! );
+//! # Ok(())
+//! # }
+//! ```
 
 const SEARCH_BASE_URL: &str = "https://genius.com/api/search";
 
@@ -68,6 +86,14 @@ impl Client {
         Ok(lyric.trim().to_string())
     }
 
+    /// Process a lyric obtained by crawling the [Genius.com] website.
+    ///
+    /// The lyric received this way may have weird newline spacings between sections.
+    /// The below function tries an ad-hoc method to fix this issue.
+    fn process_lyric(lyric: String) -> String {
+        todo!()
+    }
+
     pub async fn get_lyric(&self, query: &str) -> anyhow::Result<LyricResult> {
         let result = {
             let mut results = self.search_lyric(query).await?;
@@ -79,7 +105,7 @@ impl Client {
         Ok(LyricResult {
             title: result.title,
             artist_names: result.artist_names,
-            lyric,
+            lyric: Self::process_lyric(lyric),
         })
     }
 }
