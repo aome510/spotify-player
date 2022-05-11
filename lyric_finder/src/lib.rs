@@ -86,12 +86,15 @@ impl Client {
         Ok(lyric.trim().to_string())
     }
 
-    /// Process a lyric obtained by crawling the [Genius.com] website.
+    /// Process a lyric obtained by crawling the [Genius](https://genius.com) website.
     ///
-    /// The lyric received this way may have weird newline spacings between sections.
+    /// The lyric received this way may have weird newline spacings between sections (*).
     /// The below function tries an ad-hoc method to fix this issue.
+    ///
+    /// (*): A section often starts with `[`.
     fn process_lyric(lyric: String) -> String {
-        todo!()
+        // the below code modifies the `lyric` to make the newline between sections consistent
+        lyric.replace("\n\n[", "\n[").replace("\n[", "\n\n[")
     }
 
     pub async fn get_lyric(&self, query: &str) -> anyhow::Result<LyricResult> {
