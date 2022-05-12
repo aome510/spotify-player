@@ -40,7 +40,10 @@ impl Client {
         }
     }
 
-    pub async fn search_lyric(&self, query: &str) -> anyhow::Result<Vec<search::Result>> {
+    /// Search songs satisfying a given `query`.
+    pub async fn search_songs(&self, query: &str) -> anyhow::Result<Vec<search::Result>> {
+        log::debug!("query: {query}");
+
         let body = self
             .http
             .get(format!("{SEARCH_BASE_URL}?q={query}"))
@@ -65,7 +68,7 @@ impl Client {
                 .collect::<Vec<_>>()
         });
 
-        let not_found_err = anyhow::anyhow!("lyric not found for query {}", query);
+        let not_found_err = anyhow::anyhow!("no song found for query {}", query);
 
         match urls {
             Some(v) => {
@@ -79,6 +82,7 @@ impl Client {
         }
     }
 
+    /// Retrieve a song's lyric from a "genius.com" `url`.
     pub async fn retrieve_lyric(&self, url: &str) -> anyhow::Result<String> {
         let html = self.http.get(url).send().await?.text().await?;
         log::debug!("html: {html}");
@@ -97,10 +101,14 @@ impl Client {
         lyric.replace("\n\n[", "\n[").replace("\n[", "\n\n[")
     }
 
+    /// Get the lyric of a song satisfying a given `query`.
     pub async fn get_lyric(&self, query: &str) -> anyhow::Result<LyricResult> {
+        // The function first searches songs satisfying the query
+        // then it retrieves the song's lyric by crawling the "genius.com" website.
+
         let result = {
-            let mut results = self.search_lyric(query).await?;
-            log::debug!("hits: {results:?}");
+            let mut results = self.search_songs(query).await?;
+            log::debug!("results: {results:?}");
             results.remove(0)
         };
         let lyric = self.retrieve_lyric(&result.url).await?;
@@ -124,6 +132,9 @@ mod parse {
     use html5ever::*;
     use markup5ever_rcdom::{Handle, NodeData, RcDom};
 
+    const LYRIC_CONTAINER_ATTR: &str = "data-lyrics-container";
+
+    /// Parse the HTML content of a "genius.com" lyric page to retrieve the corresponding lyric.
     pub fn parse(html: String) -> anyhow::Result<String> {
         // parse HTML content into DOM node(s)
         let dom = parse_document(RcDom::default(), Default::default())
@@ -134,13 +145,17 @@ mod parse {
             NodeData::Element { ref attrs, .. } => attrs
                 .borrow()
                 .iter()
-                .any(|attr| attr.name.local.to_string() == "data-lyrics-container"),
+                .any(|attr| attr.name.local.to_string() == LYRIC_CONTAINER_ATTR),
             _ => false,
         };
 
         Ok(parse_dom_node(dom.document, &Some(filter), false))
     }
 
+    /// Parse a dom node and extract the text of children nodes satisfying a requirement.
+    ///
+    /// The requirement is represented by a `filter` function and a `should_parse` variable.
+    /// Once a node satisfies a requirement, its children should also satisfy it.
     fn parse_dom_node<F>(node: Handle, filter: &Option<F>, mut should_parse: bool) -> String
     where
         F: Fn(&NodeData) -> bool,
