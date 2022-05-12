@@ -1,11 +1,11 @@
 [package]
 name = "lyric_finder"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 license = "MIT"
 description = "A lyric finder library"
 authors = ["Thang Pham <phamducthang1234@gmail.com>"]
-repository = "https://github.com/aome510/spotify-player/lyric_finder"
+repository = "https://github.com/aome510/spotify-player/tree/master/lyric_finder"
 keywords = ["lyric", "song", "track"]
 
 [dependencies]
