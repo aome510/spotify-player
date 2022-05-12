@@ -42,7 +42,7 @@ impl Client {
 
     /// Search songs satisfying a given `query`.
     pub async fn search_songs(&self, query: &str) -> anyhow::Result<Vec<search::Result>> {
-        log::debug!("query: {query}");
+        log::debug!("search songs: query={query}");
 
         let body = self
             .http
@@ -57,7 +57,7 @@ impl Client {
                 Some(m) => m,
                 None => format!("request failed with status code: {}", body.meta.status),
             };
-            return Err(anyhow::anyhow!(message));
+            anyhow::bail!(message);
         }
 
         let urls = body.response.map(|r| {
@@ -69,7 +69,6 @@ impl Client {
         });
 
         let not_found_err = anyhow::anyhow!("no song found for query {}", query);
-
         match urls {
             Some(v) => {
                 if v.is_empty() {
@@ -85,7 +84,7 @@ impl Client {
     /// Retrieve a song's lyric from a "genius.com" `url`.
     pub async fn retrieve_lyric(&self, url: &str) -> anyhow::Result<String> {
         let html = self.http.get(url).send().await?.text().await?;
-        log::debug!("html: {html}");
+        log::debug!("retrieve lyric from url={url}: html={html}");
         let lyric = parse::parse(html)?;
         Ok(lyric.trim().to_string())
     }
@@ -108,7 +107,7 @@ impl Client {
 
         let result = {
             let mut results = self.search_songs(query).await?;
-            log::debug!("results: {results:?}");
+            log::debug!("search results: {results:?}");
             results.remove(0)
         };
         let lyric = self.retrieve_lyric(&result.url).await?;
@@ -160,6 +159,8 @@ mod parse {
     where
         F: Fn(&NodeData) -> bool,
     {
+        log::debug!("parse dom node: node={node:?}, should_parse={should_parse}");
+
         let mut s = String::new();
 
         if !should_parse {
