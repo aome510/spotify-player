@@ -184,9 +184,6 @@ async fn main() -> anyhow::Result<()> {
     });
 
     // application's UI as the main task
-    tokio::task::spawn_blocking(move || {
-        ui::start_ui(state).unwrap();
-    })
-    .await?;
+    tokio::task::spawn_blocking(move || ui::run(state)).await??;
     std::process::exit(0);
 }
