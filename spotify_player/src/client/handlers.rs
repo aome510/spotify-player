@@ -97,7 +97,7 @@ pub fn start_player_event_watchers(state: SharedState, client_pub: mpsc::Sender<
             };
 
             if *id != expected_id {
-                tracing::info!("current context ID ({:?}) is different from the expected ID ({:?}), update the context state...", id, expected_id);
+                tracing::info!("current context ID ({:?}) is different from the expected ID ({:?}), update the context state", id, expected_id);
 
                 *id = expected_id.clone();
                 match expected_id {

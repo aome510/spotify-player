@@ -63,7 +63,7 @@ impl Client {
         self.spotify.refresh_token().await?;
         tracing::info!(
             "auth token: {:?}",
-            self.spotify.get_token().lock().await.unwrap()
+            *self.spotify.get_token().lock().await.unwrap()
         );
         Ok(())
     }
