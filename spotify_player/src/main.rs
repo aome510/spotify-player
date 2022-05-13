@@ -11,6 +11,8 @@ mod token;
 mod ui;
 mod utils;
 
+use anyhow::Context;
+
 fn init_app_cli_arguments() -> clap::ArgMatches {
     clap::Command::new("spotify-player")
         .version("0.6.0")
@@ -84,6 +86,21 @@ async fn init_spotify(
     Ok(())
 }
 
+fn init_logging(log_file_path: std::path::PathBuf) -> anyhow::Result<()> {
+    // initialize the application's logging
+    if std::env::var("RUST_LOG").is_err() {
+        std::env::set_var("RUST_LOG", "spotify_player=info") // default to log the current crate only
+    }
+    let log_file = std::fs::File::create(log_file_path).context("failed to create log file")?;
+    tracing_subscriber::fmt::fmt()
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .with_ansi(false)
+        .with_writer(std::sync::Mutex::new(log_file))
+        .init();
+
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // parse command line arguments
@@ -106,16 +123,7 @@ async fn main() -> anyhow::Result<()> {
         std::fs::create_dir_all(&cache_audio_folder)?;
     }
 
-    // initialize the application's logging
-    if std::env::var("RUST_LOG").is_err() {
-        std::env::set_var("RUST_LOG", "info")
-    }
-    let log_file = std::fs::File::create(cache_folder.join("spotify-player.log"))?;
-    tracing_subscriber::fmt::fmt()
-        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
-        .with_ansi(false)
-        .with_writer(std::sync::Mutex::new(log_file))
-        .init();
+    init_logging(cache_folder.join("spotify-player.log"))?;
 
     // initialize the application state
     let mut state = state::State::default();
