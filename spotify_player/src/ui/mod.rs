@@ -37,7 +37,7 @@ pub fn start_ui(state: SharedState) -> Result<()> {
 
             render_application(frame, &state, frame.size());
         }) {
-            tracing::warn!("failed to draw the application: {}", err);
+            tracing::error!("failed to draw the application: {err:?}");
         }
 
         std::thread::sleep(ui_refresh_duration);

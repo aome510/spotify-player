@@ -48,7 +48,7 @@ async fn new_session_with_new_creds(cache: &Cache) -> Result<Session> {
             }
             Err(err) => {
                 println!("Failed to authenticate, {} tries left", 2 - i);
-                tracing::warn!("failed to authenticate: {}", err)
+                tracing::error!("failed to authenticate: {err:?}")
             }
         }
     }
@@ -81,7 +81,7 @@ pub async fn new_session(cache_folder: &std::path::Path, audio_cache: bool) -> R
                 }
                 Err(err) => match err {
                     SessionError::AuthenticationError(err) => {
-                        tracing::warn!("authentication error: {}", err);
+                        tracing::error!("authentication error: {err:?}");
                         new_session_with_new_creds(&cache).await
                     }
                     SessionError::IoError(err) => Err(anyhow!(format!(

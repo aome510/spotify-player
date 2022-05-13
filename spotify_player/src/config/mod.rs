@@ -75,7 +75,7 @@ impl AppConfig {
         let file_path = path.join(APP_CONFIG_FILE);
         match std::fs::read_to_string(&file_path) {
             Err(err) => {
-                tracing::warn!(
+                tracing::error!(
                     "failed to open the application config file (path={file_path:?}): {err:?}. Use the default configurations instead",
                 );
             }

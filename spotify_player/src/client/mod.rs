@@ -256,10 +256,7 @@ impl Client {
 
         match device_id {
             Some(id) => {
-                tracing::info!(
-                    "transfered the playback to the first available device (id={})",
-                    id
-                );
+                tracing::info!("transfered the playback to the first available device (id={id})",);
                 self.spotify.transfer_playback(&id, None).await?;
             }
             None => {
@@ -271,8 +268,7 @@ impl Client {
                         let device_id = session.device_id();
                         self.spotify.transfer_playback(device_id, None).await?;
                         tracing::info!(
-                            "transfered the playback to the integrated client's device (id={})",
-                            device_id
+                            "transfered the playback to the integrated client's device (id={device_id})",
                         );
                     }
                 }
@@ -767,7 +763,6 @@ impl Client {
         let mut items = first_page.items;
         let mut maybe_next = first_page.next;
         while let Some(url) = maybe_next {
-            tracing::info!("url: {url}");
             let mut next_page = self.internal_call::<CursorBasedPage<T>>(&url).await?;
             items.append(&mut next_page.items);
             maybe_next = next_page.next;
