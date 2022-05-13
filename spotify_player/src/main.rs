@@ -146,7 +146,9 @@ async fn main() -> anyhow::Result<()> {
     let (spirc_pub, _) = tokio::sync::broadcast::channel::<()>(16);
 
     // initialize Spotify-related stuff
-    init_spotify(&client_pub, &spirc_pub, &client, &state).await?;
+    init_spotify(&client_pub, &spirc_pub, &client, &state)
+        .await
+        .context("failed to initialize the spotify client")?;
 
     // Spawn application's tasks
 
