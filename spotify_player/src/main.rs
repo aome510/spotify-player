@@ -86,7 +86,12 @@ async fn init_spotify(
     Ok(())
 }
 
-fn init_logging(log_file_path: std::path::PathBuf) -> anyhow::Result<()> {
+fn init_logging(cache_folder: &std::path::Path) -> anyhow::Result<()> {
+    let log_file = format!(
+        "spotify-player-{}.log",
+        chrono::Local::now().format("%y-%m-%d-%R")
+    );
+    let log_file_path = cache_folder.join(log_file);
     // initialize the application's logging
     if std::env::var("RUST_LOG").is_err() {
         std::env::set_var("RUST_LOG", "spotify_player=info") // default to log the current crate only
@@ -123,7 +128,7 @@ async fn main() -> anyhow::Result<()> {
         std::fs::create_dir_all(&cache_audio_folder)?;
     }
 
-    init_logging(cache_folder.join("spotify-player.log"))?;
+    init_logging(&cache_folder)?;
 
     // initialize the application state
     let mut state = state::State::default();
