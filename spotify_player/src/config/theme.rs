@@ -126,7 +126,7 @@ impl ThemeConfig {
         let file_path = path.join(super::THEME_CONFIG_FILE);
         match std::fs::read_to_string(&file_path) {
             Err(err) => {
-                tracing::error!(
+                tracing::warn!(
                     "failed to open the theme config file (path={file_path:?}): {err:?}. Use the default configurations instead",
                 );
             }

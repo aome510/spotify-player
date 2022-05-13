@@ -22,7 +22,9 @@ pub async fn start_client_handler(
                     .new_spirc_connection(spirc_pub.subscribe(), client_pub.clone(), true)
                     .await
                 {
-                    tracing::error!("encounter error when creating new spirc connection: {err:?}",);
+                    tracing::error!(
+                        "encountered error during creating a new spirc connection: {err:?}",
+                    );
                 }
             }
             _ => {

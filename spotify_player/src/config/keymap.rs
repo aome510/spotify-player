@@ -219,7 +219,7 @@ impl KeymapConfig {
         let file_path = path.join(super::KEYMAP_CONFIG_FILE);
         match std::fs::read_to_string(&file_path) {
             Err(err) => {
-                tracing::error!(
+                tracing::warn!(
                     "failed to open the keymap config file (path={file_path:?}): {err:?}. Use the default configurations instead",
                 );
             }
