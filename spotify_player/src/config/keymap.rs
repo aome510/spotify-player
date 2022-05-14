@@ -124,6 +124,14 @@ impl Default for KeymapConfig {
                     command: Command::RecentlyPlayedTrackPage,
                 },
                 Keymap {
+                    key_sequence: "g L".into(),
+                    command: Command::LyricPage,
+                },
+                Keymap {
+                    key_sequence: "l".into(),
+                    command: Command::LyricPage,
+                },
+                Keymap {
                     key_sequence: "g l".into(),
                     command: Command::LibraryPage,
                 },
