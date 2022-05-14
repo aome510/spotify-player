@@ -356,7 +356,7 @@ fn handle_command_for_list_popup(
 fn handle_command_for_command_help_popup(command: Command, mut ui: UIStateGuard) -> Result<bool> {
     let scroll_offset = match ui.popup {
         Some(PopupState::CommandHelp {
-            scroll_offset: ref mut scroll_offset,
+            ref mut scroll_offset,
         }) => scroll_offset,
         _ => return Ok(false),
     };

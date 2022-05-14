@@ -360,12 +360,16 @@ pub fn render_tracks_page(is_active: bool, frame: &mut Frame, state: &SharedStat
     );
 }
 
-pub fn render_lyric_page(is_active: bool, frame: &mut Frame, state: &SharedState, rect: Rect) {
+pub fn render_lyric_page(_is_active: bool, frame: &mut Frame, state: &SharedState, rect: Rect) {
     let ui = state.ui.lock();
     let data = state.data.read();
 
-    let (track, artists) = match ui.current_page() {
-        PageState::Lyric { track, artists } => (track, artists),
+    let (track, artists, scroll_offset) = match ui.current_page() {
+        PageState::Lyric {
+            track,
+            artists,
+            scroll_offset,
+        } => (track, artists, *scroll_offset),
         _ => unreachable!("expect a lyric page state"),
     };
 
@@ -404,7 +408,9 @@ pub fn render_lyric_page(is_active: bool, frame: &mut Frame, state: &SharedState
 
             // render lyric text
             frame.render_widget(
-                Paragraph::new(format!("\n{}", lyric)).block(Block::default()),
+                Paragraph::new(format!("\n{}", lyric))
+                    .scroll((scroll_offset as u16, 0))
+                    .block(Block::default()),
                 chunks[1],
             );
         }

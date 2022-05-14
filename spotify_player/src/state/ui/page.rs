@@ -25,6 +25,7 @@ pub enum PageState {
     Lyric {
         track: String,
         artists: String,
+        scroll_offset: usize,
     },
 }
 

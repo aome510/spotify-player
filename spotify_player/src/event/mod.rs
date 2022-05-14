@@ -293,6 +293,7 @@ fn handle_global_command(
                 ui.create_new_page(PageState::Lyric {
                     track: track.name.clone(),
                     artists: artists.clone(),
+                    scroll_offset: 0,
                 });
 
                 client_pub.blocking_send(ClientRequest::GetLyric {

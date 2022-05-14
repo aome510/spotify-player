@@ -223,7 +223,7 @@ pub fn render_commands_help_popup(
 ) {
     let scroll_offset = match ui.popup {
         Some(PopupState::CommandHelp {
-            scroll_offset: ref mut scroll_offset,
+            ref mut scroll_offset,
         }) => scroll_offset,
         _ => return,
     };
