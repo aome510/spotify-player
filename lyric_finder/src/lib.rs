@@ -40,6 +40,11 @@ impl Client {
         }
     }
 
+    /// Construct a client reusing an exisiting http client
+    pub fn from_http_client(http: &reqwest::Client) -> Self {
+        Self { http: http.clone() }
+    }
+
     /// Search songs satisfying a given `query`.
     pub async fn search_songs(&self, query: &str) -> anyhow::Result<Vec<search::Result>> {
         log::debug!("search songs: query={query}");
