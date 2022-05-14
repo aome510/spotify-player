@@ -204,7 +204,7 @@ fn handle_global_command(
             }
         }
         Command::OpenCommandHelp => {
-            ui.popup = Some(PopupState::CommandHelp { offset: 0 });
+            ui.popup = Some(PopupState::CommandHelp { scroll_offset: 0 });
         }
         Command::RefreshPlayback => {
             client_pub.blocking_send(ClientRequest::GetCurrentPlayback)?;
