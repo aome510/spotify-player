@@ -285,6 +285,7 @@ pub fn handle_key_sequence_for_tracks_page(
     }
 }
 
+#[cfg(feature = "lyric-finder")]
 pub fn handle_key_sequence_for_lyric_page(
     key_sequence: &KeySequence,
     _client_pub: &mpsc::Sender<ClientRequest>,

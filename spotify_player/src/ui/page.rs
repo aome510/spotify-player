@@ -1,5 +1,3 @@
-use lyric_finder::LyricResult;
-
 use super::*;
 
 pub fn render_search_page(is_active: bool, frame: &mut Frame, state: &SharedState, rect: Rect) {
@@ -360,6 +358,7 @@ pub fn render_tracks_page(is_active: bool, frame: &mut Frame, state: &SharedStat
     );
 }
 
+#[cfg(feature = "lyric-finder")]
 pub fn render_lyric_page(_is_active: bool, frame: &mut Frame, state: &SharedState, rect: Rect) {
     let ui = state.ui.lock();
     let data = state.data.read();
@@ -382,10 +381,10 @@ pub fn render_lyric_page(_is_active: bool, frame: &mut Frame, state: &SharedStat
         None => {
             frame.render_widget(Paragraph::new("Loading...").block(block), rect);
         }
-        Some(LyricResult::None) => {
+        Some(lyric_finder::LyricResult::None) => {
             frame.render_widget(Paragraph::new("Lyric not found").block(block), rect);
         }
-        Some(LyricResult::Some {
+        Some(lyric_finder::LyricResult::Some {
             track,
             artists,
             lyric,

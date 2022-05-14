@@ -146,6 +146,7 @@ impl Client {
         let timer = std::time::SystemTime::now();
 
         match request {
+            #[cfg(feature = "lyric-finder")]
             ClientRequest::GetLyric { track, artists } => {
                 let client = lyric_finder::Client::from_http_client(&self.http);
                 let query = format!("{} {}", track, artists);

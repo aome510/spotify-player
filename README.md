@@ -151,47 +151,47 @@ To open a shortcut help popup, press `?` or `C-h` (default shortcuts for `OpenCo
 
 List of supported commands:
 
-| Command                       | Description                                                        | Default shortcuts  |
-| ----------------------------- | ------------------------------------------------------------------ | ------------------ |
-| `NextTrack`                   | next track                                                         | `n`                |
-| `PreviousTrack`               | previous track                                                     | `p`                |
-| `ResumePause`                 | resume/pause based on the current playback                         | `space`            |
-| `PlayRandom`                  | play a random track in the current context                         | `.`                |
-| `Repeat`                      | cycle the repeat mode                                              | `C-r`              |
-| `Shuffle`                     | toggle the shuffle mode                                            | `C-s`              |
-| `VolumeUp`                    | increase playback volume by 5%                                     | `+`                |
-| `VolumeDown`                  | decrease playback volume by 5%                                     | `-`                |
-| `Quit`                        | quit the application                                               | `C-c`, `q`         |
-| `OpenCommandHelp`             | open a command help popup                                          | `?`, `C-h`         |
-| `ClosePopup`                  | close a popup                                                      | `esc`              |
-| `SelectNextOrScrollDown`      | select the next item in a list/table or scroll down                | `j`, `C-j`, `down` |
-| `SelectPreviousOrScrollUp`    | select the previous item in a list/table or scroll up              | `k`, `C-k`, `up`   |
-| `ChooseSelected`              | choose the selected item                                           | `enter`            |
-| `RefreshPlayback`             | manually refresh the current playback                              | `r`                |
-| `ReconnectIntegratedClient`   | reconnect the integrated librespot client (streaming feature only) | `R`                |
-| `ShowActionsOnSelectedItem`   | open a popup showing actions on a selected item                    | `g a`, `C-space`   |
-| `ShowActionsOnCurrentTrack`   | open a popup showing actions on the current track                  | `a`                |
-| `FocusNextWindow`             | focus the next focusable window (if any)                           | `tab`              |
-| `FocusPreviousWindow`         | focus the previous focusable window (if any)                       | `backtab`          |
-| `SwitchTheme`                 | open a popup for switching theme                                   | `T`                |
-| `SwitchDevice`                | open a popup for switching device                                  | `D`                |
-| `Search`                      | open a popup for searching in the current page                     | `/`                |
-| `BrowseUserPlaylists`         | open a popup for browsing user's playlists                         | `u p`              |
-| `BrowseUserFollowedArtists`   | open a popup for browsing user's followed artists                  | `u a`              |
-| `BrowseUserSavedAlbums`       | open a popup for browsing user's saved albums                      | `u A`              |
-| `CurrentlyPlayingContextPage` | go to the currently playing context page                           | `g space`          |
-| `TopTrackPage`                | go to the user top track page                                      | `g t`              |
-| `RecentlyPlayedTrackPage`     | go to the user recently played track page                          | `g r`              |
-| `LyricPage`                   | go to the lyric page of the current track                          | `g L`, `l`         |
-| `LibraryPage`                 | go to the user library page                                        | `g l`              |
-| `SearchPage`                  | go to the search page                                              | `g s`              |
-| `PreviousPage`                | go to the previous page                                            | `backspace`, `C-p` |
-| `SortTrackByTitle`            | sort the track table (if any) by track's title                     | `s t`              |
-| `SortTrackByArtists`          | sort the track table (if any) by track's artists                   | `s a`              |
-| `SortTrackByAlbum`            | sort the track table (if any) by track's album                     | `s A`              |
-| `SortTrackByDuration`         | sort the track table (if any) by track's duration                  | `s d`              |
-| `SortTrackByAddedDate`        | sort the track table (if any) by track's added date                | `s D`              |
-| `ReverseOrder`                | reverse the order of the track table (if any)                      | `s r`              |
+| Command                       | Description                                                             | Default shortcuts  |
+| ----------------------------- | ----------------------------------------------------------------------- | ------------------ |
+| `NextTrack`                   | next track                                                              | `n`                |
+| `PreviousTrack`               | previous track                                                          | `p`                |
+| `ResumePause`                 | resume/pause based on the current playback                              | `space`            |
+| `PlayRandom`                  | play a random track in the current context                              | `.`                |
+| `Repeat`                      | cycle the repeat mode                                                   | `C-r`              |
+| `Shuffle`                     | toggle the shuffle mode                                                 | `C-s`              |
+| `VolumeUp`                    | increase playback volume by 5%                                          | `+`                |
+| `VolumeDown`                  | decrease playback volume by 5%                                          | `-`                |
+| `Quit`                        | quit the application                                                    | `C-c`, `q`         |
+| `OpenCommandHelp`             | open a command help popup                                               | `?`, `C-h`         |
+| `ClosePopup`                  | close a popup                                                           | `esc`              |
+| `SelectNextOrScrollDown`      | select the next item in a list/table or scroll down                     | `j`, `C-j`, `down` |
+| `SelectPreviousOrScrollUp`    | select the previous item in a list/table or scroll up                   | `k`, `C-k`, `up`   |
+| `ChooseSelected`              | choose the selected item                                                | `enter`            |
+| `RefreshPlayback`             | manually refresh the current playback                                   | `r`                |
+| `ReconnectIntegratedClient`   | reconnect the integrated librespot client (`streaming` feature only)    | `R`                |
+| `ShowActionsOnSelectedItem`   | open a popup showing actions on a selected item                         | `g a`, `C-space`   |
+| `ShowActionsOnCurrentTrack`   | open a popup showing actions on the current track                       | `a`                |
+| `FocusNextWindow`             | focus the next focusable window (if any)                                | `tab`              |
+| `FocusPreviousWindow`         | focus the previous focusable window (if any)                            | `backtab`          |
+| `SwitchTheme`                 | open a popup for switching theme                                        | `T`                |
+| `SwitchDevice`                | open a popup for switching device                                       | `D`                |
+| `Search`                      | open a popup for searching in the current page                          | `/`                |
+| `BrowseUserPlaylists`         | open a popup for browsing user's playlists                              | `u p`              |
+| `BrowseUserFollowedArtists`   | open a popup for browsing user's followed artists                       | `u a`              |
+| `BrowseUserSavedAlbums`       | open a popup for browsing user's saved albums                           | `u A`              |
+| `CurrentlyPlayingContextPage` | go to the currently playing context page                                | `g space`          |
+| `TopTrackPage`                | go to the user top track page                                           | `g t`              |
+| `RecentlyPlayedTrackPage`     | go to the user recently played track page                               | `g r`              |
+| `LyricPage`                   | go to the lyric page of the current track (`lyric-finder` feature only) | `g L`, `l`         |
+| `LibraryPage`                 | go to the user library page                                             | `g l`              |
+| `SearchPage`                  | go to the search page                                                   | `g s`              |
+| `PreviousPage`                | go to the previous page                                                 | `backspace`, `C-p` |
+| `SortTrackByTitle`            | sort the track table (if any) by track's title                          | `s t`              |
+| `SortTrackByArtists`          | sort the track table (if any) by track's artists                        | `s a`              |
+| `SortTrackByAlbum`            | sort the track table (if any) by track's album                          | `s A`              |
+| `SortTrackByDuration`         | sort the track table (if any) by track's duration                       | `s d`              |
+| `SortTrackByAddedDate`        | sort the track table (if any) by track's added date                     | `s D`              |
+| `ReverseOrder`                | reverse the order of the track table (if any)                           | `s r`              |
 
 To add new shortcuts or modify the default shortcuts, please refer to the [keymaps section](https://github.com/aome510/spotify-player/blob/master/doc/config.md#keymaps) in the configuration documentation.
 

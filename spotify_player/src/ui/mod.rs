@@ -91,6 +91,7 @@ fn render_main_layout(is_active: bool, frame: &mut Frame, state: &SharedState, r
         PageType::Tracks => {
             page::render_tracks_page(is_active, frame, state, chunks[1]);
         }
+        #[cfg(feature = "lyric-finder")]
         PageType::Lyric => {
             page::render_lyric_page(is_active, frame, state, chunks[1]);
         }

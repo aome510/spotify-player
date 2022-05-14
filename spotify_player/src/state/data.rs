@@ -22,6 +22,7 @@ pub struct Caches {
     pub context: lru::LruCache<String, Context>,
     pub search: lru::LruCache<String, SearchResults>,
     pub tracks: lru::LruCache<String, Vec<Track>>,
+    #[cfg(feature = "lyric-finder")]
     pub lyrics: lru::LruCache<String, lyric_finder::LyricResult>,
 }
 
@@ -31,6 +32,7 @@ impl Default for Caches {
             context: lru::LruCache::new(64),
             search: lru::LruCache::new(64),
             tracks: lru::LruCache::new(64),
+            #[cfg(feature = "lyric-finder")]
             lyrics: lru::LruCache::new(64),
         }
     }

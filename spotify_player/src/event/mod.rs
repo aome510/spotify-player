@@ -42,6 +42,7 @@ pub enum ClientRequest {
     AddTrackToPlaylist(PlaylistId, TrackId),
     SaveToLibrary(Item),
     Player(PlayerRequest),
+    #[cfg(feature = "lyric-finder")]
     GetLyric {
         track: String,
         artists: String,
@@ -125,6 +126,7 @@ fn handle_key_event(
             PageType::Tracks => {
                 page::handle_key_sequence_for_tracks_page(&key_sequence, client_pub, state)?
             }
+            #[cfg(feature = "lyric-finder")]
             PageType::Lyric => {
                 page::handle_key_sequence_for_lyric_page(&key_sequence, client_pub, state)?
             }
@@ -277,6 +279,7 @@ fn handle_global_command(
                 ui.popup = None;
             }
         }
+        #[cfg(feature = "lyric-finder")]
         Command::LyricPage => {
             if let Some(track) = state.player.read().current_playing_track() {
                 let artists = track
@@ -317,8 +320,8 @@ fn handle_global_command(
 
             ui.popup = Some(PopupState::ThemeList(themes, new_list_state()));
         }
+        #[cfg(feature = "streaming")]
         Command::ReconnectIntegratedClient => {
-            #[cfg(feature = "streaming")]
             client_pub.blocking_send(ClientRequest::NewSpircConnection)?;
         }
         Command::FocusNextWindow => {
