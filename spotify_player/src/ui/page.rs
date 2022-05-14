@@ -358,6 +358,10 @@ pub fn render_tracks_page(is_active: bool, frame: &mut Frame, state: &SharedStat
     );
 }
 
+pub fn render_lyric_page(is_active: bool, frame: &mut Frame, state: &SharedState, rect: Rect) {
+    unimplemented!()
+}
+
 /// Renders windows for an artist context page, which includes
 /// - A top track table
 /// - An album list

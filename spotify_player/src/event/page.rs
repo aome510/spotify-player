@@ -284,3 +284,11 @@ pub fn handle_key_sequence_for_tracks_page(
         ),
     }
 }
+
+pub fn handle_key_sequence_for_lyric_page(
+    key_sequence: &KeySequence,
+    client_pub: &mpsc::Sender<ClientRequest>,
+    state: &SharedState,
+) -> Result<bool> {
+    unimplemented!()
+}

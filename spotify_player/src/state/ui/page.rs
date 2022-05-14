@@ -22,6 +22,10 @@ pub enum PageState {
         desc: String,
         state: TableState,
     },
+    Lyric {
+        track: String,
+        artists: String,
+    },
 }
 
 pub enum PageType {
@@ -29,6 +33,7 @@ pub enum PageType {
     Context,
     Search,
     Tracks,
+    Lyric,
 }
 
 #[derive(Clone, Debug)]
@@ -106,6 +111,7 @@ impl PageState {
             PageState::Context { .. } => PageType::Context,
             PageState::Search { .. } => PageType::Search,
             PageState::Tracks { .. } => PageType::Tracks,
+            PageState::Lyric { .. } => PageType::Lyric,
         }
     }
 
@@ -175,7 +181,8 @@ impl PageState {
                     }
                 },
             }),
-            PageState::Tracks { state, .. } => Some(MutableWindowState::Table(state)),
+            Self::Tracks { state, .. } => Some(MutableWindowState::Table(state)),
+            Self::Lyric { .. } => None,
         }
     }
 }
