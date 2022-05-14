@@ -283,7 +283,13 @@ fn handle_global_command(
                     .artists
                     .iter()
                     .map(|a| &a.name)
-                    .fold(String::new(), |x, y| x + ", " + y);
+                    .fold(String::new(), |x, y| {
+                        if x.is_empty() {
+                            x + y
+                        } else {
+                            x + ", " + y
+                        }
+                    });
                 ui.create_new_page(PageState::Lyric {
                     track: track.name.clone(),
                     artists: artists.clone(),
