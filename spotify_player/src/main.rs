@@ -12,6 +12,7 @@ mod ui;
 mod utils;
 
 use anyhow::{Context, Result};
+use std::io::Write;
 
 fn init_app_cli_arguments() -> clap::ArgMatches {
     clap::Command::new("spotify-player")
@@ -86,21 +87,37 @@ async fn init_spotify(
 }
 
 fn init_logging(cache_folder: &std::path::Path) -> Result<()> {
-    let log_file = format!(
-        "spotify-player-{}.log",
+    let log_prefix = format!(
+        "spotify-player-{}",
         chrono::Local::now().format("%y-%m-%d-%R")
     );
-    let log_file_path = cache_folder.join(log_file);
+
     // initialize the application's logging
     if std::env::var("RUST_LOG").is_err() {
-        std::env::set_var("RUST_LOG", "spotify_player=info") // default to log the current crate only
+        std::env::set_var("RUST_LOG", "spotify_player=info"); // default to log the current crate only
     }
-    let log_file = std::fs::File::create(log_file_path).context("failed to create log file")?;
+    let log_file = std::fs::File::create(cache_folder.join(format!("{log_prefix}.log")))
+        .context("failed to create log file")?;
     tracing_subscriber::fmt::fmt()
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .with_ansi(false)
         .with_writer(std::sync::Mutex::new(log_file))
         .init();
+
+    // initialize the application's panic backtrace
+    let backtrace_file =
+        std::fs::File::create(cache_folder.join(format!("{log_prefix}.backtrace")))
+            .context("failed to create backtrace file")
+            .unwrap();
+    let backtrace_file = std::sync::Mutex::new(backtrace_file);
+    std::panic::set_hook(Box::new(move |info| {
+        if let Some(s) = info.payload().downcast_ref::<&str>() {
+            let backtrace = backtrace::Backtrace::new();
+            let mut file = backtrace_file.lock().unwrap();
+            writeln!(&mut file, "got a panic: {}\n", s).unwrap();
+            writeln!(&mut file, "Stack backtrace:\n{:?}", backtrace).unwrap();
+        }
+    }));
 
     Ok(())
 }

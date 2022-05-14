@@ -7,7 +7,7 @@ use crate::{
     event::{ClientRequest, PlayerRequest},
     state::*,
 };
-use anyhow::{anyhow, Context as AnyhowContext, Result};
+use anyhow::{Context as AnyhowContext, Result};
 use librespot_core::session::Session;
 use rspotify::prelude::*;
 
