@@ -317,7 +317,7 @@ pub fn handle_key_sequence_for_lyric_page(
                 *scroll_offset -= 1;
             }
         }
-        _ => {}
+        _ => return Ok(false),
     }
-    Ok(false)
+    Ok(true)
 }
