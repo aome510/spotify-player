@@ -42,6 +42,10 @@ pub enum ClientRequest {
     AddTrackToPlaylist(PlaylistId, TrackId),
     SaveToLibrary(Item),
     Player(PlayerRequest),
+    GetLyric {
+        track: String,
+        artists: String,
+    },
     #[cfg(feature = "streaming")]
     NewSpircConnection,
 }
@@ -271,6 +275,24 @@ fn handle_global_command(
             if ui.history.len() > 1 {
                 ui.history.pop();
                 ui.popup = None;
+            }
+        }
+        Command::LyricPage => {
+            if let Some(track) = state.player.read().current_playing_track() {
+                let artists = track
+                    .artists
+                    .iter()
+                    .map(|a| &a.name)
+                    .fold(String::new(), |x, y| x + ", " + y);
+                ui.create_new_page(PageState::Lyric {
+                    track: track.name.clone(),
+                    artists: artists.clone(),
+                });
+
+                client_pub.blocking_send(ClientRequest::GetLyric {
+                    track: track.name.clone(),
+                    artists,
+                })?;
             }
         }
         Command::SwitchDevice => {

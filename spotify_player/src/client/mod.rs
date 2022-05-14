@@ -146,6 +146,9 @@ impl Client {
         tracing::info!("handle client request {:?}", request);
 
         match request {
+            ClientRequest::GetLyric { track, artists } => {
+                unimplemented!();
+            }
             #[cfg(feature = "streaming")]
             ClientRequest::NewSpircConnection => {
                 unreachable!("request should be already handled by the caller function");
