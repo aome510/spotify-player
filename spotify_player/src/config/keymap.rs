@@ -216,11 +216,11 @@ impl KeymapConfig {
     /// parses a list of keymaps from the keymap config file in `path` folder
     /// and updates the current keymaps accordingly.
     pub fn parse_config_file(&mut self, path: &std::path::Path) -> Result<()> {
-        match std::fs::read_to_string(path.join(super::KEYMAP_CONFIG_FILE)) {
+        let file_path = path.join(super::KEYMAP_CONFIG_FILE);
+        match std::fs::read_to_string(&file_path) {
             Err(err) => {
                 tracing::warn!(
-                    "failed to open the keymap config file: {:?}...\nUse the default configurations instead...",
-                    err
+                    "failed to open the keymap config file (path={file_path:?}): {err:?}. Use the default configurations instead",
                 );
             }
             Ok(content) => {

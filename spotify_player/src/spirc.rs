@@ -71,7 +71,7 @@ pub fn new_connection(
         }
     });
 
-    tracing::info!("starting an integrated Spotify client using librespot's spirc protocol...");
+    tracing::info!("starting an integrated Spotify client using librespot's spirc protocol");
 
     let (spirc, spirc_task) = Spirc::new(connect_config, session, player, mixer);
     tokio::task::spawn({
@@ -79,7 +79,7 @@ pub fn new_connection(
             tokio::select! {
                 _ = spirc_task => {}
                 _ = spirc_sub.recv() => {
-                    tracing::info!("got reconnect request, shutdown the current connection to create a new spirc connection...");
+                    tracing::info!("got reconnect request, shutdown the current connection to create a new spirc connection");
                     spirc.shutdown();
                 }
             }

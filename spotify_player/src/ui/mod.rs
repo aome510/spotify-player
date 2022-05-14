@@ -1,5 +1,5 @@
 use crate::{config, state::*, utils};
-use anyhow::Result;
+use anyhow::{Context as AnyhowContext, Result};
 use tui::{layout::*, style::*, text::*, widgets::*};
 
 type Terminal = tui::Terminal<tui::backend::CrosstermBackend<std::io::Stdout>>;
@@ -8,25 +8,15 @@ type Frame<'a> = tui::Frame<'a, tui::backend::CrosstermBackend<std::io::Stdout>>
 mod page;
 mod popup;
 
-/// starts the application UI rendering function(s)
-pub fn start_ui(state: SharedState) -> Result<()> {
-    // terminal UI initializations
-    let mut stdout = std::io::stdout();
-    crossterm::terminal::enable_raw_mode()?;
-    crossterm::execute!(
-        stdout,
-        crossterm::terminal::EnterAlternateScreen,
-        crossterm::event::EnableMouseCapture
-    )?;
-    let backend = tui::backend::CrosstermBackend::new(stdout);
-    let mut terminal = tui::Terminal::new(backend)?;
-    terminal.clear()?;
+/// run the application UI
+pub fn run(state: SharedState) -> Result<()> {
+    let mut terminal = init_ui().context("failed to initialize the application's UI")?;
 
     let ui_refresh_duration =
         std::time::Duration::from_millis(state.app_config.app_refresh_duration_in_ms);
     loop {
         if !state.ui.lock().is_running {
-            clean_up(terminal)?;
+            clean_up(terminal).context("failed to clean up the application's UI resources")?;
             return Ok(());
         }
 
@@ -37,11 +27,26 @@ pub fn start_ui(state: SharedState) -> Result<()> {
 
             render_application(frame, &state, frame.size());
         }) {
-            tracing::warn!("failed to draw the application: {}", err);
+            tracing::error!("failed to draw the application: {err:?}");
         }
 
         std::thread::sleep(ui_refresh_duration);
     }
+}
+
+// initialize the application's UI
+fn init_ui() -> Result<Terminal> {
+    let mut stdout = std::io::stdout();
+    crossterm::terminal::enable_raw_mode()?;
+    crossterm::execute!(
+        stdout,
+        crossterm::terminal::EnterAlternateScreen,
+        crossterm::event::EnableMouseCapture
+    )?;
+    let backend = tui::backend::CrosstermBackend::new(stdout);
+    let mut terminal = tui::Terminal::new(backend)?;
+    terminal.clear()?;
+    Ok(terminal)
 }
 
 /// cleans up the resources before quitting the application

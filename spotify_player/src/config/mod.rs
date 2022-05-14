@@ -72,11 +72,11 @@ impl AppConfig {
     // parses configurations from an application config file in `path` folder,
     // then updates the current configurations accordingly.
     pub fn parse_config_file(&mut self, path: &Path) -> Result<()> {
-        match std::fs::read_to_string(path.join(APP_CONFIG_FILE)) {
+        let file_path = path.join(APP_CONFIG_FILE);
+        match std::fs::read_to_string(&file_path) {
             Err(err) => {
                 tracing::warn!(
-                    "failed to open the application config file: {:?}...\nUse the default configurations instead...",
-                    err
+                    "failed to open the application config file (path={file_path:?}): {err:?}. Use the default configurations instead",
                 );
             }
             Ok(content) => {

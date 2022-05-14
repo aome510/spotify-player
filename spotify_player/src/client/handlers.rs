@@ -22,9 +22,8 @@ pub async fn start_client_handler(
                     .new_spirc_connection(spirc_pub.subscribe(), client_pub.clone(), true)
                     .await
                 {
-                    tracing::warn!(
-                        "encounter error when creating new spirc connection: {}",
-                        err
+                    tracing::error!(
+                        "encountered error during creating a new spirc connection: {err:?}",
                     );
                 }
             }
@@ -33,7 +32,7 @@ pub async fn start_client_handler(
                 let client = client.clone();
                 tokio::task::spawn(async move {
                     if let Err(err) = client.handle_request(&state, request).await {
-                        tracing::warn!("failed to handle client request: {:?}", err);
+                        tracing::error!("failed to handle client request: {err:?}");
                     }
                 });
             }
@@ -97,7 +96,7 @@ pub fn start_player_event_watchers(state: SharedState, client_pub: mpsc::Sender<
             };
 
             if *id != expected_id {
-                tracing::info!("current context ID ({:?}) is different from the expected ID ({:?}), update the context state...", id, expected_id);
+                tracing::info!("current context ID ({:?}) is different from the expected ID ({:?}), update the context state", id, expected_id);
 
                 *id = expected_id.clone();
                 match expected_id {

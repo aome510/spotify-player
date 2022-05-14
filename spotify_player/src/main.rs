@@ -11,6 +11,8 @@ mod token;
 mod ui;
 mod utils;
 
+use anyhow::Context;
+
 fn init_app_cli_arguments() -> clap::ArgMatches {
     clap::Command::new("spotify-player")
         .version("0.6.0")
@@ -59,7 +61,7 @@ async fn init_spotify(
 
     if state.player.read().playback.is_none() {
         tracing::info!(
-            "no playback found on startup, trying to connect to the first available device..."
+            "no playback found on startup, trying to connect to the first available device"
         );
         client.connect_to_first_available_device().await?;
     }
@@ -80,6 +82,26 @@ async fn init_spotify(
     client_pub
         .send(event::ClientRequest::GetUserSavedAlbums)
         .await?;
+
+    Ok(())
+}
+
+fn init_logging(cache_folder: &std::path::Path) -> anyhow::Result<()> {
+    let log_file = format!(
+        "spotify-player-{}.log",
+        chrono::Local::now().format("%y-%m-%d-%R")
+    );
+    let log_file_path = cache_folder.join(log_file);
+    // initialize the application's logging
+    if std::env::var("RUST_LOG").is_err() {
+        std::env::set_var("RUST_LOG", "spotify_player=info") // default to log the current crate only
+    }
+    let log_file = std::fs::File::create(log_file_path).context("failed to create log file")?;
+    tracing_subscriber::fmt::fmt()
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .with_ansi(false)
+        .with_writer(std::sync::Mutex::new(log_file))
+        .init();
 
     Ok(())
 }
@@ -106,16 +128,7 @@ async fn main() -> anyhow::Result<()> {
         std::fs::create_dir_all(&cache_audio_folder)?;
     }
 
-    // initialize the application's logging
-    if std::env::var("RUST_LOG").is_err() {
-        std::env::set_var("RUST_LOG", "info")
-    }
-    let log_file = std::fs::File::create(cache_folder.join("spotify-player.log"))?;
-    tracing_subscriber::fmt::fmt()
-        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
-        .with_ansi(false)
-        .with_writer(std::sync::Mutex::new(log_file))
-        .init();
+    init_logging(&cache_folder)?;
 
     // initialize the application state
     let mut state = state::State::default();
@@ -138,7 +151,9 @@ async fn main() -> anyhow::Result<()> {
     let (spirc_pub, _) = tokio::sync::broadcast::channel::<()>(16);
 
     // initialize Spotify-related stuff
-    init_spotify(&client_pub, &spirc_pub, &client, &state).await?;
+    init_spotify(&client_pub, &spirc_pub, &client, &state)
+        .await
+        .context("failed to initialize the spotify client")?;
 
     // Spawn application's tasks
 
@@ -169,9 +184,6 @@ async fn main() -> anyhow::Result<()> {
     });
 
     // application's UI as the main task
-    tokio::task::spawn_blocking(move || {
-        ui::start_ui(state).unwrap();
-    })
-    .await?;
+    tokio::task::spawn_blocking(move || ui::run(state)).await??;
     std::process::exit(0);
 }

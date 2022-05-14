@@ -56,7 +56,7 @@ pub fn start_event_handler(state: SharedState, client_pub: mpsc::Sender<ClientRe
             crossterm::event::Event::Key(event) => handle_key_event(event, &client_pub, &state),
             _ => Ok(()),
         } {
-            tracing::warn!("failed to handle event: {}", err);
+            tracing::error!("failed to handle event: {err:?}");
         }
     }
 }
