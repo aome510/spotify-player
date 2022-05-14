@@ -13,10 +13,18 @@ async fn main() -> anyhow::Result<()> {
 
     let client = lyric_finder::Client::new();
     let result = client.get_lyric(&args[1]).await?;
-    println!(
-        "{} by {}'s lyric:\n{}",
-        result.track, result.artists, result.lyric
-    );
+    match result {
+        lyric_finder::LyricResult::Some {
+            track,
+            artists,
+            lyric,
+        } => {
+            println!("{} by {}'s lyric:\n{}", track, artists, lyric);
+        }
+        lyric_finder::LyricResult::None => {
+            println!("lyric not found!");
+        }
+    }
 
     Ok(())
 }
