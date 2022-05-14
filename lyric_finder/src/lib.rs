@@ -28,8 +28,8 @@ pub struct Client {
 
 #[derive(Debug)]
 pub struct LyricResult {
-    pub title: String,
-    pub artist_names: String,
+    pub track: String,
+    pub artists: String,
     pub lyric: String,
 }
 
@@ -118,8 +118,8 @@ impl Client {
         let lyric = self.retrieve_lyric(&result.url).await?;
 
         Ok(LyricResult {
-            title: result.title,
-            artist_names: result.artist_names,
+            track: result.title,
+            artists: result.artist_names,
             lyric: Self::process_lyric(lyric),
         })
     }

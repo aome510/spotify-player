@@ -149,11 +149,16 @@ impl Client {
             ClientRequest::GetLyric { track, artists } => {
                 let client = lyric_finder::Client::from_http_client(&self.http);
                 let query = format!("{} {}", track, artists);
-                let result = client.get_lyric(&query).await.context(format!(
-                    "failed to get lyric for track {} - artists {}",
-                    track, artists
-                ))?;
-                log::debug!("lyric result: {result:?}");
+
+                if !state.data.read().caches.lyrics.contains(&query) {
+                    let result = client.get_lyric(&query).await.context(format!(
+                        "failed to get lyric for track {} - artists {}",
+                        track, artists
+                    ))?;
+                    log::debug!("lyric result: {result:?}");
+
+                    state.data.write().caches.lyrics.put(query, result);
+                }
             }
             #[cfg(feature = "streaming")]
             ClientRequest::NewSpircConnection => {

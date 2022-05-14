@@ -15,7 +15,7 @@ async fn main() -> anyhow::Result<()> {
     let result = client.get_lyric(&args[1]).await?;
     println!(
         "{} by {}'s lyric:\n{}",
-        result.title, result.artist_names, result.lyric
+        result.track, result.artists, result.lyric
     );
 
     Ok(())

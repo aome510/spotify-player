@@ -359,8 +359,28 @@ pub fn render_tracks_page(is_active: bool, frame: &mut Frame, state: &SharedStat
 }
 
 pub fn render_lyric_page(is_active: bool, frame: &mut Frame, state: &SharedState, rect: Rect) {
-    // TODO: implement this
-    return;
+    let ui = state.ui.lock();
+    let data = state.data.read();
+
+    let (track, artists) = match ui.current_page() {
+        PageState::Lyric { track, artists } => (track, artists),
+        _ => unreachable!("expect a lyric page state"),
+    };
+
+    let block = Block::default()
+        .title(ui.theme.block_title_with_style("Lyric"))
+        .borders(Borders::ALL);
+
+    let result = data.caches.lyrics.peek(&format!("{} {}", track, artists));
+    match result {
+        None => {
+            frame.render_widget(Paragraph::new("Loading...").block(block), rect);
+        }
+        Some(result) => {
+            let content = format!("{} by {}\n\n{}", result.track, result.artists, result.lyric);
+            frame.render_widget(Paragraph::new(content).block(block), rect);
+        }
+    }
 }
 
 /// Renders windows for an artist context page, which includes
