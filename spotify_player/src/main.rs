@@ -11,7 +11,7 @@ mod token;
 mod ui;
 mod utils;
 
-use anyhow::Context;
+use anyhow::{Context, Result};
 
 fn init_app_cli_arguments() -> clap::ArgMatches {
     clap::Command::new("spotify-player")
@@ -49,11 +49,11 @@ async fn init_spotify(
     spirc_pub: &tokio::sync::broadcast::Sender<()>,
     client: &client::Client,
     state: &state::SharedState,
-) -> anyhow::Result<()> {
+) -> Result<()> {
     client.init_token().await?;
     client.update_current_playback_state(state).await?;
 
-    // if `streaming` feature is enabled, create new Spirc connection
+    // if `streaming` feature is enabled, create a new Spirc connection
     #[cfg(feature = "streaming")]
     client
         .new_spirc_connection(spirc_pub.subscribe(), client_pub.clone(), false)
@@ -66,8 +66,7 @@ async fn init_spotify(
         client.connect_to_first_available_device().await?;
     }
 
-    // Request user data
-
+    // request user data
     client_pub
         .send(event::ClientRequest::GetCurrentUser)
         .await?;
@@ -86,7 +85,7 @@ async fn init_spotify(
     Ok(())
 }
 
-fn init_logging(cache_folder: &std::path::Path) -> anyhow::Result<()> {
+fn init_logging(cache_folder: &std::path::Path) -> Result<()> {
     let log_file = format!(
         "spotify-player-{}.log",
         chrono::Local::now().format("%y-%m-%d-%R")
@@ -107,7 +106,7 @@ fn init_logging(cache_folder: &std::path::Path) -> anyhow::Result<()> {
 }
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> Result<()> {
     // parse command line arguments
     let args = init_app_cli_arguments();
 
@@ -128,13 +127,15 @@ async fn main() -> anyhow::Result<()> {
         std::fs::create_dir_all(&cache_audio_folder)?;
     }
 
-    init_logging(&cache_folder)?;
+    init_logging(&cache_folder).context("failed to initialize application's logging")?;
 
     // initialize the application state
-    let mut state = state::State::default();
-    // parse config options from the config files into application's state
-    state.parse_config_files(&config_folder, args.value_of("theme"))?;
-    let state = std::sync::Arc::new(state);
+    let state = {
+        let mut state = state::State::default();
+        // parse config options from the config files into application's state
+        state.parse_config_files(&config_folder, args.value_of("theme"))?;
+        std::sync::Arc::new(state)
+    };
 
     // create a librespot session
     let session = auth::new_session(&cache_folder, state.app_config.device.audio_cache).await?;
