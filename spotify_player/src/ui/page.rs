@@ -386,8 +386,27 @@ pub fn render_lyric_page(is_active: bool, frame: &mut Frame, state: &SharedState
             artists,
             lyric,
         }) => {
-            let content = format!("{} by {}\n\n{}", track, artists, lyric);
-            frame.render_widget(Paragraph::new(content).block(block), rect);
+            let chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .margin(1)
+                .constraints([Constraint::Length(1), Constraint::Min(0)].as_ref())
+                .split(rect);
+
+            // render lyric page borders
+            frame.render_widget(block, rect);
+
+            // render lyric page description text
+            frame.render_widget(
+                Paragraph::new(format!("{} by {}", track, artists))
+                    .block(Block::default().style(ui.theme.page_desc())),
+                chunks[0],
+            );
+
+            // render lyric text
+            frame.render_widget(
+                Paragraph::new(format!("\n{}", lyric)).block(Block::default()),
+                chunks[1],
+            );
         }
     }
 }
