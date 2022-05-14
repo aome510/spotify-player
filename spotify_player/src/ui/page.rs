@@ -1,3 +1,5 @@
+use lyric_finder::LyricResult;
+
 use super::*;
 
 pub fn render_search_page(is_active: bool, frame: &mut Frame, state: &SharedState, rect: Rect) {
@@ -376,8 +378,15 @@ pub fn render_lyric_page(is_active: bool, frame: &mut Frame, state: &SharedState
         None => {
             frame.render_widget(Paragraph::new("Loading...").block(block), rect);
         }
-        Some(result) => {
-            let content = format!("{} by {}\n\n{}", result.track, result.artists, result.lyric);
+        Some(LyricResult::None) => {
+            frame.render_widget(Paragraph::new("Lyric not found").block(block), rect);
+        }
+        Some(LyricResult::Some {
+            track,
+            artists,
+            lyric,
+        }) => {
+            let content = format!("{} by {}\n\n{}", track, artists, lyric);
             frame.render_widget(Paragraph::new(content).block(block), rect);
         }
     }
