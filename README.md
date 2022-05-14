@@ -170,7 +170,7 @@ List of supported commands:
 | `RefreshPlayback`             | manually refresh the current playback                              | `r`                |
 | `ReconnectIntegratedClient`   | reconnect the integrated librespot client (streaming feature only) | `R`                |
 | `ShowActionsOnSelectedItem`   | open a popup showing actions on a selected item                    | `g a`, `C-space`   |
-| `ShowActionsOnCurrentTrack`   | open a popup showing actions on the currently playing track        | `a`                |
+| `ShowActionsOnCurrentTrack`   | open a popup showing actions on the current track                  | `a`                |
 | `FocusNextWindow`             | focus the next focusable window (if any)                           | `tab`              |
 | `FocusPreviousWindow`         | focus the previous focusable window (if any)                       | `backtab`          |
 | `SwitchTheme`                 | open a popup for switching theme                                   | `T`                |
@@ -182,6 +182,7 @@ List of supported commands:
 | `CurrentlyPlayingContextPage` | go to the currently playing context page                           | `g space`          |
 | `TopTrackPage`                | go to the user top track page                                      | `g t`              |
 | `RecentlyPlayedTrackPage`     | go to the user recently played track page                          | `g r`              |
+| `LyricPage`                   | go to the lyric page of the current track                          | `g L`, `l`         |
 | `LibraryPage`                 | go to the user library page                                        | `g l`              |
 | `SearchPage`                  | go to the search page                                              | `g s`              |
 | `PreviousPage`                | go to the previous page                                            | `backspace`, `C-p` |
