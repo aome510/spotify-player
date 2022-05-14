@@ -2951,7 +2951,6 @@ dependencies = [
  "rspotify",
  "serde",
  "tokio",
- "tokio-stream",
  "toml",
  "tracing",
  "tracing-subscriber",
