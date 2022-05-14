@@ -299,9 +299,14 @@ impl Track {
     pub fn artists_info(&self) -> String {
         self.artists
             .iter()
-            .map(|a| a.name.clone())
-            .collect::<Vec<_>>()
-            .join(", ")
+            .map(|a| &a.name)
+            .fold(String::new(), |x, y| {
+                if x.is_empty() {
+                    x + y
+                } else {
+                    x + ", " + y
+                }
+            })
     }
 
     /// gets the track's album information

@@ -261,6 +261,10 @@ fn handle_key_sequence_for_search_popup(
         PageType::Tracks => {
             page::handle_key_sequence_for_tracks_page(key_sequence, client_pub, state)
         }
+        #[cfg(feature = "lyric-finder")]
+        PageType::Lyric => {
+            page::handle_key_sequence_for_lyric_page(key_sequence, client_pub, state)
+        }
     }
 }
 
@@ -344,17 +348,17 @@ fn handle_command_for_list_popup(
         Command::ClosePopup => {
             on_close_func(&mut ui);
         }
-        _ => {
-            return Ok(false);
-        }
+        _ => return Ok(false),
     };
     Ok(true)
 }
 
 /// handles a command for a command shortcut help popup
 fn handle_command_for_command_help_popup(command: Command, mut ui: UIStateGuard) -> Result<bool> {
-    let offset = match ui.popup {
-        Some(PopupState::CommandHelp { ref mut offset }) => offset,
+    let scroll_offset = match ui.popup {
+        Some(PopupState::CommandHelp {
+            ref mut scroll_offset,
+        }) => scroll_offset,
         _ => return Ok(false),
     };
     match command {
@@ -362,11 +366,11 @@ fn handle_command_for_command_help_popup(command: Command, mut ui: UIStateGuard)
             ui.popup = None;
         }
         Command::SelectNextOrScrollDown => {
-            *offset += 1;
+            *scroll_offset += 1;
         }
         Command::SelectPreviousOrScrollUp => {
-            if *offset > 0 {
-                *offset -= 1;
+            if *scroll_offset > 0 {
+                *scroll_offset -= 1;
             }
         }
         _ => return Ok(false),

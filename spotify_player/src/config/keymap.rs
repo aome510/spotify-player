@@ -79,6 +79,7 @@ impl Default for KeymapConfig {
                     key_sequence: "a".into(),
                     command: Command::ShowActionsOnCurrentTrack,
                 },
+                #[cfg(feature = "streaming")]
                 Keymap {
                     key_sequence: "R".into(),
                     command: Command::ReconnectIntegratedClient,
@@ -122,6 +123,16 @@ impl Default for KeymapConfig {
                 Keymap {
                     key_sequence: "g r".into(),
                     command: Command::RecentlyPlayedTrackPage,
+                },
+                #[cfg(feature = "lyric-finder")]
+                Keymap {
+                    key_sequence: "g L".into(),
+                    command: Command::LyricPage,
+                },
+                #[cfg(feature = "lyric-finder")]
+                Keymap {
+                    key_sequence: "l".into(),
+                    command: Command::LyricPage,
                 },
                 Keymap {
                     key_sequence: "g l".into(),

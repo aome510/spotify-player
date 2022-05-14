@@ -42,6 +42,11 @@ pub enum ClientRequest {
     AddTrackToPlaylist(PlaylistId, TrackId),
     SaveToLibrary(Item),
     Player(PlayerRequest),
+    #[cfg(feature = "lyric-finder")]
+    GetLyric {
+        track: String,
+        artists: String,
+    },
     #[cfg(feature = "streaming")]
     NewSpircConnection,
 }
@@ -121,6 +126,10 @@ fn handle_key_event(
             PageType::Tracks => {
                 page::handle_key_sequence_for_tracks_page(&key_sequence, client_pub, state)?
             }
+            #[cfg(feature = "lyric-finder")]
+            PageType::Lyric => {
+                page::handle_key_sequence_for_lyric_page(&key_sequence, client_pub, state)?
+            }
         }
     } else {
         popup::handle_key_sequence_for_popup(&key_sequence, client_pub, state)?
@@ -197,7 +206,7 @@ fn handle_global_command(
             }
         }
         Command::OpenCommandHelp => {
-            ui.popup = Some(PopupState::CommandHelp { offset: 0 });
+            ui.popup = Some(PopupState::CommandHelp { scroll_offset: 0 });
         }
         Command::RefreshPlayback => {
             client_pub.blocking_send(ClientRequest::GetCurrentPlayback)?;
@@ -270,6 +279,32 @@ fn handle_global_command(
                 ui.popup = None;
             }
         }
+        #[cfg(feature = "lyric-finder")]
+        Command::LyricPage => {
+            if let Some(track) = state.player.read().current_playing_track() {
+                let artists = track
+                    .artists
+                    .iter()
+                    .map(|a| &a.name)
+                    .fold(String::new(), |x, y| {
+                        if x.is_empty() {
+                            x + y
+                        } else {
+                            x + ", " + y
+                        }
+                    });
+                ui.create_new_page(PageState::Lyric {
+                    track: track.name.clone(),
+                    artists: artists.clone(),
+                    scroll_offset: 0,
+                });
+
+                client_pub.blocking_send(ClientRequest::GetLyric {
+                    track: track.name.clone(),
+                    artists,
+                })?;
+            }
+        }
         Command::SwitchDevice => {
             ui.popup = Some(PopupState::DeviceList(new_list_state()));
             client_pub.blocking_send(ClientRequest::GetDevices)?;
@@ -285,8 +320,8 @@ fn handle_global_command(
 
             ui.popup = Some(PopupState::ThemeList(themes, new_list_state()));
         }
+        #[cfg(feature = "streaming")]
         Command::ReconnectIntegratedClient => {
-            #[cfg(feature = "streaming")]
             client_pub.blocking_send(ClientRequest::NewSpircConnection)?;
         }
         Command::FocusNextWindow => {

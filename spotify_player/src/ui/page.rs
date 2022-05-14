@@ -358,6 +358,64 @@ pub fn render_tracks_page(is_active: bool, frame: &mut Frame, state: &SharedStat
     );
 }
 
+#[cfg(feature = "lyric-finder")]
+pub fn render_lyric_page(_is_active: bool, frame: &mut Frame, state: &SharedState, rect: Rect) {
+    let ui = state.ui.lock();
+    let data = state.data.read();
+
+    let (track, artists, scroll_offset) = match ui.current_page() {
+        PageState::Lyric {
+            track,
+            artists,
+            scroll_offset,
+        } => (track, artists, *scroll_offset),
+        _ => unreachable!("expect a lyric page state"),
+    };
+
+    let block = Block::default()
+        .title(ui.theme.block_title_with_style("Lyric"))
+        .borders(Borders::ALL);
+
+    let result = data.caches.lyrics.peek(&format!("{} {}", track, artists));
+    match result {
+        None => {
+            frame.render_widget(Paragraph::new("Loading...").block(block), rect);
+        }
+        Some(lyric_finder::LyricResult::None) => {
+            frame.render_widget(Paragraph::new("Lyric not found").block(block), rect);
+        }
+        Some(lyric_finder::LyricResult::Some {
+            track,
+            artists,
+            lyric,
+        }) => {
+            let chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .margin(1)
+                .constraints([Constraint::Length(1), Constraint::Min(0)].as_ref())
+                .split(rect);
+
+            // render lyric page borders
+            frame.render_widget(block, rect);
+
+            // render lyric page description text
+            frame.render_widget(
+                Paragraph::new(format!("{} by {}", track, artists))
+                    .block(Block::default().style(ui.theme.page_desc())),
+                chunks[0],
+            );
+
+            // render lyric text
+            frame.render_widget(
+                Paragraph::new(format!("\n{}", lyric))
+                    .scroll((scroll_offset as u16, 0))
+                    .block(Block::default()),
+                chunks[1],
+            );
+        }
+    }
+}
+
 /// Renders windows for an artist context page, which includes
 /// - A top track table
 /// - An album list

@@ -1592,7 +1592,7 @@ dependencies = [
 
 [[package]]
 name = "lyric_finder"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "env_logger",
@@ -2881,6 +2881,7 @@ dependencies = [
  "librespot-playback",
  "log",
  "lru",
+ "lyric_finder",
  "maybe-async",
  "parking_lot 0.12.0",
  "rand 0.8.5",

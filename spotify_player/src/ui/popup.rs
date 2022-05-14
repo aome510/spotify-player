@@ -221,8 +221,10 @@ pub fn render_commands_help_popup(
     mut ui: UIStateGuard,
     rect: Rect,
 ) {
-    let offset = match ui.popup {
-        Some(PopupState::CommandHelp { ref mut offset }) => offset,
+    let scroll_offset = match ui.popup {
+        Some(PopupState::CommandHelp {
+            ref mut scroll_offset,
+        }) => scroll_offset,
         _ => return,
     };
 
@@ -241,12 +243,12 @@ pub fn render_commands_help_popup(
     });
 
     // offset should not be greater than or equal the number of available commands
-    if *offset >= map.len() {
-        *offset = map.len() - 1
+    if *scroll_offset >= map.len() {
+        *scroll_offset = map.len() - 1
     }
     let help_table = Table::new(
         map.into_iter()
-            .skip(*offset)
+            .skip(*scroll_offset)
             .map(|(c, k)| {
                 Row::new(vec![
                     Cell::from(format!("{:?}", c)),

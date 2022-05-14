@@ -36,6 +36,7 @@ async-trait = "0.1.52"
 parking_lot = "0.12.0"
 tracing = "0.1.31"
 tracing-subscriber = { version = "0.3.9", features = ["env-filter"] }
+lyric_finder = { version = "0.1.2", path = "../lyric_finder" , optional = true }
 
 [features]
 alsa-backend = ["streaming", "librespot-playback/alsa-backend"]
@@ -47,5 +48,6 @@ rodiojack-backend = ["streaming", "librespot-playback/rodiojack-backend"]
 sdl-backend = ["streaming", "librespot-playback/sdl-backend"]
 gstreamer-backend = ["streaming", "librespot-playback/gstreamer-backend"]
 streaming = ["librespot-playback", "librespot-connect"]
+lyric-finder = ["lyric_finder"]
 
-default = ["rodio-backend"]
+default = ["rodio-backend", "lyric-finder"]

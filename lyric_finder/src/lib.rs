@@ -12,10 +12,18 @@
 //! # async fn run() -> Result<()> {
 //! let client =  lyric_finder::Client::new();
 //! let result = client.get_lyric("shape of you").await?;
-//! println!(
-//!     "{} by {}'s lyric:\n{}",
-//!     result.title, result.artist_names, result.lyric
-//! );
+//! match result {
+//!     lyric_finder::LyricResult::Some {
+//!         track,
+//!         artists,
+//!         lyric,
+//!     } => {
+//!         println!("{} by {}'s lyric:\n{}", track, artists, lyric);
+//!     }
+//!     lyric_finder::LyricResult::None => {
+//!         println!("lyric not found!");
+//!     }
+//! }
 //! # Ok(())
 //! # }
 //! ```
@@ -27,10 +35,13 @@ pub struct Client {
 }
 
 #[derive(Debug)]
-pub struct LyricResult {
-    pub title: String,
-    pub artist_names: String,
-    pub lyric: String,
+pub enum LyricResult {
+    Some {
+        track: String,
+        artists: String,
+        lyric: String,
+    },
+    None,
 }
 
 impl Client {
@@ -38,6 +49,11 @@ impl Client {
         Self {
             http: reqwest::Client::new(),
         }
+    }
+
+    /// Construct a client reusing an exisiting http client
+    pub fn from_http_client(http: &reqwest::Client) -> Self {
+        Self { http: http.clone() }
     }
 
     /// Search songs satisfying a given `query`.
@@ -60,25 +76,16 @@ impl Client {
             anyhow::bail!(message);
         }
 
-        let urls = body.response.map(|r| {
-            r.hits
-                .into_iter()
-                .filter(|hit| hit.ty == "song")
-                .map(|hit| hit.result)
-                .collect::<Vec<_>>()
-        });
-
-        let not_found_err = anyhow::anyhow!("no song found for query {}", query);
-        match urls {
-            Some(v) => {
-                if v.is_empty() {
-                    Err(not_found_err)
-                } else {
-                    Ok(v)
-                }
-            }
-            None => Err(not_found_err),
-        }
+        Ok(body
+            .response
+            .map(|r| {
+                r.hits
+                    .into_iter()
+                    .filter(|hit| hit.ty == "song")
+                    .map(|hit| hit.result)
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default())
     }
 
     /// Retrieve a song's lyric from a "genius.com" `url`.
@@ -108,13 +115,16 @@ impl Client {
         let result = {
             let mut results = self.search_songs(query).await?;
             log::debug!("search results: {results:?}");
+            if results.is_empty() {
+                return Ok(LyricResult::None);
+            }
             results.remove(0)
         };
-        let lyric = self.retrieve_lyric(&result.url).await?;
 
-        Ok(LyricResult {
-            title: result.title,
-            artist_names: result.artist_names,
+        let lyric = self.retrieve_lyric(&result.url).await?;
+        Ok(LyricResult::Some {
+            track: result.title,
+            artists: result.artist_names,
             lyric: Self::process_lyric(lyric),
         })
     }

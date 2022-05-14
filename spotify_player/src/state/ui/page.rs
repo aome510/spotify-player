@@ -22,6 +22,12 @@ pub enum PageState {
         desc: String,
         state: TableState,
     },
+    #[cfg(feature = "lyric-finder")]
+    Lyric {
+        track: String,
+        artists: String,
+        scroll_offset: usize,
+    },
 }
 
 pub enum PageType {
@@ -29,6 +35,8 @@ pub enum PageType {
     Context,
     Search,
     Tracks,
+    #[cfg(feature = "lyric-finder")]
+    Lyric,
 }
 
 #[derive(Clone, Debug)]
@@ -106,6 +114,8 @@ impl PageState {
             PageState::Context { .. } => PageType::Context,
             PageState::Search { .. } => PageType::Search,
             PageState::Tracks { .. } => PageType::Tracks,
+            #[cfg(feature = "lyric-finder")]
+            PageState::Lyric { .. } => PageType::Lyric,
         }
     }
 
@@ -175,7 +185,9 @@ impl PageState {
                     }
                 },
             }),
-            PageState::Tracks { state, .. } => Some(MutableWindowState::Table(state)),
+            Self::Tracks { state, .. } => Some(MutableWindowState::Table(state)),
+            #[cfg(feature = "lyric-finder")]
+            Self::Lyric { .. } => None,
         }
     }
 }

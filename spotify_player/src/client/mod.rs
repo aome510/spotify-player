@@ -7,7 +7,7 @@ use crate::{
     event::{ClientRequest, PlayerRequest},
     state::*,
 };
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context as AnyhowContext, Result};
 use librespot_core::session::Session;
 use rspotify::prelude::*;
 
@@ -143,9 +143,24 @@ impl Client {
 
     /// handles a client request
     pub async fn handle_request(&self, state: &SharedState, request: ClientRequest) -> Result<()> {
-        tracing::info!("handle client request {:?}", request);
+        let timer = std::time::SystemTime::now();
 
         match request {
+            #[cfg(feature = "lyric-finder")]
+            ClientRequest::GetLyric { track, artists } => {
+                let client = lyric_finder::Client::from_http_client(&self.http);
+                let query = format!("{} {}", track, artists);
+
+                if !state.data.read().caches.lyrics.contains(&query) {
+                    let result = client.get_lyric(&query).await.context(format!(
+                        "failed to get lyric for track {} - artists {}",
+                        track, artists
+                    ))?;
+                    log::debug!("lyric result: {result:?}");
+
+                    state.data.write().caches.lyrics.put(query, result);
+                }
+            }
             #[cfg(feature = "streaming")]
             ClientRequest::NewSpircConnection => {
                 unreachable!("request should be already handled by the caller function");
@@ -246,6 +261,11 @@ impl Client {
                 self.save_to_library(state, item).await?;
             }
         };
+
+        tracing::info!(
+            "successfully handled the client request, took: {}ms",
+            timer.elapsed().unwrap().as_millis()
+        );
 
         Ok(())
     }

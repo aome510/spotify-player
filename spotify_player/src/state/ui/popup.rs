@@ -3,7 +3,7 @@ use tui::widgets::ListState;
 
 #[derive(Debug)]
 pub enum PopupState {
-    CommandHelp { offset: usize },
+    CommandHelp { scroll_offset: usize },
     Search { query: String },
     UserPlaylistList(PlaylistPopupAction, ListState),
     UserFollowedArtistList(ListState),

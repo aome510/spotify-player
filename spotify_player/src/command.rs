@@ -22,6 +22,7 @@ pub enum Command {
 
     RefreshPlayback,
 
+    #[cfg(feature = "streaming")]
     ReconnectIntegratedClient,
 
     FocusNextWindow,
@@ -41,6 +42,8 @@ pub enum Command {
     CurrentlyPlayingContextPage,
     TopTrackPage,
     RecentlyPlayedTrackPage,
+    #[cfg(feature = "lyric-finder")]
+    LyricPage,
     LibraryPage,
     SearchPage,
     PreviousPage,
@@ -77,6 +80,7 @@ impl Command {
             Self::Quit => "quit the application",
             Self::OpenCommandHelp => "open a command help popup",
             Self::ClosePopup => "close a popup",
+            #[cfg(feature = "streaming")]
             Self::ReconnectIntegratedClient => "reconnect the integrated librespot client",
             Self::SelectNextOrScrollDown => "select the next item in a list/table or scroll down",
             Self::SelectPreviousOrScrollUp => {
@@ -85,9 +89,7 @@ impl Command {
             Self::ChooseSelected => "choose the selected item and act on it",
             Self::RefreshPlayback => "manually refresh the current playback",
             Self::ShowActionsOnSelectedItem => "open a popup showing actions on a selected item",
-            Self::ShowActionsOnCurrentTrack => {
-                "open a popup showing actions on the currently playing track"
-            }
+            Self::ShowActionsOnCurrentTrack => "open a popup showing actions on the current track",
             Self::FocusNextWindow => "focus the next focusable window (if any)",
             Self::FocusPreviousWindow => "focus the previous focusable window (if any)",
             Self::SwitchTheme => "open a popup for switching theme",
@@ -99,6 +101,8 @@ impl Command {
             Self::CurrentlyPlayingContextPage => "go to the currently playing context page",
             Self::TopTrackPage => "go to the user top track page",
             Self::RecentlyPlayedTrackPage => "go to the user recently played track page",
+            #[cfg(feature = "lyric-finder")]
+            Self::LyricPage => "go to the lyric page of the current track",
             Self::LibraryPage => "go to the user libary page",
             Self::SearchPage => "go to the search page",
             Self::PreviousPage => "go to the previous page",

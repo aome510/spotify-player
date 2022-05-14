@@ -284,3 +284,40 @@ pub fn handle_key_sequence_for_tracks_page(
         ),
     }
 }
+
+#[cfg(feature = "lyric-finder")]
+pub fn handle_key_sequence_for_lyric_page(
+    key_sequence: &KeySequence,
+    _client_pub: &mpsc::Sender<ClientRequest>,
+    state: &SharedState,
+) -> Result<bool> {
+    let command = match state
+        .keymap_config
+        .find_command_from_key_sequence(key_sequence)
+    {
+        Some(command) => command,
+        None => return Ok(false),
+    };
+
+    let mut ui = state.ui.lock();
+    let scroll_offset = match ui.current_page_mut() {
+        PageState::Lyric {
+            ref mut scroll_offset,
+            ..
+        } => scroll_offset,
+        _ => unreachable!("expect a lyric page"),
+    };
+
+    match command {
+        Command::SelectNextOrScrollDown => {
+            *scroll_offset += 1;
+        }
+        Command::SelectPreviousOrScrollUp => {
+            if *scroll_offset > 0 {
+                *scroll_offset -= 1;
+            }
+        }
+        _ => return Ok(false),
+    }
+    Ok(true)
+}
