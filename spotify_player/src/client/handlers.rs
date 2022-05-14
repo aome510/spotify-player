@@ -1,4 +1,5 @@
 use tokio::sync::{broadcast, mpsc};
+use tracing::Instrument;
 
 use crate::{event::ClientRequest, state::*};
 
@@ -30,11 +31,15 @@ pub async fn start_client_handler(
             _ => {
                 let state = state.clone();
                 let client = client.clone();
-                tokio::task::spawn(async move {
-                    if let Err(err) = client.handle_request(&state, request).await {
-                        tracing::error!("failed to handle client request: {err:?}");
+                let span = tracing::info_span!("client_request", request = ?request);
+                tokio::task::spawn(
+                    async move {
+                        if let Err(err) = client.handle_request(&state, request).await {
+                            tracing::error!("failed to handle client request: {err:?}");
+                        }
                     }
-                });
+                    .instrument(span),
+                );
             }
         }
     }

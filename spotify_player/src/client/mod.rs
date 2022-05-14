@@ -143,7 +143,7 @@ impl Client {
 
     /// handles a client request
     pub async fn handle_request(&self, state: &SharedState, request: ClientRequest) -> Result<()> {
-        tracing::info!("handle client request {:?}", request);
+        let timer = std::time::SystemTime::now();
 
         match request {
             ClientRequest::GetLyric { track, artists } => {
@@ -260,6 +260,11 @@ impl Client {
                 self.save_to_library(state, item).await?;
             }
         };
+
+        tracing::info!(
+            "successfully handled the client request, took: {}ms",
+            timer.elapsed().unwrap().as_millis()
+        );
 
         Ok(())
     }
