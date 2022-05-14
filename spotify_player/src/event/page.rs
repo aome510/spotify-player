@@ -290,5 +290,6 @@ pub fn handle_key_sequence_for_lyric_page(
     client_pub: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
 ) -> Result<bool> {
-    unimplemented!()
+    // TODO: implement this
+    Ok(false)
 }

@@ -359,7 +359,8 @@ pub fn render_tracks_page(is_active: bool, frame: &mut Frame, state: &SharedStat
 }
 
 pub fn render_lyric_page(is_active: bool, frame: &mut Frame, state: &SharedState, rect: Rect) {
-    unimplemented!()
+    // TODO: implement this
+    return;
 }
 
 /// Renders windows for an artist context page, which includes

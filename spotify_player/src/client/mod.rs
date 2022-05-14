@@ -7,7 +7,7 @@ use crate::{
     event::{ClientRequest, PlayerRequest},
     state::*,
 };
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context as AnyhowContext, Result};
 use librespot_core::session::Session;
 use rspotify::prelude::*;
 
@@ -147,7 +147,13 @@ impl Client {
 
         match request {
             ClientRequest::GetLyric { track, artists } => {
-                unimplemented!();
+                let client = lyric_finder::Client::from_http_client(&self.http);
+                let query = format!("{} {}", track, artists);
+                let result = client.get_lyric(&query).await.context(format!(
+                    "failed to get lyric for track {} - artists {}",
+                    track, artists
+                ))?;
+                log::debug!("lyric result: {result:?}");
             }
             #[cfg(feature = "streaming")]
             ClientRequest::NewSpircConnection => {
