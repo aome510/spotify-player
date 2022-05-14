@@ -25,7 +25,7 @@ reqwest = { version = "0.11.9", features = ["json"] }
 rpassword = "5.0.1"
 rspotify = "0.11.3"
 serde = { version = "1.0.136", features = ["derive"] }
-tokio = { version = "1.17.0", features = ["rt", "rt-multi-thread", "macros"] }
+tokio = { version = "1.17.0", features = ["rt", "rt-multi-thread", "macros", "time"] }
 tokio-stream = "0.1.8"
 toml = "0.5.8"
 tui = "0.17.0"

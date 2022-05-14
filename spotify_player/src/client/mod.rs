@@ -16,6 +16,7 @@ mod spotify;
 
 pub use handlers::*;
 use tokio::sync::{broadcast, mpsc};
+use tracing::Instrument;
 
 /// The application's client
 #[derive(Clone)]
@@ -74,11 +75,8 @@ impl Client {
         state: &SharedState,
         request: PlayerRequest,
     ) -> Result<()> {
-        tracing::info!("handle player request: {:?}", request);
-
         // `TransferPlayback` needs to be handled separately
         // from other play requests because they don't require an active playback
-
         // transfer the current playback to another device
         if let PlayerRequest::TransferPlayback(device_id, force_play) = request {
             self.spotify
@@ -92,9 +90,7 @@ impl Client {
         let playback = match state.player.read().simplified_playback() {
             Some(playback) => playback,
             None => {
-                return Err(anyhow!(
-                    "failed to handle the player request: there is no active playback"
-                ));
+                anyhow::bail!("failed to handle the player request: there is no active playback");
             }
         };
         let device_id = playback.device_id.as_deref();
@@ -169,25 +165,33 @@ impl Client {
                 let user = self.spotify.current_user().await?;
                 state.data.write().user_data.user = Some(user);
             }
-            ClientRequest::Player(event) => {
-                self.handle_player_request(state, event).await?;
+            ClientRequest::Player(request) => {
+                let span =
+                    tracing::info_span!("additional_playback_refreshes", player_request = ?request);
 
-                // After handling a request that modifies the player's playback,
-                // update the playback state by making `n_refreshes` refresh requests.
+                self.handle_player_request(state, request).await?;
+
+                // After handling a request that updates the player's playback,
+                // update the playback state by making additional refresh requests.
                 //
-                // - Why needs more than one request to update the playback?
-                // Spotify API may take a while to update the new change,
-                // so making additional requests can help ensure that
-                // the playback state is in sync with the latest change.
-                let n_refreshes = state.app_config.n_refreshes_each_playback_update;
-                let delay_duration = std::time::Duration::from_millis(
-                    state.app_config.refresh_delay_in_ms_each_playback_update,
+                // # Why needs more than one request to update the playback?
+                // It may take a while for Spotify to update the new change,
+                // making additional requests can help ensure that
+                // the playback state is always in sync with the latest change.
+                let client = self.clone();
+                let state = state.clone();
+                tokio::task::spawn(
+                    async move {
+                        let delay_duration = std::time::Duration::from_millis(200);
+                        for _ in 1..5 {
+                            if let Err(err) = client.update_current_playback_state(&state).await {
+                                tracing::error!("failed to refresh the player's playback: {err:?}");
+                            }
+                            tokio::time::sleep(delay_duration).await;
+                        }
+                    }
+                    .instrument(span),
                 );
-
-                for _ in 0..n_refreshes {
-                    std::thread::sleep(delay_duration);
-                    self.update_current_playback_state(state).await?;
-                }
             }
             ClientRequest::GetCurrentPlayback => {
                 self.update_current_playback_state(state).await?;
