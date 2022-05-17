@@ -106,7 +106,7 @@ impl BaseClient for Spotify {
         match token::get_token(session, &self.client_id).await {
             Ok(token) => Ok(Some(token)),
             Err(err) => {
-                tracing::error!("failed to get access token: {err:?}");
+                tracing::error!("failed to get access token: {err:#}");
                 Ok(None)
             }
         }

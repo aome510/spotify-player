@@ -187,7 +187,7 @@ impl Client {
                         let delay_duration = std::time::Duration::from_millis(500);
                         for _ in 1..5 {
                             if let Err(err) = client.update_current_playback_state(&state).await {
-                                tracing::error!("failed to refresh the player's playback: {err:?}");
+                                tracing::error!("failed to refresh the player's playback: {err:#}");
                             }
                             tokio::time::sleep(delay_duration).await;
                         }

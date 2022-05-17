@@ -54,14 +54,13 @@ pub enum ClientRequest {
 /// starts a terminal event handler (key pressed, mouse clicked, etc)
 pub fn start_event_handler(state: SharedState, client_pub: mpsc::Sender<ClientRequest>) {
     while let Ok(event) = crossterm::event::read() {
-        tracing::info!("got a terminal event: {:?}", event);
-
+        let _enter = tracing::info_span!("terminal_event", event = ?event).entered();
         if let Err(err) = match event {
             crossterm::event::Event::Mouse(event) => handle_mouse_event(event, &client_pub, &state),
             crossterm::event::Event::Key(event) => handle_key_event(event, &client_pub, &state),
             _ => Ok(()),
         } {
-            tracing::error!("failed to handle event: {err:?}");
+            tracing::error!("failed to handle event: {err:#}");
         }
     }
 }
@@ -76,9 +75,10 @@ fn handle_mouse_event(
     // a left click event
     if let crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left) = event.kind
     {
+        tracing::debug!("handling mouse event: {event:?}");
         if event.row == ui.progress_bar_rect.y {
             // calculate the seek position (in ms) based on the clicked position,
-            // the progress bar's width and the track's duration (in ms)
+            // the pro gress bar's width and the track's duration (in ms)
 
             let player = state.player.read();
             let track = player.current_playing_track();
@@ -111,6 +111,8 @@ fn handle_key_event(
     {
         key_sequence = KeySequence { keys: vec![key] };
     }
+
+    tracing::debug!("handling key event: {event:?}, current key sequence: {key_sequence:?}");
 
     let handled = if state.ui.lock().popup.is_none() {
         // no popup

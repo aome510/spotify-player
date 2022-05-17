@@ -24,7 +24,7 @@ pub async fn start_client_handler(
                     .await
                 {
                     tracing::error!(
-                        "encountered error during creating a new spirc connection: {err:?}",
+                        "encountered error during creating a new spirc connection: {err:#}",
                     );
                 }
             }
@@ -35,7 +35,7 @@ pub async fn start_client_handler(
                 tokio::task::spawn(
                     async move {
                         if let Err(err) = client.handle_request(&state, request).await {
-                            tracing::error!("failed to handle client request: {err:?}");
+                            tracing::error!("failed to handle client request: {err:#}");
                         }
                     }
                     .instrument(span),

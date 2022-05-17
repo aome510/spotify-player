@@ -72,7 +72,7 @@ impl AppConfig {
         match std::fs::read_to_string(&file_path) {
             Err(err) => {
                 tracing::warn!(
-                    "failed to open the application config file (path={file_path:?}): {err:?}. Use the default configurations instead",
+                    "failed to open the application config file (path={file_path:?}): {err:#}. Use the default configurations instead",
                 );
             }
             Ok(content) => {
