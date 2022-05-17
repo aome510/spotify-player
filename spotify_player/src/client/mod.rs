@@ -184,7 +184,7 @@ impl Client {
                 let state = state.clone();
                 tokio::task::spawn(
                     async move {
-                        let delay_duration = std::time::Duration::from_millis(200);
+                        let delay_duration = std::time::Duration::from_millis(500);
                         for _ in 1..5 {
                             if let Err(err) = client.update_current_playback_state(&state).await {
                                 tracing::error!("failed to refresh the player's playback: {err:?}");
