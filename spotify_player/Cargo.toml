@@ -10,31 +10,31 @@ keywords = ["spotify", "tui", "player"]
 readme = "../README.md"
 
 [dependencies]
-anyhow = "1.0.55"
-clap = "3.1.5"
+anyhow = "1.0.57"
+clap = "3.1.18"
 config_parser2 = "0.1.2"
-crossterm = { version = "0.23.0", features = ["event-stream"] }
+crossterm = { version = "0.23.2", features = ["event-stream"] }
 dirs-next = "2.0.0"
 librespot-connect = { version = "0.3.1", optional = true }
 librespot-playback = { version = "0.3.1", optional = true }
 librespot-core = "0.3.1"
-log = "0.4.14"
-lru = "0.7.3"
+log = "0.4.17"
+lru = "0.7.5"
 chrono = "0.4.19"
-reqwest = { version = "0.11.9", features = ["json"] }
-rpassword = "5.0.1"
-rspotify = "0.11.3"
-serde = { version = "1.0.136", features = ["derive"] }
-tokio = { version = "1.17.0", features = ["rt", "rt-multi-thread", "macros", "time"] }
-toml = "0.5.8"
-tui = "0.17.0"
+reqwest = { version = "0.11.10", features = ["json"] }
+rpassword = "6.0.1"
+rspotify = "0.11.5"
+serde = { version = "1.0.137", features = ["derive"] }
+tokio = { version = "1.18.2", features = ["rt", "rt-multi-thread", "macros", "time"] }
+toml = "0.5.9"
+tui = "0.18.0"
 unicode-width = "0.1.9"
 rand = "0.8.5"
 maybe-async = "0.2.6"
-async-trait = "0.1.52"
+async-trait = "0.1.53"
 parking_lot = "0.12.0"
-tracing = "0.1.31"
-tracing-subscriber = { version = "0.3.9", features = ["env-filter"] }
+tracing = "0.1.34"
+tracing-subscriber = { version = "0.3.11", features = ["env-filter"] }
 lyric_finder = { version = "0.1.2", path = "../lyric_finder" , optional = true }
 backtrace = "0.3.65"
 

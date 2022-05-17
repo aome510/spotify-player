@@ -21,7 +21,7 @@ fn read_user_auth_details(user: Option<String>) -> Result<(String, String)> {
     if username.is_empty() {
         username = user.unwrap_or_default();
     }
-    let password = rpassword::prompt_password_stdout(&format!("Password for {}: ", username))?;
+    let password = rpassword::prompt_password(&format!("Password for {}: ", username))?;
     Ok((username, password))
 }
 
