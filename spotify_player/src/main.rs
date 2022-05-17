@@ -58,7 +58,8 @@ async fn init_spotify(
     #[cfg(feature = "streaming")]
     client
         .new_spirc_connection(spirc_pub.subscribe(), client_pub.clone(), false)
-        .await?;
+        .await
+        .context("failed to create a new spirc connection")?;
 
     if state.player.read().playback.is_none() {
         tracing::info!(
@@ -107,8 +108,7 @@ fn init_logging(cache_folder: &std::path::Path) -> Result<()> {
     // initialize the application's panic backtrace
     let backtrace_file =
         std::fs::File::create(cache_folder.join(format!("{log_prefix}.backtrace")))
-            .context("failed to create backtrace file")
-            .unwrap();
+            .context("failed to create backtrace file")?;
     let backtrace_file = std::sync::Mutex::new(backtrace_file);
     std::panic::set_hook(Box::new(move |info| {
         if let Some(s) = info.payload().downcast_ref::<&str>() {

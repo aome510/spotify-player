@@ -8,7 +8,10 @@ pub fn handle_key_sequence_for_popup(
     state: &SharedState,
 ) -> Result<bool> {
     let ui = state.ui.lock();
-    let popup = ui.popup.as_ref().unwrap();
+    let popup = ui
+        .popup
+        .as_ref()
+        .ok_or_else(|| anyhow::anyhow!("expect to exist a popup"))?;
 
     if let PopupState::Search { .. } = popup {
         drop(ui);
@@ -23,7 +26,7 @@ pub fn handle_key_sequence_for_popup(
         None => return Ok(false),
     };
 
-    match ui.popup.as_ref().unwrap() {
+    match popup {
         PopupState::Search { .. } => anyhow::bail!("should be handled before"),
         PopupState::ArtistList(artists, _) => {
             let n_items = artists.len();
@@ -324,7 +327,7 @@ fn handle_command_for_list_popup(
     on_choose_func: impl Fn(&mut UIStateGuard, usize) -> Result<()>,
     on_close_func: impl Fn(&mut UIStateGuard),
 ) -> Result<bool> {
-    let popup = ui.popup.as_mut().unwrap();
+    let popup = ui.popup.as_mut().context("expect to exist a popup")?;
     let current_id = popup.list_selected().unwrap_or_default();
 
     match command {

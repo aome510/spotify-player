@@ -48,7 +48,7 @@ impl Client {
         };
         let device = self.spotify.device.clone();
         let device_id = session.device_id().to_string();
-        spirc::new_connection(session, device, client_pub, spirc_sub);
+        spirc::new_connection(session, device, client_pub, spirc_sub)?;
 
         // whether should we connect to the new spirc client upon its creation
         if should_connect {
