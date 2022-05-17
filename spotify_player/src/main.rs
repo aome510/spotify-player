@@ -114,7 +114,7 @@ fn init_logging(cache_folder: &std::path::Path) -> Result<()> {
         if let Some(s) = info.payload().downcast_ref::<&str>() {
             let backtrace = backtrace::Backtrace::new();
             let mut file = backtrace_file.lock().unwrap();
-            writeln!(&mut file, "got a panic: {}\n", s).unwrap();
+            writeln!(&mut file, "Got a panic: {}\n", s).unwrap();
             writeln!(&mut file, "Stack backtrace:\n{:?}", backtrace).unwrap();
         }
     }));

@@ -131,7 +131,9 @@ impl Client {
                     .shuffle(playback.shuffle_state, device_id)
                     .await?
             }
-            PlayerRequest::TransferPlayback(..) => unreachable!(),
+            PlayerRequest::TransferPlayback(..) => {
+                anyhow::bail!("`TransferPlayback` should be handled ealier")
+            }
         };
 
         Ok(())
@@ -159,7 +161,7 @@ impl Client {
             }
             #[cfg(feature = "streaming")]
             ClientRequest::NewSpircConnection => {
-                unreachable!("request should be already handled by the caller function");
+                anyhow::bail!("request should be already handled by the caller function");
             }
             ClientRequest::GetCurrentUser => {
                 let user = self.spotify.current_user().await?;
@@ -528,13 +530,13 @@ impl Client {
                     .into_iter()
                     .filter_map(Track::try_from_full_track)
                     .collect(),
-                _ => unreachable!(),
+                _ => anyhow::bail!("expect a track search result"),
             },
             match artist_result {
                 rspotify_model::SearchResult::Artists(p) => {
                     p.items.into_iter().map(|a| a.into()).collect()
                 }
-                _ => unreachable!(),
+                _ => anyhow::bail!("expect an artist search result"),
             },
             match album_result {
                 rspotify_model::SearchResult::Albums(p) => p
@@ -542,13 +544,13 @@ impl Client {
                     .into_iter()
                     .filter_map(Album::try_from_simplified_album)
                     .collect(),
-                _ => unreachable!(),
+                _ => anyhow::bail!("expect an album search result"),
             },
             match playlist_result {
                 rspotify_model::SearchResult::Playlists(p) => {
                     p.items.into_iter().map(|i| i.into()).collect()
                 }
-                _ => unreachable!(),
+                _ => anyhow::bail!("expect a playlist search result"),
             },
         );
 

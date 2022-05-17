@@ -24,7 +24,7 @@ pub fn handle_key_sequence_for_popup(
     };
 
     match ui.popup.as_ref().unwrap() {
-        PopupState::Search { .. } => unreachable!("should be handled before"),
+        PopupState::Search { .. } => anyhow::bail!("should be handled before"),
         PopupState::ArtistList(artists, _) => {
             let n_items = artists.len();
 
