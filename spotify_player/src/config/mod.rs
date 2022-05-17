@@ -20,8 +20,6 @@ pub use theme::*;
 pub struct AppConfig {
     pub theme: String,
     pub client_id: String,
-    pub n_refreshes_each_playback_update: usize,
-    pub refresh_delay_in_ms_each_playback_update: u64,
     pub app_refresh_duration_in_ms: u64,
     pub playback_refresh_duration_in_ms: u64,
     pub track_table_item_max_len: usize,
@@ -45,8 +43,6 @@ impl Default for AppConfig {
             theme: "dracula".to_owned(),
             // official spotify web app's client id
             client_id: "65b708073fc0480ea92a077233ca87bd".to_string(),
-            n_refreshes_each_playback_update: 5,
-            refresh_delay_in_ms_each_playback_update: 500,
             app_refresh_duration_in_ms: 32,
             playback_refresh_duration_in_ms: 0,
             track_table_item_max_len: 32,

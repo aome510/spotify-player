@@ -16,7 +16,7 @@ pub fn handle_command_for_focused_context_window(
             None => return Ok(false),
             Some(id) => id.uri(),
         },
-        _ => unreachable!("expect a context page"),
+        _ => anyhow::bail!("expect a context page"),
     };
 
     match state.data.read().caches.context.peek(&context_uri) {
@@ -32,7 +32,7 @@ pub fn handle_command_for_focused_context_window(
                         state: Some(ContextPageUIState::Artist { focus, .. }),
                         ..
                     } => focus,
-                    _ => unreachable!("expect an arist context page with a state"),
+                    _ => anyhow::bail!("expect an arist context page with a state"),
                 };
 
                 match focus_state {

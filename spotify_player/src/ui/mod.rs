@@ -25,7 +25,9 @@ pub fn run(state: SharedState) -> Result<()> {
             let block = Block::default().style(state.ui.lock().theme.app_style());
             frame.render_widget(block, frame.size());
 
-            render_application(frame, &state, frame.size());
+            if let Err(err) = render_application(frame, &state, frame.size()) {
+                tracing::error!("failed to render the application: {err:?}");
+            }
         }) {
             tracing::error!("failed to draw the application: {err:?}");
         }
@@ -62,40 +64,36 @@ fn clean_up(mut terminal: Terminal) -> Result<()> {
 }
 
 /// renders the application
-fn render_application(frame: &mut Frame, state: &SharedState, rect: Rect) {
+fn render_application(frame: &mut Frame, state: &SharedState, rect: Rect) -> Result<()> {
     let rect = popup::render_shortcut_help_popup(frame, state, rect);
     let (rect, is_active) = popup::render_popup(frame, state, rect);
 
-    render_main_layout(is_active, frame, state, rect);
+    render_main_layout(is_active, frame, state, rect)?;
+    Ok(())
 }
 
 /// renders the application's main layout
-fn render_main_layout(is_active: bool, frame: &mut Frame, state: &SharedState, rect: Rect) {
+fn render_main_layout(
+    is_active: bool,
+    frame: &mut Frame,
+    state: &SharedState,
+    rect: Rect,
+) -> Result<()> {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Length(7), Constraint::Min(0)].as_ref())
         .split(rect);
-    render_playback_window(frame, state, chunks[0]);
+    render_playback_window(frame, state, chunks[0])?;
 
     let page_type = state.ui.lock().current_page().page_type();
     match page_type {
-        PageType::Library => {
-            page::render_library_page(is_active, frame, state, chunks[1]);
-        }
-        PageType::Search => {
-            page::render_search_page(is_active, frame, state, chunks[1]);
-        }
-        PageType::Context => {
-            page::render_context_page(is_active, frame, state, chunks[1]);
-        }
-        PageType::Tracks => {
-            page::render_tracks_page(is_active, frame, state, chunks[1]);
-        }
+        PageType::Library => page::render_library_page(is_active, frame, state, chunks[1]),
+        PageType::Search => page::render_search_page(is_active, frame, state, chunks[1]),
+        PageType::Context => page::render_context_page(is_active, frame, state, chunks[1]),
+        PageType::Tracks => page::render_tracks_page(is_active, frame, state, chunks[1]),
         #[cfg(feature = "lyric-finder")]
-        PageType::Lyric => {
-            page::render_lyric_page(is_active, frame, state, chunks[1]);
-        }
-    };
+        PageType::Lyric => page::render_lyric_page(is_active, frame, state, chunks[1]),
+    }
 }
 
 /// constructs a generic list widget
@@ -131,7 +129,7 @@ pub fn construct_list_widget<'a>(
 /// Renders a playback window showing information about the current playback, which includes
 /// - track title, artists, album
 /// - playback metadata (playing state, repeat state, shuffle state, volume, device, etc)
-fn render_playback_window(frame: &mut Frame, state: &SharedState, rect: Rect) {
+fn render_playback_window(frame: &mut Frame, state: &SharedState, rect: Rect) -> Result<()> {
     let mut ui = state.ui.lock();
 
     let chunks = Layout::default()
@@ -182,7 +180,12 @@ fn render_playback_window(frame: &mut Frame, state: &SharedState, rect: Rect) {
                 .wrap(Wrap { trim: true })
                 // .style(theme.text_desc_style())
                 .block(Block::default());
-            let progress = std::cmp::min(player.playback_progress().unwrap(), track.duration);
+            let progress = std::cmp::min(
+                player
+                    .playback_progress()
+                    .context("playback should exist")?,
+                track.duration,
+            );
             let progress_bar = Gauge::default()
                 .block(Block::default())
                 .gauge_style(ui.theme.playback_progress_bar())
@@ -212,4 +215,6 @@ fn render_playback_window(frame: &mut Frame, state: &SharedState, rect: Rect) {
             chunks[0],
         );
     };
+
+    Ok(())
 }

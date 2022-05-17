@@ -1,4 +1,5 @@
 use crate::{config, event::ClientRequest};
+use anyhow::{Context, Result};
 use librespot_connect::spirc::Spirc;
 use librespot_core::{
     config::{ConnectConfig, DeviceType},
@@ -19,7 +20,7 @@ pub fn new_connection(
     device: config::DeviceConfig,
     client_pub: mpsc::Sender<ClientRequest>,
     mut spirc_sub: broadcast::Receiver<()>,
-) {
+) -> Result<()> {
     // librespot volume is a u16 number ranging from 0 to 65535,
     // while a percentage volume value (from 0 to 100) is used for the device configuration.
     // So we need to convert from one format to another
@@ -42,7 +43,8 @@ pub fn new_connection(
         Box::new(mixer::softmixer::SoftMixer::open(MixerConfig::default())) as Box<dyn Mixer>;
     mixer.set_volume(volume);
 
-    let backend = audio_backend::find(None).unwrap();
+    let backend =
+        audio_backend::find(None).with_context(|| "unable to find an audio backend".to_string())?;
     let player_config = PlayerConfig {
         bitrate: device
             .bitrate
@@ -85,4 +87,6 @@ pub fn new_connection(
             }
         }
     });
+
+    Ok(())
 }

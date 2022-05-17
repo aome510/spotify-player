@@ -65,8 +65,7 @@ pub fn start_player_event_watchers(state: SharedState, client_pub: mpsc::Sender<
     }
 
     // Main watcher task
-    // TODO: make the below `refresh_duration` configurable
-    let refresh_duration = std::time::Duration::from_millis(100);
+    let refresh_duration = std::time::Duration::from_millis(200);
     loop {
         std::thread::sleep(refresh_duration);
 

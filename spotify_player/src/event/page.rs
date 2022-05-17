@@ -27,7 +27,7 @@ pub fn handle_key_sequence_for_library_page(
             let data = state.data.read();
             let focus_state = match ui.current_page() {
                 PageState::Library { state } => state.focus,
-                _ => unreachable!("expect a library page state"),
+                _ => anyhow::bail!("expect a library page state"),
             };
             match focus_state {
                 LibraryFocusState::Playlists => window::handle_command_for_playlist_list_window(
@@ -65,7 +65,7 @@ pub fn handle_key_sequence_for_search_page(
             input,
             current_query,
         } => (state.focus, input, current_query),
-        _ => unreachable!("expect a search page"),
+        _ => anyhow::bail!("expect a search page"),
     };
 
     // handle user's input
@@ -109,7 +109,7 @@ pub fn handle_key_sequence_for_search_page(
     let search_results = data.caches.search.peek(current_query);
 
     match focus_state {
-        SearchFocusState::Input => unreachable!("user's search input should be handled before"),
+        SearchFocusState::Input => anyhow::bail!("user's search input should be handled before"),
         SearchFocusState::Tracks => {
             let tracks = search_results
                 .map(|s| s.tracks.iter().collect())
@@ -152,7 +152,7 @@ pub fn handle_key_sequence_for_context_page(
 
     let context_id = match state.ui.lock().current_page() {
         PageState::Context { id, .. } => id.clone(),
-        _ => unreachable!("expect a context page"),
+        _ => anyhow::bail!("expect a context page"),
     };
 
     match command {
@@ -244,7 +244,7 @@ pub fn handle_key_sequence_for_tracks_page(
 
     let id = match ui.current_page() {
         PageState::Tracks { id, .. } => id,
-        _ => unreachable!("expect a tracks page"),
+        _ => anyhow::bail!("expect a tracks page"),
     };
 
     let tracks = data
@@ -305,7 +305,7 @@ pub fn handle_key_sequence_for_lyric_page(
             ref mut scroll_offset,
             ..
         } => scroll_offset,
-        _ => unreachable!("expect a lyric page"),
+        _ => anyhow::bail!("expect a lyric page"),
     };
 
     match command {

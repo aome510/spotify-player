@@ -286,9 +286,8 @@ impl SeedItem {
 impl Device {
     /// tries to convert from a `rspotify_model::Device` into `Device`
     pub fn try_from_device(device: rspotify_model::Device) -> Option<Self> {
-        device.id.as_ref()?;
         Some(Self {
-            id: device.id.unwrap(),
+            id: device.id?,
             name: device.name,
         })
     }
@@ -329,9 +328,8 @@ impl Track {
 
     /// tries to convert from a `rspotify_model::SimplifiedTrack` into `Track`
     pub fn try_from_simplified_track(track: rspotify_model::SimplifiedTrack) -> Option<Self> {
-        track.id.as_ref()?;
         Some(Self {
-            id: track.id.unwrap(),
+            id: track.id?,
             name: track.name,
             artists: from_simplified_artists_to_artists(track.artists),
             album: None,
@@ -342,9 +340,8 @@ impl Track {
 
     /// tries to convert from a `rspotify_model::FullTrack` into `Track`
     pub fn try_from_full_track(track: rspotify_model::FullTrack) -> Option<Self> {
-        track.id.as_ref()?;
         Some(Self {
-            id: track.id.unwrap(),
+            id: track.id?,
             name: track.name,
             artists: from_simplified_artists_to_artists(track.artists),
             album: Album::try_from_simplified_album(track.album),
@@ -363,9 +360,8 @@ impl std::fmt::Display for Track {
 impl Album {
     /// tries to convert from a `rspotify_model::SimplifiedAlbum` into `Album`
     pub fn try_from_simplified_album(album: rspotify_model::SimplifiedAlbum) -> Option<Self> {
-        album.id.as_ref()?;
         Some(Self {
-            id: album.id.unwrap(),
+            id: album.id?,
             name: album.name,
             release_date: album.release_date.unwrap_or_default(),
             artists: from_simplified_artists_to_artists(album.artists),
@@ -393,9 +389,8 @@ impl std::fmt::Display for Album {
 impl Artist {
     /// tries to convert from a `rspotify_model::SimplifiedArtist` into `Artist`
     pub fn try_from_simplified_artist(artist: rspotify_model::SimplifiedArtist) -> Option<Self> {
-        artist.id.as_ref()?;
         Some(Self {
-            id: artist.id.unwrap(),
+            id: artist.id?,
             name: artist.name,
         })
     }

@@ -1,6 +1,11 @@
 use super::*;
 
-pub fn render_search_page(is_active: bool, frame: &mut Frame, state: &SharedState, rect: Rect) {
+pub fn render_search_page(
+    is_active: bool,
+    frame: &mut Frame,
+    state: &SharedState,
+    rect: Rect,
+) -> Result<()> {
     let mut ui = state.ui.lock();
     let data = state.data.read();
 
@@ -10,7 +15,7 @@ pub fn render_search_page(is_active: bool, frame: &mut Frame, state: &SharedStat
             current_query,
             input,
         } => (state.focus, current_query, input),
-        _ => unreachable!("expect a library page state"),
+        _ => anyhow::bail!("expect a library page state"),
     };
 
     let search_results = data.caches.search.peek(current_query);
@@ -141,15 +146,22 @@ pub fn render_search_page(is_active: bool, frame: &mut Frame, state: &SharedStat
     // Will need mutable access to the list/table states stored inside the page state for rendering.
     let page_state = match ui.current_page_mut() {
         PageState::Search { state, .. } => state,
-        _ => unreachable!("expect a library page state"),
+        _ => anyhow::bail!("expect a library page state"),
     };
     frame.render_stateful_widget(track_list, chunks[0], &mut page_state.track_list);
     frame.render_stateful_widget(album_list, chunks[1], &mut page_state.album_list);
     frame.render_stateful_widget(artist_list, chunks[2], &mut page_state.artist_list);
     frame.render_stateful_widget(playlist_list, chunks[3], &mut page_state.playlist_list);
+
+    Ok(())
 }
 
-pub fn render_context_page(is_active: bool, frame: &mut Frame, state: &SharedState, rect: Rect) {
+pub fn render_context_page(
+    is_active: bool,
+    frame: &mut Frame,
+    state: &SharedState,
+    rect: Rect,
+) -> Result<()> {
     let mut ui = state.ui.lock();
     let (id, context_page_type) = match ui.current_page() {
         PageState::Context {
@@ -157,7 +169,7 @@ pub fn render_context_page(is_active: bool, frame: &mut Frame, state: &SharedSta
             context_page_type,
             ..
         } => (id, context_page_type),
-        _ => unreachable!("expect a context page"),
+        _ => anyhow::bail!("expect a context page"),
     };
 
     let block = Block::default()
@@ -173,7 +185,7 @@ pub fn render_context_page(is_active: bool, frame: &mut Frame, state: &SharedSta
                 Paragraph::new("Cannot determine the current page's context").block(block),
                 rect,
             );
-            return;
+            return Ok(());
         }
         Some(id) => id.uri(),
     };
@@ -206,7 +218,7 @@ pub fn render_context_page(is_active: bool, frame: &mut Frame, state: &SharedSta
                         ui,
                         chunks[1],
                         (top_tracks, albums, related_artists),
-                    );
+                    )?;
                 }
                 Context::Playlist { tracks, .. } => {
                     render_track_table_window(
@@ -216,7 +228,7 @@ pub fn render_context_page(is_active: bool, frame: &mut Frame, state: &SharedSta
                         state,
                         ui.search_filtered_items(tracks),
                         &mut ui,
-                    );
+                    )?;
                 }
                 Context::Album { tracks, .. } => {
                     render_track_table_window(
@@ -226,7 +238,7 @@ pub fn render_context_page(is_active: bool, frame: &mut Frame, state: &SharedSta
                         state,
                         ui.search_filtered_items(tracks),
                         &mut ui,
-                    );
+                    )?;
                 }
             }
         }
@@ -234,15 +246,22 @@ pub fn render_context_page(is_active: bool, frame: &mut Frame, state: &SharedSta
             frame.render_widget(Paragraph::new("Loading...").block(block), rect);
         }
     }
+
+    Ok(())
 }
 
-pub fn render_library_page(is_active: bool, frame: &mut Frame, state: &SharedState, rect: Rect) {
+pub fn render_library_page(
+    is_active: bool,
+    frame: &mut Frame,
+    state: &SharedState,
+    rect: Rect,
+) -> Result<()> {
     let mut ui = state.ui.lock();
     let data = state.data.read();
 
     let focus_state = match ui.current_page() {
         PageState::Library { state } => state.focus,
-        _ => unreachable!("expect a library page state"),
+        _ => anyhow::bail!("expect a library page state"),
     };
 
     // Horizontally split the library page into 3 windows:
@@ -300,7 +319,7 @@ pub fn render_library_page(is_active: bool, frame: &mut Frame, state: &SharedSta
     // Will need mutable access to the list/table states stored inside the page state for rendering.
     let page_state = match ui.current_page_mut() {
         PageState::Library { state } => state,
-        _ => unreachable!("expect a library page state"),
+        _ => anyhow::bail!("expect a library page state"),
     };
     frame.render_stateful_widget(playlist_list, playlist_rect, &mut page_state.playlist_list);
     frame.render_stateful_widget(album_list, album_rect, &mut page_state.saved_album_list);
@@ -309,9 +328,16 @@ pub fn render_library_page(is_active: bool, frame: &mut Frame, state: &SharedSta
         artist_rect,
         &mut page_state.followed_artist_list,
     );
+
+    Ok(())
 }
 
-pub fn render_tracks_page(is_active: bool, frame: &mut Frame, state: &SharedState, rect: Rect) {
+pub fn render_tracks_page(
+    is_active: bool,
+    frame: &mut Frame,
+    state: &SharedState,
+    rect: Rect,
+) -> Result<()> {
     let mut ui = state.ui.lock();
     let data = state.data.read();
 
@@ -319,7 +345,7 @@ pub fn render_tracks_page(is_active: bool, frame: &mut Frame, state: &SharedStat
         PageState::Tracks {
             id, title, desc, ..
         } => (id, title, desc),
-        _ => unreachable!("expect a tracks page"),
+        _ => anyhow::bail!("expect a tracks page"),
     };
 
     let block = Block::default()
@@ -331,7 +357,7 @@ pub fn render_tracks_page(is_active: bool, frame: &mut Frame, state: &SharedStat
         None => {
             // tracks are still loading
             frame.render_widget(Paragraph::new("loading...").block(block), rect);
-            return;
+            return Ok(());
         }
     };
 
@@ -355,11 +381,16 @@ pub fn render_tracks_page(is_active: bool, frame: &mut Frame, state: &SharedStat
         state,
         ui.search_filtered_items(tracks),
         &mut ui,
-    );
+    )
 }
 
 #[cfg(feature = "lyric-finder")]
-pub fn render_lyric_page(_is_active: bool, frame: &mut Frame, state: &SharedState, rect: Rect) {
+pub fn render_lyric_page(
+    _is_active: bool,
+    frame: &mut Frame,
+    state: &SharedState,
+    rect: Rect,
+) -> Result<()> {
     let ui = state.ui.lock();
     let data = state.data.read();
 
@@ -369,7 +400,7 @@ pub fn render_lyric_page(_is_active: bool, frame: &mut Frame, state: &SharedStat
             artists,
             scroll_offset,
         } => (track, artists, *scroll_offset),
-        _ => unreachable!("expect a lyric page state"),
+        _ => anyhow::bail!("expect a lyric page state"),
     };
 
     let block = Block::default()
@@ -414,6 +445,8 @@ pub fn render_lyric_page(_is_active: bool, frame: &mut Frame, state: &SharedStat
             );
         }
     }
+
+    Ok(())
 }
 
 /// Renders windows for an artist context page, which includes
@@ -427,7 +460,7 @@ fn render_artist_context_page_windows(
     mut ui: UIStateGuard,
     rect: Rect,
     data: (&[Track], &[Album], &[Artist]),
-) {
+) -> Result<()> {
     let (tracks, albums, artists) = (
         ui.search_filtered_items(data.0),
         ui.search_filtered_items(data.1),
@@ -439,7 +472,7 @@ fn render_artist_context_page_windows(
             state: Some(ContextPageUIState::Artist { focus, .. }),
             ..
         } => *focus,
-        _ => unreachable!("expect an artist context page"),
+        _ => anyhow::bail!("expect an artist context page"),
     };
 
     let rect = {
@@ -457,7 +490,7 @@ fn render_artist_context_page_windows(
             state,
             tracks,
             &mut ui,
-        );
+        )?;
 
         chunks[1]
     };
@@ -509,11 +542,13 @@ fn render_artist_context_page_windows(
                 }),
             ..
         } => (album_list, related_artist_list),
-        _ => unreachable!("expect an artist context page with a state"),
+        _ => anyhow::bail!("expect an artist context page with a state"),
     };
 
     frame.render_stateful_widget(album_list, chunks[0], album_list_state);
     frame.render_stateful_widget(artist_list, chunks[1], artist_list_state);
+
+    Ok(())
 }
 
 pub fn render_track_table_window(
@@ -523,7 +558,7 @@ pub fn render_track_table_window(
     state: &SharedState,
     tracks: Vec<&Track>,
     ui: &mut UIStateGuard,
-) {
+) -> Result<()> {
     // get the current playing track's URI to decorate such track (if exists) in the track table
     let mut playing_track_uri = "".to_string();
     let mut active_desc = "";
@@ -593,6 +628,8 @@ pub fn render_track_table_window(
         PageState::Tracks { state, .. } => {
             frame.render_stateful_widget(track_table, rect, state);
         }
-        _ => unreachable!("reach unsupported page state for rendering track table"),
+        _ => anyhow::bail!("reach unsupported page state for rendering track table"),
     }
+
+    Ok(())
 }

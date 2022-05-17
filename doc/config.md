@@ -15,24 +15,24 @@ All configuration files should be placed inside the application's configuration 
 
 `spotify-player` uses `app.toml` to configure general application configurations:
 
-| Option                                     | Description                                                      | Default                            |
-| ------------------------------------------ | ---------------------------------------------------------------- | ---------------------------------- |
-| `client_id`                                | the application's client ID that interacts with Spotify APIs     | `65b708073fc0480ea92a077233ca87bd` |
-| `theme`                                    | the application's theme                                          | `dracula`                          |
-| `n_refreshes_each_playback_update`         | number of refresh requests in each playback update               | `5`                                |
-| `refresh_delay_in_ms_each_playback_update` | delay in ms between two refresh requests in each playback update | `500`                              |
-| `app_refresh_duration_in_ms`               | duration in ms for re-rendering the application's UI             | `32`                               |
-| `playback_refresh_duration_in_ms`          | duration in ms for refreshing the playback periodically          | `0`                                |
-| `track_table_item_max_len`                 | maximum length of a column in a track table                      | `32`                               |
+| Option                            | Description                                                        | Default                            |
+| --------------------------------- | ------------------------------------------------------------------ | ---------------------------------- |
+| `client_id`                       | the Spotify client's ID                                            | `65b708073fc0480ea92a077233ca87bd` |
+| `theme`                           | the application's theme                                            | `dracula`                          |
+| `app_refresh_duration_in_ms`      | the duration (in ms) between two consecutive application refreshes | `32`                               |
+| `playback_refresh_duration_in_ms` | the duration (in ms) between two consecutive playback refreshes    | `0`                                |
+| `track_table_item_max_len`        | the maximum length of a column in a track table                    | `32`                               |
 
 The default `app.toml` can be found in the example [`app.toml`](https://github.com/aome510/spotify-player/blob/master/examples/app.toml) file
 
 **Note**:
 
-- By default, the application uses the official Spotify Web app's client ID (`65b708073fc0480ea92a077233ca87bd`). It's recommended to specify [your own Client ID](https://developer.spotify.com/documentation/general/guides/authorization/app-settings/) to avoid possible rate limit and to allow a full [Spotify connect](https://www.spotify.com/us/connect/) support.
-- Positive-value `app_refresh_duration_in_ms` is used to refresh the current playback (making a Spotify API call) every `app_refresh_duration_in_ms` ms. This can result in hitting Spotify rate limit if the player is running for a long time.
-- To prevent the rate limit, `spotify-player` sets `playback_refresh_duration_in_ms=0` and uses `n_refreshes_each_playback_update` and `refresh_delay_in_ms_each_playback_update` to update the playback each time a command or event triggers a playback update.
+- By default, `spotify-player` uses the official Spotify Web app's client (`client_id = 65b708073fc0480ea92a077233ca87bd`)
+- It's recommended to specify [your own Client ID](https://developer.spotify.com/documentation/general/guides/authorization/app-settings/) to avoid possible rate limits and to allow a full [Spotify connect](https://www.spotify.com/us/connect/) support.
+- Positive-value `app_refresh_duration_in_ms` is used to refresh the playback periodically. This can result in hitting a Spotify rate limit if the application is running for a long time.
+- To prevent the rate limit, `spotify-player` sets `playback_refresh_duration_in_ms=0` by default and makes additional API calls when there is an event or a command triggering a playback update.
 - List of commands that triggers a playback update:
+
   - `NextTrack`
   - `PreviousTrack`
   - `ResumePause`
@@ -41,7 +41,10 @@ The default `app.toml` can be found in the example [`app.toml`](https://github.c
   - `Shuffle`
   - `SeekTrack` (left-clicking the playback's progress bar)
   - `ChooseSelected` (for a track, a device, etc)
-- The playback is also updated when the current track ends (using a timer based on the track's duration).
+
+  **Note**: the above list might not be up-to-date.
+
+- An example of event that triggers a playback update is the one happenning when the current track ends.
 
 ### Device configurations
 

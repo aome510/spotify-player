@@ -1,5 +1,6 @@
 use super::*;
 use crate::{command::Action, utils::new_table_state};
+use anyhow::Context;
 
 /// handles a key sequence for a popup
 pub fn handle_key_sequence_for_popup(
@@ -8,7 +9,10 @@ pub fn handle_key_sequence_for_popup(
     state: &SharedState,
 ) -> Result<bool> {
     let ui = state.ui.lock();
-    let popup = ui.popup.as_ref().unwrap();
+    let popup = ui
+        .popup
+        .as_ref()
+        .with_context(|| "expect to exist a popup".to_string())?;
 
     if let PopupState::Search { .. } = popup {
         drop(ui);
@@ -23,8 +27,8 @@ pub fn handle_key_sequence_for_popup(
         None => return Ok(false),
     };
 
-    match ui.popup.as_ref().unwrap() {
-        PopupState::Search { .. } => unreachable!("should be handled before"),
+    match popup {
+        PopupState::Search { .. } => anyhow::bail!("should be handled before"),
         PopupState::ArtistList(artists, _) => {
             let n_items = artists.len();
 
@@ -324,7 +328,10 @@ fn handle_command_for_list_popup(
     on_choose_func: impl Fn(&mut UIStateGuard, usize) -> Result<()>,
     on_close_func: impl Fn(&mut UIStateGuard),
 ) -> Result<bool> {
-    let popup = ui.popup.as_mut().unwrap();
+    let popup = ui
+        .popup
+        .as_mut()
+        .with_context(|| "expect to exist a popup")?;
     let current_id = popup.list_selected().unwrap_or_default();
 
     match command {

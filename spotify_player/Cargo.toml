@@ -25,8 +25,7 @@ reqwest = { version = "0.11.9", features = ["json"] }
 rpassword = "5.0.1"
 rspotify = "0.11.3"
 serde = { version = "1.0.136", features = ["derive"] }
-tokio = { version = "1.17.0", features = ["rt", "rt-multi-thread", "macros"] }
-tokio-stream = "0.1.8"
+tokio = { version = "1.17.0", features = ["rt", "rt-multi-thread", "macros", "time"] }
 toml = "0.5.8"
 tui = "0.17.0"
 unicode-width = "0.1.9"
@@ -37,6 +36,7 @@ parking_lot = "0.12.0"
 tracing = "0.1.31"
 tracing-subscriber = { version = "0.3.9", features = ["env-filter"] }
 lyric_finder = { version = "0.1.2", path = "../lyric_finder" , optional = true }
+backtrace = "0.3.65"
 
 [features]
 alsa-backend = ["streaming", "librespot-playback/alsa-backend"]

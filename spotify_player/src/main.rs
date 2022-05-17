@@ -11,7 +11,8 @@ mod token;
 mod ui;
 mod utils;
 
-use anyhow::Context;
+use anyhow::{Context, Result};
+use std::io::Write;
 
 fn init_app_cli_arguments() -> clap::ArgMatches {
     clap::Command::new("spotify-player")
@@ -49,15 +50,16 @@ async fn init_spotify(
     spirc_pub: &tokio::sync::broadcast::Sender<()>,
     client: &client::Client,
     state: &state::SharedState,
-) -> anyhow::Result<()> {
+) -> Result<()> {
     client.init_token().await?;
     client.update_current_playback_state(state).await?;
 
-    // if `streaming` feature is enabled, create new Spirc connection
+    // if `streaming` feature is enabled, create a new Spirc connection
     #[cfg(feature = "streaming")]
     client
         .new_spirc_connection(spirc_pub.subscribe(), client_pub.clone(), false)
-        .await?;
+        .await
+        .context("failed to create a new spirc connection")?;
 
     if state.player.read().playback.is_none() {
         tracing::info!(
@@ -66,8 +68,7 @@ async fn init_spotify(
         client.connect_to_first_available_device().await?;
     }
 
-    // Request user data
-
+    // request user data
     client_pub
         .send(event::ClientRequest::GetCurrentUser)
         .await?;
@@ -86,28 +87,43 @@ async fn init_spotify(
     Ok(())
 }
 
-fn init_logging(cache_folder: &std::path::Path) -> anyhow::Result<()> {
-    let log_file = format!(
-        "spotify-player-{}.log",
+fn init_logging(cache_folder: &std::path::Path) -> Result<()> {
+    let log_prefix = format!(
+        "spotify-player-{}",
         chrono::Local::now().format("%y-%m-%d-%R")
     );
-    let log_file_path = cache_folder.join(log_file);
+
     // initialize the application's logging
     if std::env::var("RUST_LOG").is_err() {
-        std::env::set_var("RUST_LOG", "spotify_player=info") // default to log the current crate only
+        std::env::set_var("RUST_LOG", "spotify_player=info"); // default to log the current crate only
     }
-    let log_file = std::fs::File::create(log_file_path).context("failed to create log file")?;
+    let log_file = std::fs::File::create(cache_folder.join(format!("{log_prefix}.log")))
+        .context("failed to create log file")?;
     tracing_subscriber::fmt::fmt()
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .with_ansi(false)
         .with_writer(std::sync::Mutex::new(log_file))
         .init();
 
+    // initialize the application's panic backtrace
+    let backtrace_file =
+        std::fs::File::create(cache_folder.join(format!("{log_prefix}.backtrace")))
+            .context("failed to create backtrace file")?;
+    let backtrace_file = std::sync::Mutex::new(backtrace_file);
+    std::panic::set_hook(Box::new(move |info| {
+        if let Some(s) = info.payload().downcast_ref::<&str>() {
+            let backtrace = backtrace::Backtrace::new();
+            let mut file = backtrace_file.lock().unwrap();
+            writeln!(&mut file, "Got a panic: {}\n", s).unwrap();
+            writeln!(&mut file, "Stack backtrace:\n{:?}", backtrace).unwrap();
+        }
+    }));
+
     Ok(())
 }
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> Result<()> {
     // parse command line arguments
     let args = init_app_cli_arguments();
 
@@ -128,13 +144,15 @@ async fn main() -> anyhow::Result<()> {
         std::fs::create_dir_all(&cache_audio_folder)?;
     }
 
-    init_logging(&cache_folder)?;
+    init_logging(&cache_folder).context("failed to initialize application's logging")?;
 
     // initialize the application state
-    let mut state = state::State::default();
-    // parse config options from the config files into application's state
-    state.parse_config_files(&config_folder, args.value_of("theme"))?;
-    let state = std::sync::Arc::new(state);
+    let state = {
+        let mut state = state::State::default();
+        // parse config options from the config files into application's state
+        state.parse_config_files(&config_folder, args.value_of("theme"))?;
+        std::sync::Arc::new(state)
+    };
 
     // create a librespot session
     let session = auth::new_session(&cache_folder, state.app_config.device.audio_cache).await?;
