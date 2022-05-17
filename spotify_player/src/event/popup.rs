@@ -12,7 +12,7 @@ pub fn handle_key_sequence_for_popup(
     let popup = ui
         .popup
         .as_ref()
-        .with_context(|| format!("expect to exist a popup"))?;
+        .with_context(|| "expect to exist a popup".to_string())?;
 
     if let PopupState::Search { .. } = popup {
         drop(ui);

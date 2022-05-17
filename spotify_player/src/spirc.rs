@@ -44,7 +44,7 @@ pub fn new_connection(
     mixer.set_volume(volume);
 
     let backend =
-        audio_backend::find(None).with_context(|| format!("unable to find an audio backend"))?;
+        audio_backend::find(None).with_context(|| "unable to find an audio backend".to_string())?;
     let player_config = PlayerConfig {
         bitrate: device
             .bitrate
