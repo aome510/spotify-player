@@ -6,25 +6,35 @@
 - [Examples](#examples)
   - [Demo](#demo)
 - [Installation](#installation)
-  - [Requirements](#requirements)
-- [Spotify Connect](#spotify-connect)
-- [Streaming](#streaming)
+- [Features](#features)
+  - [Spotify Connect](#spotify-connect)
+  - [Streaming](#streaming)
+  - [Lyric](#lyric)
+  - [Mouse support](#mouse-support)
 - [Commands](#commands)
-  - [Actions](#actions)
-  - [Search Page](#search-page)
-- [Mouse support](#mouse-support)
 - [Configurations](#configurations)
 - [Caches](#caches)
   - [Logging](#logging)
-- [Roadmap](#roadmap)
+- [Acknowledgement](#acknowledgement)
 
 ## Introduction
 
-- `spotify-player` is a fast, easy to use, and [configurable](https://github.com/aome510/spotify-player/blob/master/doc/config.md) terminal music player.
-- `spotify-player` is designed to be a player, not a fully-fledged Spotify clone, so it does not aim to support all Spotify features. Its main goal is to provide a quick and intuitive way to control music using [commands](#commands).
-- `spotify-player` is built on top of awesome libraries such as [tui-rs](https://github.com/fdehau/tui-rs), [rspotify](https://github.com/ramsayleung/rspotify), [librespot](https://github.com/librespot-org/librespot), and [many more](https://github.com/aome510/spotify-player/blob/master/spotify_player/Cargo.toml). It's highly inspired by [spotify-tui](https://github.com/Rigellute/spotify-tui) and [ncspot](https://github.com/hrkfdn/ncspot).
-- `spotify-player` can be used as either a remote player to control another Spotify client or a [local player](#streaming) with an integrated Spotify client. If you are familiar with other Spotify terminal applications, `spotify-player` can be viewed as a combination of [spotify-tui](https://github.com/Rigellute/spotify-tui) (remote player) and [ncspot](https://github.com/hrkfdn/ncspot) (local player).
-- On startup, the application will connect to a running Spotify client. If there is no such client, user will need to use [Spotify connect](#spotify-connect) to connect to an available client.
+`spotify-player` is a fast, easy to use, and [configurable](https://github.com/aome510/spotify-player/blob/master/doc/config.md) terminal music player.
+
+### Features
+
+- Minimalistic UI with an intuitive paging and popup system.
+- Highly configurable, allow to easily customize application's shortucts or theme/colorscheme.
+- Support a majority of Spotify features through a set of [commands](#commands).
+- Support multiple Spotify pages:
+  - User library page
+  - Artist/Album/Playlist page
+  - Search page
+  - Recommendation (radio) page
+  - and many others...
+- Support remote control with [Spotify Connect](#spotify-connect).
+- Support [streaming](#streaming) songs directly from the terminal.
+- Support [lyric](#lyric) for most songs.
 
 ## Examples
 
@@ -34,21 +44,33 @@ A demo of `spotify-player` `v0.5.0-pre-release` on [youtube](https://www.youtube
 
 [![asciicast](https://asciinema.org/a/446913.svg)](https://asciinema.org/a/446913)
 
-### Playlist
+### Playlist page
 
-![Playlist context example](https://user-images.githubusercontent.com/40011582/140253591-706d15d4-08c9-4527-997a-79fac73dee20.png)
+![Playlist page example](https://user-images.githubusercontent.com/40011582/140253591-706d15d4-08c9-4527-997a-79fac73dee20.png)
 
-### Artist
+### Artist page
 
-![Artist context example](https://user-images.githubusercontent.com/40011582/140253630-d958c5ea-23bc-4528-b40b-aa6fa68b5735.png)
+![Artist page example](https://user-images.githubusercontent.com/40011582/140253630-d958c5ea-23bc-4528-b40b-aa6fa68b5735.png)
 
-### Album
+### Album page
 
-![Album context example](https://user-images.githubusercontent.com/40011582/140253687-fd036da9-3b71-443b-a7f9-dad7721f01bf.png)
+![Album page example](https://user-images.githubusercontent.com/40011582/140253687-fd036da9-3b71-443b-a7f9-dad7721f01bf.png)
 
-### Search
+### Search page
 
 ![Search page example](https://user-images.githubusercontent.com/40011582/140253653-5b156a8f-538b-4e68-9d52-0a379477574f.png)
+
+### Lyric page
+
+![Lyric page example](https://user-images.githubusercontent.com/40011582/169437044-420cf0e2-5d75-4022-bd9f-34540f1fe230.png)
+
+### Command help popup
+
+![Command help popup example](https://user-images.githubusercontent.com/40011582/169437229-f5f1a3a5-d89e-4395-a416-6d45018f8971.png)
+
+### Recommendation page
+
+![Recommendation page example](https://user-images.githubusercontent.com/40011582/169440280-2f075ab1-04c3-419a-8614-0cad9c004d4f.gif)
 
 ## Installation
 
@@ -104,21 +126,27 @@ docker run --rm \
 -it aome510/spotify_player:latest
 ```
 
-## Spotify Connect
+## Features
 
-To enable full [Spotify connect](https://www.spotify.com/us/connect/) support, user will need to register a Spotify application and specify their own `client_id` in the application's general configuration file as described in the [configuration documentation](https://github.com/aome510/spotify-player/blob/master/doc/config.md#general).
+### Spotify Connect
 
-More details on registering a Spotify application can be found in the [Spotify documentation](https://developer.spotify.com/documentation/general/guides/authorization/app-settings/).
+To enable a full [Spotify connect](https://www.spotify.com/us/connect/) support, user will need to register a Spotify application and specify their own `client_id` in the application's general configuration file as described in the [configuration documentation](https://github.com/aome510/spotify-player/blob/master/doc/config.md#general).
 
-If `spotify_player` runs with your own `client_id`, press **D** (default shortcut for `SwitchDevice` command) to get the list of available devices, then press **enter** (default shortcut for `ChooseSelected` command) to connect to the selected device.
+More details on registering a Spotify application can be found in the [official Spotify documentation](https://developer.spotify.com/documentation/general/guides/authorization/app-settings/).
+
+When `spotify_player` runs with your own `client_id`, press **D** (default shortcut for `SwitchDevice` command) to get the list of available devices, then press **enter** (default shortcut for `ChooseSelected` command) to connect to the selected device.
 
 An example of using Spotify connect to interact with Spotify's official client:
 
 ![Spotify Connect Example](https://user-images.githubusercontent.com/40011582/140323795-8a7ed2bb-7bda-4db2-9672-6036eac6e771.gif)
 
-## Streaming
+### Streaming
 
-`spotify-player` supports streaming. It uses [librespot](https://github.com/librespot-org/librespot) library to create an integrated Spotify client while running. The integrated client will register a Spotify speaker device under the `spotify-player` name.
+`spotify-player` supports streaming (needs to be built with `streaming` feature), e.g playing music directly from terminal without other Spotify client.
+
+It uses the [librespot](https://github.com/librespot-org/librespot) library to create an integrated Spotify client while running. The integrated client will register a Spotify speaker device under the `spotify-player` name and is also accessible through [Spotify connect](#spotify-connect).
+
+#### Audio backend
 
 `spotify-player` uses [rodio](https://github.com/RustAudio/rodio) as the default [audio backend](https://github.com/librespot-org/librespot/wiki/Audio-Backends). List of available backends:
 
@@ -144,6 +172,16 @@ The `streaming` feature can be disabled by running (to use the application as a 
 ```shell
 cargo build --release --no-default-features
 ```
+
+### Lyric
+
+User can view lyric of the currently playing track by calling the `LyricPage` command to go the lyric page. To do this, `spotify-player` needs to be built with a `lyric-finder` feature.
+
+Under the hood, `spotify-player` retrieves the song's lyric using [Genius.com](https://genius.com).
+
+### Mouse support
+
+Currently, the only supported use case for mouse is to seek to a position of the current playback by left-clicking to such position in the playback's progress bar.
 
 ## Commands
 
@@ -197,8 +235,8 @@ To add new shortcuts or modify the default shortcuts, please refer to the [keyma
 
 ### Actions
 
-There will be a list of possible actions depending on the type of the corresponding Spotify item (track, album, artist, or playlist).
-For example, the list of available actions on a track is `[BrowseAlbum, BrowseArtist, BrowseRecommandations, AddTrackToPlaylist, SaveToLibrary]`.
+A list of actions is available for each type of the corresponding Spotify item (track, album, artist, or playlist).
+For example, the list of available actions on a track is `[BrowseAlbum, BrowseArtist, BrowseRecommandations, AddTrackToPlaylist, SaveToLibrary]`. Calling `BrowseRecommandations` action on a track will go to the radio/recommdation page of that track.
 
 To get the list of actions on an item, call the `ShowActionsOnCurrentTrack` command or `ShowActionsOnSelectedItem` command.
 
@@ -208,10 +246,6 @@ When first entering the search page, the application focuses on the search input
 
 To move the focus from the search input to the other windows such as track results, album results, etc, use `FocusNextWindow` or `FocusPreviousWindow`.
 
-## Mouse support
-
-Currently, the only use case of mouse is to seek to a position of the current playback by left-clicking to such position in the playback's progress bar.
-
 ## Configurations
 
 By default, `spotify-player` will look into `$HOME/.config/spotify-player` for application's configuration files. This can be changed by either specifying `-c <FOLDER_PATH>` or `--config-folder <FOLDER_PATH>` option.
@@ -220,19 +254,14 @@ Please refer to [the configuration documentation](https://github.com/aome510/spo
 
 ## Caches
 
-By default, `spotify-player` will look into `$HOME/.cache/spotify-player` for application's cache files, which include log file, spotify's authorization credentials, audio cache files, etc. This can be changed by either specifying `-C <FOLDER_PATH>` or `--cache-folder <FOLDER_PATH>` option.
+By default, `spotify-player` will look into `$HOME/.cache/spotify-player` for application's cache files, which include log files, spotify's authorization credentials, audio cache files, etc. This can be changed by either specifying `-C <FOLDER_PATH>` or `--cache-folder <FOLDER_PATH>` option.
 
 ### Logging
 
-`spotify-player` uses `RUST_LOG` environment variable to define the application's [logging level](https://docs.rs/log/0.4.14/log/enum.Level.html) (default to be `INFO`). The application stores logs inside the `$APP_CACHE_FOLDER/spotify-player.log` file.
+The application stores logs inside the `$APP_CACHE_FOLDER/spotify-player-*.log` file. For debugging or submitting an issue, user can also refer to the backtrace file in `$APP_CACHE_FOLDER/spotify-player-*.backtrace`, which includes the application's backtrace in case of panics/unexpected errors.
 
-## Roadmap
+`spotify-player` uses `RUST_LOG` environment variable to define the application's [logging level](https://docs.rs/log/0.4.14/log/enum.Level.html). `RUST_LOG` is default to be `spotify_player=INFO`, which only shows the application's logs.
 
-- [x] integrate Spotify's [search APIs](https://developer.spotify.com/documentation/web-api/reference/#category-search)
-- [x] integrate Spotify's [recommendation API](https://developer.spotify.com/console/get-recommendations/)
-- [x] add supports for add track to playlist, save album, follow artist, and related commands.
-- [x] integrate Spotify's [recently played API](https://developer.spotify.com/console/get-recently-played/)
-- [ ] handle networking error when running
-- [x] add a (optional?) integrated spotify client (possibly use [librespot](https://github.com/librespot-org/librespot))
-  - [ ] implement a custom connection logic to replace librespot's [spirc](https://github.com/librespot-org/librespot/blob/dev/connect/src/spirc.rs).
-- [ ] add mpris (dbus) support
+## Acknowledgement
+
+`spotify-player` is written in [Rust](https://www.rust-lang.org) and is built on top of awesome libraries such as [tui-rs](https://github.com/fdehau/tui-rs), [rspotify](https://github.com/ramsayleung/rspotify), [librespot](https://github.com/librespot-org/librespot), and [many more](https://github.com/aome510/spotify-player/blob/master/spotify_player/Cargo.toml). It's highly inspired by [spotify-tui](https://github.com/Rigellute/spotify-tui) and [ncspot](https://github.com/hrkfdn/ncspot).
