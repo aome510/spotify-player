@@ -278,6 +278,9 @@ impl Focusable for PageState {
         }
 
         // reset the list/table state of the focus window
+        if let Some(mut state) = self.focus_window_state_mut() {
+            state.select(0)
+        }
     }
 
     fn previous(&mut self) {
