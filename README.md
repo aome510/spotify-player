@@ -23,8 +23,8 @@
 
 ### Features
 
-- Minimalistic UI with an intuitive paging and popup system.
-- Highly configurable, allow to easily customize application's shortucts or theme/colorscheme.
+- Minimalist UI with an intuitive paging and popup system.
+- Highly configurable, allow to easily customize application's shortcuts or theme/color scheme.
 - Support a majority of Spotify features through a set of [commands](#commands).
 - Support multiple Spotify pages:
   - User library page
@@ -236,7 +236,7 @@ To add new shortcuts or modify the default shortcuts, please refer to the [keyma
 ### Actions
 
 A list of actions is available for each type of the corresponding Spotify item (track, album, artist, or playlist).
-For example, the list of available actions on a track is `[BrowseAlbum, BrowseArtist, BrowseRecommandations, AddTrackToPlaylist, SaveToLibrary]`. Calling `BrowseRecommandations` action on a track will go to the radio/recommdation page of that track.
+For example, the list of available actions on a track is `[BrowseAlbum, BrowseArtist, BrowseRecommandations, AddTrackToPlaylist, SaveToLibrary]`. Calling `BrowseRecommandations` action on a track will go to the radio/recommendation page of that track.
 
 To get the list of actions on an item, call the `ShowActionsOnCurrentTrack` command or `ShowActionsOnSelectedItem` command.
 
@@ -254,7 +254,7 @@ Please refer to [the configuration documentation](https://github.com/aome510/spo
 
 ## Caches
 
-By default, `spotify-player` will look into `$HOME/.cache/spotify-player` for application's cache files, which include log files, spotify's authorization credentials, audio cache files, etc. This can be changed by either specifying `-C <FOLDER_PATH>` or `--cache-folder <FOLDER_PATH>` option.
+By default, `spotify-player` will look into `$HOME/.cache/spotify-player` for application's cache files, which include log files, Spotify's authorization credentials, audio cache files, etc. This can be changed by either specifying `-C <FOLDER_PATH>` or `--cache-folder <FOLDER_PATH>` option.
 
 ### Logging
 

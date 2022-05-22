@@ -44,7 +44,7 @@ The default `app.toml` can be found in the example [`app.toml`](https://github.c
 
   **Note**: the above list might not be up-to-date.
 
-- An example of event that triggers a playback update is the one happenning when the current track ends.
+- An example of event that triggers a playback update is the one happening when the current track ends.
 
 ### Device configurations
 
