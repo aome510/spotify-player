@@ -111,12 +111,10 @@ fn init_logging(cache_folder: &std::path::Path) -> Result<()> {
             .context("failed to create backtrace file")?;
     let backtrace_file = std::sync::Mutex::new(backtrace_file);
     std::panic::set_hook(Box::new(move |info| {
-        if let Some(s) = info.payload().downcast_ref::<&str>() {
-            let backtrace = backtrace::Backtrace::new();
-            let mut file = backtrace_file.lock().unwrap();
-            writeln!(&mut file, "Got a panic: {}\n", s).unwrap();
-            writeln!(&mut file, "Stack backtrace:\n{:?}", backtrace).unwrap();
-        }
+        let mut file = backtrace_file.lock().unwrap();
+        let backtrace = backtrace::Backtrace::new();
+        writeln!(&mut file, "Got a panic: {info:#?}\n").unwrap();
+        writeln!(&mut file, "Stack backtrace:\n{:?}", backtrace).unwrap();
     }));
 
     Ok(())
