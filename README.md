@@ -78,13 +78,13 @@ A demo of `spotify-player` `v0.5.0-pre-release` on [youtube](https://www.youtube
 
 A Spotify Premium account is **required**.
 
-To build and run the application, besides [Rust and cargo](https://www.rust-lang.org/tools/install) as the build requirements, Linux users will also need to install additional dependencies such as `openssl` and `alsa-lib`.
+To build and run the application, Window and MacOS users will need to install [Rust and cargo](https://www.rust-lang.org/tools/install) as the build requirements. Linux users will also need to install additional dependencies such as `openssl` and `alsa-lib` (`libasound2-dev` in Ubuntu and `alsa-lib` in Arch Linux) to build and run the application.
 
 ### Cargo
 
 Run `cargo install spotify_player` to install the application from [crates.io](https://crates.io/crates/spotify_player).
 
-### AUR
+### AUR (unmaintained)
 
 Run `yay -S spotify-player` to install the application as an AUR package.
 
