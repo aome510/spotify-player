@@ -84,7 +84,7 @@ To build and run the application, Window and MacOS users will need to install [R
 
 Run `cargo install spotify_player` to install the application from [crates.io](https://crates.io/crates/spotify_player).
 
-### AUR (unmaintained)
+### AUR
 
 Run `yay -S spotify-player` to install the application as an AUR package.
 
