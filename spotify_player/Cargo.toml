@@ -37,7 +37,7 @@ tracing = "0.1.34"
 tracing-subscriber = { version = "0.3.11", features = ["env-filter"] }
 lyric_finder = { version = "0.1.2", path = "../lyric_finder" , optional = true }
 backtrace = "0.3.65"
-souvlaki = "0.5.1"
+souvlaki = {  version = "0.5.1", optional = true }
 
 [features]
 alsa-backend = ["streaming", "librespot-playback/alsa-backend"]
@@ -50,5 +50,6 @@ sdl-backend = ["streaming", "librespot-playback/sdl-backend"]
 gstreamer-backend = ["streaming", "librespot-playback/gstreamer-backend"]
 streaming = ["librespot-playback", "librespot-connect"]
 lyric-finder = ["lyric_finder"]
+media-control = ["souvlaki"]
 
-default = ["rodio-backend", "lyric-finder"]
+default = ["rodio-backend", "lyric-finder", "media-control"]
