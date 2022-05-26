@@ -53,7 +53,7 @@ impl Spotify {
         }
     }
 
-    /// gets a Spotify access token for authorization.
+    /// gets a Spotify access token.
     /// The function may retrieve a new token and update the current token
     /// stored inside the client if the old one is expired.
     pub async fn access_token(&self) -> Result<String> {
@@ -68,7 +68,7 @@ impl Spotify {
         match self.token.lock().await.unwrap().as_ref() {
             Some(token) => Ok(token.access_token.clone()),
             None => Err(anyhow!(
-                "failed to get the authorization token stored inside the client."
+                "failed to get the authentication token stored inside the client."
             )),
         }
     }
@@ -98,7 +98,7 @@ impl BaseClient for Spotify {
     async fn refetch_token(&self) -> ClientResult<Option<Token>> {
         let session = match self.session {
             None => {
-                tracing::warn!("there is no session inside the spotify client");
+                tracing::warn!("There is no session inside the spotify client");
                 return Ok(None);
             }
             Some(ref session) => session,
@@ -106,7 +106,7 @@ impl BaseClient for Spotify {
         match token::get_token(session, &self.client_id).await {
             Ok(token) => Ok(Some(token)),
             Err(err) => {
-                tracing::error!("failed to get access token: {err:#}");
+                tracing::error!("Failed to get access token: {err:#}");
                 Ok(None)
             }
         }

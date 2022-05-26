@@ -11,31 +11,31 @@ pub async fn start_client_handler(
     client: Client,
     client_pub: mpsc::Sender<ClientRequest>,
     mut client_sub: mpsc::Receiver<ClientRequest>,
-    spirc_pub: broadcast::Sender<()>,
+    streaming_pub: broadcast::Sender<()>,
 ) {
     while let Some(request) = client_sub.recv().await {
         match request {
             #[cfg(feature = "streaming")]
-            ClientRequest::NewSpircConnection => {
-                // send a notification to current spirc subcribers to shutdown all running spirc connections
-                spirc_pub.send(()).unwrap_or_default();
+            ClientRequest::NewStreamingConnection => {
+                // send a notification to current streaming subcriber channels to shutdown all running connections
+                streaming_pub.send(()).unwrap_or_default();
                 if let Err(err) = client
-                    .new_spirc_connection(spirc_pub.subscribe(), client_pub.clone(), true)
+                    .new_streaming_connection(streaming_pub.subscribe(), client_pub.clone(), true)
                     .await
                 {
                     tracing::error!(
-                        "encountered error during creating a new spirc connection: {err:#}",
+                        "Encountered an error during creating a new streaming connection: {err:#}",
                     );
                 }
             }
             _ => {
                 let state = state.clone();
                 let client = client.clone();
-                let span = tracing::info_span!("client_request", request = ?request);
+                let span = tracing::info_span!("Client_request", request = ?request);
                 tokio::task::spawn(
                     async move {
                         if let Err(err) = client.handle_request(&state, request).await {
-                            tracing::error!("failed to handle client request: {err:#}");
+                            tracing::error!("Failed to handle client request: {err:#}");
                         }
                     }
                     .instrument(span),
@@ -100,7 +100,7 @@ pub fn start_player_event_watchers(state: SharedState, client_pub: mpsc::Sender<
             };
 
             if *id != expected_id {
-                tracing::info!("current context ID ({:?}) is different from the expected ID ({:?}), update the context state", id, expected_id);
+                tracing::info!("Current context ID ({:?}) is different from the expected ID ({:?}), update the context state", id, expected_id);
 
                 *id = expected_id.clone();
                 match expected_id {

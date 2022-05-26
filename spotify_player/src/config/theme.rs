@@ -127,7 +127,7 @@ impl ThemeConfig {
         match std::fs::read_to_string(&file_path) {
             Err(err) => {
                 tracing::warn!(
-                    "failed to open the theme config file (path={file_path:?}): {err:#}. Use the default configurations instead",
+                    "Failed to open the theme config file (path={file_path:?}): {err:#}. Use the default configurations instead",
                 );
             }
             Ok(content) => {
