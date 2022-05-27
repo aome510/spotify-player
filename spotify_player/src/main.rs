@@ -4,6 +4,8 @@ mod command;
 mod config;
 mod event;
 mod key;
+#[cfg(feature = "media-control")]
+mod media_control;
 mod state;
 #[cfg(feature = "streaming")]
 mod streaming;
@@ -201,7 +203,37 @@ async fn main() -> Result<()> {
         }
     });
 
-    // application's UI as the main task
-    tokio::task::spawn_blocking(move || ui::run(state)).await??;
-    std::process::exit(0);
+    #[cfg(not(feature = "media-control"))]
+    {
+        // application's UI as the main task
+        tokio::task::spawn_blocking(move || ui::run(state)).await??;
+
+        Ok(())
+    }
+
+    #[cfg(feature = "media-control")]
+    {
+        // media control task
+        tokio::task::spawn_blocking(move || {
+            if let Err(err) = media_control::start_event_watcher() {
+                tracing::error!(
+                    "Failed to start the application's media control event watcher: err={err:?}"
+                );
+            }
+        });
+
+        // When `media-control` feature is enabled.
+        // The OS event loop must be run in the main thread, so
+        // the application's UI is run as a background task.
+        tokio::task::spawn_blocking({
+            let state = state.clone();
+            move || ui::run(state)
+        });
+
+        // Start an event loop that listens to OS window events.
+        let event_loop = winit::event_loop::EventLoop::new();
+        event_loop.run(move |_, _, control_flow| {
+            *control_flow = winit::event_loop::ControlFlow::Wait;
+        });
+    }
 }

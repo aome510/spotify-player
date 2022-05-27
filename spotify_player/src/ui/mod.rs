@@ -17,7 +17,7 @@ pub fn run(state: SharedState) -> Result<()> {
     loop {
         if !state.ui.lock().is_running {
             clean_up(terminal).context("failed to clean up the application's UI resources")?;
-            return Ok(());
+            std::process::exit(0);
         }
 
         if let Err(err) = terminal.draw(|frame| {
