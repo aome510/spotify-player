@@ -1,7 +1,15 @@
-use souvlaki::{MediaControls, MediaMetadata, MediaPlayback, PlatformConfig};
+use souvlaki::{MediaControlEvent, MediaControls, MediaMetadata, MediaPlayback, PlatformConfig};
+
+use crate::{
+    event::{ClientRequest, PlayerRequest},
+    state::SharedState,
+};
 
 /// Start the application's media control event watcher
-pub fn start_event_watcher() -> Result<(), souvlaki::Error> {
+pub fn start_event_watcher(
+    state: SharedState,
+    client_pub: tokio::sync::mpsc::Sender<ClientRequest>,
+) -> Result<(), souvlaki::Error> {
     tracing::info!("Initializing application's media control event watcher...");
 
     let hwnd = None;
@@ -12,8 +20,10 @@ pub fn start_event_watcher() -> Result<(), souvlaki::Error> {
     };
     let mut controls = MediaControls::new(config)?;
 
-    controls.attach(|e| {
-        tracing::info!("Got media event: {e:?}");
+    let (tx, rx) = std::sync::mpsc::sync_channel(16);
+
+    controls.attach(move |e| {
+        tx.send(e).unwrap_or_default();
     })?;
     controls.set_playback(MediaPlayback::Playing { progress: None })?;
     controls
@@ -26,6 +36,28 @@ pub fn start_event_watcher() -> Result<(), souvlaki::Error> {
         })?;
 
     loop {
+        if let Ok(event) = rx.recv() {
+            tracing::info!("got a media control event: {event:?}");
+            match event {
+                MediaControlEvent::Play | MediaControlEvent::Pause | MediaControlEvent::Toggle => {
+                    client_pub
+                        .blocking_send(ClientRequest::Player(PlayerRequest::ResumePause))
+                        .unwrap_or_default();
+                }
+                MediaControlEvent::Next => {
+                    client_pub
+                        .blocking_send(ClientRequest::Player(PlayerRequest::NextTrack))
+                        .unwrap_or_default();
+                }
+                MediaControlEvent::Previous => {
+                    client_pub
+                        .blocking_send(ClientRequest::Player(PlayerRequest::PreviousTrack))
+                        .unwrap_or_default();
+                }
+                _ => {}
+            }
+        }
+
         std::thread::sleep(std::time::Duration::from_millis(1000));
     }
 }

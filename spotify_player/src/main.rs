@@ -198,6 +198,7 @@ async fn main() -> Result<()> {
     // player event watcher task
     tokio::task::spawn_blocking({
         let state = state.clone();
+        let client_pub = client_pub.clone();
         move || {
             client::start_player_event_watchers(state, client_pub);
         }
@@ -214,11 +215,14 @@ async fn main() -> Result<()> {
     #[cfg(feature = "media-control")]
     {
         // media control task
-        tokio::task::spawn_blocking(move || {
-            if let Err(err) = media_control::start_event_watcher() {
-                tracing::error!(
-                    "Failed to start the application's media control event watcher: err={err:?}"
-                );
+        tokio::task::spawn_blocking({
+            let state = state.clone();
+            move || {
+                if let Err(err) = media_control::start_event_watcher(state, client_pub) {
+                    tracing::error!(
+                        "Failed to start the application's media control event watcher: err={err:?}"
+                    );
+                }
             }
         });
 
@@ -231,6 +235,11 @@ async fn main() -> Result<()> {
         });
 
         // Start an event loop that listens to OS window events.
+        //
+        // # Notes:
+        // MacOS and Window require an opened window to be able to listen media
+        // control events. The below code will create an invisible window on startup
+        // to listen to such events.
         let event_loop = winit::event_loop::EventLoop::new();
         event_loop.run(move |_, _, control_flow| {
             *control_flow = winit::event_loop::ControlFlow::Wait;
