@@ -36,14 +36,15 @@ impl PlayerState {
         match self.playback {
             None => None,
             Some(ref playback) => {
-                let progress_ms = playback.progress.unwrap()
+                let progress = playback.progress.unwrap()
                     + if playback.is_playing {
                         std::time::Instant::now()
                             .saturating_duration_since(self.playback_last_updated.unwrap())
                     } else {
+                        // zero duration
                         std::time::Duration::default()
                     };
-                Some(progress_ms)
+                Some(progress)
             }
         }
     }

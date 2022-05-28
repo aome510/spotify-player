@@ -1,9 +1,56 @@
-use souvlaki::{MediaControlEvent, MediaControls, MediaMetadata, MediaPlayback, PlatformConfig};
+use souvlaki::{
+    MediaControlEvent, MediaControls, MediaMetadata, MediaPlayback, MediaPosition, PlatformConfig,
+};
 
 use crate::{
     event::{ClientRequest, PlayerRequest},
     state::SharedState,
 };
+
+fn update_control_metadata(
+    state: &SharedState,
+    controls: &mut MediaControls,
+) -> Result<(), souvlaki::Error> {
+    let player = state.player.read();
+
+    tracing::info!("update media control metadata...",);
+
+    match player.current_playing_track() {
+        None => {}
+        Some(track) => {
+            if let Some(ref playback) = player.playback {
+                let progress = player.playback_progress().map(MediaPosition);
+                if playback.is_playing {
+                    controls.set_playback(MediaPlayback::Playing { progress })?;
+                } else {
+                    controls.set_playback(MediaPlayback::Paused { progress })?;
+                }
+            }
+
+            controls.set_metadata(MediaMetadata {
+                title: Some(&track.name),
+                album: Some(&track.album.name),
+                artist: Some(
+                    &track
+                        .artists
+                        .iter()
+                        .map(|a| &a.name)
+                        .fold(String::new(), |x, y| {
+                            if x.is_empty() {
+                                x + y
+                            } else {
+                                x + ", " + y
+                            }
+                        }),
+                ),
+                duration: Some(track.duration),
+                cover_url: None,
+            })?;
+        }
+    }
+
+    Ok(())
+}
 
 /// Start the application's media control event watcher
 pub fn start_event_watcher(
@@ -25,18 +72,9 @@ pub fn start_event_watcher(
     controls.attach(move |e| {
         tx.send(e).unwrap_or_default();
     })?;
-    controls.set_playback(MediaPlayback::Playing { progress: None })?;
-    controls
-        .set_metadata(MediaMetadata {
-            title: Some("When The Sun Hits"),
-            album: Some("Souvlaki"),
-            artist: Some("Slowdive"),
-            duration: Some(std::time::Duration::from_secs_f64(4.0 * 60.0 + 50.0)),
-            cover_url: Some("https://c.pxhere.com/photos/34/c1/souvlaki_authentic_greek_greek_food_mezes-497780.jpg!d"),
-        })?;
 
     loop {
-        if let Ok(event) = rx.recv() {
+        if let Ok(event) = rx.try_recv() {
             tracing::info!("got a media control event: {event:?}");
             match event {
                 MediaControlEvent::Play | MediaControlEvent::Pause | MediaControlEvent::Toggle => {
@@ -58,6 +96,7 @@ pub fn start_event_watcher(
             }
         }
 
-        std::thread::sleep(std::time::Duration::from_millis(1000));
+        update_control_metadata(&state, &mut controls)?;
+        std::thread::sleep(std::time::Duration::from_millis(100));
     }
 }
