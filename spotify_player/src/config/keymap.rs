@@ -82,7 +82,7 @@ impl Default for KeymapConfig {
                 #[cfg(feature = "streaming")]
                 Keymap {
                     key_sequence: "R".into(),
-                    command: Command::ReconnectIntegratedClient,
+                    command: Command::RestartIntegratedClient,
                 },
                 Keymap {
                     key_sequence: "tab".into(),

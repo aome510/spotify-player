@@ -323,7 +323,7 @@ fn handle_global_command(
             ui.popup = Some(PopupState::ThemeList(themes, new_list_state()));
         }
         #[cfg(feature = "streaming")]
-        Command::ReconnectIntegratedClient => {
+        Command::RestartIntegratedClient => {
             client_pub.blocking_send(ClientRequest::NewStreamingConnection)?;
         }
         Command::FocusNextWindow => {
