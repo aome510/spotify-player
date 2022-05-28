@@ -241,10 +241,8 @@ async fn main() -> Result<()> {
         // control events. The below code will create an invisible window on startup
         // to listen to such events.
         let event_loop = winit::event_loop::EventLoop::new();
-        event_loop.run(move |event, _, control_flow| {
+        event_loop.run(move |_, _, control_flow| {
             *control_flow = winit::event_loop::ControlFlow::Wait;
-
-            tracing::info!("got event: {event:?}");
         });
     }
 }

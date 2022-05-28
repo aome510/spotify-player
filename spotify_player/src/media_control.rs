@@ -83,9 +83,10 @@ pub fn start_event_watcher(
     // for the track metadata to be shown up on MacOS media bar.
     controls.set_playback(MediaPlayback::Playing { progress: None })?;
 
+    let refresh_duration = std::time::Duration::from_millis(100);
     loop {
         if let Ok(event) = rx.try_recv() {
-            tracing::info!("got a media control event: {event:?}");
+            tracing::info!("Got a media control event: {event:?}");
             match event {
                 MediaControlEvent::Play | MediaControlEvent::Pause | MediaControlEvent::Toggle => {
                     client_pub
@@ -107,6 +108,6 @@ pub fn start_event_watcher(
         }
 
         update_control_metadata(&state, &mut controls)?;
-        std::thread::sleep(std::time::Duration::from_millis(100));
+        std::thread::sleep(refresh_duration);
     }
 }
