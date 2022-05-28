@@ -7,6 +7,14 @@ use crate::{
     state::SharedState,
 };
 
+fn get_track_album_image_url(track: &rspotify::model::FullTrack) -> Option<&str> {
+    if track.album.images.is_empty() {
+        None
+    } else {
+        Some(&track.album.images[0].url)
+    }
+}
+
 fn update_control_metadata(
     state: &SharedState,
     controls: &mut MediaControls,
@@ -43,7 +51,7 @@ fn update_control_metadata(
                         }),
                 ),
                 duration: Some(track.duration),
-                cover_url: None,
+                cover_url: get_track_album_image_url(track),
             })?;
         }
     }
