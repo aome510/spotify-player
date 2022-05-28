@@ -204,13 +204,12 @@ async fn main() -> Result<()> {
         }
     });
 
-    #[cfg(not(feature = "media-control"))]
-    {
-        // application's UI as the main task
-        tokio::task::spawn_blocking(move || ui::run(state)).await??;
-
-        Ok(())
-    }
+    // application UI task
+    #[allow(unused_variables)]
+    let task = tokio::task::spawn_blocking({
+        let state = state.clone();
+        move || ui::run(state)
+    });
 
     #[cfg(feature = "media-control")]
     {
@@ -226,23 +225,22 @@ async fn main() -> Result<()> {
             }
         });
 
-        // When `media-control` feature is enabled.
-        // The OS event loop must be run in the main thread, so
-        // the application's UI is run as a background task.
-        tokio::task::spawn_blocking({
-            let state = state.clone();
-            move || ui::run(state)
-        });
-
-        // Start an event loop that listens to OS window events.
-        //
-        // # Notes:
-        // MacOS and Window require an opened window to be able to listen media
-        // control events. The below code will create an invisible window on startup
-        // to listen to such events.
-        let event_loop = winit::event_loop::EventLoop::new();
-        event_loop.run(move |_, _, control_flow| {
-            *control_flow = winit::event_loop::ControlFlow::Wait;
-        });
+        #[cfg(any(target_os = "macos", target_os = "windows"))]
+        {
+            // Start an event loop that listens to OS window events.
+            //
+            // MacOS and Windows require an open window to be able to listen to media
+            // control events. The below code will create an invisible window on startup
+            // to listen to such events.
+            let event_loop = winit::event_loop::EventLoop::new();
+            event_loop.run(move |_, _, control_flow| {
+                *control_flow = winit::event_loop::ControlFlow::Wait;
+            });
+        }
+    }
+    #[allow(unreachable_code)]
+    {
+        task.await??;
+        Ok(())
     }
 }

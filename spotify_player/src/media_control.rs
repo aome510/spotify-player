@@ -80,9 +80,12 @@ pub fn start_event_watcher(
         tx.send(e).unwrap_or_default();
     })?;
     // Somehow, on startup, media playback needs to be initialized with `Playing`
-    // for the track metadata to be shown up on MacOS media bar.
+    // for the track metadata to be shown up on the MacOS media status bar.
     controls.set_playback(MediaPlayback::Playing { progress: None })?;
 
+    // `100ms` is a "good enough" duration for the track metadata to be updated consistently.
+    // Setting this to be higher (e.g, `200ms`) would result in incorrect metadata
+    // shown up in the media status bar occasionally.
     let refresh_duration = std::time::Duration::from_millis(100);
     loop {
         if let Ok(event) = rx.try_recv() {
