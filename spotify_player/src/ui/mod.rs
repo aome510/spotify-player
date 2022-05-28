@@ -17,7 +17,7 @@ pub fn run(state: SharedState) -> Result<()> {
     loop {
         if !state.ui.lock().is_running {
             clean_up(terminal).context("failed to clean up the application's UI resources")?;
-            return Ok(());
+            std::process::exit(0);
         }
 
         if let Err(err) = terminal.draw(|frame| {
@@ -26,10 +26,10 @@ pub fn run(state: SharedState) -> Result<()> {
             frame.render_widget(block, frame.size());
 
             if let Err(err) = render_application(frame, &state, frame.size()) {
-                tracing::error!("failed to render the application: {err:#}");
+                tracing::error!("Failed to render the application: {err:#}");
             }
         }) {
-            tracing::error!("failed to draw the application: {err:#}");
+            tracing::error!("Failed to draw the application: {err:#}");
         }
 
         std::thread::sleep(ui_refresh_duration);

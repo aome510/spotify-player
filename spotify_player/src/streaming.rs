@@ -14,7 +14,7 @@ use librespot_playback::{
 };
 use tokio::sync::{broadcast, mpsc};
 
-/// create a new spirc connection running in the background
+/// Create a new streaming connection
 pub fn new_connection(
     session: Session,
     device: config::DeviceConfig,
@@ -37,7 +37,7 @@ pub fn new_connection(
         autoplay: false,
     };
 
-    tracing::info!("application's connect configurations: {:?}", connect_config);
+    tracing::info!("Application's connect configurations: {:?}", connect_config);
 
     let mixer =
         Box::new(mixer::softmixer::SoftMixer::open(MixerConfig::default())) as Box<dyn Mixer>;
@@ -54,6 +54,11 @@ pub fn new_connection(
         ..Default::default()
     };
 
+    tracing::info!(
+        "Initializing a new integrated player with device_id={}",
+        session.device_id()
+    );
+
     let (player, mut channel) = Player::new(
         player_config,
         session.clone(),
@@ -64,7 +69,7 @@ pub fn new_connection(
     tokio::task::spawn({
         async move {
             while let Some(event) = channel.recv().await {
-                tracing::info!("got a librespot player event: {:?}", event);
+                tracing::info!("Got an event from the integrated player: {:?}", event);
                 client_pub
                     .send(ClientRequest::GetCurrentPlayback)
                     .await
@@ -73,7 +78,7 @@ pub fn new_connection(
         }
     });
 
-    tracing::info!("starting an integrated Spotify client using librespot's spirc protocol");
+    tracing::info!("Starting an integrated Spotify player using librespot's spirc protocol");
 
     let (spirc, spirc_task) = Spirc::new(connect_config, session, player, mixer);
     tokio::task::spawn({
@@ -81,7 +86,7 @@ pub fn new_connection(
             tokio::select! {
                 _ = spirc_task => {}
                 _ = spirc_sub.recv() => {
-                    tracing::info!("got reconnect request, shutdown the current connection to create a new spirc connection");
+                    tracing::info!("Got reconnect request, shutdown the current connection to create a new spirc connection");
                     spirc.shutdown();
                 }
             }

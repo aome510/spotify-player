@@ -48,19 +48,19 @@ pub enum ClientRequest {
         artists: String,
     },
     #[cfg(feature = "streaming")]
-    NewSpircConnection,
+    NewStreamingConnection,
 }
 
 /// starts a terminal event handler (key pressed, mouse clicked, etc)
 pub fn start_event_handler(state: SharedState, client_pub: mpsc::Sender<ClientRequest>) {
     while let Ok(event) = crossterm::event::read() {
-        let _enter = tracing::info_span!("terminal_event", event = ?event).entered();
+        let _enter = tracing::info_span!("Terminal_event", event = ?event).entered();
         if let Err(err) = match event {
             crossterm::event::Event::Mouse(event) => handle_mouse_event(event, &client_pub, &state),
             crossterm::event::Event::Key(event) => handle_key_event(event, &client_pub, &state),
             _ => Ok(()),
         } {
-            tracing::error!("failed to handle event: {err:#}");
+            tracing::error!("Failed to handle event: {err:#}");
         }
     }
 }
@@ -75,7 +75,7 @@ fn handle_mouse_event(
     // a left click event
     if let crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left) = event.kind
     {
-        tracing::debug!("handling mouse event: {event:?}");
+        tracing::debug!("Handling mouse event: {event:?}");
         if event.row == ui.progress_bar_rect.y {
             // calculate the seek position (in ms) based on the clicked position,
             // the pro gress bar's width and the track's duration (in ms)
@@ -112,7 +112,7 @@ fn handle_key_event(
         key_sequence = KeySequence { keys: vec![key] };
     }
 
-    tracing::debug!("handling key event: {event:?}, current key sequence: {key_sequence:?}");
+    tracing::debug!("Handling key event: {event:?}, current key sequence: {key_sequence:?}");
 
     let handled = if state.ui.lock().popup.is_none() {
         // no popup
@@ -324,7 +324,7 @@ fn handle_global_command(
         }
         #[cfg(feature = "streaming")]
         Command::ReconnectIntegratedClient => {
-            client_pub.blocking_send(ClientRequest::NewSpircConnection)?;
+            client_pub.blocking_send(ClientRequest::NewStreamingConnection)?;
         }
         Command::FocusNextWindow => {
             if !ui.has_focused_popup() {

@@ -4,9 +4,11 @@ mod command;
 mod config;
 mod event;
 mod key;
-#[cfg(feature = "streaming")]
-mod spirc;
+#[cfg(feature = "media-control")]
+mod media_control;
 mod state;
+#[cfg(feature = "streaming")]
+mod streaming;
 mod token;
 mod ui;
 mod utils;
@@ -47,23 +49,23 @@ fn init_app_cli_arguments() -> clap::ArgMatches {
 
 async fn init_spotify(
     client_pub: &tokio::sync::mpsc::Sender<event::ClientRequest>,
-    spirc_pub: &tokio::sync::broadcast::Sender<()>,
+    streaming_pub: &tokio::sync::broadcast::Sender<()>,
     client: &client::Client,
     state: &state::SharedState,
 ) -> Result<()> {
     client.init_token().await?;
     client.update_current_playback_state(state).await?;
 
-    // if `streaming` feature is enabled, create a new Spirc connection
+    // if `streaming` feature is enabled, create a new streaming connection
     #[cfg(feature = "streaming")]
     client
-        .new_spirc_connection(spirc_pub.subscribe(), client_pub.clone(), false)
+        .new_streaming_connection(streaming_pub.subscribe(), client_pub.clone(), false)
         .await
-        .context("failed to create a new spirc connection")?;
+        .context("failed to create a new streaming connection")?;
 
     if state.player.read().playback.is_none() {
         tracing::info!(
-            "no playback found on startup, trying to connect to the first available device"
+            "No playback found on startup, trying to connect to the first available device"
         );
         client.connect_to_first_available_device().await?;
     }
@@ -164,10 +166,11 @@ async fn main() -> Result<()> {
 
     // create application's channels
     let (client_pub, client_sub) = tokio::sync::mpsc::channel::<event::ClientRequest>(16);
-    let (spirc_pub, _) = tokio::sync::broadcast::channel::<()>(16);
+    // broadcast channels used to shutdown running streaming connections upon creating a new one
+    let (streaming_pub, _) = tokio::sync::broadcast::channel::<()>(16);
 
     // initialize Spotify-related stuff
-    init_spotify(&client_pub, &spirc_pub, &client, &state)
+    init_spotify(&client_pub, &streaming_pub, &client, &state)
         .await
         .context("failed to initialize the spotify client")?;
 
@@ -178,7 +181,8 @@ async fn main() -> Result<()> {
         let state = state.clone();
         let client_pub = client_pub.clone();
         async move {
-            client::start_client_handler(state, client, client_pub, client_sub, spirc_pub).await;
+            client::start_client_handler(state, client, client_pub, client_sub, streaming_pub)
+                .await;
         }
     });
 
@@ -194,12 +198,49 @@ async fn main() -> Result<()> {
     // player event watcher task
     tokio::task::spawn_blocking({
         let state = state.clone();
+        let client_pub = client_pub.clone();
         move || {
             client::start_player_event_watchers(state, client_pub);
         }
     });
 
-    // application's UI as the main task
-    tokio::task::spawn_blocking(move || ui::run(state)).await??;
-    std::process::exit(0);
+    // application UI task
+    #[allow(unused_variables)]
+    let task = tokio::task::spawn_blocking({
+        let state = state.clone();
+        move || ui::run(state)
+    });
+
+    #[cfg(feature = "media-control")]
+    {
+        // media control task
+        tokio::task::spawn_blocking({
+            let state = state.clone();
+            move || {
+                if let Err(err) = media_control::start_event_watcher(state, client_pub) {
+                    tracing::error!(
+                        "Failed to start the application's media control event watcher: err={err:?}"
+                    );
+                }
+            }
+        });
+
+        #[cfg(any(target_os = "macos", target_os = "windows"))]
+        {
+            // Start an event loop that listens to OS window events.
+            //
+            // MacOS and Windows require an open window to be able to listen to media
+            // control events. The below code will create an invisible window on startup
+            // to listen to such events.
+            let event_loop = winit::event_loop::EventLoop::new();
+            event_loop.run(move |_, _, control_flow| {
+                *control_flow = winit::event_loop::ControlFlow::Wait;
+            });
+        }
+    }
+    #[allow(unreachable_code)]
+    {
+        task.await??;
+        Ok(())
+    }
 }

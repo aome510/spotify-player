@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 #[cfg(feature = "streaming")]
-use crate::spirc;
+use crate::streaming;
 use crate::{
     config,
     event::{ClientRequest, PlayerRequest},
@@ -34,11 +34,11 @@ impl Client {
         }
     }
 
-    /// creates a new Librespot's spirc connection
+    /// creates a new streaming connection
     #[cfg(feature = "streaming")]
-    pub async fn new_spirc_connection(
+    pub async fn new_streaming_connection(
         &self,
-        spirc_sub: broadcast::Receiver<()>,
+        streaming_sub: broadcast::Receiver<()>,
         client_pub: mpsc::Sender<ClientRequest>,
         should_connect: bool,
     ) -> Result<()> {
@@ -48,24 +48,22 @@ impl Client {
         };
         let device = self.spotify.device.clone();
         let device_id = session.device_id().to_string();
-        spirc::new_connection(session, device, client_pub, spirc_sub)?;
+        streaming::new_connection(session, device, client_pub, streaming_sub)?;
 
-        // whether should we connect to the new spirc client upon its creation
+        // whether should we connect to the new client upon its creation
         if should_connect {
-            tracing::info!("transfer playback to the new spirc client with id = {device_id}");
+            tracing::info!(
+                "Transfer playback to the new integrated client with device_id={device_id}"
+            );
             self.spotify.transfer_playback(&device_id, None).await?;
         }
 
         Ok(())
     }
 
-    /// initializes the authorization token inside the Spotify client
+    /// initializes the authentication token inside the Spotify client
     pub async fn init_token(&self) -> Result<()> {
         self.spotify.refresh_token().await?;
-        tracing::info!(
-            "auth token: {:?}",
-            *self.spotify.get_token().lock().await.unwrap()
-        );
         Ok(())
     }
 
@@ -83,7 +81,7 @@ impl Client {
                 .transfer_playback(&device_id, Some(force_play))
                 .await?;
 
-            tracing::info!("transfered the playback to device with {} id", device_id);
+            tracing::info!("Transfered the playback to device with {} id", device_id);
             return Ok(());
         }
 
@@ -160,7 +158,7 @@ impl Client {
                 }
             }
             #[cfg(feature = "streaming")]
-            ClientRequest::NewSpircConnection => {
+            ClientRequest::NewStreamingConnection => {
                 anyhow::bail!("request should be already handled by the caller function");
             }
             ClientRequest::GetCurrentUser => {
@@ -169,7 +167,7 @@ impl Client {
             }
             ClientRequest::Player(request) => {
                 let span =
-                    tracing::info_span!("additional_playback_refreshes", player_request = ?request);
+                    tracing::info_span!("Additional_playback_refreshes", player_request = ?request);
 
                 self.handle_player_request(state, request).await?;
 
@@ -187,7 +185,7 @@ impl Client {
                         let delay_duration = std::time::Duration::from_millis(500);
                         for _ in 1..5 {
                             if let Err(err) = client.update_current_playback_state(&state).await {
-                                tracing::error!("failed to refresh the player's playback: {err:#}");
+                                tracing::error!("Failed to refresh the player's playback: {err:#}");
                             }
                             tokio::time::sleep(delay_duration).await;
                         }
@@ -282,19 +280,21 @@ impl Client {
 
         match device_id {
             Some(id) => {
-                tracing::info!("transfered the playback to the first available device (id={id})",);
+                tracing::info!("Transfered the playback to the first available device (id={id})",);
                 self.spotify.transfer_playback(&id, None).await?;
             }
             None => {
-                // if the streaming is available and no device is found,
+                // If the streaming is available and no device is found [1],
                 // try to connect to the integrated client's device
+                // [1]: this can happen when the application uses the default Spotify client ID,
+                // which doesn't allow to retrieve the correct list of available devices
                 #[cfg(feature = "streaming")]
                 {
                     if let Some(ref session) = self.spotify.session {
                         let device_id = session.device_id();
                         self.spotify.transfer_playback(device_id, None).await?;
                         tracing::info!(
-                            "transfered the playback to the integrated client's device (id={device_id})",
+                            "Transfered the playback to the integrated client's device (id={device_id})",
                         );
                     }
                 }
@@ -655,7 +655,7 @@ impl Client {
     /// gets a playlist context data
     async fn playlist_context(&self, playlist_id: &PlaylistId) -> Result<Context> {
         let playlist_uri = playlist_id.uri();
-        tracing::info!("get playlist context: {}", playlist_uri);
+        tracing::info!("Get playlist context: {}", playlist_uri);
 
         let playlist = self.spotify.playlist(playlist_id, None, None).await?;
 
@@ -682,7 +682,7 @@ impl Client {
     /// gets an album context data
     async fn album_context(&self, album_id: &AlbumId) -> Result<Context> {
         let album_uri = album_id.uri();
-        tracing::info!("get album context: {}", album_uri);
+        tracing::info!("Get album context: {}", album_uri);
 
         let album = self.spotify.album(album_id).await?;
         let first_page = album.tracks.clone();
@@ -712,7 +712,7 @@ impl Client {
     /// gets an artist context data
     async fn artist_context(&self, artist_id: &ArtistId) -> Result<Context> {
         let artist_uri = artist_id.uri();
-        tracing::info!("get artist context: {}", artist_uri);
+        tracing::info!("Get artist context: {}", artist_uri);
 
         // get the artist's information, top tracks, related artists and albums
         let artist = self.spotify.artist(artist_id).await?.into();
