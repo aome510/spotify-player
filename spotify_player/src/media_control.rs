@@ -13,13 +13,12 @@ fn update_control_metadata(
 ) -> Result<(), souvlaki::Error> {
     let player = state.player.read();
 
-    tracing::info!("update media control metadata...",);
-
     match player.current_playing_track() {
         None => {}
         Some(track) => {
             if let Some(ref playback) = player.playback {
                 let progress = player.playback_progress().map(MediaPosition);
+
                 if playback.is_playing {
                     controls.set_playback(MediaPlayback::Playing { progress })?;
                 } else {
@@ -72,6 +71,9 @@ pub fn start_event_watcher(
     controls.attach(move |e| {
         tx.send(e).unwrap_or_default();
     })?;
+    // Somehow, on startup, media playback needs to be initialized with `Playing`
+    // for the track metadata to be shown up on MacOS media bar.
+    controls.set_playback(MediaPlayback::Playing { progress: None })?;
 
     loop {
         if let Ok(event) = rx.try_recv() {
