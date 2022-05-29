@@ -20,6 +20,7 @@ fn update_control_metadata(
     state: &SharedState,
     controls: &mut MediaControls,
     prev_track_info: &mut String,
+    prev_is_playing: &mut Option<bool>,
 ) -> Result<(), souvlaki::Error> {
     let player = state.player.read();
 
@@ -27,13 +28,35 @@ fn update_control_metadata(
         None => {}
         Some(track) => {
             if let Some(ref playback) = player.playback {
-                let progress = player.playback_progress().map(MediaPosition);
+                #[cfg(target_os = "linux")]
+                {
+                    // For linux, the `souvlaki` crate doesn't support updating the playback's current position
+                    // and internally it only handles at most one DBus event every one second [1].
+                    // To avoid possible event congestion, which can happen when the call frequency of
+                    // `update_control_metadata` is higher than 1Hz (`refresh_duration < 1s`, see `start_event_watcher`),
+                    // only update the media playback when the playback status (determined by `is_playing` variable below) is changed.
+                    // [1]: https://github.com/Sinono3/souvlaki/blob/b4d47bb2797ffdd625c17192df640510466762e1/src/platform/linux/mod.rs#L450
 
-                if playback.is_playing {
-                    controls.set_playback(MediaPlayback::Playing { progress })?;
-                } else {
-                    controls.set_playback(MediaPlayback::Paused { progress })?;
+                    if prev_is_playing != Some(playback.is_playing) {
+                        if playback.is_playing {
+                            controls.set_playback(MediaPlayback::Playing { progress: None })?;
+                        } else {
+                            controls.set_playback(MediaPlayback::Paused { progress: None })?;
+                        }
+                    }
                 }
+
+                #[cfg(any(target_os = "macos", target_os = "windows"))]
+                {
+                    let progress = player.playback_progress().map(MediaPosition);
+                    if playback.is_playing {
+                        controls.set_playback(MediaPlayback::Playing { progress })?;
+                    } else {
+                        controls.set_playback(MediaPlayback::Paused { progress })?;
+                    }
+                }
+
+                *prev_is_playing = Some(playback.is_playing);
             }
 
             // only update metadata when the track information is changed
@@ -81,6 +104,7 @@ pub fn start_event_watcher(
 
     let refresh_duration = std::time::Duration::from_millis(200);
     let mut track_info = String::new();
+    let mut is_playing = None;
     loop {
         if let Ok(event) = rx.try_recv() {
             tracing::info!("Got a media control event: {event:?}");
@@ -104,7 +128,7 @@ pub fn start_event_watcher(
             }
         }
 
-        update_control_metadata(&state, &mut controls, &mut track_info)?;
+        update_control_metadata(&state, &mut controls, &mut track_info, &mut is_playing)?;
         std::thread::sleep(refresh_duration);
     }
 }
