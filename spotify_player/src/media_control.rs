@@ -68,8 +68,8 @@ pub fn start_event_watcher(
 
     let hwnd = None;
     let config = PlatformConfig {
-        display_name: "spotify_player",
-        dbus_name: "Spotify Player",
+        dbus_name: "spotify_player",
+        display_name: "Spotify Player",
         hwnd,
     };
     let mut controls = MediaControls::new(config)?;
