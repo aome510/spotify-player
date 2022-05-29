@@ -20,7 +20,7 @@
 
 ## Introduction
 
-`spotify-player` is a fast, easy to use, and [configurable](https://github.com/aome510/spotify-player/blob/master/doc/config.md) terminal music player.
+`spotify-player` is a fast, easy to use, and [configurable](doc/config.md) terminal music player.
 
 ### Features
 
@@ -246,7 +246,7 @@ List of supported commands:
 | `SortTrackByAddedDate`        | sort the track table (if any) by track's added date                     | `s D`              |
 | `ReverseOrder`                | reverse the order of the track table (if any)                           | `s r`              |
 
-To add new shortcuts or modify the default shortcuts, please refer to the [keymaps section](https://github.com/aome510/spotify-player/blob/master/doc/config.md#keymaps) in the configuration documentation.
+To add new shortcuts or modify the default shortcuts, please refer to the [keymaps section](doc/config.md#keymaps) in the configuration documentation.
 
 ### Actions
 
@@ -265,7 +265,7 @@ To move the focus from the search input to the other windows such as track resul
 
 By default, `spotify-player` will look into `$HOME/.config/spotify-player` for application's configuration files. This can be changed by either specifying `-c <FOLDER_PATH>` or `--config-folder <FOLDER_PATH>` option.
 
-Please refer to [the configuration documentation](https://github.com/aome510/spotify-player/blob/master/doc/config.md) for more details on the configuration options.
+Please refer to [the configuration documentation](doc/config.md) for more details on the configuration options.
 
 ## Caches
 
@@ -279,4 +279,4 @@ The application stores logs inside the `$APP_CACHE_FOLDER/spotify-player-*.log` 
 
 ## Acknowledgement
 
-`spotify-player` is written in [Rust](https://www.rust-lang.org) and is built on top of awesome libraries such as [tui-rs](https://github.com/fdehau/tui-rs), [rspotify](https://github.com/ramsayleung/rspotify), [librespot](https://github.com/librespot-org/librespot), and [many more](https://github.com/aome510/spotify-player/blob/master/spotify_player/Cargo.toml). It's highly inspired by [spotify-tui](https://github.com/Rigellute/spotify-tui) and [ncspot](https://github.com/hrkfdn/ncspot).
+`spotify-player` is written in [Rust](https://www.rust-lang.org) and is built on top of awesome libraries such as [tui-rs](https://github.com/fdehau/tui-rs), [rspotify](https://github.com/ramsayleung/rspotify), [librespot](https://github.com/librespot-org/librespot), and [many more](spotify_player/Cargo.toml). It's highly inspired by [spotify-tui](https://github.com/Rigellute/spotify-tui) and [ncspot](https://github.com/hrkfdn/ncspot).

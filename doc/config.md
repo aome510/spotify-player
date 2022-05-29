@@ -26,7 +26,7 @@ All configuration files should be placed inside the application's configuration 
 | `track_table_item_max_len`        | the maximum length of a column in a track table                    | `32`                                        |
 | `enable_media_control`            | enable application media control support                           | `true` (Linux), `false` (Windows and MacOS) |
 
-The default `app.toml` can be found in the example [`app.toml`](https://github.com/aome510/spotify-player/blob/master/examples/app.toml) file
+The default `app.toml` can be found in the example [`app.toml`](examples/app.toml) file
 
 ### Notes
 
@@ -77,7 +77,7 @@ The new theme can then be used by setting the `theme` option in the [`app.toml`]
 
 A theme has three main components: `name` (the theme's name), `palette` (the theme's color palette), `component_style` (a list of predefined style for application's components). `name` and `palette` are required when defining a new theme. If `component_style` is not specified, a default value will be used.
 
-An example of user-defined themes can be found in the example [`theme.toml`](https://github.com/aome510/spotify-player/blob/master/examples/theme.toml) file
+An example of user-defined themes can be found in the example [`theme.toml`](examples/theme.toml) file
 
 ### Use script to add theme
 
@@ -148,7 +148,7 @@ table_header = { fg = "Blue" }
 
 ## Keymaps
 
-`spotify-player` uses `keymap.toml` to add or override new key mappings in additional to [the default key mappings](https://github.com/aome510/spotify-player#commands). To define a new key mapping, simply add a `keymaps` entry. For example,
+`spotify-player` uses `keymap.toml` to add or override new key mappings in additional to [the default key mappings](../README.md#commands). To define a new key mapping, simply add a `keymaps` entry. For example,
 
 ```toml
 [[keymaps]]
