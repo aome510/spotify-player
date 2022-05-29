@@ -5,6 +5,7 @@ use souvlaki::{
 use crate::{
     event::{ClientRequest, PlayerRequest},
     state::SharedState,
+    utils::map_join,
 };
 
 fn get_track_album_image_url(track: &rspotify::model::FullTrack) -> Option<&str> {
@@ -18,6 +19,7 @@ fn get_track_album_image_url(track: &rspotify::model::FullTrack) -> Option<&str>
 fn update_control_metadata(
     state: &SharedState,
     controls: &mut MediaControls,
+    prev_track_info: &mut String,
 ) -> Result<(), souvlaki::Error> {
     let player = state.player.read();
 
@@ -34,25 +36,19 @@ fn update_control_metadata(
                 }
             }
 
-            controls.set_metadata(MediaMetadata {
-                title: Some(&track.name),
-                album: Some(&track.album.name),
-                artist: Some(
-                    &track
-                        .artists
-                        .iter()
-                        .map(|a| &a.name)
-                        .fold(String::new(), |x, y| {
-                            if x.is_empty() {
-                                x + y
-                            } else {
-                                x + ", " + y
-                            }
-                        }),
-                ),
-                duration: Some(track.duration),
-                cover_url: get_track_album_image_url(track),
-            })?;
+            // only update metadata when the track information is changed
+            let track_info = format!("{}/{}", track.name, track.album.name);
+            if track_info != *prev_track_info {
+                controls.set_metadata(MediaMetadata {
+                    title: Some(&track.name),
+                    album: Some(&track.album.name),
+                    artist: Some(&map_join(&track.artists, |a| &a.name, ", ")),
+                    duration: Some(track.duration),
+                    cover_url: get_track_album_image_url(track),
+                })?;
+
+                *prev_track_info = track_info;
+            }
         }
     }
 
@@ -83,10 +79,8 @@ pub fn start_event_watcher(
     // for the track metadata to be shown up on the MacOS media status bar.
     controls.set_playback(MediaPlayback::Playing { progress: None })?;
 
-    // `100ms` is a "good enough" duration for the track metadata to be updated consistently.
-    // Setting this to be higher (e.g, `200ms`) would result in incorrect metadata
-    // shown up in the media status bar occasionally.
-    let refresh_duration = std::time::Duration::from_millis(100);
+    let refresh_duration = std::time::Duration::from_millis(200);
+    let mut track_info = String::new();
     loop {
         if let Ok(event) = rx.try_recv() {
             tracing::info!("Got a media control event: {event:?}");
@@ -110,7 +104,7 @@ pub fn start_event_watcher(
             }
         }
 
-        update_control_metadata(&state, &mut controls)?;
+        update_control_metadata(&state, &mut controls, &mut track_info)?;
         std::thread::sleep(refresh_duration);
     }
 }
