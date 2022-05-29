@@ -2,7 +2,7 @@ use crate::{
     command::Command,
     key::{Key, KeySequence},
     state::*,
-    utils::{new_list_state, new_table_state},
+    utils::{map_join, new_list_state, new_table_state},
 };
 use anyhow::Result;
 use tokio::sync::mpsc;
@@ -284,17 +284,7 @@ fn handle_global_command(
         #[cfg(feature = "lyric-finder")]
         Command::LyricPage => {
             if let Some(track) = state.player.read().current_playing_track() {
-                let artists = track
-                    .artists
-                    .iter()
-                    .map(|a| &a.name)
-                    .fold(String::new(), |x, y| {
-                        if x.is_empty() {
-                            x + y
-                        } else {
-                            x + ", " + y
-                        }
-                    });
+                let artists = map_join(&track.artists, |a| &a.name, ", ");
                 ui.create_new_page(PageState::Lyric {
                     track: track.name.clone(),
                     artists: artists.clone(),

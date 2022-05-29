@@ -3,6 +3,7 @@ pub use rspotify::model::{AlbumId, ArtistId, Id, PlaylistId, TrackId, UserId};
 use serde::{Deserialize, Serialize};
 
 use crate::command;
+use crate::utils::map_join;
 
 #[derive(Clone, Debug)]
 /// A Spotify context (playlist, album, artist)
@@ -296,16 +297,7 @@ impl Device {
 impl Track {
     /// gets the track's artists information
     pub fn artists_info(&self) -> String {
-        self.artists
-            .iter()
-            .map(|a| &a.name)
-            .fold(String::new(), |x, y| {
-                if x.is_empty() {
-                    x + y
-                } else {
-                    x + ", " + y
-                }
-            })
+        map_join(&self.artists, |a| &a.name, ", ")
     }
 
     /// gets the track's album information
