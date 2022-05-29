@@ -21,7 +21,7 @@ jobs:
 
     steps:
       - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install libasound2-dev libdbus-1-dev pkg-config
+        run: sudo apt-get update && sudo apt-get install libssl-dev libasound2-dev libdbus-1-dev
         if: ${{ runner.os == 'Linux' }}
       - uses: actions/checkout@v2
       - uses: actions-rs/cargo@v1
