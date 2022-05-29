@@ -11,13 +11,18 @@ env:
   RUST_BACKTRACE: 1
 
 jobs:
-  linux-test:
+  rust-ci:
     if: github.event.pull_request.draft != true
-    name: Linux (ubuntu)
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [macOS-latest, windows-latest, ubuntu-latest]
+
+    runs-on: ${{ matrix.os }}
+
     steps:
       - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install libasound2-dev libdbus-1-dev pkg-config
+        if: ${{ runner.os == 'Linux' }}
       - uses: actions/checkout@v2
       - uses: actions-rs/cargo@v1
         name: Cargo Test
