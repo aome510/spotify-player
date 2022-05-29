@@ -1,6 +1,6 @@
-use souvlaki::{
-    MediaControlEvent, MediaControls, MediaMetadata, MediaPlayback, MediaPosition, PlatformConfig,
-};
+#![allow(unused_imports)]
+use souvlaki::MediaPosition;
+use souvlaki::{MediaControlEvent, MediaControls, MediaMetadata, MediaPlayback, PlatformConfig};
 
 use crate::{
     event::{ClientRequest, PlayerRequest},
