@@ -37,7 +37,7 @@ fn update_control_metadata(
                     // only update the media playback when the playback status (determined by `is_playing` variable below) is changed.
                     // [1]: https://github.com/Sinono3/souvlaki/blob/b4d47bb2797ffdd625c17192df640510466762e1/src/platform/linux/mod.rs#L450
 
-                    if prev_is_playing != Some(playback.is_playing) {
+                    if *prev_is_playing != Some(playback.is_playing) {
                         if playback.is_playing {
                             controls.set_playback(MediaPlayback::Playing { progress: None })?;
                         } else {
