@@ -3,6 +3,8 @@
 ## Table of Contents
 
 - [General](#general)
+  - [Notes](#notes)
+  - [Device configurations](#device-configurations)
 - [Themes](#themes)
   - [Use script to add theme](#use-script-to-add-theme)
   - [Palette](#palette)
@@ -15,17 +17,18 @@ All configuration files should be placed inside the application's configuration 
 
 `spotify-player` uses `app.toml` to configure general application configurations:
 
-| Option                            | Description                                                        | Default                            |
-| --------------------------------- | ------------------------------------------------------------------ | ---------------------------------- |
-| `client_id`                       | the Spotify client's ID                                            | `65b708073fc0480ea92a077233ca87bd` |
-| `theme`                           | the application's theme                                            | `dracula`                          |
-| `app_refresh_duration_in_ms`      | the duration (in ms) between two consecutive application refreshes | `32`                               |
-| `playback_refresh_duration_in_ms` | the duration (in ms) between two consecutive playback refreshes    | `0`                                |
-| `track_table_item_max_len`        | the maximum length of a column in a track table                    | `32`                               |
+| Option                            | Description                                                        | Default                                     |
+| --------------------------------- | ------------------------------------------------------------------ | ------------------------------------------- |
+| `client_id`                       | the Spotify client's ID                                            | `65b708073fc0480ea92a077233ca87bd`          |
+| `theme`                           | the application's theme                                            | `dracula`                                   |
+| `app_refresh_duration_in_ms`      | the duration (in ms) between two consecutive application refreshes | `32`                                        |
+| `playback_refresh_duration_in_ms` | the duration (in ms) between two consecutive playback refreshes    | `0`                                         |
+| `track_table_item_max_len`        | the maximum length of a column in a track table                    | `32`                                        |
+| `enable_media_control`            | enable application media control support                           | `true` (Linux), `false` (Windows and MacOS) |
 
 The default `app.toml` can be found in the example [`app.toml`](https://github.com/aome510/spotify-player/blob/master/examples/app.toml) file
 
-**Note**:
+### Notes
 
 - By default, `spotify-player` uses the official Spotify Web app's client (`client_id = 65b708073fc0480ea92a077233ca87bd`)
 - It's recommended to specify [your own Client ID](https://developer.spotify.com/documentation/general/guides/authorization/app-settings/) to avoid possible rate limits and to allow a full [Spotify connect](https://www.spotify.com/us/connect/) support.
@@ -45,6 +48,12 @@ The default `app.toml` can be found in the example [`app.toml`](https://github.c
   **Note**: the above list might not be up-to-date.
 
 - An example of event that triggers a playback update is the one happening when the current track ends.
+
+#### Media control
+
+Media control support (`enable_media_control` option) is enabled by default on Linux but disabled by default on MacOS and Windows.
+
+MacOS and Windows require **an open window** to listen to OS media event. As a result, `spotify_player` needs to spawn an invisible window on startup, which may steal focus from the running terminal. To interact with the `spotify-player`, which is run on the terminal, user will need to re-focus the terminal. Because of this extra re-focus step, the media control support is disabled by default on MacOS and Windows to avoid possible confusion for first-time users.
 
 ### Device configurations
 
