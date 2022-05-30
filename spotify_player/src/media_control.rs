@@ -1,10 +1,11 @@
-use souvlaki::{
-    MediaControlEvent, MediaControls, MediaMetadata, MediaPlayback, MediaPosition, PlatformConfig,
-};
+#![allow(unused_imports)]
+use souvlaki::MediaPosition;
+use souvlaki::{MediaControlEvent, MediaControls, MediaMetadata, MediaPlayback, PlatformConfig};
 
 use crate::{
     event::{ClientRequest, PlayerRequest},
     state::SharedState,
+    utils::map_join,
 };
 
 fn get_track_album_image_url(track: &rspotify::model::FullTrack) -> Option<&str> {
@@ -18,6 +19,8 @@ fn get_track_album_image_url(track: &rspotify::model::FullTrack) -> Option<&str>
 fn update_control_metadata(
     state: &SharedState,
     controls: &mut MediaControls,
+    prev_track_info: &mut String,
+    prev_is_playing: &mut Option<bool>,
 ) -> Result<(), souvlaki::Error> {
     let player = state.player.read();
 
@@ -25,34 +28,50 @@ fn update_control_metadata(
         None => {}
         Some(track) => {
             if let Some(ref playback) = player.playback {
-                let progress = player.playback_progress().map(MediaPosition);
+                #[cfg(target_os = "linux")]
+                {
+                    // For linux, the `souvlaki` crate doesn't support updating the playback's current position
+                    // and internally it only handles at most one DBus event every one second [1].
+                    // To avoid possible event congestion, which can happen when the call frequency of
+                    // `update_control_metadata` is higher than 1Hz (`refresh_duration < 1s`, see `start_event_watcher`),
+                    // only update the media playback when the playback status (determined by `is_playing` variable below) is changed.
+                    // [1]: https://github.com/Sinono3/souvlaki/blob/b4d47bb2797ffdd625c17192df640510466762e1/src/platform/linux/mod.rs#L450
 
-                if playback.is_playing {
-                    controls.set_playback(MediaPlayback::Playing { progress })?;
-                } else {
-                    controls.set_playback(MediaPlayback::Paused { progress })?;
+                    if *prev_is_playing != Some(playback.is_playing) {
+                        if playback.is_playing {
+                            controls.set_playback(MediaPlayback::Playing { progress: None })?;
+                        } else {
+                            controls.set_playback(MediaPlayback::Paused { progress: None })?;
+                        }
+                    }
                 }
+
+                #[cfg(any(target_os = "macos", target_os = "windows"))]
+                {
+                    let progress = player.playback_progress().map(MediaPosition);
+                    if playback.is_playing {
+                        controls.set_playback(MediaPlayback::Playing { progress })?;
+                    } else {
+                        controls.set_playback(MediaPlayback::Paused { progress })?;
+                    }
+                }
+
+                *prev_is_playing = Some(playback.is_playing);
             }
 
-            controls.set_metadata(MediaMetadata {
-                title: Some(&track.name),
-                album: Some(&track.album.name),
-                artist: Some(
-                    &track
-                        .artists
-                        .iter()
-                        .map(|a| &a.name)
-                        .fold(String::new(), |x, y| {
-                            if x.is_empty() {
-                                x + y
-                            } else {
-                                x + ", " + y
-                            }
-                        }),
-                ),
-                duration: Some(track.duration),
-                cover_url: get_track_album_image_url(track),
-            })?;
+            // only update metadata when the track information is changed
+            let track_info = format!("{}/{}", track.name, track.album.name);
+            if track_info != *prev_track_info {
+                controls.set_metadata(MediaMetadata {
+                    title: Some(&track.name),
+                    album: Some(&track.album.name),
+                    artist: Some(&map_join(&track.artists, |a| &a.name, ", ")),
+                    duration: Some(track.duration),
+                    cover_url: get_track_album_image_url(track),
+                })?;
+
+                *prev_track_info = track_info;
+            }
         }
     }
 
@@ -68,8 +87,8 @@ pub fn start_event_watcher(
 
     let hwnd = None;
     let config = PlatformConfig {
-        display_name: "spotify_player",
-        dbus_name: "Spotify Player",
+        dbus_name: "spotify_player",
+        display_name: "Spotify Player",
         hwnd,
     };
     let mut controls = MediaControls::new(config)?;
@@ -83,10 +102,9 @@ pub fn start_event_watcher(
     // for the track metadata to be shown up on the MacOS media status bar.
     controls.set_playback(MediaPlayback::Playing { progress: None })?;
 
-    // `100ms` is a "good enough" duration for the track metadata to be updated consistently.
-    // Setting this to be higher (e.g, `200ms`) would result in incorrect metadata
-    // shown up in the media status bar occasionally.
-    let refresh_duration = std::time::Duration::from_millis(100);
+    let refresh_duration = std::time::Duration::from_millis(200);
+    let mut track_info = String::new();
+    let mut is_playing = None;
     loop {
         if let Ok(event) = rx.try_recv() {
             tracing::info!("Got a media control event: {event:?}");
@@ -110,7 +128,7 @@ pub fn start_event_watcher(
             }
         }
 
-        update_control_metadata(&state, &mut controls)?;
+        update_control_metadata(&state, &mut controls, &mut track_info, &mut is_playing)?;
         std::thread::sleep(refresh_duration);
     }
 }

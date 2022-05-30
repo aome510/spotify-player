@@ -23,6 +23,8 @@ pub struct AppConfig {
     pub app_refresh_duration_in_ms: u64,
     pub playback_refresh_duration_in_ms: u64,
     pub track_table_item_max_len: usize,
+    #[cfg(feature = "media-control")]
+    pub enable_media_control: bool,
 
     pub device: DeviceConfig,
 }
@@ -46,6 +48,17 @@ impl Default for AppConfig {
             app_refresh_duration_in_ms: 32,
             playback_refresh_duration_in_ms: 0,
             track_table_item_max_len: 32,
+
+            // Because of the "creating new window and stealing focus" behaviour
+            // when running the media control event loop on startup,
+            // media control support is disabled by default for Windows and MacOS.
+            // Users will need to explicitly enable this option in their configuration files.
+            #[cfg(feature = "media-control")]
+            #[cfg(any(target_os = "macos", target_os = "windows"))]
+            enable_media_control: false,
+            #[cfg(feature = "media-control")]
+            #[cfg(target_os = "linux")]
+            enable_media_control: true,
 
             device: DeviceConfig::default(),
         }

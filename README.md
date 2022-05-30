@@ -10,6 +10,7 @@
   - [Spotify Connect](#spotify-connect)
   - [Streaming](#streaming)
   - [Lyric](#lyric)
+  - [Media Control](#media-control)
   - [Mouse support](#mouse-support)
 - [Commands](#commands)
 - [Configurations](#configurations)
@@ -19,22 +20,17 @@
 
 ## Introduction
 
-`spotify-player` is a fast, easy to use, and [configurable](https://github.com/aome510/spotify-player/blob/master/doc/config.md) terminal music player.
+`spotify-player` is a fast, easy to use, and [configurable](doc/config.md) terminal music player.
 
 ### Features
 
 - Minimalist UI with an intuitive paging and popup system.
 - Highly configurable, allow to easily customize application's shortcuts or theme/color scheme.
-- Support a majority of Spotify features through a set of [commands](#commands).
-- Support multiple Spotify pages:
-  - User library page
-  - Artist/Album/Playlist page
-  - Search page
-  - Recommendation (radio) page
-  - and many others...
+- Feature parity with the official Spotify application.
 - Support remote control with [Spotify Connect](#spotify-connect).
 - Support [streaming](#streaming) songs directly from the terminal.
 - Support [lyric](#lyric) for most songs.
+- Support [cross-platform media control](#media-control).
 
 ## Examples
 
@@ -78,7 +74,20 @@ A demo of `spotify-player` `v0.5.0-pre-release` on [youtube](https://www.youtube
 
 A Spotify Premium account is **required**.
 
-To build and run the application, Window and MacOS users will need to install [Rust and cargo](https://www.rust-lang.org/tools/install) as the build requirements. Linux users will also need to install additional dependencies such as `openssl` and `alsa-lib` (`libasound2-dev` in Ubuntu and `alsa-lib` in Arch Linux) to build and run the application.
+#### Dependencies
+
+##### Windows and MacOS
+
+- [Rust and cargo](https://www.rust-lang.org/tools/install) as the build dependencies
+
+##### Linux
+
+- [Rust and cargo](https://www.rust-lang.org/tools/install) as the build dependencies
+- `openssl`, `alsa-lib` (`streaming` feature), `libdbus` (`media-control` feature). For example, on Debian based systems, run the below command to install application's dependencies:
+
+```shell
+sudo apt install libssl-dev libasound2-dev libdbus-1-dev
+```
 
 ### Cargo
 
@@ -130,25 +139,25 @@ docker run --rm \
 
 ### Spotify Connect
 
-To enable a full [Spotify connect](https://www.spotify.com/us/connect/) support, user will need to register a Spotify application and specify their own `client_id` in the application's general configuration file as described in the [configuration documentation](https://github.com/aome510/spotify-player/blob/master/doc/config.md#general).
+To enable a full [Spotify connect](https://www.spotify.com/us/connect/) support, user will need to register a Spotify application and specify the application's `client_id` in the general configuration file as described in the [configuration documentation](https://github.com/aome510/spotify-player/blob/master/doc/config.md#general).
 
-More details on registering a Spotify application can be found in the [official Spotify documentation](https://developer.spotify.com/documentation/general/guides/authorization/app-settings/).
+More details about registering a Spotify application can be found in the [official Spotify documentation](https://developer.spotify.com/documentation/general/guides/authorization/app-settings/).
 
 When `spotify_player` runs with your own `client_id`, press **D** (default shortcut for `SwitchDevice` command) to get the list of available devices, then press **enter** (default shortcut for `ChooseSelected` command) to connect to the selected device.
 
-An example of using Spotify connect to interact with Spotify's official client:
+An example of using Spotify connect to interact with the Spotify's official application:
 
 ![Spotify Connect Example](https://user-images.githubusercontent.com/40011582/140323795-8a7ed2bb-7bda-4db2-9672-6036eac6e771.gif)
 
 ### Streaming
 
-`spotify-player` supports streaming (needs to be built with `streaming` feature), e.g playing music directly from terminal without other Spotify client.
+`spotify-player` supports streaming (needs to be built with `streaming` feature), e.g playing music directly from terminal without other Spotify clients.
 
-It uses the [librespot](https://github.com/librespot-org/librespot) library to create an integrated Spotify client while running. The integrated client will register a Spotify speaker device under the `spotify-player` name and is also accessible through [Spotify connect](#spotify-connect).
+It uses the [librespot](https://github.com/librespot-org/librespot) library to create an integrated Spotify client while running. The integrated client will register a Spotify speaker device under the `spotify-player` name, which is accessible on the [Spotify connect](#spotify-connect) device list.
 
 #### Audio backend
 
-`spotify-player` uses [rodio](https://github.com/RustAudio/rodio) as the default [audio backend](https://github.com/librespot-org/librespot/wiki/Audio-Backends). List of available backends:
+`spotify-player` uses [rodio](https://github.com/RustAudio/rodio) as the default [audio backend](https://github.com/librespot-org/librespot/wiki/Audio-Backends). List of available audio backends:
 
 - `alsa-backend`
 - `pulseaudio-backend`
@@ -159,25 +168,33 @@ It uses the [librespot](https://github.com/librespot-org/librespot) library to c
 - `sdl-backend`
 - `gstreamer-backend`
 
-User can change the audio backend when building the application by specifying the `--features` option. For example, to build `spotify-player` with `pulseaudio-backend`, run
+User can change the audio backend when building/installing the application by specifying the `--features` option. For example, to install `spotify-player` with `pulseaudio-backend`, run
 
 ```shell
-cargo build --release --no-default-features --features pulseaudio-backend
+cargo install spotify_player --no-default-features --features pulseaudio-backend
 ```
 
-**Note**: user will need additional dependencies depending on the selected audio backend. More details can be found in the [Librespot documentation](https://github.com/librespot-org/librespot/wiki/Compiling#general-dependencies).
+**Note**: user will need to install additional dependencies depending on the selected audio backend. More details can be found in the [Librespot documentation](https://github.com/librespot-org/librespot/wiki/Compiling#general-dependencies).
 
-The `streaming` feature can be disabled by running (to use the application as a remote player only)
+The `streaming` feature can be also disabled upon installing by running
 
 ```shell
-cargo build --release --no-default-features
+cargo install spotify_player --no-default-features
 ```
 
 ### Lyric
 
+To enable lyric support, `spotify_player` needs to be built/installed with `lyric-finder` feature (enabled by default).
+
 User can view lyric of the currently playing track by calling the `LyricPage` command to go the lyric page. To do this, `spotify-player` needs to be built with a `lyric-finder` feature.
 
 Under the hood, `spotify-player` retrieves the song's lyric using [Genius.com](https://genius.com).
+
+### Media Control
+
+To enable media control support, `spotify_player` needs to be built/installed with `media-control` feature (enabled by default) and set the `enable_media_control` config option to `true` in the [general configuration file](doc/config.md#media-control).
+
+Media control support is implemented using [MPRIS DBus](https://wiki.archlinux.org/title/MPRIS) on Linux and OS window event listener on Windows and MacOS.
 
 ### Mouse support
 
@@ -206,7 +223,7 @@ List of supported commands:
 | `SelectPreviousOrScrollUp`    | select the previous item in a list/table or scroll up                   | `k`, `C-k`, `up`   |
 | `ChooseSelected`              | choose the selected item                                                | `enter`            |
 | `RefreshPlayback`             | manually refresh the current playback                                   | `r`                |
-| `ReconnectIntegratedClient`   | reconnect the integrated librespot client (`streaming` feature only)    | `R`                |
+| `RestartIntegratedClient`     | restart the integrated librespot client (`streaming` feature only)      | `R`                |
 | `ShowActionsOnSelectedItem`   | open a popup showing actions on a selected item                         | `g a`, `C-space`   |
 | `ShowActionsOnCurrentTrack`   | open a popup showing actions on the current track                       | `a`                |
 | `FocusNextWindow`             | focus the next focusable window (if any)                                | `tab`              |
@@ -231,7 +248,12 @@ List of supported commands:
 | `SortTrackByAddedDate`        | sort the track table (if any) by track's added date                     | `s D`              |
 | `ReverseOrder`                | reverse the order of the track table (if any)                           | `s r`              |
 
-To add new shortcuts or modify the default shortcuts, please refer to the [keymaps section](https://github.com/aome510/spotify-player/blob/master/doc/config.md#keymaps) in the configuration documentation.
+To add new shortcuts or modify the default shortcuts, please refer to the [keymaps section](doc/config.md#keymaps) in the configuration documentation.
+
+**Tips**:
+
+- `RefreshPlayback` can be used to manually update the playback status.
+- `RestartIntegratedClient` is useful when user wants to switch to another audio device (headphone, earphone, etc) without restarting the application, as the integrated client will be re-initialized with the new device.
 
 ### Actions
 
@@ -250,7 +272,7 @@ To move the focus from the search input to the other windows such as track resul
 
 By default, `spotify-player` will look into `$HOME/.config/spotify-player` for application's configuration files. This can be changed by either specifying `-c <FOLDER_PATH>` or `--config-folder <FOLDER_PATH>` option.
 
-Please refer to [the configuration documentation](https://github.com/aome510/spotify-player/blob/master/doc/config.md) for more details on the configuration options.
+Please refer to [the configuration documentation](doc/config.md) for more details on the configuration options.
 
 ## Caches
 
@@ -264,4 +286,4 @@ The application stores logs inside the `$APP_CACHE_FOLDER/spotify-player-*.log` 
 
 ## Acknowledgement
 
-`spotify-player` is written in [Rust](https://www.rust-lang.org) and is built on top of awesome libraries such as [tui-rs](https://github.com/fdehau/tui-rs), [rspotify](https://github.com/ramsayleung/rspotify), [librespot](https://github.com/librespot-org/librespot), and [many more](https://github.com/aome510/spotify-player/blob/master/spotify_player/Cargo.toml). It's highly inspired by [spotify-tui](https://github.com/Rigellute/spotify-tui) and [ncspot](https://github.com/hrkfdn/ncspot).
+`spotify-player` is written in [Rust](https://www.rust-lang.org) and is built on top of awesome libraries such as [tui-rs](https://github.com/fdehau/tui-rs), [rspotify](https://github.com/ramsayleung/rspotify), [librespot](https://github.com/librespot-org/librespot), and [many more](spotify_player/Cargo.toml). It's highly inspired by [spotify-tui](https://github.com/Rigellute/spotify-tui) and [ncspot](https://github.com/hrkfdn/ncspot).

@@ -44,3 +44,16 @@ pub fn new_table_state() -> TableState {
     state.select(Some(0));
     state
 }
+
+pub fn map_join<T, F>(v: &[T], f: F, sep: &str) -> String
+where
+    F: Fn(&T) -> &str,
+{
+    v.iter().map(f).fold(String::new(), |x, y| {
+        if x.is_empty() {
+            x + y
+        } else {
+            x + sep + y
+        }
+    })
+}

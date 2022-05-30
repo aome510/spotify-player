@@ -212,7 +212,7 @@ async fn main() -> Result<()> {
     });
 
     #[cfg(feature = "media-control")]
-    {
+    if state.app_config.enable_media_control {
         // media control task
         tokio::task::spawn_blocking({
             let state = state.clone();

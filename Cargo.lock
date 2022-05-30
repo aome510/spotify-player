@@ -420,9 +420,9 @@ dependencies = [
 
 [[package]]
 name = "config_parser2"
-version = "0.1.2"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5ad40c82a0d985e7b6ddc7e4fcf86ed77bfcdaf83e3a82573787a13e07ff8c71"
+checksum = "ab0859c810793c5f89c891d5ec162cc6b14c637c8e1af0dcaa18f23e600c63dc"
 dependencies = [
  "anyhow",
  "config_parser_derive",

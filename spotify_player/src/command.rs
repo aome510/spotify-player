@@ -23,7 +23,7 @@ pub enum Command {
     RefreshPlayback,
 
     #[cfg(feature = "streaming")]
-    ReconnectIntegratedClient,
+    RestartIntegratedClient,
 
     FocusNextWindow,
     FocusPreviousWindow,
@@ -81,7 +81,7 @@ impl Command {
             Self::OpenCommandHelp => "open a command help popup",
             Self::ClosePopup => "close a popup",
             #[cfg(feature = "streaming")]
-            Self::ReconnectIntegratedClient => "reconnect the integrated librespot client",
+            Self::RestartIntegratedClient => "restart the integrated librespot client",
             Self::SelectNextOrScrollDown => "select the next item in a list/table or scroll down",
             Self::SelectPreviousOrScrollUp => {
                 "select the previous item in a list/table or scroll up"
