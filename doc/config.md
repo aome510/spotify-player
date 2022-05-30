@@ -53,7 +53,7 @@ The default `app.toml` can be found in the example [`app.toml`](examples/app.tom
 
 Media control support (`enable_media_control` option) is enabled by default on Linux but disabled by default on MacOS and Windows.
 
-MacOS and Windows require **an open window** to listen to OS media event. As a result, `spotify_player` needs to spawn an invisible window on startup, which may steal focus from the running terminal. To interact with the `spotify-player`, which is run on the terminal, user will need to re-focus the terminal. Because of this extra re-focus step, the media control support is disabled by default on MacOS and Windows to avoid possible confusion for first-time users.
+MacOS and Windows require **an open window** to listen to OS media event. As a result, `spotify_player` needs to spawn an invisible window on startup, which may steal focus from the running terminal. To interact with `spotify-player`, which is run on the terminal, user will need to re-focus the terminal. Because of this extra re-focus step, the media control support is disabled by default on MacOS and Windows to avoid possible confusion for first-time users.
 
 ### Device configurations
 

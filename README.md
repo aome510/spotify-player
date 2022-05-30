@@ -192,7 +192,7 @@ Under the hood, `spotify-player` retrieves the song's lyric using [Genius.com](h
 
 ### Media Control
 
-To enable media control support, `spotify_player` needs to be built/installed with `media-control` feature (enabled by default) and set `enable_media_control` config option to `true` in the [general configuration file](doc/config.md#media-control).
+To enable media control support, `spotify_player` needs to be built/installed with `media-control` feature (enabled by default) and set the `enable_media_control` config option to `true` in the [general configuration file](doc/config.md#media-control).
 
 ### Mouse support
 
