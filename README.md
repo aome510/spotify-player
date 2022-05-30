@@ -194,6 +194,8 @@ Under the hood, `spotify-player` retrieves the song's lyric using [Genius.com](h
 
 To enable media control support, `spotify_player` needs to be built/installed with `media-control` feature (enabled by default) and set the `enable_media_control` config option to `true` in the [general configuration file](doc/config.md#media-control).
 
+Media control support is implemented using [MPRIS DBus](https://wiki.archlinux.org/title/MPRIS) on Linux and OS window event listener on Windows and MacOS.
+
 ### Mouse support
 
 Currently, the only supported use case for mouse is to seek to a position of the current playback by left-clicking to such position in the playback's progress bar.
@@ -247,6 +249,11 @@ List of supported commands:
 | `ReverseOrder`                | reverse the order of the track table (if any)                           | `s r`              |
 
 To add new shortcuts or modify the default shortcuts, please refer to the [keymaps section](doc/config.md#keymaps) in the configuration documentation.
+
+**Tips**:
+
+- `RefreshPlayback` can be used to manually update the playback status.
+- `RestartIntegratedClient` is useful when user wants to switch to another audio device (headphone, earphone, etc) without restarting the application, as the integrated client will be re-initialized with the new device.
 
 ### Actions
 
