@@ -151,7 +151,7 @@ An example of using Spotify connect to interact with the Spotify's official appl
 
 ### Streaming
 
-`spotify-player` supports streaming (needs to be built with `streaming` feature), e.g playing music directly from terminal without other Spotify clients.
+`spotify-player` supports streaming (needs to be built/installed with `streaming` feature, enabled by default), which allows to the application to play music directly from terminal without other Spotify clients.
 
 It uses the [librespot](https://github.com/librespot-org/librespot) library to create an integrated Spotify client while running. The integrated client will register a Spotify speaker device under the `spotify-player` name, which is accessible on the [Spotify connect](#spotify-connect) device list.
 
