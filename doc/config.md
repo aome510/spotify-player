@@ -27,7 +27,7 @@ All configuration files should be placed inside the application's configuration 
 | `enable_media_control`            | enable application media control support                               | `true` (Linux), `false` (Windows and MacOS) |
 | `default_device`                  | the default device to connect to on startup if no playing device found | `spotify-player`                            |
 
-The default `app.toml` can be found in the example [`app.toml`](examples/app.toml) file
+The default `app.toml` can be found in the example [`app.toml`](../examples/app.toml) file
 
 ### Notes
 
@@ -74,11 +74,11 @@ More details on the above configuration options can be found under the [Librespo
 
 `spotify-player` uses `theme.toml` to define additional themes in addition to the default themes (`dracula`, `ayu_light`, `gruvbox_dark`, `solarized_light`).
 
-The new theme can then be used by setting the `theme` option in the [`app.toml`](#general) file or specifying the `-t <THEME>` (`--theme <THEME>`) option when running the player.
+The new theme can then be used by setting the `theme` option in the [general configuration](#general) file or specifying the `-t <THEME>` (`--theme <THEME>`) option when running the player.
 
 A theme has three main components: `name` (the theme's name), `palette` (the theme's color palette), `component_style` (a list of predefined style for application's components). `name` and `palette` are required when defining a new theme. If `component_style` is not specified, a default value will be used.
 
-An example of user-defined themes can be found in the example [`theme.toml`](examples/theme.toml) file
+An example of user-defined themes can be found in the example [`theme.toml`](../examples/theme.toml) file
 
 ### Use script to add theme
 

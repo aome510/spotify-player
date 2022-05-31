@@ -4,6 +4,7 @@ app_refresh_duration_in_ms = 32
 playback_refresh_duration_in_ms = 0
 track_table_item_max_len = 32
 enable_media_control = false
+default_device = "spotify-player"
 
 [device]
 name = "spotify-player"
