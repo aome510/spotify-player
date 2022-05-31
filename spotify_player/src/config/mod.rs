@@ -26,6 +26,8 @@ pub struct AppConfig {
     #[cfg(feature = "media-control")]
     pub enable_media_control: bool,
 
+    pub default_device: String,
+
     pub device: DeviceConfig,
 }
 
@@ -59,6 +61,8 @@ impl Default for AppConfig {
             #[cfg(feature = "media-control")]
             #[cfg(target_os = "linux")]
             enable_media_control: true,
+
+            default_device: "spotify-player".to_string(),
 
             device: DeviceConfig::default(),
         }

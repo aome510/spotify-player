@@ -54,7 +54,6 @@ async fn init_spotify(
     state: &state::SharedState,
 ) -> Result<()> {
     client.init_token().await?;
-    client.update_current_playback_state(state).await?;
 
     // if `streaming` feature is enabled, create a new streaming connection
     #[cfg(feature = "streaming")]
@@ -63,11 +62,27 @@ async fn init_spotify(
         .await
         .context("failed to create a new streaming connection")?;
 
-    if state.player.read().playback.is_none() {
+    // get the current playback
+    client.update_current_playback_state(state).await?;
+
+    let is_playing = match state.player.read().playback {
+        None => false,
+        Some(ref playback) => playback.is_playing,
+    };
+    if !is_playing {
         tracing::info!(
-            "No playback found on startup, trying to connect to the first available device"
+            "No playing device found on startup, trying to connect to an available device"
         );
-        client.connect_to_first_available_device().await?;
+        if let Some(device_id) = client
+            .find_available_device(&state.app_config.default_device)
+            .await?
+        {
+            client_pub
+                .send(event::ClientRequest::Player(
+                    event::PlayerRequest::TransferPlayback(device_id, false),
+                ))
+                .await?;
+        }
     }
 
     // request user data
