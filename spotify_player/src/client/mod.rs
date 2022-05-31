@@ -274,34 +274,45 @@ impl Client {
         Ok(())
     }
 
-    // connects to the first available device
-    pub async fn connect_to_first_available_device(&self) -> Result<()> {
-        let device_id = self.spotify.device().await?.into_iter().find_map(|d| d.id);
+    // Find an available device. Return the device's id if exists.
+    // The function will prioritize device whose name matches `default_device`.
+    pub async fn find_available_device(&self, default_device: &str) -> Result<Option<String>> {
+        let devices = self.spotify.device().await?;
+        tracing::info!("Available devices: {devices:?}");
 
-        match device_id {
-            Some(id) => {
-                tracing::info!("Transfered the playback to the first available device (id={id})",);
-                self.spotify.transfer_playback(&id, None).await?;
+        let device = {
+            if let Some(d) = devices.iter().find(|d| d.name == default_device) {
+                Some(d)
+            } else {
+                // No device whose name matches `default_device` found,
+                // use the first available device.
+                devices.iter().find(|d| d.id.is_some())
+            }
+        };
+
+        match device {
+            Some(device) => {
+                tracing::info!("Found an available device: {device:?}");
+                return Ok(device.id.clone());
             }
             None => {
-                // If the streaming is available and no device is found [1],
-                // try to connect to the integrated client's device
-                // [1]: this can happen when the application uses the default Spotify client ID,
-                // which doesn't allow to retrieve the correct list of available devices
+                // If the streaming feature is enabled and no device is found [1], use the integrated device.
+                // [1]: this can happen when the application uses the default Spotify client ID.
+                // To retrieve the list of available devices, users need to specify their own client ID.
                 #[cfg(feature = "streaming")]
                 {
                     if let Some(ref session) = self.spotify.session {
-                        let device_id = session.device_id();
-                        self.spotify.transfer_playback(device_id, None).await?;
+                        let id = session.device_id().to_string();
                         tracing::info!(
-                            "Transfered the playback to the integrated client's device (id={device_id})",
+                            "No available device found, use the integrated device (id={id})"
                         );
+                        return Ok(Some(id));
                     }
                 }
             }
         }
 
-        Ok(())
+        Ok(None)
     }
 
     /// gets the recently played tracks of the current user
