@@ -219,8 +219,8 @@ List of supported commands:
 | `Quit`                        | quit the application                                                    | `C-c`, `q`         |
 | `OpenCommandHelp`             | open a command help popup                                               | `?`, `C-h`         |
 | `ClosePopup`                  | close a popup                                                           | `esc`              |
-| `SelectNextOrScrollDown`      | select the next item in a list/table or scroll down                     | `j`, `C-j`, `down` |
-| `SelectPreviousOrScrollUp`    | select the previous item in a list/table or scroll up                   | `k`, `C-k`, `up`   |
+| `SelectNextOrScrollDown`      | select the next item in a list/table or scroll down                     | `j`, `C-n`, `down` |
+| `SelectPreviousOrScrollUp`    | select the previous item in a list/table or scroll up                   | `k`, `C-p`, `up`   |
 | `ChooseSelected`              | choose the selected item                                                | `enter`            |
 | `RefreshPlayback`             | manually refresh the current playback                                   | `r`                |
 | `RestartIntegratedClient`     | restart the integrated librespot client (`streaming` feature only)      | `R`                |
@@ -240,7 +240,7 @@ List of supported commands:
 | `LyricPage`                   | go to the lyric page of the current track (`lyric-finder` feature only) | `g L`, `l`         |
 | `LibraryPage`                 | go to the user library page                                             | `g l`              |
 | `SearchPage`                  | go to the search page                                                   | `g s`              |
-| `PreviousPage`                | go to the previous page                                                 | `backspace`, `C-p` |
+| `PreviousPage`                | go to the previous page                                                 | `backspace`, `C-q` |
 | `SortTrackByTitle`            | sort the track table (if any) by track's title                          | `s t`              |
 | `SortTrackByArtists`          | sort the track table (if any) by track's artists                        | `s a`              |
 | `SortTrackByAlbum`            | sort the track table (if any) by track's album                          | `s A`              |
