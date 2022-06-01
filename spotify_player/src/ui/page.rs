@@ -175,7 +175,7 @@ pub fn render_context_page(
     let block = Block::default()
         .title(ui.theme.block_title_with_style(match context_page_type {
             ContextPageType::CurrentPlaying => "Context (Current Playing)",
-            ContextPageType::Browsing(_) => "Context (Browing)",
+            ContextPageType::Browsing(_) => "Context (Browsing)",
         }))
         .borders(Borders::ALL);
 
