@@ -39,10 +39,11 @@ async fn new_session_with_new_creds(cache: &Cache) -> Result<Session> {
             SessionConfig::default(),
             Credentials::with_password(username, password),
             Some(cache.clone()),
+            true,
         )
         .await
         {
-            Ok(session) => {
+            Ok((session, _)) => {
                 println!("Successfully authenticated as {}", user.unwrap_or_default());
                 return Ok(session);
             }
@@ -58,15 +59,19 @@ async fn new_session_with_new_creds(cache: &Cache) -> Result<Session> {
 
 /// creates new Librespot session
 pub async fn new_session(cache_folder: &std::path::Path, audio_cache: bool) -> Result<Session> {
-    let audio_cache_folder = cache_folder.join("audio");
     // specifying `audio_cache` to `None` to disable audio cache
-    let audio_cache = if audio_cache {
-        Some(audio_cache_folder.as_path())
+    let audio_cache_folder = if audio_cache {
+        Some(cache_folder.join("audio"))
     } else {
         None
     };
 
-    let cache = Cache::new(Some(cache_folder), audio_cache, None)?;
+    let cache = Cache::new(
+        Some(cache_folder),
+        None,
+        audio_cache_folder.as_deref(),
+        None,
+    )?;
 
     // create a new session if either
     // - there is no cached credentials or
@@ -74,8 +79,9 @@ pub async fn new_session(cache_folder: &std::path::Path, audio_cache: bool) -> R
     match cache.credentials() {
         None => new_session_with_new_creds(&cache).await,
         Some(creds) => {
-            match Session::connect(SessionConfig::default(), creds, Some(cache.clone())).await {
-                Ok(session) => {
+            match Session::connect(SessionConfig::default(), creds, Some(cache.clone()), true).await
+            {
+                Ok((session, _)) => {
                     tracing::info!("Use the cached credentials");
                     Ok(session)
                 }

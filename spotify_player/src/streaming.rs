@@ -62,7 +62,7 @@ pub fn new_connection(
     let (player, mut channel) = Player::new(
         player_config,
         session.clone(),
-        mixer.get_audio_filter(),
+        mixer.get_soft_volume(),
         move || backend(None, AudioFormat::default()),
     );
 
