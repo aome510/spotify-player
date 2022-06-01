@@ -147,7 +147,7 @@ impl Default for KeymapConfig {
                     command: Command::PreviousPage,
                 },
                 Keymap {
-                    key_sequence: "C-p".into(),
+                    key_sequence: "C-q".into(),
                     command: Command::PreviousPage,
                 },
                 Keymap {
@@ -175,7 +175,7 @@ impl Default for KeymapConfig {
                     command: Command::SelectNextOrScrollDown,
                 },
                 Keymap {
-                    key_sequence: "C-j".into(),
+                    key_sequence: "C-n".into(),
                     command: Command::SelectNextOrScrollDown,
                 },
                 Keymap {
@@ -187,7 +187,7 @@ impl Default for KeymapConfig {
                     command: Command::SelectPreviousOrScrollUp,
                 },
                 Keymap {
-                    key_sequence: "C-k".into(),
+                    key_sequence: "C-p".into(),
                     command: Command::SelectPreviousOrScrollUp,
                 },
                 Keymap {

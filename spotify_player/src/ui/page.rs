@@ -15,7 +15,7 @@ pub fn render_search_page(
             current_query,
             input,
         } => (state.focus, current_query, input),
-        _ => anyhow::bail!("expect a library page state"),
+        s => anyhow::bail!("expect a search page state, found {s:?}"),
     };
 
     let search_results = data.caches.search.peek(current_query);
@@ -25,7 +25,7 @@ pub fn render_search_page(
             .map(|s| {
                 s.tracks
                     .iter()
-                    .map(|a| (format!("{} - {}", a.name, a.artists_info()), false))
+                    .map(|a| (format!("{} • {}", a.name, a.artists_info()), false))
                     .collect::<Vec<_>>()
             })
             .unwrap_or_default();
@@ -46,7 +46,7 @@ pub fn render_search_page(
             .map(|s| {
                 s.albums
                     .iter()
-                    .map(|a| (a.name.clone(), false))
+                    .map(|a| (a.to_string(), false))
                     .collect::<Vec<_>>()
             })
             .unwrap_or_default();
@@ -67,7 +67,7 @@ pub fn render_search_page(
             .map(|s| {
                 s.artists
                     .iter()
-                    .map(|a| (a.name.clone(), false))
+                    .map(|a| (a.to_string(), false))
                     .collect::<Vec<_>>()
             })
             .unwrap_or_default();
@@ -88,7 +88,7 @@ pub fn render_search_page(
             .map(|s| {
                 s.playlists
                     .iter()
-                    .map(|a| (a.name.clone(), false))
+                    .map(|a| (a.to_string(), false))
                     .collect::<Vec<_>>()
             })
             .unwrap_or_default();
@@ -146,7 +146,7 @@ pub fn render_search_page(
     // Will need mutable access to the list/table states stored inside the page state for rendering.
     let page_state = match ui.current_page_mut() {
         PageState::Search { state, .. } => state,
-        _ => anyhow::bail!("expect a library page state"),
+        s => anyhow::bail!("expect a search page state, found {s:?}"),
     };
     frame.render_stateful_widget(track_list, chunks[0], &mut page_state.track_list);
     frame.render_stateful_widget(album_list, chunks[1], &mut page_state.album_list);
@@ -169,7 +169,7 @@ pub fn render_context_page(
             context_page_type,
             ..
         } => (id, context_page_type),
-        _ => anyhow::bail!("expect a context page"),
+        s => anyhow::bail!("expect a context page state, found {s:?}"),
     };
 
     let block = Block::default()
@@ -261,7 +261,7 @@ pub fn render_library_page(
 
     let focus_state = match ui.current_page() {
         PageState::Library { state } => state.focus,
-        _ => anyhow::bail!("expect a library page state"),
+        s => anyhow::bail!("expect a library page state, found {s:?}"),
     };
 
     // Horizontally split the library page into 3 windows:
@@ -273,8 +273,8 @@ pub fn render_library_page(
         .constraints(
             [
                 Constraint::Percentage(40),
-                Constraint::Percentage(30),
-                Constraint::Percentage(30),
+                Constraint::Percentage(40),
+                Constraint::Percentage(20),
             ]
             .as_ref(),
         )
@@ -286,7 +286,7 @@ pub fn render_library_page(
         &ui.theme,
         ui.search_filtered_items(&data.user_data.playlists)
             .into_iter()
-            .map(|p| (p.name.clone(), false))
+            .map(|p| (p.to_string(), false))
             .collect(),
         "Playlists",
         is_active && focus_state == LibraryFocusState::Playlists,
@@ -297,7 +297,7 @@ pub fn render_library_page(
         &ui.theme,
         ui.search_filtered_items(&data.user_data.saved_albums)
             .into_iter()
-            .map(|a| (a.name.clone(), false))
+            .map(|a| (a.to_string(), false))
             .collect(),
         "Albums",
         is_active && focus_state == LibraryFocusState::SavedAlbums,
@@ -308,7 +308,7 @@ pub fn render_library_page(
         &ui.theme,
         ui.search_filtered_items(&data.user_data.followed_artists)
             .into_iter()
-            .map(|a| (a.name.clone(), false))
+            .map(|a| (a.to_string(), false))
             .collect(),
         "Artists",
         is_active && focus_state == LibraryFocusState::FollowedArtists,
@@ -319,7 +319,7 @@ pub fn render_library_page(
     // Will need mutable access to the list/table states stored inside the page state for rendering.
     let page_state = match ui.current_page_mut() {
         PageState::Library { state } => state,
-        _ => anyhow::bail!("expect a library page state"),
+        s => anyhow::bail!("expect a library page state, found {s:?}"),
     };
     frame.render_stateful_widget(playlist_list, playlist_rect, &mut page_state.playlist_list);
     frame.render_stateful_widget(album_list, album_rect, &mut page_state.saved_album_list);
@@ -345,7 +345,7 @@ pub fn render_tracks_page(
         PageState::Tracks {
             id, title, desc, ..
         } => (id, title, desc),
-        _ => anyhow::bail!("expect a tracks page"),
+        s => anyhow::bail!("expect a tracks page state, found {s:?}"),
     };
 
     let block = Block::default()
@@ -400,7 +400,7 @@ pub fn render_lyric_page(
             artists,
             scroll_offset,
         } => (track, artists, *scroll_offset),
-        _ => anyhow::bail!("expect a lyric page state"),
+        s => anyhow::bail!("expect a lyric page state, found {s:?}"),
     };
 
     let block = Block::default()
@@ -472,7 +472,7 @@ fn render_artist_context_page_windows(
             state: Some(ContextPageUIState::Artist { focus, .. }),
             ..
         } => *focus,
-        _ => anyhow::bail!("expect an artist context page"),
+        s => anyhow::bail!("expect an artist context page state, found {s:?}"),
     };
 
     let rect = {
@@ -542,7 +542,7 @@ fn render_artist_context_page_windows(
                 }),
             ..
         } => (album_list, related_artist_list),
-        _ => anyhow::bail!("expect an artist context page with a state"),
+        s => anyhow::bail!("expect an artist context page state, found {s:?}"),
     };
 
     frame.render_stateful_widget(album_list, chunks[0], album_list_state);
@@ -628,7 +628,7 @@ pub fn render_track_table_window(
         PageState::Tracks { state, .. } => {
             frame.render_stateful_widget(track_table, rect, state);
         }
-        _ => anyhow::bail!("reach unsupported page state for rendering track table"),
+        s => anyhow::bail!("reach unsupported page state {s:?} when rendering track table"),
     }
 
     Ok(())

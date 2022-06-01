@@ -94,7 +94,7 @@ pub fn render_popup(frame: &mut Frame, state: &SharedState, rect: Rect) -> (Rect
                 };
                 let items = playlists
                     .into_iter()
-                    .map(|p| (p.name.clone(), false))
+                    .map(|p| (p.to_string(), false))
                     .collect();
 
                 let rect = render_list_popup(frame, rect, "User Playlists", items, 10, ui);
@@ -107,7 +107,7 @@ pub fn render_popup(frame: &mut Frame, state: &SharedState, rect: Rect) -> (Rect
                     .user_data
                     .followed_artists
                     .iter()
-                    .map(|a| (a.name.clone(), false))
+                    .map(|a| (a.to_string(), false))
                     .collect();
 
                 let rect = render_list_popup(frame, rect, "User Followed Artists", items, 7, ui);
@@ -120,14 +120,14 @@ pub fn render_popup(frame: &mut Frame, state: &SharedState, rect: Rect) -> (Rect
                     .user_data
                     .saved_albums
                     .iter()
-                    .map(|a| (a.name.clone(), false))
+                    .map(|a| (a.to_string(), false))
                     .collect();
 
                 let rect = render_list_popup(frame, rect, "User Saved Albums", items, 7, ui);
                 (rect, false)
             }
             PopupState::ArtistList(artists, ..) => {
-                let items = artists.iter().map(|a| (a.name.clone(), false)).collect();
+                let items = artists.iter().map(|a| (a.to_string(), false)).collect();
 
                 let rect = render_list_popup(frame, rect, "Artists", items, 5, ui);
                 (rect, false)
