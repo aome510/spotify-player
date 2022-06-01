@@ -149,15 +149,10 @@ fn render_playback_window(frame: &mut Frame, state: &SharedState, rect: Rect) ->
             let playback_info = vec![
                 Span::styled(
                     format!(
-                        "{}  {} by {}",
+                        "{} {} • {}",
                         if !playback.is_playing { "⏸" } else { "▶" },
                         track.name,
-                        track
-                            .artists
-                            .iter()
-                            .map(|a| a.name.clone())
-                            .collect::<Vec<_>>()
-                            .join(","),
+                        utils::map_join(&track.artists, |a| &a.name, ", ")
                     ),
                     ui.theme.playback_track(),
                 )

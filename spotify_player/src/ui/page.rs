@@ -25,7 +25,7 @@ pub fn render_search_page(
             .map(|s| {
                 s.tracks
                     .iter()
-                    .map(|a| (format!("{} - {}", a.name, a.artists_info()), false))
+                    .map(|a| (format!("{} • {}", a.name, a.artists_info()), false))
                     .collect::<Vec<_>>()
             })
             .unwrap_or_default();
@@ -46,7 +46,7 @@ pub fn render_search_page(
             .map(|s| {
                 s.albums
                     .iter()
-                    .map(|a| (a.name.clone(), false))
+                    .map(|a| (a.to_string(), false))
                     .collect::<Vec<_>>()
             })
             .unwrap_or_default();
@@ -67,7 +67,7 @@ pub fn render_search_page(
             .map(|s| {
                 s.artists
                     .iter()
-                    .map(|a| (a.name.clone(), false))
+                    .map(|a| (a.to_string(), false))
                     .collect::<Vec<_>>()
             })
             .unwrap_or_default();
@@ -88,7 +88,7 @@ pub fn render_search_page(
             .map(|s| {
                 s.playlists
                     .iter()
-                    .map(|a| (a.name.clone(), false))
+                    .map(|a| (a.to_string(), false))
                     .collect::<Vec<_>>()
             })
             .unwrap_or_default();
@@ -273,8 +273,8 @@ pub fn render_library_page(
         .constraints(
             [
                 Constraint::Percentage(40),
-                Constraint::Percentage(30),
-                Constraint::Percentage(30),
+                Constraint::Percentage(40),
+                Constraint::Percentage(20),
             ]
             .as_ref(),
         )
@@ -286,7 +286,7 @@ pub fn render_library_page(
         &ui.theme,
         ui.search_filtered_items(&data.user_data.playlists)
             .into_iter()
-            .map(|p| (p.name.clone(), false))
+            .map(|p| (p.to_string(), false))
             .collect(),
         "Playlists",
         is_active && focus_state == LibraryFocusState::Playlists,
@@ -297,7 +297,7 @@ pub fn render_library_page(
         &ui.theme,
         ui.search_filtered_items(&data.user_data.saved_albums)
             .into_iter()
-            .map(|a| (a.name.clone(), false))
+            .map(|a| (a.to_string(), false))
             .collect(),
         "Albums",
         is_active && focus_state == LibraryFocusState::SavedAlbums,
@@ -308,7 +308,7 @@ pub fn render_library_page(
         &ui.theme,
         ui.search_filtered_items(&data.user_data.followed_artists)
             .into_iter()
-            .map(|a| (a.name.clone(), false))
+            .map(|a| (a.to_string(), false))
             .collect(),
         "Artists",
         is_active && focus_state == LibraryFocusState::FollowedArtists,

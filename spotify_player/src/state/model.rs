@@ -308,16 +308,6 @@ impl Track {
             .unwrap_or_default()
     }
 
-    /// gets the track information
-    pub fn track_info(&self) -> String {
-        format!(
-            "{} {} {}",
-            self.name,
-            self.artists_info(),
-            self.album_info(),
-        )
-    }
-
     /// tries to convert from a `rspotify_model::SimplifiedTrack` into `Track`
     pub fn try_from_simplified_track(track: rspotify_model::SimplifiedTrack) -> Option<Self> {
         Some(Self {
@@ -345,7 +335,13 @@ impl Track {
 
 impl std::fmt::Display for Track {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.track_info())
+        write!(
+            f,
+            "{} • {} ▎ {}",
+            self.name,
+            self.artists_info(),
+            self.album_info(),
+        )
     }
 }
 
@@ -374,7 +370,12 @@ impl From<rspotify_model::FullAlbum> for Album {
 
 impl std::fmt::Display for Album {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.name)
+        write!(
+            f,
+            "{} • {}",
+            self.name,
+            map_join(&self.artists, |a| &a.name, ", ")
+        )
     }
 }
 
@@ -442,6 +443,6 @@ impl From<rspotify_model::FullPlaylist> for Playlist {
 
 impl std::fmt::Display for Playlist {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.name)
+        write!(f, "{} • {}", self.name, self.owner.0)
     }
 }
