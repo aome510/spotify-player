@@ -204,16 +204,24 @@ fn render_playback_window(frame: &mut Frame, state: &SharedState, rect: Rect) ->
 
                     if let Some(url) = utils::get_track_album_image_url(track) {
                         if let Some(image) = state.data.read().caches.images.peek(url) {
-                            viuer::print(
-                                image,
-                                &viuer::Config {
-                                    x: chunks[0].x,
-                                    y: chunks[0].y as i16,
-                                    width: Some(chunks[0].width as u32),
-                                    height: Some(chunks[0].height as u32),
-                                    ..Default::default()
-                                },
-                            )?;
+                            let url = Some(url.to_string());
+
+                            // Try to not render the same image multiple times.
+                            // Rendering images on the terminal is expensive...
+                            if ui.last_rendered_cover_image_url != url {
+                                viuer::print(
+                                    image,
+                                    &viuer::Config {
+                                        x: chunks[0].x,
+                                        y: chunks[0].y as i16,
+                                        width: Some(chunks[0].width as u32),
+                                        height: Some(chunks[0].height as u32),
+                                        ..Default::default()
+                                    },
+                                )?;
+
+                                ui.last_rendered_cover_image_url = url;
+                            }
                         }
                     }
 

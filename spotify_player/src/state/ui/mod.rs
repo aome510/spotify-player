@@ -21,6 +21,9 @@ pub struct UIState {
     /// The rectangle representing the playback progress bar,
     /// which is mainly used to handle mouse click events (for seeking command)
     pub playback_progress_bar_rect: tui::layout::Rect,
+
+    #[cfg(feature = "cover")]
+    pub last_rendered_cover_image_url: Option<String>,
 }
 
 impl UIState {
@@ -79,6 +82,9 @@ impl Default for UIState {
             popup: None,
 
             playback_progress_bar_rect: tui::layout::Rect::default(),
+
+            #[cfg(feature = "cover")]
+            last_rendered_cover_image_url: None,
         }
     }
 }
