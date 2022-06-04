@@ -827,25 +827,25 @@ impl Client {
                 .and_then(|t| utils::get_track_album_image_url(t).map(|u| u.to_string()));
 
             if let Some(url) = url {
-                tracing::info!("Retrieving an image from url: {url}");
-
-                // Get the image from a url
-                let image = {
-                    let image_bytes = self
-                        .http
-                        .get(&url)
-                        .send()
-                        .await
-                        .context(format!("Failed to get image data from url {url}"))?
-                        .bytes()
-                        .await?;
-
-                    image::load_from_memory(&image_bytes)
-                        .context("Failed to load image from memory")?
-                };
-
-                // Update the caches, so we don't have to make the same request many times.
                 if !state.data.read().caches.images.contains(&url) {
+                    tracing::info!("Retrieving an image from url: {url}");
+
+                    // Get the image from a url
+                    let image = {
+                        let image_bytes = self
+                            .http
+                            .get(&url)
+                            .send()
+                            .await
+                            .context(format!("Failed to get image data from url {url}"))?
+                            .bytes()
+                            .await?;
+
+                        image::load_from_memory(&image_bytes)
+                            .context("Failed to load image from memory")?
+                    };
+
+                    // Update the caches, so we don't have to make the same request multiple times.
                     state.data.write().caches.images.put(url, image);
                 }
             }

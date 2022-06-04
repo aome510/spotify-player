@@ -241,6 +241,10 @@ fn render_playback_window(frame: &mut Frame, state: &SharedState, rect: Rect) ->
             frame.render_widget(progress_bar, progress_bar_rect);
         }
     } else {
+        if ui.last_rendered_cover_image_url.is_some() {
+            frame.render_widget(Clear, chunks[0]);
+            ui.last_rendered_cover_image_url = None;
+        }
         frame.render_widget(
             Paragraph::new(
                 "No playback found. \
