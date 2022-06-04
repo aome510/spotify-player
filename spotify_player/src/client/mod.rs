@@ -6,6 +6,7 @@ use crate::{
     config,
     event::{ClientRequest, PlayerRequest},
     state::*,
+    utils,
 };
 use anyhow::{Context as AnyhowContext, Result};
 use librespot_core::session::Session;
@@ -810,9 +811,46 @@ impl Client {
     /// updates the current playback state
     pub async fn update_current_playback_state(&self, state: &SharedState) -> Result<()> {
         let playback = self.spotify.current_playback(None, None::<Vec<_>>).await?;
-        let mut player = state.player.write();
-        player.playback = playback;
-        player.playback_last_updated = Some(std::time::Instant::now());
+        {
+            let mut player = state.player.write();
+
+            player.playback = playback;
+            player.playback_last_updated = Some(std::time::Instant::now());
+        }
+
+        #[cfg(feature = "cover")]
+        {
+            let url = state
+                .player
+                .read()
+                .current_playing_track()
+                .and_then(|t| utils::get_track_album_image_url(t).map(|u| u.to_string()));
+
+            if let Some(url) = url {
+                tracing::info!("Retrieving an image from url: {url}");
+
+                // Get the image from a url
+                let image = {
+                    let image_bytes = self
+                        .http
+                        .get(&url)
+                        .send()
+                        .await
+                        .context(format!("Failed to get image data from url {url}"))?
+                        .bytes()
+                        .await?;
+
+                    image::load_from_memory(&image_bytes)
+                        .context("Failed to load image from memory")?
+                };
+
+                // Update the caches, so we don't have to make the same request many times.
+                if !state.data.read().caches.images.contains(&url) {
+                    state.data.write().caches.images.put(url, image);
+                }
+            }
+        }
+
         Ok(())
     }
 
