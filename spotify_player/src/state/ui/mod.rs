@@ -18,9 +18,9 @@ pub struct UIState {
     pub history: Vec<PageState>,
     pub popup: Option<PopupState>,
 
-    // the rectangle representing the player's progress bar position,
-    // which is mainly used to handle mouse click events (for track seeking)
-    pub progress_bar_rect: tui::layout::Rect,
+    /// The rectangle representing the playback progress bar,
+    /// which is mainly used to handle mouse click events (for seeking command)
+    pub playback_progress_bar_rect: tui::layout::Rect,
 }
 
 impl UIState {
@@ -78,7 +78,7 @@ impl Default for UIState {
             }],
             popup: None,
 
-            progress_bar_rect: tui::layout::Rect::default(),
+            playback_progress_bar_rect: tui::layout::Rect::default(),
         }
     }
 }
