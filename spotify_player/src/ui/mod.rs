@@ -81,7 +81,7 @@ fn render_main_layout(
 ) -> Result<()> {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Length(7), Constraint::Min(0)].as_ref())
+        .constraints([Constraint::Length(8), Constraint::Min(0)].as_ref())
         .split(rect);
     render_playback_window(frame, state, chunks[0])?;
 
@@ -173,7 +173,6 @@ fn render_playback_window(frame: &mut Frame, state: &SharedState, rect: Rect) ->
 
             let playback_desc = Paragraph::new(playback_info)
                 .wrap(Wrap { trim: true })
-                // .style(theme.text_desc_style())
                 .block(Block::default());
             let progress = std::cmp::min(
                 player
@@ -194,10 +193,44 @@ fn render_playback_window(frame: &mut Frame, state: &SharedState, rect: Rect) ->
                     Style::default().add_modifier(Modifier::BOLD),
                 ));
 
-            ui.progress_bar_rect = chunks[1];
+            let metadata_rect = {
+                #[cfg(feature = "cover")]
+                {
+                    // Render the track's cover image if `cover` feature is enabled
+                    let chunks = Layout::default()
+                        .direction(Direction::Horizontal)
+                        .constraints([Constraint::Length(10), Constraint::Min(0)].as_ref())
+                        .split(chunks[0]);
 
-            frame.render_widget(playback_desc, chunks[0]);
-            frame.render_widget(progress_bar, chunks[1]);
+                    if let Some(url) = utils::get_track_album_image_url(track) {
+                        if let Some(image) = state.data.read().caches.images.peek(url) {
+                            viuer::print(
+                                image,
+                                &viuer::Config {
+                                    x: chunks[0].x,
+                                    y: chunks[0].y as i16,
+                                    width: Some(chunks[0].width as u32),
+                                    height: Some(chunks[0].height as u32),
+                                    ..Default::default()
+                                },
+                            )?;
+                        }
+                    }
+
+                    chunks[1]
+                }
+
+                #[cfg(not(feature = "cover"))]
+                {
+                    chunks[0]
+                }
+            };
+            let progress_bar_rect = chunks[1];
+
+            ui.playback_progress_bar_rect = progress_bar_rect;
+
+            frame.render_widget(playback_desc, metadata_rect);
+            frame.render_widget(progress_bar, progress_bar_rect);
         }
     } else {
         frame.render_widget(
