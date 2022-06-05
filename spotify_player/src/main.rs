@@ -85,6 +85,10 @@ async fn init_spotify(
         }
     }
 
+    client_pub
+        .send(event::ClientRequest::GetCurrentPlayback)
+        .await?;
+
     // request user data
     client_pub
         .send(event::ClientRequest::GetCurrentUser)
