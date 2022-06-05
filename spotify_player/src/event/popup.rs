@@ -158,6 +158,12 @@ pub fn handle_key_sequence_for_popup(
                 ui,
                 n_items,
                 |ui: &mut UIStateGuard, id: usize| {
+                    #[cfg(feature = "cover")]
+                    {
+                        // Changing the theme also clear the previously rendered image,
+                        // so we need to re-render it by reseting the below variable.
+                        ui.last_rendered_cover_image_url = String::new();
+                    }
                     ui.theme = match ui.popup {
                         Some(PopupState::ThemeList(ref themes, _)) => themes[id].clone(),
                         _ => return,
@@ -168,6 +174,12 @@ pub fn handle_key_sequence_for_popup(
                     Ok(())
                 },
                 |ui: &mut UIStateGuard| {
+                    #[cfg(feature = "cover")]
+                    {
+                        // Changing the theme also clear the previously rendered image,
+                        // so we need to re-render it by reseting the below variable.
+                        ui.last_rendered_cover_image_url = String::new();
+                    }
                     ui.theme = match ui.popup {
                         Some(PopupState::ThemeList(ref themes, _)) => themes[0].clone(),
                         _ => return,
