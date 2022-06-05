@@ -202,28 +202,16 @@ fn render_playback_window(frame: &mut Frame, state: &SharedState, rect: Rect) ->
                         .constraints([Constraint::Length(10), Constraint::Min(0)].as_ref())
                         .split(chunks[0]);
 
-                    if let Some(url) = utils::get_track_album_image_url(track) {
-                        if let Some(image) = state.data.read().caches.images.peek(url) {
-                            let url = Some(url.to_string());
+                    // Needs to render the image in a separate thread because
+                    // rendering image is expensive and can block the UI.
+                    tokio::task::spawn_blocking({
+                        let state = state.clone();
+                        let rect = chunks[0];
 
-                            // Try to not render the same image multiple times.
-                            // Rendering images on the terminal is expensive...
-                            if ui.last_rendered_cover_image_url != url {
-                                viuer::print(
-                                    image,
-                                    &viuer::Config {
-                                        x: chunks[0].x,
-                                        y: chunks[0].y as i16,
-                                        width: Some(chunks[0].width as u32),
-                                        height: Some(chunks[0].height as u32),
-                                        ..Default::default()
-                                    },
-                                )?;
-
-                                ui.last_rendered_cover_image_url = url;
-                            }
+                        move || {
+                            render_track_cover_image(&state, rect);
                         }
-                    }
+                    });
 
                     chunks[1]
                 }
@@ -241,10 +229,14 @@ fn render_playback_window(frame: &mut Frame, state: &SharedState, rect: Rect) ->
             frame.render_widget(progress_bar, progress_bar_rect);
         }
     } else {
-        if ui.last_rendered_cover_image_url.is_some() {
+        // Previously rendered image can result in weird rendering text,
+        // clear the widget area before rendering the text.
+        #[cfg(feature = "cover")]
+        if !ui.last_rendered_cover_image_url.is_empty() {
             frame.render_widget(Clear, chunks[0]);
-            ui.last_rendered_cover_image_url = None;
+            ui.last_rendered_cover_image_url = String::new();
         }
+
         frame.render_widget(
             Paragraph::new(
                 "No playback found. \
@@ -257,4 +249,36 @@ fn render_playback_window(frame: &mut Frame, state: &SharedState, rect: Rect) ->
     };
 
     Ok(())
+}
+
+fn render_track_cover_image(state: &SharedState, rect: Rect) {
+    let url = state
+        .player
+        .read()
+        .current_playing_track_album_cover_url()
+        .map(String::from);
+
+    if let Some(url) = url {
+        if let Some(image) = state.data.read().caches.images.peek(&url) {
+            // Try to not render the same image multiple times.
+            // Rendering images on the terminal is expensive...
+            if state.ui.lock().last_rendered_cover_image_url != url {
+                state.ui.lock().last_rendered_cover_image_url = url;
+                if let Err(err) = viuer::print(
+                    image,
+                    &viuer::Config {
+                        x: rect.x,
+                        y: rect.y as i16,
+                        width: Some(rect.width as u32),
+                        height: Some(rect.height as u32),
+                        ..Default::default()
+                    },
+                ) {
+                    tracing::error!("Failed to render the image: {err}",);
+                    // Something goes wrong, maybe we should try to render the image again
+                    state.ui.lock().last_rendered_cover_image_url = String::new();
+                }
+            }
+        }
+    }
 }

@@ -1,3 +1,5 @@
+use crate::utils;
+
 use super::model::*;
 
 /// Player state
@@ -29,6 +31,12 @@ impl PlayerState {
                 _ => None,
             },
         }
+    }
+
+    /// gets the current playing track's album cover URL
+    pub fn current_playing_track_album_cover_url(&self) -> Option<&str> {
+        self.current_playing_track()
+            .and_then(utils::get_track_album_image_url)
     }
 
     /// gets the current playback progress

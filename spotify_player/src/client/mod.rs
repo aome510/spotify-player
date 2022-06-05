@@ -6,7 +6,6 @@ use crate::{
     config,
     event::{ClientRequest, PlayerRequest},
     state::*,
-    utils,
 };
 use anyhow::{Context as AnyhowContext, Result};
 use librespot_core::session::Session;
@@ -823,8 +822,8 @@ impl Client {
             let url = state
                 .player
                 .read()
-                .current_playing_track()
-                .and_then(|t| utils::get_track_album_image_url(t).map(|u| u.to_string()));
+                .current_playing_track_album_cover_url()
+                .map(String::from);
 
             if let Some(url) = url {
                 if !state.data.read().caches.images.contains(&url) {
