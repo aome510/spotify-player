@@ -22,6 +22,8 @@ pub struct AppConfig {
     pub client_id: String,
     pub app_refresh_duration_in_ms: u64,
     pub playback_refresh_duration_in_ms: u64,
+    #[cfg(feature = "cover")]
+    pub cover_image_refresh_duration_in_ms: u64,
     pub track_table_item_max_len: usize,
     #[cfg(feature = "media-control")]
     pub enable_media_control: bool,
@@ -61,6 +63,9 @@ impl Default for AppConfig {
             #[cfg(feature = "media-control")]
             #[cfg(target_os = "linux")]
             enable_media_control: true,
+
+            #[cfg(feature = "cover")]
+            cover_image_refresh_duration_in_ms: 1000,
 
             default_device: "spotify-player".to_string(),
 

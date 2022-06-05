@@ -229,13 +229,13 @@ fn render_playback_window(frame: &mut Frame, state: &SharedState, rect: Rect) ->
             frame.render_widget(progress_bar, progress_bar_rect);
         }
     } else {
-        // Previously rendered image can result in weird rendering text,
-        // clear the widget area before rendering the text.
-        #[cfg(feature = "cover")]
-        if !ui.last_rendered_cover_image_url.is_empty() {
-            frame.render_widget(Clear, chunks[0]);
-            ui.last_rendered_cover_image_url = String::new();
-        }
+        // // Previously rendered image can result in weird rendering text,
+        // // clear the widget area before rendering the text.
+        // #[cfg(feature = "cover")]
+        // if !ui.last_rendered_cover_image_url.is_empty() {
+        //     frame.render_widget(Clear, chunks[0]);
+        //     ui.last_rendered_cover_image_url = String::new();
+        // }
 
         frame.render_widget(
             Paragraph::new(
@@ -251,7 +251,22 @@ fn render_playback_window(frame: &mut Frame, state: &SharedState, rect: Rect) ->
     Ok(())
 }
 
+#[cfg(feature = "cover")]
 fn render_track_cover_image(state: &SharedState, rect: Rect) {
+    let cover_image_refresh_duration =
+        std::time::Duration::from_millis(state.app_config.cover_image_refresh_duration_in_ms);
+    let cover_image_last_render_time = state.ui.lock().last_cover_image_render_time;
+
+    if std::time::SystemTime::now()
+        .duration_since(cover_image_last_render_time)
+        .expect("`cover_image_last_render_time` must be in the past")
+        < cover_image_refresh_duration
+    {
+        return;
+    }
+
+    state.ui.lock().last_cover_image_render_time = std::time::SystemTime::now();
+
     let url = state
         .player
         .read()
@@ -260,24 +275,17 @@ fn render_track_cover_image(state: &SharedState, rect: Rect) {
 
     if let Some(url) = url {
         if let Some(image) = state.data.read().caches.images.peek(&url) {
-            // Try to not render the same image multiple times.
-            // Rendering images on the terminal is expensive...
-            if state.ui.lock().last_rendered_cover_image_url != url {
-                state.ui.lock().last_rendered_cover_image_url = url;
-                if let Err(err) = viuer::print(
-                    image,
-                    &viuer::Config {
-                        x: rect.x,
-                        y: rect.y as i16,
-                        width: Some(rect.width as u32),
-                        height: Some(rect.height as u32),
-                        ..Default::default()
-                    },
-                ) {
-                    tracing::error!("Failed to render the image: {err}",);
-                    // Something goes wrong, maybe we should try to render the image again
-                    state.ui.lock().last_rendered_cover_image_url = String::new();
-                }
+            if let Err(err) = viuer::print(
+                image,
+                &viuer::Config {
+                    x: rect.x,
+                    y: rect.y as i16,
+                    width: Some(rect.width as u32),
+                    height: Some(rect.height as u32),
+                    ..Default::default()
+                },
+            ) {
+                tracing::error!("Failed to render the image: {err}",);
             }
         }
     }
