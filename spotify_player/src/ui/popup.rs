@@ -41,7 +41,7 @@ pub fn render_popup(frame: &mut Frame, state: &SharedState, rect: Rect) -> (Rect
             PopupState::CommandHelp { .. } => {
                 let chunks = Layout::default()
                     .direction(Direction::Vertical)
-                    .constraints([Constraint::Length(7), Constraint::Min(0)].as_ref())
+                    .constraints([Constraint::Length(8), Constraint::Min(0)].as_ref())
                     .split(rect);
 
                 render_commands_help_popup(frame, state, ui, chunks[1]);

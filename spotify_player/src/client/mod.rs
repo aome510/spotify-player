@@ -814,7 +814,7 @@ impl Client {
             let mut player = state.player.write();
 
             player.playback = playback;
-            player.playback_last_updated = Some(std::time::Instant::now());
+            player.playback_last_updated_time = Some(std::time::Instant::now());
         }
 
         #[cfg(feature = "cover")]

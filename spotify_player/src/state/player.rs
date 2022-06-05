@@ -8,7 +8,7 @@ pub struct PlayerState {
     pub devices: Vec<Device>,
 
     pub playback: Option<rspotify_model::CurrentPlaybackContext>,
-    pub playback_last_updated: Option<std::time::Instant>,
+    pub playback_last_updated_time: Option<std::time::Instant>,
 }
 
 impl PlayerState {
@@ -46,8 +46,7 @@ impl PlayerState {
             Some(ref playback) => {
                 let progress = playback.progress.unwrap()
                     + if playback.is_playing {
-                        std::time::Instant::now()
-                            .saturating_duration_since(self.playback_last_updated.unwrap())
+                        self.playback_last_updated_time.unwrap().elapsed()
                     } else {
                         // zero duration
                         std::time::Duration::default()

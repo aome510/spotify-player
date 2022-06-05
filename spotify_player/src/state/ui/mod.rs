@@ -23,7 +23,7 @@ pub struct UIState {
     pub playback_progress_bar_rect: tui::layout::Rect,
 
     #[cfg(feature = "cover")]
-    pub last_cover_image_render_time: std::time::SystemTime,
+    pub last_cover_image_render_time: std::time::Instant,
 }
 
 impl UIState {
@@ -84,7 +84,7 @@ impl Default for UIState {
             playback_progress_bar_rect: tui::layout::Rect::default(),
 
             #[cfg(feature = "cover")]
-            last_cover_image_render_time: std::time::SystemTime::now(),
+            last_cover_image_render_time: std::time::Instant::now(),
         }
     }
 }

@@ -257,15 +257,11 @@ fn render_track_cover_image(state: &SharedState, rect: Rect) {
         std::time::Duration::from_millis(state.app_config.cover_image_refresh_duration_in_ms);
     let cover_image_last_render_time = state.ui.lock().last_cover_image_render_time;
 
-    if std::time::SystemTime::now()
-        .duration_since(cover_image_last_render_time)
-        .expect("`cover_image_last_render_time` must be in the past")
-        < cover_image_refresh_duration
-    {
+    if cover_image_last_render_time.elapsed() < cover_image_refresh_duration {
         return;
     }
 
-    state.ui.lock().last_cover_image_render_time = std::time::SystemTime::now();
+    state.ui.lock().last_cover_image_render_time = std::time::Instant::now();
 
     let url = state
         .player
