@@ -199,7 +199,14 @@ fn render_playback_window(frame: &mut Frame, state: &SharedState, rect: Rect) ->
                     // Render the track's cover image if `cover` feature is enabled
                     let chunks = Layout::default()
                         .direction(Direction::Horizontal)
-                        .constraints([Constraint::Length(10), Constraint::Min(0)].as_ref())
+                        .constraints(
+                            [
+                                Constraint::Length(9),
+                                Constraint::Length(1), // a margin of 1 between the cover image widget and track's metadata widget
+                                Constraint::Min(0),
+                            ]
+                            .as_ref(),
+                        )
                         .split(chunks[0]);
 
                     // Needs to render the image in a separate thread because
@@ -213,7 +220,7 @@ fn render_playback_window(frame: &mut Frame, state: &SharedState, rect: Rect) ->
                         }
                     });
 
-                    chunks[1]
+                    chunks[2]
                 }
 
                 #[cfg(not(feature = "cover"))]
