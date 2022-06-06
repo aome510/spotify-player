@@ -209,16 +209,7 @@ fn render_playback_window(frame: &mut Frame, state: &SharedState, rect: Rect) ->
                         )
                         .split(chunks[0]);
 
-                    // Needs to render the image in a separate thread because
-                    // rendering image is expensive and can block the UI.
-                    tokio::task::spawn_blocking({
-                        let state = state.clone();
-                        let rect = chunks[0];
-
-                        move || {
-                            render_track_cover_image(&state, rect);
-                        }
-                    });
+                    render_track_cover_image(frame, state, &mut ui, chunks[0]);
 
                     chunks[2]
                 }
@@ -259,7 +250,12 @@ fn render_playback_window(frame: &mut Frame, state: &SharedState, rect: Rect) ->
 }
 
 #[cfg(feature = "cover")]
-fn render_track_cover_image(state: &SharedState, rect: Rect) {
+fn render_track_cover_image(
+    _frame: &mut Frame,
+    state: &SharedState,
+    ui: &mut UIStateGuard,
+    rect: Rect,
+) {
     let url = state
         .player
         .read()
@@ -267,41 +263,52 @@ fn render_track_cover_image(state: &SharedState, rect: Rect) {
         .map(String::from);
 
     if let Some(url) = url {
-        if state.ui.lock().last_rendered_cover_image_url == url
+        if ui.last_rendered_cover_image_url == url
             || !state.data.read().caches.images.contains(&url)
         {
             return;
         }
-        state.ui.lock().last_rendered_cover_image_url = url.clone();
+        ui.last_rendered_cover_image_url = url.clone();
 
-        let fail = {
-            let data = state.data.read();
-            let image = data
-                .caches
-                .images
-                .peek(&url)
-                .expect("the `contains` check has already been done");
+        // clear the rendering area for rendering new image
+        // frame.render_widget(Clear, rect);
 
-            if let Err(err) = viuer::print(
-                image,
-                &viuer::Config {
-                    x: rect.x,
-                    y: rect.y as i16,
-                    width: Some(rect.width as u32),
-                    height: Some(rect.height as u32),
-                    ..Default::default()
-                },
-            ) {
-                tracing::error!("Failed to render the image: {err}",);
-                true
-            } else {
-                false
+        // Needs to render the image in a separate thread because
+        // rendering image is expensive and can block the UI.
+        tokio::task::spawn_blocking({
+            let state = state.clone();
+
+            move || {
+                let fail = {
+                    let data = state.data.read();
+                    let image = data
+                        .caches
+                        .images
+                        .peek(&url)
+                        .expect("the `contains` check has already been done");
+
+                    if let Err(err) = viuer::print(
+                        image,
+                        &viuer::Config {
+                            x: rect.x,
+                            y: rect.y as i16,
+                            width: Some(rect.width as u32),
+                            height: Some(rect.height as u32),
+                            ..Default::default()
+                        },
+                    ) {
+                        tracing::error!("Failed to render the image: {err}",);
+                        true
+                    } else {
+                        false
+                    }
+                };
+
+                if fail {
+                    // Something goes wrong, maybe we should try to re-render the image
+                    state.ui.lock().last_rendered_cover_image_url = String::new();
+                }
             }
-        };
-
-        if fail {
-            // Something goes wrong, maybe we should try to re-render the image
-            state.ui.lock().last_rendered_cover_image_url = String::new();
-        }
+        });
     }
 }
