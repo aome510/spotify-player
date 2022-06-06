@@ -270,45 +270,30 @@ fn render_track_cover_image(
         }
         ui.last_rendered_cover_image_url = url.clone();
 
-        // clear the rendering area for rendering new image
-        // frame.render_widget(Clear, rect);
+        let fail = {
+            let data = state.data.read();
+            let image = data.caches.images.peek(&url).unwrap();
 
-        // Needs to render the image in a separate thread because
-        // rendering image is expensive and can block the UI.
-        tokio::task::spawn_blocking({
-            let state = state.clone();
-
-            move || {
-                let fail = {
-                    let data = state.data.read();
-                    let image = data
-                        .caches
-                        .images
-                        .peek(&url)
-                        .expect("the `contains` check has already been done");
-
-                    if let Err(err) = viuer::print(
-                        image,
-                        &viuer::Config {
-                            x: rect.x,
-                            y: rect.y as i16,
-                            width: Some(rect.width as u32),
-                            height: Some(rect.height as u32),
-                            ..Default::default()
-                        },
-                    ) {
-                        tracing::error!("Failed to render the image: {err}",);
-                        true
-                    } else {
-                        false
-                    }
-                };
-
-                if fail {
-                    // Something goes wrong, maybe we should try to re-render the image
-                    state.ui.lock().last_rendered_cover_image_url = String::new();
-                }
+            if let Err(err) = viuer::print(
+                image,
+                &viuer::Config {
+                    x: rect.x,
+                    y: rect.y as i16,
+                    width: Some(rect.width as u32),
+                    height: Some(rect.height as u32),
+                    ..Default::default()
+                },
+            ) {
+                tracing::error!("Failed to render the image: {err}",);
+                true
+            } else {
+                false
             }
-        });
+        };
+
+        if fail {
+            // Something goes wrong, maybe we should try to re-render the image
+            ui.last_rendered_cover_image_url = String::new();
+        }
     }
 }
