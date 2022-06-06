@@ -229,13 +229,13 @@ fn render_playback_window(frame: &mut Frame, state: &SharedState, rect: Rect) ->
             frame.render_widget(progress_bar, progress_bar_rect);
         }
     } else {
-        // // Previously rendered image can result in weird rendering text,
-        // // clear the widget area before rendering the text.
-        // #[cfg(feature = "cover")]
-        // if !ui.last_rendered_cover_image_url.is_empty() {
-        //     frame.render_widget(Clear, chunks[0]);
-        //     ui.last_rendered_cover_image_url = String::new();
-        // }
+        // Previously rendered image can result in weird rendering text,
+        // clear the widget area before rendering the text.
+        #[cfg(feature = "cover")]
+        if !ui.last_rendered_cover_image_url.is_empty() {
+            frame.render_widget(Clear, chunks[0]);
+            ui.last_rendered_cover_image_url = String::new();
+        }
 
         frame.render_widget(
             Paragraph::new(
@@ -253,16 +253,6 @@ fn render_playback_window(frame: &mut Frame, state: &SharedState, rect: Rect) ->
 
 #[cfg(feature = "cover")]
 fn render_track_cover_image(state: &SharedState, rect: Rect) {
-    let cover_image_refresh_duration =
-        std::time::Duration::from_millis(state.app_config.cover_image_refresh_duration_in_ms);
-    let cover_image_last_render_time = state.ui.lock().last_cover_image_render_time;
-
-    if cover_image_last_render_time.elapsed() < cover_image_refresh_duration {
-        return;
-    }
-
-    state.ui.lock().last_cover_image_render_time = std::time::Instant::now();
-
     let url = state
         .player
         .read()
@@ -270,7 +260,21 @@ fn render_track_cover_image(state: &SharedState, rect: Rect) {
         .map(String::from);
 
     if let Some(url) = url {
-        if let Some(image) = state.data.read().caches.images.peek(&url) {
+        if state.ui.lock().last_rendered_cover_image_url == url
+            || !state.data.read().caches.images.contains(&url)
+        {
+            return;
+        }
+        state.ui.lock().last_rendered_cover_image_url = url.clone();
+
+        let fail = {
+            let data = state.data.read();
+            let image = data
+                .caches
+                .images
+                .peek(&url)
+                .expect("the `contains` check has already been done");
+
             if let Err(err) = viuer::print(
                 image,
                 &viuer::Config {
@@ -282,7 +286,15 @@ fn render_track_cover_image(state: &SharedState, rect: Rect) {
                 },
             ) {
                 tracing::error!("Failed to render the image: {err}",);
+                true
+            } else {
+                false
             }
+        };
+
+        if fail {
+            // Something goes wrong, maybe we should try to re-render the image
+            state.ui.lock().last_rendered_cover_image_url = String::new();
         }
     }
 }
