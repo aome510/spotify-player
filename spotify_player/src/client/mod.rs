@@ -187,7 +187,7 @@ impl Client {
                             if let Err(err) = client.update_current_playback_state(&state).await {
                                 tracing::error!("Failed to refresh the player's playback: {err:#}");
                             }
-                            #[cfg(feature = "cover")]
+                            #[cfg(feature = "image")]
                             if let Err(err) = client.get_current_track_cover_image(&state).await {
                                 tracing::error!(
                                     "Failed to get the current track's cover image: {err:#}"
@@ -201,7 +201,7 @@ impl Client {
             }
             ClientRequest::GetCurrentPlayback => {
                 self.update_current_playback_state(state).await?;
-                #[cfg(feature = "cover")]
+                #[cfg(feature = "image")]
                 self.get_current_track_cover_image(state).await?;
             }
             ClientRequest::GetDevices => {
@@ -826,7 +826,7 @@ impl Client {
         Ok(())
     }
 
-    #[cfg(feature = "cover")]
+    #[cfg(feature = "image")]
     pub async fn get_current_track_cover_image(&self, state: &SharedState) -> Result<()> {
         let url = state
             .player

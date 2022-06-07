@@ -54,6 +54,6 @@ gstreamer-backend = ["streaming", "librespot-playback/gstreamer-backend"]
 streaming = ["librespot-playback", "librespot-connect"]
 lyric-finder = ["lyric_finder"]
 media-control = ["souvlaki", "winit"]
-cover = ["viuer", "image"]
+image = ["viuer", "dep:image"]
 
-default = ["rodio-backend", "lyric-finder", "media-control", "cover"]
+default = ["rodio-backend", "lyric-finder", "media-control", "image"]

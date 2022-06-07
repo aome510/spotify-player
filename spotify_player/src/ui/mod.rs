@@ -194,9 +194,9 @@ fn render_playback_window(frame: &mut Frame, state: &SharedState, rect: Rect) ->
                 ));
 
             let metadata_rect = {
-                #[cfg(feature = "cover")]
+                #[cfg(feature = "image")]
                 {
-                    // Render the track's cover image if `cover` feature is enabled
+                    // Render the track's cover image if `image` feature is enabled
                     let chunks = Layout::default()
                         .direction(Direction::Horizontal)
                         .constraints(
@@ -215,7 +215,7 @@ fn render_playback_window(frame: &mut Frame, state: &SharedState, rect: Rect) ->
                     chunks[2]
                 }
 
-                #[cfg(not(feature = "cover"))]
+                #[cfg(not(feature = "image"))]
                 {
                     chunks[0]
                 }
@@ -230,7 +230,7 @@ fn render_playback_window(frame: &mut Frame, state: &SharedState, rect: Rect) ->
     } else {
         // Previously rendered image can result in weird rendering text,
         // clear the widget area before rendering the text.
-        #[cfg(feature = "cover")]
+        #[cfg(feature = "image")]
         if !ui.last_rendered_cover_image_url.is_empty() {
             frame.render_widget(Clear, chunks[0]);
             ui.last_rendered_cover_image_url = String::new();
@@ -250,7 +250,7 @@ fn render_playback_window(frame: &mut Frame, state: &SharedState, rect: Rect) ->
     Ok(())
 }
 
-#[cfg(feature = "cover")]
+#[cfg(feature = "image")]
 fn render_track_cover_image(
     _frame: &mut Frame,
     state: &SharedState,

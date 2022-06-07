@@ -158,7 +158,7 @@ pub fn handle_key_sequence_for_popup(
                 ui,
                 n_items,
                 |ui: &mut UIStateGuard, id: usize| {
-                    #[cfg(feature = "cover")]
+                    #[cfg(feature = "image")]
                     {
                         // Changing the theme also clear the previously rendered image,
                         // so we need to re-render it by reseting the below variable.
@@ -174,7 +174,7 @@ pub fn handle_key_sequence_for_popup(
                     Ok(())
                 },
                 |ui: &mut UIStateGuard| {
-                    #[cfg(feature = "cover")]
+                    #[cfg(feature = "image")]
                     {
                         // Changing the theme also clear the previously rendered image,
                         // so we need to re-render it by reseting the below variable.

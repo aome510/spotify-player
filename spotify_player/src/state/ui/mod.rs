@@ -22,7 +22,7 @@ pub struct UIState {
     /// which is mainly used to handle mouse click events (for seeking command)
     pub playback_progress_bar_rect: tui::layout::Rect,
 
-    #[cfg(feature = "cover")]
+    #[cfg(feature = "image")]
     pub last_rendered_cover_image_url: String,
 }
 
@@ -83,7 +83,7 @@ impl Default for UIState {
 
             playback_progress_bar_rect: tui::layout::Rect::default(),
 
-            #[cfg(feature = "cover")]
+            #[cfg(feature = "image")]
             last_rendered_cover_image_url: String::new(),
         }
     }
