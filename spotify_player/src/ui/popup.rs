@@ -18,9 +18,12 @@ const COMMAND_TABLE_CONSTRAINTS: [Constraint; 3] = [
 ///
 /// The function returns a rectangle area to render the main layout
 /// and a boolean `is_active` determining whether the focus is **not** placed on the popup.
-pub fn render_popup(frame: &mut Frame, state: &SharedState, rect: Rect) -> (Rect, bool) {
-    let ui = state.ui.lock();
-
+pub fn render_popup(
+    frame: &mut Frame,
+    state: &SharedState,
+    ui: &mut UIStateGuard,
+    rect: Rect,
+) -> (Rect, bool) {
     match ui.popup {
         None => (rect, true),
         Some(ref popup) => match popup {
@@ -143,7 +146,7 @@ fn render_list_popup(
     title: &str,
     items: Vec<(String, bool)>,
     length: u16,
-    mut ui: UIStateGuard,
+    ui: &mut UIStateGuard,
 ) -> Rect {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -162,8 +165,12 @@ fn render_list_popup(
 }
 
 /// renders a shortcut help popup to show the available shortcuts based on user's inputs
-pub fn render_shortcut_help_popup(frame: &mut Frame, state: &SharedState, rect: Rect) -> Rect {
-    let ui = state.ui.lock();
+pub fn render_shortcut_help_popup(
+    frame: &mut Frame,
+    state: &SharedState,
+    ui: &mut UIStateGuard,
+    rect: Rect,
+) -> Rect {
     let input = &ui.input_key_sequence;
 
     // get the matches (keymaps) from the current key sequence input,
@@ -218,7 +225,7 @@ pub fn render_shortcut_help_popup(frame: &mut Frame, state: &SharedState, rect: 
 pub fn render_commands_help_popup(
     frame: &mut Frame,
     state: &SharedState,
-    mut ui: UIStateGuard,
+    ui: &mut UIStateGuard,
     rect: Rect,
 ) {
     let scroll_offset = match ui.popup {
