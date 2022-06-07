@@ -264,7 +264,6 @@ fn render_track_cover_image(
         {
             return;
         }
-        ui.last_rendered_cover_image_url = url.clone();
 
         let fail = {
             let data = state.data.read();
@@ -290,6 +289,8 @@ fn render_track_cover_image(
         if fail {
             // Something goes wrong, maybe we should try to re-render the image
             ui.last_rendered_cover_image_url = String::new();
+        } else {
+            ui.last_rendered_cover_image_url = url;
         }
     }
 }
