@@ -209,7 +209,8 @@ fn render_playback_window(frame: &mut Frame, state: &SharedState, rect: Rect) ->
                         )
                         .split(chunks[0]);
 
-                    render_track_cover_image(frame, state, &mut ui, chunks[0]);
+                    let url = utils::get_track_album_image_url(track).map(String::from);
+                    render_track_cover_image(frame, state, &mut ui, chunks[0], url);
 
                     chunks[2]
                 }
@@ -255,13 +256,8 @@ fn render_track_cover_image(
     state: &SharedState,
     ui: &mut UIStateGuard,
     rect: Rect,
+    url: Option<String>,
 ) {
-    let url = state
-        .player
-        .read()
-        .current_playing_track_album_cover_url()
-        .map(String::from);
-
     if let Some(url) = url {
         if ui.last_rendered_cover_image_url == url
             || !state.data.read().caches.images.contains(&url)
