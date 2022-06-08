@@ -4,9 +4,9 @@ pub fn render_search_page(
     is_active: bool,
     frame: &mut Frame,
     state: &SharedState,
+    ui: &mut UIStateGuard,
     rect: Rect,
 ) -> Result<()> {
-    let mut ui = state.ui.lock();
     let data = state.data.read();
 
     let (focus_state, current_query, input) = match ui.current_page() {
@@ -160,9 +160,9 @@ pub fn render_context_page(
     is_active: bool,
     frame: &mut Frame,
     state: &SharedState,
+    ui: &mut UIStateGuard,
     rect: Rect,
 ) -> Result<()> {
-    let mut ui = state.ui.lock();
     let (id, context_page_type) = match ui.current_page() {
         PageState::Context {
             id,
@@ -227,7 +227,7 @@ pub fn render_context_page(
                         is_active,
                         state,
                         ui.search_filtered_items(tracks),
-                        &mut ui,
+                        ui,
                     )?;
                 }
                 Context::Album { tracks, .. } => {
@@ -237,7 +237,7 @@ pub fn render_context_page(
                         is_active,
                         state,
                         ui.search_filtered_items(tracks),
-                        &mut ui,
+                        ui,
                     )?;
                 }
             }
@@ -254,9 +254,9 @@ pub fn render_library_page(
     is_active: bool,
     frame: &mut Frame,
     state: &SharedState,
+    ui: &mut UIStateGuard,
     rect: Rect,
 ) -> Result<()> {
-    let mut ui = state.ui.lock();
     let data = state.data.read();
 
     let focus_state = match ui.current_page() {
@@ -336,9 +336,9 @@ pub fn render_tracks_page(
     is_active: bool,
     frame: &mut Frame,
     state: &SharedState,
+    ui: &mut UIStateGuard,
     rect: Rect,
 ) -> Result<()> {
-    let mut ui = state.ui.lock();
     let data = state.data.read();
 
     let (id, title, desc) = match ui.current_page() {
@@ -380,7 +380,7 @@ pub fn render_tracks_page(
         is_active,
         state,
         ui.search_filtered_items(tracks),
-        &mut ui,
+        ui,
     )
 }
 
@@ -389,9 +389,9 @@ pub fn render_lyric_page(
     _is_active: bool,
     frame: &mut Frame,
     state: &SharedState,
+    ui: &mut UIStateGuard,
     rect: Rect,
 ) -> Result<()> {
-    let ui = state.ui.lock();
     let data = state.data.read();
 
     let (track, artists, scroll_offset) = match ui.current_page() {
@@ -457,7 +457,7 @@ fn render_artist_context_page_windows(
     is_active: bool,
     frame: &mut Frame,
     state: &SharedState,
-    mut ui: UIStateGuard,
+    ui: &mut UIStateGuard,
     rect: Rect,
     data: (&[Track], &[Album], &[Artist]),
 ) -> Result<()> {
@@ -489,7 +489,7 @@ fn render_artist_context_page_windows(
             is_active && focus_state == ArtistFocusState::TopTracks,
             state,
             tracks,
-            &mut ui,
+            ui,
         )?;
 
         chunks[1]

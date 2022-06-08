@@ -15,21 +15,24 @@ pub fn run(state: SharedState) -> Result<()> {
     let ui_refresh_duration =
         std::time::Duration::from_millis(state.app_config.app_refresh_duration_in_ms);
     loop {
-        if !state.ui.lock().is_running {
-            clean_up(terminal).context("failed to clean up the application's UI resources")?;
-            std::process::exit(0);
-        }
-
-        if let Err(err) = terminal.draw(|frame| {
-            // set the background and foreground colors for the application
-            let block = Block::default().style(state.ui.lock().theme.app_style());
-            frame.render_widget(block, frame.size());
-
-            if let Err(err) = render_application(frame, &state, frame.size()) {
-                tracing::error!("Failed to render the application: {err:#}");
+        {
+            let mut ui = state.ui.lock();
+            if !ui.is_running {
+                clean_up(terminal).context("failed to clean up the application's UI resources")?;
+                std::process::exit(0);
             }
-        }) {
-            tracing::error!("Failed to draw the application: {err:#}");
+
+            if let Err(err) = terminal.draw(|frame| {
+                // set the background and foreground colors for the application
+                let block = Block::default().style(ui.theme.app_style());
+                frame.render_widget(block, frame.size());
+
+                if let Err(err) = render_application(frame, &state, &mut ui, frame.size()) {
+                    tracing::error!("Failed to render the application: {err:#}");
+                }
+            }) {
+                tracing::error!("Failed to draw the application: {err:#}");
+            }
         }
 
         std::thread::sleep(ui_refresh_duration);
@@ -64,11 +67,16 @@ fn clean_up(mut terminal: Terminal) -> Result<()> {
 }
 
 /// renders the application
-fn render_application(frame: &mut Frame, state: &SharedState, rect: Rect) -> Result<()> {
-    let rect = popup::render_shortcut_help_popup(frame, state, rect);
-    let (rect, is_active) = popup::render_popup(frame, state, rect);
+fn render_application(
+    frame: &mut Frame,
+    state: &SharedState,
+    ui: &mut UIStateGuard,
+    rect: Rect,
+) -> Result<()> {
+    let rect = popup::render_shortcut_help_popup(frame, state, ui, rect);
+    let (rect, is_active) = popup::render_popup(frame, state, ui, rect);
 
-    render_main_layout(is_active, frame, state, rect)?;
+    render_main_layout(is_active, frame, state, ui, rect)?;
     Ok(())
 }
 
@@ -77,22 +85,23 @@ fn render_main_layout(
     is_active: bool,
     frame: &mut Frame,
     state: &SharedState,
+    ui: &mut UIStateGuard,
     rect: Rect,
 ) -> Result<()> {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Length(8), Constraint::Min(0)].as_ref())
         .split(rect);
-    render_playback_window(frame, state, chunks[0])?;
+    render_playback_window(frame, state, ui, chunks[0])?;
 
-    let page_type = state.ui.lock().current_page().page_type();
+    let page_type = ui.current_page().page_type();
     match page_type {
-        PageType::Library => page::render_library_page(is_active, frame, state, chunks[1]),
-        PageType::Search => page::render_search_page(is_active, frame, state, chunks[1]),
-        PageType::Context => page::render_context_page(is_active, frame, state, chunks[1]),
-        PageType::Tracks => page::render_tracks_page(is_active, frame, state, chunks[1]),
+        PageType::Library => page::render_library_page(is_active, frame, state, ui, chunks[1]),
+        PageType::Search => page::render_search_page(is_active, frame, state, ui, chunks[1]),
+        PageType::Context => page::render_context_page(is_active, frame, state, ui, chunks[1]),
+        PageType::Tracks => page::render_tracks_page(is_active, frame, state, ui, chunks[1]),
         #[cfg(feature = "lyric-finder")]
-        PageType::Lyric => page::render_lyric_page(is_active, frame, state, chunks[1]),
+        PageType::Lyric => page::render_lyric_page(is_active, frame, state, ui, chunks[1]),
     }
 }
 
@@ -129,9 +138,12 @@ pub fn construct_list_widget<'a>(
 /// Renders a playback window showing information about the current playback, which includes
 /// - track title, artists, album
 /// - playback metadata (playing state, repeat state, shuffle state, volume, device, etc)
-fn render_playback_window(frame: &mut Frame, state: &SharedState, rect: Rect) -> Result<()> {
-    let mut ui = state.ui.lock();
-
+fn render_playback_window(
+    frame: &mut Frame,
+    state: &SharedState,
+    ui: &mut UIStateGuard,
+    rect: Rect,
+) -> Result<()> {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Min(0), Constraint::Length(1)].as_ref())
