@@ -23,7 +23,7 @@ pub struct UIState {
     pub playback_progress_bar_rect: tui::layout::Rect,
 
     #[cfg(feature = "image")]
-    pub last_rendered_cover_image_url: String,
+    pub last_cover_image_render_info: Option<(String, std::time::Instant)>,
 }
 
 impl UIState {
@@ -84,7 +84,7 @@ impl Default for UIState {
             playback_progress_bar_rect: tui::layout::Rect::default(),
 
             #[cfg(feature = "image")]
-            last_rendered_cover_image_url: String::new(),
+            last_cover_image_render_info: None,
         }
     }
 }

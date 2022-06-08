@@ -222,7 +222,19 @@ fn render_playback_window(
                         .split(chunks[0]);
 
                     let url = utils::get_track_album_image_url(track).map(String::from);
-                    render_track_cover_image(frame, state, ui, chunks[0], url);
+                    if let Some(url) = url {
+                        let needs_render = match &ui.last_cover_image_render_info {
+                            Some((last_url, last_time)) => {
+                                url != *last_url
+                                    || last_time.elapsed() > std::time::Duration::from_millis(2000)
+                            }
+                            None => true,
+                        };
+
+                        if needs_render {
+                            render_track_cover_image(state, ui, chunks[0], url);
+                        }
+                    }
 
                     chunks[2]
                 }
@@ -243,9 +255,9 @@ fn render_playback_window(
         // Previously rendered image can result in weird rendering text,
         // clear the widget area before rendering the text.
         #[cfg(feature = "image")]
-        if !ui.last_rendered_cover_image_url.is_empty() {
+        if ui.last_cover_image_render_info.is_some() {
             frame.render_widget(Clear, chunks[0]);
-            ui.last_rendered_cover_image_url = String::new();
+            ui.last_cover_image_render_info = None;
         }
 
         frame.render_widget(
@@ -263,46 +275,21 @@ fn render_playback_window(
 }
 
 #[cfg(feature = "image")]
-fn render_track_cover_image(
-    _frame: &mut Frame,
-    state: &SharedState,
-    ui: &mut UIStateGuard,
-    rect: Rect,
-    url: Option<String>,
-) {
-    if let Some(url) = url {
-        if ui.last_rendered_cover_image_url == url
-            || !state.data.read().caches.images.contains(&url)
-        {
-            return;
-        }
-
-        let fail = {
-            let data = state.data.read();
-            let image = data.caches.images.peek(&url).unwrap();
-
-            if let Err(err) = viuer::print(
-                image,
-                &viuer::Config {
-                    x: rect.x,
-                    y: rect.y as i16,
-                    width: Some(rect.width as u32),
-                    height: Some(rect.height as u32),
-                    ..Default::default()
-                },
-            ) {
-                tracing::error!("Failed to render the image: {err}",);
-                true
-            } else {
-                false
-            }
-        };
-
-        if fail {
-            // Something goes wrong, maybe we should try to re-render the image
-            ui.last_rendered_cover_image_url = String::new();
-        } else {
-            ui.last_rendered_cover_image_url = url;
+fn render_track_cover_image(state: &SharedState, ui: &mut UIStateGuard, rect: Rect, url: String) {
+    let data = state.data.read();
+    if let Some(image) = data.caches.images.peek(&url) {
+        ui.last_cover_image_render_info = Some((url, std::time::Instant::now()));
+        if let Err(err) = viuer::print(
+            image,
+            &viuer::Config {
+                x: rect.x,
+                y: rect.y as i16,
+                width: Some(rect.width as u32),
+                height: Some(rect.height as u32),
+                ..Default::default()
+            },
+        ) {
+            tracing::error!("Failed to render the image: {err}",);
         }
     }
 }
