@@ -22,7 +22,12 @@ pub struct AppConfig {
     pub client_id: String,
     pub app_refresh_duration_in_ms: u64,
     pub playback_refresh_duration_in_ms: u64,
+
+    #[cfg(feature = "image")]
+    pub cover_image_refresh_duration_in_ms: u64,
+
     pub track_table_item_max_len: usize,
+
     #[cfg(feature = "media-control")]
     pub enable_media_control: bool,
 
@@ -49,6 +54,10 @@ impl Default for AppConfig {
             client_id: "65b708073fc0480ea92a077233ca87bd".to_string(),
             app_refresh_duration_in_ms: 32,
             playback_refresh_duration_in_ms: 0,
+
+            #[cfg(feature = "image")]
+            cover_image_refresh_duration_in_ms: 2000,
+
             track_table_item_max_len: 32,
 
             // Because of the "creating new window and stealing focus" behaviour

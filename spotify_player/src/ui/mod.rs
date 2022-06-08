@@ -226,7 +226,10 @@ fn render_playback_window(
                         let needs_render = match &ui.last_cover_image_render_info {
                             Some((last_url, last_time)) => {
                                 url != *last_url
-                                    || last_time.elapsed() > std::time::Duration::from_millis(2000)
+                                    || last_time.elapsed()
+                                        > std::time::Duration::from_millis(
+                                            state.app_config.cover_image_refresh_duration_in_ms,
+                                        )
                             }
                             None => true,
                         };
