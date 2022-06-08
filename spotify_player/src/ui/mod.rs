@@ -222,7 +222,7 @@ fn render_playback_window(
                         .split(chunks[0]);
 
                     let url = utils::get_track_album_image_url(track).map(String::from);
-                    render_track_cover_image(frame, state, &mut ui, chunks[0], url);
+                    render_track_cover_image(frame, state, ui, chunks[0], url);
 
                     chunks[2]
                 }
