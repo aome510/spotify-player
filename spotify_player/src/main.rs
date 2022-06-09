@@ -193,6 +193,13 @@ async fn main() -> Result<()> {
         .await
         .context("failed to initialize the spotify client")?;
 
+    #[cfg(feature = "image")]
+    {
+        // initialize viuer supports for kitty and iterm2
+        viuer::get_kitty_support();
+        viuer::is_iterm_supported();
+    }
+
     // Spawn application's tasks
 
     // client event handler task
