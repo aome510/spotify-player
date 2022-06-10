@@ -71,20 +71,22 @@ fn handle_mouse_event(
     client_pub: &mpsc::Sender<ClientRequest>,
     state: &SharedState,
 ) -> Result<()> {
-    let ui = state.ui.lock();
     // a left click event
     if let crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left) = event.kind
     {
         tracing::debug!("Handling mouse event: {event:?}");
-        if event.row == ui.playback_progress_bar_rect.y {
-            // calculate the seek position (in ms) based on the clicked position,
-            // the pro gress bar's width and the track's duration (in ms)
-
-            let player = state.player.read();
-            let track = player.current_playing_track();
-            if let Some(track) = track {
-                let position_ms = (track.duration.as_millis() as u32) * (event.column as u32)
-                    / (ui.playback_progress_bar_rect.width as u32);
+        let rect = state.ui.lock().playback_progress_bar_rect;
+        if event.row == rect.y {
+            // calculate the seek position (in ms) based on the mouse click position,
+            // the progress bar's width and the track's duration (in ms)
+            let duration = state
+                .player
+                .read()
+                .current_playing_track()
+                .map(|t| t.duration);
+            if let Some(duration) = duration {
+                let position_ms =
+                    (duration.as_millis() as u32) * (event.column as u32) / (rect.width as u32);
                 client_pub
                     .blocking_send(ClientRequest::Player(PlayerRequest::SeekTrack(position_ms)))?;
             }
