@@ -11,6 +11,7 @@
   - [Streaming](#streaming)
   - [Lyric](#lyric)
   - [Media Control](#media-control)
+  - [Image](#image)
   - [Mouse support](#mouse-support)
 - [Commands](#commands)
 - [Configurations](#configurations)
@@ -31,6 +32,7 @@
 - Support [streaming](#streaming) songs directly from the terminal.
 - Support [lyric](#lyric) for most songs.
 - Support [cross-platform media control](#media-control).
+- Support [image rendering](#image).
 
 ## Examples
 
@@ -195,6 +197,26 @@ Under the hood, `spotify-player` retrieves the song's lyric using [Genius.com](h
 To enable media control support, `spotify_player` needs to be built/installed with `media-control` feature (enabled by default) and set the `enable_media_control` config option to `true` in the [general configuration file](doc/config.md#media-control).
 
 Media control support is implemented using [MPRIS DBus](https://wiki.archlinux.org/title/MPRIS) on Linux and OS window event listener on Windows and MacOS.
+
+### Image
+
+To enable image rendering support, `spotify-player` needs to be built/installed with `image` feature (enabled by default).
+
+`spotify-player` supports rendering image in a full resolution if the application is run on either [Kitty](https://sw.kovidgoyal.net/kitty/graphics-protocol/) or [iTerm2](https://iterm2.com/documentation-images.html). Otherwise, the image will be displayed as [block characters](https://en.wikipedia.org/wiki/Block_Elements).
+
+Examples of image rendering:
+
+- iTerm2:
+
+![iTerm2](https://user-images.githubusercontent.com/40011582/172966798-0aadc431-b0c3-4433-adf3-7526684fc2a0.png)
+
+- Kitty:
+
+![kitty](https://user-images.githubusercontent.com/40011582/172967028-8cfb2daa-1642-499a-a5bf-8ed77f2b3fac.png)
+
+- Others:
+
+![others](https://user-images.githubusercontent.com/40011582/172967325-d2098037-e19e-440a-a38a-5b076253ecb1.png)
 
 ### Mouse support
 

@@ -1,3 +1,5 @@
+use crate::utils;
+
 use super::model::*;
 
 /// Player state
@@ -6,7 +8,7 @@ pub struct PlayerState {
     pub devices: Vec<Device>,
 
     pub playback: Option<rspotify_model::CurrentPlaybackContext>,
-    pub playback_last_updated: Option<std::time::Instant>,
+    pub playback_last_updated_time: Option<std::time::Instant>,
 }
 
 impl PlayerState {
@@ -31,6 +33,12 @@ impl PlayerState {
         }
     }
 
+    /// gets the current playing track's album cover URL
+    pub fn current_playing_track_album_cover_url(&self) -> Option<&str> {
+        self.current_playing_track()
+            .and_then(utils::get_track_album_image_url)
+    }
+
     /// gets the current playback progress
     pub fn playback_progress(&self) -> Option<std::time::Duration> {
         match self.playback {
@@ -38,8 +46,7 @@ impl PlayerState {
             Some(ref playback) => {
                 let progress = playback.progress.unwrap()
                     + if playback.is_playing {
-                        std::time::Instant::now()
-                            .saturating_duration_since(self.playback_last_updated.unwrap())
+                        self.playback_last_updated_time.unwrap().elapsed()
                     } else {
                         // zero duration
                         std::time::Duration::default()

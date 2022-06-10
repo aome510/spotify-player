@@ -167,7 +167,7 @@ impl Client {
             }
             ClientRequest::Player(request) => {
                 let span =
-                    tracing::info_span!("Additional_playback_refreshes", player_request = ?request);
+                    tracing::info_span!("additional_playback_refreshes", player_request = ?request);
 
                 self.handle_player_request(state, request).await?;
 
@@ -187,6 +187,12 @@ impl Client {
                             if let Err(err) = client.update_current_playback_state(&state).await {
                                 tracing::error!("Failed to refresh the player's playback: {err:#}");
                             }
+                            #[cfg(feature = "image")]
+                            if let Err(err) = client.get_current_track_cover_image(&state).await {
+                                tracing::error!(
+                                    "Failed to get the current track's cover image: {err:#}"
+                                );
+                            }
                             tokio::time::sleep(delay_duration).await;
                         }
                     }
@@ -195,6 +201,8 @@ impl Client {
             }
             ClientRequest::GetCurrentPlayback => {
                 self.update_current_playback_state(state).await?;
+                #[cfg(feature = "image")]
+                self.get_current_track_cover_image(state).await?;
             }
             ClientRequest::GetDevices => {
                 let devices = self.spotify.device().await?;
@@ -811,8 +819,45 @@ impl Client {
     pub async fn update_current_playback_state(&self, state: &SharedState) -> Result<()> {
         let playback = self.spotify.current_playback(None, None::<Vec<_>>).await?;
         let mut player = state.player.write();
+
         player.playback = playback;
-        player.playback_last_updated = Some(std::time::Instant::now());
+        player.playback_last_updated_time = Some(std::time::Instant::now());
+
+        Ok(())
+    }
+
+    #[cfg(feature = "image")]
+    pub async fn get_current_track_cover_image(&self, state: &SharedState) -> Result<()> {
+        let url = state
+            .player
+            .read()
+            .current_playing_track_album_cover_url()
+            .map(String::from);
+
+        if let Some(url) = url {
+            if !state.data.read().caches.images.contains(&url) {
+                tracing::info!("Retrieving an image from url: {url}");
+
+                // Get the image from a url
+                let image = {
+                    let image_bytes = self
+                        .http
+                        .get(&url)
+                        .send()
+                        .await
+                        .context(format!("Failed to get image data from url {url}"))?
+                        .bytes()
+                        .await?;
+
+                    image::load_from_memory(&image_bytes)
+                        .context("Failed to load image from memory")?
+                };
+
+                // Update the caches, so we don't have to make the same request multiple times.
+                state.data.write().caches.images.put(url, image);
+            }
+        }
+
         Ok(())
     }
 

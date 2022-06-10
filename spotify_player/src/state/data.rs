@@ -24,6 +24,8 @@ pub struct Caches {
     pub tracks: lru::LruCache<String, Vec<Track>>,
     #[cfg(feature = "lyric-finder")]
     pub lyrics: lru::LruCache<String, lyric_finder::LyricResult>,
+    #[cfg(feature = "image")]
+    pub images: lru::LruCache<String, image::DynamicImage>,
 }
 
 impl Default for Caches {
@@ -34,6 +36,8 @@ impl Default for Caches {
             tracks: lru::LruCache::new(64),
             #[cfg(feature = "lyric-finder")]
             lyrics: lru::LruCache::new(64),
+            #[cfg(feature = "image")]
+            images: lru::LruCache::new(64),
         }
     }
 }

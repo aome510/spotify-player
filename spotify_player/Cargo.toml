@@ -39,6 +39,8 @@ lyric_finder = { version = "0.1.2", path = "../lyric_finder" , optional = true }
 backtrace = "0.3.65"
 souvlaki = { version = "0.5.1", optional = true }
 winit = { version = "0.26.1", optional = true }
+viuer = { version = "0.6.1", optional = true }
+image = { version= "0.24", optional = true }
 
 [features]
 alsa-backend = ["streaming", "librespot-playback/alsa-backend"]
@@ -52,5 +54,6 @@ gstreamer-backend = ["streaming", "librespot-playback/gstreamer-backend"]
 streaming = ["librespot-playback", "librespot-connect"]
 lyric-finder = ["lyric_finder"]
 media-control = ["souvlaki", "winit"]
+image = ["viuer", "dep:image"]
 
-default = ["rodio-backend", "lyric-finder", "media-control"]
+default = ["rodio-backend", "lyric-finder", "media-control", "image"]

@@ -76,7 +76,7 @@ fn handle_mouse_event(
     if let crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left) = event.kind
     {
         tracing::debug!("Handling mouse event: {event:?}");
-        if event.row == ui.progress_bar_rect.y {
+        if event.row == ui.playback_progress_bar_rect.y {
             // calculate the seek position (in ms) based on the clicked position,
             // the pro gress bar's width and the track's duration (in ms)
 
@@ -84,7 +84,7 @@ fn handle_mouse_event(
             let track = player.current_playing_track();
             if let Some(track) = track {
                 let position_ms = (track.duration.as_millis() as u32) * (event.column as u32)
-                    / (ui.progress_bar_rect.width as u32);
+                    / (ui.playback_progress_bar_rect.width as u32);
                 client_pub
                     .blocking_send(ClientRequest::Player(PlayerRequest::SeekTrack(position_ms)))?;
             }

@@ -85,6 +85,10 @@ async fn init_spotify(
         }
     }
 
+    client_pub
+        .send(event::ClientRequest::GetCurrentPlayback)
+        .await?;
+
     // request user data
     client_pub
         .send(event::ClientRequest::GetCurrentUser)
@@ -188,6 +192,13 @@ async fn main() -> Result<()> {
     init_spotify(&client_pub, &streaming_pub, &client, &state)
         .await
         .context("failed to initialize the spotify client")?;
+
+    #[cfg(feature = "image")]
+    {
+        // initialize viuer supports for kitty and iterm2
+        viuer::get_kitty_support();
+        viuer::is_iterm_supported();
+    }
 
     // Spawn application's tasks
 

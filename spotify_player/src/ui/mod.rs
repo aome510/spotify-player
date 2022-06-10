@@ -90,7 +90,7 @@ fn render_main_layout(
 ) -> Result<()> {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Length(7), Constraint::Min(0)].as_ref())
+        .constraints([Constraint::Length(8), Constraint::Min(0)].as_ref())
         .split(rect);
     render_playback_window(frame, state, ui, chunks[0])?;
 
@@ -185,7 +185,6 @@ fn render_playback_window(
 
             let playback_desc = Paragraph::new(playback_info)
                 .wrap(Wrap { trim: true })
-                // .style(theme.text_desc_style())
                 .block(Block::default());
             let progress = std::cmp::min(
                 player
@@ -206,12 +205,64 @@ fn render_playback_window(
                     Style::default().add_modifier(Modifier::BOLD),
                 ));
 
-            ui.progress_bar_rect = chunks[1];
+            let metadata_rect = {
+                #[cfg(feature = "image")]
+                {
+                    // Render the track's cover image if `image` feature is enabled
+                    let chunks = Layout::default()
+                        .direction(Direction::Horizontal)
+                        .constraints(
+                            [
+                                Constraint::Length(9),
+                                Constraint::Length(1), // a margin of 1 between the cover image widget and track's metadata widget
+                                Constraint::Min(0),
+                            ]
+                            .as_ref(),
+                        )
+                        .split(chunks[0]);
 
-            frame.render_widget(playback_desc, chunks[0]);
-            frame.render_widget(progress_bar, chunks[1]);
+                    let url = utils::get_track_album_image_url(track).map(String::from);
+                    if let Some(url) = url {
+                        let needs_render = match &ui.last_cover_image_render_info {
+                            Some((last_url, last_time)) => {
+                                url != *last_url
+                                    || last_time.elapsed()
+                                        > std::time::Duration::from_millis(
+                                            state.app_config.cover_image_refresh_duration_in_ms,
+                                        )
+                            }
+                            None => true,
+                        };
+
+                        if needs_render {
+                            render_track_cover_image(state, ui, chunks[0], url);
+                        }
+                    }
+
+                    chunks[2]
+                }
+
+                #[cfg(not(feature = "image"))]
+                {
+                    chunks[0]
+                }
+            };
+            let progress_bar_rect = chunks[1];
+
+            ui.playback_progress_bar_rect = progress_bar_rect;
+
+            frame.render_widget(playback_desc, metadata_rect);
+            frame.render_widget(progress_bar, progress_bar_rect);
         }
     } else {
+        // Previously rendered image can result in weird rendering text,
+        // clear the widget area before rendering the text.
+        #[cfg(feature = "image")]
+        if ui.last_cover_image_render_info.is_some() {
+            frame.render_widget(Clear, chunks[0]);
+            ui.last_cover_image_render_info = None;
+        }
+
         frame.render_widget(
             Paragraph::new(
                 "No playback found. \
@@ -224,4 +275,24 @@ fn render_playback_window(
     };
 
     Ok(())
+}
+
+#[cfg(feature = "image")]
+fn render_track_cover_image(state: &SharedState, ui: &mut UIStateGuard, rect: Rect, url: String) {
+    let data = state.data.read();
+    if let Some(image) = data.caches.images.peek(&url) {
+        ui.last_cover_image_render_info = Some((url, std::time::Instant::now()));
+        if let Err(err) = viuer::print(
+            image,
+            &viuer::Config {
+                x: rect.x,
+                y: rect.y as i16,
+                width: Some(rect.width as u32),
+                height: Some(rect.height as u32),
+                ..Default::default()
+            },
+        ) {
+            tracing::error!("Failed to render the image: {err}",);
+        }
+    }
 }

@@ -2,19 +2,12 @@
 use souvlaki::MediaPosition;
 use souvlaki::{MediaControlEvent, MediaControls, MediaMetadata, MediaPlayback, PlatformConfig};
 
+use crate::utils;
 use crate::{
     event::{ClientRequest, PlayerRequest},
     state::SharedState,
     utils::map_join,
 };
-
-fn get_track_album_image_url(track: &rspotify::model::FullTrack) -> Option<&str> {
-    if track.album.images.is_empty() {
-        None
-    } else {
-        Some(&track.album.images[0].url)
-    }
-}
 
 fn update_control_metadata(
     state: &SharedState,
@@ -67,7 +60,7 @@ fn update_control_metadata(
                     album: Some(&track.album.name),
                     artist: Some(&map_join(&track.artists, |a| &a.name, ", ")),
                     duration: Some(track.duration),
-                    cover_url: get_track_album_image_url(track),
+                    cover_url: utils::get_track_album_image_url(track),
                 })?;
 
                 *prev_track_info = track_info;
