@@ -211,17 +211,17 @@ async fn main() -> Result<()> {
     });
 
     // player event watcher task
-    tokio::task::spawn_blocking({
+    tokio::task::spawn({
         let state = state.clone();
         let client_pub = client_pub.clone();
-        move || {
-            client::start_player_event_watchers(state, client_pub);
+        async move {
+            client::start_player_event_watchers(state, client_pub).await;
         }
     });
 
     // application UI task
     #[allow(unused_variables)]
-    let task = tokio::task::spawn_blocking({
+    let ui_task = tokio::task::spawn_blocking({
         let state = state.clone();
         move || ui::run(state)
     });
@@ -255,7 +255,7 @@ async fn main() -> Result<()> {
     }
     #[allow(unreachable_code)]
     {
-        task.await??;
+        ui_task.await??;
         Ok(())
     }
 }
