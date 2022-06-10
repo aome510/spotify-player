@@ -153,9 +153,9 @@ An example of using Spotify connect to interact with the Spotify's official appl
 
 ### Streaming
 
-`spotify-player` supports streaming (needs to be built/installed with `streaming` feature, enabled by default), which allows to the application to play music directly from terminal without other Spotify clients.
+`spotify-player` supports streaming, which needs to be built/installed with `streaming` feature (enabled by default) **and** with an audio backend (`rodio-backend` by default). The streaming feature allows to `spotify-player` to play music directly from terminal.
 
-It uses the [librespot](https://github.com/librespot-org/librespot) library to create an integrated Spotify client while running. The integrated client will register a Spotify speaker device under the `spotify-player` name, which is accessible on the [Spotify connect](#spotify-connect) device list.
+The application uses [librespot](https://github.com/librespot-org/librespot) library to create an integrated Spotify client while running. The integrated client will register a Spotify speaker device under the `spotify-player` name, which is accessible on the [Spotify connect](#spotify-connect) device list.
 
 #### Audio backend
 
@@ -176,7 +176,10 @@ User can change the audio backend when building/installing the application by sp
 cargo install spotify_player --no-default-features --features pulseaudio-backend
 ```
 
-**Note**: user will need to install additional dependencies depending on the selected audio backend. More details can be found in the [Librespot documentation](https://github.com/librespot-org/librespot/wiki/Compiling#general-dependencies).
+**Note**:
+
+- needs to specify `--no-default-features` here because `rodio-backend` is one of the default features.
+- user will need to install additional dependencies depending on the selected audio backend. More details can be found in the [Librespot documentation](https://github.com/librespot-org/librespot/wiki/Compiling#general-dependencies).
 
 The `streaming` feature can be also disabled upon installing by running
 
@@ -186,7 +189,11 @@ cargo install spotify_player --no-default-features
 
 ### Lyric
 
-To enable lyric support, `spotify_player` needs to be built/installed with `lyric-finder` feature (enabled by default).
+To enable lyric support, `spotify_player` needs to be built/installed with `lyric-finder` feature (disabled by default). To install the application with `lyric-finder` feature included run:
+
+```shell
+cargo install --features lyric-finder
+```
 
 User can view lyric of the currently playing track by calling the `LyricPage` command to go the lyric page. To do this, `spotify-player` needs to be built with a `lyric-finder` feature.
 
@@ -200,7 +207,11 @@ Media control support is implemented using [MPRIS DBus](https://wiki.archlinux.o
 
 ### Image
 
-To enable image rendering support, `spotify-player` needs to be built/installed with `image` feature (enabled by default).
+To enable image rendering support, `spotify-player` needs to be built/installed with `image` feature (disabled by default). To install the application with `image` feature included, run:
+
+```shell
+cargo install --features image
+```
 
 `spotify-player` supports rendering image in a full resolution if the application is run on either [Kitty](https://sw.kovidgoyal.net/kitty/graphics-protocol/) or [iTerm2](https://iterm2.com/documentation-images.html). Otherwise, the image will be displayed as [block characters](https://en.wikipedia.org/wiki/Block_Elements).
 

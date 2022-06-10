@@ -56,4 +56,4 @@ lyric-finder = ["lyric_finder"]
 media-control = ["souvlaki", "winit"]
 image = ["viuer", "dep:image"]
 
-default = ["rodio-backend", "lyric-finder", "media-control", "image"]
+default = ["rodio-backend", "media-control"]
