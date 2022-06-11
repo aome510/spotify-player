@@ -48,8 +48,8 @@ fn init_app_cli_arguments() -> clap::ArgMatches {
 }
 
 async fn init_spotify(
-    client_pub: &tokio::sync::mpsc::Sender<event::ClientRequest>,
-    streaming_pub: &tokio::sync::broadcast::Sender<()>,
+    client_pub: &flume::Sender<event::ClientRequest>,
+    streaming_sub: &flume::Receiver<()>,
     client: &client::Client,
     state: &state::SharedState,
 ) -> Result<()> {
@@ -58,7 +58,7 @@ async fn init_spotify(
     // if `streaming` feature is enabled, create a new streaming connection
     #[cfg(feature = "streaming")]
     client
-        .new_streaming_connection(streaming_pub.subscribe(), client_pub.clone(), false)
+        .new_streaming_connection(streaming_sub.clone(), client_pub.clone(), false)
         .await
         .context("failed to create a new streaming connection")?;
 
@@ -78,7 +78,7 @@ async fn init_spotify(
             .await?
         {
             client_pub
-                .send(event::ClientRequest::Player(
+                .send_async(event::ClientRequest::Player(
                     event::PlayerRequest::TransferPlayback(device_id, false),
                 ))
                 .await?;
@@ -86,23 +86,23 @@ async fn init_spotify(
     }
 
     client_pub
-        .send(event::ClientRequest::GetCurrentPlayback)
+        .send_async(event::ClientRequest::GetCurrentPlayback)
         .await?;
 
     // request user data
     client_pub
-        .send(event::ClientRequest::GetCurrentUser)
+        .send_async(event::ClientRequest::GetCurrentUser)
         .await?;
 
     // request data needed to render the Library page (default page when starting the application)
     client_pub
-        .send(event::ClientRequest::GetUserPlaylists)
+        .send_async(event::ClientRequest::GetUserPlaylists)
         .await?;
     client_pub
-        .send(event::ClientRequest::GetUserFollowedArtists)
+        .send_async(event::ClientRequest::GetUserFollowedArtists)
         .await?;
     client_pub
-        .send(event::ClientRequest::GetUserSavedAlbums)
+        .send_async(event::ClientRequest::GetUserSavedAlbums)
         .await?;
 
     Ok(())
@@ -183,13 +183,14 @@ async fn main() -> Result<()> {
         state.app_config.client_id.clone(),
     );
 
-    // create application's channels
-    let (client_pub, client_sub) = tokio::sync::mpsc::channel::<event::ClientRequest>(16);
-    // broadcast channels used to shutdown running streaming connections upon creating a new one
-    let (streaming_pub, _) = tokio::sync::broadcast::channel::<()>(16);
+    // client channels
+    let (client_pub, client_sub) = flume::unbounded::<event::ClientRequest>();
+    // streaming channels, which are used to notify a shutdown to running streaming connections
+    // upon creating a new connection.
+    let (streaming_pub, streaming_sub) = flume::unbounded::<()>();
 
     // initialize Spotify-related stuff
-    init_spotify(&client_pub, &streaming_pub, &client, &state)
+    init_spotify(&client_pub, &streaming_sub, &client, &state)
         .await
         .context("failed to initialize the spotify client")?;
 
@@ -207,8 +208,15 @@ async fn main() -> Result<()> {
         let state = state.clone();
         let client_pub = client_pub.clone();
         async move {
-            client::start_client_handler(state, client, client_pub, client_sub, streaming_pub)
-                .await;
+            client::start_client_handler(
+                state,
+                client,
+                client_pub,
+                client_sub,
+                streaming_pub,
+                streaming_sub,
+            )
+            .await;
         }
     });
 

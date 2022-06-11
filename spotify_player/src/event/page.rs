@@ -54,7 +54,7 @@ pub fn handle_key_sequence_for_library_page(
 
 pub fn handle_key_sequence_for_search_page(
     key_sequence: &KeySequence,
-    client_pub: &mpsc::Sender<ClientRequest>,
+    client_pub: &flume::Sender<ClientRequest>,
     state: &SharedState,
 ) -> Result<bool> {
     let mut ui = state.ui.lock();
@@ -86,7 +86,7 @@ pub fn handle_key_sequence_for_search_page(
                     crossterm::event::KeyCode::Enter => {
                         if !input.is_empty() {
                             *current_query = input.clone();
-                            client_pub.blocking_send(ClientRequest::Search(input.clone()))?;
+                            client_pub.send(ClientRequest::Search(input.clone()))?;
                         }
                         return Ok(true);
                     }
@@ -139,7 +139,7 @@ pub fn handle_key_sequence_for_search_page(
 
 pub fn handle_key_sequence_for_context_page(
     key_sequence: &KeySequence,
-    client_pub: &mpsc::Sender<ClientRequest>,
+    client_pub: &flume::Sender<ClientRequest>,
     state: &SharedState,
 ) -> Result<bool> {
     let command = match state
@@ -183,9 +183,9 @@ pub fn handle_key_sequence_for_context_page(
                         }
                     };
 
-                    client_pub.blocking_send(ClientRequest::Player(
-                        PlayerRequest::StartPlayback(Playback::Context(context_id, offset)),
-                    ))?;
+                    client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
+                        Playback::Context(context_id, offset),
+                    )))?;
                 }
             }
         }
@@ -228,7 +228,7 @@ pub fn handle_key_sequence_for_context_page(
 
 pub fn handle_key_sequence_for_tracks_page(
     key_sequence: &KeySequence,
-    client_pub: &mpsc::Sender<ClientRequest>,
+    client_pub: &flume::Sender<ClientRequest>,
     state: &SharedState,
 ) -> Result<bool> {
     let command = match state
@@ -268,7 +268,7 @@ pub fn handle_key_sequence_for_tracks_page(
                 let id = rand::thread_rng().gen_range(0..tracks.len());
                 Some(rspotify_model::Offset::for_uri(&tracks[id].id.uri()))
             };
-            client_pub.blocking_send(ClientRequest::Player(PlayerRequest::StartPlayback(
+            client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
                 Playback::URIs(tracks.iter().map(|t| t.id.clone()).collect(), offset),
             )))?;
 
@@ -288,7 +288,7 @@ pub fn handle_key_sequence_for_tracks_page(
 #[cfg(feature = "lyric-finder")]
 pub fn handle_key_sequence_for_lyric_page(
     key_sequence: &KeySequence,
-    _client_pub: &mpsc::Sender<ClientRequest>,
+    _client_pub: &flume::Sender<ClientRequest>,
     state: &SharedState,
 ) -> Result<bool> {
     let command = match state

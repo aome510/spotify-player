@@ -74,7 +74,7 @@ fn update_control_metadata(
 /// Start the application's media control event watcher
 pub fn start_event_watcher(
     state: SharedState,
-    client_pub: tokio::sync::mpsc::Sender<ClientRequest>,
+    client_pub: flume::Sender<ClientRequest>,
 ) -> Result<(), souvlaki::Error> {
     tracing::info!("Initializing application's media control event watcher...");
 
@@ -86,7 +86,7 @@ pub fn start_event_watcher(
     };
     let mut controls = MediaControls::new(config)?;
 
-    let (tx, rx) = std::sync::mpsc::sync_channel(16);
+    let (tx, rx) = flume::unbounded();
 
     controls.attach(move |e| {
         tx.send(e).unwrap_or_default();
@@ -104,17 +104,17 @@ pub fn start_event_watcher(
             match event {
                 MediaControlEvent::Play | MediaControlEvent::Pause | MediaControlEvent::Toggle => {
                     client_pub
-                        .blocking_send(ClientRequest::Player(PlayerRequest::ResumePause))
+                        .send(ClientRequest::Player(PlayerRequest::ResumePause))
                         .unwrap_or_default();
                 }
                 MediaControlEvent::Next => {
                     client_pub
-                        .blocking_send(ClientRequest::Player(PlayerRequest::NextTrack))
+                        .send(ClientRequest::Player(PlayerRequest::NextTrack))
                         .unwrap_or_default();
                 }
                 MediaControlEvent::Previous => {
                     client_pub
-                        .blocking_send(ClientRequest::Player(PlayerRequest::PreviousTrack))
+                        .send(ClientRequest::Player(PlayerRequest::PreviousTrack))
                         .unwrap_or_default();
                 }
                 _ => {}

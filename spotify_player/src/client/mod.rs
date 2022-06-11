@@ -15,7 +15,6 @@ mod handlers;
 mod spotify;
 
 pub use handlers::*;
-use tokio::sync::{broadcast, mpsc};
 use tracing::Instrument;
 
 /// The application's client
@@ -38,8 +37,8 @@ impl Client {
     #[cfg(feature = "streaming")]
     pub async fn new_streaming_connection(
         &self,
-        streaming_sub: broadcast::Receiver<()>,
-        client_pub: mpsc::Sender<ClientRequest>,
+        streaming_sub: flume::Receiver<()>,
+        client_pub: flume::Sender<ClientRequest>,
         should_connect: bool,
     ) -> Result<()> {
         let session = match self.spotify.session {

@@ -1,26 +1,24 @@
-use tokio::sync::{broadcast, mpsc};
 use tracing::Instrument;
 
 use crate::{event::ClientRequest, state::*};
 
-use super::Client;
-
 /// starts the client's request handler
 pub async fn start_client_handler(
     state: SharedState,
-    client: Client,
-    client_pub: mpsc::Sender<ClientRequest>,
-    mut client_sub: mpsc::Receiver<ClientRequest>,
-    streaming_pub: broadcast::Sender<()>,
+    client: super::Client,
+    client_pub: flume::Sender<ClientRequest>,
+    client_sub: flume::Receiver<ClientRequest>,
+    streaming_pub: flume::Sender<()>,
+    streaming_sub: flume::Receiver<()>,
 ) {
-    while let Some(request) = client_sub.recv().await {
+    while let Ok(request) = client_sub.recv_async().await {
         match request {
             #[cfg(feature = "streaming")]
             ClientRequest::NewStreamingConnection => {
                 // send a notification to current streaming subcriber channels to shutdown all running connections
                 streaming_pub.send(()).unwrap_or_default();
                 if let Err(err) = client
-                    .new_streaming_connection(streaming_pub.subscribe(), client_pub.clone(), true)
+                    .new_streaming_connection(streaming_sub.clone(), client_pub.clone(), true)
                     .await
                 {
                     tracing::error!(
@@ -49,7 +47,7 @@ pub async fn start_client_handler(
 /// notifying the client to make update requests if needed
 pub async fn start_player_event_watchers(
     state: SharedState,
-    client_pub: mpsc::Sender<ClientRequest>,
+    client_pub: flume::Sender<ClientRequest>,
 ) {
     // Start a watcher task that updates the playback every `playback_refresh_duration_in_ms` ms.
     // A positive value of `playback_refresh_duration_in_ms` is required to start the watcher.
@@ -61,7 +59,7 @@ pub async fn start_player_event_watchers(
             async move {
                 loop {
                     client_pub
-                        .send(ClientRequest::GetCurrentPlayback)
+                        .send_async(ClientRequest::GetCurrentPlayback)
                         .await
                         .unwrap_or_default();
                     tokio::time::sleep(playback_refresh_duration).await;
@@ -92,14 +90,13 @@ pub async fn start_player_event_watchers(
         if let (Some(progress_ms), Some(duration_ms)) = (progress_ms, duration_ms) {
             if progress_ms >= duration_ms && is_playing {
                 client_pub
-                    .send(ClientRequest::GetCurrentPlayback)
+                    .send_async(ClientRequest::GetCurrentPlayback)
                     .await
                     .unwrap_or_default();
             }
         }
 
         // update the context state and request new data when moving to a new context page
-        let mut new_context_id: Option<ContextId> = None;
         if let PageState::Context {
             id,
             context_page_type,
@@ -123,22 +120,15 @@ pub async fn start_player_event_watchers(
                             ContextId::Artist(_) => ContextPageUIState::new_artist(),
                             ContextId::Playlist(_) => ContextPageUIState::new_playlist(),
                         });
-                        new_context_id = Some(id.clone());
+                        client_pub
+                            .send(ClientRequest::GetContext(id.clone()))
+                            .unwrap_or_default();
                     }
                     None => {
                         *page_state = None;
                     }
                 }
             }
-        }
-
-        // Found a new context ID compared to the previous one,
-        // make a `GetContext` request to get context data.
-        if let Some(id) = new_context_id {
-            client_pub
-                .send(ClientRequest::GetContext(id))
-                .await
-                .unwrap_or_default();
         }
     }
 }
