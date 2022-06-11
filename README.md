@@ -11,6 +11,7 @@
   - [Streaming](#streaming)
   - [Lyric](#lyric)
   - [Media Control](#media-control)
+  - [Image](#image)
   - [Mouse support](#mouse-support)
 - [Commands](#commands)
 - [Configurations](#configurations)
@@ -31,6 +32,7 @@
 - Support [streaming](#streaming) songs directly from the terminal.
 - Support [lyric](#lyric) for most songs.
 - Support [cross-platform media control](#media-control).
+- Support [image rendering](#image).
 
 ## Examples
 
@@ -151,9 +153,9 @@ An example of using Spotify connect to interact with the Spotify's official appl
 
 ### Streaming
 
-`spotify-player` supports streaming (needs to be built/installed with `streaming` feature, enabled by default), which allows to the application to play music directly from terminal without other Spotify clients.
+`spotify-player` supports streaming, which needs to be built/installed with `streaming` feature (enabled by default) **and** with an audio backend (`rodio-backend` by default). The streaming feature allows to `spotify-player` to play music directly from terminal.
 
-It uses the [librespot](https://github.com/librespot-org/librespot) library to create an integrated Spotify client while running. The integrated client will register a Spotify speaker device under the `spotify-player` name, which is accessible on the [Spotify connect](#spotify-connect) device list.
+The application uses [librespot](https://github.com/librespot-org/librespot) library to create an integrated Spotify client while running. The integrated client will register a Spotify speaker device under the `spotify-player` name, which is accessible on the [Spotify connect](#spotify-connect) device list.
 
 #### Audio backend
 
@@ -174,7 +176,10 @@ User can change the audio backend when building/installing the application by sp
 cargo install spotify_player --no-default-features --features pulseaudio-backend
 ```
 
-**Note**: user will need to install additional dependencies depending on the selected audio backend. More details can be found in the [Librespot documentation](https://github.com/librespot-org/librespot/wiki/Compiling#general-dependencies).
+**Note**:
+
+- needs to specify `--no-default-features` here because `rodio-backend` is one of the default features.
+- user will need to install additional dependencies depending on the selected audio backend. More details can be found in the [Librespot documentation](https://github.com/librespot-org/librespot/wiki/Compiling#general-dependencies).
 
 The `streaming` feature can be also disabled upon installing by running
 
@@ -184,7 +189,11 @@ cargo install spotify_player --no-default-features
 
 ### Lyric
 
-To enable lyric support, `spotify_player` needs to be built/installed with `lyric-finder` feature (enabled by default).
+To enable lyric support, `spotify_player` needs to be built/installed with `lyric-finder` feature (disabled by default). To install the application with `lyric-finder` feature included run:
+
+```shell
+cargo install --features lyric-finder
+```
 
 User can view lyric of the currently playing track by calling the `LyricPage` command to go the lyric page. To do this, `spotify-player` needs to be built with a `lyric-finder` feature.
 
@@ -195,6 +204,30 @@ Under the hood, `spotify-player` retrieves the song's lyric using [Genius.com](h
 To enable media control support, `spotify_player` needs to be built/installed with `media-control` feature (enabled by default) and set the `enable_media_control` config option to `true` in the [general configuration file](doc/config.md#media-control).
 
 Media control support is implemented using [MPRIS DBus](https://wiki.archlinux.org/title/MPRIS) on Linux and OS window event listener on Windows and MacOS.
+
+### Image
+
+To enable image rendering support, `spotify-player` needs to be built/installed with `image` feature (disabled by default). To install the application with `image` feature included, run:
+
+```shell
+cargo install --features image
+```
+
+`spotify-player` supports rendering image in a full resolution if the application is run on either [Kitty](https://sw.kovidgoyal.net/kitty/graphics-protocol/) or [iTerm2](https://iterm2.com/documentation-images.html). Otherwise, the image will be displayed as [block characters](https://en.wikipedia.org/wiki/Block_Elements).
+
+Examples of image rendering:
+
+- iTerm2:
+
+![iTerm2](https://user-images.githubusercontent.com/40011582/172966798-0aadc431-b0c3-4433-adf3-7526684fc2a0.png)
+
+- Kitty:
+
+![kitty](https://user-images.githubusercontent.com/40011582/172967028-8cfb2daa-1642-499a-a5bf-8ed77f2b3fac.png)
+
+- Others:
+
+![others](https://user-images.githubusercontent.com/40011582/172967325-d2098037-e19e-440a-a38a-5b076253ecb1.png)
 
 ### Mouse support
 

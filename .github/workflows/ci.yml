@@ -9,6 +9,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
+  RUST_FEATURES: "rodio-backend,lyric-finder,media-control,image"
 
 jobs:
   rust-ci:
@@ -28,6 +29,7 @@ jobs:
         name: Cargo Test
         with:
           command: test
+          args: --no-default-features --features ${{ env.RUST_FEATURES }}
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
@@ -47,4 +49,4 @@ jobs:
         name: Cargo Clippy
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          args: -- -D warnings
+          args: --no-default-features --features ${{ env.RUST_FEATURES }} -- -D warnings

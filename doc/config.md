@@ -17,15 +17,16 @@ All configuration files should be placed inside the application's configuration 
 
 `spotify-player` uses `app.toml` to configure general application configurations:
 
-| Option                            | Description                                                            | Default                                     |
-| --------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------- |
-| `client_id`                       | the Spotify client's ID                                                | `65b708073fc0480ea92a077233ca87bd`          |
-| `theme`                           | the application's theme                                                | `dracula`                                   |
-| `app_refresh_duration_in_ms`      | the duration (in ms) between two consecutive application refreshes     | `32`                                        |
-| `playback_refresh_duration_in_ms` | the duration (in ms) between two consecutive playback refreshes        | `0`                                         |
-| `track_table_item_max_len`        | the maximum length of a column in a track table                        | `32`                                        |
-| `enable_media_control`            | enable application media control support                               | `true` (Linux), `false` (Windows and MacOS) |
-| `default_device`                  | the default device to connect to on startup if no playing device found | `spotify-player`                            |
+| Option                               | Description                                                                   | Default                                     |
+| ------------------------------------ | ----------------------------------------------------------------------------- | ------------------------------------------- |
+| `client_id`                          | the Spotify client's ID                                                       | `65b708073fc0480ea92a077233ca87bd`          |
+| `theme`                              | the application's theme                                                       | `dracula`                                   |
+| `app_refresh_duration_in_ms`         | the duration (in ms) between two consecutive application refreshes            | `32`                                        |
+| `playback_refresh_duration_in_ms`    | the duration (in ms) between two consecutive playback refreshes               | `0`                                         |
+| `cover_image_refresh_duration_in_ms` | the duration (in ms) between two cover image refreshes (`image` feature only) | `2000`                                      |
+| `track_table_item_max_len`           | the maximum length of a column in a track table                               | `32`                                        |
+| `enable_media_control`               | enable application media control support (`media-control` feature only)       | `true` (Linux), `false` (Windows and MacOS) |
+| `default_device`                     | the default device to connect to on startup if no playing device found        | `spotify-player`                            |
 
 The default `app.toml` can be found in the example [`app.toml`](../examples/app.toml) file
 

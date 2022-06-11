@@ -257,6 +257,7 @@ pub fn render_library_page(
     ui: &mut UIStateGuard,
     rect: Rect,
 ) -> Result<()> {
+    let curr_context_uri = state.player.read().playing_context_id().map(|c| c.uri());
     let data = state.data.read();
 
     let focus_state = match ui.current_page() {
@@ -286,7 +287,7 @@ pub fn render_library_page(
         &ui.theme,
         ui.search_filtered_items(&data.user_data.playlists)
             .into_iter()
-            .map(|p| (p.to_string(), false))
+            .map(|p| (p.to_string(), curr_context_uri == Some(p.id.uri())))
             .collect(),
         "Playlists",
         is_active && focus_state == LibraryFocusState::Playlists,
@@ -297,7 +298,7 @@ pub fn render_library_page(
         &ui.theme,
         ui.search_filtered_items(&data.user_data.saved_albums)
             .into_iter()
-            .map(|a| (a.to_string(), false))
+            .map(|a| (a.to_string(), curr_context_uri == Some(a.id.uri())))
             .collect(),
         "Albums",
         is_active && focus_state == LibraryFocusState::SavedAlbums,
@@ -308,7 +309,7 @@ pub fn render_library_page(
         &ui.theme,
         ui.search_filtered_items(&data.user_data.followed_artists)
             .into_iter()
-            .map(|a| (a.to_string(), false))
+            .map(|a| (a.to_string(), curr_context_uri == Some(a.id.uri())))
             .collect(),
         "Artists",
         is_active && focus_state == LibraryFocusState::FollowedArtists,
