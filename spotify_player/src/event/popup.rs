@@ -57,65 +57,54 @@ pub fn handle_key_sequence_for_popup(
                 },
             )
         }
-        PopupState::UserPlaylistList(action, _) => {
-            match action {
-                PlaylistPopupAction::Browse => {
-                    let playlist_uris = state
-                        .data
-                        .read()
-                        .user_data
-                        .playlists
-                        .iter()
-                        .map(|p| p.id.uri())
-                        .collect::<Vec<_>>();
+        PopupState::UserPlaylistList(action, _) => match action {
+            PlaylistPopupAction::Browse => {
+                let playlist_uris = state
+                    .data
+                    .read()
+                    .user_data
+                    .playlists
+                    .iter()
+                    .map(|p| p.id.uri())
+                    .collect::<Vec<_>>();
 
-                    handle_command_for_context_browsing_list_popup(
-                        command,
-                        ui,
-                        playlist_uris,
-                        rspotify_model::Type::Playlist,
-                    )
-                }
-                PlaylistPopupAction::AddTrack(track_id) => {
-                    let track_id = track_id.clone();
-                    let playlist_ids = state
-                        .data
-                        .read()
-                        .user_data
-                        .playlists_created_by_user()
-                        .into_iter()
-                        .map(|p| p.id.clone())
-                        .collect::<Vec<_>>();
-
-                    handle_command_for_list_popup(
-                        command,
-                        ui,
-                        playlist_ids.len(),
-                        |_, _| {},
-                        |ui: &mut UIStateGuard, id: usize| -> Result<()> {
-                            // when adding a new track to a playlist, we need to remove
-                            // the cache for that playlist
-                            state
-                                .data
-                                .write()
-                                .caches
-                                .context
-                                .pop(&playlist_ids[id].uri());
-
-                            client_pub.send(ClientRequest::AddTrackToPlaylist(
-                                playlist_ids[id].clone(),
-                                track_id.clone(),
-                            ))?;
-                            ui.popup = None;
-                            Ok(())
-                        },
-                        |ui: &mut UIStateGuard| {
-                            ui.popup = None;
-                        },
-                    )
-                }
+                handle_command_for_context_browsing_list_popup(
+                    command,
+                    ui,
+                    playlist_uris,
+                    rspotify_model::Type::Playlist,
+                )
             }
-        }
+            PlaylistPopupAction::AddTrack(track_id) => {
+                let track_id = track_id.clone();
+                let playlist_ids = state
+                    .data
+                    .read()
+                    .user_data
+                    .playlists_created_by_user()
+                    .into_iter()
+                    .map(|p| p.id.clone())
+                    .collect::<Vec<_>>();
+
+                handle_command_for_list_popup(
+                    command,
+                    ui,
+                    playlist_ids.len(),
+                    |_, _| {},
+                    |ui: &mut UIStateGuard, id: usize| -> Result<()> {
+                        client_pub.send(ClientRequest::AddTrackToPlaylist(
+                            playlist_ids[id].clone(),
+                            track_id.clone(),
+                        ))?;
+                        ui.popup = None;
+                        Ok(())
+                    },
+                    |ui: &mut UIStateGuard| {
+                        ui.popup = None;
+                    },
+                )
+            }
+        },
         PopupState::UserFollowedArtistList(_) => {
             let artist_uris = state
                 .data

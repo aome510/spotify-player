@@ -266,7 +266,8 @@ impl Client {
                 }
             }
             ClientRequest::AddTrackToPlaylist(playlist_id, track_id) => {
-                self.add_track_to_playlist(&playlist_id, &track_id).await?;
+                self.add_track_to_playlist(state, &playlist_id, &track_id)
+                    .await?;
             }
             ClientRequest::SaveToLibrary(item) => {
                 self.save_to_library(state, item).await?;
@@ -594,6 +595,7 @@ impl Client {
     /// adds track to a playlist
     pub async fn add_track_to_playlist(
         &self,
+        state: &SharedState,
         playlist_id: &PlaylistId,
         track_id: &TrackId,
     ) -> Result<()> {
@@ -607,6 +609,9 @@ impl Client {
         self.spotify
             .playlist_add_items(playlist_id, vec![dyn_track_id], None)
             .await?;
+
+        // When adding a new track to a playlist, remove the cache of that playlist
+        state.data.write().caches.context.pop(&playlist_id.uri());
 
         Ok(())
     }

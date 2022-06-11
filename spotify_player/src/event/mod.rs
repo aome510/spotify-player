@@ -275,6 +275,11 @@ fn handle_global_command(
             if ui.history.len() > 1 {
                 ui.history.pop();
                 ui.popup = None;
+                if let PageState::Context { id, .. } = ui.current_page_mut() {
+                    // Force reload the page if something has been changed compared to the last
+                    // time the page was visitted.
+                    *id = None;
+                }
             }
         }
         #[cfg(feature = "lyric-finder")]
