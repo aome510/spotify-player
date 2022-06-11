@@ -77,33 +77,21 @@ async fn init_spotify(
             .find_available_device(&state.app_config.default_device)
             .await?
         {
-            client_pub
-                .send_async(event::ClientRequest::Player(
-                    event::PlayerRequest::TransferPlayback(device_id, false),
-                ))
-                .await?;
+            client_pub.send(event::ClientRequest::Player(
+                event::PlayerRequest::TransferPlayback(device_id, false),
+            ))?;
         }
     }
 
-    client_pub
-        .send_async(event::ClientRequest::GetCurrentPlayback)
-        .await?;
+    client_pub.send(event::ClientRequest::GetCurrentPlayback)?;
 
     // request user data
-    client_pub
-        .send_async(event::ClientRequest::GetCurrentUser)
-        .await?;
+    client_pub.send(event::ClientRequest::GetCurrentUser)?;
 
     // request data needed to render the Library page (default page when starting the application)
-    client_pub
-        .send_async(event::ClientRequest::GetUserPlaylists)
-        .await?;
-    client_pub
-        .send_async(event::ClientRequest::GetUserFollowedArtists)
-        .await?;
-    client_pub
-        .send_async(event::ClientRequest::GetUserSavedAlbums)
-        .await?;
+    client_pub.send(event::ClientRequest::GetUserPlaylists)?;
+    client_pub.send(event::ClientRequest::GetUserFollowedArtists)?;
+    client_pub.send(event::ClientRequest::GetUserSavedAlbums)?;
 
     Ok(())
 }
