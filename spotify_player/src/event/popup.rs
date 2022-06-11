@@ -190,9 +190,10 @@ pub fn handle_key_sequence_for_popup(
                         .as_ref()
                         .map(|p| p.is_playing)
                         .unwrap_or(false);
-                    client_pub.send(ClientRequest::Player(
-                        PlayerRequest::TransferPlayback(player.devices[id].id.clone(), is_playing),
-                    ))?;
+                    client_pub.send(ClientRequest::Player(PlayerRequest::TransferPlayback(
+                        player.devices[id].id.clone(),
+                        is_playing,
+                    )))?;
                     ui.popup = None;
                     Ok(())
                 },
@@ -434,9 +435,9 @@ fn handle_command_for_action_list_popup(
                         ui.popup = None;
                     }
                     Action::BrowseRecommendations => {
-                        client_pub.send(ClientRequest::GetRecommendations(
-                            SeedItem::Track(track.clone()),
-                        ))?;
+                        client_pub.send(ClientRequest::GetRecommendations(SeedItem::Track(
+                            track.clone(),
+                        )))?;
                         let new_page = PageState::Tracks {
                             id: format!("recommendations::{}", track.id.uri()),
                             title: "Recommendations".to_string(),
@@ -465,9 +466,9 @@ fn handle_command_for_action_list_popup(
                         ui.popup = None;
                     }
                     Action::BrowseRecommendations => {
-                        client_pub.send(ClientRequest::GetRecommendations(
-                            SeedItem::Artist(artist.clone()),
-                        ))?;
+                        client_pub.send(ClientRequest::GetRecommendations(SeedItem::Artist(
+                            artist.clone(),
+                        )))?;
                         let new_page = PageState::Tracks {
                             id: format!("recommendations::{}", artist.id.uri()),
                             title: "Recommendations".to_string(),
