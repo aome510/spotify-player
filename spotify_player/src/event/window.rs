@@ -7,7 +7,7 @@ use crate::state::UIStateGuard;
 /// assign the handling job to such window's command handler
 pub fn handle_command_for_focused_context_window(
     command: Command,
-    client_pub: &mpsc::Sender<ClientRequest>,
+    client_pub: &flume::Sender<ClientRequest>,
     state: &SharedState,
 ) -> Result<bool> {
     let ui = state.ui.lock();
@@ -93,7 +93,7 @@ pub fn handle_command_for_focused_context_window(
 /// The above case is used for the track table of a playlist or an album.
 pub fn handle_command_for_track_table_window(
     command: Command,
-    client_pub: &mpsc::Sender<ClientRequest>,
+    client_pub: &flume::Sender<ClientRequest>,
     context_id: Option<ContextId>,
     track_ids: Option<Vec<&TrackId>>,
     tracks: Vec<&Track>,
@@ -119,12 +119,12 @@ pub fn handle_command_for_track_table_window(
             let offset = Some(rspotify_model::Offset::for_uri(&tracks[id].id.uri()));
             if track_ids.is_some() {
                 // play a track from a list of tracks
-                client_pub.blocking_send(ClientRequest::Player(PlayerRequest::StartPlayback(
+                client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
                     Playback::URIs(track_ids.unwrap().into_iter().cloned().collect(), offset),
                 )))?;
             } else if context_id.is_some() {
                 // play a track from a context
-                client_pub.blocking_send(ClientRequest::Player(PlayerRequest::StartPlayback(
+                client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
                     Playback::Context(context_id.unwrap(), offset),
                 )))?;
             }
@@ -142,7 +142,7 @@ pub fn handle_command_for_track_table_window(
 
 pub fn handle_command_for_track_list_window(
     command: Command,
-    client_pub: &mpsc::Sender<ClientRequest>,
+    client_pub: &flume::Sender<ClientRequest>,
     tracks: Vec<&Track>,
     mut ui: UIStateGuard,
 ) -> Result<bool> {
@@ -168,7 +168,7 @@ pub fn handle_command_for_track_list_window(
             // It's different for the track table, in which
             // `ChooseSelected` on a track will start a `URIs` playback
             // containing all the tracks in the table.
-            client_pub.blocking_send(ClientRequest::Player(PlayerRequest::StartPlayback(
+            client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
                 Playback::URIs(vec![tracks[id].id.clone()], None),
             )))?;
         }

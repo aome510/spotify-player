@@ -12,14 +12,13 @@ use librespot_playback::{
     mixer::{self, Mixer},
     player::Player,
 };
-use tokio::sync::{broadcast, mpsc};
 
 /// Create a new streaming connection
 pub fn new_connection(
     session: Session,
     device: config::DeviceConfig,
-    client_pub: mpsc::Sender<ClientRequest>,
-    mut spirc_sub: broadcast::Receiver<()>,
+    client_pub: flume::Sender<ClientRequest>,
+    streaming_sub: flume::Receiver<()>,
 ) -> Result<()> {
     // librespot volume is a u16 number ranging from 0 to 65535,
     // while a percentage volume value (from 0 to 100) is used for the device configuration.
@@ -71,7 +70,7 @@ pub fn new_connection(
             while let Some(event) = channel.recv().await {
                 tracing::info!("Got an event from the integrated player: {:?}", event);
                 client_pub
-                    .send(ClientRequest::GetCurrentPlayback)
+                    .send_async(ClientRequest::GetCurrentPlayback)
                     .await
                     .unwrap_or_default();
             }
@@ -85,8 +84,8 @@ pub fn new_connection(
         async move {
             tokio::select! {
                 _ = spirc_task => {}
-                _ = spirc_sub.recv() => {
-                    tracing::info!("Got reconnect request, shutdown the current connection to create a new spirc connection");
+                _ = streaming_sub.recv_async() => {
+                    tracing::info!("Got a shutdown request, shutdown the current streaming connection...");
                     spirc.shutdown();
                 }
             }

@@ -5,7 +5,7 @@ use anyhow::Context;
 /// handles a key sequence for a popup
 pub fn handle_key_sequence_for_popup(
     key_sequence: &KeySequence,
-    client_pub: &mpsc::Sender<ClientRequest>,
+    client_pub: &flume::Sender<ClientRequest>,
     state: &SharedState,
 ) -> Result<bool> {
     let ui = state.ui.lock();
@@ -102,7 +102,7 @@ pub fn handle_key_sequence_for_popup(
                                 .context
                                 .pop(&playlist_ids[id].uri());
 
-                            client_pub.blocking_send(ClientRequest::AddTrackToPlaylist(
+                            client_pub.send(ClientRequest::AddTrackToPlaylist(
                                 playlist_ids[id].clone(),
                                 track_id.clone(),
                             ))?;
@@ -190,9 +190,10 @@ pub fn handle_key_sequence_for_popup(
                         .as_ref()
                         .map(|p| p.is_playing)
                         .unwrap_or(false);
-                    client_pub.blocking_send(ClientRequest::Player(
-                        PlayerRequest::TransferPlayback(player.devices[id].id.clone(), is_playing),
-                    ))?;
+                    client_pub.send(ClientRequest::Player(PlayerRequest::TransferPlayback(
+                        player.devices[id].id.clone(),
+                        is_playing,
+                    )))?;
                     ui.popup = None;
                     Ok(())
                 },
@@ -212,7 +213,7 @@ pub fn handle_key_sequence_for_popup(
 /// handles a key sequence for a context search popup
 fn handle_key_sequence_for_search_popup(
     key_sequence: &KeySequence,
-    client_pub: &mpsc::Sender<ClientRequest>,
+    client_pub: &flume::Sender<ClientRequest>,
     state: &SharedState,
 ) -> Result<bool> {
     // handle user's input that updates the search query
@@ -389,7 +390,7 @@ fn handle_command_for_command_help_popup(command: Command, mut ui: UIStateGuard)
 fn handle_command_for_action_list_popup(
     actions: Vec<Action>,
     command: Command,
-    client_pub: &mpsc::Sender<ClientRequest>,
+    client_pub: &flume::Sender<ClientRequest>,
     ui: UIStateGuard,
 ) -> Result<bool> {
     handle_command_for_list_popup(
@@ -423,20 +424,20 @@ fn handle_command_for_action_list_popup(
                         ));
                     }
                     Action::AddTrackToPlaylist => {
-                        client_pub.blocking_send(ClientRequest::GetUserPlaylists)?;
+                        client_pub.send(ClientRequest::GetUserPlaylists)?;
                         ui.popup = Some(PopupState::UserPlaylistList(
                             PlaylistPopupAction::AddTrack(track.id.clone()),
                             new_list_state(),
                         ));
                     }
                     Action::SaveToLibrary => {
-                        client_pub.blocking_send(ClientRequest::SaveToLibrary(item.clone()))?;
+                        client_pub.send(ClientRequest::SaveToLibrary(item.clone()))?;
                         ui.popup = None;
                     }
                     Action::BrowseRecommendations => {
-                        client_pub.blocking_send(ClientRequest::GetRecommendations(
-                            SeedItem::Track(track.clone()),
-                        ))?;
+                        client_pub.send(ClientRequest::GetRecommendations(SeedItem::Track(
+                            track.clone(),
+                        )))?;
                         let new_page = PageState::Tracks {
                             id: format!("recommendations::{}", track.id.uri()),
                             title: "Recommendations".to_string(),
@@ -454,20 +455,20 @@ fn handle_command_for_action_list_popup(
                         ));
                     }
                     Action::SaveToLibrary => {
-                        client_pub.blocking_send(ClientRequest::SaveToLibrary(item.clone()))?;
+                        client_pub.send(ClientRequest::SaveToLibrary(item.clone()))?;
                         ui.popup = None;
                     }
                     _ => {}
                 },
                 Item::Artist(artist) => match actions[id] {
                     Action::SaveToLibrary => {
-                        client_pub.blocking_send(ClientRequest::SaveToLibrary(item.clone()))?;
+                        client_pub.send(ClientRequest::SaveToLibrary(item.clone()))?;
                         ui.popup = None;
                     }
                     Action::BrowseRecommendations => {
-                        client_pub.blocking_send(ClientRequest::GetRecommendations(
-                            SeedItem::Artist(artist.clone()),
-                        ))?;
+                        client_pub.send(ClientRequest::GetRecommendations(SeedItem::Artist(
+                            artist.clone(),
+                        )))?;
                         let new_page = PageState::Tracks {
                             id: format!("recommendations::{}", artist.id.uri()),
                             title: "Recommendations".to_string(),
@@ -480,7 +481,7 @@ fn handle_command_for_action_list_popup(
                 },
                 Item::Playlist(_) => {
                     if let Action::SaveToLibrary = actions[id] {
-                        client_pub.blocking_send(ClientRequest::SaveToLibrary(item.clone()))?;
+                        client_pub.send(ClientRequest::SaveToLibrary(item.clone()))?;
                         ui.popup = None;
                     }
                 }

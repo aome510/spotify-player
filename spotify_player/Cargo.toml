@@ -41,6 +41,7 @@ souvlaki = { version = "0.5.1", optional = true }
 winit = { version = "0.26.1", optional = true }
 viuer = { version = "0.6.1", optional = true }
 image = { version= "0.24", optional = true }
+flume = "0.10.13"
 
 [features]
 alsa-backend = ["streaming", "librespot-playback/alsa-backend"]
