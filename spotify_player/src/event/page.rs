@@ -33,17 +33,20 @@ pub fn handle_key_sequence_for_library_page(
                 LibraryFocusState::Playlists => window::handle_command_for_playlist_list_window(
                     command,
                     ui.search_filtered_items(&data.user_data.playlists),
+                    &data,
                     ui,
                 ),
                 LibraryFocusState::SavedAlbums => window::handle_command_for_album_list_window(
                     command,
                     ui.search_filtered_items(&data.user_data.saved_albums),
+                    &data,
                     ui,
                 ),
                 LibraryFocusState::FollowedArtists => {
                     window::handle_command_for_artist_list_window(
                         command,
                         ui.search_filtered_items(&data.user_data.followed_artists),
+                        &data,
                         ui,
                     )
                 }
@@ -114,25 +117,25 @@ pub fn handle_key_sequence_for_search_page(
             let tracks = search_results
                 .map(|s| s.tracks.iter().collect())
                 .unwrap_or_default();
-            window::handle_command_for_track_list_window(command, client_pub, tracks, ui)
+            window::handle_command_for_track_list_window(command, client_pub, tracks, &data, ui)
         }
         SearchFocusState::Artists => {
             let artists = search_results
                 .map(|s| s.artists.iter().collect())
                 .unwrap_or_default();
-            window::handle_command_for_artist_list_window(command, artists, ui)
+            window::handle_command_for_artist_list_window(command, artists, &data, ui)
         }
         SearchFocusState::Albums => {
             let albums = search_results
                 .map(|s| s.albums.iter().collect())
                 .unwrap_or_default();
-            window::handle_command_for_album_list_window(command, albums, ui)
+            window::handle_command_for_album_list_window(command, albums, &data, ui)
         }
         SearchFocusState::Playlists => {
             let playlists = search_results
                 .map(|s| s.playlists.iter().collect())
                 .unwrap_or_default();
-            window::handle_command_for_playlist_list_window(command, playlists, ui)
+            window::handle_command_for_playlist_list_window(command, playlists, &data, ui)
         }
     }
 }
@@ -280,6 +283,7 @@ pub fn handle_key_sequence_for_tracks_page(
             None,
             Some(tracks.iter().map(|t| &t.id).collect()),
             tracks,
+            &data,
             ui,
         ),
     }

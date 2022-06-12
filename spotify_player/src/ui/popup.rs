@@ -51,17 +51,14 @@ pub fn render_popup(
                 (chunks[0], false)
             }
             PopupState::ActionList(item, _) => {
-                let items = item
-                    .actions()
-                    .iter()
-                    .map(|a| (format!("{:?}", a), false))
-                    .collect();
-
                 let rect = render_list_popup(
                     frame,
                     rect,
                     &format!("Actions on {}", item.name()),
-                    items,
+                    item.actions_desc()
+                        .into_iter()
+                        .map(|d| (d, false))
+                        .collect(),
                     7,
                     ui,
                 );

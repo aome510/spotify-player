@@ -1,4 +1,4 @@
-use crate::state::model::*;
+use crate::{command, state::model::*};
 use tui::widgets::ListState;
 
 #[derive(Debug)]
@@ -11,10 +11,18 @@ pub enum PopupState {
     DeviceList(ListState),
     ArtistList(Vec<Artist>, ListState),
     ThemeList(Vec<crate::config::Theme>, ListState),
-    ActionList(Item, ListState),
+    ActionList(ActionListItem, ListState),
 }
 
-/// An action on a playlist popup list
+#[derive(Debug)]
+pub enum ActionListItem {
+    Track(Track, Vec<command::TrackAction>),
+    Artist(Artist, Vec<command::ArtistAction>),
+    Album(Album, Vec<command::AlbumAction>),
+    Playlist(Playlist, Vec<command::PlaylistAction>),
+}
+
+/// An action on an item in a playlist popup list
 #[derive(Debug)]
 pub enum PlaylistPopupAction {
     Browse,
@@ -63,6 +71,43 @@ impl PopupState {
         match self.list_state_mut() {
             None => {}
             Some(state) => state.select(id),
+        }
+    }
+}
+
+impl ActionListItem {
+    pub fn n_actions(&self) -> usize {
+        match self {
+            ActionListItem::Track(.., actions) => actions.len(),
+            ActionListItem::Artist(.., actions) => actions.len(),
+            ActionListItem::Album(.., actions) => actions.len(),
+            ActionListItem::Playlist(.., actions) => actions.len(),
+        }
+    }
+
+    pub fn name(&self) -> &str {
+        match self {
+            ActionListItem::Track(track, ..) => &track.name,
+            ActionListItem::Artist(artist, ..) => &artist.name,
+            ActionListItem::Album(album, ..) => &album.name,
+            ActionListItem::Playlist(playlist, ..) => &playlist.name,
+        }
+    }
+
+    pub fn actions_desc(&self) -> Vec<String> {
+        match self {
+            ActionListItem::Track(.., actions) => {
+                actions.iter().map(|a| format!("{a:?}")).collect::<Vec<_>>()
+            }
+            ActionListItem::Artist(.., actions) => {
+                actions.iter().map(|a| format!("{a:?}")).collect::<Vec<_>>()
+            }
+            ActionListItem::Album(.., actions) => {
+                actions.iter().map(|a| format!("{a:?}")).collect::<Vec<_>>()
+            }
+            ActionListItem::Playlist(.., actions) => {
+                actions.iter().map(|a| format!("{a:?}")).collect::<Vec<_>>()
+            }
         }
     }
 }

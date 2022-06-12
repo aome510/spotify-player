@@ -269,7 +269,7 @@ impl Client {
                 self.add_track_to_playlist(state, &playlist_id, &track_id)
                     .await?;
             }
-            ClientRequest::SaveToLibrary(item) => {
+            ClientRequest::AddToLibrary(item) => {
                 self.save_to_library(state, item).await?;
             }
         };

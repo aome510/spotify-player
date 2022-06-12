@@ -1,5 +1,8 @@
 use super::*;
-use crate::state::UIStateGuard;
+use crate::{
+    command::{AlbumAction, ArtistAction, PlaylistAction, TrackAction},
+    state::UIStateGuard,
+};
 
 /// Handles a command for the currently focused context window
 ///
@@ -19,7 +22,8 @@ pub fn handle_command_for_focused_context_window(
         _ => anyhow::bail!("expect a context page"),
     };
 
-    match state.data.read().caches.context.peek(&context_uri) {
+    let data = state.data.read();
+    match data.caches.context.peek(&context_uri) {
         Some(context) => match context {
             Context::Artist {
                 top_tracks,
@@ -39,11 +43,13 @@ pub fn handle_command_for_focused_context_window(
                     ArtistFocusState::Albums => handle_command_for_album_list_window(
                         command,
                         ui.search_filtered_items(albums),
+                        &data,
                         ui,
                     ),
                     ArtistFocusState::RelatedArtists => handle_command_for_artist_list_window(
                         command,
                         ui.search_filtered_items(related_artists),
+                        &data,
                         ui,
                     ),
                     ArtistFocusState::TopTracks => handle_command_for_track_table_window(
@@ -52,6 +58,7 @@ pub fn handle_command_for_focused_context_window(
                         None,
                         Some(top_tracks.iter().map(|t| &t.id).collect()),
                         ui.search_filtered_items(top_tracks),
+                        &data,
                         ui,
                     ),
                 }
@@ -62,6 +69,7 @@ pub fn handle_command_for_focused_context_window(
                 Some(ContextId::Album(album.id.clone())),
                 None,
                 ui.search_filtered_items(tracks),
+                &data,
                 ui,
             ),
             Context::Playlist { playlist, tracks } => handle_command_for_track_table_window(
@@ -70,6 +78,7 @@ pub fn handle_command_for_focused_context_window(
                 Some(ContextId::Playlist(playlist.id.clone())),
                 None,
                 ui.search_filtered_items(tracks),
+                &data,
                 ui,
             ),
         },
@@ -97,6 +106,7 @@ pub fn handle_command_for_track_table_window(
     context_id: Option<ContextId>,
     track_ids: Option<Vec<&TrackId>>,
     tracks: Vec<&Track>,
+    data: &DataReadGuard,
     mut ui: UIStateGuard,
 ) -> Result<bool> {
     let id = ui.current_page_mut().selected().unwrap_or_default();
@@ -130,8 +140,18 @@ pub fn handle_command_for_track_table_window(
             }
         }
         Command::ShowActionsOnSelectedItem => {
+            let mut actions = vec![
+                TrackAction::BrowseArtist,
+                TrackAction::BrowseAlbum,
+                TrackAction::BrowseRecommendations,
+                TrackAction::AddToPlaylist,
+            ];
+            if let Some(ContextId::Playlist(_)) = context_id {
+                actions.push(TrackAction::RemoveFromCurrentPlaylist);
+            }
+            // TODO: handle action on user's liked tracks
             ui.popup = Some(PopupState::ActionList(
-                Item::Track(tracks[id].clone()),
+                ActionListItem::Track(tracks[id].clone(), actions),
                 new_list_state(),
             ));
         }
@@ -144,6 +164,7 @@ pub fn handle_command_for_track_list_window(
     command: Command,
     client_pub: &flume::Sender<ClientRequest>,
     tracks: Vec<&Track>,
+    data: &DataReadGuard,
     mut ui: UIStateGuard,
 ) -> Result<bool> {
     let id = ui.current_page_mut().selected().unwrap_or_default();
@@ -173,8 +194,15 @@ pub fn handle_command_for_track_list_window(
             )))?;
         }
         Command::ShowActionsOnSelectedItem => {
+            let actions = vec![
+                TrackAction::BrowseArtist,
+                TrackAction::BrowseAlbum,
+                TrackAction::BrowseRecommendations,
+                TrackAction::AddToPlaylist,
+            ];
+            // TODO: handle action on user's liked tracks
             ui.popup = Some(PopupState::ActionList(
-                Item::Track(tracks[id].clone()),
+                ActionListItem::Track(tracks[id].clone(), actions),
                 new_list_state(),
             ));
         }
@@ -186,6 +214,7 @@ pub fn handle_command_for_track_list_window(
 pub fn handle_command_for_artist_list_window(
     command: Command,
     artists: Vec<&Artist>,
+    data: &DataReadGuard,
     mut ui: UIStateGuard,
 ) -> Result<bool> {
     let id = ui.current_page_mut().selected().unwrap_or_default();
@@ -213,8 +242,19 @@ pub fn handle_command_for_artist_list_window(
             });
         }
         Command::ShowActionsOnSelectedItem => {
+            let mut actions = vec![ArtistAction::BrowseRecommendations];
+            if data
+                .user_data
+                .followed_artists
+                .iter()
+                .any(|a| a.id == artists[id].id)
+            {
+                actions.push(ArtistAction::Unfollow);
+            } else {
+                actions.push(ArtistAction::Follow);
+            }
             ui.popup = Some(PopupState::ActionList(
-                Item::Artist(artists[id].clone()),
+                ActionListItem::Artist(artists[id].clone(), actions),
                 new_list_state(),
             ));
         }
@@ -226,6 +266,7 @@ pub fn handle_command_for_artist_list_window(
 pub fn handle_command_for_album_list_window(
     command: Command,
     albums: Vec<&Album>,
+    data: &DataReadGuard,
     mut ui: UIStateGuard,
 ) -> Result<bool> {
     let id = ui.current_page_mut().selected().unwrap_or_default();
@@ -253,8 +294,19 @@ pub fn handle_command_for_album_list_window(
             });
         }
         Command::ShowActionsOnSelectedItem => {
+            let mut actions = vec![AlbumAction::BrowseArtist];
+            if data
+                .user_data
+                .saved_albums
+                .iter()
+                .any(|a| a.id == albums[id].id)
+            {
+                actions.push(AlbumAction::DeleteFromLibrary);
+            } else {
+                actions.push(AlbumAction::AddToLibrary);
+            }
             ui.popup = Some(PopupState::ActionList(
-                Item::Album(albums[id].clone()),
+                ActionListItem::Album(albums[id].clone(), actions),
                 new_list_state(),
             ));
         }
@@ -266,6 +318,7 @@ pub fn handle_command_for_album_list_window(
 pub fn handle_command_for_playlist_list_window(
     command: Command,
     playlists: Vec<&Playlist>,
+    data: &DataReadGuard,
     mut ui: UIStateGuard,
 ) -> Result<bool> {
     let id = ui.current_page_mut().selected().unwrap_or_default();
@@ -293,8 +346,19 @@ pub fn handle_command_for_playlist_list_window(
             });
         }
         Command::ShowActionsOnSelectedItem => {
+            let mut actions = vec![];
+            if data
+                .user_data
+                .playlists
+                .iter()
+                .any(|a| a.id == playlists[id].id)
+            {
+                actions.push(PlaylistAction::DeleteFromLibrary);
+            } else {
+                actions.push(PlaylistAction::AddToLibrary);
+            }
             ui.popup = Some(PopupState::ActionList(
-                Item::Playlist(playlists[id].clone()),
+                ActionListItem::Playlist(playlists[id].clone(), actions),
                 new_list_state(),
             ));
         }

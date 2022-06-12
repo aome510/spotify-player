@@ -1,5 +1,8 @@
 use super::*;
-use crate::{command::Action, utils::new_table_state};
+use crate::{
+    command::{AlbumAction, ArtistAction, PlaylistAction, TrackAction},
+    utils::new_table_state,
+};
 use anyhow::Context;
 
 /// handles a key sequence for a popup
@@ -193,8 +196,7 @@ pub fn handle_key_sequence_for_popup(
         }
         PopupState::CommandHelp { .. } => handle_command_for_command_help_popup(command, ui),
         PopupState::ActionList(item, ..) => {
-            let actions = item.actions();
-            handle_command_for_action_list_popup(actions, command, client_pub, ui)
+            handle_command_for_action_list_popup(item.n_actions(), command, client_pub, ui)
         }
     }
 }
@@ -377,7 +379,7 @@ fn handle_command_for_command_help_popup(command: Command, mut ui: UIStateGuard)
 
 /// handles a command for an action list popup
 fn handle_command_for_action_list_popup(
-    actions: Vec<Action>,
+    n_actions: usize,
     command: Command,
     client_pub: &flume::Sender<ClientRequest>,
     ui: UIStateGuard,
@@ -385,7 +387,7 @@ fn handle_command_for_action_list_popup(
     handle_command_for_list_popup(
         command,
         ui,
-        actions.len(),
+        n_actions,
         |_, _| {},
         |ui: &mut UIStateGuard, id: usize| -> Result<()> {
             let item = match ui.popup {
@@ -394,8 +396,8 @@ fn handle_command_for_action_list_popup(
             };
 
             match item {
-                Item::Track(track) => match actions[id] {
-                    Action::BrowseAlbum => {
+                ActionListItem::Track(track, actions) => match actions[id] {
+                    TrackAction::BrowseAlbum => {
                         if let Some(ref album) = track.album {
                             let uri = album.id.uri();
                             let context_id = ContextId::Album(AlbumId::from_uri(&uri)?);
@@ -406,24 +408,24 @@ fn handle_command_for_action_list_popup(
                             });
                         }
                     }
-                    Action::BrowseArtist => {
+                    TrackAction::BrowseArtist => {
                         ui.popup = Some(PopupState::ArtistList(
                             track.artists.clone(),
                             new_list_state(),
                         ));
                     }
-                    Action::AddTrackToPlaylist => {
+                    TrackAction::AddToPlaylist => {
                         client_pub.send(ClientRequest::GetUserPlaylists)?;
                         ui.popup = Some(PopupState::UserPlaylistList(
                             PlaylistPopupAction::AddTrack(track.id.clone()),
                             new_list_state(),
                         ));
                     }
-                    Action::SaveToLibrary => {
-                        client_pub.send(ClientRequest::SaveToLibrary(item.clone()))?;
+                    TrackAction::SaveToLikedTracks => {
+                        client_pub.send(ClientRequest::AddToLibrary(Item::Track(track.clone())))?;
                         ui.popup = None;
                     }
-                    Action::BrowseRecommendations => {
+                    TrackAction::BrowseRecommendations => {
                         client_pub.send(ClientRequest::GetRecommendations(SeedItem::Track(
                             track.clone(),
                         )))?;
@@ -435,26 +437,29 @@ fn handle_command_for_action_list_popup(
                         };
                         ui.create_new_page(new_page);
                     }
+                    TrackAction::RemoveFromCurrentPlaylist => todo!(),
+                    TrackAction::RemoveFromLikedTracks => todo!(),
                 },
-                Item::Album(album) => match actions[id] {
-                    Action::BrowseArtist => {
+                ActionListItem::Album(album, actions) => match actions[id] {
+                    AlbumAction::BrowseArtist => {
                         ui.popup = Some(PopupState::ArtistList(
                             album.artists.clone(),
                             new_list_state(),
                         ));
                     }
-                    Action::SaveToLibrary => {
-                        client_pub.send(ClientRequest::SaveToLibrary(item.clone()))?;
+                    AlbumAction::AddToLibrary => {
+                        client_pub.send(ClientRequest::AddToLibrary(Item::Album(album.clone())))?;
                         ui.popup = None;
                     }
-                    _ => {}
+                    AlbumAction::DeleteFromLibrary => todo!(),
                 },
-                Item::Artist(artist) => match actions[id] {
-                    Action::SaveToLibrary => {
-                        client_pub.send(ClientRequest::SaveToLibrary(item.clone()))?;
+                ActionListItem::Artist(artist, actions) => match actions[id] {
+                    ArtistAction::Follow => {
+                        client_pub
+                            .send(ClientRequest::AddToLibrary(Item::Artist(artist.clone())))?;
                         ui.popup = None;
                     }
-                    Action::BrowseRecommendations => {
+                    ArtistAction::BrowseRecommendations => {
                         client_pub.send(ClientRequest::GetRecommendations(SeedItem::Artist(
                             artist.clone(),
                         )))?;
@@ -466,14 +471,17 @@ fn handle_command_for_action_list_popup(
                         };
                         ui.create_new_page(new_page);
                     }
-                    _ => {}
+                    ArtistAction::Unfollow => todo!(),
                 },
-                Item::Playlist(_) => {
-                    if let Action::SaveToLibrary = actions[id] {
-                        client_pub.send(ClientRequest::SaveToLibrary(item.clone()))?;
+                ActionListItem::Playlist(playlist, actions) => match actions[id] {
+                    PlaylistAction::AddToLibrary => {
+                        client_pub.send(ClientRequest::AddToLibrary(Item::Playlist(
+                            playlist.clone(),
+                        )))?;
                         ui.popup = None;
                     }
-                }
+                    PlaylistAction::DeleteFromLibrary => todo!(),
+                },
             }
             Ok(())
         },

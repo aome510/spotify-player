@@ -1,5 +1,5 @@
 use crate::{
-    command::Command,
+    command::{Command, TrackAction},
     key::{Key, KeySequence},
     state::*,
     utils::{map_join, new_list_state, new_table_state},
@@ -39,7 +39,7 @@ pub enum ClientRequest {
     GetRecommendations(SeedItem),
     Search(String),
     AddTrackToPlaylist(PlaylistId, TrackId),
-    SaveToLibrary(Item),
+    AddToLibrary(Item),
     Player(PlayerRequest),
     #[cfg(feature = "lyric-finder")]
     GetLyric {
@@ -212,7 +212,17 @@ fn handle_global_command(
         Command::ShowActionsOnCurrentTrack => {
             if let Some(track) = state.player.read().current_playing_track() {
                 if let Some(track) = Track::try_from_full_track(track.clone()) {
-                    ui.popup = Some(PopupState::ActionList(Item::Track(track), new_list_state()));
+                    let actions = vec![
+                        TrackAction::BrowseArtist,
+                        TrackAction::BrowseAlbum,
+                        TrackAction::BrowseRecommendations,
+                        TrackAction::AddToPlaylist,
+                    ];
+                    // TODO: handle action on user's liked tracks
+                    ui.popup = Some(PopupState::ActionList(
+                        ActionListItem::Track(track, actions),
+                        new_list_state(),
+                    ));
                 }
             }
         }
