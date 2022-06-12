@@ -438,7 +438,12 @@ fn handle_command_for_action_list_popup(
                         ui.create_new_page(new_page);
                     }
                     TrackAction::RemoveFromCurrentPlaylist => todo!(),
-                    TrackAction::RemoveFromLikedTracks => todo!(),
+                    TrackAction::RemoveFromLikedTracks => {
+                        client_pub.send(ClientRequest::DeleteFromLibrary(ItemId::Track(
+                            track.id.clone(),
+                        )))?;
+                        ui.popup = None;
+                    }
                 },
                 ActionListItem::Album(album, actions) => match actions[id] {
                     AlbumAction::BrowseArtist => {
@@ -451,7 +456,12 @@ fn handle_command_for_action_list_popup(
                         client_pub.send(ClientRequest::AddToLibrary(Item::Album(album.clone())))?;
                         ui.popup = None;
                     }
-                    AlbumAction::DeleteFromLibrary => todo!(),
+                    AlbumAction::DeleteFromLibrary => {
+                        client_pub.send(ClientRequest::DeleteFromLibrary(ItemId::Album(
+                            album.id.clone(),
+                        )))?;
+                        ui.popup = None;
+                    }
                 },
                 ActionListItem::Artist(artist, actions) => match actions[id] {
                     ArtistAction::Follow => {
@@ -471,7 +481,12 @@ fn handle_command_for_action_list_popup(
                         };
                         ui.create_new_page(new_page);
                     }
-                    ArtistAction::Unfollow => todo!(),
+                    ArtistAction::Unfollow => {
+                        client_pub.send(ClientRequest::DeleteFromLibrary(ItemId::Artist(
+                            artist.id.clone(),
+                        )))?;
+                        ui.popup = None;
+                    }
                 },
                 ActionListItem::Playlist(playlist, actions) => match actions[id] {
                     PlaylistAction::AddToLibrary => {
@@ -480,7 +495,12 @@ fn handle_command_for_action_list_popup(
                         )))?;
                         ui.popup = None;
                     }
-                    PlaylistAction::DeleteFromLibrary => todo!(),
+                    PlaylistAction::DeleteFromLibrary => {
+                        client_pub.send(ClientRequest::DeleteFromLibrary(ItemId::Playlist(
+                            playlist.id.clone(),
+                        )))?;
+                        ui.popup = None;
+                    }
                 },
             }
             Ok(())
