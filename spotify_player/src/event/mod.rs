@@ -1,5 +1,5 @@
 use crate::{
-    command::Command,
+    command::{Command, TrackAction},
     key::{Key, KeySequence},
     state::*,
     utils::{map_join, new_list_state, new_table_state},
@@ -32,6 +32,7 @@ pub enum ClientRequest {
     GetUserPlaylists,
     GetUserSavedAlbums,
     GetUserFollowedArtists,
+    GetUserSavedTracks,
     GetUserTopTracks,
     GetUserRecentlyPlayedTracks,
     GetContext(ContextId),
@@ -39,7 +40,8 @@ pub enum ClientRequest {
     GetRecommendations(SeedItem),
     Search(String),
     AddTrackToPlaylist(PlaylistId, TrackId),
-    SaveToLibrary(Item),
+    AddToLibrary(Item),
+    DeleteFromLibrary(ItemId),
     Player(PlayerRequest),
     #[cfg(feature = "lyric-finder")]
     GetLyric {
@@ -212,7 +214,28 @@ fn handle_global_command(
         Command::ShowActionsOnCurrentTrack => {
             if let Some(track) = state.player.read().current_playing_track() {
                 if let Some(track) = Track::try_from_full_track(track.clone()) {
-                    ui.popup = Some(PopupState::ActionList(Item::Track(track), new_list_state()));
+                    let mut actions = vec![
+                        TrackAction::BrowseArtist,
+                        TrackAction::BrowseAlbum,
+                        TrackAction::BrowseRecommendations,
+                        TrackAction::AddToPlaylist,
+                    ];
+                    if state
+                        .data
+                        .read()
+                        .user_data
+                        .saved_tracks
+                        .iter()
+                        .any(|t| t.id == track.id)
+                    {
+                        actions.push(TrackAction::RemoveFromLikedTracks);
+                    } else {
+                        actions.push(TrackAction::SaveToLikedTracks);
+                    }
+                    ui.popup = Some(PopupState::ActionList(
+                        ActionListItem::Track(track, actions),
+                        new_list_state(),
+                    ));
                 }
             }
         }
@@ -260,9 +283,6 @@ fn handle_global_command(
             ui.create_new_page(PageState::Library {
                 state: LibraryPageUIState::new(),
             });
-            client_pub.send(ClientRequest::GetUserPlaylists)?;
-            client_pub.send(ClientRequest::GetUserFollowedArtists)?;
-            client_pub.send(ClientRequest::GetUserSavedAlbums)?;
         }
         Command::SearchPage => {
             ui.create_new_page(PageState::Search {
@@ -275,6 +295,11 @@ fn handle_global_command(
             if ui.history.len() > 1 {
                 ui.history.pop();
                 ui.popup = None;
+                if let PageState::Context { id, .. } = ui.current_page_mut() {
+                    // Force reload the page if something has been changed compared to the last
+                    // time the page was visitted.
+                    *id = None;
+                }
             }
         }
         #[cfg(feature = "lyric-finder")]

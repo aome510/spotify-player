@@ -229,6 +229,10 @@ impl Client {
                     state.data.write().caches.tracks.put(id.to_string(), tracks);
                 }
             }
+            ClientRequest::GetUserSavedTracks => {
+                let tracks = self.current_user_saved_tracks().await?;
+                state.data.write().user_data.saved_tracks = tracks;
+            }
             ClientRequest::GetUserRecentlyPlayedTracks => {
                 let id = "recently-played-tracks";
                 if !state.data.read().caches.tracks.contains(id) {
@@ -266,10 +270,14 @@ impl Client {
                 }
             }
             ClientRequest::AddTrackToPlaylist(playlist_id, track_id) => {
-                self.add_track_to_playlist(&playlist_id, &track_id).await?;
+                self.add_track_to_playlist(state, &playlist_id, &track_id)
+                    .await?;
             }
-            ClientRequest::SaveToLibrary(item) => {
+            ClientRequest::AddToLibrary(item) => {
                 self.save_to_library(state, item).await?;
+            }
+            ClientRequest::DeleteFromLibrary(id) => {
+                self.remove_from_library(state, id).await?;
             }
         };
 
@@ -320,6 +328,20 @@ impl Client {
         }
 
         Ok(None)
+    }
+
+    /// gets the saved (liked) tracks of the current user
+    pub async fn current_user_saved_tracks(&self) -> Result<Vec<Track>> {
+        let first_page = self
+            .spotify
+            .current_user_saved_tracks_manual(None, Some(50), None)
+            .await?;
+
+        let tracks = self.all_paging_items(first_page).await?;
+        Ok(tracks
+            .into_iter()
+            .filter_map(|t| Track::try_from_full_track(t.track))
+            .collect())
     }
 
     /// gets the recently played tracks of the current user
@@ -594,6 +616,7 @@ impl Client {
     /// adds track to a playlist
     pub async fn add_track_to_playlist(
         &self,
+        state: &SharedState,
         playlist_id: &PlaylistId,
         track_id: &TrackId,
     ) -> Result<()> {
@@ -607,6 +630,9 @@ impl Client {
         self.spotify
             .playlist_add_items(playlist_id, vec![dyn_track_id], None)
             .await?;
+
+        // After adding a new track to a playlist, remove the cache of that playlist
+        state.data.write().caches.context.pop(&playlist_id.uri());
 
         Ok(())
     }
@@ -625,6 +651,8 @@ impl Client {
                     self.spotify
                         .current_user_saved_tracks_add(vec![&track.id])
                         .await?;
+                    // update the in-memory `user_data`
+                    state.data.write().user_data.saved_tracks.insert(0, track);
                 }
             }
             Item::Album(album) => {
@@ -636,6 +664,8 @@ impl Client {
                     self.spotify
                         .current_user_saved_albums_add(vec![&album.id])
                         .await?;
+                    // update the in-memory `user_data`
+                    state.data.write().user_data.saved_albums.insert(0, album);
                 }
             }
             Item::Artist(artist) => {
@@ -645,6 +675,13 @@ impl Client {
                     .await?;
                 if !follows[0] {
                     self.spotify.user_follow_artists(vec![&artist.id]).await?;
+                    // update the in-memory `user_data`
+                    state
+                        .data
+                        .write()
+                        .user_data
+                        .followed_artists
+                        .insert(0, artist);
                 }
             }
             Item::Playlist(playlist) => {
@@ -663,8 +700,53 @@ impl Client {
                         .await?;
                     if !follows[0] {
                         self.spotify.playlist_follow(&playlist.id, None).await?;
+                        // update the in-memory `user_data`
+                        state.data.write().user_data.playlists.insert(0, playlist);
                     }
                 }
+            }
+        }
+        Ok(())
+    }
+
+    // removes a Spotify item from user's library
+    pub async fn remove_from_library(&self, state: &SharedState, id: ItemId) -> Result<()> {
+        match id {
+            ItemId::Track(id) => {
+                state
+                    .data
+                    .write()
+                    .user_data
+                    .saved_tracks
+                    .retain(|t| t.id != id);
+                self.spotify.current_user_saved_tracks_delete(&[id]).await?;
+            }
+            ItemId::Album(id) => {
+                state
+                    .data
+                    .write()
+                    .user_data
+                    .saved_albums
+                    .retain(|a| a.id != id);
+                self.spotify.current_user_saved_albums_delete(&[id]).await?;
+            }
+            ItemId::Artist(id) => {
+                state
+                    .data
+                    .write()
+                    .user_data
+                    .followed_artists
+                    .retain(|a| a.id != id);
+                self.spotify.user_unfollow_artists(&[id]).await?;
+            }
+            ItemId::Playlist(id) => {
+                state
+                    .data
+                    .write()
+                    .user_data
+                    .playlists
+                    .retain(|p| p.id != id);
+                self.spotify.playlist_unfollow(&id).await?;
             }
         }
         Ok(())

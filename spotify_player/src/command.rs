@@ -56,14 +56,34 @@ pub enum Command {
     ReverseTrackOrder,
 }
 
-/// An action on a Spotify item (track,album,artist,playlist)
-#[derive(Copy, Clone, Debug)]
-pub enum Action {
-    AddTrackToPlaylist,
-    SaveToLibrary,
+#[derive(Debug, Copy, Clone)]
+pub enum TrackAction {
     BrowseArtist,
     BrowseAlbum,
     BrowseRecommendations,
+    AddToPlaylist,
+    SaveToLikedTracks,
+    RemoveFromLikedTracks,
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum AlbumAction {
+    BrowseArtist,
+    AddToLibrary,
+    DeleteFromLibrary,
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum ArtistAction {
+    BrowseRecommendations,
+    Follow,
+    Unfollow,
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum PlaylistAction {
+    AddToLibrary,
+    DeleteFromLibrary,
 }
 
 impl Command {

@@ -51,17 +51,14 @@ pub fn render_popup(
                 (chunks[0], false)
             }
             PopupState::ActionList(item, _) => {
-                let items = item
-                    .actions()
-                    .iter()
-                    .map(|a| (format!("{:?}", a), false))
-                    .collect();
-
                 let rect = render_list_popup(
                     frame,
                     rect,
                     &format!("Actions on {}", item.name()),
-                    items,
+                    item.actions_desc()
+                        .into_iter()
+                        .map(|d| (d, false))
+                        .collect(),
                     7,
                     ui,
                 );
@@ -153,7 +150,7 @@ fn render_list_popup(
         .constraints([Constraint::Min(0), Constraint::Length(length)].as_ref())
         .split(rect);
 
-    let widget = construct_list_widget(&ui.theme, items, title, true, None);
+    let widget = construct_list_widget(&ui.theme, items, title, true, None).0;
 
     frame.render_stateful_widget(
         widget,

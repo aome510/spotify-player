@@ -1,5 +1,7 @@
 use super::model::*;
 
+pub type DataReadGuard<'a> = parking_lot::RwLockReadGuard<'a, AppData>;
+
 #[derive(Default, Debug)]
 /// the application's data
 pub struct AppData {
@@ -14,6 +16,7 @@ pub struct UserData {
     pub playlists: Vec<Playlist>,
     pub followed_artists: Vec<Artist>,
     pub saved_albums: Vec<Album>,
+    pub saved_tracks: Vec<Track>,
 }
 
 #[derive(Debug)]

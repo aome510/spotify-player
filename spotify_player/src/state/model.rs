@@ -2,7 +2,6 @@ pub use rspotify::model as rspotify_model;
 pub use rspotify::model::{AlbumId, ArtistId, Id, PlaylistId, TrackId, UserId};
 use serde::{Deserialize, Serialize};
 
-use crate::command;
 use crate::utils::map_join;
 
 #[derive(Clone, Debug)]
@@ -70,6 +69,14 @@ pub enum Item {
     Album(Album),
     Artist(Artist),
     Playlist(Playlist),
+}
+
+#[derive(Debug, Clone)]
+pub enum ItemId {
+    Track(TrackId),
+    Album(AlbumId),
+    Artist(ArtistId),
+    Playlist(PlaylistId),
 }
 
 #[derive(Debug, Clone)]
@@ -236,40 +243,6 @@ impl TrackOrder {
             Self::Album => x.album_info().cmp(&y.album_info()),
             Self::Duration => x.duration.cmp(&y.duration),
             Self::Artists => x.artists_info().cmp(&y.artists_info()),
-        }
-    }
-}
-
-impl Item {
-    /// gets the list of possible actions on the current item
-    pub fn actions(&self) -> Vec<command::Action> {
-        match self {
-            Self::Track(_) => vec![
-                command::Action::BrowseAlbum,
-                command::Action::BrowseArtist,
-                command::Action::BrowseRecommendations,
-                command::Action::AddTrackToPlaylist,
-                command::Action::SaveToLibrary,
-            ],
-            Self::Artist(_) => vec![
-                command::Action::BrowseRecommendations,
-                command::Action::SaveToLibrary,
-            ],
-            Self::Album(_) => vec![
-                command::Action::BrowseArtist,
-                command::Action::SaveToLibrary,
-            ],
-            Self::Playlist(_) => vec![command::Action::SaveToLibrary],
-        }
-    }
-
-    /// gets the name of the spotify item
-    pub fn name(&self) -> &str {
-        match self {
-            Self::Track(track) => &track.name,
-            Self::Artist(artist) => &artist.name,
-            Self::Album(album) => &album.name,
-            Self::Playlist(playlist) => &playlist.name,
         }
     }
 }
