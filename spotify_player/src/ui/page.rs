@@ -39,6 +39,7 @@ pub fn render_search_page(
             is_active,
             Some(Borders::TOP | Borders::RIGHT),
         )
+        .0
     };
 
     let album_list = {
@@ -60,6 +61,7 @@ pub fn render_search_page(
             is_active,
             Some(Borders::TOP),
         )
+        .0
     };
 
     let artist_list = {
@@ -81,6 +83,7 @@ pub fn render_search_page(
             is_active,
             Some(Borders::TOP | Borders::RIGHT),
         )
+        .0
     };
 
     let playlist_list = {
@@ -102,6 +105,7 @@ pub fn render_search_page(
             is_active,
             Some(Borders::TOP),
         )
+        .0
     };
 
     // renders borders with title
@@ -283,7 +287,7 @@ pub fn render_library_page(
     let (playlist_rect, album_rect, artist_rect) = (chunks[0], chunks[1], chunks[2]);
 
     // Construct the playlist window
-    let playlist_list = construct_list_widget(
+    let (playlist_list, n_playlists) = construct_list_widget(
         &ui.theme,
         ui.search_filtered_items(&data.user_data.playlists)
             .into_iter()
@@ -294,7 +298,7 @@ pub fn render_library_page(
         Some((Borders::TOP | Borders::LEFT) | Borders::BOTTOM),
     );
     // Construct the saved album window
-    let album_list = construct_list_widget(
+    let (album_list, n_albums) = construct_list_widget(
         &ui.theme,
         ui.search_filtered_items(&data.user_data.saved_albums)
             .into_iter()
@@ -305,7 +309,7 @@ pub fn render_library_page(
         Some((Borders::TOP | Borders::LEFT) | Borders::BOTTOM),
     );
     // Construct the followed artist window
-    let artist_list = construct_list_widget(
+    let (artist_list, n_artists) = construct_list_widget(
         &ui.theme,
         ui.search_filtered_items(&data.user_data.followed_artists)
             .into_iter()
@@ -322,6 +326,19 @@ pub fn render_library_page(
         PageState::Library { state } => state,
         s => anyhow::bail!("expect a library page state, found {s:?}"),
     };
+
+    // adjust the `selected` position of a `ListState` if that position is out of index
+    let adjust_list_state = |state: &mut ListState, len: usize| {
+        if let Some(p) = state.selected() {
+            if p >= len {
+                state.select(if len > 0 { Some(len - 1) } else { Some(0) });
+            }
+        }
+    };
+    adjust_list_state(&mut page_state.playlist_list, n_playlists);
+    adjust_list_state(&mut page_state.saved_album_list, n_albums);
+    adjust_list_state(&mut page_state.followed_artist_list, n_artists);
+
     frame.render_stateful_widget(playlist_list, playlist_rect, &mut page_state.playlist_list);
     frame.render_stateful_widget(album_list, album_rect, &mut page_state.saved_album_list);
     frame.render_stateful_widget(
@@ -515,6 +532,7 @@ fn render_artist_context_page_windows(
             is_active && focus_state == ArtistFocusState::Albums,
             Some(Borders::TOP),
         )
+        .0
     };
 
     // construct artist list widget
@@ -531,6 +549,7 @@ fn render_artist_context_page_windows(
             is_active && focus_state == ArtistFocusState::RelatedArtists,
             Some(Borders::TOP | Borders::LEFT),
         )
+        .0
     };
 
     let (album_list_state, artist_list_state) = match ui.current_page_mut() {
