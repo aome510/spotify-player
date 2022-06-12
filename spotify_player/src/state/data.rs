@@ -16,6 +16,7 @@ pub struct UserData {
     pub playlists: Vec<Playlist>,
     pub followed_artists: Vec<Artist>,
     pub saved_albums: Vec<Album>,
+    pub saved_tracks: Vec<Track>,
 }
 
 #[derive(Debug)]

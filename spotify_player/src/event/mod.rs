@@ -32,6 +32,7 @@ pub enum ClientRequest {
     GetUserPlaylists,
     GetUserSavedAlbums,
     GetUserFollowedArtists,
+    GetUserSavedTracks,
     GetUserTopTracks,
     GetUserRecentlyPlayedTracks,
     GetContext(ContextId),

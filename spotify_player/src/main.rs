@@ -87,11 +87,10 @@ async fn init_spotify(
 
     // request user data
     client_pub.send(event::ClientRequest::GetCurrentUser)?;
-
-    // request data needed to render the Library page (default page when starting the application)
     client_pub.send(event::ClientRequest::GetUserPlaylists)?;
     client_pub.send(event::ClientRequest::GetUserFollowedArtists)?;
     client_pub.send(event::ClientRequest::GetUserSavedAlbums)?;
+    client_pub.send(event::ClientRequest::GetUserSavedTracks)?;
 
     Ok(())
 }

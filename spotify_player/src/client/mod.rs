@@ -229,6 +229,10 @@ impl Client {
                     state.data.write().caches.tracks.put(id.to_string(), tracks);
                 }
             }
+            ClientRequest::GetUserSavedTracks => {
+                let tracks = self.current_user_saved_tracks().await?;
+                state.data.write().user_data.saved_tracks = tracks;
+            }
             ClientRequest::GetUserRecentlyPlayedTracks => {
                 let id = "recently-played-tracks";
                 if !state.data.read().caches.tracks.contains(id) {
@@ -321,6 +325,20 @@ impl Client {
         }
 
         Ok(None)
+    }
+
+    /// gets the saved (liked) tracks of the current user
+    pub async fn current_user_saved_tracks(&self) -> Result<Vec<Track>> {
+        let first_page = self
+            .spotify
+            .current_user_saved_tracks_manual(None, Some(50), None)
+            .await?;
+
+        let tracks = self.all_paging_items(first_page).await?;
+        Ok(tracks
+            .into_iter()
+            .filter_map(|t| Track::try_from_full_track(t.track))
+            .collect())
     }
 
     /// gets the recently played tracks of the current user
