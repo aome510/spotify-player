@@ -146,9 +146,6 @@ pub fn handle_command_for_track_table_window(
                 TrackAction::BrowseRecommendations,
                 TrackAction::AddToPlaylist,
             ];
-            if let Some(ContextId::Playlist(_)) = context_id {
-                actions.push(TrackAction::RemoveFromCurrentPlaylist);
-            }
             if data
                 .user_data
                 .saved_tracks

@@ -437,7 +437,6 @@ fn handle_command_for_action_list_popup(
                         };
                         ui.create_new_page(new_page);
                     }
-                    TrackAction::RemoveFromCurrentPlaylist => todo!(),
                     TrackAction::RemoveFromLikedTracks => {
                         client_pub.send(ClientRequest::DeleteFromLibrary(ItemId::Track(
                             track.id.clone(),

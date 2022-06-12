@@ -62,7 +62,6 @@ pub enum TrackAction {
     BrowseAlbum,
     BrowseRecommendations,
     AddToPlaylist,
-    RemoveFromCurrentPlaylist,
     SaveToLikedTracks,
     RemoveFromLikedTracks,
 }
