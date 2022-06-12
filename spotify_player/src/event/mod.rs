@@ -213,13 +213,24 @@ fn handle_global_command(
         Command::ShowActionsOnCurrentTrack => {
             if let Some(track) = state.player.read().current_playing_track() {
                 if let Some(track) = Track::try_from_full_track(track.clone()) {
-                    let actions = vec![
+                    let mut actions = vec![
                         TrackAction::BrowseArtist,
                         TrackAction::BrowseAlbum,
                         TrackAction::BrowseRecommendations,
                         TrackAction::AddToPlaylist,
                     ];
-                    // TODO: handle action on user's liked tracks
+                    if state
+                        .data
+                        .read()
+                        .user_data
+                        .saved_tracks
+                        .iter()
+                        .any(|t| t.id == track.id)
+                    {
+                        actions.push(TrackAction::RemoveFromLikedTracks);
+                    } else {
+                        actions.push(TrackAction::SaveToLikedTracks);
+                    }
                     ui.popup = Some(PopupState::ActionList(
                         ActionListItem::Track(track, actions),
                         new_list_state(),

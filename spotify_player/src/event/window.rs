@@ -149,7 +149,16 @@ pub fn handle_command_for_track_table_window(
             if let Some(ContextId::Playlist(_)) = context_id {
                 actions.push(TrackAction::RemoveFromCurrentPlaylist);
             }
-            // TODO: handle action on user's liked tracks
+            if data
+                .user_data
+                .saved_tracks
+                .iter()
+                .any(|t| t.id == tracks[id].id)
+            {
+                actions.push(TrackAction::RemoveFromLikedTracks);
+            } else {
+                actions.push(TrackAction::SaveToLikedTracks);
+            }
             ui.popup = Some(PopupState::ActionList(
                 ActionListItem::Track(tracks[id].clone(), actions),
                 new_list_state(),
@@ -194,13 +203,22 @@ pub fn handle_command_for_track_list_window(
             )))?;
         }
         Command::ShowActionsOnSelectedItem => {
-            let actions = vec![
+            let mut actions = vec![
                 TrackAction::BrowseArtist,
                 TrackAction::BrowseAlbum,
                 TrackAction::BrowseRecommendations,
                 TrackAction::AddToPlaylist,
             ];
-            // TODO: handle action on user's liked tracks
+            if data
+                .user_data
+                .saved_tracks
+                .iter()
+                .any(|t| t.id == tracks[id].id)
+            {
+                actions.push(TrackAction::RemoveFromLikedTracks);
+            } else {
+                actions.push(TrackAction::SaveToLikedTracks);
+            }
             ui.popup = Some(PopupState::ActionList(
                 ActionListItem::Track(tracks[id].clone(), actions),
                 new_list_state(),
