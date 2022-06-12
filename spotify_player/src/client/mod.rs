@@ -648,6 +648,7 @@ impl Client {
                     self.spotify
                         .current_user_saved_tracks_add(vec![&track.id])
                         .await?;
+                    state.data.write().user_data.saved_tracks.insert(0, track);
                 }
             }
             Item::Album(album) => {
@@ -659,6 +660,7 @@ impl Client {
                     self.spotify
                         .current_user_saved_albums_add(vec![&album.id])
                         .await?;
+                    state.data.write().user_data.saved_albums.insert(0, album);
                 }
             }
             Item::Artist(artist) => {
@@ -668,6 +670,12 @@ impl Client {
                     .await?;
                 if !follows[0] {
                     self.spotify.user_follow_artists(vec![&artist.id]).await?;
+                    state
+                        .data
+                        .write()
+                        .user_data
+                        .followed_artists
+                        .insert(0, artist);
                 }
             }
             Item::Playlist(playlist) => {
@@ -686,6 +694,7 @@ impl Client {
                         .await?;
                     if !follows[0] {
                         self.spotify.playlist_follow(&playlist.id, None).await?;
+                        state.data.write().user_data.playlists.insert(0, playlist);
                     }
                 }
             }
