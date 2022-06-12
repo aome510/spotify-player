@@ -41,6 +41,7 @@ pub enum ClientRequest {
     Search(String),
     AddTrackToPlaylist(PlaylistId, TrackId),
     AddToLibrary(Item),
+    DeleteFromLibrary(ItemId),
     Player(PlayerRequest),
     #[cfg(feature = "lyric-finder")]
     GetLyric {

@@ -276,6 +276,9 @@ impl Client {
             ClientRequest::AddToLibrary(item) => {
                 self.save_to_library(state, item).await?;
             }
+            ClientRequest::DeleteFromLibrary(id) => {
+                self.remove_from_library(state, id).await?;
+            }
         };
 
         tracing::info!(
@@ -697,6 +700,48 @@ impl Client {
                         state.data.write().user_data.playlists.insert(0, playlist);
                     }
                 }
+            }
+        }
+        Ok(())
+    }
+
+    pub async fn remove_from_library(&self, state: &SharedState, id: ItemId) -> Result<()> {
+        match id {
+            ItemId::Track(id) => {
+                state
+                    .data
+                    .write()
+                    .user_data
+                    .saved_tracks
+                    .retain(|t| t.id != id);
+                self.spotify.current_user_saved_tracks_delete(&[id]).await?;
+            }
+            ItemId::Album(id) => {
+                state
+                    .data
+                    .write()
+                    .user_data
+                    .saved_albums
+                    .retain(|a| a.id != id);
+                self.spotify.current_user_saved_albums_delete(&[id]).await?;
+            }
+            ItemId::Artist(id) => {
+                state
+                    .data
+                    .write()
+                    .user_data
+                    .followed_artists
+                    .retain(|a| a.id != id);
+                self.spotify.user_unfollow_artists(&[id]).await?;
+            }
+            ItemId::Playlist(id) => {
+                state
+                    .data
+                    .write()
+                    .user_data
+                    .playlists
+                    .retain(|p| p.id != id);
+                self.spotify.playlist_unfollow(&id).await?;
             }
         }
         Ok(())

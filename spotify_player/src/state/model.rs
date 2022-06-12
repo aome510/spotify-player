@@ -72,6 +72,14 @@ pub enum Item {
 }
 
 #[derive(Debug, Clone)]
+pub enum ItemId {
+    Track(TrackId),
+    Album(AlbumId),
+    Artist(ArtistId),
+    Playlist(PlaylistId),
+}
+
+#[derive(Debug, Clone)]
 /// A Spotify recommendation seed
 pub enum SeedItem {
     Track(Track),
