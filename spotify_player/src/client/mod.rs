@@ -631,7 +631,7 @@ impl Client {
             .playlist_add_items(playlist_id, vec![dyn_track_id], None)
             .await?;
 
-        // When adding a new track to a playlist, remove the cache of that playlist
+        // After adding a new track to a playlist, remove the cache of that playlist
         state.data.write().caches.context.pop(&playlist_id.uri());
 
         Ok(())
@@ -651,6 +651,7 @@ impl Client {
                     self.spotify
                         .current_user_saved_tracks_add(vec![&track.id])
                         .await?;
+                    // update the in-memory `user_data`
                     state.data.write().user_data.saved_tracks.insert(0, track);
                 }
             }
@@ -663,6 +664,7 @@ impl Client {
                     self.spotify
                         .current_user_saved_albums_add(vec![&album.id])
                         .await?;
+                    // update the in-memory `user_data`
                     state.data.write().user_data.saved_albums.insert(0, album);
                 }
             }
@@ -673,6 +675,7 @@ impl Client {
                     .await?;
                 if !follows[0] {
                     self.spotify.user_follow_artists(vec![&artist.id]).await?;
+                    // update the in-memory `user_data`
                     state
                         .data
                         .write()
@@ -697,6 +700,7 @@ impl Client {
                         .await?;
                     if !follows[0] {
                         self.spotify.playlist_follow(&playlist.id, None).await?;
+                        // update the in-memory `user_data`
                         state.data.write().user_data.playlists.insert(0, playlist);
                     }
                 }
@@ -705,6 +709,7 @@ impl Client {
         Ok(())
     }
 
+    // removes a Spotify item from user's library
     pub async fn remove_from_library(&self, state: &SharedState, id: ItemId) -> Result<()> {
         match id {
             ItemId::Track(id) => {
