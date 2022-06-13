@@ -1,4 +1,4 @@
-use crate::{config, state::*, utils};
+use crate::{config, state::*};
 use anyhow::{Context as AnyhowContext, Result};
 use tui::{layout::*, style::*, text::*, widgets::*};
 
@@ -7,6 +7,7 @@ type Frame<'a> = tui::Frame<'a, tui::backend::CrosstermBackend<std::io::Stdout>>
 
 mod page;
 mod popup;
+mod utils;
 
 /// run the application UI
 pub fn run(state: SharedState) -> Result<()> {
@@ -105,40 +106,6 @@ fn render_main_layout(
     }
 }
 
-/// constructs a generic list widget
-pub fn construct_list_widget<'a>(
-    theme: &config::Theme,
-    items: Vec<(String, bool)>,
-    title: &str,
-    is_active: bool,
-    borders: Option<Borders>,
-) -> (List<'a>, usize) {
-    let n_items = items.len();
-    let borders = borders.unwrap_or(Borders::ALL);
-
-    (
-        List::new(
-            items
-                .into_iter()
-                .map(|(s, is_active)| {
-                    ListItem::new(s).style(if is_active {
-                        theme.current_playing()
-                    } else {
-                        Style::default()
-                    })
-                })
-                .collect::<Vec<_>>(),
-        )
-        .highlight_style(theme.selection_style(is_active))
-        .block(
-            Block::default()
-                .title(theme.block_title_with_style(title))
-                .borders(borders),
-        ),
-        n_items,
-    )
-}
-
 /// Renders a playback window showing information about the current playback, which includes
 /// - track title, artists, album
 /// - playback metadata (playing state, repeat state, shuffle state, volume, device, etc)
@@ -168,7 +135,7 @@ fn render_playback_window(
                         "{} {} • {}",
                         if !playback.is_playing { "⏸" } else { "▶" },
                         track.name,
-                        utils::map_join(&track.artists, |a| &a.name, ", ")
+                        crate::utils::map_join(&track.artists, |a| &a.name, ", ")
                     ),
                     ui.theme.playback_track(),
                 )
@@ -203,8 +170,8 @@ fn render_playback_window(
                 .label(Span::styled(
                     format!(
                         "{}/{}",
-                        utils::format_duration(progress),
-                        utils::format_duration(track.duration),
+                        crate::utils::format_duration(progress),
+                        crate::utils::format_duration(track.duration),
                     ),
                     Style::default().add_modifier(Modifier::BOLD),
                 ));
@@ -225,7 +192,7 @@ fn render_playback_window(
                         )
                         .split(chunks[0]);
 
-                    let url = utils::get_track_album_image_url(track).map(String::from);
+                    let url = crate::utils::get_track_album_image_url(track).map(String::from);
                     if let Some(url) = url {
                         let needs_render = match &ui.last_cover_image_render_info {
                             Some((last_url, last_time)) => {

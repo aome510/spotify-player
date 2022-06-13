@@ -32,7 +32,7 @@ pub fn render_search_page(
 
         let is_active = is_active && focus_state == SearchFocusState::Tracks;
 
-        construct_list_widget(
+        utils::construct_list_widget(
             &ui.theme,
             track_items,
             &format!("Tracks{}", if is_active { " [*]" } else { "" }),
@@ -54,7 +54,7 @@ pub fn render_search_page(
 
         let is_active = is_active && focus_state == SearchFocusState::Albums;
 
-        construct_list_widget(
+        utils::construct_list_widget(
             &ui.theme,
             album_items,
             &format!("Albums{}", if is_active { " [*]" } else { "" }),
@@ -76,7 +76,7 @@ pub fn render_search_page(
 
         let is_active = is_active && focus_state == SearchFocusState::Artists;
 
-        construct_list_widget(
+        utils::construct_list_widget(
             &ui.theme,
             artist_items,
             &format!("Artists{}", if is_active { " [*]" } else { "" }),
@@ -98,7 +98,7 @@ pub fn render_search_page(
 
         let is_active = is_active && focus_state == SearchFocusState::Playlists;
 
-        construct_list_widget(
+        utils::construct_list_widget(
             &ui.theme,
             playlist_items,
             &format!("Playlists{}", if is_active { " [*]" } else { "" }),
@@ -287,7 +287,7 @@ pub fn render_library_page(
     let (playlist_rect, album_rect, artist_rect) = (chunks[0], chunks[1], chunks[2]);
 
     // Construct the playlist window
-    let (playlist_list, n_playlists) = construct_list_widget(
+    let (playlist_list, n_playlists) = utils::construct_list_widget(
         &ui.theme,
         ui.search_filtered_items(&data.user_data.playlists)
             .into_iter()
@@ -298,7 +298,7 @@ pub fn render_library_page(
         Some((Borders::TOP | Borders::LEFT) | Borders::BOTTOM),
     );
     // Construct the saved album window
-    let (album_list, n_albums) = construct_list_widget(
+    let (album_list, n_albums) = utils::construct_list_widget(
         &ui.theme,
         ui.search_filtered_items(&data.user_data.saved_albums)
             .into_iter()
@@ -309,7 +309,7 @@ pub fn render_library_page(
         Some((Borders::TOP | Borders::LEFT) | Borders::BOTTOM),
     );
     // Construct the followed artist window
-    let (artist_list, n_artists) = construct_list_widget(
+    let (artist_list, n_artists) = utils::construct_list_widget(
         &ui.theme,
         ui.search_filtered_items(&data.user_data.followed_artists)
             .into_iter()
@@ -525,7 +525,7 @@ fn render_artist_context_page_windows(
             .map(|a| (a.name.clone(), false))
             .collect::<Vec<_>>();
 
-        construct_list_widget(
+        utils::construct_list_widget(
             &ui.theme,
             album_items,
             "Albums",
@@ -542,7 +542,7 @@ fn render_artist_context_page_windows(
             .map(|a| (a.name.clone(), false))
             .collect::<Vec<_>>();
 
-        construct_list_widget(
+        utils::construct_list_widget(
             &ui.theme,
             artist_items,
             "Related Artists",
@@ -602,10 +602,13 @@ pub fn render_track_table_window(
             };
             Row::new(vec![
                 Cell::from(id),
-                Cell::from(utils::truncate_string(t.name.clone(), item_max_len)),
-                Cell::from(utils::truncate_string(t.artists_info(), item_max_len)),
-                Cell::from(utils::truncate_string(t.album_info(), item_max_len)),
-                Cell::from(utils::format_duration(t.duration)),
+                Cell::from(crate::utils::truncate_string(t.name.clone(), item_max_len)),
+                Cell::from(crate::utils::truncate_string(
+                    t.artists_info(),
+                    item_max_len,
+                )),
+                Cell::from(crate::utils::truncate_string(t.album_info(), item_max_len)),
+                Cell::from(crate::utils::format_duration(t.duration)),
             ])
             .style(style)
         })
