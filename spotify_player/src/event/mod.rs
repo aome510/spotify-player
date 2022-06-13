@@ -40,7 +40,7 @@ pub enum ClientRequest {
     GetRecommendations(SeedItem),
     Search(String),
     AddTrackToPlaylist(PlaylistId, TrackId),
-    RemoveTrackFromPlaylist(PlaylistId, TrackId),
+    DeleteTrackFromPlaylist(PlaylistId, TrackId),
     AddToLibrary(Item),
     DeleteFromLibrary(ItemId),
     Player(PlayerRequest),
@@ -229,9 +229,9 @@ fn handle_global_command(
                         .iter()
                         .any(|t| t.id == track.id)
                     {
-                        actions.push(TrackAction::RemoveFromLikedTracks);
+                        actions.push(TrackAction::DeleteFromLikedTracks);
                     } else {
-                        actions.push(TrackAction::SaveToLikedTracks);
+                        actions.push(TrackAction::AddToLikedTracks);
                     }
                     ui.popup = Some(PopupState::ActionList(
                         ActionListItem::Track(track, actions),

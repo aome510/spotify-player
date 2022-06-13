@@ -421,7 +421,7 @@ fn handle_command_for_action_list_popup(
                             new_list_state(),
                         ));
                     }
-                    TrackAction::SaveToLikedTracks => {
+                    TrackAction::AddToLikedTracks => {
                         client_pub.send(ClientRequest::AddToLibrary(Item::Track(track.clone())))?;
                         ui.popup = None;
                     }
@@ -437,10 +437,23 @@ fn handle_command_for_action_list_popup(
                         };
                         ui.create_new_page(new_page);
                     }
-                    TrackAction::RemoveFromLikedTracks => {
+                    TrackAction::DeleteFromLikedTracks => {
                         client_pub.send(ClientRequest::DeleteFromLibrary(ItemId::Track(
                             track.id.clone(),
                         )))?;
+                        ui.popup = None;
+                    }
+                    TrackAction::DeleteFromCurrentPlaylist => {
+                        if let PageState::Context {
+                            id: Some(ContextId::Playlist(playlist_id)),
+                            ..
+                        } = ui.current_page()
+                        {
+                            client_pub.send(ClientRequest::DeleteTrackFromPlaylist(
+                                playlist_id.clone(),
+                                track.id.clone(),
+                            ))?;
+                        }
                         ui.popup = None;
                     }
                 },
