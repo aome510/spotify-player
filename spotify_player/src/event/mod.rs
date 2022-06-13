@@ -40,6 +40,7 @@ pub enum ClientRequest {
     GetRecommendations(SeedItem),
     Search(String),
     AddTrackToPlaylist(PlaylistId, TrackId),
+    RemoveTrackFromPlaylist(PlaylistId, TrackId),
     AddToLibrary(Item),
     DeleteFromLibrary(ItemId),
     Player(PlayerRequest),
