@@ -20,7 +20,7 @@ pub fn render_search_page(
 
     let search_results = data.caches.search.peek(current_query);
 
-    let track_list = {
+    let (track_list, n_tracks) = {
         let track_items = search_results
             .map(|s| {
                 s.tracks
@@ -39,10 +39,9 @@ pub fn render_search_page(
             is_active,
             Some(Borders::TOP | Borders::RIGHT),
         )
-        .0
     };
 
-    let album_list = {
+    let (album_list, n_albums) = {
         let album_items = search_results
             .map(|s| {
                 s.albums
@@ -61,10 +60,9 @@ pub fn render_search_page(
             is_active,
             Some(Borders::TOP),
         )
-        .0
     };
 
-    let artist_list = {
+    let (artist_list, n_artists) = {
         let artist_items = search_results
             .map(|s| {
                 s.artists
@@ -83,10 +81,9 @@ pub fn render_search_page(
             is_active,
             Some(Borders::TOP | Borders::RIGHT),
         )
-        .0
     };
 
-    let playlist_list = {
+    let (playlist_list, n_playlists) = {
         let playlist_items = search_results
             .map(|s| {
                 s.playlists
@@ -105,7 +102,6 @@ pub fn render_search_page(
             is_active,
             Some(Borders::TOP),
         )
-        .0
     };
 
     // renders borders with title
@@ -152,10 +148,34 @@ pub fn render_search_page(
         PageState::Search { state, .. } => state,
         s => anyhow::bail!("expect a search page state, found {s:?}"),
     };
-    frame.render_stateful_widget(track_list, chunks[0], &mut page_state.track_list);
-    frame.render_stateful_widget(album_list, chunks[1], &mut page_state.album_list);
-    frame.render_stateful_widget(artist_list, chunks[2], &mut page_state.artist_list);
-    frame.render_stateful_widget(playlist_list, chunks[3], &mut page_state.playlist_list);
+    utils::render_list_window(
+        frame,
+        track_list,
+        chunks[0],
+        n_tracks,
+        &mut page_state.track_list,
+    );
+    utils::render_list_window(
+        frame,
+        album_list,
+        chunks[1],
+        n_albums,
+        &mut page_state.album_list,
+    );
+    utils::render_list_window(
+        frame,
+        artist_list,
+        chunks[2],
+        n_artists,
+        &mut page_state.artist_list,
+    );
+    utils::render_list_window(
+        frame,
+        playlist_list,
+        chunks[3],
+        n_playlists,
+        &mut page_state.playlist_list,
+    );
 
     Ok(())
 }
@@ -327,23 +347,25 @@ pub fn render_library_page(
         s => anyhow::bail!("expect a library page state, found {s:?}"),
     };
 
-    // adjust the `selected` position of a `ListState` if that position is out of index
-    let adjust_list_state = |state: &mut ListState, len: usize| {
-        if let Some(p) = state.selected() {
-            if p >= len {
-                state.select(if len > 0 { Some(len - 1) } else { Some(0) });
-            }
-        }
-    };
-    adjust_list_state(&mut page_state.playlist_list, n_playlists);
-    adjust_list_state(&mut page_state.saved_album_list, n_albums);
-    adjust_list_state(&mut page_state.followed_artist_list, n_artists);
-
-    frame.render_stateful_widget(playlist_list, playlist_rect, &mut page_state.playlist_list);
-    frame.render_stateful_widget(album_list, album_rect, &mut page_state.saved_album_list);
-    frame.render_stateful_widget(
+    utils::render_list_window(
+        frame,
+        playlist_list,
+        playlist_rect,
+        n_playlists,
+        &mut page_state.playlist_list,
+    );
+    utils::render_list_window(
+        frame,
+        album_list,
+        album_rect,
+        n_albums,
+        &mut page_state.saved_album_list,
+    );
+    utils::render_list_window(
+        frame,
         artist_list,
         artist_rect,
+        n_artists,
         &mut page_state.followed_artist_list,
     );
 
@@ -519,7 +541,7 @@ fn render_artist_context_page_windows(
         .split(rect);
 
     // construct album list widget
-    let album_list = {
+    let (album_list, n_albums) = {
         let album_items = albums
             .into_iter()
             .map(|a| (a.name.clone(), false))
@@ -532,11 +554,10 @@ fn render_artist_context_page_windows(
             is_active && focus_state == ArtistFocusState::Albums,
             Some(Borders::TOP),
         )
-        .0
     };
 
     // construct artist list widget
-    let artist_list = {
+    let (artist_list, n_artists) = {
         let artist_items = artists
             .into_iter()
             .map(|a| (a.name.clone(), false))
@@ -549,7 +570,6 @@ fn render_artist_context_page_windows(
             is_active && focus_state == ArtistFocusState::RelatedArtists,
             Some(Borders::TOP | Borders::LEFT),
         )
-        .0
     };
 
     let (album_list_state, artist_list_state) = match ui.current_page_mut() {
@@ -565,8 +585,8 @@ fn render_artist_context_page_windows(
         s => anyhow::bail!("expect an artist context page state, found {s:?}"),
     };
 
-    frame.render_stateful_widget(album_list, chunks[0], album_list_state);
-    frame.render_stateful_widget(artist_list, chunks[1], artist_list_state);
+    utils::render_list_window(frame, album_list, chunks[0], n_albums, album_list_state);
+    utils::render_list_window(frame, artist_list, chunks[1], n_artists, artist_list_state);
 
     Ok(())
 }
@@ -591,6 +611,7 @@ pub fn render_track_table_window(
     }
 
     let item_max_len = state.app_config.track_table_item_max_len;
+    let n_tracks = tracks.len();
     let rows = tracks
         .into_iter()
         .enumerate()
@@ -646,10 +667,10 @@ pub fn render_track_table_window(
                 ContextPageUIState::Playlist { track_table } => track_table,
                 ContextPageUIState::Album { track_table } => track_table,
             };
-            frame.render_stateful_widget(track_table, rect, track_table_state);
+            utils::render_table_window(frame, track_table, rect, n_tracks, track_table_state);
         }
         PageState::Tracks { state, .. } => {
-            frame.render_stateful_widget(track_table, rect, state);
+            utils::render_table_window(frame, track_table, rect, n_tracks, state);
         }
         s => anyhow::bail!("reach unsupported page state {s:?} when rendering track table"),
     }

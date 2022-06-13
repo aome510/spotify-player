@@ -150,11 +150,13 @@ fn render_list_popup(
         .constraints([Constraint::Min(0), Constraint::Length(length)].as_ref())
         .split(rect);
 
-    let widget = utils::construct_list_widget(&ui.theme, items, title, true, None).0;
+    let (list, len) = utils::construct_list_widget(&ui.theme, items, title, true, None);
 
-    frame.render_stateful_widget(
-        widget,
+    utils::render_list_window(
+        frame,
+        list,
         chunks[1],
+        len,
         ui.popup.as_mut().unwrap().list_state_mut().unwrap(),
     );
 
