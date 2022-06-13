@@ -42,6 +42,7 @@ pub enum Command {
     CurrentlyPlayingContextPage,
     TopTrackPage,
     RecentlyPlayedTrackPage,
+    LikedTrackPage,
     #[cfg(feature = "lyric-finder")]
     LyricPage,
     LibraryPage,
@@ -121,6 +122,7 @@ impl Command {
             Self::CurrentlyPlayingContextPage => "go to the currently playing context page",
             Self::TopTrackPage => "go to the user top track page",
             Self::RecentlyPlayedTrackPage => "go to the user recently played track page",
+            Self::LikedTrackPage => "go to the user liked track page",
             #[cfg(feature = "lyric-finder")]
             Self::LyricPage => "go to the lyric page of the current track",
             Self::LibraryPage => "go to the user libary page",

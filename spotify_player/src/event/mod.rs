@@ -279,6 +279,14 @@ fn handle_global_command(
             });
             client_pub.send(ClientRequest::GetUserRecentlyPlayedTracks)?;
         }
+        Command::LikedTrackPage => {
+            ui.create_new_page(PageState::Tracks {
+                id: "liked-tracks".to_string(),
+                title: "Liked Tracks".to_string(),
+                desc: "User's liked tracks".to_string(),
+                state: new_table_state(),
+            });
+        }
         Command::LibraryPage => {
             ui.create_new_page(PageState::Library {
                 state: LibraryPageUIState::new(),

@@ -370,12 +370,20 @@ pub fn render_tracks_page(
         .title(ui.theme.block_title_with_style(title))
         .borders(Borders::ALL);
 
-    let tracks = match data.caches.tracks.peek(id) {
-        Some(tracks) => tracks,
-        None => {
-            // tracks are still loading
-            frame.render_widget(Paragraph::new("loading...").block(block), rect);
-            return Ok(());
+    let tracks = {
+        match id.as_str() {
+            // LikedTrackPage's id is handled separately because it is stored as a part of user data
+            "liked-tracks" => &data.user_data.saved_tracks,
+            _ => {
+                match data.caches.tracks.peek(id) {
+                    Some(tracks) => tracks,
+                    None => {
+                        // tracks are still loading
+                        frame.render_widget(Paragraph::new("loading...").block(block), rect);
+                        return Ok(());
+                    }
+                }
+            }
         }
     };
 
