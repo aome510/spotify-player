@@ -111,7 +111,7 @@ pub async fn start_player_event_watchers(
             if *id != expected_id {
                 tracing::info!("Current context ID ({:?}) is different from the expected ID ({:?}), update the context state", id, expected_id);
 
-                *id = expected_id;
+                *id = expected_id.clone();
 
                 match id {
                     Some(id) => {
@@ -120,13 +120,18 @@ pub async fn start_player_event_watchers(
                             ContextId::Artist(_) => ContextPageUIState::new_artist(),
                             ContextId::Playlist(_) => ContextPageUIState::new_playlist(),
                         });
-                        client_pub
-                            .send(ClientRequest::GetContext(id.clone()))
-                            .unwrap_or_default();
                     }
                     None => {
                         *page_state = None;
                     }
+                }
+            }
+
+            if let Some(id) = expected_id {
+                if !state.data.read().caches.context.contains(&id.uri()) {
+                    client_pub
+                        .send(ClientRequest::GetContext(id.clone()))
+                        .unwrap_or_default();
                 }
             }
         }
