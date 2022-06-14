@@ -669,7 +669,7 @@ impl Client {
         Ok(())
     }
 
-    /// saves a Spotify item to current user's library.
+    /// adds a Spotify item to current user's library.
     /// Before adding new item, the function checks if that item already exists in the library
     /// to avoid adding a duplicated item.
     pub async fn add_to_library(&self, state: &SharedState, item: Item) -> Result<()> {
@@ -741,7 +741,7 @@ impl Client {
         Ok(())
     }
 
-    // removes a Spotify item from user's library
+    // deletes a Spotify item from user's library
     pub async fn delete_from_library(&self, state: &SharedState, id: ItemId) -> Result<()> {
         match id {
             ItemId::Track(id) => {

@@ -130,7 +130,7 @@ pub async fn start_player_event_watchers(
             if let Some(id) = expected_id {
                 if !state.data.read().caches.context.contains(&id.uri()) {
                     client_pub
-                        .send(ClientRequest::GetContext(id.clone()))
+                        .send(ClientRequest::GetContext(id))
                         .unwrap_or_default();
                 }
             }
