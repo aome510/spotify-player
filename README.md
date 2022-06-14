@@ -270,6 +270,7 @@ List of supported commands:
 | `CurrentlyPlayingContextPage` | go to the currently playing context page                                | `g space`          |
 | `TopTrackPage`                | go to the user top track page                                           | `g t`              |
 | `RecentlyPlayedTrackPage`     | go to the user recently played track page                               | `g r`              |
+| `LikedTrackPage`              | go to the user liked track page                                         | `g y`              |
 | `LyricPage`                   | go to the lyric page of the current track (`lyric-finder` feature only) | `g L`, `l`         |
 | `LibraryPage`                 | go to the user library page                                             | `g l`              |
 | `SearchPage`                  | go to the search page                                                   | `g s`              |
@@ -290,10 +291,10 @@ To add new shortcuts or modify the default shortcuts, please refer to the [keyma
 
 ### Actions
 
-A list of actions is available for each type of the corresponding Spotify item (track, album, artist, or playlist).
-For example, the list of available actions on a track is `[BrowseAlbum, BrowseArtist, BrowseRecommandations, AddTrackToPlaylist, SaveToLibrary]`. Calling `BrowseRecommandations` action on a track will go to the radio/recommendation page of that track.
+A list of actions is available for each type of Spotify item (track, album, artist, or playlist).
+For example, the list of available actions on a track is `[BrowseAlbum, BrowseArtist, BrowseRecommandations, AddToPlaylist, DeleteFromCurrentPlaylist, AddToLikedTracks, DeleteFromLikedTracks]`.
 
-To get the list of actions on an item, call the `ShowActionsOnCurrentTrack` command or `ShowActionsOnSelectedItem` command.
+To get the list of actions on an item, call the `ShowActionsOnCurrentTrack` command or `ShowActionsOnSelectedItem` command, then press enter (default binding for `ChooseSelected` command) to initiate the selected action.
 
 ### Search Page
 
