@@ -23,7 +23,7 @@
 
 `spotify-player` is a fast, easy to use, and [configurable](doc/config.md) terminal music player.
 
-### Features
+**Features**
 
 - Minimalist UI with an intuitive paging and popup system.
 - Highly configurable, allow to easily customize application's shortcuts or theme/color scheme.
