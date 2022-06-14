@@ -45,6 +45,16 @@ impl Default for Caches {
     }
 }
 
+impl AppData {
+    pub fn get_tracks_by_id(&self, id: &str) -> Option<&Vec<Track>> {
+        match id {
+            // LikedTrackPage's id is handled separately because it is stored as a part of user data
+            "liked-tracks" => Some(&self.user_data.saved_tracks),
+            _ => self.caches.tracks.peek(id),
+        }
+    }
+}
+
 impl UserData {
     /// returns a list of playlists created by the current user
     pub fn playlists_created_by_user(&self) -> Vec<&Playlist> {

@@ -251,9 +251,7 @@ pub fn handle_key_sequence_for_tracks_page(
     };
 
     let tracks = data
-        .caches
-        .tracks
-        .peek(id)
+        .get_tracks_by_id(id)
         .map(|tracks| ui.search_filtered_items(tracks))
         .unwrap_or_default();
 

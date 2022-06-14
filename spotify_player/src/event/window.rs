@@ -152,9 +152,12 @@ pub fn handle_command_for_track_table_window(
                 .iter()
                 .any(|t| t.id == tracks[id].id)
             {
-                actions.push(TrackAction::RemoveFromLikedTracks);
+                actions.push(TrackAction::DeleteFromLikedTracks);
             } else {
-                actions.push(TrackAction::SaveToLikedTracks);
+                actions.push(TrackAction::AddToLikedTracks);
+            }
+            if let Some(ContextId::Playlist(_)) = context_id {
+                actions.push(TrackAction::DeleteFromCurrentPlaylist);
             }
             ui.popup = Some(PopupState::ActionList(
                 ActionListItem::Track(tracks[id].clone(), actions),
@@ -212,9 +215,9 @@ pub fn handle_command_for_track_list_window(
                 .iter()
                 .any(|t| t.id == tracks[id].id)
             {
-                actions.push(TrackAction::RemoveFromLikedTracks);
+                actions.push(TrackAction::DeleteFromLikedTracks);
             } else {
-                actions.push(TrackAction::SaveToLikedTracks);
+                actions.push(TrackAction::AddToLikedTracks);
             }
             ui.popup = Some(PopupState::ActionList(
                 ActionListItem::Track(tracks[id].clone(), actions),

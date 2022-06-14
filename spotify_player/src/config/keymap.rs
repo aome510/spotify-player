@@ -124,6 +124,10 @@ impl Default for KeymapConfig {
                     key_sequence: "g r".into(),
                     command: Command::RecentlyPlayedTrackPage,
                 },
+                Keymap {
+                    key_sequence: "g y".into(),
+                    command: Command::LikedTrackPage,
+                },
                 #[cfg(feature = "lyric-finder")]
                 Keymap {
                     key_sequence: "g L".into(),

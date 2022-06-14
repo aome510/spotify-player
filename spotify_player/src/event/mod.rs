@@ -40,6 +40,7 @@ pub enum ClientRequest {
     GetRecommendations(SeedItem),
     Search(String),
     AddTrackToPlaylist(PlaylistId, TrackId),
+    DeleteTrackFromPlaylist(PlaylistId, TrackId),
     AddToLibrary(Item),
     DeleteFromLibrary(ItemId),
     Player(PlayerRequest),
@@ -228,9 +229,9 @@ fn handle_global_command(
                         .iter()
                         .any(|t| t.id == track.id)
                     {
-                        actions.push(TrackAction::RemoveFromLikedTracks);
+                        actions.push(TrackAction::DeleteFromLikedTracks);
                     } else {
-                        actions.push(TrackAction::SaveToLikedTracks);
+                        actions.push(TrackAction::AddToLikedTracks);
                     }
                     ui.popup = Some(PopupState::ActionList(
                         ActionListItem::Track(track, actions),
@@ -279,6 +280,14 @@ fn handle_global_command(
             });
             client_pub.send(ClientRequest::GetUserRecentlyPlayedTracks)?;
         }
+        Command::LikedTrackPage => {
+            ui.create_new_page(PageState::Tracks {
+                id: "liked-tracks".to_string(),
+                title: "Liked Tracks".to_string(),
+                desc: "User's liked tracks".to_string(),
+                state: new_table_state(),
+            });
+        }
         Command::LibraryPage => {
             ui.create_new_page(PageState::Library {
                 state: LibraryPageUIState::new(),
@@ -295,11 +304,6 @@ fn handle_global_command(
             if ui.history.len() > 1 {
                 ui.history.pop();
                 ui.popup = None;
-                if let PageState::Context { id, .. } = ui.current_page_mut() {
-                    // Force reload the page if something has been changed compared to the last
-                    // time the page was visitted.
-                    *id = None;
-                }
             }
         }
         #[cfg(feature = "lyric-finder")]

@@ -273,11 +273,15 @@ impl Client {
                 self.add_track_to_playlist(state, &playlist_id, &track_id)
                     .await?;
             }
+            ClientRequest::DeleteTrackFromPlaylist(playlist_id, track_id) => {
+                self.delete_track_from_playlist(state, &playlist_id, &track_id)
+                    .await?;
+            }
             ClientRequest::AddToLibrary(item) => {
-                self.save_to_library(state, item).await?;
+                self.add_to_library(state, item).await?;
             }
             ClientRequest::DeleteFromLibrary(id) => {
-                self.remove_from_library(state, id).await?;
+                self.delete_from_library(state, id).await?;
             }
         };
 
@@ -631,16 +635,44 @@ impl Client {
             .playlist_add_items(playlist_id, vec![dyn_track_id], None)
             .await?;
 
-        // After adding a new track to a playlist, remove the cache of that playlist
+        // After adding a new track to a playlist, remove the cache of that playlist to force refetching new data
         state.data.write().caches.context.pop(&playlist_id.uri());
 
         Ok(())
     }
 
-    /// saves a Spotify item to current user's library.
+    /// removes a track from a playlist
+    pub async fn delete_track_from_playlist(
+        &self,
+        state: &SharedState,
+        playlist_id: &PlaylistId,
+        track_id: &TrackId,
+    ) -> Result<()> {
+        let dyn_track_id = track_id as &dyn PlayableId;
+
+        // remove all the occurrences of the track to ensure no duplication in the playlist
+        self.spotify
+            .playlist_remove_all_occurrences_of_items(playlist_id, vec![dyn_track_id], None)
+            .await?;
+
+        // After making a delete request, update the playlist in-memory data stored inside the app caches.
+        if let Some(Context::Playlist { tracks, .. }) = state
+            .data
+            .write()
+            .caches
+            .context
+            .get_mut(&playlist_id.uri())
+        {
+            tracks.retain(|t| t.id != *track_id);
+        }
+
+        Ok(())
+    }
+
+    /// adds a Spotify item to current user's library.
     /// Before adding new item, the function checks if that item already exists in the library
     /// to avoid adding a duplicated item.
-    pub async fn save_to_library(&self, state: &SharedState, item: Item) -> Result<()> {
+    pub async fn add_to_library(&self, state: &SharedState, item: Item) -> Result<()> {
         match item {
             Item::Track(track) => {
                 let contains = self
@@ -709,8 +741,8 @@ impl Client {
         Ok(())
     }
 
-    // removes a Spotify item from user's library
-    pub async fn remove_from_library(&self, state: &SharedState, id: ItemId) -> Result<()> {
+    // deletes a Spotify item from user's library
+    pub async fn delete_from_library(&self, state: &SharedState, id: ItemId) -> Result<()> {
         match id {
             ItemId::Track(id) => {
                 state
