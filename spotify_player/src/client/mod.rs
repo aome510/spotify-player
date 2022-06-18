@@ -9,7 +9,7 @@ use crate::{
 };
 
 #[cfg(any(feature = "lyric-finder", feature = "image"))]
-use anyhow::Context as AnyHowContext;
+use anyhow::Context as _;
 use anyhow::Result;
 use librespot_core::session::Session;
 use rspotify::prelude::*;
