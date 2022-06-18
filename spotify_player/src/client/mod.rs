@@ -7,6 +7,9 @@ use crate::{
     event::{ClientRequest, PlayerRequest},
     state::*,
 };
+
+#[cfg(any(feature = "lyric-finder", feature = "image"))]
+use anyhow::Context as AnyHowContext;
 use anyhow::Result;
 use librespot_core::session::Session;
 use rspotify::prelude::*;
