@@ -2,8 +2,12 @@ use crate::{
     command::{Command, TrackAction},
     key::{Key, KeySequence},
     state::*,
-    utils::{map_join, new_list_state, new_table_state},
+    utils::{new_list_state, new_table_state},
 };
+
+#[cfg(feature = "lyric-finder")]
+use crate::utils::map_join;
+
 use anyhow::Result;
 
 mod page;

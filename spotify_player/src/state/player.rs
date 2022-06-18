@@ -1,3 +1,4 @@
+#[cfg(feature = "image")]
 use crate::utils;
 
 use super::model::*;
@@ -33,6 +34,7 @@ impl PlayerState {
         }
     }
 
+    #[cfg(feature = "image")]
     /// gets the current playing track's album cover URL
     pub fn current_playing_track_album_cover_url(&self) -> Option<&str> {
         self.current_playing_track()
