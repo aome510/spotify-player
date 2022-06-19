@@ -282,7 +282,7 @@ fn handle_command_for_context_browsing_list_popup(
         uris.len(),
         |_, _| {},
         |ui: &mut UIStateGuard, id: usize| -> Result<()> {
-            let uri = uris[id].clone();
+            let uri = crate::utils::parse_uri(&uris[id]);
             let context_id = match context_type {
                 rspotify_model::Type::Playlist => ContextId::Playlist(PlaylistId::from_uri(&uri)?),
                 rspotify_model::Type::Artist => ContextId::Artist(ArtistId::from_uri(&uri)?),
@@ -400,7 +400,9 @@ fn handle_command_for_action_list_popup(
                     TrackAction::BrowseAlbum => {
                         if let Some(ref album) = track.album {
                             let uri = album.id.uri();
-                            let context_id = ContextId::Album(AlbumId::from_uri(&uri)?);
+                            let context_id = ContextId::Album(AlbumId::from_uri(
+                                &crate::utils::parse_uri(&uri),
+                            )?);
                             ui.create_new_page(PageState::Context {
                                 id: None,
                                 context_page_type: ContextPageType::Browsing(context_id),
