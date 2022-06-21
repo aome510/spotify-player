@@ -62,18 +62,21 @@ impl PlayerState {
     pub fn playing_context_id(&self) -> Option<ContextId> {
         match self.playback {
             Some(ref playback) => match playback.context {
-                Some(ref context) => match context._type {
-                    rspotify_model::Type::Playlist => Some(ContextId::Playlist(
-                        PlaylistId::from_uri(&context.uri).expect("invalid playing context URI"),
-                    )),
-                    rspotify_model::Type::Album => Some(ContextId::Album(
-                        AlbumId::from_uri(&context.uri).expect("invalid playing context URI"),
-                    )),
-                    rspotify_model::Type::Artist => Some(ContextId::Artist(
-                        ArtistId::from_uri(&context.uri).expect("invalid playing context URI"),
-                    )),
-                    _ => None,
-                },
+                Some(ref context) => {
+                    let uri = crate::utils::parse_uri(&context.uri);
+                    match context._type {
+                        rspotify_model::Type::Playlist => {
+                            Some(ContextId::Playlist(PlaylistId::from_uri(&uri).ok()?))
+                        }
+                        rspotify_model::Type::Album => {
+                            Some(ContextId::Album(AlbumId::from_uri(&uri).ok()?))
+                        }
+                        rspotify_model::Type::Artist => {
+                            Some(ContextId::Artist(ArtistId::from_uri(&uri).ok()?))
+                        }
+                        _ => None,
+                    }
+                }
                 None => None,
             },
             None => None,
