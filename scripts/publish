@@ -1,0 +1,11 @@
+#!/bin/bash
+
+set -eux -o pipefail
+
+cd "$( dirname -- "${BASH_SOURCE[0]}" )" && cd ..
+
+crate="${1:-spotify_player}"
+
+git checkout master && git fetch && git merge origin/master
+
+cd $crate && cargo publish
