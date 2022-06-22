@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use tui::widgets::*;
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
@@ -63,5 +65,18 @@ pub fn get_track_album_image_url(track: &rspotify::model::FullTrack) -> Option<&
         None
     } else {
         Some(&track.album.images[0].url)
+    }
+}
+
+pub fn parse_uri(uri: &str) -> Cow<str> {
+    let parts = uri.split(':').collect::<Vec<_>>();
+    // The below URI probably has a format of `spotify:user:{user_id}:{type}:{id}`,
+    // but `rspotify` library expects to receive an URI of format `spotify:{type}:{id}`.
+    // We have to modify the URI to a corresponding format.
+    // See: https://github.com/aome510/spotify-player/issues/57#issuecomment-1160868626
+    if parts.len() == 5 {
+        Cow::Owned([parts[0], parts[3], parts[4]].join(":"))
+    } else {
+        Cow::Borrowed(uri)
     }
 }
