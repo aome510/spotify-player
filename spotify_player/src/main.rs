@@ -161,7 +161,12 @@ async fn main() -> Result<()> {
     };
 
     // create a librespot session
-    let session = auth::new_session(&cache_folder, state.app_config.device.audio_cache).await?;
+    let session = auth::new_session(
+        &cache_folder,
+        state.app_config.device.audio_cache,
+        &state.app_config,
+    )
+    .await?;
 
     // create a spotify API client
     let client = client::Client::new(

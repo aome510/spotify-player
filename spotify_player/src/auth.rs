@@ -4,9 +4,10 @@ use anyhow::{anyhow, Result};
 use librespot_core::{
     authentication::Credentials,
     cache::Cache,
-    config::SessionConfig,
     session::{Session, SessionError},
 };
+
+use crate::config::AppConfig;
 
 fn read_user_auth_details(user: Option<String>) -> Result<(String, String)> {
     let mut username = String::new();
@@ -25,7 +26,7 @@ fn read_user_auth_details(user: Option<String>) -> Result<(String, String)> {
     Ok((username, password))
 }
 
-async fn new_session_with_new_creds(cache: &Cache) -> Result<Session> {
+async fn new_session_with_new_creds(cache: &Cache, app_config: &AppConfig) -> Result<Session> {
     tracing::info!("Creating a new session with new authentication credentials");
 
     println!("Authentication token not found or invalid, please reauthenticate.");
@@ -36,7 +37,7 @@ async fn new_session_with_new_creds(cache: &Cache) -> Result<Session> {
         let (username, password) = read_user_auth_details(user)?;
         user = Some(username.clone());
         match Session::connect(
-            SessionConfig::default(),
+            app_config.session_config(),
             Credentials::with_password(username, password),
             Some(cache.clone()),
             true,
@@ -58,7 +59,11 @@ async fn new_session_with_new_creds(cache: &Cache) -> Result<Session> {
 }
 
 /// creates new Librespot session
-pub async fn new_session(cache_folder: &std::path::Path, audio_cache: bool) -> Result<Session> {
+pub async fn new_session(
+    cache_folder: &std::path::Path,
+    audio_cache: bool,
+    app_config: &AppConfig,
+) -> Result<Session> {
     // specifying `audio_cache` to `None` to disable audio cache
     let audio_cache_folder = if audio_cache {
         Some(cache_folder.join("audio"))
@@ -77,9 +82,15 @@ pub async fn new_session(cache_folder: &std::path::Path, audio_cache: bool) -> R
     // - there is no cached credentials or
     // - the cached credentials are expired or invalid
     match cache.credentials() {
-        None => new_session_with_new_creds(&cache).await,
+        None => new_session_with_new_creds(&cache, app_config).await,
         Some(creds) => {
-            match Session::connect(SessionConfig::default(), creds, Some(cache.clone()), true).await
+            match Session::connect(
+                app_config.session_config(),
+                creds,
+                Some(cache.clone()),
+                true,
+            )
+            .await
             {
                 Ok((session, _)) => {
                     tracing::info!("Use the cached credentials");
@@ -88,7 +99,7 @@ pub async fn new_session(cache_folder: &std::path::Path, audio_cache: bool) -> R
                 Err(err) => match err {
                     SessionError::AuthenticationError(err) => {
                         tracing::warn!("Failed to authenticate: {err:#}");
-                        new_session_with_new_creds(&cache).await
+                        new_session_with_new_creds(&cache, app_config).await
                     }
                     SessionError::IoError(err) => Err(anyhow!(format!(
                         "{}\nPlease check your internet connection.",

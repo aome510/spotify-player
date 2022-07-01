@@ -9,6 +9,8 @@ const KEYMAP_CONFIG_FILE: &str = "keymap.toml";
 
 use anyhow::{anyhow, Result};
 use config_parser2::*;
+use librespot_core::config::SessionConfig;
+use reqwest::Url;
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
 
@@ -20,9 +22,14 @@ pub use theme::*;
 pub struct AppConfig {
     pub theme: String,
     pub client_id: String,
+
+    // session configs
+    pub proxy: Option<String>,
+    pub ap_port: Option<u16>,
+
+    // referesh duration configs
     pub app_refresh_duration_in_ms: u64,
     pub playback_refresh_duration_in_ms: u64,
-
     #[cfg(feature = "image")]
     pub cover_image_refresh_duration_in_ms: u64,
 
@@ -52,6 +59,8 @@ impl Default for AppConfig {
             theme: "dracula".to_owned(),
             // official spotify web app's client id
             client_id: "65b708073fc0480ea92a077233ca87bd".to_string(),
+            proxy: None,
+            ap_port: None,
             app_refresh_duration_in_ms: 32,
             playback_refresh_duration_in_ms: 0,
 
@@ -106,6 +115,24 @@ impl AppConfig {
             }
         }
         Ok(())
+    }
+
+    pub fn session_config(&self) -> SessionConfig {
+        let proxy = self
+            .proxy
+            .as_ref()
+            .and_then(|proxy| match Url::parse(proxy) {
+                Err(err) => {
+                    tracing::warn!("failed to parse proxy url {proxy}: {err}");
+                    None
+                }
+                Ok(url) => Some(url),
+            });
+        SessionConfig {
+            proxy,
+            ap_port: self.ap_port,
+            ..Default::default()
+        }
     }
 }
 
