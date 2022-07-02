@@ -106,8 +106,14 @@ pub enum SearchFocusState {
 }
 
 #[derive(Clone, Debug)]
-pub struct BrowsePageUIState {
-    pub category_list: ListState,
+pub enum BrowsePageUIState {
+    CategoryList {
+        state: ListState,
+    },
+    CategoryPlaylistList {
+        category: Category,
+        state: ListState,
+    },
 }
 
 pub enum MutableWindowState<'a> {
@@ -143,7 +149,7 @@ impl PageState {
     }
 
     /// The currently focused window state of the page.
-    fn focus_window_state_mut(&mut self) -> Option<MutableWindowState> {
+    pub fn focus_window_state_mut(&mut self) -> Option<MutableWindowState> {
         match self {
             Self::Library {
                 state:
@@ -196,7 +202,12 @@ impl PageState {
                 },
             }),
             Self::Tracks { state, .. } => Some(MutableWindowState::Table(state)),
-            Self::Browse { state } => Some(MutableWindowState::List(&mut state.category_list)),
+            Self::Browse { state } => match state {
+                BrowsePageUIState::CategoryList { state } => Some(MutableWindowState::List(state)),
+                BrowsePageUIState::CategoryPlaylistList { state, .. } => {
+                    Some(MutableWindowState::List(state))
+                }
+            },
             #[cfg(feature = "lyric-finder")]
             Self::Lyric { .. } => None,
         }
@@ -245,14 +256,6 @@ impl ContextPageUIState {
             album_list: utils::new_list_state(),
             related_artist_list: utils::new_list_state(),
             focus: ArtistFocusState::TopTracks,
-        }
-    }
-}
-
-impl BrowsePageUIState {
-    pub fn new() -> Self {
-        Self {
-            category_list: utils::new_list_state(),
         }
     }
 }

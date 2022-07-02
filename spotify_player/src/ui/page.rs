@@ -433,29 +433,31 @@ pub fn render_browse_page(
 ) -> Result<()> {
     let data = state.data.read();
 
-    let (category_list, len) = utils::construct_list_widget(
-        &ui.theme,
-        ui.search_filtered_items(&data.browse.categories)
-            .into_iter()
-            .map(|c| (c.name.clone(), false))
-            .collect(),
-        "Categories",
-        is_active,
-        None,
-    );
-
-    let page_state = match ui.current_page_mut() {
-        PageState::Browse { state } => state,
+    let (list, len) = match ui.current_page() {
+        PageState::Browse { state } => match state {
+            BrowsePageUIState::CategoryList { .. } => utils::construct_list_widget(
+                &ui.theme,
+                ui.search_filtered_items(&data.browse.categories)
+                    .into_iter()
+                    .map(|c| (c.name.clone(), false))
+                    .collect(),
+                "Categories",
+                is_active,
+                None,
+            ),
+            BrowsePageUIState::CategoryPlaylistList { category, .. } => {
+                todo!()
+            }
+        },
         s => anyhow::bail!("expect a browse page state, found {s:?}"),
     };
 
-    utils::render_list_window(
-        frame,
-        category_list,
-        rect,
-        len,
-        &mut page_state.category_list,
-    );
+    let list_state = match ui.current_page_mut().focus_window_state_mut() {
+        Some(MutableWindowState::List(list_state)) => list_state,
+        _ => anyhow::bail!("expect a list for the focused window"),
+    };
+
+    utils::render_list_window(frame, list, rect, len, list_state);
 
     Ok(())
 }

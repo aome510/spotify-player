@@ -2,7 +2,7 @@ use crate::{
     command::{Command, TrackAction},
     key::{Key, KeySequence},
     state::*,
-    utils::{new_list_state, new_table_state},
+    utils::{self, new_list_state, new_table_state},
 };
 
 #[cfg(feature = "lyric-finder")]
@@ -310,7 +310,9 @@ fn handle_global_command(
         }
         Command::BrowsePage => {
             ui.create_new_page(PageState::Browse {
-                state: BrowsePageUIState::new(),
+                state: BrowsePageUIState::CategoryList {
+                    state: utils::new_list_state(),
+                },
             });
             client_pub.send(ClientRequest::GetBrowseCategories)?;
         }
