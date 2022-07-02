@@ -101,6 +101,7 @@ fn render_main_layout(
         PageType::Search => page::render_search_page(is_active, frame, state, ui, chunks[1]),
         PageType::Context => page::render_context_page(is_active, frame, state, ui, chunks[1]),
         PageType::Tracks => page::render_tracks_page(is_active, frame, state, ui, chunks[1]),
+        PageType::Browse => page::render_browse_page(is_active, frame, state, ui, chunks[1]),
         #[cfg(feature = "lyric-finder")]
         PageType::Lyric => page::render_lyric_page(is_active, frame, state, ui, chunks[1]),
     }

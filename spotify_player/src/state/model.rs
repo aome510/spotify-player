@@ -1,6 +1,5 @@
 pub use rspotify::model as rspotify_model;
 pub use rspotify::model::{AlbumId, ArtistId, Id, PlaylistId, TrackId, UserId};
-use serde::{Deserialize, Serialize};
 
 use crate::utils::map_join;
 
@@ -411,5 +410,11 @@ impl From<rspotify_model::category::Category> for Category {
             name: c.name,
             id: c.id,
         }
+    }
+}
+
+impl std::fmt::Display for Category {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name)
     }
 }

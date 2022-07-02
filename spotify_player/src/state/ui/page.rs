@@ -28,6 +28,9 @@ pub enum PageState {
         artists: String,
         scroll_offset: usize,
     },
+    Browse {
+        state: BrowsePageUIState,
+    },
 }
 
 pub enum PageType {
@@ -35,6 +38,7 @@ pub enum PageType {
     Context,
     Search,
     Tracks,
+    Browse,
     #[cfg(feature = "lyric-finder")]
     Lyric,
 }
@@ -101,6 +105,11 @@ pub enum SearchFocusState {
     Playlists,
 }
 
+#[derive(Clone, Debug)]
+pub struct BrowsePageUIState {
+    pub category_list: ListState,
+}
+
 pub enum MutableWindowState<'a> {
     Table(&'a mut TableState),
     List(&'a mut ListState),
@@ -114,6 +123,7 @@ impl PageState {
             PageState::Context { .. } => PageType::Context,
             PageState::Search { .. } => PageType::Search,
             PageState::Tracks { .. } => PageType::Tracks,
+            PageState::Browse { .. } => PageType::Browse,
             #[cfg(feature = "lyric-finder")]
             PageState::Lyric { .. } => PageType::Lyric,
         }
@@ -186,6 +196,7 @@ impl PageState {
                 },
             }),
             Self::Tracks { state, .. } => Some(MutableWindowState::Table(state)),
+            Self::Browse { state } => Some(MutableWindowState::List(&mut state.category_list)),
             #[cfg(feature = "lyric-finder")]
             Self::Lyric { .. } => None,
         }
@@ -234,6 +245,14 @@ impl ContextPageUIState {
             album_list: utils::new_list_state(),
             related_artist_list: utils::new_list_state(),
             focus: ArtistFocusState::TopTracks,
+        }
+    }
+}
+
+impl BrowsePageUIState {
+    pub fn new() -> Self {
+        Self {
+            category_list: utils::new_list_state(),
         }
     }
 }

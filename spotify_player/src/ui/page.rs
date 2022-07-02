@@ -424,6 +424,42 @@ pub fn render_tracks_page(
     )
 }
 
+pub fn render_browse_page(
+    is_active: bool,
+    frame: &mut Frame,
+    state: &SharedState,
+    ui: &mut UIStateGuard,
+    rect: Rect,
+) -> Result<()> {
+    let data = state.data.read();
+
+    let (category_list, len) = utils::construct_list_widget(
+        &ui.theme,
+        ui.search_filtered_items(&data.browse.categories)
+            .into_iter()
+            .map(|c| (c.name.clone(), false))
+            .collect(),
+        "Categories",
+        is_active,
+        None,
+    );
+
+    let page_state = match ui.current_page_mut() {
+        PageState::Browse { state } => state,
+        s => anyhow::bail!("expect a browse page state, found {s:?}"),
+    };
+
+    utils::render_list_window(
+        frame,
+        category_list,
+        rect,
+        len,
+        &mut page_state.category_list,
+    );
+
+    Ok(())
+}
+
 #[cfg(feature = "lyric-finder")]
 pub fn render_lyric_page(
     _is_active: bool,

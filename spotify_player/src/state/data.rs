@@ -34,7 +34,7 @@ pub struct Caches {
     pub images: lru::LruCache<String, image::DynamicImage>,
 }
 
-#[derive(Debug)]
+#[derive(Default, Debug)]
 pub struct BrowseData {
     pub categories: Vec<Category>,
     pub category_playlists: HashMap<String, Vec<Playlist>>,
