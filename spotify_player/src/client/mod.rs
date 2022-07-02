@@ -312,7 +312,7 @@ impl Client {
     pub async fn browse_categories(&self) -> Result<Vec<Category>> {
         let first_page = self
             .spotify
-            .categories_manual(None, None, Some(50), None)
+            .categories_manual(Some("EN"), None, Some(50), None)
             .await?;
 
         Ok(first_page.items.into_iter().map(Category::from).collect())
