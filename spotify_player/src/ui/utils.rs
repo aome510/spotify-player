@@ -73,3 +73,14 @@ pub fn render_table_window(
     adjust_table_state(state, len);
     frame.render_stateful_widget(widget, rect, state);
 }
+
+pub fn render_loading_window(theme: &config::Theme, frame: &mut Frame, rect: Rect, title: &str) {
+    frame.render_widget(
+        Paragraph::new("Loading...").block(
+            Block::default()
+                .title(theme.block_title_with_style(title))
+                .borders(Borders::ALL),
+        ),
+        rect,
+    );
+}

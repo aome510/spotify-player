@@ -34,6 +34,7 @@ pub enum ClientRequest {
     GetCurrentUser,
     GetDevices,
     GetBrowseCategories,
+    GetBrowseCategoryPlaylists(Category),
     GetUserPlaylists,
     GetUserSavedAlbums,
     GetUserFollowedArtists,

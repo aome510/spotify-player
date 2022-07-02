@@ -148,6 +148,15 @@ impl Client {
                 let categories = self.browse_categories().await?;
                 state.data.write().browse.categories = categories;
             }
+            ClientRequest::GetBrowseCategoryPlaylists(category) => {
+                let playlists = self.browse_category_playlists(&category.id).await?;
+                state
+                    .data
+                    .write()
+                    .browse
+                    .category_playlists
+                    .insert(category.id, playlists);
+            }
             #[cfg(feature = "lyric-finder")]
             ClientRequest::GetLyric { track, artists } => {
                 let client = lyric_finder::Client::from_http_client(&self.http);
@@ -299,7 +308,7 @@ impl Client {
         Ok(())
     }
 
-    /// Get Spotify's all available browse categories
+    /// Get Spotify's available browse categories
     pub async fn browse_categories(&self) -> Result<Vec<Category>> {
         let first_page = self
             .spotify
@@ -307,6 +316,16 @@ impl Client {
             .await?;
 
         Ok(first_page.items.into_iter().map(Category::from).collect())
+    }
+
+    /// Get Spotify's available browse playlists of a given category
+    pub async fn browse_category_playlists(&self, category_id: &str) -> Result<Vec<Playlist>> {
+        let first_page = self
+            .spotify
+            .category_playlists_manual(category_id, None, Some(50), None)
+            .await?;
+
+        Ok(first_page.items.into_iter().map(Playlist::from).collect())
     }
 
     /// Find an available device. Return the device's id if exists.

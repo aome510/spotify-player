@@ -446,7 +446,24 @@ pub fn render_browse_page(
                 None,
             ),
             BrowsePageUIState::CategoryPlaylistList { category, .. } => {
-                todo!()
+                let title = format!("{} playlists", category.name);
+                let playlists = match data.browse.category_playlists.get(&category.id) {
+                    Some(playlists) => playlists,
+                    None => {
+                        utils::render_loading_window(&ui.theme, frame, rect, &title);
+                        return Ok(());
+                    }
+                };
+                utils::construct_list_widget(
+                    &ui.theme,
+                    ui.search_filtered_items(playlists)
+                        .into_iter()
+                        .map(|c| (c.name.clone(), false))
+                        .collect(),
+                    &title,
+                    is_active,
+                    None,
+                )
             }
         },
         s => anyhow::bail!("expect a browse page state, found {s:?}"),
