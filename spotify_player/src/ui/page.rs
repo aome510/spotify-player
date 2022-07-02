@@ -446,7 +446,7 @@ pub fn render_browse_page(
                 None,
             ),
             BrowsePageUIState::CategoryPlaylistList { category, .. } => {
-                let title = format!("{} playlists", category.name);
+                let title = format!("{} Playlists", category.name);
                 let playlists = match data.browse.category_playlists.get(&category.id) {
                     Some(playlists) => playlists,
                     None => {
