@@ -144,6 +144,19 @@ impl Client {
         let timer = std::time::SystemTime::now();
 
         match request {
+            ClientRequest::GetBrowseCategories => {
+                let categories = self.browse_categories().await?;
+                state.data.write().browse.categories = categories;
+            }
+            ClientRequest::GetBrowseCategoryPlaylists(category) => {
+                let playlists = self.browse_category_playlists(&category.id).await?;
+                state
+                    .data
+                    .write()
+                    .browse
+                    .category_playlists
+                    .insert(category.id, playlists);
+            }
             #[cfg(feature = "lyric-finder")]
             ClientRequest::GetLyric { track, artists } => {
                 let client = lyric_finder::Client::from_http_client(&self.http);
@@ -154,7 +167,6 @@ impl Client {
                         "failed to get lyric for track {} - artists {}",
                         track, artists
                     ))?;
-                    log::debug!("lyric result: {result:?}");
 
                     state.data.write().caches.lyrics.put(query, result);
                 }
@@ -296,7 +308,27 @@ impl Client {
         Ok(())
     }
 
-    // Find an available device. Return the device's id if exists.
+    /// Get Spotify's available browse categories
+    pub async fn browse_categories(&self) -> Result<Vec<Category>> {
+        let first_page = self
+            .spotify
+            .categories_manual(Some("EN"), None, Some(50), None)
+            .await?;
+
+        Ok(first_page.items.into_iter().map(Category::from).collect())
+    }
+
+    /// Get Spotify's available browse playlists of a given category
+    pub async fn browse_category_playlists(&self, category_id: &str) -> Result<Vec<Playlist>> {
+        let first_page = self
+            .spotify
+            .category_playlists_manual(category_id, None, Some(50), None)
+            .await?;
+
+        Ok(first_page.items.into_iter().map(Playlist::from).collect())
+    }
+
+    /// Find an available device. Return the device's id if exists.
     // The function will prioritize device whose name matches `default_device`.
     pub async fn find_available_device(&self, default_device: &str) -> Result<Option<String>> {
         let devices = self.spotify.device().await?;
@@ -924,7 +956,9 @@ impl Client {
         let mut items = first_page.items;
         let mut maybe_next = first_page.next;
         while let Some(url) = maybe_next {
-            let mut next_page = self.internal_call::<CursorBasedPage<T>>(&url).await?;
+            let mut next_page = self
+                .internal_call::<rspotify_model::CursorBasedPage<T>>(&url)
+                .await?;
             items.append(&mut next_page.items);
             maybe_next = next_page.next;
         }

@@ -1,6 +1,5 @@
 pub use rspotify::model as rspotify_model;
 pub use rspotify::model::{AlbumId, ArtistId, Id, PlaylistId, TrackId, UserId};
-use serde::{Deserialize, Serialize};
 
 use crate::utils::map_join;
 
@@ -137,26 +136,11 @@ pub struct Playlist {
     pub owner: (String, UserId),
 }
 
-// NOTE: the below cursor-based paging objects is a workaround to account
-// the fact that `rspotify v0.11.3` assumes `cursors` field in the response is not nullable.
-
-/// Cursor-based paging object
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Default)]
-pub struct CursorBasedPage<T> {
-    pub href: String,
-    pub items: Vec<T>,
-    pub limit: u32,
-    pub next: Option<String>,
-    pub cursors: Option<Cursor>,
-    /// Absent if it has read all data items. This field doesn't match what
-    /// Spotify document says
-    pub total: Option<u32>,
-}
-
-/// Cursor object
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Default)]
-pub struct Cursor {
-    pub after: Option<String>,
+#[derive(Clone, Debug)]
+/// A Spotify category
+pub struct Category {
+    pub id: String,
+    pub name: String,
 }
 
 impl Context {
@@ -417,5 +401,20 @@ impl From<rspotify_model::FullPlaylist> for Playlist {
 impl std::fmt::Display for Playlist {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{} • {}", self.name, self.owner.0)
+    }
+}
+
+impl From<rspotify_model::category::Category> for Category {
+    fn from(c: rspotify_model::category::Category) -> Self {
+        Self {
+            name: c.name,
+            id: c.id,
+        }
+    }
+}
+
+impl std::fmt::Display for Category {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name)
     }
 }

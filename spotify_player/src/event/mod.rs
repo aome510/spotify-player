@@ -33,6 +33,8 @@ pub enum PlayerRequest {
 pub enum ClientRequest {
     GetCurrentUser,
     GetDevices,
+    GetBrowseCategories,
+    GetBrowseCategoryPlaylists(Category),
     GetUserPlaylists,
     GetUserSavedAlbums,
     GetUserFollowedArtists,
@@ -134,6 +136,9 @@ fn handle_key_event(
             }
             PageType::Tracks => {
                 page::handle_key_sequence_for_tracks_page(&key_sequence, client_pub, state)?
+            }
+            PageType::Browse => {
+                page::handle_key_sequence_for_browse_page(&key_sequence, client_pub, state)?
             }
             #[cfg(feature = "lyric-finder")]
             PageType::Lyric => {
@@ -303,6 +308,14 @@ fn handle_global_command(
                 current_query: String::new(),
                 state: SearchPageUIState::new(),
             });
+        }
+        Command::BrowsePage => {
+            ui.create_new_page(PageState::Browse {
+                state: BrowsePageUIState::CategoryList {
+                    state: new_list_state(),
+                },
+            });
+            client_pub.send(ClientRequest::GetBrowseCategories)?;
         }
         Command::PreviousPage => {
             if ui.history.len() > 1 {

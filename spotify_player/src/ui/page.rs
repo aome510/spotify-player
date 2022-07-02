@@ -424,6 +424,61 @@ pub fn render_tracks_page(
     )
 }
 
+pub fn render_browse_page(
+    is_active: bool,
+    frame: &mut Frame,
+    state: &SharedState,
+    ui: &mut UIStateGuard,
+    rect: Rect,
+) -> Result<()> {
+    let data = state.data.read();
+
+    let (list, len) = match ui.current_page() {
+        PageState::Browse { state } => match state {
+            BrowsePageUIState::CategoryList { .. } => utils::construct_list_widget(
+                &ui.theme,
+                ui.search_filtered_items(&data.browse.categories)
+                    .into_iter()
+                    .map(|c| (c.name.clone(), false))
+                    .collect(),
+                "Categories",
+                is_active,
+                None,
+            ),
+            BrowsePageUIState::CategoryPlaylistList { category, .. } => {
+                let title = format!("{} Playlists", category.name);
+                let playlists = match data.browse.category_playlists.get(&category.id) {
+                    Some(playlists) => playlists,
+                    None => {
+                        utils::render_loading_window(&ui.theme, frame, rect, &title);
+                        return Ok(());
+                    }
+                };
+                utils::construct_list_widget(
+                    &ui.theme,
+                    ui.search_filtered_items(playlists)
+                        .into_iter()
+                        .map(|c| (c.name.clone(), false))
+                        .collect(),
+                    &title,
+                    is_active,
+                    None,
+                )
+            }
+        },
+        s => anyhow::bail!("expect a browse page state, found {s:?}"),
+    };
+
+    let list_state = match ui.current_page_mut().focus_window_state_mut() {
+        Some(MutableWindowState::List(list_state)) => list_state,
+        _ => anyhow::bail!("expect a list for the focused window"),
+    };
+
+    utils::render_list_window(frame, list, rect, len, list_state);
+
+    Ok(())
+}
+
 #[cfg(feature = "lyric-finder")]
 pub fn render_lyric_page(
     _is_active: bool,

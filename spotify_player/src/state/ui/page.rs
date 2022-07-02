@@ -28,6 +28,9 @@ pub enum PageState {
         artists: String,
         scroll_offset: usize,
     },
+    Browse {
+        state: BrowsePageUIState,
+    },
 }
 
 pub enum PageType {
@@ -35,6 +38,7 @@ pub enum PageType {
     Context,
     Search,
     Tracks,
+    Browse,
     #[cfg(feature = "lyric-finder")]
     Lyric,
 }
@@ -101,6 +105,17 @@ pub enum SearchFocusState {
     Playlists,
 }
 
+#[derive(Clone, Debug)]
+pub enum BrowsePageUIState {
+    CategoryList {
+        state: ListState,
+    },
+    CategoryPlaylistList {
+        category: Category,
+        state: ListState,
+    },
+}
+
 pub enum MutableWindowState<'a> {
     Table(&'a mut TableState),
     List(&'a mut ListState),
@@ -114,6 +129,7 @@ impl PageState {
             PageState::Context { .. } => PageType::Context,
             PageState::Search { .. } => PageType::Search,
             PageState::Tracks { .. } => PageType::Tracks,
+            PageState::Browse { .. } => PageType::Browse,
             #[cfg(feature = "lyric-finder")]
             PageState::Lyric { .. } => PageType::Lyric,
         }
@@ -133,7 +149,7 @@ impl PageState {
     }
 
     /// The currently focused window state of the page.
-    fn focus_window_state_mut(&mut self) -> Option<MutableWindowState> {
+    pub fn focus_window_state_mut(&mut self) -> Option<MutableWindowState> {
         match self {
             Self::Library {
                 state:
@@ -186,6 +202,12 @@ impl PageState {
                 },
             }),
             Self::Tracks { state, .. } => Some(MutableWindowState::Table(state)),
+            Self::Browse { state } => match state {
+                BrowsePageUIState::CategoryList { state } => Some(MutableWindowState::List(state)),
+                BrowsePageUIState::CategoryPlaylistList { state, .. } => {
+                    Some(MutableWindowState::List(state))
+                }
+            },
             #[cfg(feature = "lyric-finder")]
             Self::Lyric { .. } => None,
         }

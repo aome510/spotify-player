@@ -257,6 +257,9 @@ fn handle_key_sequence_for_search_popup(
         PageType::Tracks => {
             page::handle_key_sequence_for_tracks_page(key_sequence, client_pub, state)
         }
+        PageType::Browse => {
+            page::handle_key_sequence_for_browse_page(key_sequence, client_pub, state)
+        }
         #[cfg(feature = "lyric-finder")]
         PageType::Lyric => {
             page::handle_key_sequence_for_lyric_page(key_sequence, client_pub, state)

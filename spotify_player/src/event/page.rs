@@ -1,3 +1,4 @@
+use anyhow::Context as _;
 use rand::Rng;
 
 use super::*;
@@ -285,6 +286,101 @@ pub fn handle_key_sequence_for_tracks_page(
             ui,
         ),
     }
+}
+
+pub fn handle_key_sequence_for_browse_page(
+    key_sequence: &KeySequence,
+    client_pub: &flume::Sender<ClientRequest>,
+    state: &SharedState,
+) -> Result<bool> {
+    let command = match state
+        .keymap_config
+        .find_command_from_key_sequence(key_sequence)
+    {
+        Some(command) => command,
+        None => return Ok(false),
+    };
+
+    let mut ui = state.ui.lock();
+    let data = state.data.read();
+
+    let len = match ui.current_page() {
+        PageState::Browse { state } => match state {
+            BrowsePageUIState::CategoryList { .. } => {
+                ui.search_filtered_items(&data.browse.categories).len()
+            }
+            BrowsePageUIState::CategoryPlaylistList { category, .. } => data
+                .browse
+                .category_playlists
+                .get(&category.id)
+                .map(|v| ui.search_filtered_items(v).len())
+                .unwrap_or_default(),
+        },
+        _ => anyhow::bail!("expect a browse page state"),
+    };
+
+    let page_state = ui.current_page_mut();
+    let selected = page_state.selected().unwrap_or_default();
+    if selected >= len {
+        return Ok(false);
+    }
+
+    match command {
+        Command::ChooseSelected => {
+            match page_state {
+                PageState::Browse { state } => match state {
+                    BrowsePageUIState::CategoryList { .. } => {
+                        let categories = ui.search_filtered_items(&data.browse.categories);
+                        client_pub.send(ClientRequest::GetBrowseCategoryPlaylists(
+                            categories[selected].clone(),
+                        ))?;
+                        ui.create_new_page(PageState::Browse {
+                            state: BrowsePageUIState::CategoryPlaylistList {
+                                category: categories[selected].clone(),
+                                state: new_list_state(),
+                            },
+                        });
+                    }
+                    BrowsePageUIState::CategoryPlaylistList { category, .. } => {
+                        let playlists =
+                            data.browse
+                                .category_playlists
+                                .get(&category.id)
+                                .context(format!(
+                                    "expect to have playlists data for {category} category"
+                                ))?;
+                        let context_id = ContextId::Playlist(
+                            ui.search_filtered_items(playlists)[selected].id.clone(),
+                        );
+                        ui.create_new_page(PageState::Context {
+                            id: None,
+                            context_page_type: ContextPageType::Browsing(context_id),
+                            state: None,
+                        });
+                    }
+                },
+                _ => anyhow::bail!("expect a browse page state"),
+            };
+        }
+        Command::SelectNextOrScrollDown => {
+            if selected + 1 < len {
+                page_state.select(selected + 1);
+            }
+        }
+        Command::SelectPreviousOrScrollUp => {
+            if selected > 0 {
+                page_state.select(selected - 1);
+            }
+        }
+        Command::Search => {
+            page_state.select(0);
+            ui.popup = Some(PopupState::Search {
+                query: "".to_owned(),
+            });
+        }
+        _ => return Ok(false),
+    }
+    Ok(true)
 }
 
 #[cfg(feature = "lyric-finder")]

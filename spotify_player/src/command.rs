@@ -47,6 +47,7 @@ pub enum Command {
     LyricPage,
     LibraryPage,
     SearchPage,
+    BrowsePage,
     PreviousPage,
 
     SortTrackByTitle,
@@ -128,6 +129,7 @@ impl Command {
             Self::LyricPage => "go to the lyric page of the current track",
             Self::LibraryPage => "go to the user libary page",
             Self::SearchPage => "go to the search page",
+            Self::BrowsePage => "go to the browse page",
             Self::PreviousPage => "go to the previous page",
             Self::SortTrackByTitle => "sort the track table (if any) by track's title",
             Self::SortTrackByArtists => "sort the track table (if any) by track's artists",
