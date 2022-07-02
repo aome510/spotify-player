@@ -337,7 +337,7 @@ pub fn handle_key_sequence_for_browse_page(
                         ui.create_new_page(PageState::Browse {
                             state: BrowsePageUIState::CategoryPlaylistList {
                                 category: categories[selected].clone(),
-                                state: utils::new_list_state(),
+                                state: new_list_state(),
                             },
                         });
                     }
