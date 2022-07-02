@@ -305,6 +305,12 @@ fn handle_global_command(
                 state: SearchPageUIState::new(),
             });
         }
+        Command::BrowsePage => {
+            ui.create_new_page(PageState::Browse {
+                state: BrowsePageUIState::new(),
+            });
+            client_pub.send(ClientRequest::GetBrowseCategories);
+        }
         Command::PreviousPage => {
             if ui.history.len() > 1 {
                 ui.history.pop();

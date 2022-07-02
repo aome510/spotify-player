@@ -147,6 +147,10 @@ impl Default for KeymapConfig {
                     command: Command::SearchPage,
                 },
                 Keymap {
+                    key_sequence: "g b".into(),
+                    command: Command::BrowsePage,
+                },
+                Keymap {
                     key_sequence: "backspace".into(),
                     command: Command::PreviousPage,
                 },
