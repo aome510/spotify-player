@@ -144,6 +144,10 @@ impl Client {
         let timer = std::time::SystemTime::now();
 
         match request {
+            ClientRequest::GetBrowseCategories => {
+                let categories = self.browse_categories().await?;
+                state.data.write().browse.categories = categories;
+            }
             #[cfg(feature = "lyric-finder")]
             ClientRequest::GetLyric { track, artists } => {
                 let client = lyric_finder::Client::from_http_client(&self.http);
@@ -295,7 +299,22 @@ impl Client {
         Ok(())
     }
 
-    // Find an available device. Return the device's id if exists.
+    /// Get Spotify's all available browse categories
+    pub async fn browse_categories(&self) -> Result<Vec<Category>> {
+        let first_page = self
+            .spotify
+            .categories_manual(None, None, Some(50), None)
+            .await?;
+
+        Ok(self
+            .all_paging_items(first_page)
+            .await?
+            .into_iter()
+            .map(Category::from)
+            .collect())
+    }
+
+    /// Find an available device. Return the device's id if exists.
     // The function will prioritize device whose name matches `default_device`.
     pub async fn find_available_device(&self, default_device: &str) -> Result<Option<String>> {
         let devices = self.spotify.device().await?;

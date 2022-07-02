@@ -137,6 +137,12 @@ pub struct Playlist {
     pub owner: (String, UserId),
 }
 
+#[derive(Clone, Debug)]
+/// A Spotify category
+pub struct Category {
+    pub id: String,
+    pub name: String,
+}
 
 impl Context {
     /// sorts tracks in the context by a sort oder
@@ -396,5 +402,14 @@ impl From<rspotify_model::FullPlaylist> for Playlist {
 impl std::fmt::Display for Playlist {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{} • {}", self.name, self.owner.0)
+    }
+}
+
+impl From<rspotify_model::category::Category> for Category {
+    fn from(c: rspotify_model::category::Category) -> Self {
+        Self {
+            name: c.name,
+            id: c.id,
+        }
     }
 }

@@ -33,6 +33,7 @@ pub enum PlayerRequest {
 pub enum ClientRequest {
     GetCurrentUser,
     GetDevices,
+    GetBrowseCategories,
     GetUserPlaylists,
     GetUserSavedAlbums,
     GetUserFollowedArtists,

@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use super::model::*;
 
 pub type DataReadGuard<'a> = parking_lot::RwLockReadGuard<'a, AppData>;
@@ -7,6 +9,7 @@ pub type DataReadGuard<'a> = parking_lot::RwLockReadGuard<'a, AppData>;
 pub struct AppData {
     pub user_data: UserData,
     pub caches: Caches,
+    pub browse: BrowseData,
 }
 
 #[derive(Default, Debug)]
@@ -29,6 +32,12 @@ pub struct Caches {
     pub lyrics: lru::LruCache<String, lyric_finder::LyricResult>,
     #[cfg(feature = "image")]
     pub images: lru::LruCache<String, image::DynamicImage>,
+}
+
+#[derive(Debug)]
+pub struct BrowseData {
+    pub categories: Vec<Category>,
+    pub category_playlists: HashMap<String, Vec<Playlist>>,
 }
 
 impl Default for Caches {
