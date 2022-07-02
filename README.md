@@ -274,6 +274,7 @@ List of supported commands:
 | `LyricPage`                   | go to the lyric page of the current track (`lyric-finder` feature only) | `g L`, `l`         |
 | `LibraryPage`                 | go to the user library page                                             | `g l`              |
 | `SearchPage`                  | go to the search page                                                   | `g s`              |
+| `BrowsePage`                  | go to the browse page                                                   | `g b`              |
 | `PreviousPage`                | go to the previous page                                                 | `backspace`, `C-q` |
 | `SortTrackByTitle`            | sort the track table (if any) by track's title                          | `s t`              |
 | `SortTrackByArtists`          | sort the track table (if any) by track's artists                        | `s a`              |
