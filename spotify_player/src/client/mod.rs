@@ -154,7 +154,6 @@ impl Client {
                         "failed to get lyric for track {} - artists {}",
                         track, artists
                     ))?;
-                    log::debug!("lyric result: {result:?}");
 
                     state.data.write().caches.lyrics.put(query, result);
                 }
@@ -924,7 +923,9 @@ impl Client {
         let mut items = first_page.items;
         let mut maybe_next = first_page.next;
         while let Some(url) = maybe_next {
-            let mut next_page = self.internal_call::<CursorBasedPage<T>>(&url).await?;
+            let mut next_page = self
+                .internal_call::<rspotify_model::CursorBasedPage<T>>(&url)
+                .await?;
             items.append(&mut next_page.items);
             maybe_next = next_page.next;
         }
