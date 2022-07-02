@@ -136,6 +136,9 @@ fn handle_key_event(
             PageType::Tracks => {
                 page::handle_key_sequence_for_tracks_page(&key_sequence, client_pub, state)?
             }
+            PageType::Browse => {
+                page::handle_key_sequence_for_browse_page(&key_sequence, client_pub, state)?
+            }
             #[cfg(feature = "lyric-finder")]
             PageType::Lyric => {
                 page::handle_key_sequence_for_lyric_page(&key_sequence, client_pub, state)?
@@ -309,7 +312,7 @@ fn handle_global_command(
             ui.create_new_page(PageState::Browse {
                 state: BrowsePageUIState::new(),
             });
-            client_pub.send(ClientRequest::GetBrowseCategories);
+            client_pub.send(ClientRequest::GetBrowseCategories)?;
         }
         Command::PreviousPage => {
             if ui.history.len() > 1 {

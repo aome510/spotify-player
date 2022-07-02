@@ -287,6 +287,51 @@ pub fn handle_key_sequence_for_tracks_page(
     }
 }
 
+pub fn handle_key_sequence_for_browse_page(
+    key_sequence: &KeySequence,
+    client_pub: &flume::Sender<ClientRequest>,
+    state: &SharedState,
+) -> Result<bool> {
+    let command = match state
+        .keymap_config
+        .find_command_from_key_sequence(key_sequence)
+    {
+        Some(command) => command,
+        None => return Ok(false),
+    };
+
+    let mut ui = state.ui.lock();
+    let data = state.data.read();
+    let categories = ui.search_filtered_items(&data.browse.categories);
+
+    let page_state = ui.current_page_mut();
+    let selected = page_state.selected().unwrap_or_default();
+    if selected >= categories.len() {
+        return Ok(false);
+    }
+
+    match command {
+        Command::SelectNextOrScrollDown => {
+            if selected + 1 < categories.len() {
+                page_state.select(selected + 1);
+            }
+        }
+        Command::SelectPreviousOrScrollUp => {
+            if selected > 0 {
+                page_state.select(selected - 1);
+            }
+        }
+        Command::Search => {
+            ui.current_page_mut().select(0);
+            ui.popup = Some(PopupState::Search {
+                query: "".to_owned(),
+            });
+        }
+        _ => return Ok(false),
+    }
+    Ok(true)
+}
+
 #[cfg(feature = "lyric-finder")]
 pub fn handle_key_sequence_for_lyric_page(
     key_sequence: &KeySequence,

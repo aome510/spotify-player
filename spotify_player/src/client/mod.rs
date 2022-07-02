@@ -306,12 +306,7 @@ impl Client {
             .categories_manual(None, None, Some(50), None)
             .await?;
 
-        Ok(self
-            .all_paging_items(first_page)
-            .await?
-            .into_iter()
-            .map(Category::from)
-            .collect())
+        Ok(first_page.items.into_iter().map(Category::from).collect())
     }
 
     /// Find an available device. Return the device's id if exists.
