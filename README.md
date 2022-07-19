@@ -85,11 +85,15 @@ A Spotify Premium account is **required**.
 ##### Linux
 
 - [Rust and cargo](https://www.rust-lang.org/tools/install) as the build dependencies
-- `openssl`, `alsa-lib` (`streaming` feature), `libdbus` (`media-control` feature). For example, on Debian based systems, run the below command to install application's dependencies:
-
-```shell
-sudo apt install libssl-dev libasound2-dev libdbus-1-dev
-```
+- `openssl`, `alsa-lib` (`streaming` feature), `libdbus` (`media-control` feature) system libraries.
+  - On Debian based systems, run the below command to install application's dependencies:
+    ```shell
+    sudo apt install libssl-dev libasound2-dev libdbus-1-dev
+    ```
+  - On Fedora based systems, run the below command to install application's dependencies:
+    ```shell
+    sudo yum install openssl-devel alsa-lib-devel dbus-devel
+    ```
 
 ### Cargo
 
