@@ -42,6 +42,7 @@ jobs:
         with:
           toolchain: stable
           override: true
+          profile: minimal
           components: clippy, rustfmt
 
       - name: Cargo test
