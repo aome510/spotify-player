@@ -1,7 +1,9 @@
 name: CD
 
 on:
-  pull_request:
+  push:
+    tags:
+      - "v*.*.*"
 
 jobs:
   publish:
