@@ -38,7 +38,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --locked --release
+          args: --locked --release --target ${{ matrix.target }}
 
       - name: Package
         shell: bash
