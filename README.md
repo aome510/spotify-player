@@ -95,6 +95,12 @@ A Spotify Premium account is **required**.
     sudo yum install openssl-devel alsa-lib-devel dbus-devel
     ```
 
+### Binaries
+
+Application's prebuilt binaries can be found in the [Releases Page](https://github.com/aome510/spotify-player/releases).
+
+**Note**: to run the application, Linux systems need to install additional dependencies as specified in the [Dependencies section](#linux).
+
 ### Cargo
 
 Run `cargo install spotify_player` to install the application from [crates.io](https://crates.io/crates/spotify_player).
