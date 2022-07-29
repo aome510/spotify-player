@@ -58,7 +58,7 @@ jobs:
           args: --all -- --check
 
       - name: Cargo clippy
-        uses: actions-rs/clippy-check@v1
+        uses: actions-rs/cargo@v1
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          command: clippy
           args: --no-default-features --features ${{ env.RUST_FEATURES }} -- -D warnings
