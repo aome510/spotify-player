@@ -14,6 +14,7 @@ env:
 jobs:
   rust-ci:
     if: github.event.pull_request.draft != true
+
     strategy:
       matrix:
         os: [macOS-latest, windows-latest, ubuntu-latest]
@@ -24,29 +25,40 @@ jobs:
       - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install libssl-dev libasound2-dev libdbus-1-dev
         if: ${{ runner.os == 'Linux' }}
-      - uses: actions/checkout@v2
-      - uses: actions-rs/cargo@v1
-        name: Cargo Test
+
+      - name: Checkout source
+        uses: actions/checkout@v2
+
+      - name: Cache cargo deps
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          profile: minimal
+          components: clippy, rustfmt
+
+      - name: Cargo test
+        uses: actions-rs/cargo@v1
         with:
           command: test
           args: --no-default-features --features ${{ env.RUST_FEATURES }}
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-          components: rustfmt
-      - uses: actions-rs/cargo@v1
-        name: Cargo Format
+
+      - name: Cargo format
+        uses: actions-rs/cargo@v1
         with:
           command: fmt
           args: --all -- --check
-      - uses: actions-rs/toolchain@v1
+
+      - name: Cargo clippy
+        uses: actions-rs/cargo@v1
         with:
-          toolchain: stable
-          override: true
-          components: clippy
-      - uses: actions-rs/clippy-check@v1
-        name: Cargo Clippy
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          command: clippy
           args: --no-default-features --features ${{ env.RUST_FEATURES }} -- -D warnings

@@ -1,0 +1,65 @@
+name: CD
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  publish:
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+        rust: [stable]
+        include:
+          - os: macos-latest
+            target: x86_64-apple-darwin
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install libssl-dev libasound2-dev libdbus-1-dev
+        if: ${{ runner.os == 'Linux' }}
+
+      - name: Checkout source
+        uses: actions/checkout@v2
+
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          profile: minimal
+
+      - name: Build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --locked --release --target ${{ matrix.target }}
+
+      - name: Package
+        shell: bash
+        run: |
+          cd target/${{ matrix.target }}/release
+          case ${{ matrix.target }} in
+          *-pc-windows-*)
+            7z -y a spotify_player-${{ matrix.target }}.zip spotify_player.exe
+            sha256sum spotify_player-${{ matrix.target }}.zip > spotify_player-${{ matrix.target }}.sha256
+            ;;
+          *)
+            tar czvf spotify_player-${{ matrix.target }}.tar.gz spotify_player
+            shasum -a 256 spotify_player-${{ matrix.target }}.tar.gz > spotify_player-${{ matrix.target }}.sha256
+            ;;
+          esac;
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: target/${{ matrix.target }}/release/spotify_player-*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
