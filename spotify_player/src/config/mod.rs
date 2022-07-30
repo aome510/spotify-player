@@ -35,6 +35,10 @@ pub struct AppConfig {
 
     pub track_table_item_max_len: usize,
 
+    // icons
+    pub play_icon: String,
+    pub pause_icon: String,
+
     #[cfg(feature = "media-control")]
     pub enable_media_control: bool,
 
@@ -68,6 +72,9 @@ impl Default for AppConfig {
             cover_image_refresh_duration_in_ms: 2000,
 
             track_table_item_max_len: 32,
+
+            play_icon: "⏸".to_string(),
+            pause_icon: "▶".to_string(),
 
             // Because of the "creating new window and stealing focus" behaviour
             // when running the media control event loop on startup,

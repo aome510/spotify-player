@@ -134,7 +134,11 @@ fn render_playback_window(
                 Span::styled(
                     format!(
                         "{} {} • {}",
-                        if !playback.is_playing { "⏸" } else { "▶" },
+                        if !playback.is_playing {
+                            &state.app_config.pause_icon
+                        } else {
+                            &state.app_config.play_icon
+                        },
                         track.name,
                         crate::utils::map_join(&track.artists, |a| &a.name, ", ")
                     ),
