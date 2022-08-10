@@ -21,7 +21,7 @@ fn update_control_metadata(
         None => {}
         Some(track) => {
             if let Some(ref playback) = player.playback {
-                #[cfg(target_os = "linux")]
+                #[cfg(all(unix, not(target_os = "macos")))]
                 {
                     // For linux, the `souvlaki` crate doesn't support updating the playback's current position
                     // and internally it only handles at most one DBus event every one second [1].
