@@ -84,7 +84,7 @@ impl Default for AppConfig {
             #[cfg(any(target_os = "macos", target_os = "windows"))]
             enable_media_control: false,
             #[cfg(feature = "media-control")]
-            #[cfg(target_os = "linux")]
+            #[cfg(all(unix, not(target_os = "macos")))]
             enable_media_control: true,
 
             default_device: "spotify-player".to_string(),
