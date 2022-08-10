@@ -37,7 +37,7 @@ tracing = "0.1.36"
 tracing-subscriber = { version = "0.3.15", features = ["env-filter"] }
 lyric_finder = { version = "0.1.2", path = "../lyric_finder" , optional = true }
 backtrace = "0.3.66"
-souvlaki = { git = "https://github.com/Sinono3/souvlaki", optional = true }
+souvlaki = { version = "0.5.1", git = "https://github.com/Sinono3/souvlaki", optional = true }
 winit = { version = "0.27.1", optional = true }
 viuer = { version = "0.6.1", optional = true }
 image = { version = "0.24.3", optional = true }
