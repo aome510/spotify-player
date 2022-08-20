@@ -1,5 +1,5 @@
+use crate::state::{DataReadGuard, Track};
 use serde::Deserialize;
-use crate::state::{Track, DataReadGuard};
 
 #[derive(Copy, Clone, Debug, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 /// Application's command
