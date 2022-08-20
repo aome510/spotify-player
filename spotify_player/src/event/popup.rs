@@ -419,6 +419,10 @@ fn handle_command_for_action_list_popup(
                             new_list_state(),
                         ));
                     }
+                    TrackAction::AddToQueue => {
+                        client_pub.send(ClientRequest::AddTrackToQueue(track.id.clone()))?;
+                        ui.popup = None;
+                    }
                     TrackAction::AddToPlaylist => {
                         client_pub.send(ClientRequest::GetUserPlaylists)?;
                         ui.popup = Some(PopupState::UserPlaylistList(

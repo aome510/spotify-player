@@ -1,5 +1,5 @@
 use crate::{
-    command::{Command, TrackAction},
+    command::{self, Command},
     key::{Key, KeySequence},
     state::*,
     utils::{new_list_state, new_table_state},
@@ -225,24 +225,8 @@ fn handle_global_command(
         Command::ShowActionsOnCurrentTrack => {
             if let Some(track) = state.player.read().current_playing_track() {
                 if let Some(track) = Track::try_from_full_track(track.clone()) {
-                    let mut actions = vec![
-                        TrackAction::BrowseArtist,
-                        TrackAction::BrowseAlbum,
-                        TrackAction::BrowseRecommendations,
-                        TrackAction::AddToPlaylist,
-                    ];
-                    if state
-                        .data
-                        .read()
-                        .user_data
-                        .saved_tracks
-                        .iter()
-                        .any(|t| t.id == track.id)
-                    {
-                        actions.push(TrackAction::DeleteFromLikedTracks);
-                    } else {
-                        actions.push(TrackAction::AddToLikedTracks);
-                    }
+                    let data = state.data.read();
+                    let actions = command::construct_track_actions(&track, &data);
                     ui.popup = Some(PopupState::ActionList(
                         ActionListItem::Track(track, actions),
                         new_list_state(),
