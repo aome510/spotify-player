@@ -45,6 +45,7 @@ pub enum ClientRequest {
     GetCurrentPlayback,
     GetRecommendations(SeedItem),
     Search(String),
+    AddTrackToQueue(TrackId),
     AddTrackToPlaylist(PlaylistId, TrackId),
     DeleteTrackFromPlaylist(PlaylistId, TrackId),
     AddToLibrary(Item),
