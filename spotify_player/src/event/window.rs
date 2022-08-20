@@ -140,22 +140,7 @@ pub fn handle_command_for_track_table_window(
             }
         }
         Command::ShowActionsOnSelectedItem => {
-            let mut actions = vec![
-                TrackAction::BrowseArtist,
-                TrackAction::BrowseAlbum,
-                TrackAction::BrowseRecommendations,
-                TrackAction::AddToPlaylist,
-            ];
-            if data
-                .user_data
-                .saved_tracks
-                .iter()
-                .any(|t| t.id == tracks[id].id)
-            {
-                actions.push(TrackAction::DeleteFromLikedTracks);
-            } else {
-                actions.push(TrackAction::AddToLikedTracks);
-            }
+            let mut actions = command::construct_track_actions(tracks[id], data);
             if let Some(ContextId::Playlist(_)) = context_id {
                 actions.push(TrackAction::DeleteFromCurrentPlaylist);
             }
@@ -203,22 +188,7 @@ pub fn handle_command_for_track_list_window(
             )))?;
         }
         Command::ShowActionsOnSelectedItem => {
-            let mut actions = vec![
-                TrackAction::BrowseArtist,
-                TrackAction::BrowseAlbum,
-                TrackAction::BrowseRecommendations,
-                TrackAction::AddToPlaylist,
-            ];
-            if data
-                .user_data
-                .saved_tracks
-                .iter()
-                .any(|t| t.id == tracks[id].id)
-            {
-                actions.push(TrackAction::DeleteFromLikedTracks);
-            } else {
-                actions.push(TrackAction::AddToLikedTracks);
-            }
+            let actions = command::construct_track_actions(tracks[id], data);
             ui.popup = Some(PopupState::ActionList(
                 ActionListItem::Track(tracks[id].clone(), actions),
                 new_list_state(),

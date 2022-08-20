@@ -284,6 +284,9 @@ impl Client {
                     state.data.write().caches.tracks.put(id, tracks);
                 }
             }
+            ClientRequest::AddTrackToQueue(track_id) => {
+                self.add_track_to_queue(&track_id).await?;
+            }
             ClientRequest::AddTrackToPlaylist(playlist_id, track_id) => {
                 self.add_track_to_playlist(state, &playlist_id, &track_id)
                     .await?;
@@ -650,6 +653,11 @@ impl Client {
             .spotify
             .search(query, _type, None, None, None, None)
             .await?)
+    }
+
+    /// adds track to queue
+    pub async fn add_track_to_queue(&self, track_id: &TrackId) -> Result<()> {
+        Ok(self.spotify.add_item_to_queue(track_id, None).await?)
     }
 
     /// adds track to a playlist

@@ -1,3 +1,4 @@
+use crate::state::{DataReadGuard, Track};
 use serde::Deserialize;
 
 #[derive(Copy, Clone, Debug, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
@@ -63,6 +64,7 @@ pub enum TrackAction {
     BrowseArtist,
     BrowseAlbum,
     BrowseRecommendations,
+    AddToQueue,
     AddToPlaylist,
     DeleteFromCurrentPlaylist,
     AddToLikedTracks,
@@ -87,6 +89,23 @@ pub enum ArtistAction {
 pub enum PlaylistAction {
     AddToLibrary,
     DeleteFromLibrary,
+}
+
+/// constructs a default list of actions on a track
+pub fn construct_track_actions(track: &Track, data: &DataReadGuard) -> Vec<TrackAction> {
+    let mut actions = vec![
+        TrackAction::BrowseArtist,
+        TrackAction::BrowseAlbum,
+        TrackAction::BrowseRecommendations,
+        TrackAction::AddToPlaylist,
+        TrackAction::AddToQueue,
+    ];
+    if data.user_data.saved_tracks.iter().any(|t| t.id == track.id) {
+        actions.push(TrackAction::DeleteFromLikedTracks);
+    } else {
+        actions.push(TrackAction::AddToLikedTracks);
+    }
+    actions
 }
 
 impl Command {
