@@ -27,7 +27,7 @@ pub struct AppConfig {
     pub proxy: Option<String>,
     pub ap_port: Option<u16>,
 
-    // referesh duration configs
+    // duration configs
     pub app_refresh_duration_in_ms: u64,
     pub playback_refresh_duration_in_ms: u64,
     #[cfg(feature = "image")]
@@ -35,9 +35,16 @@ pub struct AppConfig {
 
     pub track_table_item_max_len: usize,
 
-    // icons
+    // icon configs
     pub play_icon: String,
     pub pause_icon: String,
+
+    // layout configs
+    #[cfg(feature = "image")]
+    pub cover_img_length: usize,
+    #[cfg(feature = "image")]
+    pub cover_img_width: usize,
+    pub playback_window_width: usize,
 
     #[cfg(feature = "media-control")]
     pub enable_media_control: bool,
@@ -75,6 +82,13 @@ impl Default for AppConfig {
 
             play_icon: "⏸".to_string(),
             pause_icon: "▶".to_string(),
+
+            #[cfg(feature = "image")]
+            cover_img_length: 9,
+            #[cfg(feature = "image")]
+            cover_img_width: 5,
+
+            playback_window_width: 6,
 
             // Because of the "creating new window and stealing focus" behaviour
             // when running the media control event loop on startup,
