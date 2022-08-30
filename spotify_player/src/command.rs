@@ -12,7 +12,6 @@ pub enum Command {
     Shuffle,
     VolumeUp,
     VolumeDown,
-
     SeekForward,
     SeekBackward,
 
@@ -122,8 +121,8 @@ impl Command {
             Self::Shuffle => "toggle the shuffle mode",
             Self::VolumeUp => "increase playback volume by 5%",
             Self::VolumeDown => "decrease playback volume by 5%",
-            Self::SeekForward => "seek forward 5s",
-            Self::SeekBackward => "seek backward 5s",
+            Self::SeekForward => "seek forward by 5s",
+            Self::SeekBackward => "seek backward by 5s",
             Self::Quit => "quit the application",
             Self::OpenCommandHelp => "open a command help popup",
             Self::ClosePopup => "close a popup",
