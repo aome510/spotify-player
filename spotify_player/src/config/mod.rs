@@ -88,7 +88,7 @@ impl Default for AppConfig {
             #[cfg(feature = "image")]
             cover_img_width: 5,
 
-            playback_window_width: 7,
+            playback_window_width: 6,
 
             // Because of the "creating new window and stealing focus" behaviour
             // when running the media control event loop on startup,
