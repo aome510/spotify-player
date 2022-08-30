@@ -56,6 +56,14 @@ impl Default for KeymapConfig {
                     command: Command::VolumeDown,
                 },
                 Keymap {
+                    key_sequence: ">".into(),
+                    command: Command::SeekForward,
+                },
+                Keymap {
+                    key_sequence: "<".into(),
+                    command: Command::SeekBackward,
+                },
+                Keymap {
                     key_sequence: "enter".into(),
                     command: Command::ChooseSelected,
                 },
