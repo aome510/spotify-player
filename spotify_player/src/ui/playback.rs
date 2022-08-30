@@ -3,6 +3,8 @@ use super::*;
 /// Renders a playback window showing information about the current playback, which includes
 /// - track title, artists, album
 /// - playback metadata (playing state, repeat state, shuffle state, volume, device, etc)
+/// - cover image (if `image` feature is enabled)
+/// - playback progress bar
 pub fn render_playback_window(
     frame: &mut Frame,
     state: &SharedState,
