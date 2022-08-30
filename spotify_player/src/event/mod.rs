@@ -211,9 +211,25 @@ fn handle_global_command(
         Command::VolumeDown => {
             if let Some(ref playback) = state.player.read().playback {
                 if let Some(percent) = playback.device.volume_percent {
-                    let volume = std::cmp::max(percent.saturating_sub(5_u32), 0_u32);
+                    let volume = percent.saturating_sub(5_u32);
                     client_pub.send(ClientRequest::Player(PlayerRequest::Volume(volume as u8)))?;
                 }
+            }
+        }
+        Command::SeekForward => {
+            if let Some(progress) = state.player.read().playback_progress() {
+                let progress_ms = progress.as_millis();
+                client_pub.send(ClientRequest::Player(PlayerRequest::SeekTrack(
+                    (progress_ms as u32) + 5000,
+                )))?;
+            }
+        }
+        Command::SeekBackward => {
+            if let Some(progress) = state.player.read().playback_progress() {
+                let progress_ms = progress.as_millis();
+                client_pub.send(ClientRequest::Player(PlayerRequest::SeekTrack(
+                    (progress_ms as u32).saturating_sub(5000),
+                )))?;
             }
         }
         Command::OpenCommandHelp => {
