@@ -179,6 +179,7 @@ async fn main() -> Result<()> {
     tokio::task::spawn({
         let state = state.clone();
         let client_pub = client_pub.clone();
+        let client = client.clone();
         async move {
             client::start_client_handler(
                 state,
@@ -206,7 +207,7 @@ async fn main() -> Result<()> {
         let state = state.clone();
         let client_pub = client_pub.clone();
         async move {
-            client::start_player_event_watchers(state, client_pub).await;
+            client::start_player_event_watchers(state, client, client_pub).await;
         }
     });
 

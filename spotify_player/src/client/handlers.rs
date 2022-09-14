@@ -50,8 +50,8 @@ pub async fn start_client_handler(
 /// notifying the client to make update requests if needed
 pub async fn start_player_event_watchers(
     state: SharedState,
-    client_pub: flume::Sender<ClientRequest>,
     client: super::Client,
+    client_pub: flume::Sender<ClientRequest>,
 ) {
     // Start a watcher task that updates the playback every `playback_refresh_duration_in_ms` ms.
     // A positive value of `playback_refresh_duration_in_ms` is required to start the watcher.
@@ -72,15 +72,22 @@ pub async fn start_player_event_watchers(
         });
     }
 
-    // Main watcher task
     let refresh_duration = std::time::Duration::from_millis(200);
+    let mut timer = std::time::Instant::now();
+    let mut timeout_s = 0;
+
+    // Main watcher task
     loop {
         tokio::time::sleep(refresh_duration).await;
 
         // if no playback found, try to connect to an available device
         if state.player.read().playback.is_none() {
-            tracing::info!("No playing device found, trying to connect to an available device...");
-            match client
+            if timer.elapsed() < std::time::Duration::from_secs(timeout_s) {
+                continue;
+            }
+            tracing::info!("No playback found, trying to connect to an available device...");
+
+            let failed = match client
                 .find_available_device(&state.app_config.default_device)
                 .await
             {
@@ -90,15 +97,28 @@ pub async fn start_player_event_watchers(
                             event::PlayerRequest::TransferPlayback(device, false),
                         ))
                         .unwrap_or_default();
+                    false
                 }
                 Ok(None) => {
                     tracing::info!("No device found.");
+                    true
                 }
                 Err(err) => {
                     tracing::error!("Failed to find an available device: {err}");
+                    true
                 }
+            };
+
+            if failed {
+                timer = std::time::Instant::now();
+                timeout_s = std::cmp::min(timeout_s * 2 + 1, 60);
+                tracing::warn!(
+                    "Failed to connect to an available device, current timeout: {timeout_s}s"
+                );
+            } else {
+                timer = std::time::Instant::now();
+                timeout_s = 0;
             }
-            {}
         }
 
         // update the playback when the current track ends
