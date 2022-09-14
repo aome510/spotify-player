@@ -331,45 +331,42 @@ impl Client {
         Ok(first_page.items.into_iter().map(Playlist::from).collect())
     }
 
-    /// Find an available device. Return the device's id if exists.
-    // The function will prioritize device whose name matches `default_device`.
+    /// Find an available device. If found, return the device ID.
+    // The function will prioritize the device whose name is equal to `default_device`.
     pub async fn find_available_device(&self, default_device: &str) -> Result<Option<String>> {
-        let devices = self.spotify.device().await?;
+        let devices = self
+            .spotify
+            .device()
+            .await?
+            .into_iter()
+            .filter(|d| d.id.is_some())
+            .collect::<Vec<_>>();
         tracing::info!("Available devices: {devices:?}");
 
-        let device = {
-            if let Some(d) = devices.iter().find(|d| d.name == default_device) {
-                Some(d)
-            } else {
-                // No device whose name matches `default_device` found,
-                // use the first available device.
-                devices.iter().find(|d| d.id.is_some())
-            }
-        };
-
-        match device {
-            Some(device) => {
-                tracing::info!("Found an available device: {device:?}");
-                return Ok(device.id.clone());
-            }
-            None => {
-                // If the streaming feature is enabled and no device is found [1], use the integrated device.
-                // [1]: this can happen when the application uses the default Spotify client ID.
-                // To retrieve the list of available devices, users need to specify their own client ID.
-                #[cfg(feature = "streaming")]
-                {
-                    if let Some(ref session) = self.spotify.session {
-                        let id = session.device_id().to_string();
-                        tracing::info!(
-                            "No available device found, use the integrated device (id={id})"
-                        );
-                        return Ok(Some(id));
+        if let Some(d) = devices.iter().find(|d| d.name == default_device) {
+            Ok(d.id.clone())
+        } else {
+            // If the default device not found, use the first available device
+            match devices.first() {
+                Some(d) => Ok(d.id.clone()),
+                None => {
+                    // If the streaming feature is enabled and no device is found [1], use the integrated device.
+                    // [1]: this can happen when the application uses the default Spotify client ID.
+                    // To retrieve the list of available devices, users need to specify their own client ID.
+                    #[cfg(feature = "streaming")]
+                    {
+                        if let Some(ref session) = self.spotify.session {
+                            let id = session.device_id().to_string();
+                            tracing::info!(
+                                "No available device found, use the integrated device (id={id})"
+                            );
+                            return Ok(Some(id));
+                        }
                     }
+                    return Ok(None);
                 }
             }
         }
-
-        Ok(None)
     }
 
     /// gets the saved (liked) tracks of the current user
