@@ -117,7 +117,8 @@ pub async fn start_player_event_watchers(
                 );
             } else {
                 timer = std::time::Instant::now();
-                timeout_s = 0;
+                // start with 1s instead of 0s to avoid sending many `TransferPlayback` requests while waiting for playback update
+                timeout_s = 1;
             }
         }
 

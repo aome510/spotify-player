@@ -372,7 +372,7 @@ impl Client {
             0
         };
 
-        Ok(Some(devices.remove(id).0))
+        Ok(Some(devices.remove(id).1))
     }
 
     /// gets the saved (liked) tracks of the current user
