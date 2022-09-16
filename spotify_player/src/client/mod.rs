@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{borrow::Cow, sync::Arc};
 
 #[cfg(feature = "streaming")]
 use crate::streaming;
@@ -144,6 +144,52 @@ impl Client {
         let timer = std::time::SystemTime::now();
 
         match request {
+            ClientRequest::ConnectDevice(id) => {
+                // Device connection can fail when the specified device hasn't shown up
+                // in the Spotify's server, which makes the `TransferPlayback` request fail
+                // with an error like "404 Not Found".
+                // This is why we need a retry mechanism to make multiple connect requests.
+                let mut delay_ms = 32;
+
+                for _ in 0..10 {
+                    let id = match &id {
+                        Some(id) => Some(Cow::Borrowed(id)),
+                        None => {
+                            // no device id is specified, try to connect to an available device
+                            match self
+                                .find_available_device(&state.app_config.default_device)
+                                .await
+                            {
+                                Ok(Some(id)) => Some(Cow::Owned(id)),
+                                Ok(None) => {
+                                    tracing::info!("No device found.");
+                                    None
+                                }
+                                Err(err) => {
+                                    tracing::error!("Failed to find an available device: {err}");
+                                    None
+                                }
+                            }
+                        }
+                    };
+
+                    if let Some(id) = id {
+                        tracing::info!("Trying to connect to device (id={id})");
+                        if self
+                            .spotify
+                            .transfer_playback(&id, Some(false))
+                            .await
+                            .is_ok()
+                        {
+                            break;
+                        }
+                    }
+
+                    tracing::info!("Retrying to connect in {delay_ms}ms...");
+                    tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
+                    delay_ms *= 2;
+                }
+            }
             ClientRequest::GetBrowseCategories => {
                 let categories = self.browse_categories().await?;
                 state.data.write().browse.categories = categories;

@@ -13,9 +13,8 @@ mod token;
 mod ui;
 mod utils;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result};
 use std::io::Write;
-use tracing::Instrument;
 
 fn init_app_cli_arguments() -> clap::ArgMatches {
     clap::Command::new("spotify-player")
@@ -48,48 +47,6 @@ fn init_app_cli_arguments() -> clap::ArgMatches {
         .get_matches()
 }
 
-async fn connect_to_an_available_device(
-    client: client::Client,
-    state: state::SharedState,
-) -> Result<()> {
-    let mut delay_ms = 32;
-
-    for _ in 0..10 {
-        match client
-            .find_available_device(&state.app_config.default_device)
-            .await
-        {
-            Ok(Some(id)) => {
-                let request =
-                    event::ClientRequest::Player(event::PlayerRequest::TransferPlayback(id, false));
-                let span = tracing::info_span!("client_request", request = ?request);
-                if client
-                    .handle_request(&state, request)
-                    .instrument(span)
-                    .await
-                    .is_ok()
-                {
-                    return Ok(());
-                }
-            }
-            Ok(None) => {
-                tracing::info!("No device found.");
-            }
-            Err(err) => {
-                tracing::error!("Failed to find an available device: {err}");
-            }
-        }
-
-        tracing::info!("Retrying in {delay_ms}ms...");
-        tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
-        delay_ms *= 2;
-    }
-
-    Err(anyhow!(
-        "Failed to connect to an available device on startup"
-    ))
-}
-
 async fn init_spotify(
     client_pub: &flume::Sender<event::ClientRequest>,
     streaming_sub: &flume::Receiver<()>,
@@ -110,17 +67,7 @@ async fn init_spotify(
 
     if state.player.read().playback.is_none() {
         tracing::info!("No playback found on startup, trying to connect to an available device...");
-
-        tokio::task::spawn({
-            let client = client.clone();
-            let state = state.clone();
-
-            async move {
-                if let Err(err) = connect_to_an_available_device(client, state).await {
-                    tracing::error!("{err}");
-                }
-            }
-        });
+        client_pub.send(event::ClientRequest::ConnectDevice(None))?;
     }
 
     // request user data
