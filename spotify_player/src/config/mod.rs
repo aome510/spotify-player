@@ -101,7 +101,7 @@ impl Default for AppConfig {
             #[cfg(all(unix, not(target_os = "macos")))]
             enable_media_control: true,
 
-            default_device: String::new(),
+            default_device: "spotify-player".to_string(),
 
             device: DeviceConfig::default(),
         }
