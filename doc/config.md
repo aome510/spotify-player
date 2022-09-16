@@ -28,7 +28,7 @@ All configuration files should be placed inside the application's configuration 
 | `cover_image_refresh_duration_in_ms` | the duration (in ms) between two cover image refreshes (`image` feature only) | `2000`                                      |
 | `track_table_item_max_len`           | the maximum length of a column in a track table                               | `32`                                        |
 | `enable_media_control`               | enable application media control support (`media-control` feature only)       | `true` (Linux), `false` (Windows and MacOS) |
-| `default_device`                     | the default device to connect to on startup if no playing device found        | `spotify-player`                            |
+| `default_device`                     | the default device to connect to if no playing playback found                 | `""`                                        |
 | `playback_window_width`              | the width of the playback window                                              | `6`                                         |
 | `cover_img_width`                    | the width of the cover image (`image` feature only)                           | `5`                                         |
 | `cover_img_length`                   | the length of the cover image (`image` feature only)                          | `9`                                         |
