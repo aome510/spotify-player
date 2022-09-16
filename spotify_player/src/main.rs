@@ -15,6 +15,7 @@ mod utils;
 
 use anyhow::{anyhow, Context, Result};
 use std::io::Write;
+use tracing::Instrument;
 
 fn init_app_cli_arguments() -> clap::ArgMatches {
     clap::Command::new("spotify-player")
@@ -48,8 +49,8 @@ fn init_app_cli_arguments() -> clap::ArgMatches {
 }
 
 async fn connect_to_an_available_device(
-    client: &client::Client,
-    state: &state::SharedState,
+    client: client::Client,
+    state: state::SharedState,
 ) -> Result<()> {
     let mut delay_ms = 32;
 
@@ -61,8 +62,13 @@ async fn connect_to_an_available_device(
             Ok(Some(id)) => {
                 let request =
                     event::ClientRequest::Player(event::PlayerRequest::TransferPlayback(id, false));
-                let _guard = tracing::info_span!("client_request", request = ?request).entered();
-                if client.handle_request(state, request).await.is_ok() {
+                let span = tracing::info_span!("client_request", request = ?request);
+                if client
+                    .handle_request(&state, request)
+                    .instrument(span)
+                    .await
+                    .is_ok()
+                {
                     return Ok(());
                 }
             }
@@ -104,7 +110,17 @@ async fn init_spotify(
 
     if state.player.read().playback.is_none() {
         tracing::info!("No playback found on startup, trying to connect to an available device...");
-        connect_to_an_available_device(client, state).await?;
+
+        tokio::task::spawn({
+            let client = client.clone();
+            let state = state.clone();
+
+            async move {
+                if let Err(err) = connect_to_an_available_device(client, state).await {
+                    tracing::error!("{err}");
+                }
+            }
+        });
     }
 
     // request user data
