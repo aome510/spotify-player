@@ -42,25 +42,18 @@ impl Client {
         &self,
         streaming_sub: flume::Receiver<()>,
         client_pub: flume::Sender<ClientRequest>,
-        should_connect: bool,
-    ) -> Result<()> {
+    ) -> Result<String> {
         let session = match self.spotify.session {
-            None => return Ok(()),
+            None => {
+                anyhow::bail!("No Spotify session found.");
+            }
             Some(ref session) => session.clone(),
         };
         let device = self.spotify.device.clone();
         let device_id = session.device_id().to_string();
         streaming::new_connection(session, device, client_pub, streaming_sub)?;
 
-        // whether should we connect to the new client upon its creation
-        if should_connect {
-            tracing::info!(
-                "Transfer playback to the new integrated client with device_id={device_id}"
-            );
-            self.spotify.transfer_playback(&device_id, None).await?;
-        }
-
-        Ok(())
+        Ok(device_id)
     }
 
     /// initializes the authentication token inside the Spotify client
