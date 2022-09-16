@@ -13,7 +13,7 @@ mod token;
 mod ui;
 mod utils;
 
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use std::io::Write;
 
 fn init_app_cli_arguments() -> clap::ArgMatches {
@@ -47,6 +47,43 @@ fn init_app_cli_arguments() -> clap::ArgMatches {
         .get_matches()
 }
 
+async fn connect_to_an_available_device(
+    client: &client::Client,
+    state: &state::SharedState,
+) -> Result<()> {
+    let mut delay_ms = 32;
+
+    for _ in 0..10 {
+        match client
+            .find_available_device(&state.app_config.default_device)
+            .await
+        {
+            Ok(Some(id)) => {
+                let request =
+                    event::ClientRequest::Player(event::PlayerRequest::TransferPlayback(id, false));
+                let _guard = tracing::info_span!("client_request", request = ?request).entered();
+                if client.handle_request(state, request).await.is_ok() {
+                    return Ok(());
+                }
+            }
+            Ok(None) => {
+                tracing::info!("No device found.");
+            }
+            Err(err) => {
+                tracing::error!("Failed to find an available device: {err}");
+            }
+        }
+
+        tracing::info!("Retrying in {delay_ms}ms...");
+        tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
+        delay_ms *= 2;
+    }
+
+    Err(anyhow!(
+        "Failed to connect to an available device on startup"
+    ))
+}
+
 async fn init_spotify(
     client_pub: &flume::Sender<event::ClientRequest>,
     streaming_sub: &flume::Receiver<()>,
@@ -64,6 +101,11 @@ async fn init_spotify(
 
     // initialize the playback state
     client.update_current_playback_state(state).await?;
+
+    if state.player.read().playback.is_none() {
+        tracing::info!("No playback found on startup, trying to connect to an available device...");
+        connect_to_an_available_device(client, state).await?;
+    }
 
     // request user data
     client_pub.send(event::ClientRequest::GetCurrentUser)?;
@@ -179,7 +221,6 @@ async fn main() -> Result<()> {
     tokio::task::spawn({
         let state = state.clone();
         let client_pub = client_pub.clone();
-        let client = client.clone();
         async move {
             client::start_client_handler(
                 state,
@@ -207,7 +248,7 @@ async fn main() -> Result<()> {
         let state = state.clone();
         let client_pub = client_pub.clone();
         async move {
-            client::start_player_event_watchers(state, client, client_pub).await;
+            client::start_player_event_watchers(state, client_pub).await;
         }
     });
 
