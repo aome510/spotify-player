@@ -18,7 +18,6 @@ mod handlers;
 mod spotify;
 
 pub use handlers::*;
-use tracing::Instrument;
 
 /// The application's client
 #[derive(Clone)]
@@ -174,6 +173,7 @@ impl Client {
                             .await
                             .is_ok()
                         {
+                            self.update_playback(state);
                             break;
                         }
                     }
@@ -219,38 +219,8 @@ impl Client {
                 state.data.write().user_data.user = Some(user);
             }
             ClientRequest::Player(request) => {
-                let span =
-                    tracing::info_span!("additional_playback_refreshes", player_request = ?request);
-
                 self.handle_player_request(state, request).await?;
-
-                // After handling a request that updates the player's playback,
-                // update the playback state by making additional refresh requests.
-                //
-                // # Why needs more than one request to update the playback?
-                // It may take a while for Spotify to update the new change,
-                // making additional requests can help ensure that
-                // the playback state is always in sync with the latest change.
-                let client = self.clone();
-                let state = state.clone();
-                tokio::task::spawn(
-                    async move {
-                        let delay_duration = std::time::Duration::from_millis(500);
-                        for _ in 1..5 {
-                            if let Err(err) = client.update_current_playback_state(&state).await {
-                                tracing::error!("Failed to refresh the player's playback: {err:#}");
-                            }
-                            #[cfg(feature = "image")]
-                            if let Err(err) = client.get_current_track_cover_image(&state).await {
-                                tracing::error!(
-                                    "Failed to get the current track's cover image: {err:#}"
-                                );
-                            }
-                            tokio::time::sleep(delay_duration).await;
-                        }
-                    }
-                    .instrument(span),
-                );
+                self.update_playback(state);
             }
             ClientRequest::GetCurrentPlayback => {
                 self.update_current_playback_state(state).await?;
@@ -348,6 +318,34 @@ impl Client {
         );
 
         Ok(())
+    }
+
+    fn update_playback(&self, state: &SharedState) {
+        // After handling a request that updates the player's playback,
+        // update the playback state by making additional refresh requests.
+        //
+        // # Why needs more than one request to update the playback?
+        // It may take a while for Spotify to update the new change,
+        // making additional requests can help ensure that
+        // the playback state is always in sync with the latest change.
+        let client = self.clone();
+        let state = state.clone();
+        tracing::info!("update playback is called");
+        tokio::task::spawn(async move {
+            let mut delay_ms = 100;
+            for _ in 1..5 {
+                tracing::info!("....");
+                if let Err(err) = client.update_current_playback_state(&state).await {
+                    tracing::error!("Failed to refresh the player's playback: {err:#}");
+                }
+                #[cfg(feature = "image")]
+                if let Err(err) = client.get_current_track_cover_image(&state).await {
+                    tracing::error!("Failed to get the current track's cover image: {err:#}");
+                }
+                tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
+                delay_ms *= 2;
+            }
+        });
     }
 
     /// Get Spotify's available browse categories
