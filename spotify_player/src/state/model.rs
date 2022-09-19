@@ -132,6 +132,7 @@ pub struct Artist {
 /// A Spotify playlist
 pub struct Playlist {
     pub id: PlaylistId,
+    pub collaborative: bool,
     pub name: String,
     pub owner: (String, UserId),
 }
@@ -377,6 +378,7 @@ impl From<rspotify_model::SimplifiedPlaylist> for Playlist {
         Self {
             id: playlist.id,
             name: playlist.name,
+            collaborative: playlist.collaborative,
             owner: (
                 playlist.owner.display_name.unwrap_or_default(),
                 playlist.owner.id,
@@ -390,6 +392,7 @@ impl From<rspotify_model::FullPlaylist> for Playlist {
         Self {
             id: playlist.id,
             name: playlist.name,
+            collaborative: playlist.collaborative,
             owner: (
                 playlist.owner.display_name.unwrap_or_default(),
                 playlist.owner.id,
