@@ -65,14 +65,14 @@ impl AppData {
 }
 
 impl UserData {
-    /// returns a list of playlists created by the current user
-    pub fn playlists_created_by_user(&self) -> Vec<&Playlist> {
+    /// returns a list of playlists that are **possibly** modifiable by user
+    pub fn modifiable_playlists(&self) -> Vec<&Playlist> {
         match self.user {
             None => vec![],
             Some(ref u) => self
                 .playlists
                 .iter()
-                .filter(|p| p.owner.1 == u.id)
+                .filter(|p| p.owner.1 == u.id || p.collaborative)
                 .collect(),
         }
     }
