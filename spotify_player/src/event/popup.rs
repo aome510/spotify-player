@@ -84,7 +84,7 @@ pub fn handle_key_sequence_for_popup(
                     .data
                     .read()
                     .user_data
-                    .playlists_created_by_user()
+                    .modifiable_playlists()
                     .into_iter()
                     .map(|p| p.id.clone())
                     .collect::<Vec<_>>();

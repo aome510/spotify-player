@@ -90,7 +90,7 @@ pub fn render_popup(
                 let data = state.data.read();
                 let playlists = match action {
                     PlaylistPopupAction::Browse => data.user_data.playlists.iter().collect(),
-                    PlaylistPopupAction::AddTrack(_) => data.user_data.playlists_created_by_user(),
+                    PlaylistPopupAction::AddTrack(_) => data.user_data.modifiable_playlists(),
                 };
                 let items = playlists
                     .into_iter()
