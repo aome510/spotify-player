@@ -17,19 +17,25 @@ pub async fn start_client_handler(
             ClientRequest::NewStreamingConnection => {
                 // send a notification to current streaming subcriber channels to shutdown all running connections
                 streaming_pub.send(()).unwrap_or_default();
-                if let Err(err) = client
-                    .new_streaming_connection(streaming_sub.clone(), client_pub.clone(), true)
+                match client
+                    .new_streaming_connection(streaming_sub.clone(), client_pub.clone())
                     .await
                 {
-                    tracing::error!(
+                    Err(err) => tracing::error!(
                         "Encountered an error during creating a new streaming connection: {err:#}",
-                    );
+                    ),
+                    Ok(id) => {
+                        // By default, when `NewStreamingConnection` is called, the app also connects to the new device
+                        client_pub
+                            .send(ClientRequest::ConnectDevice(Some(id)))
+                            .unwrap_or_default();
+                    }
                 }
             }
             _ => {
                 let state = state.clone();
                 let client = client.clone();
-                let span = tracing::info_span!("Client_request", request = ?request);
+                let span = tracing::info_span!("client_request", request = ?request);
                 tokio::task::spawn(
                     async move {
                         if let Err(err) = client.handle_request(&state, request).await {
@@ -68,8 +74,9 @@ pub async fn start_player_event_watchers(
         });
     }
 
-    // Main watcher task
     let refresh_duration = std::time::Duration::from_millis(200);
+
+    // Main watcher task
     loop {
         tokio::time::sleep(refresh_duration).await;
 
@@ -111,8 +118,9 @@ pub async fn start_player_event_watchers(
             if *id != expected_id {
                 tracing::info!("Current context ID ({:?}) is different from the expected ID ({:?}), update the context state", id, expected_id);
 
-                *id = expected_id.clone();
+                *id = expected_id;
 
+                // update the UI page state based on the context's type
                 match id {
                     Some(id) => {
                         *page_state = Some(match id {
@@ -125,13 +133,14 @@ pub async fn start_player_event_watchers(
                         *page_state = None;
                     }
                 }
-            }
 
-            if let Some(id) = expected_id {
-                if !state.data.read().caches.context.contains(&id.uri()) {
-                    client_pub
-                        .send(ClientRequest::GetContext(id))
-                        .unwrap_or_default();
+                // request new context's data if not found in memory
+                if let Some(id) = id {
+                    if !state.data.read().caches.context.contains(&id.uri()) {
+                        client_pub
+                            .send(ClientRequest::GetContext(id.clone()))
+                            .unwrap_or_default();
+                    }
                 }
             }
         }

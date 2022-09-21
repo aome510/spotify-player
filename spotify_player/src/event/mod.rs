@@ -50,6 +50,7 @@ pub enum ClientRequest {
     DeleteTrackFromPlaylist(PlaylistId, TrackId),
     AddToLibrary(Item),
     DeleteFromLibrary(ItemId),
+    ConnectDevice(Option<String>),
     Player(PlayerRequest),
     #[cfg(feature = "lyric-finder")]
     GetLyric {

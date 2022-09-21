@@ -58,32 +58,17 @@ async fn init_spotify(
     // if `streaming` feature is enabled, create a new streaming connection
     #[cfg(feature = "streaming")]
     client
-        .new_streaming_connection(streaming_sub.clone(), client_pub.clone(), false)
+        .new_streaming_connection(streaming_sub.clone(), client_pub.clone())
         .await
         .context("failed to create a new streaming connection")?;
 
-    // get the current playback
+    // initialize the playback state
     client.update_current_playback_state(state).await?;
 
-    let is_playing = match state.player.read().playback {
-        None => false,
-        Some(ref playback) => playback.is_playing,
-    };
-    if !is_playing {
-        tracing::info!(
-            "No playing device found on startup, trying to connect to an available device"
-        );
-        if let Some(device_id) = client
-            .find_available_device(&state.app_config.default_device)
-            .await?
-        {
-            client_pub.send(event::ClientRequest::Player(
-                event::PlayerRequest::TransferPlayback(device_id, false),
-            ))?;
-        }
+    if state.player.read().playback.is_none() {
+        tracing::info!("No playback found on startup, trying to connect to an available device...");
+        client_pub.send(event::ClientRequest::ConnectDevice(None))?;
     }
-
-    client_pub.send(event::ClientRequest::GetCurrentPlayback)?;
 
     // request user data
     client_pub.send(event::ClientRequest::GetCurrentUser)?;

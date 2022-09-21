@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{borrow::Cow, sync::Arc};
 
 #[cfg(feature = "streaming")]
 use crate::streaming;
@@ -18,7 +18,6 @@ mod handlers;
 mod spotify;
 
 pub use handlers::*;
-use tracing::Instrument;
 
 /// The application's client
 #[derive(Clone)]
@@ -42,25 +41,18 @@ impl Client {
         &self,
         streaming_sub: flume::Receiver<()>,
         client_pub: flume::Sender<ClientRequest>,
-        should_connect: bool,
-    ) -> Result<()> {
+    ) -> Result<String> {
         let session = match self.spotify.session {
-            None => return Ok(()),
+            None => {
+                anyhow::bail!("No Spotify session found.");
+            }
             Some(ref session) => session.clone(),
         };
         let device = self.spotify.device.clone();
         let device_id = session.device_id().to_string();
         streaming::new_connection(session, device, client_pub, streaming_sub)?;
 
-        // whether should we connect to the new client upon its creation
-        if should_connect {
-            tracing::info!(
-                "Transfer playback to the new integrated client with device_id={device_id}"
-            );
-            self.spotify.transfer_playback(&device_id, None).await?;
-        }
-
-        Ok(())
+        Ok(device_id)
     }
 
     /// initializes the authentication token inside the Spotify client
@@ -144,6 +136,49 @@ impl Client {
         let timer = std::time::SystemTime::now();
 
         match request {
+            ClientRequest::ConnectDevice(id) => {
+                // Device connection can fail when the specified device hasn't shown up
+                // in the Spotify's server, which makes the `TransferPlayback` request fail
+                // with an error like "404 Not Found".
+                // This is why we need a retry mechanism to make multiple connect requests.
+                let delay = std::time::Duration::from_secs(1);
+
+                for _ in 0..10 {
+                    tokio::time::sleep(delay).await;
+
+                    let id = match &id {
+                        Some(id) => Some(Cow::Borrowed(id)),
+                        None => {
+                            // no device id is specified, try to connect to an available device
+                            match self
+                                .find_available_device(&state.app_config.default_device)
+                                .await
+                            {
+                                Ok(Some(id)) => Some(Cow::Owned(id)),
+                                Ok(None) => {
+                                    tracing::info!("No device found.");
+                                    None
+                                }
+                                Err(err) => {
+                                    tracing::error!("Failed to find an available device: {err}");
+                                    None
+                                }
+                            }
+                        }
+                    };
+
+                    if let Some(id) = id {
+                        tracing::info!("Trying to connect to device (id={id})");
+                        if let Err(err) = self.spotify.transfer_playback(&id, Some(false)).await {
+                            tracing::warn!("Connection failed (device_id={id}): {err}");
+                        } else {
+                            tracing::info!("Connection succeeded (device_id={id})!");
+                            self.update_playback(state);
+                            break;
+                        }
+                    }
+                }
+            }
             ClientRequest::GetBrowseCategories => {
                 let categories = self.browse_categories().await?;
                 state.data.write().browse.categories = categories;
@@ -180,38 +215,8 @@ impl Client {
                 state.data.write().user_data.user = Some(user);
             }
             ClientRequest::Player(request) => {
-                let span =
-                    tracing::info_span!("additional_playback_refreshes", player_request = ?request);
-
                 self.handle_player_request(state, request).await?;
-
-                // After handling a request that updates the player's playback,
-                // update the playback state by making additional refresh requests.
-                //
-                // # Why needs more than one request to update the playback?
-                // It may take a while for Spotify to update the new change,
-                // making additional requests can help ensure that
-                // the playback state is always in sync with the latest change.
-                let client = self.clone();
-                let state = state.clone();
-                tokio::task::spawn(
-                    async move {
-                        let delay_duration = std::time::Duration::from_millis(500);
-                        for _ in 1..5 {
-                            if let Err(err) = client.update_current_playback_state(&state).await {
-                                tracing::error!("Failed to refresh the player's playback: {err:#}");
-                            }
-                            #[cfg(feature = "image")]
-                            if let Err(err) = client.get_current_track_cover_image(&state).await {
-                                tracing::error!(
-                                    "Failed to get the current track's cover image: {err:#}"
-                                );
-                            }
-                            tokio::time::sleep(delay_duration).await;
-                        }
-                    }
-                    .instrument(span),
-                );
+                self.update_playback(state);
             }
             ClientRequest::GetCurrentPlayback => {
                 self.update_current_playback_state(state).await?;
@@ -311,6 +316,31 @@ impl Client {
         Ok(())
     }
 
+    fn update_playback(&self, state: &SharedState) {
+        // After handling a request that updates the player's playback,
+        // update the playback state by making additional refresh requests.
+        //
+        // # Why needs more than one request to update the playback?
+        // It may take a while for Spotify to update the new change,
+        // making additional requests can help ensure that
+        // the playback state is always in sync with the latest change.
+        let client = self.clone();
+        let state = state.clone();
+        tokio::task::spawn(async move {
+            let delay = std::time::Duration::from_secs(1);
+            for _ in 0..5 {
+                tokio::time::sleep(delay).await;
+                if let Err(err) = client.update_current_playback_state(&state).await {
+                    tracing::error!("Failed to refresh the player's playback: {err:#}");
+                }
+                #[cfg(feature = "image")]
+                if let Err(err) = client.get_current_track_cover_image(&state).await {
+                    tracing::error!("Failed to get the current track's cover image: {err:#}");
+                }
+            }
+        });
+    }
+
     /// Get Spotify's available browse categories
     pub async fn browse_categories(&self) -> Result<Vec<Category>> {
         let first_page = self
@@ -331,45 +361,48 @@ impl Client {
         Ok(first_page.items.into_iter().map(Playlist::from).collect())
     }
 
-    /// Find an available device. Return the device's id if exists.
-    // The function will prioritize device whose name matches `default_device`.
+    /// Find an available device. If found, return the device ID.
+    // This function will prioritize the device whose name matches `default_device`.
     pub async fn find_available_device(&self, default_device: &str) -> Result<Option<String>> {
-        let devices = self.spotify.device().await?;
+        let devices = self.spotify.device().await?.into_iter().collect::<Vec<_>>();
         tracing::info!("Available devices: {devices:?}");
 
-        let device = {
-            if let Some(d) = devices.iter().find(|d| d.name == default_device) {
-                Some(d)
-            } else {
-                // No device whose name matches `default_device` found,
-                // use the first available device.
-                devices.iter().find(|d| d.id.is_some())
-            }
-        };
+        // convert a vector of `Device` items into `(name, id)` items
+        let mut devices = devices
+            .into_iter()
+            .filter_map(|d| d.id.map(|id| (d.name, id)))
+            .collect::<Vec<_>>();
 
-        match device {
-            Some(device) => {
-                tracing::info!("Found an available device: {device:?}");
-                return Ok(device.id.clone());
-            }
-            None => {
-                // If the streaming feature is enabled and no device is found [1], use the integrated device.
-                // [1]: this can happen when the application uses the default Spotify client ID.
-                // To retrieve the list of available devices, users need to specify their own client ID.
-                #[cfg(feature = "streaming")]
-                {
-                    if let Some(ref session) = self.spotify.session {
-                        let id = session.device_id().to_string();
-                        tracing::info!(
-                            "No available device found, use the integrated device (id={id})"
-                        );
-                        return Ok(Some(id));
-                    }
-                }
+        // Manually append the integrated device to the device list if `streaming` feature is enabled.
+        // The integrated device may not show up in the device list returned by the Spotify API because
+        // 1. The device is just initialized and hasn't been registered in Spotify server.
+        //    Related issue/discussion: https://github.com/aome510/spotify-player/issues/79
+        // 2. The device list is empty. This is because user doesn't specify their own client ID.
+        //    By default, the application uses Spotify web app's client ID, which doesn't have
+        //    access to user's active devices.
+        #[cfg(feature = "streaming")]
+        {
+            if let Some(ref session) = self.spotify.session {
+                devices.push((
+                    self.spotify.device.name.clone(),
+                    session.device_id().to_string(),
+                ))
             }
         }
 
-        Ok(None)
+        if devices.is_empty() {
+            return Ok(None);
+        }
+
+        let id = if let Some(id) = devices.iter().position(|d| d.0 == default_device) {
+            // prioritize the default device (specified in the app configs) if available
+            id
+        } else {
+            // else, use the first available device
+            0
+        };
+
+        Ok(Some(devices.remove(id).1))
     }
 
     /// gets the saved (liked) tracks of the current user
