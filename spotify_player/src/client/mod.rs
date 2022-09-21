@@ -141,9 +141,11 @@ impl Client {
                 // in the Spotify's server, which makes the `TransferPlayback` request fail
                 // with an error like "404 Not Found".
                 // This is why we need a retry mechanism to make multiple connect requests.
-                let mut delay_ms = 32;
+                let delay = std::time::Duration::from_secs(1);
 
                 for _ in 0..10 {
+                    tokio::time::sleep(delay).await;
+
                     let id = match &id {
                         Some(id) => Some(Cow::Borrowed(id)),
                         None => {
@@ -167,20 +169,14 @@ impl Client {
 
                     if let Some(id) = id {
                         tracing::info!("Trying to connect to device (id={id})");
-                        if self
-                            .spotify
-                            .transfer_playback(&id, Some(false))
-                            .await
-                            .is_ok()
-                        {
+                        if let Err(err) = self.spotify.transfer_playback(&id, Some(false)).await {
+                            tracing::warn!("Connection failed (device_id={id}): {err}");
+                        } else {
+                            tracing::info!("Connection succeeded (device_id={id})!");
                             self.update_playback(state);
                             break;
                         }
                     }
-
-                    tracing::info!("Retrying to connect in {delay_ms}ms...");
-                    tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
-                    delay_ms *= 2;
                 }
             }
             ClientRequest::GetBrowseCategories => {
@@ -330,11 +326,10 @@ impl Client {
         // the playback state is always in sync with the latest change.
         let client = self.clone();
         let state = state.clone();
-        tracing::info!("update playback is called");
         tokio::task::spawn(async move {
-            let mut delay_ms = 100;
-            for _ in 1..5 {
-                tracing::info!("....");
+            let delay = std::time::Duration::from_secs(1);
+            for _ in 0..5 {
+                tokio::time::sleep(delay).await;
                 if let Err(err) = client.update_current_playback_state(&state).await {
                     tracing::error!("Failed to refresh the player's playback: {err:#}");
                 }
@@ -342,8 +337,6 @@ impl Client {
                 if let Err(err) = client.get_current_track_cover_image(&state).await {
                     tracing::error!("Failed to get the current track's cover image: {err:#}");
                 }
-                tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
-                delay_ms *= 2;
             }
         });
     }
