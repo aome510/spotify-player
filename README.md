@@ -109,6 +109,10 @@ Run `cargo install spotify_player` to install the application from [crates.io](h
 
 Run `yay -S spotify-player` to install the application as an AUR package.
 
+### FreeBSD
+
+Run `pkg install spotify-player` to install the `spotify_player` binary from FreeBSD ports.
+
 ### NetBSD
 
 Using the package manager, run `pkgin install spotify-player` to install from the official repositories.
