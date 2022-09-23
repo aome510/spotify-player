@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, num::NonZeroUsize};
 
 use super::model::*;
 
@@ -43,13 +43,13 @@ pub struct BrowseData {
 impl Default for Caches {
     fn default() -> Self {
         Self {
-            context: lru::LruCache::new(64),
-            search: lru::LruCache::new(64),
-            tracks: lru::LruCache::new(64),
+            context: lru::LruCache::new(NonZeroUsize::new(64).unwrap()),
+            search: lru::LruCache::new(NonZeroUsize::new(64).unwrap()),
+            tracks: lru::LruCache::new(NonZeroUsize::new(64).unwrap()),
             #[cfg(feature = "lyric-finder")]
-            lyrics: lru::LruCache::new(64),
+            lyrics: lru::LruCache::new(NonZeroUsize::new(64).unwrap()),
             #[cfg(feature = "image")]
-            images: lru::LruCache::new(64),
+            images: lru::LruCache::new(NonZeroUsize::new(64).unwrap()),
         }
     }
 }
