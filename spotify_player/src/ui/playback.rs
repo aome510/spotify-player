@@ -165,7 +165,7 @@ fn render_playback_metadata(
         Span::styled(
             format!(
                 "repeat: {} | shuffle: {} | volume: {}% | device: {}",
-                playback.repeat_state.as_ref(),
+                <&'static str>::from(playback.repeat_state),
                 playback.shuffle_state,
                 playback.device.volume_percent.unwrap_or_default(),
                 playback.device.name,

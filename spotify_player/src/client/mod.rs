@@ -563,7 +563,7 @@ impl Client {
             Playback::URIs(track_ids, offset) => {
                 self.spotify
                     .start_uris_playback(
-                        track_ids.into_iter().map(|id| PlayableId::from(id)),
+                        track_ids.into_iter().map(PlayableId::from),
                         device_id,
                         offset,
                         None,

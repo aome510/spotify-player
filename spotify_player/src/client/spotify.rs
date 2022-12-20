@@ -128,7 +128,7 @@ impl OAuthClient for Spotify {
         panic!("`OAuthClient::get_oauth` should never be called!")
     }
 
-    async fn request_token(&mut self, _: &str) -> ClientResult<()> {
+    async fn request_token(&self, _code: &str) -> ClientResult<()> {
         panic!("`OAuthClient::request_token` should never be called!")
     }
 }

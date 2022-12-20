@@ -33,7 +33,7 @@ impl State {
     pub fn parse_config_files(
         &mut self,
         config_folder: &std::path::Path,
-        theme: Option<&str>,
+        theme: Option<&String>,
     ) -> Result<()> {
         self.app_config.parse_config_file(config_folder)?;
         if let Some(theme) = theme {
