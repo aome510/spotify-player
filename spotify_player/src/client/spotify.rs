@@ -2,8 +2,9 @@ use anyhow::{anyhow, Result};
 use librespot_core::session::Session;
 use maybe_async::maybe_async;
 use rspotify::{
-    clients::{mutex::Mutex, BaseClient, OAuthClient},
+    clients::{BaseClient, OAuthClient},
     http::HttpClient,
+    sync::Mutex,
     ClientResult, Config, Credentials, OAuth, Token,
 };
 use std::{fmt, sync::Arc};
