@@ -26,7 +26,7 @@ pub enum ActionListItem {
 #[derive(Debug)]
 pub enum PlaylistPopupAction {
     Browse,
-    AddTrack(TrackId),
+    AddTrack(TrackId<'static>),
 }
 
 impl PopupState {
