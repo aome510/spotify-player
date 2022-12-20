@@ -182,7 +182,7 @@ pub fn handle_key_sequence_for_context_page(
                                 None
                             } else {
                                 let id = rand::thread_rng().gen_range(0..tracks.len());
-                                Some(rspotify_model::Offset::for_uri(&tracks[id].id.uri()))
+                                Some(rspotify_model::Offset::Uri(tracks[id].id.uri()))
                             }
                         }
                     };
@@ -268,7 +268,7 @@ pub fn handle_key_sequence_for_tracks_page(
             // randomly play a song from the list of recommendation tracks
             let offset = {
                 let id = rand::thread_rng().gen_range(0..tracks.len());
-                Some(rspotify_model::Offset::for_uri(&tracks[id].id.uri()))
+                Some(rspotify_model::Offset::Uri(tracks[id].id.uri()))
             };
             client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
                 Playback::URIs(tracks.iter().map(|t| t.id.clone()).collect(), offset),
@@ -280,7 +280,7 @@ pub fn handle_key_sequence_for_tracks_page(
             command,
             client_pub,
             None,
-            Some(tracks.iter().map(|t| &t.id).collect()),
+            Some(tracks.iter().map(|t| t.id.as_ref()).collect()),
             tracks,
             &data,
             ui,

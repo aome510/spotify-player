@@ -119,11 +119,11 @@ async fn main() -> Result<()> {
     let args = init_app_cli_arguments();
 
     // initialize the application's cache folder and config folder
-    let config_folder = match args.value_of("config-folder") {
+    let config_folder = match args.get_one::<String>("config-folder") {
         Some(path) => path.into(),
         None => config::get_config_folder_path()?,
     };
-    let cache_folder = match args.value_of("cache-folder") {
+    let cache_folder = match args.get_one::<String>("cache-folder") {
         Some(path) => path.into(),
         None => config::get_cache_folder_path()?,
     };
@@ -141,7 +141,7 @@ async fn main() -> Result<()> {
     let state = {
         let mut state = state::State::default();
         // parse config options from the config files into application's state
-        state.parse_config_files(&config_folder, args.value_of("theme"))?;
+        state.parse_config_files(&config_folder, args.get_one::<String>("theme"))?;
         std::sync::Arc::new(state)
     };
 

@@ -25,9 +25,9 @@ pub enum Context {
 #[derive(Clone, Debug, PartialEq, Eq)]
 /// A context Id
 pub enum ContextId {
-    Playlist(PlaylistId),
-    Album(AlbumId),
-    Artist(ArtistId),
+    Playlist(PlaylistId<'static>),
+    Album(AlbumId<'static>),
+    Artist(ArtistId<'static>),
 }
 
 #[derive(Clone, Debug)]
@@ -39,7 +39,7 @@ pub enum ContextId {
 /// An offset can be either a track's URI or its absolute offset in the context
 pub enum Playback {
     Context(ContextId, Option<rspotify_model::Offset>),
-    URIs(Vec<TrackId>, Option<rspotify_model::Offset>),
+    URIs(Vec<TrackId<'static>>, Option<rspotify_model::Offset>),
 }
 
 #[derive(Default, Clone, Debug)]
@@ -72,10 +72,10 @@ pub enum Item {
 
 #[derive(Debug, Clone)]
 pub enum ItemId {
-    Track(TrackId),
-    Album(AlbumId),
-    Artist(ArtistId),
-    Playlist(PlaylistId),
+    Track(TrackId<'static>),
+    Album(AlbumId<'static>),
+    Artist(ArtistId<'static>),
+    Playlist(PlaylistId<'static>),
 }
 
 #[derive(Debug, Clone)]
@@ -104,7 +104,7 @@ pub struct Device {
 #[derive(Debug, Clone)]
 /// A Spotify track
 pub struct Track {
-    pub id: TrackId,
+    pub id: TrackId<'static>,
     pub name: String,
     pub artists: Vec<Artist>,
     pub album: Option<Album>,
@@ -115,7 +115,7 @@ pub struct Track {
 #[derive(Debug, Clone)]
 /// A Spotify album
 pub struct Album {
-    pub id: AlbumId,
+    pub id: AlbumId<'static>,
     pub release_date: String,
     pub name: String,
     pub artists: Vec<Artist>,
@@ -124,17 +124,17 @@ pub struct Album {
 #[derive(Debug, Clone)]
 /// A Spotify artist
 pub struct Artist {
-    pub id: ArtistId,
+    pub id: ArtistId<'static>,
     pub name: String,
 }
 
 #[derive(Debug, Clone)]
 /// A Spotify playlist
 pub struct Playlist {
-    pub id: PlaylistId,
+    pub id: PlaylistId<'static>,
     pub collaborative: bool,
     pub name: String,
-    pub owner: (String, UserId),
+    pub owner: (String, UserId<'static>),
 }
 
 #[derive(Clone, Debug)]

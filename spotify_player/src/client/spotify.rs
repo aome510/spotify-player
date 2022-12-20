@@ -2,8 +2,9 @@ use anyhow::{anyhow, Result};
 use librespot_core::session::Session;
 use maybe_async::maybe_async;
 use rspotify::{
-    clients::{mutex::Mutex, BaseClient, OAuthClient},
+    clients::{BaseClient, OAuthClient},
     http::HttpClient,
+    sync::Mutex,
     ClientResult, Config, Credentials, OAuth, Token,
 };
 use std::{fmt, sync::Arc};
@@ -127,7 +128,7 @@ impl OAuthClient for Spotify {
         panic!("`OAuthClient::get_oauth` should never be called!")
     }
 
-    async fn request_token(&mut self, _: &str) -> ClientResult<()> {
+    async fn request_token(&self, _code: &str) -> ClientResult<()> {
         panic!("`OAuthClient::request_token` should never be called!")
     }
 }
