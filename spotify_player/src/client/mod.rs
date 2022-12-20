@@ -107,7 +107,7 @@ impl Client {
                     rspotify_model::RepeatState::Context => rspotify_model::RepeatState::Off,
                 };
 
-                self.spotify.repeat(&next_repeat_state, device_id).await?
+                self.spotify.repeat(next_repeat_state, device_id).await?
             }
             PlayerRequest::Shuffle => {
                 self.spotify
@@ -265,10 +265,10 @@ impl Client {
                 if !state.data.read().caches.context.contains(&uri) {
                     let context = match context {
                         ContextId::Playlist(playlist_id) => {
-                            self.playlist_context(&playlist_id).await?
+                            self.playlist_context(playlist_id).await?
                         }
-                        ContextId::Album(album_id) => self.album_context(&album_id).await?,
-                        ContextId::Artist(artist_id) => self.artist_context(&artist_id).await?,
+                        ContextId::Album(album_id) => self.album_context(album_id).await?,
+                        ContextId::Artist(artist_id) => self.artist_context(artist_id).await?,
                     };
 
                     state.data.write().caches.context.put(uri, context);
@@ -284,20 +284,20 @@ impl Client {
             ClientRequest::GetRecommendations(seed) => {
                 let id = format!("recommendations::{}", seed.uri());
                 if !state.data.read().caches.tracks.contains(&id) {
-                    let tracks = self.recommendations(&seed).await?;
+                    let tracks = self.recommendations(seed).await?;
 
                     state.data.write().caches.tracks.put(id, tracks);
                 }
             }
             ClientRequest::AddTrackToQueue(track_id) => {
-                self.add_track_to_queue(&track_id).await?;
+                self.add_track_to_queue(track_id).await?;
             }
             ClientRequest::AddTrackToPlaylist(playlist_id, track_id) => {
-                self.add_track_to_playlist(state, &playlist_id, &track_id)
+                self.add_track_to_playlist(state, playlist_id, track_id)
                     .await?;
             }
             ClientRequest::DeleteTrackFromPlaylist(playlist_id, track_id) => {
-                self.delete_track_from_playlist(state, &playlist_id, &track_id)
+                self.delete_track_from_playlist(state, playlist_id, track_id)
                     .await?;
             }
             ClientRequest::AddToLibrary(item) => {
@@ -503,13 +503,13 @@ impl Client {
     }
 
     /// gets all albums of an artist
-    pub async fn artist_albums(&self, artist_id: &ArtistId) -> Result<Vec<Album>> {
+    pub async fn artist_albums(&self, artist_id: ArtistId<'_>) -> Result<Vec<Album>> {
         let mut singles = {
             let first_page = self
                 .spotify
                 .artist_albums_manual(
-                    artist_id,
-                    Some(&rspotify_model::AlbumType::Single),
+                    artist_id.as_ref(),
+                    Some(rspotify_model::AlbumType::Single),
                     None,
                     Some(50),
                     None,
@@ -521,8 +521,8 @@ impl Client {
             let first_page = self
                 .spotify
                 .artist_albums_manual(
-                    artist_id,
-                    Some(&rspotify_model::AlbumType::Album),
+                    artist_id.as_ref(),
+                    Some(rspotify_model::AlbumType::Album),
                     None,
                     Some(50),
                     None,
@@ -546,27 +546,24 @@ impl Client {
             Playback::Context(id, offset) => match id {
                 ContextId::Album(id) => {
                     self.spotify
-                        .start_context_playback(&id, device_id, offset, None)
+                        .start_context_playback(PlayContextId::from(id), device_id, offset, None)
                         .await?
                 }
                 ContextId::Artist(id) => {
                     self.spotify
-                        .start_context_playback(&id, device_id, offset, None)
+                        .start_context_playback(PlayContextId::from(id), device_id, offset, None)
                         .await?
                 }
                 ContextId::Playlist(id) => {
                     self.spotify
-                        .start_context_playback(&id, device_id, offset, None)
+                        .start_context_playback(PlayContextId::from(id), device_id, offset, None)
                         .await?
                 }
             },
             Playback::URIs(track_ids, offset) => {
                 self.spotify
                     .start_uris_playback(
-                        track_ids
-                            .iter()
-                            .map(|id| id as &dyn rspotify_model::PlayableId)
-                            .collect::<Vec<_>>(),
+                        track_ids.into_iter().map(|id| PlayableId::from(id)),
                         device_id,
                         offset,
                         None,
@@ -579,7 +576,7 @@ impl Client {
     }
 
     /// gets recommendation tracks from a recommendation seed
-    pub async fn recommendations(&self, seed: &SeedItem) -> Result<Vec<Track>> {
+    pub async fn recommendations(&self, seed: SeedItem) -> Result<Vec<Track>> {
         let attributes = vec![];
 
         let tracks = match seed {
@@ -587,7 +584,7 @@ impl Client {
                 self.spotify
                     .recommendations(
                         attributes,
-                        Some(vec![&artist.id]),
+                        Some([artist.id]),
                         None::<Vec<_>>,
                         None::<Vec<_>>,
                         None,
@@ -600,9 +597,9 @@ impl Client {
                 self.spotify
                     .recommendations(
                         attributes,
-                        Some(track.artists.iter().map(|a| &a.id).collect::<Vec<_>>()),
+                        Some(track.artists.into_iter().map(|a| a.id)),
                         None::<Vec<_>>,
-                        Some(vec![&track.id]),
+                        Some([track.id]),
                         None,
                         Some(50),
                     )
@@ -611,20 +608,10 @@ impl Client {
             }
         };
 
-        let mut tracks = tracks
+        let tracks = tracks
             .into_iter()
             .filter_map(Track::try_from_simplified_track)
             .collect::<Vec<_>>();
-
-        // for track recommendation seed, add the track seed to the returned recommended tracks
-        if let SeedItem::Track(track) = seed {
-            let mut seed_track = track.clone();
-            // recommended tracks returned from the API are represented by `SimplifiedTrack` struct,
-            // which doesn't have `album` field specified. So, we need to change the seed track's
-            // `album` field for consistency with other tracks in the list.
-            seed_track.album = None;
-            tracks.insert(0, seed_track);
-        }
 
         Ok(tracks)
     }
@@ -632,10 +619,10 @@ impl Client {
     /// searchs for items (tracks, artists, albums, playlists) that match a given query string.
     pub async fn search(&self, query: &str) -> Result<SearchResults> {
         let (track_result, artist_result, album_result, playlist_result) = tokio::try_join!(
-            self.search_specific_type(query, &rspotify_model::SearchType::Track),
-            self.search_specific_type(query, &rspotify_model::SearchType::Artist),
-            self.search_specific_type(query, &rspotify_model::SearchType::Album),
-            self.search_specific_type(query, &rspotify_model::SearchType::Playlist)
+            self.search_specific_type(query, rspotify_model::SearchType::Track),
+            self.search_specific_type(query, rspotify_model::SearchType::Artist),
+            self.search_specific_type(query, rspotify_model::SearchType::Album),
+            self.search_specific_type(query, rspotify_model::SearchType::Playlist)
         )?;
 
         let (tracks, artists, albums, playlists) = (
@@ -680,7 +667,7 @@ impl Client {
     async fn search_specific_type(
         &self,
         query: &str,
-        _type: &rspotify_model::SearchType,
+        _type: rspotify_model::SearchType,
     ) -> Result<rspotify_model::SearchResult> {
         Ok(self
             .spotify
@@ -689,26 +676,35 @@ impl Client {
     }
 
     /// adds track to queue
-    pub async fn add_track_to_queue(&self, track_id: &TrackId) -> Result<()> {
-        Ok(self.spotify.add_item_to_queue(track_id, None).await?)
+    pub async fn add_track_to_queue(&self, track_id: TrackId<'_>) -> Result<()> {
+        Ok(self
+            .spotify
+            .add_item_to_queue(PlayableId::Track(track_id), None)
+            .await?)
     }
 
     /// adds track to a playlist
     pub async fn add_track_to_playlist(
         &self,
         state: &SharedState,
-        playlist_id: &PlaylistId,
-        track_id: &TrackId,
+        playlist_id: PlaylistId<'_>,
+        track_id: TrackId<'_>,
     ) -> Result<()> {
-        let dyn_track_id = track_id as &dyn PlayableId;
-
         // remove all the occurrences of the track to ensure no duplication in the playlist
         self.spotify
-            .playlist_remove_all_occurrences_of_items(playlist_id, vec![dyn_track_id], None)
+            .playlist_remove_all_occurrences_of_items(
+                playlist_id.as_ref(),
+                [PlayableId::Track(track_id.as_ref())],
+                None,
+            )
             .await?;
 
         self.spotify
-            .playlist_add_items(playlist_id, vec![dyn_track_id], None)
+            .playlist_add_items(
+                playlist_id.as_ref(),
+                [PlayableId::Track(track_id.as_ref())],
+                None,
+            )
             .await?;
 
         // After adding a new track to a playlist, remove the cache of that playlist to force refetching new data
@@ -721,14 +717,16 @@ impl Client {
     pub async fn delete_track_from_playlist(
         &self,
         state: &SharedState,
-        playlist_id: &PlaylistId,
-        track_id: &TrackId,
+        playlist_id: PlaylistId<'_>,
+        track_id: TrackId<'_>,
     ) -> Result<()> {
-        let dyn_track_id = track_id as &dyn PlayableId;
-
         // remove all the occurrences of the track to ensure no duplication in the playlist
         self.spotify
-            .playlist_remove_all_occurrences_of_items(playlist_id, vec![dyn_track_id], None)
+            .playlist_remove_all_occurrences_of_items(
+                playlist_id.as_ref(),
+                [PlayableId::Track(track_id.as_ref())],
+                None,
+            )
             .await?;
 
         // After making a delete request, update the playlist in-memory data stored inside the app caches.
@@ -739,7 +737,7 @@ impl Client {
             .context
             .get_mut(&playlist_id.uri())
         {
-            tracks.retain(|t| t.id != *track_id);
+            tracks.retain(|t| t.id != track_id);
         }
 
         Ok(())
@@ -753,11 +751,11 @@ impl Client {
             Item::Track(track) => {
                 let contains = self
                     .spotify
-                    .current_user_saved_tracks_contains(vec![&track.id])
+                    .current_user_saved_tracks_contains([track.id.as_ref()])
                     .await?;
                 if !contains[0] {
                     self.spotify
-                        .current_user_saved_tracks_add(vec![&track.id])
+                        .current_user_saved_tracks_add([track.id.as_ref()])
                         .await?;
                     // update the in-memory `user_data`
                     state.data.write().user_data.saved_tracks.insert(0, track);
@@ -766,11 +764,11 @@ impl Client {
             Item::Album(album) => {
                 let contains = self
                     .spotify
-                    .current_user_saved_albums_contains(vec![&album.id])
+                    .current_user_saved_albums_contains([album.id.as_ref()])
                     .await?;
                 if !contains[0] {
                     self.spotify
-                        .current_user_saved_albums_add(vec![&album.id])
+                        .current_user_saved_albums_add([album.id.as_ref()])
                         .await?;
                     // update the in-memory `user_data`
                     state.data.write().user_data.saved_albums.insert(0, album);
@@ -779,10 +777,12 @@ impl Client {
             Item::Artist(artist) => {
                 let follows = self
                     .spotify
-                    .user_artist_check_follow(vec![&artist.id])
+                    .user_artist_check_follow([artist.id.as_ref()])
                     .await?;
                 if !follows[0] {
-                    self.spotify.user_follow_artists(vec![&artist.id]).await?;
+                    self.spotify
+                        .user_follow_artists([artist.id.as_ref()])
+                        .await?;
                     // update the in-memory `user_data`
                     state
                         .data
@@ -804,10 +804,12 @@ impl Client {
                 if let Some(user_id) = user_id {
                     let follows = self
                         .spotify
-                        .playlist_check_follow(&playlist.id, &[&user_id])
+                        .playlist_check_follow(playlist.id.as_ref(), &[user_id])
                         .await?;
                     if !follows[0] {
-                        self.spotify.playlist_follow(&playlist.id, None).await?;
+                        self.spotify
+                            .playlist_follow(playlist.id.as_ref(), None)
+                            .await?;
                         // update the in-memory `user_data`
                         state.data.write().user_data.playlists.insert(0, playlist);
                     }
@@ -827,7 +829,7 @@ impl Client {
                     .user_data
                     .saved_tracks
                     .retain(|t| t.id != id);
-                self.spotify.current_user_saved_tracks_delete(&[id]).await?;
+                self.spotify.current_user_saved_tracks_delete([id]).await?;
             }
             ItemId::Album(id) => {
                 state
@@ -836,7 +838,7 @@ impl Client {
                     .user_data
                     .saved_albums
                     .retain(|a| a.id != id);
-                self.spotify.current_user_saved_albums_delete(&[id]).await?;
+                self.spotify.current_user_saved_albums_delete([id]).await?;
             }
             ItemId::Artist(id) => {
                 state
@@ -845,7 +847,7 @@ impl Client {
                     .user_data
                     .followed_artists
                     .retain(|a| a.id != id);
-                self.spotify.user_unfollow_artists(&[id]).await?;
+                self.spotify.user_unfollow_artists([id]).await?;
             }
             ItemId::Playlist(id) => {
                 state
@@ -854,14 +856,14 @@ impl Client {
                     .user_data
                     .playlists
                     .retain(|p| p.id != id);
-                self.spotify.playlist_unfollow(&id).await?;
+                self.spotify.playlist_unfollow(id).await?;
             }
         }
         Ok(())
     }
 
     /// gets a playlist context data
-    async fn playlist_context(&self, playlist_id: &PlaylistId) -> Result<Context> {
+    async fn playlist_context(&self, playlist_id: PlaylistId<'_>) -> Result<Context> {
         let playlist_uri = playlist_id.uri();
         tracing::info!("Get playlist context: {}", playlist_uri);
 
@@ -888,7 +890,7 @@ impl Client {
     }
 
     /// gets an album context data
-    async fn album_context(&self, album_id: &AlbumId) -> Result<Context> {
+    async fn album_context(&self, album_id: AlbumId<'_>) -> Result<Context> {
         let album_uri = album_id.uri();
         tracing::info!("Get album context: {}", album_uri);
 
@@ -918,16 +920,19 @@ impl Client {
     }
 
     /// gets an artist context data
-    async fn artist_context(&self, artist_id: &ArtistId) -> Result<Context> {
+    async fn artist_context(&self, artist_id: ArtistId<'_>) -> Result<Context> {
         let artist_uri = artist_id.uri();
         tracing::info!("Get artist context: {}", artist_uri);
 
         // get the artist's information, top tracks, related artists and albums
-        let artist = self.spotify.artist(artist_id).await?.into();
+        let artist = self.spotify.artist(artist_id.as_ref()).await?.into();
 
         let top_tracks = self
             .spotify
-            .artist_top_tracks(artist_id, &rspotify_model::enums::misc::Market::FromToken)
+            .artist_top_tracks(
+                artist_id.as_ref(),
+                rspotify_model::enums::misc::Market::FromToken,
+            )
             .await?
             .into_iter()
             .filter_map(Track::try_from_full_track)
@@ -935,13 +940,13 @@ impl Client {
 
         let related_artists = self
             .spotify
-            .artist_related_artists(artist_id)
+            .artist_related_artists(artist_id.as_ref())
             .await?
             .into_iter()
             .map(|a| a.into())
             .collect::<Vec<_>>();
 
-        let albums = self.artist_albums(artist_id).await?;
+        let albums = self.artist_albums(artist_id.as_ref()).await?;
 
         Ok(Context::Artist {
             artist,
