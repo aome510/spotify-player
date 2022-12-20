@@ -65,15 +65,15 @@ impl PlayerState {
                 Some(ref context) => {
                     let uri = crate::utils::parse_uri(&context.uri);
                     match context._type {
-                        rspotify_model::Type::Playlist => {
-                            Some(ContextId::Playlist(PlaylistId::from_uri(&uri).ok()?))
-                        }
-                        rspotify_model::Type::Album => {
-                            Some(ContextId::Album(AlbumId::from_uri(&uri).ok()?))
-                        }
-                        rspotify_model::Type::Artist => {
-                            Some(ContextId::Artist(ArtistId::from_uri(&uri).ok()?))
-                        }
+                        rspotify_model::Type::Playlist => Some(ContextId::Playlist(
+                            PlaylistId::from_uri(&uri).ok()?.into_static(),
+                        )),
+                        rspotify_model::Type::Album => Some(ContextId::Album(
+                            AlbumId::from_uri(&uri).ok()?.into_static(),
+                        )),
+                        rspotify_model::Type::Artist => Some(ContextId::Artist(
+                            ArtistId::from_uri(&uri).ok()?.into_static(),
+                        )),
                         _ => None,
                     }
                 }
