@@ -107,6 +107,13 @@ pub fn start_event_watcher(
                         .send(ClientRequest::Player(PlayerRequest::ResumePause))
                         .unwrap_or_default();
                 }
+                MediaControlEvent::SetPosition(MediaPosition(dur)) => {
+                    client_pub
+                        .send(ClientRequest::Player(PlayerRequest::SeekTrack(
+                            dur.as_millis() as u32,
+                        )))
+                        .unwrap_or_default();
+                }
                 MediaControlEvent::Next => {
                     client_pub
                         .send(ClientRequest::Player(PlayerRequest::NextTrack))
