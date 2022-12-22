@@ -32,9 +32,8 @@ pub fn handle_key_sequence_for_popup(
 
     match popup {
         PopupState::Search { .. } => anyhow::bail!("should be handled before"),
-        PopupState::ArtistList(action, artists, _) => {
+        PopupState::ArtistList(_, artists, _) => {
             let n_items = artists.len();
-            let action = *action;
 
             handle_command_for_list_popup(
                 command,
@@ -42,8 +41,8 @@ pub fn handle_key_sequence_for_popup(
                 n_items,
                 |_, _| {},
                 |ui: &mut UIStateGuard, id: usize| -> Result<()> {
-                    let artists = match ui.popup {
-                        Some(PopupState::ArtistList(_, ref artists, _)) => artists,
+                    let (action, artists) = match ui.popup {
+                        Some(PopupState::ArtistList(action, ref artists, _)) => (action, artists),
                         _ => return Ok(()),
                     };
 
