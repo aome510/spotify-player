@@ -9,7 +9,7 @@ pub enum PopupState {
     UserFollowedArtistList(ListState),
     UserSavedAlbumList(ListState),
     DeviceList(ListState),
-    ArtistList(Vec<Artist>, ListState),
+    ArtistList(ArtistPopupAction, Vec<Artist>, ListState),
     ThemeList(Vec<crate::config::Theme>, ListState),
     ActionList(ActionListItem, ListState),
 }
@@ -27,6 +27,13 @@ pub enum ActionListItem {
 pub enum PlaylistPopupAction {
     Browse,
     AddTrack(TrackId<'static>),
+}
+
+/// An action on an item in an artist popup list
+#[derive(Copy, Clone, Debug)]
+pub enum ArtistPopupAction {
+    Browse,
+    GoToRadio,
 }
 
 impl PopupState {

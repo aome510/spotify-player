@@ -15,7 +15,7 @@ pub fn handle_key_sequence_for_popup(
     let popup = ui
         .popup
         .as_ref()
-        .with_context(|| "expect to exist a popup".to_string())?;
+        .with_context(|| "expect a popup".to_string())?;
 
     if let PopupState::Search { .. } = popup {
         drop(ui);
@@ -32,8 +32,9 @@ pub fn handle_key_sequence_for_popup(
 
     match popup {
         PopupState::Search { .. } => anyhow::bail!("should be handled before"),
-        PopupState::ArtistList(artists, _) => {
+        PopupState::ArtistList(action, artists, _) => {
             let n_items = artists.len();
+            let action = *action;
 
             handle_command_for_list_popup(
                 command,
@@ -42,16 +43,32 @@ pub fn handle_key_sequence_for_popup(
                 |_, _| {},
                 |ui: &mut UIStateGuard, id: usize| -> Result<()> {
                     let artists = match ui.popup {
-                        Some(PopupState::ArtistList(ref artists, _)) => artists,
+                        Some(PopupState::ArtistList(_, ref artists, _)) => artists,
                         _ => return Ok(()),
                     };
 
-                    let context_id = ContextId::Artist(artists[id].id.clone());
-                    ui.create_new_page(PageState::Context {
-                        id: None,
-                        context_page_type: ContextPageType::Browsing(context_id),
-                        state: None,
-                    });
+                    match action {
+                        ArtistPopupAction::Browse => {
+                            let context_id = ContextId::Artist(artists[id].id.clone());
+                            ui.create_new_page(PageState::Context {
+                                id: None,
+                                context_page_type: ContextPageType::Browsing(context_id),
+                                state: None,
+                            });
+                        }
+                        ArtistPopupAction::GoToRadio => {
+                            client_pub.send(ClientRequest::GetRecommendations(
+                                SeedItem::Artist(artists[id].clone()),
+                            ))?;
+                            let new_page = PageState::Tracks {
+                                id: format!("recommendations::{}", artists[id].id.uri()),
+                                title: "Recommendations".to_string(),
+                                desc: format!("{} Radio", artists[id].name),
+                                state: new_table_state(),
+                            };
+                            ui.create_new_page(new_page);
+                        }
+                    }
 
                     Ok(())
                 },
@@ -329,10 +346,7 @@ fn handle_command_for_list_popup(
     on_choose_func: impl Fn(&mut UIStateGuard, usize) -> Result<()>,
     on_close_func: impl Fn(&mut UIStateGuard),
 ) -> Result<bool> {
-    let popup = ui
-        .popup
-        .as_mut()
-        .with_context(|| "expect to exist a popup")?;
+    let popup = ui.popup.as_mut().with_context(|| "expect a popup")?;
     let current_id = popup.list_selected().unwrap_or_default();
 
     match command {
@@ -421,6 +435,7 @@ fn handle_command_for_action_list_popup(
                     }
                     TrackAction::GoToArtist => {
                         ui.popup = Some(PopupState::ArtistList(
+                            ArtistPopupAction::Browse,
                             track.artists.clone(),
                             new_list_state(),
                         ));
@@ -452,6 +467,13 @@ fn handle_command_for_action_list_popup(
                         };
                         ui.create_new_page(new_page);
                     }
+                    TrackAction::GoToArtistRadio => {
+                        ui.popup = Some(PopupState::ArtistList(
+                            ArtistPopupAction::GoToRadio,
+                            track.artists.clone(),
+                            new_list_state(),
+                        ));
+                    }
                     TrackAction::DeleteFromLikedTracks => {
                         client_pub.send(ClientRequest::DeleteFromLibrary(ItemId::Track(
                             track.id.clone(),
@@ -475,6 +497,7 @@ fn handle_command_for_action_list_popup(
                 ActionListItem::Album(album, actions) => match actions[id] {
                     AlbumAction::GoToArtist => {
                         ui.popup = Some(PopupState::ArtistList(
+                            ArtistPopupAction::Browse,
                             album.artists.clone(),
                             new_list_state(),
                         ));
