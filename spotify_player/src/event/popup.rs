@@ -57,15 +57,8 @@ pub fn handle_key_sequence_for_popup(
                         }
                         ArtistPopupAction::GoToRadio => {
                             let uri = artists[id].id.uri();
-
-                            let new_page = PageState::Tracks {
-                                id: format!("radio::{uri}"),
-                                title: "Recommendations".to_string(),
-                                desc: format!("{} Radio", artists[id].name),
-                                state: new_table_state(),
-                            };
-                            ui.create_new_page(new_page);
-
+                            let desc = format!("{} Radio", artists[id].name);
+                            ui.create_new_radio_page(&uri, desc);
                             client_pub.send(ClientRequest::GetRadioTracks(uri))?;
                         }
                     }
@@ -457,15 +450,8 @@ fn handle_command_for_action_list_popup(
                     }
                     TrackAction::GoToTrackRadio => {
                         let uri = track.id.uri();
-
-                        let new_page = PageState::Tracks {
-                            id: format!("radio::{uri}"),
-                            title: "Recommendations".to_string(),
-                            desc: format!("{} Radio", track.name),
-                            state: new_table_state(),
-                        };
-                        ui.create_new_page(new_page);
-
+                        let desc = format!("{} Radio", track.name);
+                        ui.create_new_radio_page(&uri, desc);
                         client_pub.send(ClientRequest::GetRadioTracks(uri))?;
                     }
                     TrackAction::GoToArtistRadio => {
@@ -522,15 +508,8 @@ fn handle_command_for_action_list_popup(
                     }
                     ArtistAction::GoToArtistRadio => {
                         let uri = artist.id.uri();
-
-                        let new_page = PageState::Tracks {
-                            id: format!("radio::{uri}"),
-                            title: "Recommendations".to_string(),
-                            desc: format!("{} Radio", artist.name),
-                            state: new_table_state(),
-                        };
-                        ui.create_new_page(new_page);
-
+                        let desc = format!("{} Radio", artist.name);
+                        ui.create_new_radio_page(&uri, desc);
                         client_pub.send(ClientRequest::GetRadioTracks(uri))?;
                     }
                     ArtistAction::Unfollow => {
