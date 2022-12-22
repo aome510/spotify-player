@@ -309,7 +309,7 @@ To add new shortcuts or modify the default shortcuts, please refer to the [keyma
 ### Actions
 
 A list of actions is available for each type of Spotify item (track, album, artist, or playlist).
-For example, the list of available actions on a track is `[BrowseAlbum, BrowseArtist, BrowseRecommendations, AddToPlaylist, DeleteFromCurrentPlaylist, AddToLikedTracks, DeleteFromLikedTracks]`.
+For example, the list of available actions on a track is `[GoToAlbum, GoToArtist, GoToTrackRadio, GoToArtistRadio, AddToPlaylist, DeleteFromCurrentPlaylist, AddToLikedTracks, DeleteFromLikedTracks]`.
 
 To get the list of actions on an item, call the `ShowActionsOnCurrentTrack` command or `ShowActionsOnSelectedItem` command, then press enter (default binding for `ChooseSelected` command) to initiate the selected action.
 
