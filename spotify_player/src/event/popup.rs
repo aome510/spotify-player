@@ -406,7 +406,7 @@ fn handle_command_for_action_list_popup(
 
             match item {
                 ActionListItem::Track(track, actions) => match actions[id] {
-                    TrackAction::BrowseAlbum => {
+                    TrackAction::GoToAlbum => {
                         if let Some(ref album) = track.album {
                             let uri = album.id.uri();
                             let context_id = ContextId::Album(
@@ -419,7 +419,7 @@ fn handle_command_for_action_list_popup(
                             });
                         }
                     }
-                    TrackAction::BrowseArtist => {
+                    TrackAction::GoToArtist => {
                         ui.popup = Some(PopupState::ArtistList(
                             track.artists.clone(),
                             new_list_state(),
@@ -440,7 +440,7 @@ fn handle_command_for_action_list_popup(
                         client_pub.send(ClientRequest::AddToLibrary(Item::Track(track.clone())))?;
                         ui.popup = None;
                     }
-                    TrackAction::BrowseRecommendations => {
+                    TrackAction::GoToTrackRadio => {
                         client_pub.send(ClientRequest::GetRecommendations(SeedItem::Track(
                             track.clone(),
                         )))?;
@@ -473,7 +473,7 @@ fn handle_command_for_action_list_popup(
                     }
                 },
                 ActionListItem::Album(album, actions) => match actions[id] {
-                    AlbumAction::BrowseArtist => {
+                    AlbumAction::GoToArtist => {
                         ui.popup = Some(PopupState::ArtistList(
                             album.artists.clone(),
                             new_list_state(),
@@ -496,7 +496,7 @@ fn handle_command_for_action_list_popup(
                             .send(ClientRequest::AddToLibrary(Item::Artist(artist.clone())))?;
                         ui.popup = None;
                     }
-                    ArtistAction::BrowseRecommendations => {
+                    ArtistAction::GoToArtistRadio => {
                         client_pub.send(ClientRequest::GetRecommendations(SeedItem::Artist(
                             artist.clone(),
                         )))?;

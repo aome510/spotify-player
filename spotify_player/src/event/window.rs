@@ -237,7 +237,7 @@ pub fn handle_command_for_artist_list_window(
             });
         }
         Command::ShowActionsOnSelectedItem => {
-            let mut actions = vec![ArtistAction::BrowseRecommendations];
+            let mut actions = vec![ArtistAction::GoToArtistRadio];
             if data
                 .user_data
                 .followed_artists
@@ -289,7 +289,7 @@ pub fn handle_command_for_album_list_window(
             });
         }
         Command::ShowActionsOnSelectedItem => {
-            let mut actions = vec![AlbumAction::BrowseArtist];
+            let mut actions = vec![AlbumAction::GoToArtist];
             if data
                 .user_data
                 .saved_albums
