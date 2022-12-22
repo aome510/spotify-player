@@ -78,13 +78,6 @@ pub enum ItemId {
     Playlist(PlaylistId<'static>),
 }
 
-#[derive(Debug, Clone)]
-/// A Spotify recommendation seed
-pub enum SeedItem {
-    Track(Track),
-    Artist(Artist),
-}
-
 /// A simplified version of `rspotify::CurrentPlaybackContext`
 /// containing only fields needed to handle a `event::PlayerRequest`
 pub struct SimplifiedPlayback {
@@ -228,16 +221,6 @@ impl TrackOrder {
             Self::Album => x.album_info().cmp(&y.album_info()),
             Self::Duration => x.duration.cmp(&y.duration),
             Self::Artists => x.artists_info().cmp(&y.artists_info()),
-        }
-    }
-}
-
-impl SeedItem {
-    /// gets the uri of the seed item
-    pub fn uri(&self) -> String {
-        match self {
-            Self::Track(track) => track.id.uri(),
-            Self::Artist(artist) => artist.id.uri(),
         }
     }
 }

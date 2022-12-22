@@ -18,12 +18,23 @@ mod handlers;
 mod spotify;
 
 pub use handlers::*;
+use serde::Deserialize;
 
 /// The application's client
 #[derive(Clone)]
 pub struct Client {
     spotify: Arc<spotify::Spotify>,
     http: reqwest::Client,
+}
+
+#[derive(Debug, Deserialize)]
+struct RadioStationResponse {
+    tracks: Vec<TrackData>,
+}
+
+#[derive(Debug, Deserialize)]
+struct TrackData {
+    original_gid: String,
 }
 
 impl Client {
@@ -42,12 +53,7 @@ impl Client {
         streaming_sub: flume::Receiver<()>,
         client_pub: flume::Sender<ClientRequest>,
     ) -> Result<String> {
-        let session = match self.spotify.session {
-            None => {
-                anyhow::bail!("No Spotify session found.");
-            }
-            Some(ref session) => session.clone(),
-        };
+        let session = self.spotify.session()?.clone();
         let device = self.spotify.device.clone();
         let device_id = session.device_id().to_string();
         streaming::new_connection(session, device, client_pub, streaming_sub)?;
@@ -281,10 +287,10 @@ impl Client {
                     state.data.write().caches.search.put(query, results);
                 }
             }
-            ClientRequest::GetRecommendations(seed) => {
-                let id = format!("recommendations::{}", seed.uri());
+            ClientRequest::GetRadioTracks(uri) => {
+                let id = format!("radio::{}", uri);
                 if !state.data.read().caches.tracks.contains(&id) {
-                    let tracks = self.recommendations(seed).await?;
+                    let tracks = self.radio_tracks(uri).await?;
 
                     state.data.write().caches.tracks.put(id, tracks);
                 }
@@ -575,43 +581,51 @@ impl Client {
         Ok(())
     }
 
-    /// gets recommendation tracks from a recommendation seed
-    pub async fn recommendations(&self, seed: SeedItem) -> Result<Vec<Track>> {
-        let attributes = vec![];
+    async fn radio_tracks(&self, seed_uri: String) -> Result<Vec<Track>> {
+        let session = self.spotify.session()?;
 
-        let tracks = match seed {
-            SeedItem::Artist(artist) => {
-                self.spotify
-                    .recommendations(
-                        attributes,
-                        Some([artist.id]),
-                        None::<Vec<_>>,
-                        None::<Vec<_>>,
-                        None,
-                        Some(50),
-                    )
-                    .await?
-                    .tracks
-            }
-            SeedItem::Track(track) => {
-                self.spotify
-                    .recommendations(
-                        attributes,
-                        Some(track.artists.into_iter().map(|a| a.id)),
-                        None::<Vec<_>>,
-                        Some([track.id]),
-                        None,
-                        Some(50),
-                    )
-                    .await?
-                    .tracks
-            }
-        };
+        // Get an autoplay URI from the seed URI.
+        // The return URI is a Spotify station's URI
+        let autoplay_query_url = format!("hm://autoplay-enabled/query?uri={}", seed_uri);
+        let response = session
+            .mercury()
+            .get(autoplay_query_url)
+            .await
+            .map_err(|_| anyhow::anyhow!("Failed to get autoplay URI: got a Mercury error"))?;
+        if response.status_code != 200 {
+            anyhow::bail!(
+                "Failed to get autoplay URI: got non-OK status code: {}",
+                response.status_code
+            );
+        }
+        let autoplay_uri = String::from_utf8(response.payload[0].to_vec())?;
 
-        let tracks = tracks
+        // Retrieve radio's data based on the autoplay URI
+        let radio_query_url = format!("hm://radio-apollo/v3/stations/{}", autoplay_uri);
+        let response = session.mercury().get(radio_query_url).await.map_err(|_| {
+            anyhow::anyhow!("Failed to get radio data of {autoplay_uri}: got a Mercury error")
+        })?;
+        if response.status_code != 200 {
+            anyhow::bail!(
+                "Failed to get radio data of {autoplay_uri}: got non-OK status code: {}",
+                response.status_code
+            );
+        }
+
+        // Parse a list consisting of IDs of tracks inside the radio station
+        let track_ids = serde_json::from_slice::<RadioStationResponse>(&response.payload[0])?
+            .tracks
             .into_iter()
-            .filter_map(Track::try_from_simplified_track)
-            .collect::<Vec<_>>();
+            .filter_map(|t| TrackId::from_id(t.original_gid).ok());
+
+        // Retrieve tracks based on IDs
+        let tracks = self
+            .spotify
+            .tracks(track_ids, None)
+            .await?
+            .into_iter()
+            .filter_map(Track::try_from_full_track)
+            .collect();
 
         Ok(tracks)
     }

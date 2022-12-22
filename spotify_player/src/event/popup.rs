@@ -56,16 +56,17 @@ pub fn handle_key_sequence_for_popup(
                             });
                         }
                         ArtistPopupAction::GoToRadio => {
-                            client_pub.send(ClientRequest::GetRecommendations(
-                                SeedItem::Artist(artists[id].clone()),
-                            ))?;
+                            let uri = artists[id].id.uri();
+
                             let new_page = PageState::Tracks {
-                                id: format!("recommendations::{}", artists[id].id.uri()),
+                                id: format!("radio::{uri}"),
                                 title: "Recommendations".to_string(),
                                 desc: format!("{} Radio", artists[id].name),
                                 state: new_table_state(),
                             };
                             ui.create_new_page(new_page);
+
+                            client_pub.send(ClientRequest::GetRadioTracks(uri))?;
                         }
                     }
 
@@ -455,16 +456,17 @@ fn handle_command_for_action_list_popup(
                         ui.popup = None;
                     }
                     TrackAction::GoToTrackRadio => {
-                        client_pub.send(ClientRequest::GetRecommendations(SeedItem::Track(
-                            track.clone(),
-                        )))?;
+                        let uri = track.id.uri();
+
                         let new_page = PageState::Tracks {
-                            id: format!("recommendations::{}", track.id.uri()),
+                            id: format!("radio::{uri}"),
                             title: "Recommendations".to_string(),
                             desc: format!("{} Radio", track.name),
                             state: new_table_state(),
                         };
                         ui.create_new_page(new_page);
+
+                        client_pub.send(ClientRequest::GetRadioTracks(uri))?;
                     }
                     TrackAction::GoToArtistRadio => {
                         ui.popup = Some(PopupState::ArtistList(
@@ -519,16 +521,17 @@ fn handle_command_for_action_list_popup(
                         ui.popup = None;
                     }
                     ArtistAction::GoToArtistRadio => {
-                        client_pub.send(ClientRequest::GetRecommendations(SeedItem::Artist(
-                            artist.clone(),
-                        )))?;
+                        let uri = artist.id.uri();
+
                         let new_page = PageState::Tracks {
-                            id: format!("recommendations::{}", artist.id.uri()),
+                            id: format!("radio::{uri}"),
                             title: "Recommendations".to_string(),
                             desc: format!("{} Radio", artist.name),
                             state: new_table_state(),
                         };
                         ui.create_new_page(new_page);
+
+                        client_pub.send(ClientRequest::GetRadioTracks(uri))?;
                     }
                     ArtistAction::Unfollow => {
                         client_pub.send(ClientRequest::DeleteFromLibrary(ItemId::Artist(

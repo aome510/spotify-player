@@ -54,6 +54,12 @@ impl Spotify {
         }
     }
 
+    pub fn session(&self) -> Result<&Session> {
+        self.session
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("Client has no Spotify session"))
+    }
+
     /// gets a Spotify access token.
     /// The function may retrieve a new token and update the current token
     /// stored inside the client if the old one is expired.
