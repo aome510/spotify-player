@@ -67,6 +67,7 @@ pub enum TrackAction {
     GoToAlbum,
     GoToTrackRadio,
     GoToArtistRadio,
+    GoToAlbumRadio,
     AddToQueue,
     AddToPlaylist,
     DeleteFromCurrentPlaylist,
@@ -77,6 +78,8 @@ pub enum TrackAction {
 #[derive(Debug, Copy, Clone)]
 pub enum AlbumAction {
     GoToArtist,
+    GoToArtistRadio,
+    GoToAlbumRadio,
     AddToLibrary,
     DeleteFromLibrary,
 }
@@ -90,6 +93,7 @@ pub enum ArtistAction {
 
 #[derive(Debug, Copy, Clone)]
 pub enum PlaylistAction {
+    GoToPlaylistRadio,
     AddToLibrary,
     DeleteFromLibrary,
 }
@@ -101,6 +105,7 @@ pub fn construct_track_actions(track: &Track, data: &DataReadGuard) -> Vec<Track
         TrackAction::GoToAlbum,
         TrackAction::GoToTrackRadio,
         TrackAction::GoToArtistRadio,
+        TrackAction::GoToAlbumRadio,
         TrackAction::AddToPlaylist,
         TrackAction::AddToQueue,
     ];

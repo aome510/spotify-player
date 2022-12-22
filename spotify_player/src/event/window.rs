@@ -289,7 +289,11 @@ pub fn handle_command_for_album_list_window(
             });
         }
         Command::ShowActionsOnSelectedItem => {
-            let mut actions = vec![AlbumAction::GoToArtist];
+            let mut actions = vec![
+                AlbumAction::GoToArtist,
+                AlbumAction::GoToAlbumRadio,
+                AlbumAction::GoToArtistRadio,
+            ];
             if data
                 .user_data
                 .saved_albums
@@ -341,7 +345,7 @@ pub fn handle_command_for_playlist_list_window(
             });
         }
         Command::ShowActionsOnSelectedItem => {
-            let mut actions = vec![];
+            let mut actions = vec![PlaylistAction::GoToPlaylistRadio];
             if data
                 .user_data
                 .playlists

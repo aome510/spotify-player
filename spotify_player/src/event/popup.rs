@@ -1,8 +1,5 @@
 use super::*;
-use crate::{
-    command::{AlbumAction, ArtistAction, PlaylistAction, TrackAction},
-    utils::new_table_state,
-};
+use crate::command::{AlbumAction, ArtistAction, PlaylistAction, TrackAction};
 use anyhow::Context;
 
 /// handles a key sequence for a popup
@@ -461,6 +458,14 @@ fn handle_command_for_action_list_popup(
                             new_list_state(),
                         ));
                     }
+                    TrackAction::GoToAlbumRadio => {
+                        if let Some(ref album) = track.album {
+                            let uri = album.id.uri();
+                            let desc = format!("{} Radio", album.name);
+                            ui.create_new_radio_page(&uri, desc);
+                            client_pub.send(ClientRequest::GetRadioTracks(uri))?;
+                        }
+                    }
                     TrackAction::DeleteFromLikedTracks => {
                         client_pub.send(ClientRequest::DeleteFromLibrary(ItemId::Track(
                             track.id.clone(),
@@ -485,6 +490,19 @@ fn handle_command_for_action_list_popup(
                     AlbumAction::GoToArtist => {
                         ui.popup = Some(PopupState::ArtistList(
                             ArtistPopupAction::Browse,
+                            album.artists.clone(),
+                            new_list_state(),
+                        ));
+                    }
+                    AlbumAction::GoToAlbumRadio => {
+                        let uri = album.id.uri();
+                        let desc = format!("{} Radio", album.name);
+                        ui.create_new_radio_page(&uri, desc);
+                        client_pub.send(ClientRequest::GetRadioTracks(uri))?;
+                    }
+                    AlbumAction::GoToArtistRadio => {
+                        ui.popup = Some(PopupState::ArtistList(
+                            ArtistPopupAction::GoToRadio,
                             album.artists.clone(),
                             new_list_state(),
                         ));
@@ -525,6 +543,12 @@ fn handle_command_for_action_list_popup(
                             playlist.clone(),
                         )))?;
                         ui.popup = None;
+                    }
+                    PlaylistAction::GoToPlaylistRadio => {
+                        let uri = playlist.id.uri();
+                        let desc = format!("{} Radio", playlist.name);
+                        ui.create_new_radio_page(&uri, desc);
+                        client_pub.send(ClientRequest::GetRadioTracks(uri))?;
                     }
                     PlaylistAction::DeleteFromLibrary => {
                         client_pub.send(ClientRequest::DeleteFromLibrary(ItemId::Playlist(
