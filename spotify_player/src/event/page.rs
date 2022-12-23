@@ -203,7 +203,6 @@ pub fn handle_key_sequence_for_context_page(
                 _ => None,
             };
 
-            // TODO: handle sort commands for non-context pages
             if let Some(order) = order {
                 if let Some(context_id) = context_id {
                     let mut data = state.data.write();
