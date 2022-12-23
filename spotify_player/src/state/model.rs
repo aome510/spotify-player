@@ -20,6 +20,9 @@ pub enum Context {
         albums: Vec<Album>,
         related_artists: Vec<Artist>,
     },
+    Tracks {
+        tracks: Vec<Track>,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -28,6 +31,7 @@ pub enum ContextId {
     Playlist(PlaylistId<'static>),
     Album(AlbumId<'static>),
     Artist(ArtistId<'static>),
+    Tracks(String),
 }
 
 #[derive(Clone, Debug)]
@@ -138,16 +142,6 @@ pub struct Category {
 }
 
 impl Context {
-    /// sorts tracks in the context by a sort oder
-    pub fn sort_tracks(&mut self, sort_order: TrackOrder) {
-        self.tracks_mut().sort_by(|x, y| sort_order.compare(x, y));
-    }
-
-    /// reverses order of tracks in the context
-    pub fn reverse_tracks(&mut self) {
-        self.tracks_mut().reverse();
-    }
-
     /// gets the context's description
     pub fn description(&self) -> String {
         match self {
@@ -178,29 +172,6 @@ impl Context {
             }
         }
     }
-
-    /// gets context tracks (immutable)
-    pub fn tracks(&self) -> &Vec<Track> {
-        match self {
-            Context::Album { ref tracks, .. } => tracks,
-            Context::Playlist { ref tracks, .. } => tracks,
-            Context::Artist {
-                top_tracks: ref tracks,
-                ..
-            } => tracks,
-        }
-    }
-
-    /// gets context tracks (mutable)
-    pub fn tracks_mut(&mut self) -> &mut Vec<Track> {
-        match self {
-            Context::Album { tracks, .. } => tracks,
-            Context::Playlist { tracks, .. } => tracks,
-            Context::Artist {
-                top_tracks: tracks, ..
-            } => tracks,
-        }
-    }
 }
 
 impl ContextId {
@@ -209,6 +180,7 @@ impl ContextId {
             Self::Album(id) => id.uri(),
             Self::Artist(id) => id.uri(),
             Self::Playlist(id) => id.uri(),
+            Self::Tracks(uri) => uri.to_owned(),
         }
     }
 }

@@ -16,12 +16,6 @@ pub enum PageState {
         current_query: String,
         state: SearchPageUIState,
     },
-    Tracks {
-        id: String,
-        title: String,
-        desc: String,
-        state: TableState,
-    },
     #[cfg(feature = "lyric-finder")]
     Lyric {
         track: String,
@@ -37,7 +31,6 @@ pub enum PageType {
     Library,
     Context,
     Search,
-    Tracks,
     Browse,
     #[cfg(feature = "lyric-finder")]
     Lyric,
@@ -79,6 +72,9 @@ pub enum ContextPageUIState {
         album_list: ListState,
         related_artist_list: ListState,
         focus: ArtistFocusState,
+    },
+    Tracks {
+        track_table: TableState,
     },
 }
 
@@ -128,7 +124,6 @@ impl PageState {
             PageState::Library { .. } => PageType::Library,
             PageState::Context { .. } => PageType::Context,
             PageState::Search { .. } => PageType::Search,
-            PageState::Tracks { .. } => PageType::Tracks,
             PageState::Browse { .. } => PageType::Browse,
             #[cfg(feature = "lyric-finder")]
             PageState::Lyric { .. } => PageType::Lyric,
@@ -184,6 +179,9 @@ impl PageState {
                 SearchFocusState::Playlists => Some(MutableWindowState::List(playlist_list)),
             },
             Self::Context { state, .. } => state.as_mut().map(|state| match state {
+                ContextPageUIState::Tracks { track_table } => {
+                    MutableWindowState::Table(track_table)
+                }
                 ContextPageUIState::Playlist { track_table } => {
                     MutableWindowState::Table(track_table)
                 }
@@ -201,7 +199,6 @@ impl PageState {
                     }
                 },
             }),
-            Self::Tracks { state, .. } => Some(MutableWindowState::Table(state)),
             Self::Browse { state } => match state {
                 BrowsePageUIState::CategoryList { state } => Some(MutableWindowState::List(state)),
                 BrowsePageUIState::CategoryPlaylistList { state, .. } => {

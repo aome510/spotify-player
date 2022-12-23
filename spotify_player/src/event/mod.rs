@@ -136,9 +136,6 @@ fn handle_key_event(
             PageType::Context => {
                 page::handle_key_sequence_for_context_page(&key_sequence, client_pub, state)?
             }
-            PageType::Tracks => {
-                page::handle_key_sequence_for_tracks_page(&key_sequence, client_pub, state)?
-            }
             PageType::Browse => {
                 page::handle_key_sequence_for_browse_page(&key_sequence, client_pub, state)?
             }

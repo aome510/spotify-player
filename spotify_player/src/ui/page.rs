@@ -372,58 +372,6 @@ pub fn render_library_page(
     Ok(())
 }
 
-pub fn render_tracks_page(
-    is_active: bool,
-    frame: &mut Frame,
-    state: &SharedState,
-    ui: &mut UIStateGuard,
-    rect: Rect,
-) -> Result<()> {
-    let data = state.data.read();
-
-    let (id, title, desc) = match ui.current_page() {
-        PageState::Tracks {
-            id, title, desc, ..
-        } => (id, title, desc),
-        s => anyhow::bail!("expect a tracks page state, found {s:?}"),
-    };
-
-    let block = Block::default()
-        .title(ui.theme.block_title_with_style(title))
-        .borders(Borders::ALL);
-
-    let tracks = match data.get_tracks_by_id(id) {
-        Some(tracks) => tracks,
-        None => {
-            // tracks are still loading
-            frame.render_widget(Paragraph::new("loading...").block(block), rect);
-            return Ok(());
-        }
-    };
-
-    // render the window's border and title
-    frame.render_widget(block, rect);
-
-    // render the window's description
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .margin(1)
-        .constraints([Constraint::Length(1), Constraint::Min(0)].as_ref())
-        .split(rect);
-    let page_desc =
-        Paragraph::new(desc.clone()).block(Block::default().style(ui.theme.page_desc()));
-    frame.render_widget(page_desc, chunks[0]);
-
-    render_track_table_window(
-        frame,
-        chunks[1],
-        is_active,
-        state,
-        ui.search_filtered_items(tracks),
-        ui,
-    )
-}
-
 pub fn render_browse_page(
     is_active: bool,
     frame: &mut Frame,
@@ -725,11 +673,9 @@ pub fn render_track_table_window(
                 } => top_track_table,
                 ContextPageUIState::Playlist { track_table } => track_table,
                 ContextPageUIState::Album { track_table } => track_table,
+                ContextPageUIState::Tracks { track_table } => track_table,
             };
             utils::render_table_window(frame, track_table, rect, n_tracks, track_table_state);
-        }
-        PageState::Tracks { state, .. } => {
-            utils::render_table_window(frame, track_table, rect, n_tracks, state);
         }
         s => anyhow::bail!("reach unsupported page state {s:?} when rendering track table"),
     }
