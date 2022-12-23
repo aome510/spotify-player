@@ -62,6 +62,13 @@ impl AppData {
             _ => self.caches.tracks.peek(id),
         }
     }
+    pub fn get_tracks_by_id_mut(&mut self, id: &str) -> Option<&mut Vec<Track>> {
+        match id {
+            // LikedTrackPage's id is handled separately because it is stored as a part of user data
+            "liked-tracks" => Some(&mut self.user_data.saved_tracks),
+            _ => self.caches.tracks.peek_mut(id),
+        }
+    }
 }
 
 impl UserData {

@@ -194,7 +194,6 @@ pub fn handle_key_sequence_for_context_page(
             }
         }
         _ => {
-            // handle sort/reverse tracks commands
             let order = match command {
                 Command::SortTrackByTitle => Some(TrackOrder::TrackName),
                 Command::SortTrackByAlbum => Some(TrackOrder::Album),
@@ -245,17 +244,11 @@ pub fn handle_key_sequence_for_tracks_page(
     };
 
     let mut ui = state.ui.lock();
-    let data = state.data.read();
 
     let id = match ui.current_page() {
         PageState::Tracks { id, .. } => id,
         _ => anyhow::bail!("expect a tracks page"),
     };
-
-    let tracks = data
-        .get_tracks_by_id(id)
-        .map(|tracks| ui.search_filtered_items(tracks))
-        .unwrap_or_default();
 
     match command {
         Command::Search => {
@@ -266,26 +259,63 @@ pub fn handle_key_sequence_for_tracks_page(
             Ok(true)
         }
         Command::PlayRandom => {
-            // randomly play a song from the list of recommendation tracks
-            let offset = {
-                let id = rand::thread_rng().gen_range(0..tracks.len());
-                Some(rspotify_model::Offset::Uri(tracks[id].id.uri()))
-            };
-            client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
-                Playback::URIs(tracks.iter().map(|t| t.id.clone()).collect(), offset),
-            )))?;
+            if let Some(tracks) = state.data.read().get_tracks_by_id(id) {
+                // randomly play a song from the list of recommendation tracks
+                let offset = {
+                    let id = rand::thread_rng().gen_range(0..tracks.len());
+                    Some(rspotify_model::Offset::Uri(tracks[id].id.uri()))
+                };
+                client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
+                    Playback::URIs(tracks.iter().map(|t| t.id.clone()).collect(), offset),
+                )))?;
+            }
 
             Ok(true)
         }
-        _ => window::handle_command_for_track_table_window(
-            command,
-            client_pub,
-            None,
-            Some(tracks.iter().map(|t| t.id.as_ref()).collect()),
-            tracks,
-            &data,
-            ui,
-        ),
+        _ => {
+            // handling track ordering commands
+            {
+                // sort commands
+                let order = match command {
+                    Command::SortTrackByTitle => Some(TrackOrder::TrackName),
+                    Command::SortTrackByAlbum => Some(TrackOrder::Album),
+                    Command::SortTrackByArtists => Some(TrackOrder::Artists),
+                    Command::SortTrackByAddedDate => Some(TrackOrder::AddedAt),
+                    Command::SortTrackByDuration => Some(TrackOrder::Duration),
+                    _ => None,
+                };
+                if let Some(order) = order {
+                    if let Some(tracks) = state.data.write().get_tracks_by_id_mut(id) {
+                        tracks.sort_by(|x, y| order.compare(x, y));
+                        return Ok(true);
+                    }
+                }
+
+                // reverse command
+                if command == Command::ReverseTrackOrder {
+                    if let Some(tracks) = state.data.write().get_tracks_by_id_mut(id) {
+                        tracks.reverse();
+                        return Ok(true);
+                    }
+                }
+            }
+
+            let data = state.data.read();
+            let tracks = data
+                .get_tracks_by_id(id)
+                .map(|tracks| ui.search_filtered_items(tracks))
+                .unwrap_or_default();
+
+            window::handle_command_for_track_table_window(
+                command,
+                client_pub,
+                None,
+                Some(tracks.iter().map(|t| t.id.as_ref()).collect()),
+                tracks,
+                &data,
+                ui,
+            )
+        }
     }
 }
 
