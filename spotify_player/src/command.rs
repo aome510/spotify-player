@@ -63,9 +63,11 @@ pub enum Command {
 
 #[derive(Debug, Copy, Clone)]
 pub enum TrackAction {
-    BrowseArtist,
-    BrowseAlbum,
-    BrowseRecommendations,
+    GoToArtist,
+    GoToAlbum,
+    GoToTrackRadio,
+    GoToArtistRadio,
+    GoToAlbumRadio,
     AddToQueue,
     AddToPlaylist,
     DeleteFromCurrentPlaylist,
@@ -75,20 +77,23 @@ pub enum TrackAction {
 
 #[derive(Debug, Copy, Clone)]
 pub enum AlbumAction {
-    BrowseArtist,
+    GoToArtist,
+    GoToArtistRadio,
+    GoToAlbumRadio,
     AddToLibrary,
     DeleteFromLibrary,
 }
 
 #[derive(Debug, Copy, Clone)]
 pub enum ArtistAction {
-    BrowseRecommendations,
+    GoToArtistRadio,
     Follow,
     Unfollow,
 }
 
 #[derive(Debug, Copy, Clone)]
 pub enum PlaylistAction {
+    GoToPlaylistRadio,
     AddToLibrary,
     DeleteFromLibrary,
 }
@@ -96,17 +101,22 @@ pub enum PlaylistAction {
 /// constructs a default list of actions on a track
 pub fn construct_track_actions(track: &Track, data: &DataReadGuard) -> Vec<TrackAction> {
     let mut actions = vec![
-        TrackAction::BrowseArtist,
-        TrackAction::BrowseAlbum,
-        TrackAction::BrowseRecommendations,
+        TrackAction::GoToArtist,
+        TrackAction::GoToAlbum,
+        TrackAction::GoToTrackRadio,
+        TrackAction::GoToArtistRadio,
+        TrackAction::GoToAlbumRadio,
         TrackAction::AddToPlaylist,
         TrackAction::AddToQueue,
     ];
+
+    // check if the track is a liked track
     if data.user_data.saved_tracks.iter().any(|t| t.id == track.id) {
         actions.push(TrackAction::DeleteFromLikedTracks);
     } else {
         actions.push(TrackAction::AddToLikedTracks);
     }
+
     actions
 }
 

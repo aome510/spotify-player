@@ -126,7 +126,7 @@ pub fn render_popup(
                 let rect = render_list_popup(frame, rect, "User Saved Albums", items, 7, ui);
                 (rect, false)
             }
-            PopupState::ArtistList(artists, ..) => {
+            PopupState::ArtistList(_, artists, ..) => {
                 let items = artists.iter().map(|a| (a.to_string(), false)).collect();
 
                 let rect = render_list_popup(frame, rect, "Artists", items, 5, ui);
