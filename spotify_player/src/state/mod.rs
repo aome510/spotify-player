@@ -1,8 +1,10 @@
 mod data;
+mod consant;
 mod model;
 mod player;
 mod ui;
 
+pub use consant::*;
 pub use data::*;
 pub use model::*;
 pub use player::*;

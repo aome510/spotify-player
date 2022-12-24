@@ -271,30 +271,34 @@ fn handle_global_command(
             ui.popup = Some(PopupState::UserSavedAlbumList(new_list_state()));
         }
         Command::TopTrackPage => {
-            ui.create_new_page(PageState::Tracks {
-                id: "top-tracks".to_string(),
-                title: "Top Tracks".to_string(),
-                desc: "User's top tracks".to_string(),
-                state: new_table_state(),
+            ui.create_new_page(PageState::Context {
+                id: None,
+                context_page_type: ContextPageType::Browsing(ContextId::Tracks(
+                    USER_TOP_TRACKS_ID.to_owned(),
+                )),
+                state: None,
             });
             client_pub.send(ClientRequest::GetUserTopTracks)?;
         }
         Command::RecentlyPlayedTrackPage => {
-            ui.create_new_page(PageState::Tracks {
-                id: "recently-played-tracks".to_string(),
-                title: "Recently Played Tracks".to_string(),
-                desc: "User's recently played tracks".to_string(),
-                state: new_table_state(),
+            ui.create_new_page(PageState::Context {
+                id: None,
+                context_page_type: ContextPageType::Browsing(ContextId::Tracks(
+                    USER_RECENTLY_PLAYED_TRACKS_ID.to_owned(),
+                )),
+                state: None,
             });
             client_pub.send(ClientRequest::GetUserRecentlyPlayedTracks)?;
         }
         Command::LikedTrackPage => {
-            ui.create_new_page(PageState::Tracks {
-                id: "liked-tracks".to_string(),
-                title: "Liked Tracks".to_string(),
-                desc: "User's liked tracks".to_string(),
-                state: new_table_state(),
+            ui.create_new_page(PageState::Context {
+                id: None,
+                context_page_type: ContextPageType::Browsing(ContextId::Tracks(
+                    USER_LIKED_TRACKS_ID.to_owned(),
+                )),
+                state: None,
             });
+            client_pub.send(ClientRequest::GetUserSavedTracks)?;
         }
         Command::LibraryPage => {
             ui.create_new_page(PageState::Library {
