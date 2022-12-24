@@ -29,6 +29,7 @@ pub enum Context {
 pub struct TracksId {
     pub uri: String,
     pub name: String,
+    pub kind: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -384,14 +385,16 @@ impl std::fmt::Display for Category {
 }
 
 impl TracksId {
-    pub fn new<U, N>(uri: U, name: N) -> Self
+    pub fn new<U, N, K>(uri: U, name: N, kind: K) -> Self
     where
         U: Into<String>,
         N: Into<String>,
+        K: Into<String>,
     {
         Self {
             uri: uri.into(),
             name: name.into(),
+            kind: kind.into(),
         }
     }
 }

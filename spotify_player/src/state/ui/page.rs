@@ -269,6 +269,12 @@ impl ContextPageUIState {
             focus: ArtistFocusState::TopTracks,
         }
     }
+
+    pub fn new_tracks() -> Self {
+        Self::Tracks {
+            track_table: utils::new_table_state(),
+        }
+    }
 }
 
 impl<'a> MutableWindowState<'a> {

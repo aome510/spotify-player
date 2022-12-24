@@ -2,7 +2,7 @@ use crate::{
     command::{self, Command},
     key::{Key, KeySequence},
     state::*,
-    utils::{new_list_state, new_table_state},
+    utils::new_list_state,
 };
 
 #[cfg(feature = "lyric-finder")]

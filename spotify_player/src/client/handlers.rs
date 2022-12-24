@@ -127,6 +127,7 @@ pub async fn start_player_event_watchers(
                             ContextId::Album(_) => ContextPageUIState::new_album(),
                             ContextId::Artist(_) => ContextPageUIState::new_artist(),
                             ContextId::Playlist(_) => ContextPageUIState::new_playlist(),
+                            ContextId::Tracks(_) => ContextPageUIState::new_tracks(),
                         });
                     }
                     None => {

@@ -89,6 +89,7 @@ pub fn handle_command_for_focused_context_window(
                         ContextId::Tracks(TracksId::new(
                             format!("artist-{}-top-tracks", artist.name),
                             format!("Artist {}'s top tracks", artist.name),
+                            "Artist Top Tracks",
                         )),
                         Playback::URIs(
                             top_tracks.iter().map(|t| t.id.into_static()).collect(),

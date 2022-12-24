@@ -1,9 +1,11 @@
-use crate::{config, key, utils::new_table_state};
+use crate::{config, key};
 
 pub type UIStateGuard<'a> = parking_lot::MutexGuard<'a, UIState>;
 
 mod page;
 mod popup;
+
+use super::*;
 
 pub use page::*;
 pub use popup::*;
