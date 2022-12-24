@@ -43,7 +43,10 @@ pub enum ClientRequest {
     GetUserRecentlyPlayedTracks,
     GetContext(ContextId),
     GetCurrentPlayback,
-    GetRadioTracks(String),
+    GetRadioTracks {
+        uri: String,
+        name: String,
+    },
     Search(String),
     AddTrackToQueue(TrackId<'static>),
     AddTrackToPlaylist(PlaylistId<'static>, TrackId<'static>),
