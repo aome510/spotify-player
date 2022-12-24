@@ -309,19 +309,13 @@ impl Client {
                 if !state.data.read().caches.context.contains(&radio_uri) {
                     let tracks = self.radio_tracks(uri).await?;
 
-                    state
-                        .data
-                        .write()
-                        .caches
-                        .context
-                        //TODO: handle description for radio page
-                        .put(
-                            radio_uri,
-                            Context::Tracks {
-                                tracks,
-                                desc: format!("{} Radio", name),
-                            },
-                        );
+                    state.data.write().caches.context.put(
+                        radio_uri,
+                        Context::Tracks {
+                            tracks,
+                            desc: format!("{} Radio", name),
+                        },
+                    );
                 }
             }
             ClientRequest::AddTrackToQueue(track_id) => {
