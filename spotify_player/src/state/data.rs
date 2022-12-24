@@ -1,6 +1,6 @@
 use std::{collections::HashMap, num::NonZeroUsize};
 
-use super::model::*;
+use super::{model::*, USER_LIKED_TRACKS_ID};
 
 pub type DataReadGuard<'a> = parking_lot::RwLockReadGuard<'a, AppData>;
 
@@ -55,8 +55,8 @@ impl Default for Caches {
 impl AppData {
     pub fn get_tracks_by_id(&self, id: &ContextId) -> Option<&Vec<Track>> {
         // liked track page's id is handled separately because it is stored as a part of user data
-        if let ContextId::Tracks(TracksId { uri, .. }) = id {
-            if uri == "liked-track" {
+        if let ContextId::Tracks(tracks_id) = id {
+            if *tracks_id == *USER_LIKED_TRACKS_ID {
                 return Some(&self.user_data.saved_tracks);
             }
         }
@@ -73,8 +73,8 @@ impl AppData {
 
     pub fn get_tracks_by_id_mut(&mut self, id: &ContextId) -> Option<&mut Vec<Track>> {
         // liked track page's id is handled separately because it is stored as a part of user data
-        if let ContextId::Tracks(TracksId { uri, .. }) = id {
-            if uri == "liked-track" {
+        if let ContextId::Tracks(tracks_id) = id {
+            if *tracks_id == *USER_LIKED_TRACKS_ID {
                 return Some(&mut self.user_data.saved_tracks);
             }
         }
