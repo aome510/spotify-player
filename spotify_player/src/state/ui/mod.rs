@@ -40,14 +40,16 @@ impl UIState {
         self.popup = None;
     }
 
-    pub fn create_new_radio_page(&mut self, uri: &str, desc: String) {
-        let new_page = PageState::Tracks {
-            title: "Recommendations".to_string(),
-            state: new_table_state(),
-            id: format!("radio::{uri}"),
-            desc,
-        };
-        self.create_new_page(new_page);
+    pub fn create_new_radio_page(&mut self, uri: &str, name: String) {
+        self.create_new_page(PageState::Context {
+            id: None,
+            context_page_type: ContextPageType::Browsing(super::ContextId::Tracks(TracksId::new(
+                uri,
+                name,
+                "Recommendations",
+            ))),
+            state: None,
+        });
     }
 
     /// Returns whether there exists a focused popup.
