@@ -157,7 +157,7 @@ impl Context {
                 ref tracks,
             } => {
                 format!(
-                    "Album: {} | {} | {} songs",
+                    "{} | {} | {} songs",
                     album.name,
                     album.release_date,
                     tracks.len()
@@ -168,16 +168,14 @@ impl Context {
                 tracks,
             } => {
                 format!(
-                    "Playlist: {} | {} | {} songs",
+                    "{} | {} | {} songs",
                     playlist.name,
                     playlist.owner.0,
                     tracks.len()
                 )
             }
-            Context::Artist { ref artist, .. } => {
-                format!("Artist: {}", artist.name)
-            }
-            Context::Tracks { desc, .. } => desc.to_string(),
+            Context::Artist { ref artist, .. } => artist.name.to_string(),
+            Context::Tracks { desc, tracks } => format!("{} | {} songs", desc, tracks.len()),
         }
     }
 }
