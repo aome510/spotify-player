@@ -261,7 +261,7 @@ pub fn render_context_page(
                         ui,
                     )?;
                 }
-                Context::Tracks { tracks } => {
+                Context::Tracks { tracks, .. } => {
                     render_track_table_window(
                         frame,
                         chunks[1],

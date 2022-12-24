@@ -242,7 +242,7 @@ impl ContextPageType {
                 ContextId::Playlist(_) => String::from("Playlist"),
                 ContextId::Album(_) => String::from("Album"),
                 ContextId::Artist(_) => String::from("Artist"),
-                ContextId::Tracks(id) => id.name.to_owned(),
+                ContextId::Tracks(id) => id.kind.to_owned(),
             },
         }
     }

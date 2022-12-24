@@ -88,11 +88,10 @@ pub fn handle_command_for_focused_context_window(
                         client_pub,
                         ContextId::Tracks(TracksId::new(
                             format!("artist-{}-top-tracks", artist.name),
-                            format!("Artist {}'s top tracks", artist.name),
                             "Artist Top Tracks",
                         )),
                         Playback::URIs(
-                            top_tracks.iter().map(|t| t.id.into_static()).collect(),
+                            top_tracks.iter().map(|t| t.id.clone_static()).collect(),
                             None,
                         ),
                         ui.search_filtered_items(top_tracks),
@@ -101,7 +100,7 @@ pub fn handle_command_for_focused_context_window(
                     ),
                 }
             }
-            Context::Album { album, tracks } => handle_command_for_track_table_window(
+            Context::Album { tracks, .. } => handle_command_for_track_table_window(
                 command,
                 client_pub,
                 context_id.clone(),
@@ -110,7 +109,7 @@ pub fn handle_command_for_focused_context_window(
                 &data,
                 ui,
             ),
-            Context::Playlist { playlist, tracks } => handle_command_for_track_table_window(
+            Context::Playlist { tracks, .. } => handle_command_for_track_table_window(
                 command,
                 client_pub,
                 context_id.clone(),
@@ -119,11 +118,11 @@ pub fn handle_command_for_focused_context_window(
                 &data,
                 ui,
             ),
-            Context::Tracks { tracks } => handle_command_for_track_table_window(
+            Context::Tracks { tracks, .. } => handle_command_for_track_table_window(
                 command,
                 client_pub,
                 context_id.clone(),
-                Playback::URIs(tracks.iter().map(|t| t.id.into_static()).collect(), None),
+                Playback::URIs(tracks.iter().map(|t| t.id.clone_static()).collect(), None),
                 ui.search_filtered_items(tracks),
                 &data,
                 ui,

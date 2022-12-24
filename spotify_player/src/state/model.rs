@@ -22,13 +22,13 @@ pub enum Context {
     },
     Tracks {
         tracks: Vec<Track>,
+        desc: String,
     },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TracksId {
     pub uri: String,
-    pub name: String,
     pub kind: String,
 }
 
@@ -177,6 +177,7 @@ impl Context {
             Context::Artist { ref artist, .. } => {
                 format!("Artist: {}", artist.name)
             }
+            Context::Tracks { desc, .. } => desc.to_string(),
         }
     }
 }
@@ -385,15 +386,13 @@ impl std::fmt::Display for Category {
 }
 
 impl TracksId {
-    pub fn new<U, N, K>(uri: U, name: N, kind: K) -> Self
+    pub fn new<U, K>(uri: U, kind: K) -> Self
     where
         U: Into<String>,
-        N: Into<String>,
         K: Into<String>,
     {
         Self {
             uri: uri.into(),
-            name: name.into(),
             kind: kind.into(),
         }
     }

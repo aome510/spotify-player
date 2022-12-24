@@ -42,12 +42,11 @@ impl UIState {
         self.popup = None;
     }
 
-    pub fn create_new_radio_page(&mut self, uri: &str, name: String) {
+    pub fn create_new_radio_page(&mut self, uri: &str) {
         self.create_new_page(PageState::Context {
             id: None,
             context_page_type: ContextPageType::Browsing(super::ContextId::Tracks(TracksId::new(
                 format!("radio:{uri}"),
-                name,
                 "Recommendations",
             ))),
             state: None,
