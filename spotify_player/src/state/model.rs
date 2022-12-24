@@ -26,12 +26,18 @@ pub enum Context {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TracksId {
+    pub uri: String,
+    pub name: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
 /// A context Id
 pub enum ContextId {
     Playlist(PlaylistId<'static>),
     Album(AlbumId<'static>),
     Artist(ArtistId<'static>),
-    Tracks(String),
+    Tracks(TracksId),
 }
 
 #[derive(Clone, Debug)]
@@ -180,7 +186,7 @@ impl ContextId {
             Self::Album(id) => id.uri(),
             Self::Artist(id) => id.uri(),
             Self::Playlist(id) => id.uri(),
-            Self::Tracks(uri) => uri.to_owned(),
+            Self::Tracks(id) => id.uri.to_owned(),
         }
     }
 }

@@ -55,10 +55,31 @@ impl Default for Caches {
 impl AppData {
     pub fn get_tracks_by_id(&self, id: ContextId) -> Option<&Vec<Track>> {
         // liked track page's id is handled separately because it is stored as a part of user data
-        if id == ContextId::Tracks(String::from("liked-tracks")) {
-            return Some(&self.user_data.saved_tracks);
+        if let ContextId::Tracks(TracksId { uri, .. }) = id {
+            if uri == "liked-track" {
+                return Some(&self.user_data.saved_tracks);
+            }
         }
+
         self.caches.context.peek(&id.uri()).map(|c| match c {
+            Context::Album { tracks, .. } => tracks,
+            Context::Playlist { tracks, .. } => tracks,
+            Context::Artist {
+                top_tracks: tracks, ..
+            } => tracks,
+            Context::Tracks { tracks } => tracks,
+        })
+    }
+
+    pub fn get_tracks_by_id_mut(&mut self, id: ContextId) -> Option<&mut Vec<Track>> {
+        // liked track page's id is handled separately because it is stored as a part of user data
+        if let ContextId::Tracks(TracksId { uri, .. }) = id {
+            if uri == "liked-track" {
+                return Some(&mut self.user_data.saved_tracks);
+            }
+        }
+
+        self.caches.context.peek_mut(&id.uri()).map(|c| match c {
             Context::Album { tracks, .. } => tracks,
             Context::Playlist { tracks, .. } => tracks,
             Context::Artist {

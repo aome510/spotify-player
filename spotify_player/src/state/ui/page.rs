@@ -234,6 +234,20 @@ impl SearchPageUIState {
     }
 }
 
+impl ContextPageType {
+    pub fn title(&self) -> String {
+        match self {
+            ContextPageType::CurrentPlaying => String::from("Current Playing"),
+            ContextPageType::Browsing(id) => match id {
+                ContextId::Playlist(_) => String::from("Playlist"),
+                ContextId::Album(_) => String::from("Album"),
+                ContextId::Artist(_) => String::from("Artist"),
+                ContextId::Tracks(id) => id.name.to_owned(),
+            },
+        }
+    }
+}
+
 impl ContextPageUIState {
     pub fn new_playlist() -> Self {
         Self::Playlist {

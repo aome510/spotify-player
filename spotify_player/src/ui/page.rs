@@ -197,13 +197,10 @@ pub fn render_context_page(
     };
 
     let block = Block::default()
-        .title(ui.theme.block_title_with_style(match context_page_type {
-            ContextPageType::CurrentPlaying => "Context (Current Playing)",
-            ContextPageType::Browsing(_) => "Context (Browsing)",
-        }))
+        .title(ui.theme.block_title_with_style(context_page_type.title()))
         .borders(Borders::ALL);
 
-    let context_uri = match id {
+    let id = match id {
         None => {
             frame.render_widget(
                 Paragraph::new("Cannot determine the current page's context").block(block),
@@ -211,10 +208,10 @@ pub fn render_context_page(
             );
             return Ok(());
         }
-        Some(id) => id.uri(),
+        Some(id) => id,
     };
 
-    match state.data.read().caches.context.peek(&context_uri) {
+    match state.data.read().caches.context.peek(&id.uri()) {
         Some(context) => {
             frame.render_widget(block, rect);
 
@@ -255,6 +252,16 @@ pub fn render_context_page(
                     )?;
                 }
                 Context::Album { tracks, .. } => {
+                    render_track_table_window(
+                        frame,
+                        chunks[1],
+                        is_active,
+                        state,
+                        ui.search_filtered_items(tracks),
+                        ui,
+                    )?;
+                }
+                Context::Tracks { tracks } => {
                     render_track_table_window(
                         frame,
                         chunks[1],
