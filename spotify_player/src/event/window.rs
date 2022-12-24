@@ -3,6 +3,7 @@ use crate::{
     command::{AlbumAction, ArtistAction, PlaylistAction, TrackAction},
     state::UIStateGuard,
 };
+use rand::Rng;
 
 /// Handles a command for the currently focused context window
 ///
@@ -14,22 +15,52 @@ pub fn handle_command_for_focused_context_window(
     state: &SharedState,
 ) -> Result<bool> {
     let ui = state.ui.lock();
-    let context_uri = match ui.current_page() {
+    let context_id = match ui.current_page() {
         PageState::Context { id, .. } => match id {
             None => return Ok(false),
-            Some(id) => id.uri(),
+            Some(id) => id,
         },
         _ => anyhow::bail!("expect a context page"),
     };
 
+    // handle commands that require access to data's mutable state
+    {
+        let order = match command {
+            Command::SortTrackByTitle => Some(TrackOrder::TrackName),
+            Command::SortTrackByAlbum => Some(TrackOrder::Album),
+            Command::SortTrackByArtists => Some(TrackOrder::Artists),
+            Command::SortTrackByAddedDate => Some(TrackOrder::AddedAt),
+            Command::SortTrackByDuration => Some(TrackOrder::Duration),
+            _ => None,
+        };
+
+        // sort ordering commands
+        if let Some(order) = order {
+            let mut data = state.data.write();
+            if let Some(tracks) = data.get_tracks_by_id_mut(context_id) {
+                tracks.sort_by(|x, y| order.compare(x, y));
+            }
+            return Ok(true);
+        }
+        // reverse ordering command
+        if command == Command::ReverseTrackOrder {
+            let mut data = state.data.write();
+            if let Some(tracks) = data.get_tracks_by_id_mut(context_id) {
+                tracks.reverse();
+            }
+            return Ok(true);
+        }
+    }
+
     let data = state.data.read();
-    match data.caches.context.peek(&context_uri) {
+
+    match data.caches.context.peek(&context_id.uri()) {
         Some(context) => match context {
             Context::Artist {
                 top_tracks,
                 albums,
                 related_artists,
-                ..
+                artist,
             } => {
                 let focus_state = match ui.current_page() {
                     PageState::Context {
@@ -55,8 +86,14 @@ pub fn handle_command_for_focused_context_window(
                     ArtistFocusState::TopTracks => handle_command_for_track_table_window(
                         command,
                         client_pub,
-                        None,
-                        Some(top_tracks.iter().map(|t| t.id.as_ref()).collect()),
+                        ContextId::Tracks(TracksId::new(
+                            format!("artist-{}-top-tracks", artist.name),
+                            format!("Artist {}'s top tracks", artist.name),
+                        )),
+                        Playback::URIs(
+                            top_tracks.iter().map(|t| t.id.into_static()).collect(),
+                            None,
+                        ),
                         ui.search_filtered_items(top_tracks),
                         &data,
                         ui,
@@ -66,8 +103,8 @@ pub fn handle_command_for_focused_context_window(
             Context::Album { album, tracks } => handle_command_for_track_table_window(
                 command,
                 client_pub,
-                Some(ContextId::Album(album.id.clone())),
-                None,
+                context_id.clone(),
+                Playback::Context(context_id.clone(), None),
                 ui.search_filtered_items(tracks),
                 &data,
                 ui,
@@ -75,8 +112,17 @@ pub fn handle_command_for_focused_context_window(
             Context::Playlist { playlist, tracks } => handle_command_for_track_table_window(
                 command,
                 client_pub,
-                Some(ContextId::Playlist(playlist.id.clone())),
-                None,
+                context_id.clone(),
+                Playback::Context(context_id.clone(), None),
+                ui.search_filtered_items(tracks),
+                &data,
+                ui,
+            ),
+            Context::Tracks { tracks } => handle_command_for_track_table_window(
+                command,
+                client_pub,
+                context_id.clone(),
+                Playback::URIs(tracks.iter().map(|t| t.id.into_static()).collect(), None),
                 ui.search_filtered_items(tracks),
                 &data,
                 ui,
@@ -87,24 +133,11 @@ pub fn handle_command_for_focused_context_window(
 }
 
 /// handles a command for the track table subwindow
-///
-/// In addition to the command and the application's states,
-/// the function requires
-/// - `tracks`: a list of tracks in the track table (can already be filtered by a search query)
-/// - **either** `track_ids` or `context_id`
-///
-/// If `track_ids` is specified, playing a track in the track table will
-/// start a `URIs` playback consisting of tracks whose id is in `track_ids`.
-/// The above case is only used for the top-track table in an **Artist** context window.
-///
-/// If `context_id` is specified, playing a track in the track table will
-/// start a `Context` playback representing a Spotify context.
-/// The above case is used for the track table of a playlist or an album.
 pub fn handle_command_for_track_table_window(
     command: Command,
     client_pub: &flume::Sender<ClientRequest>,
-    context_id: Option<ContextId>,
-    track_ids: Option<Vec<TrackId>>,
+    context_id: ContextId,
+    base_playback: Playback,
     tracks: Vec<&Track>,
     data: &DataReadGuard,
     mut ui: UIStateGuard,
@@ -125,30 +158,24 @@ pub fn handle_command_for_track_table_window(
                 ui.current_page_mut().select(id - 1);
             }
         }
+        Command::PlayRandom => {
+            let id = rand::thread_rng().gen_range(0..tracks.len());
+            let offset = Some(rspotify_model::Offset::Uri(tracks[id].id.uri()));
+
+            client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
+                base_playback.offset(offset),
+            )))?;
+        }
         Command::ChooseSelected => {
             let offset = Some(rspotify_model::Offset::Uri(tracks[id].id.uri()));
-            if track_ids.is_some() {
-                // play a track from a list of tracks
-                client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
-                    Playback::URIs(
-                        track_ids
-                            .unwrap()
-                            .into_iter()
-                            .map(|id| id.into_static())
-                            .collect(),
-                        offset,
-                    ),
-                )))?;
-            } else if context_id.is_some() {
-                // play a track from a context
-                client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
-                    Playback::Context(context_id.unwrap(), offset),
-                )))?;
-            }
+
+            client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
+                base_playback.offset(offset),
+            )))?;
         }
         Command::ShowActionsOnSelectedItem => {
             let mut actions = command::construct_track_actions(tracks[id], data);
-            if let Some(ContextId::Playlist(_)) = context_id {
+            if let ContextId::Playlist(_) = context_id {
                 actions.push(TrackAction::DeleteFromCurrentPlaylist);
             }
             ui.popup = Some(PopupState::ActionList(

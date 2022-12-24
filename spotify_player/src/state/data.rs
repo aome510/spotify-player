@@ -53,7 +53,7 @@ impl Default for Caches {
 }
 
 impl AppData {
-    pub fn get_tracks_by_id(&self, id: ContextId) -> Option<&Vec<Track>> {
+    pub fn get_tracks_by_id(&self, id: &ContextId) -> Option<&Vec<Track>> {
         // liked track page's id is handled separately because it is stored as a part of user data
         if let ContextId::Tracks(TracksId { uri, .. }) = id {
             if uri == "liked-track" {
@@ -71,7 +71,7 @@ impl AppData {
         })
     }
 
-    pub fn get_tracks_by_id_mut(&mut self, id: ContextId) -> Option<&mut Vec<Track>> {
+    pub fn get_tracks_by_id_mut(&mut self, id: &ContextId) -> Option<&mut Vec<Track>> {
         // liked track page's id is handled separately because it is stored as a part of user data
         if let ContextId::Tracks(TracksId { uri, .. }) = id {
             if uri == "liked-track" {

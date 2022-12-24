@@ -382,3 +382,26 @@ impl std::fmt::Display for Category {
         write!(f, "{}", self.name)
     }
 }
+
+impl TracksId {
+    pub fn new<U, N>(uri: U, name: N) -> Self
+    where
+        U: Into<String>,
+        N: Into<String>,
+    {
+        Self {
+            uri: uri.into(),
+            name: name.into(),
+        }
+    }
+}
+
+impl Playback {
+    /// creates new playback with a specified offset based on the current playback
+    pub fn offset(&self, offset: Option<rspotify_model::Offset>) -> Self {
+        match self {
+            Playback::Context(id, _) => Playback::Context(id.clone(), offset),
+            Playback::URIs(uri, _) => Playback::URIs(uri.clone(), offset),
+        }
+    }
+}
