@@ -46,7 +46,7 @@ impl UIState {
         self.create_new_page(PageState::Context {
             id: None,
             context_page_type: ContextPageType::Browsing(super::ContextId::Tracks(TracksId::new(
-                uri,
+                format!("radio:{uri}"),
                 name,
                 "Recommendations",
             ))),

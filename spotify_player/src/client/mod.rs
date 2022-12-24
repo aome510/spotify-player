@@ -249,10 +249,15 @@ impl Client {
                 state.data.write().user_data.saved_albums = albums;
             }
             ClientRequest::GetUserTopTracks => {
-                let id = "top-tracks";
-                if !state.data.read().caches.tracks.contains(id) {
+                let uri = &USER_TOP_TRACKS_ID.uri;
+                if !state.data.read().caches.context.contains(uri) {
                     let tracks = self.current_user_top_tracks().await?;
-                    state.data.write().caches.tracks.put(id.to_string(), tracks);
+                    state
+                        .data
+                        .write()
+                        .caches
+                        .context
+                        .put(uri.to_owned(), Context::Tracks { tracks });
                 }
             }
             ClientRequest::GetUserSavedTracks => {
@@ -260,10 +265,15 @@ impl Client {
                 state.data.write().user_data.saved_tracks = tracks;
             }
             ClientRequest::GetUserRecentlyPlayedTracks => {
-                let id = "recently-played-tracks";
-                if !state.data.read().caches.tracks.contains(id) {
+                let uri = &USER_RECENTLY_PLAYED_TRACKS_ID.uri;
+                if !state.data.read().caches.context.contains(uri) {
                     let tracks = self.current_user_recently_played_tracks().await?;
-                    state.data.write().caches.tracks.put(id.to_string(), tracks);
+                    state
+                        .data
+                        .write()
+                        .caches
+                        .context
+                        .put(uri.to_owned(), Context::Tracks { tracks });
                 }
             }
             ClientRequest::GetContext(context) => {
@@ -275,6 +285,11 @@ impl Client {
                         }
                         ContextId::Album(album_id) => self.album_context(album_id).await?,
                         ContextId::Artist(artist_id) => self.artist_context(artist_id).await?,
+                        ContextId::Tracks(_) => {
+                            anyhow::bail!(
+                                "`GetContext` request for `tracks` context is not supported!"
+                            );
+                        }
                     };
 
                     state.data.write().caches.context.put(uri, context);
@@ -287,12 +302,17 @@ impl Client {
                     state.data.write().caches.search.put(query, results);
                 }
             }
-            ClientRequest::GetRadioTracks(uri) => {
-                let id = format!("radio::{}", uri);
-                if !state.data.read().caches.tracks.contains(&id) {
-                    let tracks = self.radio_tracks(uri).await?;
+            ClientRequest::GetRadioTracks(seed_uri) => {
+                let radio_uri = format!("radio::{}", seed_uri);
+                if !state.data.read().caches.context.contains(&radio_uri) {
+                    let tracks = self.radio_tracks(seed_uri).await?;
 
-                    state.data.write().caches.tracks.put(id, tracks);
+                    state
+                        .data
+                        .write()
+                        .caches
+                        .context
+                        .put(radio_uri, Context::Tracks { tracks });
                 }
             }
             ClientRequest::AddTrackToQueue(track_id) => {
