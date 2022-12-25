@@ -1,6 +1,6 @@
 use std::{collections::HashMap, num::NonZeroUsize};
 
-use super::model::*;
+use super::{model::*, USER_LIKED_TRACKS_ID};
 
 pub type DataReadGuard<'a> = parking_lot::RwLockReadGuard<'a, AppData>;
 
@@ -27,7 +27,6 @@ pub struct UserData {
 pub struct Caches {
     pub context: lru::LruCache<String, Context>,
     pub search: lru::LruCache<String, SearchResults>,
-    pub tracks: lru::LruCache<String, Vec<Track>>,
     #[cfg(feature = "lyric-finder")]
     pub lyrics: lru::LruCache<String, lyric_finder::LyricResult>,
     #[cfg(feature = "image")]
@@ -45,7 +44,6 @@ impl Default for Caches {
         Self {
             context: lru::LruCache::new(NonZeroUsize::new(64).unwrap()),
             search: lru::LruCache::new(NonZeroUsize::new(64).unwrap()),
-            tracks: lru::LruCache::new(NonZeroUsize::new(64).unwrap()),
             #[cfg(feature = "lyric-finder")]
             lyrics: lru::LruCache::new(NonZeroUsize::new(64).unwrap()),
             #[cfg(feature = "image")]
@@ -55,12 +53,24 @@ impl Default for Caches {
 }
 
 impl AppData {
-    pub fn get_tracks_by_id(&self, id: &str) -> Option<&Vec<Track>> {
-        match id {
-            // LikedTrackPage's id is handled separately because it is stored as a part of user data
-            "liked-tracks" => Some(&self.user_data.saved_tracks),
-            _ => self.caches.tracks.peek(id),
+    pub fn get_tracks_by_id_mut(&mut self, id: &ContextId) -> Option<&mut Vec<Track>> {
+        // liked track page's id is handled separately because it is stored as a part of user data
+        // TODO: handle rendering/event handling for user's liked tracks page, which are currently broken
+        // related issue: https://github.com/aome510/spotify-player/issues/78
+        if let ContextId::Tracks(tracks_id) = id {
+            if *tracks_id == *USER_LIKED_TRACKS_ID {
+                return Some(&mut self.user_data.saved_tracks);
+            }
         }
+
+        self.caches.context.peek_mut(&id.uri()).map(|c| match c {
+            Context::Album { tracks, .. } => tracks,
+            Context::Playlist { tracks, .. } => tracks,
+            Context::Artist {
+                top_tracks: tracks, ..
+            } => tracks,
+            Context::Tracks { tracks, .. } => tracks,
+        })
     }
 }
 

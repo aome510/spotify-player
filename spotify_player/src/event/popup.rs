@@ -54,9 +54,12 @@ pub fn handle_key_sequence_for_popup(
                         }
                         ArtistPopupAction::GoToRadio => {
                             let uri = artists[id].id.uri();
-                            let desc = format!("{} Radio", artists[id].name);
-                            ui.create_new_radio_page(&uri, desc);
-                            client_pub.send(ClientRequest::GetRadioTracks(uri))?;
+                            let name = artists[id].name.to_owned();
+                            ui.create_new_radio_page(&uri);
+                            client_pub.send(ClientRequest::GetRadioTracks {
+                                seed_uri: uri,
+                                seed_name: name,
+                            })?;
                         }
                     }
 
@@ -261,9 +264,6 @@ fn handle_key_sequence_for_search_popup(
         PageType::Context => {
             page::handle_key_sequence_for_context_page(key_sequence, client_pub, state)
         }
-        PageType::Tracks => {
-            page::handle_key_sequence_for_tracks_page(key_sequence, client_pub, state)
-        }
         PageType::Browse => {
             page::handle_key_sequence_for_browse_page(key_sequence, client_pub, state)
         }
@@ -447,9 +447,12 @@ fn handle_command_for_action_list_popup(
                     }
                     TrackAction::GoToTrackRadio => {
                         let uri = track.id.uri();
-                        let desc = format!("{} Radio", track.name);
-                        ui.create_new_radio_page(&uri, desc);
-                        client_pub.send(ClientRequest::GetRadioTracks(uri))?;
+                        let name = track.name.to_owned();
+                        ui.create_new_radio_page(&uri);
+                        client_pub.send(ClientRequest::GetRadioTracks {
+                            seed_uri: uri,
+                            seed_name: name,
+                        })?;
                     }
                     TrackAction::GoToArtistRadio => {
                         ui.popup = Some(PopupState::ArtistList(
@@ -461,9 +464,12 @@ fn handle_command_for_action_list_popup(
                     TrackAction::GoToAlbumRadio => {
                         if let Some(ref album) = track.album {
                             let uri = album.id.uri();
-                            let desc = format!("{} Radio", album.name);
-                            ui.create_new_radio_page(&uri, desc);
-                            client_pub.send(ClientRequest::GetRadioTracks(uri))?;
+                            let name = album.name.to_owned();
+                            ui.create_new_radio_page(&uri);
+                            client_pub.send(ClientRequest::GetRadioTracks {
+                                seed_uri: uri,
+                                seed_name: name,
+                            })?;
                         }
                     }
                     TrackAction::DeleteFromLikedTracks => {
@@ -496,9 +502,12 @@ fn handle_command_for_action_list_popup(
                     }
                     AlbumAction::GoToAlbumRadio => {
                         let uri = album.id.uri();
-                        let desc = format!("{} Radio", album.name);
-                        ui.create_new_radio_page(&uri, desc);
-                        client_pub.send(ClientRequest::GetRadioTracks(uri))?;
+                        let name = album.name.to_owned();
+                        ui.create_new_radio_page(&uri);
+                        client_pub.send(ClientRequest::GetRadioTracks {
+                            seed_uri: uri,
+                            seed_name: name,
+                        })?;
                     }
                     AlbumAction::GoToArtistRadio => {
                         ui.popup = Some(PopupState::ArtistList(
@@ -526,9 +535,12 @@ fn handle_command_for_action_list_popup(
                     }
                     ArtistAction::GoToArtistRadio => {
                         let uri = artist.id.uri();
-                        let desc = format!("{} Radio", artist.name);
-                        ui.create_new_radio_page(&uri, desc);
-                        client_pub.send(ClientRequest::GetRadioTracks(uri))?;
+                        let name = artist.name.to_owned();
+                        ui.create_new_radio_page(&uri);
+                        client_pub.send(ClientRequest::GetRadioTracks {
+                            seed_uri: uri,
+                            seed_name: name,
+                        })?;
                     }
                     ArtistAction::Unfollow => {
                         client_pub.send(ClientRequest::DeleteFromLibrary(ItemId::Artist(
@@ -546,9 +558,12 @@ fn handle_command_for_action_list_popup(
                     }
                     PlaylistAction::GoToPlaylistRadio => {
                         let uri = playlist.id.uri();
-                        let desc = format!("{} Radio", playlist.name);
-                        ui.create_new_radio_page(&uri, desc);
-                        client_pub.send(ClientRequest::GetRadioTracks(uri))?;
+                        let name = playlist.name.to_owned();
+                        ui.create_new_radio_page(&uri);
+                        client_pub.send(ClientRequest::GetRadioTracks {
+                            seed_uri: uri,
+                            seed_name: name,
+                        })?;
                     }
                     PlaylistAction::DeleteFromLibrary => {
                         client_pub.send(ClientRequest::DeleteFromLibrary(ItemId::Playlist(

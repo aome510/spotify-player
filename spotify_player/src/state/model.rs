@@ -20,6 +20,16 @@ pub enum Context {
         albums: Vec<Album>,
         related_artists: Vec<Artist>,
     },
+    Tracks {
+        tracks: Vec<Track>,
+        desc: String,
+    },
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TracksId {
+    pub uri: String,
+    pub kind: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -28,6 +38,7 @@ pub enum ContextId {
     Playlist(PlaylistId<'static>),
     Album(AlbumId<'static>),
     Artist(ArtistId<'static>),
+    Tracks(TracksId),
 }
 
 #[derive(Clone, Debug)]
@@ -138,16 +149,6 @@ pub struct Category {
 }
 
 impl Context {
-    /// sorts tracks in the context by a sort oder
-    pub fn sort_tracks(&mut self, sort_order: TrackOrder) {
-        self.tracks_mut().sort_by(|x, y| sort_order.compare(x, y));
-    }
-
-    /// reverses order of tracks in the context
-    pub fn reverse_tracks(&mut self) {
-        self.tracks_mut().reverse();
-    }
-
     /// gets the context's description
     pub fn description(&self) -> String {
         match self {
@@ -156,7 +157,7 @@ impl Context {
                 ref tracks,
             } => {
                 format!(
-                    "Album: {} | {} | {} songs",
+                    "{} | {} | {} songs",
                     album.name,
                     album.release_date,
                     tracks.len()
@@ -167,38 +168,14 @@ impl Context {
                 tracks,
             } => {
                 format!(
-                    "Playlist: {} | {} | {} songs",
+                    "{} | {} | {} songs",
                     playlist.name,
                     playlist.owner.0,
                     tracks.len()
                 )
             }
-            Context::Artist { ref artist, .. } => {
-                format!("Artist: {}", artist.name)
-            }
-        }
-    }
-
-    /// gets context tracks (immutable)
-    pub fn tracks(&self) -> &Vec<Track> {
-        match self {
-            Context::Album { ref tracks, .. } => tracks,
-            Context::Playlist { ref tracks, .. } => tracks,
-            Context::Artist {
-                top_tracks: ref tracks,
-                ..
-            } => tracks,
-        }
-    }
-
-    /// gets context tracks (mutable)
-    pub fn tracks_mut(&mut self) -> &mut Vec<Track> {
-        match self {
-            Context::Album { tracks, .. } => tracks,
-            Context::Playlist { tracks, .. } => tracks,
-            Context::Artist {
-                top_tracks: tracks, ..
-            } => tracks,
+            Context::Artist { ref artist, .. } => artist.name.to_string(),
+            Context::Tracks { desc, tracks } => format!("{} | {} songs", desc, tracks.len()),
         }
     }
 }
@@ -209,6 +186,7 @@ impl ContextId {
             Self::Album(id) => id.uri(),
             Self::Artist(id) => id.uri(),
             Self::Playlist(id) => id.uri(),
+            Self::Tracks(id) => id.uri.to_owned(),
         }
     }
 }
@@ -402,5 +380,28 @@ impl From<rspotify_model::category::Category> for Category {
 impl std::fmt::Display for Category {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.name)
+    }
+}
+
+impl TracksId {
+    pub fn new<U, K>(uri: U, kind: K) -> Self
+    where
+        U: Into<String>,
+        K: Into<String>,
+    {
+        Self {
+            uri: uri.into(),
+            kind: kind.into(),
+        }
+    }
+}
+
+impl Playback {
+    /// creates new playback with a specified offset based on the current playback
+    pub fn offset(&self, offset: Option<rspotify_model::Offset>) -> Self {
+        match self {
+            Playback::Context(id, _) => Playback::Context(id.clone(), offset),
+            Playback::URIs(uri, _) => Playback::URIs(uri.clone(), offset),
+        }
     }
 }

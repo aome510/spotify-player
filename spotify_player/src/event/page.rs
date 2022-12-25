@@ -1,5 +1,4 @@
 use anyhow::Context as _;
-use rand::Rng;
 
 use super::*;
 
@@ -154,11 +153,6 @@ pub fn handle_key_sequence_for_context_page(
         None => return Ok(false),
     };
 
-    let context_id = match state.ui.lock().current_page() {
-        PageState::Context { id, .. } => id.clone(),
-        _ => anyhow::bail!("expect a context page"),
-    };
-
     match command {
         Command::Search => {
             let mut ui = state.ui.lock();
@@ -167,126 +161,12 @@ pub fn handle_key_sequence_for_context_page(
                 query: "".to_owned(),
             });
         }
-        Command::PlayRandom => {
-            if let Some(context_id) = context_id {
-                let data = state.data.read();
-
-                // randomly play a track from the current context
-                if let Some(context) = data.caches.context.peek(&context_id.uri()) {
-                    let tracks = context.tracks();
-                    let offset = match context {
-                        // Spotify does not allow to manually specify `offset` for artist context
-                        Context::Artist { .. } => None,
-                        _ => {
-                            if tracks.is_empty() {
-                                None
-                            } else {
-                                let id = rand::thread_rng().gen_range(0..tracks.len());
-                                Some(rspotify_model::Offset::Uri(tracks[id].id.uri()))
-                            }
-                        }
-                    };
-
-                    client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
-                        Playback::Context(context_id, offset),
-                    )))?;
-                }
-            }
-        }
         _ => {
-            // handle sort/reverse tracks commands
-            let order = match command {
-                Command::SortTrackByTitle => Some(TrackOrder::TrackName),
-                Command::SortTrackByAlbum => Some(TrackOrder::Album),
-                Command::SortTrackByArtists => Some(TrackOrder::Artists),
-                Command::SortTrackByAddedDate => Some(TrackOrder::AddedAt),
-                Command::SortTrackByDuration => Some(TrackOrder::Duration),
-                _ => None,
-            };
-
-            // TODO: handle sort commands for non-context pages
-            if let Some(order) = order {
-                if let Some(context_id) = context_id {
-                    let mut data = state.data.write();
-                    if let Some(context) = data.caches.context.peek_mut(&context_id.uri()) {
-                        context.sort_tracks(order);
-                    }
-                }
-                return Ok(true);
-            }
-            if command == Command::ReverseTrackOrder {
-                if let Some(context_id) = context_id {
-                    let mut data = state.data.write();
-                    if let Some(context) = data.caches.context.peek_mut(&context_id.uri()) {
-                        context.reverse_tracks();
-                    }
-                }
-                return Ok(true);
-            }
-
             // the command hasn't been handled, assign the job to the focused window's handler
             return window::handle_command_for_focused_context_window(command, client_pub, state);
         }
     }
     Ok(true)
-}
-
-pub fn handle_key_sequence_for_tracks_page(
-    key_sequence: &KeySequence,
-    client_pub: &flume::Sender<ClientRequest>,
-    state: &SharedState,
-) -> Result<bool> {
-    let command = match state
-        .keymap_config
-        .find_command_from_key_sequence(key_sequence)
-    {
-        Some(command) => command,
-        None => return Ok(false),
-    };
-
-    let mut ui = state.ui.lock();
-    let data = state.data.read();
-
-    let id = match ui.current_page() {
-        PageState::Tracks { id, .. } => id,
-        _ => anyhow::bail!("expect a tracks page"),
-    };
-
-    let tracks = data
-        .get_tracks_by_id(id)
-        .map(|tracks| ui.search_filtered_items(tracks))
-        .unwrap_or_default();
-
-    match command {
-        Command::Search => {
-            ui.current_page_mut().select(0);
-            ui.popup = Some(PopupState::Search {
-                query: "".to_owned(),
-            });
-            Ok(true)
-        }
-        Command::PlayRandom => {
-            // randomly play a song from the list of recommendation tracks
-            let offset = {
-                let id = rand::thread_rng().gen_range(0..tracks.len());
-                Some(rspotify_model::Offset::Uri(tracks[id].id.uri()))
-            };
-            client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
-                Playback::URIs(tracks.iter().map(|t| t.id.clone()).collect(), offset),
-            )))?;
-
-            Ok(true)
-        }
-        _ => window::handle_command_for_track_table_window(
-            command,
-            client_pub,
-            None,
-            Some(tracks.iter().map(|t| t.id.as_ref()).collect()),
-            tracks,
-            &data,
-            ui,
-        ),
-    }
 }
 
 pub fn handle_key_sequence_for_browse_page(

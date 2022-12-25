@@ -249,10 +249,16 @@ impl Client {
                 state.data.write().user_data.saved_albums = albums;
             }
             ClientRequest::GetUserTopTracks => {
-                let id = "top-tracks";
-                if !state.data.read().caches.tracks.contains(id) {
+                let uri = &USER_TOP_TRACKS_ID.uri;
+                if !state.data.read().caches.context.contains(uri) {
                     let tracks = self.current_user_top_tracks().await?;
-                    state.data.write().caches.tracks.put(id.to_string(), tracks);
+                    state.data.write().caches.context.put(
+                        uri.to_owned(),
+                        Context::Tracks {
+                            tracks,
+                            desc: "User's top tracks".to_string(),
+                        },
+                    );
                 }
             }
             ClientRequest::GetUserSavedTracks => {
@@ -260,10 +266,16 @@ impl Client {
                 state.data.write().user_data.saved_tracks = tracks;
             }
             ClientRequest::GetUserRecentlyPlayedTracks => {
-                let id = "recently-played-tracks";
-                if !state.data.read().caches.tracks.contains(id) {
+                let uri = &USER_RECENTLY_PLAYED_TRACKS_ID.uri;
+                if !state.data.read().caches.context.contains(uri) {
                     let tracks = self.current_user_recently_played_tracks().await?;
-                    state.data.write().caches.tracks.put(id.to_string(), tracks);
+                    state.data.write().caches.context.put(
+                        uri.to_owned(),
+                        Context::Tracks {
+                            tracks,
+                            desc: "User's recently played tracks".to_string(),
+                        },
+                    );
                 }
             }
             ClientRequest::GetContext(context) => {
@@ -275,6 +287,11 @@ impl Client {
                         }
                         ContextId::Album(album_id) => self.album_context(album_id).await?,
                         ContextId::Artist(artist_id) => self.artist_context(artist_id).await?,
+                        ContextId::Tracks(_) => {
+                            anyhow::bail!(
+                                "`GetContext` request for `tracks` context is not supported!"
+                            );
+                        }
                     };
 
                     state.data.write().caches.context.put(uri, context);
@@ -287,12 +304,21 @@ impl Client {
                     state.data.write().caches.search.put(query, results);
                 }
             }
-            ClientRequest::GetRadioTracks(uri) => {
-                let id = format!("radio::{}", uri);
-                if !state.data.read().caches.tracks.contains(&id) {
+            ClientRequest::GetRadioTracks {
+                seed_uri: uri,
+                seed_name: name,
+            } => {
+                let radio_uri = format!("radio:{}", uri);
+                if !state.data.read().caches.context.contains(&radio_uri) {
                     let tracks = self.radio_tracks(uri).await?;
 
-                    state.data.write().caches.tracks.put(id, tracks);
+                    state.data.write().caches.context.put(
+                        radio_uri,
+                        Context::Tracks {
+                            tracks,
+                            desc: format!("{} Radio", name),
+                        },
+                    );
                 }
             }
             ClientRequest::AddTrackToQueue(track_id) => {
@@ -564,6 +590,9 @@ impl Client {
                     self.spotify
                         .start_context_playback(PlayContextId::from(id), device_id, offset, None)
                         .await?
+                }
+                ContextId::Tracks(_) => {
+                    anyhow::bail!("`StartPlayback` request for `tracks` context is not supported")
                 }
             },
             Playback::URIs(track_ids, offset) => {

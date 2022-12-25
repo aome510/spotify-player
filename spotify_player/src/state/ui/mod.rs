@@ -1,9 +1,11 @@
-use crate::{config, key, utils::new_table_state};
+use crate::{config, key};
 
 pub type UIStateGuard<'a> = parking_lot::MutexGuard<'a, UIState>;
 
 mod page;
 mod popup;
+
+use super::*;
 
 pub use page::*;
 pub use popup::*;
@@ -40,14 +42,15 @@ impl UIState {
         self.popup = None;
     }
 
-    pub fn create_new_radio_page(&mut self, uri: &str, desc: String) {
-        let new_page = PageState::Tracks {
-            title: "Recommendations".to_string(),
-            state: new_table_state(),
-            id: format!("radio::{uri}"),
-            desc,
-        };
-        self.create_new_page(new_page);
+    pub fn create_new_radio_page(&mut self, uri: &str) {
+        self.create_new_page(PageState::Context {
+            id: None,
+            context_page_type: ContextPageType::Browsing(super::ContextId::Tracks(TracksId::new(
+                format!("radio:{uri}"),
+                "Recommendations",
+            ))),
+            state: None,
+        });
     }
 
     /// Returns whether there exists a focused popup.

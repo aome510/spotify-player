@@ -2757,9 +2757,9 @@ dependencies = [
 
 [[package]]
 name = "once_cell"
-version = "1.13.0"
+version = "1.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "18a6dbe30758c9f83eb00cbea4ac95966305f5a7772f3f42ebfc7fc7eddbd8e1"
+checksum = "86f0b0d4bf799edbc74508c1e8bf170ff5f41238e5f8225603ca7caaae2b7860"
 
 [[package]]
 name = "opaque-debug"
@@ -3912,6 +3912,7 @@ dependencies = [
  "lru",
  "lyric_finder",
  "maybe-async",
+ "once_cell",
  "parking_lot 0.12.1",
  "rand 0.8.5",
  "reqwest",
