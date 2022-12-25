@@ -44,8 +44,8 @@ pub enum ClientRequest {
     GetContext(ContextId),
     GetCurrentPlayback,
     GetRadioTracks {
-        uri: String,
-        name: String,
+        seed_uri: String,
+        seed_name: String,
     },
     Search(String),
     AddTrackToQueue(TrackId<'static>),

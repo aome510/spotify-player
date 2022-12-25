@@ -304,7 +304,10 @@ impl Client {
                     state.data.write().caches.search.put(query, results);
                 }
             }
-            ClientRequest::GetRadioTracks { uri, name } => {
+            ClientRequest::GetRadioTracks {
+                seed_uri: uri,
+                seed_name: name,
+            } => {
                 let radio_uri = format!("radio:{}", uri);
                 if !state.data.read().caches.context.contains(&radio_uri) {
                     let tracks = self.radio_tracks(uri).await?;
