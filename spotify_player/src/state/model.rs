@@ -412,7 +412,7 @@ impl Playback {
                         .position(|id| id.uri() == uri)
                         .unwrap_or_default();
                     let l = pos.saturating_sub(super::PLAYBACK_TRACKS_LIMIT / 2);
-                    let r = l + super::PLAYBACK_TRACKS_LIMIT;
+                    let r = std::cmp::min(l + super::PLAYBACK_TRACKS_LIMIT, ids.len());
                     // For a list with too many tracks, to avoid payload limit when making the `start_playback`
                     // API request, we restrict the range of tracks to be played, which is based on the
                     // playing track's position (if any) and the application's limit (PLAYBACK_TRACKS_LIMIT).
