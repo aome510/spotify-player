@@ -160,17 +160,14 @@ pub fn handle_command_for_track_table_window(
         }
         Command::PlayRandom => {
             let id = rand::thread_rng().gen_range(0..tracks.len());
-            let offset = Some(rspotify_model::Offset::Uri(tracks[id].id.uri()));
 
             client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
-                base_playback.offset(offset),
+                base_playback.uri_offset(tracks[id].id.uri()),
             )))?;
         }
         Command::ChooseSelected => {
-            let offset = Some(rspotify_model::Offset::Uri(tracks[id].id.uri()));
-
             client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
-                base_playback.offset(offset),
+                base_playback.uri_offset(tracks[id].id.uri()),
             )))?;
         }
         Command::ShowActionsOnSelectedItem => {
