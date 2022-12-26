@@ -263,6 +263,13 @@ impl Client {
             }
             ClientRequest::GetUserSavedTracks => {
                 let tracks = self.current_user_saved_tracks().await?;
+                state.data.write().caches.context.put(
+                    USER_LIKED_TRACKS_ID.uri.to_owned(),
+                    Context::Tracks {
+                        tracks: tracks.clone(),
+                        desc: "User's top tracks".to_string(),
+                    },
+                );
                 state.data.write().user_data.saved_tracks = tracks;
             }
             ClientRequest::GetUserRecentlyPlayedTracks => {
