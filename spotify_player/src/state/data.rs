@@ -1,6 +1,6 @@
 use std::{collections::HashMap, num::NonZeroUsize};
 
-use super::{model::*, USER_LIKED_TRACKS_ID};
+use super::model::*;
 
 pub type DataReadGuard<'a> = parking_lot::RwLockReadGuard<'a, AppData>;
 
@@ -54,15 +54,6 @@ impl Default for Caches {
 
 impl AppData {
     pub fn get_tracks_by_id_mut(&mut self, id: &ContextId) -> Option<&mut Vec<Track>> {
-        // liked track page's id is handled separately because it is stored as a part of user data
-        // TODO: handle rendering/event handling for user's liked tracks page, which are currently broken
-        // related issue: https://github.com/aome510/spotify-player/issues/78
-        if let ContextId::Tracks(tracks_id) = id {
-            if *tracks_id == *USER_LIKED_TRACKS_ID {
-                return Some(&mut self.user_data.saved_tracks);
-            }
-        }
-
         self.caches.context.peek_mut(&id.uri()).map(|c| match c {
             Context::Album { tracks, .. } => tracks,
             Context::Playlist { tracks, .. } => tracks,
