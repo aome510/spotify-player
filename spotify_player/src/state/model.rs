@@ -404,15 +404,15 @@ impl Playback {
                 Playback::Context(id.clone(), Some(rspotify_model::Offset::Uri(uri)))
             }
             Playback::URIs(ids, _) => {
-                let pos = ids
-                    .iter()
-                    .position(|id| id.uri() == uri)
-                    .unwrap_or_default();
                 let ids = if ids.len() < super::PLAYBACK_TRACKS_LIMIT {
                     ids.clone()
                 } else {
+                    let pos = ids
+                        .iter()
+                        .position(|id| id.uri() == uri)
+                        .unwrap_or_default();
                     let l = pos.saturating_sub(super::PLAYBACK_TRACKS_LIMIT / 2);
-                    let r = l + super::PLAYBACK_TRACKS_LIMIT - 1;
+                    let r = l + super::PLAYBACK_TRACKS_LIMIT;
                     // For a list with too many tracks, to avoid payload limit when making the `start_playback`
                     // API request, we restrict the range of tracks to be played, which is based on the
                     // playing track's position (if any) and the application's limit (PLAYBACK_TRACKS_LIMIT).
