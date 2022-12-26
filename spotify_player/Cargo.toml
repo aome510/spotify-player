@@ -1,6 +1,6 @@
 [package]
 name = "spotify_player"
-version = "0.9.8"
+version = "0.10.0"
 authors = ["Thang Pham <phamducthang1234@gmail.com>"]
 edition = "2021"
 license = "MIT"
@@ -11,7 +11,7 @@ readme = "../README.md"
 
 [dependencies]
 anyhow = "1.0.68"
-clap = "4.0.29"
+clap = "4.0.32"
 config_parser2 = "0.1.3"
 crossterm = "0.25.0"
 dirs-next = "2.0.0"
