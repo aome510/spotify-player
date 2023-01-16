@@ -19,8 +19,8 @@ pub struct Theme {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct Palette {
-    pub background: Color,
-    pub foreground: Color,
+    pub background: Option<Color>,
+    pub foreground: Option<Color>,
 
     pub black: Color,
     pub blue: Color,
@@ -68,8 +68,6 @@ pub struct Style {
 
 #[derive(Copy, Clone, Debug, Deserialize)]
 pub enum StyleColor {
-    Background,
-    Foreground,
     Black,
     Blue,
     Cyan,
@@ -144,9 +142,14 @@ impl ThemeConfig {
 
 impl Theme {
     pub fn app_style(&self) -> style::Style {
-        style::Style::default()
-            .bg(self.palette.background.color)
-            .fg(self.palette.foreground.color)
+        let mut style = style::Style::default();
+        if let Some(ref c) = self.palette.background {
+            style = style.bg(c.color);
+        }
+        if let Some(ref c) = self.palette.foreground {
+            style = style.fg(c.color);
+        }
+        style
     }
 
     pub fn selection_style(&self, is_active: bool) -> style::Style {
@@ -223,8 +226,6 @@ impl Style {
 impl StyleColor {
     pub fn color(&self, palette: &Palette) -> style::Color {
         match *self {
-            Self::Background => palette.background.color,
-            Self::Foreground => palette.foreground.color,
             Self::Black => palette.black.color,
             Self::Blue => palette.blue.color,
             Self::Cyan => palette.cyan.color,
@@ -321,8 +322,8 @@ impl Default for Theme {
         Self {
             name: "default".to_owned(),
             palette: Palette {
-                background: "#1e1f29".into(),
-                foreground: "#f8f8f2".into(),
+                background: None,
+                foreground: None,
 
                 // ANSI colors for default palette
                 // Reference: https://en.wikipedia.org/wiki/ANSI_escape_code#3-bit_and_4-bit
