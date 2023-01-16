@@ -309,93 +309,16 @@ impl From<&str> for Color {
     }
 }
 
+impl From<style::Color> for Color {
+    fn from(value: style::Color) -> Self {
+        Self { color: value }
+    }
+}
+
 impl Default for ThemeConfig {
     fn default() -> Self {
         Self {
-            themes: vec![
-                Theme::default(),
-                Theme {
-                    // Ayu Light color palette based on https://github.com/mbadolato/iTerm2-Color-Schemes/blob/master/alacritty/ayu_light.yml
-                    name: "ayu_light".to_owned(),
-                    palette: Palette {
-                        foreground: "#5c6773".into(),
-                        background: "#fafafa".into(),
-                        selection_foreground: "#5c6773".into(),
-                        selection_background: "#f0eee4".into(),
-                        black: "#000000".into(),
-                        blue: "#41a6d9".into(),
-                        cyan: "#4dbf99".into(),
-                        green: "#86b300".into(),
-                        magenta: "#f07178".into(),
-                        red: "#ff3333".into(),
-                        white: "#ffffff".into(),
-                        yellow: "#f29718".into(),
-                        bright_black: "#323232".into(),
-                        bright_blue: "#73d8ff".into(),
-                        bright_cyan: "#7ff1cb".into(),
-                        bright_green: "#b8e532".into(),
-                        bright_magenta: "#ffa3aa".into(),
-                        bright_red: "#ff6565".into(),
-                        bright_white: "#ffffff".into(),
-                        bright_yellow: "#ffc94a".into(),
-                    },
-                    component_style: ComponentStyle::default(),
-                },
-                Theme {
-                    // Gruvbox Dark color palette based on https://github.com/mbadolato/iTerm2-Color-Schemes/blob/master/alacritty/Gruvbox%20Dark.yml
-                    name: "gruvbox_dark".to_owned(),
-                    palette: Palette {
-                        foreground: "#e6d4a3".into(),
-                        background: "#1e1e1e".into(),
-                        selection_foreground: "#534a42".into(),
-                        selection_background: "#e6d4a3".into(),
-                        black: "#1e1e1e".into(),
-                        blue: "#377375".into(),
-                        cyan: "#578e57".into(),
-                        green: "#868715".into(),
-                        magenta: "#a04b73".into(),
-                        red: "#be0f17".into(),
-                        white: "#978771".into(),
-                        yellow: "#cc881a".into(),
-                        bright_black: "#7f7061".into(),
-                        bright_blue: "#719586".into(),
-                        bright_cyan: "#7db669".into(),
-                        bright_green: "#aab01e".into(),
-                        bright_magenta: "#c77089".into(),
-                        bright_red: "#f73028".into(),
-                        bright_white: "#e6d4a3".into(),
-                        bright_yellow: "#f7b125".into(),
-                    },
-                    component_style: ComponentStyle::default(),
-                },
-                Theme {
-                    // Solarized Light palette based on https://github.com/mbadolato/iTerm2-Color-Schemes/blob/master/alacritty/Builtin%20Solarized%20Light.yml
-                    name: "solarized_light".to_owned(),
-                    palette: Palette {
-                        background: "#fdf6e3".into(),
-                        foreground: "#657b83".into(),
-                        selection_background: "#eee8d5".into(),
-                        selection_foreground: "#586e75".into(),
-                        black: "#073642".into(),
-                        blue: "#268bd2".into(),
-                        cyan: "#2aa198".into(),
-                        green: "#859900".into(),
-                        magenta: "#d33682".into(),
-                        red: "#dc322f".into(),
-                        white: "#eee8d5".into(),
-                        yellow: "#b58900".into(),
-                        bright_black: "#002b36".into(),
-                        bright_blue: "#839496".into(),
-                        bright_cyan: "#93a1a1".into(),
-                        bright_green: "#586e75".into(),
-                        bright_magenta: "#6c71c4".into(),
-                        bright_red: "#cb4b16".into(),
-                        bright_white: "#fdf6e3".into(),
-                        bright_yellow: "#657b83".into(),
-                    },
-                    component_style: ComponentStyle::default(),
-                },
-            ],
+            themes: vec![Theme::default()],
         }
     }
 }
@@ -403,29 +326,32 @@ impl Default for ThemeConfig {
 impl Default for Theme {
     fn default() -> Self {
         Self {
-            // Dracula color palette based on https://github.com/mbadolato/iTerm2-Color-Schemes/blob/master/alacritty/Dracula.yml
-            name: "dracula".to_owned(),
+            name: "default".to_owned(),
             palette: Palette {
                 background: "#1e1f29".into(),
                 foreground: "#f8f8f2".into(),
-                selection_background: "#44475a".into(),
-                selection_foreground: "#ffffff".into(),
-                black: "#000000".into(),
-                blue: "#bd93f9".into(),
-                cyan: "#8be9fd".into(),
-                green: "#50fa7b".into(),
-                magenta: "#ff79c6".into(),
-                red: "#ff5555".into(),
-                white: "#bbbbbb".into(),
-                yellow: "#f1fa8c".into(),
-                bright_black: "#555555".into(),
-                bright_blue: "#bd93f9".into(),
-                bright_cyan: "#8be9fd".into(),
-                bright_green: "#50fa7b".into(),
-                bright_magenta: "#ff79c6".into(),
-                bright_red: "#ff5555".into(),
-                bright_white: "#ffffff".into(),
-                bright_yellow: "#f1fa8c".into(),
+
+                // ANSI colors for default palette
+                // Reference: https://en.wikipedia.org/wiki/ANSI_escape_code#3-bit_and_4-bit
+                // The conversion from `style::Color` can be a bit counter-intuitive
+                // as the `tui-rs` library doesn't follow the ANSI naming standard.
+                black: style::Color::Black.into(),
+                red: style::Color::LightRed.into(),
+                green: style::Color::LightGreen.into(),
+                yellow: style::Color::LightYellow.into(),
+                blue: style::Color::LightBlue.into(),
+                magenta: style::Color::LightMagenta.into(),
+                cyan: style::Color::LightCyan.into(),
+                white: style::Color::Gray.into(),
+
+                bright_black: style::Color::DarkGray.into(),
+                bright_red: style::Color::Red.into(),
+                bright_green: style::Color::Green.into(),
+                bright_yellow: style::Color::Yellow.into(),
+                bright_blue: style::Color::Blue.into(),
+                bright_magenta: style::Color::Magenta.into(),
+                bright_cyan: style::Color::Cyan.into(),
+                bright_white: style::Color::White.into(),
             },
             component_style: ComponentStyle::default(),
         }
