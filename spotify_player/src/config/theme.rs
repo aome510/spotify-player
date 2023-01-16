@@ -21,8 +21,6 @@ pub struct Theme {
 pub struct Palette {
     pub background: Color,
     pub foreground: Color,
-    pub selection_background: Color,
-    pub selection_foreground: Color,
 
     pub black: Color,
     pub blue: Color,
@@ -72,8 +70,6 @@ pub struct Style {
 pub enum StyleColor {
     Background,
     Foreground,
-    SelectionBackground,
-    SelectionForeground,
     Black,
     Blue,
     Cyan,
@@ -156,8 +152,7 @@ impl Theme {
     pub fn selection_style(&self, is_active: bool) -> style::Style {
         if is_active {
             style::Style::default()
-                .bg(self.palette.selection_background.color)
-                .fg(self.palette.selection_foreground.color)
+                .add_modifier(style::Modifier::REVERSED)
                 .add_modifier(style::Modifier::BOLD)
         } else {
             style::Style::default()
@@ -230,8 +225,6 @@ impl StyleColor {
         match *self {
             Self::Background => palette.background.color,
             Self::Foreground => palette.foreground.color,
-            Self::SelectionBackground => palette.selection_background.color,
-            Self::SelectionForeground => palette.selection_foreground.color,
             Self::Black => palette.black.color,
             Self::Blue => palette.blue.color,
             Self::Cyan => palette.cyan.color,
