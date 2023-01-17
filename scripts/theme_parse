@@ -12,47 +12,51 @@ if len(sys.argv) > 1:
     else:
         saved_name = name
 else:
-    name = 'Dracula'
-    saved_name = 'dracula'
+    print("Usage: theme_parse `theme_name` `theme_saved_name`", file=sys.stderr)
+    exit(1)
 
-url = f'https://raw.githubusercontent.com/mbadolato/iTerm2-Color-Schemes/master/alacritty/{name}.yml'
+url = f"https://raw.githubusercontent.com/mbadolato/iTerm2-Color-Schemes/master/alacritty/{name}.yml"
 
-content = requests.get(url).content
+req = requests.get(url)
 
-data = yaml.safe_load(content)
+if req.status_code != 200:
+    print(
+        f"GET {url} request failed with status code: {req.status_code}", file=sys.stderr
+    )
+    exit(1)
+
+data = yaml.safe_load(req.content)
 
 print(
-    f'''[[themes]]
+    f"""[[themes]]
 name = "{saved_name}"
 [themes.palette]
 background = "{data["colors"]["primary"]["background"]}"
 foreground = "{data["colors"]["primary"]["foreground"]}"
 black = "{data["colors"]["normal"]["black"]}"
-blue = "{data["colors"]["normal"]["blue"]}"
-cyan = "{data["colors"]["normal"]["cyan"]}"
-green = "{data["colors"]["normal"]["green"]}"
-magenta = "{data["colors"]["normal"]["magenta"]}"
 red = "{data["colors"]["normal"]["red"]}"
-white = "{data["colors"]["normal"]["white"]}"
+green = "{data["colors"]["normal"]["green"]}"
 yellow = "{data["colors"]["normal"]["yellow"]}"
+blue = "{data["colors"]["normal"]["blue"]}"
+magenta = "{data["colors"]["normal"]["magenta"]}"
+cyan = "{data["colors"]["normal"]["cyan"]}"
+white = "{data["colors"]["normal"]["white"]}"
 bright_black = "{data["colors"]["bright"]["black"]}"
-bright_blue = "{data["colors"]["bright"]["blue"]}"
-bright_cyan = "{data["colors"]["bright"]["cyan"]}"
-bright_green = "{data["colors"]["bright"]["green"]}"
-bright_magenta = "{data["colors"]["bright"]["magenta"]}"
 bright_red = "{data["colors"]["bright"]["red"]}"
-bright_white = "{data["colors"]["bright"]["white"]}"
+bright_green = "{data["colors"]["bright"]["green"]}"
 bright_yellow = "{data["colors"]["bright"]["yellow"]}"
-selection_background = "{data["colors"]["selection"]["background"]}"
-selection_foreground =  "{data["colors"]["selection"]["text"]}"
+bright_blue = "{data["colors"]["bright"]["blue"]}"
+bright_magenta = "{data["colors"]["bright"]["magenta"]}"
+bright_cyan = "{data["colors"]["bright"]["cyan"]}"
+bright_white = "{data["colors"]["bright"]["white"]}"
 [themes.component_style]
 block_title = {{ fg = "Magenta"  }}
 playback_track = {{ fg = "Cyan", modifiers = ["Bold"] }}
 playback_album = {{ fg = "Yellow" }}
 playback_metadata = {{ fg = "BrightBlack" }}
-playback_progress_bar = {{ bg = "SelectionBackground", fg = "Green" }}
+playback_progress_bar = {{ bg = "BrightBlack", fg = "Green" }}
 current_playing = {{ fg = "Green", modifiers = ["Bold"] }}
 page_desc = {{ fg = "Cyan", modifiers = ["Bold"] }}
 table_header = {{ fg = "Blue" }}
-    '''
+    """
 )
