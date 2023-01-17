@@ -59,6 +59,38 @@ playback_progress_bar = { bg = "BrightBlack", fg = "Green" }
 current_playing = { fg = "Green", modifiers = ["Bold"] }
 page_desc = { fg = "Cyan", modifiers = ["Bold"] }
 table_header = { fg = "Blue" }
+
+[[themes]]
+name = "gruvbox_light"
+[themes.palette]
+background = "#fbf1c7"
+foreground = "#282828"
+black = "#fbf1c7"
+red = "#9d0006"
+green = "#79740e"
+yellow = "#b57614"
+blue = "#076678"
+magenta = "#8f3f71"
+cyan = "#427b58"
+white = "#3c3836"
+bright_black = "#9d8374"
+bright_red = "#cc241d"
+bright_green = "#98971a"
+bright_yellow = "#d79921"
+bright_blue = "#458588"
+bright_magenta = "#b16186"
+bright_cyan = "#689d69"
+bright_white = "#7c6f64"
+[themes.component_style]
+block_title = { fg = "Magenta"  }
+playback_track = { fg = "Cyan", modifiers = ["Bold"] }
+playback_album = { fg = "Yellow" }
+playback_metadata = { fg = "BrightBlack" }
+playback_progress_bar = { bg = "BrightBlack", fg = "Green" }
+current_playing = { fg = "Green", modifiers = ["Bold"] }
+page_desc = { fg = "Cyan", modifiers = ["Bold"] }
+table_header = { fg = "Blue" }
+
     
 [[themes]]
 name = "solarized_dark"
@@ -121,4 +153,3 @@ playback_progress_bar = { bg = "BrightBlack", fg = "Green" }
 current_playing = { fg = "Green", modifiers = ["Bold"] }
 page_desc = { fg = "Cyan", modifiers = ["Bold"] }
 table_header = { fg = "Blue" }
-    
