@@ -22,22 +22,38 @@ pub struct Palette {
     pub background: Option<Color>,
     pub foreground: Option<Color>,
 
+    #[serde(default = "Color::black")]
     pub black: Color,
+    #[serde(default = "Color::blue")]
     pub blue: Color,
+    #[serde(default = "Color::cyan")]
     pub cyan: Color,
+    #[serde(default = "Color::green")]
     pub green: Color,
+    #[serde(default = "Color::magenta")]
     pub magenta: Color,
+    #[serde(default = "Color::red")]
     pub red: Color,
+    #[serde(default = "Color::white")]
     pub white: Color,
+    #[serde(default = "Color::yellow")]
     pub yellow: Color,
 
+    #[serde(default = "Color::bright_black")]
     pub bright_black: Color,
+    #[serde(default = "Color::bright_white")]
     pub bright_white: Color,
+    #[serde(default = "Color::bright_red")]
     pub bright_red: Color,
+    #[serde(default = "Color::bright_magenta")]
     pub bright_magenta: Color,
+    #[serde(default = "Color::bright_green")]
     pub bright_green: Color,
+    #[serde(default = "Color::bright_cyan")]
     pub bright_cyan: Color,
+    #[serde(default = "Color::bright_blue")]
     pub bright_blue: Color,
+    #[serde(default = "Color::bright_yellow")]
     pub bright_yellow: Color,
 }
 
@@ -295,6 +311,60 @@ impl Color {
             color: style::Color::Rgb(r, g, b),
         })
     }
+
+    // Terminal's ANSI colors construction functions.
+    // Reference: https://en.wikipedia.org/wiki/ANSI_escape_code#3-bit_and_4-bit
+    // The conversion from `style::Color` can be a bit counter-intuitive
+    // as the `tui-rs` library doesn't follow the ANSI naming standard.
+
+    pub fn black() -> Self {
+        style::Color::Black.into()
+    }
+    pub fn red() -> Self {
+        style::Color::LightRed.into()
+    }
+    pub fn green() -> Self {
+        style::Color::LightGreen.into()
+    }
+    pub fn yellow() -> Self {
+        style::Color::LightYellow.into()
+    }
+    pub fn blue() -> Self {
+        style::Color::LightBlue.into()
+    }
+    pub fn magenta() -> Self {
+        style::Color::LightMagenta.into()
+    }
+    pub fn cyan() -> Self {
+        style::Color::LightCyan.into()
+    }
+    pub fn white() -> Self {
+        style::Color::Gray.into()
+    }
+    pub fn bright_black() -> Self {
+        style::Color::DarkGray.into()
+    }
+    pub fn bright_red() -> Self {
+        style::Color::Red.into()
+    }
+    pub fn bright_green() -> Self {
+        style::Color::Green.into()
+    }
+    pub fn bright_yellow() -> Self {
+        style::Color::Yellow.into()
+    }
+    pub fn bright_blue() -> Self {
+        style::Color::Blue.into()
+    }
+    pub fn bright_magenta() -> Self {
+        style::Color::Magenta.into()
+    }
+    pub fn bright_cyan() -> Self {
+        style::Color::Cyan.into()
+    }
+    pub fn bright_white() -> Self {
+        style::Color::White.into()
+    }
 }
 
 impl From<&str> for Color {
@@ -324,28 +394,23 @@ impl Default for Theme {
             palette: Palette {
                 background: None,
                 foreground: None,
-
-                // ANSI colors for default palette
-                // Reference: https://en.wikipedia.org/wiki/ANSI_escape_code#3-bit_and_4-bit
-                // The conversion from `style::Color` can be a bit counter-intuitive
-                // as the `tui-rs` library doesn't follow the ANSI naming standard.
-                black: style::Color::Black.into(),
-                red: style::Color::LightRed.into(),
-                green: style::Color::LightGreen.into(),
-                yellow: style::Color::LightYellow.into(),
-                blue: style::Color::LightBlue.into(),
-                magenta: style::Color::LightMagenta.into(),
-                cyan: style::Color::LightCyan.into(),
-                white: style::Color::Gray.into(),
-
-                bright_black: style::Color::DarkGray.into(),
-                bright_red: style::Color::Red.into(),
-                bright_green: style::Color::Green.into(),
-                bright_yellow: style::Color::Yellow.into(),
-                bright_blue: style::Color::Blue.into(),
-                bright_magenta: style::Color::Magenta.into(),
-                bright_cyan: style::Color::Cyan.into(),
-                bright_white: style::Color::White.into(),
+                // the default theme uses the terminal's ANSI colors
+                black: Color::black(),
+                red: Color::red(),
+                green: Color::green(),
+                yellow: Color::yellow(),
+                blue: Color::blue(),
+                magenta: Color::magenta(),
+                cyan: Color::cyan(),
+                white: Color::white(),
+                bright_black: Color::bright_black(),
+                bright_red: Color::bright_red(),
+                bright_green: Color::bright_green(),
+                bright_yellow: Color::bright_yellow(),
+                bright_blue: Color::bright_blue(),
+                bright_magenta: Color::bright_magenta(),
+                bright_cyan: Color::bright_cyan(),
+                bright_white: Color::bright_white(),
             },
             component_style: ComponentStyle::default(),
         }
@@ -366,7 +431,9 @@ impl Default for ComponentStyle {
                 .bg(StyleColor::BrightBlack)
                 .fg(StyleColor::Green),
 
-            current_playing: Style::default().fg(StyleColor::Green),
+            current_playing: Style::default()
+                .fg(StyleColor::Green)
+                .modifiers(vec![StyleModifier::Bold]),
 
             page_desc: Style::default()
                 .fg(StyleColor::Cyan)
