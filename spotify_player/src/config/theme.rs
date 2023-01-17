@@ -19,27 +19,41 @@ pub struct Theme {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct Palette {
-    pub background: Color,
-    pub foreground: Color,
-    pub selection_background: Color,
-    pub selection_foreground: Color,
+    pub background: Option<Color>,
+    pub foreground: Option<Color>,
 
+    #[serde(default = "Color::black")]
     pub black: Color,
+    #[serde(default = "Color::blue")]
     pub blue: Color,
+    #[serde(default = "Color::cyan")]
     pub cyan: Color,
+    #[serde(default = "Color::green")]
     pub green: Color,
+    #[serde(default = "Color::magenta")]
     pub magenta: Color,
+    #[serde(default = "Color::red")]
     pub red: Color,
+    #[serde(default = "Color::white")]
     pub white: Color,
+    #[serde(default = "Color::yellow")]
     pub yellow: Color,
 
+    #[serde(default = "Color::bright_black")]
     pub bright_black: Color,
+    #[serde(default = "Color::bright_white")]
     pub bright_white: Color,
+    #[serde(default = "Color::bright_red")]
     pub bright_red: Color,
+    #[serde(default = "Color::bright_magenta")]
     pub bright_magenta: Color,
+    #[serde(default = "Color::bright_green")]
     pub bright_green: Color,
+    #[serde(default = "Color::bright_cyan")]
     pub bright_cyan: Color,
+    #[serde(default = "Color::bright_blue")]
     pub bright_blue: Color,
+    #[serde(default = "Color::bright_yellow")]
     pub bright_yellow: Color,
 }
 
@@ -70,10 +84,6 @@ pub struct Style {
 
 #[derive(Copy, Clone, Debug, Deserialize)]
 pub enum StyleColor {
-    Background,
-    Foreground,
-    SelectionBackground,
-    SelectionForeground,
     Black,
     Blue,
     Cyan,
@@ -148,16 +158,20 @@ impl ThemeConfig {
 
 impl Theme {
     pub fn app_style(&self) -> style::Style {
-        style::Style::default()
-            .bg(self.palette.background.color)
-            .fg(self.palette.foreground.color)
+        let mut style = style::Style::default();
+        if let Some(ref c) = self.palette.background {
+            style = style.bg(c.color);
+        }
+        if let Some(ref c) = self.palette.foreground {
+            style = style.fg(c.color);
+        }
+        style
     }
 
     pub fn selection_style(&self, is_active: bool) -> style::Style {
         if is_active {
             style::Style::default()
-                .bg(self.palette.selection_background.color)
-                .fg(self.palette.selection_foreground.color)
+                .add_modifier(style::Modifier::REVERSED)
                 .add_modifier(style::Modifier::BOLD)
         } else {
             style::Style::default()
@@ -228,10 +242,6 @@ impl Style {
 impl StyleColor {
     pub fn color(&self, palette: &Palette) -> style::Color {
         match *self {
-            Self::Background => palette.background.color,
-            Self::Foreground => palette.foreground.color,
-            Self::SelectionBackground => palette.selection_background.color,
-            Self::SelectionForeground => palette.selection_foreground.color,
             Self::Black => palette.black.color,
             Self::Blue => palette.blue.color,
             Self::Cyan => palette.cyan.color,
@@ -301,6 +311,60 @@ impl Color {
             color: style::Color::Rgb(r, g, b),
         })
     }
+
+    // Terminal's ANSI colors construction functions.
+    // Reference: https://en.wikipedia.org/wiki/ANSI_escape_code#3-bit_and_4-bit
+    // The conversion from `style::Color` can be a bit counter-intuitive
+    // as the `tui-rs` library doesn't follow the ANSI naming standard.
+
+    pub fn black() -> Self {
+        style::Color::Black.into()
+    }
+    pub fn red() -> Self {
+        style::Color::LightRed.into()
+    }
+    pub fn green() -> Self {
+        style::Color::LightGreen.into()
+    }
+    pub fn yellow() -> Self {
+        style::Color::LightYellow.into()
+    }
+    pub fn blue() -> Self {
+        style::Color::LightBlue.into()
+    }
+    pub fn magenta() -> Self {
+        style::Color::LightMagenta.into()
+    }
+    pub fn cyan() -> Self {
+        style::Color::LightCyan.into()
+    }
+    pub fn white() -> Self {
+        style::Color::Gray.into()
+    }
+    pub fn bright_black() -> Self {
+        style::Color::DarkGray.into()
+    }
+    pub fn bright_red() -> Self {
+        style::Color::Red.into()
+    }
+    pub fn bright_green() -> Self {
+        style::Color::Green.into()
+    }
+    pub fn bright_yellow() -> Self {
+        style::Color::Yellow.into()
+    }
+    pub fn bright_blue() -> Self {
+        style::Color::Blue.into()
+    }
+    pub fn bright_magenta() -> Self {
+        style::Color::Magenta.into()
+    }
+    pub fn bright_cyan() -> Self {
+        style::Color::Cyan.into()
+    }
+    pub fn bright_white() -> Self {
+        style::Color::White.into()
+    }
 }
 
 impl From<&str> for Color {
@@ -309,93 +373,16 @@ impl From<&str> for Color {
     }
 }
 
+impl From<style::Color> for Color {
+    fn from(value: style::Color) -> Self {
+        Self { color: value }
+    }
+}
+
 impl Default for ThemeConfig {
     fn default() -> Self {
         Self {
-            themes: vec![
-                Theme::default(),
-                Theme {
-                    // Ayu Light color palette based on https://github.com/mbadolato/iTerm2-Color-Schemes/blob/master/alacritty/ayu_light.yml
-                    name: "ayu_light".to_owned(),
-                    palette: Palette {
-                        foreground: "#5c6773".into(),
-                        background: "#fafafa".into(),
-                        selection_foreground: "#5c6773".into(),
-                        selection_background: "#f0eee4".into(),
-                        black: "#000000".into(),
-                        blue: "#41a6d9".into(),
-                        cyan: "#4dbf99".into(),
-                        green: "#86b300".into(),
-                        magenta: "#f07178".into(),
-                        red: "#ff3333".into(),
-                        white: "#ffffff".into(),
-                        yellow: "#f29718".into(),
-                        bright_black: "#323232".into(),
-                        bright_blue: "#73d8ff".into(),
-                        bright_cyan: "#7ff1cb".into(),
-                        bright_green: "#b8e532".into(),
-                        bright_magenta: "#ffa3aa".into(),
-                        bright_red: "#ff6565".into(),
-                        bright_white: "#ffffff".into(),
-                        bright_yellow: "#ffc94a".into(),
-                    },
-                    component_style: ComponentStyle::default(),
-                },
-                Theme {
-                    // Gruvbox Dark color palette based on https://github.com/mbadolato/iTerm2-Color-Schemes/blob/master/alacritty/Gruvbox%20Dark.yml
-                    name: "gruvbox_dark".to_owned(),
-                    palette: Palette {
-                        foreground: "#e6d4a3".into(),
-                        background: "#1e1e1e".into(),
-                        selection_foreground: "#534a42".into(),
-                        selection_background: "#e6d4a3".into(),
-                        black: "#1e1e1e".into(),
-                        blue: "#377375".into(),
-                        cyan: "#578e57".into(),
-                        green: "#868715".into(),
-                        magenta: "#a04b73".into(),
-                        red: "#be0f17".into(),
-                        white: "#978771".into(),
-                        yellow: "#cc881a".into(),
-                        bright_black: "#7f7061".into(),
-                        bright_blue: "#719586".into(),
-                        bright_cyan: "#7db669".into(),
-                        bright_green: "#aab01e".into(),
-                        bright_magenta: "#c77089".into(),
-                        bright_red: "#f73028".into(),
-                        bright_white: "#e6d4a3".into(),
-                        bright_yellow: "#f7b125".into(),
-                    },
-                    component_style: ComponentStyle::default(),
-                },
-                Theme {
-                    // Solarized Light palette based on https://github.com/mbadolato/iTerm2-Color-Schemes/blob/master/alacritty/Builtin%20Solarized%20Light.yml
-                    name: "solarized_light".to_owned(),
-                    palette: Palette {
-                        background: "#fdf6e3".into(),
-                        foreground: "#657b83".into(),
-                        selection_background: "#eee8d5".into(),
-                        selection_foreground: "#586e75".into(),
-                        black: "#073642".into(),
-                        blue: "#268bd2".into(),
-                        cyan: "#2aa198".into(),
-                        green: "#859900".into(),
-                        magenta: "#d33682".into(),
-                        red: "#dc322f".into(),
-                        white: "#eee8d5".into(),
-                        yellow: "#b58900".into(),
-                        bright_black: "#002b36".into(),
-                        bright_blue: "#839496".into(),
-                        bright_cyan: "#93a1a1".into(),
-                        bright_green: "#586e75".into(),
-                        bright_magenta: "#6c71c4".into(),
-                        bright_red: "#cb4b16".into(),
-                        bright_white: "#fdf6e3".into(),
-                        bright_yellow: "#657b83".into(),
-                    },
-                    component_style: ComponentStyle::default(),
-                },
-            ],
+            themes: vec![Theme::default()],
         }
     }
 }
@@ -403,29 +390,27 @@ impl Default for ThemeConfig {
 impl Default for Theme {
     fn default() -> Self {
         Self {
-            // Dracula color palette based on https://github.com/mbadolato/iTerm2-Color-Schemes/blob/master/alacritty/Dracula.yml
-            name: "dracula".to_owned(),
+            name: "default".to_owned(),
             palette: Palette {
-                background: "#1e1f29".into(),
-                foreground: "#f8f8f2".into(),
-                selection_background: "#44475a".into(),
-                selection_foreground: "#ffffff".into(),
-                black: "#000000".into(),
-                blue: "#bd93f9".into(),
-                cyan: "#8be9fd".into(),
-                green: "#50fa7b".into(),
-                magenta: "#ff79c6".into(),
-                red: "#ff5555".into(),
-                white: "#bbbbbb".into(),
-                yellow: "#f1fa8c".into(),
-                bright_black: "#555555".into(),
-                bright_blue: "#bd93f9".into(),
-                bright_cyan: "#8be9fd".into(),
-                bright_green: "#50fa7b".into(),
-                bright_magenta: "#ff79c6".into(),
-                bright_red: "#ff5555".into(),
-                bright_white: "#ffffff".into(),
-                bright_yellow: "#f1fa8c".into(),
+                background: None,
+                foreground: None,
+                // the default theme uses the terminal's ANSI colors
+                black: Color::black(),
+                red: Color::red(),
+                green: Color::green(),
+                yellow: Color::yellow(),
+                blue: Color::blue(),
+                magenta: Color::magenta(),
+                cyan: Color::cyan(),
+                white: Color::white(),
+                bright_black: Color::bright_black(),
+                bright_red: Color::bright_red(),
+                bright_green: Color::bright_green(),
+                bright_yellow: Color::bright_yellow(),
+                bright_blue: Color::bright_blue(),
+                bright_magenta: Color::bright_magenta(),
+                bright_cyan: Color::bright_cyan(),
+                bright_white: Color::bright_white(),
             },
             component_style: ComponentStyle::default(),
         }
@@ -443,7 +428,7 @@ impl Default for ComponentStyle {
             playback_album: Style::default().fg(StyleColor::Yellow),
             playback_metadata: Style::default().fg(StyleColor::BrightBlack),
             playback_progress_bar: Style::default()
-                .bg(StyleColor::SelectionBackground)
+                .bg(StyleColor::BrightBlack)
                 .fg(StyleColor::Green),
 
             current_playing: Style::default()

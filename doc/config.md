@@ -22,7 +22,7 @@ All configuration files should be placed inside the application's configuration 
 | `client_id`                          | the Spotify client's ID                                                       | `65b708073fc0480ea92a077233ca87bd`          |
 | `ap_port`                            | the application's Spotify session connection port                             | `None`                                      |
 | `proxy`                              | the application's Spotify session connection proxy                            | `None`                                      |
-| `theme`                              | the application's theme                                                       | `dracula`                                   |
+| `theme`                              | the application's theme                                                       | `default`                                   |
 | `app_refresh_duration_in_ms`         | the duration (in ms) between two consecutive application refreshes            | `32`                                        |
 | `playback_refresh_duration_in_ms`    | the duration (in ms) between two consecutive playback refreshes               | `0`                                         |
 | `cover_image_refresh_duration_in_ms` | the duration (in ms) between two cover image refreshes (`image` feature only) | `2000`                                      |
@@ -79,17 +79,19 @@ More details on the above configuration options can be found under the [Librespo
 
 ## Themes
 
-`spotify-player` uses `theme.toml` to define additional themes in addition to the default themes (`dracula`, `ayu_light`, `gruvbox_dark`, `solarized_light`).
+`spotify-player` uses `theme.toml` to look for user-defined themes.
 
-The new theme can then be used by setting the `theme` option in the [general configuration](#general) file or specifying the `-t <THEME>` (`--theme <THEME>`) option when running the player.
+The application's theme can be modified by setting the `theme` option in `app.toml` or by specifying the `-t <THEME>` (`--theme <THEME>`) option when running the player.
 
-A theme has three main components: `name` (the theme's name), `palette` (the theme's color palette), `component_style` (a list of predefined style for application's components). `name` and `palette` are required when defining a new theme. If `component_style` is not specified, a default value will be used.
+A theme has three main components: `name` (the theme's name), `palette` (the theme's color palette), `component_style` (a list of pre-defined styles for application's components).
+
+`name` and `palette` are required when defining a new theme. If `component_style` is not specified, a default value will be used.
 
 An example of user-defined themes can be found in the example [`theme.toml`](../examples/theme.toml) file
 
 ### Use script to add theme
 
-I have created [a `theme_parse` python script](../scripts/theme_parse) (require `pyaml` and `requests` libraries) to parse [Iterm2 alacritty's color schemes](https://github.com/mbadolato/iTerm2-Color-Schemes/tree/master/alacritty) into `spotify-player` compatible theme configurations.
+[a `theme_parse` python script](../scripts/theme_parse) (require `pyaml` and `requests` libraries) can be used to parse [Iterm2 alacritty's color schemes](https://github.com/mbadolato/iTerm2-Color-Schemes/tree/master/alacritty) into `spotify-player` compatible theme configurations.
 
 For example, you can run
 
@@ -101,7 +103,7 @@ to parse [Builtin Solarized Dark](https://github.com/mbadolato/iTerm2-Color-Sche
 
 ### Palette
 
-To define a theme's color palette, user needs to specify **all** the below fields:
+A theme's palette consists of the following fields:
 
 - `background`
 - `foreground`
@@ -121,14 +123,13 @@ To define a theme's color palette, user needs to specify **all** the below field
 - `bright_red`
 - `bright_white`
 - `bright_yellow`
-- `selection_background`
-- `selection_foreground`
 
-A field in the color palette must be set to the hex representation of a RGB color. For example, `background = "#1e1f29"`.
+If a field is not specified, its default value will be based on the terminal's corresponding color.
+If specified, a field's value must be set to be a hex representation of a RGB color. For example, `background = "#1e1f29"`.
 
 ### Component Styles
 
-To define application's component styles, user needs to specify **all** the below fields:
+To define application's component styles, user needs to specify **all of the below fields**:
 
 - `block_title`
 - `playback_track`
@@ -139,7 +140,7 @@ To define application's component styles, user needs to specify **all** the belo
 - `page_desc`
 - `table_header`
 
-A field in the component styles is a `Style` struct which has three optional fields: `fg`, `bg` and `modifiers`. `fg` and `bg` can be either a palette's color (string in pascal case) or a custom RGB color using the following format: `fg = { Rgb { r = 0, g = 0, b = 0} }`. `modifiers` can only be either `Italic` or `Bold`.
+A field in the component styles is a `Style` struct which has three optional fields: `fg`, `bg` and `modifiers`. `fg` and `bg` can be either a palette's color (string in pascal case) or a custom RGB color using the following format: `fg = { Rgb { r = ..., g = ..., b = ... } }`. `modifiers` can only be either `Italic` or `Bold`.
 
 Default value for application's component styles:
 
@@ -148,7 +149,7 @@ block_title = { fg = "Magenta"  }
 playback_track = { fg = "Cyan", modifiers = ["Bold"] }
 playback_album = { fg = "Yellow" }
 playback_metadata = { fg = "BrightBlack" }
-playback_progress_bar = { bg = "SelectionBackground", fg = "Green" }
+playback_progress_bar = { bg = "BrightBlack", fg = "Green" }
 current_playing = { fg = "Green", modifiers = ["Bold"] }
 page_desc = { fg = "Cyan", modifiers = ["Bold"] }
 table_header = { fg = "Blue" }
