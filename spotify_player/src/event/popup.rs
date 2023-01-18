@@ -395,7 +395,7 @@ fn handle_command_for_command_help_popup(command: Command, mut ui: UIStateGuard)
     Ok(true)
 }
 
-fn execute_share_command(cmd: config::Command, text: String) -> Result<()> {
+fn execute_copy_command(cmd: config::Command, text: String) -> Result<()> {
     let mut child = std::process::Command::new(cmd.command)
         .args(cmd.args)
         .stdin(std::process::Stdio::piped())
@@ -459,7 +459,7 @@ fn handle_command_for_action_list_popup(
                     }
                     TrackAction::CopyTrackLink => {
                         let track_url = format!("http://open.spotify.com/track/{}", track.id.id());
-                        execute_share_command(state.app_config.share_command.clone(), track_url)?;
+                        execute_copy_command(state.app_config.copy_command.clone(), track_url)?;
                         ui.popup = None;
                     }
                     TrackAction::AddToPlaylist => {
@@ -544,6 +544,11 @@ fn handle_command_for_action_list_popup(
                             new_list_state(),
                         ));
                     }
+                    AlbumAction::CopyAlbumLink => {
+                        let album_url = format!("http://open.spotify.com/album/{}", album.id.id());
+                        execute_copy_command(state.app_config.copy_command.clone(), album_url)?;
+                        ui.popup = None;
+                    }
                     AlbumAction::AddToLibrary => {
                         client_pub.send(ClientRequest::AddToLibrary(Item::Album(album.clone())))?;
                         ui.popup = None;
@@ -570,6 +575,12 @@ fn handle_command_for_action_list_popup(
                             seed_name: name,
                         })?;
                     }
+                    ArtistAction::CopyArtistLink => {
+                        let artist_url =
+                            format!("http://open.spotify.com/artist/{}", artist.id.id());
+                        execute_copy_command(state.app_config.copy_command.clone(), artist_url)?;
+                        ui.popup = None;
+                    }
                     ArtistAction::Unfollow => {
                         client_pub.send(ClientRequest::DeleteFromLibrary(ItemId::Artist(
                             artist.id.clone(),
@@ -592,6 +603,12 @@ fn handle_command_for_action_list_popup(
                             seed_uri: uri,
                             seed_name: name,
                         })?;
+                    }
+                    PlaylistAction::CopyPlaylistLink => {
+                        let playlist_url =
+                            format!("http://open.spotify.com/playlist/{}", playlist.id.id());
+                        execute_copy_command(state.app_config.copy_command.clone(), playlist_url)?;
+                        ui.popup = None;
                     }
                     PlaylistAction::DeleteFromLibrary => {
                         client_pub.send(ClientRequest::DeleteFromLibrary(ItemId::Playlist(
