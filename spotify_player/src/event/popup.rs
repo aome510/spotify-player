@@ -1,3 +1,5 @@
+use std::io::Write;
+
 use super::*;
 use crate::command::{AlbumAction, ArtistAction, PlaylistAction, TrackAction};
 use anyhow::Context;
@@ -206,7 +208,7 @@ pub fn handle_key_sequence_for_popup(
         }
         PopupState::CommandHelp { .. } => handle_command_for_command_help_popup(command, ui),
         PopupState::ActionList(item, ..) => {
-            handle_command_for_action_list_popup(item.n_actions(), command, client_pub, ui)
+            handle_command_for_action_list_popup(item.n_actions(), command, client_pub, state, ui)
         }
     }
 }
@@ -395,6 +397,7 @@ fn handle_command_for_action_list_popup(
     n_actions: usize,
     command: Command,
     client_pub: &flume::Sender<ClientRequest>,
+    state: &SharedState,
     ui: UIStateGuard,
 ) -> Result<bool> {
     handle_command_for_list_popup(
@@ -432,6 +435,29 @@ fn handle_command_for_action_list_popup(
                     }
                     TrackAction::AddToQueue => {
                         client_pub.send(ClientRequest::AddTrackToQueue(track.id.clone()))?;
+                        ui.popup = None;
+                    }
+                    TrackAction::CopyTrackLink => {
+                        let track_url = format!("http://open.spotify.com/track/{}", track.id.id());
+
+                        let mut child =
+                            std::process::Command::new(&state.app_config.copy_command.command)
+                                .args(
+                                    state
+                                        .app_config
+                                        .copy_command
+                                        .args
+                                        .iter()
+                                        .collect::<Vec<_>>(),
+                                )
+                                .stdin(std::process::Stdio::piped())
+                                .stdout(std::process::Stdio::piped())
+                                .spawn()?;
+
+                        if let Some(mut stdin) = child.stdin.take() {
+                            stdin.write_all(track_url.as_bytes())?;
+                        }
+
                         ui.popup = None;
                     }
                     TrackAction::AddToPlaylist => {

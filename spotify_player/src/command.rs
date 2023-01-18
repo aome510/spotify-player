@@ -73,6 +73,7 @@ pub enum TrackAction {
     DeleteFromCurrentPlaylist,
     AddToLikedTracks,
     DeleteFromLikedTracks,
+    CopyTrackLink,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -108,6 +109,7 @@ pub fn construct_track_actions(track: &Track, data: &DataReadGuard) -> Vec<Track
         TrackAction::GoToAlbumRadio,
         TrackAction::AddToPlaylist,
         TrackAction::AddToQueue,
+        TrackAction::CopyTrackLink,
     ];
 
     // check if the track is a liked track
