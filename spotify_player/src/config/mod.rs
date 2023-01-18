@@ -91,9 +91,9 @@ impl Default for AppConfig {
             },
             #[cfg(target_os = "windows")]
             copy_command: Command {
-                command: "".to_string(),
+                command: "clip".to_string(),
                 args: vec![],
-            }, // TODO: figure out copy command for Windows
+            },
 
             proxy: None,
             ap_port: None,
