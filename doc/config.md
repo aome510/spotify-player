@@ -57,6 +57,7 @@ The default `app.toml` can be found in the example [`app.toml`](../examples/app.
   **Note**: the above list might not be up-to-date.
 
 - An example of event that triggers a playback update is the one happening when the current track ends.
+- `copy_command` is a struct with two fields `command` and `args`. For example, `copy_command = { command = "xsel", args = ["-i", "-b"] }`.
 
 #### Media control
 
