@@ -23,6 +23,8 @@ pub struct AppConfig {
     pub theme: String,
     pub client_id: String,
 
+    pub copy_command: Command,
+
     // session configs
     pub proxy: Option<String>,
     pub ap_port: Option<u16>,
@@ -55,6 +57,12 @@ pub struct AppConfig {
 }
 
 #[derive(Debug, Deserialize, ConfigParse, Clone)]
+pub struct Command {
+    pub command: String,
+    pub args: Vec<String>,
+}
+
+#[derive(Debug, Deserialize, ConfigParse, Clone)]
 /// Application device configurations
 pub struct DeviceConfig {
     pub name: String,
@@ -70,6 +78,23 @@ impl Default for AppConfig {
             theme: "dracula".to_owned(),
             // official spotify web app's client id
             client_id: "65b708073fc0480ea92a077233ca87bd".to_string(),
+
+            #[cfg(target_os = "macos")]
+            copy_command: Command {
+                command: "pbcopy".to_string(),
+                args: vec![],
+            },
+            #[cfg(all(unix, not(target_os = "macos")))]
+            copy_command: Command {
+                command: "xsel".to_string(),
+                args: vec!["-i", "-b"],
+            },
+            #[cfg(target_os = "windows")]
+            copy_command: Command {
+                command: "".to_string(),
+                args: vec![],
+            }, // TODO: figure out copy command for Windows
+
             proxy: None,
             ap_port: None,
             app_refresh_duration_in_ms: 32,
