@@ -1,7 +1,10 @@
 use std::io::Write;
 
 use super::*;
-use crate::command::{AlbumAction, ArtistAction, PlaylistAction, TrackAction};
+use crate::{
+    command::{AlbumAction, ArtistAction, PlaylistAction, TrackAction},
+    config,
+};
 use anyhow::Context;
 
 /// handles a key sequence for a popup
@@ -392,6 +395,23 @@ fn handle_command_for_command_help_popup(command: Command, mut ui: UIStateGuard)
     Ok(true)
 }
 
+fn execute_share_command(cmd: config::Command, text: String) -> Result<()> {
+    let mut child = std::process::Command::new(cmd.command)
+        .args(cmd.args)
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()?;
+
+    let mut stdin = match child.stdin.take() {
+        Some(stdin) => stdin,
+        None => anyhow::bail!("no stdin found in the child command"),
+    };
+
+    stdin.write_all(text.as_bytes())?;
+
+    Ok(())
+}
+
 /// handles a command for an action list popup
 fn handle_command_for_action_list_popup(
     n_actions: usize,
@@ -439,25 +459,7 @@ fn handle_command_for_action_list_popup(
                     }
                     TrackAction::CopyTrackLink => {
                         let track_url = format!("http://open.spotify.com/track/{}", track.id.id());
-
-                        let mut child =
-                            std::process::Command::new(&state.app_config.share_command.command)
-                                .args(
-                                    state
-                                        .app_config
-                                        .share_command
-                                        .args
-                                        .iter()
-                                        .collect::<Vec<_>>(),
-                                )
-                                .stdin(std::process::Stdio::piped())
-                                .stdout(std::process::Stdio::piped())
-                                .spawn()?;
-
-                        if let Some(mut stdin) = child.stdin.take() {
-                            stdin.write_all(track_url.as_bytes())?;
-                        }
-
+                        execute_share_command(state.app_config.share_command.clone(), track_url)?;
                         ui.popup = None;
                     }
                     TrackAction::AddToPlaylist => {
