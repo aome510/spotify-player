@@ -23,7 +23,7 @@ pub struct AppConfig {
     pub theme: String,
     pub client_id: String,
 
-    pub copy_command: Command,
+    pub share_command: Command,
 
     // session configs
     pub proxy: Option<String>,
@@ -80,17 +80,17 @@ impl Default for AppConfig {
             client_id: "65b708073fc0480ea92a077233ca87bd".to_string(),
 
             #[cfg(target_os = "macos")]
-            copy_command: Command {
+            share_command: Command {
                 command: "pbcopy".to_string(),
                 args: vec![],
             },
             #[cfg(all(unix, not(target_os = "macos")))]
-            copy_command: Command {
+            share_command: Command {
                 command: "xsel".to_string(),
                 args: vec!["-i", "-b"],
             },
             #[cfg(target_os = "windows")]
-            copy_command: Command {
+            share_command: Command {
                 command: "".to_string(),
                 args: vec![],
             }, // TODO: figure out copy command for Windows

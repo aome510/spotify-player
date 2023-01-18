@@ -441,11 +441,11 @@ fn handle_command_for_action_list_popup(
                         let track_url = format!("http://open.spotify.com/track/{}", track.id.id());
 
                         let mut child =
-                            std::process::Command::new(&state.app_config.copy_command.command)
+                            std::process::Command::new(&state.app_config.share_command.command)
                                 .args(
                                     state
                                         .app_config
-                                        .copy_command
+                                        .share_command
                                         .args
                                         .iter()
                                         .collect::<Vec<_>>(),
