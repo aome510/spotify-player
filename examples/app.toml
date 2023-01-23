@@ -1,7 +1,7 @@
 theme = "default"
 client_id = "65b708073fc0480ea92a077233ca87bd"
 copy_command = { command = "pbcopy", args = [] } # macos
-# copy_command = { command = "xsel", args = ["-i", "-b"] } # linux
+# copy_command = { command = "xclip", args = ["-sel", "c"] } # linux
 # copy_command = { command = "clip", args = [] } # windows
 app_refresh_duration_in_ms = 32
 playback_refresh_duration_in_ms = 0

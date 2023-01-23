@@ -86,8 +86,8 @@ impl Default for AppConfig {
             },
             #[cfg(all(unix, not(target_os = "macos")))]
             copy_command: Command {
-                command: "xsel".to_string(),
-                args: vec!["-i".to_string(), "-b".to_string()],
+                command: "xclip".to_string(),
+                args: vec!["-sel".to_string(), "c".to_string()],
             },
             #[cfg(target_os = "windows")]
             copy_command: Command {
