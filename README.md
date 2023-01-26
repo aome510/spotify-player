@@ -299,7 +299,7 @@ List of supported commands:
 | `SortTrackByAddedDate`        | sort the track table (if any) by track's added date                     | `s D`              |
 | `ReverseOrder`                | reverse the order of the track table (if any)                           | `s r`              |
 
-To add new shortcuts or modify the default shortcuts, please refer to the [keymaps section](docs/config.md#keymaps) in the configuration docsumentation.
+To add new shortcuts or modify the default shortcuts, please refer to the [keymaps section](docs/config.md#keymaps) in the configuration documentation.
 
 **Tips**:
 
@@ -323,7 +323,7 @@ To move the focus from the search input to the other windows such as track resul
 
 By default, `spotify-player` will look into `$HOME/.config/spotify-player` for application's configuration files. This can be changed by either specifying `-c <FOLDER_PATH>` or `--config-folder <FOLDER_PATH>` option.
 
-Please refer to [the configuration docsumentation](docs/config.md) for more details on the configuration options.
+Please refer to [the configuration documentation](docs/config.md) for more details on the configuration options.
 
 ## Caches
 
