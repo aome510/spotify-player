@@ -261,7 +261,7 @@ pub fn handle_command_for_artist_list_window(
             });
         }
         Command::ShowActionsOnSelectedItem => {
-            let mut actions = vec![ArtistAction::GoToArtistRadio];
+            let mut actions = vec![ArtistAction::GoToArtistRadio, ArtistAction::CopyArtistLink];
             if data
                 .user_data
                 .followed_artists
@@ -317,6 +317,7 @@ pub fn handle_command_for_album_list_window(
                 AlbumAction::GoToArtist,
                 AlbumAction::GoToAlbumRadio,
                 AlbumAction::GoToArtistRadio,
+                AlbumAction::CopyAlbumLink,
             ];
             if data
                 .user_data
@@ -369,7 +370,10 @@ pub fn handle_command_for_playlist_list_window(
             });
         }
         Command::ShowActionsOnSelectedItem => {
-            let mut actions = vec![PlaylistAction::GoToPlaylistRadio];
+            let mut actions = vec![
+                PlaylistAction::GoToPlaylistRadio,
+                PlaylistAction::CopyPlaylistLink,
+            ];
             if data
                 .user_data
                 .playlists

@@ -73,6 +73,7 @@ pub enum TrackAction {
     DeleteFromCurrentPlaylist,
     AddToLikedTracks,
     DeleteFromLikedTracks,
+    CopyTrackLink,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -82,6 +83,7 @@ pub enum AlbumAction {
     GoToAlbumRadio,
     AddToLibrary,
     DeleteFromLibrary,
+    CopyAlbumLink,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -89,6 +91,7 @@ pub enum ArtistAction {
     GoToArtistRadio,
     Follow,
     Unfollow,
+    CopyArtistLink,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -96,6 +99,7 @@ pub enum PlaylistAction {
     GoToPlaylistRadio,
     AddToLibrary,
     DeleteFromLibrary,
+    CopyPlaylistLink,
 }
 
 /// constructs a default list of actions on a track
@@ -106,6 +110,7 @@ pub fn construct_track_actions(track: &Track, data: &DataReadGuard) -> Vec<Track
         TrackAction::GoToTrackRadio,
         TrackAction::GoToArtistRadio,
         TrackAction::GoToAlbumRadio,
+        TrackAction::CopyTrackLink,
         TrackAction::AddToPlaylist,
         TrackAction::AddToQueue,
     ];

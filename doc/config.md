@@ -17,21 +17,22 @@ All configuration files should be placed inside the application's configuration 
 
 `spotify-player` uses `app.toml` to configure general application configurations:
 
-| Option                               | Description                                                                   | Default                                     |
-| ------------------------------------ | ----------------------------------------------------------------------------- | ------------------------------------------- |
-| `client_id`                          | the Spotify client's ID                                                       | `65b708073fc0480ea92a077233ca87bd`          |
-| `ap_port`                            | the application's Spotify session connection port                             | `None`                                      |
-| `proxy`                              | the application's Spotify session connection proxy                            | `None`                                      |
-| `theme`                              | the application's theme                                                       | `default`                                   |
-| `app_refresh_duration_in_ms`         | the duration (in ms) between two consecutive application refreshes            | `32`                                        |
-| `playback_refresh_duration_in_ms`    | the duration (in ms) between two consecutive playback refreshes               | `0`                                         |
-| `cover_image_refresh_duration_in_ms` | the duration (in ms) between two cover image refreshes (`image` feature only) | `2000`                                      |
-| `track_table_item_max_len`           | the maximum length of a column in a track table                               | `32`                                        |
-| `enable_media_control`               | enable application media control support (`media-control` feature only)       | `true` (Linux), `false` (Windows and MacOS) |
-| `default_device`                     | the default device to connect to on startup if no playing device found        | `spotify-player`                            |
-| `playback_window_width`              | the width of the playback window                                              | `6`                                         |
-| `cover_img_width`                    | the width of the cover image (`image` feature only)                           | `5`                                         |
-| `cover_img_length`                   | the length of the cover image (`image` feature only)                          | `9`                                         |
+| Option                               | Description                                                                   | Default                                                    |
+| ------------------------------------ | ----------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `client_id`                          | the Spotify client's ID                                                       | `65b708073fc0480ea92a077233ca87bd`                         |
+| `copy_command`                       | the command used to execute a copy-to-clipboard action                        | `xclip -sel c` (Linux), `pbcopy` (MacOS), `clip` (Windows) |
+| `ap_port`                            | the application's Spotify session connection port                             | `None`                                                     |
+| `proxy`                              | the application's Spotify session connection proxy                            | `None`                                                     |
+| `theme`                              | the application's theme                                                       | `default`                                                  |
+| `app_refresh_duration_in_ms`         | the duration (in ms) between two consecutive application refreshes            | `32`                                                       |
+| `playback_refresh_duration_in_ms`    | the duration (in ms) between two consecutive playback refreshes               | `0`                                                        |
+| `cover_image_refresh_duration_in_ms` | the duration (in ms) between two cover image refreshes (`image` feature only) | `2000`                                                     |
+| `track_table_item_max_len`           | the maximum length of a column in a track table                               | `32`                                                       |
+| `enable_media_control`               | enable application media control support (`media-control` feature only)       | `true` (Linux), `false` (Windows and MacOS)                |
+| `default_device`                     | the default device to connect to on startup if no playing device found        | `spotify-player`                                           |
+| `playback_window_width`              | the width of the playback window                                              | `6`                                                        |
+| `cover_img_width`                    | the width of the cover image (`image` feature only)                           | `5`                                                        |
+| `cover_img_length`                   | the length of the cover image (`image` feature only)                          | `9`                                                        |
 
 The default `app.toml` can be found in the example [`app.toml`](../examples/app.toml) file
 
@@ -56,6 +57,7 @@ The default `app.toml` can be found in the example [`app.toml`](../examples/app.
   **Note**: the above list might not be up-to-date.
 
 - An example of event that triggers a playback update is the one happening when the current track ends.
+- `copy_command` is represented by a struct with two fields `command` and `args`. For example, `copy_command = { command = "xclip", args = ["-sel", "c"] }`. The copy command should read input from **standard input**.
 
 #### Media control
 
