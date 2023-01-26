@@ -616,10 +616,10 @@ pub fn render_track_table_window(
         if let Some(rspotify_model::PlayableItem::Track(ref track)) = playback.item {
             playing_track_uri = track.id.as_ref().map(|id| id.uri()).unwrap_or_default();
 
-            active_desc = if !playback.is_playing {
-                &state.app_config.pause_icon
-            } else {
+            active_desc = if playback.is_playing {
                 &state.app_config.play_icon
+            } else {
+                &state.app_config.pause_icon
             };
         }
     }
