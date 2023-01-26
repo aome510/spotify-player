@@ -105,8 +105,8 @@ impl Default for AppConfig {
 
             track_table_item_max_len: 32,
 
-            play_icon: "⏸".to_string(),
-            pause_icon: "▶".to_string(),
+            pause_icon: "▌▌".to_string(),
+            play_icon: "▶".to_string(),
 
             #[cfg(feature = "image")]
             cover_img_length: 9,
