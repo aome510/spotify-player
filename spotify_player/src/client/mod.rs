@@ -346,7 +346,6 @@ impl Client {
                 self.delete_from_library(state, id).await?;
             }
             ClientRequest::GetCurrentUserQueue => {
-                tracing::info!("Fetching current user queue");
                 let queue = self.spotify.current_user_queue().await?;
                 {
                     state.player.write().queue = Some(queue);

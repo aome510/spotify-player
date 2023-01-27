@@ -653,7 +653,7 @@ pub fn render_track_table_window(
         .header(
             Row::new(vec![
                 Cell::from("#"),
-                Cell::from("Track"),
+                Cell::from("Title"),
                 Cell::from("Artists"),
                 Cell::from("Album"),
                 Cell::from("Duration"),

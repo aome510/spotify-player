@@ -337,9 +337,7 @@ pub fn render_queue_popup(
                 })
                 .collect::<Vec<_>>(),
         )
-        .header(
-            Row::new(vec![Cell::from("No"), Cell::from("Title")]).style(ui.theme.table_header()),
-        )
+        .header(Row::new(vec![Cell::from("#"), Cell::from("Title")]).style(ui.theme.table_header()))
         .widths(&[Constraint::Percentage(10), Constraint::Percentage(90)])
         .block(
             Block::default()
