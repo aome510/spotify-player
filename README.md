@@ -280,6 +280,7 @@ List of supported commands:
 | `SwitchTheme`                 | open a popup for switching theme                                        | `T`                |
 | `SwitchDevice`                | open a popup for switching device                                       | `D`                |
 | `Search`                      | open a popup for searching in the current page                          | `/`                |
+| `Queue`                       | open a popup for showing the current queue                              | `z`                |
 | `BrowseUserPlaylists`         | open a popup for browsing user's playlists                              | `u p`              |
 | `BrowseUserFollowedArtists`   | open a popup for browsing user's followed artists                       | `u a`              |
 | `BrowseUserSavedAlbums`       | open a popup for browsing user's saved albums                           | `u A`              |
