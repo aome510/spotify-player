@@ -457,7 +457,7 @@ pub fn render_lyric_page(
         .title(ui.theme.block_title_with_style("Lyric"))
         .borders(Borders::ALL);
 
-    let result = data.caches.lyrics.peek(&format!("{} {}", track, artists));
+    let result = data.caches.lyrics.peek(&format!("{track} {artists}"));
     match result {
         None => {
             frame.render_widget(Paragraph::new("Loading...").block(block), rect);
@@ -481,14 +481,14 @@ pub fn render_lyric_page(
 
             // render lyric page description text
             frame.render_widget(
-                Paragraph::new(format!("{} by {}", track, artists))
+                Paragraph::new(format!("{track} by {artists}"))
                     .block(Block::default().style(ui.theme.page_desc())),
                 chunks[0],
             );
 
             // render lyric text
             frame.render_widget(
-                Paragraph::new(format!("\n{}", lyric))
+                Paragraph::new(format!("\n{lyric}"))
                     .scroll((scroll_offset as u16, 0))
                     .block(Block::default()),
                 chunks[1],

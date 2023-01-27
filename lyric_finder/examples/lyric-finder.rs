@@ -19,7 +19,7 @@ async fn main() -> anyhow::Result<()> {
             artists,
             lyric,
         } => {
-            println!("{} by {}'s lyric:\n{}", track, artists, lyric);
+            println!("{track} by {artists}'s lyric:\n{lyric}");
         }
         lyric_finder::LyricResult::None => {
             println!("lyric not found!");

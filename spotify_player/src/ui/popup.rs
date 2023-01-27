@@ -33,7 +33,7 @@ pub fn render_popup(
                     .constraints([Constraint::Min(0), Constraint::Length(3)].as_ref())
                     .split(rect);
 
-                let widget = Paragraph::new(format!("/{}", query)).block(
+                let widget = Paragraph::new(format!("/{query}")).block(
                     Block::default()
                         .borders(Borders::ALL)
                         .title(ui.theme.block_title_with_style("Search")),
@@ -266,8 +266,8 @@ pub fn render_commands_help_popup(
             .skip(*scroll_offset)
             .map(|(c, k)| {
                 Row::new(vec![
-                    Cell::from(format!("{:?}", c)),
-                    Cell::from(format!("[{}]", k)),
+                    Cell::from(format!("{c:?}")),
+                    Cell::from(format!("[{k}]")),
                     Cell::from(c.desc()),
                 ])
             })

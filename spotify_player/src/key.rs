@@ -121,7 +121,7 @@ fn key_code_to_string(k: KeyCode) -> String {
         KeyCode::F(11) => "f11".to_string(),
         KeyCode::F(12) => "f12".to_string(),
 
-        _ => panic!("unknown key: {:?}", k),
+        _ => panic!("unknown key: {k:?}"),
     }
 }
 
@@ -145,8 +145,7 @@ impl<'de> serde::de::Deserialize<'de> for Key {
         match Self::from_str(&s) {
             Some(key) => Ok(key),
             None => Err(serde::de::Error::custom(format!(
-                "failed to parse key: unknown key {}",
-                s
+                "failed to parse key: unknown key {s}"
             ))),
         }
     }
@@ -215,8 +214,7 @@ impl<'de> serde::de::Deserialize<'de> for KeySequence {
         match KeySequence::from_str(&s) {
             Some(key_sequence) => Ok(key_sequence),
             None => Err(serde::de::Error::custom(format!(
-                "failed to parse key sequence: invalid key sequence {}",
-                s
+                "failed to parse key sequence: invalid key sequence {s}"
             ))),
         }
     }

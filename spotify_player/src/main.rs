@@ -107,7 +107,7 @@ fn init_logging(cache_folder: &std::path::Path) -> Result<()> {
         let mut file = backtrace_file.lock().unwrap();
         let backtrace = backtrace::Backtrace::new();
         writeln!(&mut file, "Got a panic: {info:#?}\n").unwrap();
-        writeln!(&mut file, "Stack backtrace:\n{:?}", backtrace).unwrap();
+        writeln!(&mut file, "Stack backtrace:\n{backtrace:?}").unwrap();
     }));
 
     Ok(())

@@ -297,7 +297,7 @@ impl From<&str> for Key {
     /// This function will panic if the given string is not a valid
     /// representation of a `Key`.
     fn from(s: &str) -> Self {
-        Self::from_str(s).unwrap_or_else(|| panic!("invalid key {}", s))
+        Self::from_str(s).unwrap_or_else(|| panic!("invalid key {s}"))
     }
 }
 
@@ -307,6 +307,6 @@ impl From<&str> for KeySequence {
     /// This function will panic if the given string is not a valid
     /// representation of a `KeySequence`.
     fn from(s: &str) -> Self {
-        Self::from_str(s).unwrap_or_else(|| panic!("invalid key sequence {}", s))
+        Self::from_str(s).unwrap_or_else(|| panic!("invalid key sequence {s}"))
     }
 }
