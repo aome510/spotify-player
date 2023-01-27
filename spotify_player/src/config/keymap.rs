@@ -76,6 +76,10 @@ impl Default for KeymapConfig {
                     command: Command::Search,
                 },
                 Keymap {
+                    key_sequence: "z".into(),
+                    command: Command::Queue,
+                },
+                Keymap {
                     key_sequence: "C-space".into(),
                     command: Command::ShowActionsOnSelectedItem,
                 },

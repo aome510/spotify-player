@@ -10,6 +10,7 @@ pub struct PlayerState {
 
     pub playback: Option<rspotify_model::CurrentPlaybackContext>,
     pub playback_last_updated_time: Option<std::time::Instant>,
+    pub queue: Option<rspotify_model::CurrentUserQueue>,
 }
 
 impl PlayerState {

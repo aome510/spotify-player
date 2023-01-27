@@ -12,6 +12,7 @@ pub enum PopupState {
     ArtistList(ArtistPopupAction, Vec<Artist>, ListState),
     ThemeList(Vec<crate::config::Theme>, ListState),
     ActionList(ActionListItem, ListState),
+    Queue { scroll_offset: usize },
 }
 
 #[derive(Debug)]
@@ -47,7 +48,7 @@ impl PopupState {
             Self::ArtistList(.., list_state) => Some(list_state),
             Self::ThemeList(.., list_state) => Some(list_state),
             Self::ActionList(.., list_state) => Some(list_state),
-            Self::CommandHelp { .. } | Self::Search { .. } => None,
+            Self::CommandHelp { .. } | Self::Search { .. } | Self::Queue { .. } => None,
         }
     }
 
@@ -61,7 +62,7 @@ impl PopupState {
             Self::ArtistList(.., list_state) => Some(list_state),
             Self::ThemeList(.., list_state) => Some(list_state),
             Self::ActionList(.., list_state) => Some(list_state),
-            Self::CommandHelp { .. } | Self::Search { .. } => None,
+            Self::CommandHelp { .. } | Self::Search { .. } | Self::Queue { .. } => None,
         }
     }
 

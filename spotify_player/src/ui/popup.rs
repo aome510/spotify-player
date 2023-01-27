@@ -50,6 +50,15 @@ pub fn render_popup(
                 render_commands_help_popup(frame, state, ui, chunks[1]);
                 (chunks[0], false)
             }
+            PopupState::Queue { .. } => {
+                let chunks = Layout::default()
+                    .direction(Direction::Vertical)
+                    .constraints([Constraint::Length(8), Constraint::Min(0)].as_ref())
+                    .split(rect);
+
+                render_queue_popup(frame, state, ui, chunks[1]);
+                (chunks[0], false)
+            }
             PopupState::ActionList(item, _) => {
                 let rect = render_list_popup(
                     frame,
@@ -279,4 +288,64 @@ pub fn render_commands_help_popup(
             .borders(Borders::ALL),
     );
     frame.render_widget(help_table, rect);
+}
+
+/// renders a queue popup listing everything in the queue
+pub fn render_queue_popup(
+    frame: &mut Frame,
+    state: &SharedState,
+    ui: &mut UIStateGuard,
+    rect: Rect,
+) {
+    use rspotify::model::{FullEpisode, FullTrack, PlayableItem};
+    fn get_playable_name(item: &PlayableItem) -> &str {
+        match item {
+            PlayableItem::Track(FullTrack { ref name, .. }) => name,
+            PlayableItem::Episode(FullEpisode { ref name, .. }) => name,
+        }
+    }
+
+    let scroll_offset = match ui.popup {
+        Some(PopupState::Queue {
+            ref mut scroll_offset,
+        }) => scroll_offset,
+        _ => return,
+    };
+
+    // Minimize the time we have a lock on the player state
+    let queue_table = {
+        let player_state = state.player.read();
+        let queue = match player_state.queue {
+            Some(ref q) => &q.queue,
+            None => return,
+        };
+
+        // offset should not be greater than or equal the number of items in queue
+        if !queue.is_empty() && *scroll_offset >= queue.len() {
+            *scroll_offset = queue.len() - 1
+        }
+        Table::new(
+            queue
+                .iter()
+                .enumerate()
+                .skip(*scroll_offset)
+                .map(|(i, x)| {
+                    Row::new(vec![
+                        Cell::from(format!("{}", i + 1)),
+                        Cell::from(get_playable_name(x).to_string()),
+                    ])
+                })
+                .collect::<Vec<_>>(),
+        )
+        .header(
+            Row::new(vec![Cell::from("No"), Cell::from("Title")]).style(ui.theme.table_header()),
+        )
+        .widths(&[Constraint::Percentage(10), Constraint::Percentage(90)])
+        .block(
+            Block::default()
+                .title(ui.theme.block_title_with_style("Queue"))
+                .borders(Borders::ALL),
+        )
+    };
+    frame.render_widget(queue_table, rect);
 }

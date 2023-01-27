@@ -55,6 +55,7 @@ pub enum ClientRequest {
     DeleteFromLibrary(ItemId),
     ConnectDevice(Option<String>),
     Player(PlayerRequest),
+    GetCurrentUserQueue,
     #[cfg(feature = "lyric-finder")]
     GetLyric {
         track: String,
@@ -373,6 +374,10 @@ fn handle_global_command(
             if !ui.has_focused_popup() {
                 ui.current_page_mut().previous()
             }
+        }
+        Command::Queue => {
+            ui.popup = Some(PopupState::Queue { scroll_offset: 0 });
+            client_pub.send(ClientRequest::GetCurrentUserQueue)?;
         }
         _ => return Ok(false),
     }
