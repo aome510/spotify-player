@@ -213,7 +213,35 @@ pub fn handle_key_sequence_for_popup(
         PopupState::ActionList(item, ..) => {
             handle_command_for_action_list_popup(item.n_actions(), command, client_pub, state, ui)
         }
+        PopupState::Queue { .. } => handle_command_for_queue_popup(command, ui),
     }
+}
+
+fn handle_command_for_queue_popup(
+    command: Command,
+    mut ui: UIStateGuard,
+) -> Result<bool, anyhow::Error> {
+    let scroll_offset = match ui.popup {
+        Some(PopupState::Queue {
+            ref mut scroll_offset,
+        }) => scroll_offset,
+        _ => return Ok(false),
+    };
+    match command {
+        Command::ClosePopup => {
+            ui.popup = None;
+        }
+        Command::SelectNextOrScrollDown => {
+            *scroll_offset += 1;
+        }
+        Command::SelectPreviousOrScrollUp => {
+            if *scroll_offset > 0 {
+                *scroll_offset -= 1;
+            }
+        }
+        _ => return Ok(false),
+    }
+    Ok(true)
 }
 
 /// handles a key sequence for a context search popup

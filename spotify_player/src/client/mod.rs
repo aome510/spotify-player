@@ -201,12 +201,11 @@ impl Client {
             #[cfg(feature = "lyric-finder")]
             ClientRequest::GetLyric { track, artists } => {
                 let client = lyric_finder::Client::from_http_client(&self.http);
-                let query = format!("{} {}", track, artists);
+                let query = format!("{track} {artists}");
 
                 if !state.data.read().caches.lyrics.contains(&query) {
                     let result = client.get_lyric(&query).await.context(format!(
-                        "failed to get lyric for track {} - artists {}",
-                        track, artists
+                        "failed to get lyric for track {track} - artists {artists}"
                     ))?;
 
                     state.data.write().caches.lyrics.put(query, result);
@@ -315,7 +314,7 @@ impl Client {
                 seed_uri: uri,
                 seed_name: name,
             } => {
-                let radio_uri = format!("radio:{}", uri);
+                let radio_uri = format!("radio:{uri}");
                 if !state.data.read().caches.context.contains(&radio_uri) {
                     let tracks = self.radio_tracks(uri).await?;
 
@@ -323,7 +322,7 @@ impl Client {
                         radio_uri,
                         Context::Tracks {
                             tracks,
-                            desc: format!("{} Radio", name),
+                            desc: format!("{name} Radio"),
                         },
                     );
                 }
@@ -344,6 +343,12 @@ impl Client {
             }
             ClientRequest::DeleteFromLibrary(id) => {
                 self.delete_from_library(state, id).await?;
+            }
+            ClientRequest::GetCurrentUserQueue => {
+                let queue = self.spotify.current_user_queue().await?;
+                {
+                    state.player.write().queue = Some(queue);
+                }
             }
         };
 
@@ -622,7 +627,7 @@ impl Client {
 
         // Get an autoplay URI from the seed URI.
         // The return URI is a Spotify station's URI
-        let autoplay_query_url = format!("hm://autoplay-enabled/query?uri={}", seed_uri);
+        let autoplay_query_url = format!("hm://autoplay-enabled/query?uri={seed_uri}");
         let response = session
             .mercury()
             .get(autoplay_query_url)
@@ -637,7 +642,7 @@ impl Client {
         let autoplay_uri = String::from_utf8(response.payload[0].to_vec())?;
 
         // Retrieve radio's data based on the autoplay URI
-        let radio_query_url = format!("hm://radio-apollo/v3/stations/{}", autoplay_uri);
+        let radio_query_url = format!("hm://radio-apollo/v3/stations/{autoplay_uri}");
         let response = session.mercury().get(radio_query_url).await.map_err(|_| {
             anyhow::anyhow!("Failed to get radio data of {autoplay_uri}: got a Mercury error")
         })?;
@@ -1018,7 +1023,7 @@ impl Client {
             .get(url)
             .header(
                 reqwest::header::AUTHORIZATION,
-                format!("Bearer {}", access_token),
+                format!("Bearer {access_token}"),
             )
             .send()
             .await?

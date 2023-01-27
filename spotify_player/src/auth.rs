@@ -14,7 +14,7 @@ fn read_user_auth_details(user: Option<String>) -> Result<(String, String)> {
     let mut stdout = std::io::stdout();
     match user {
         None => write!(stdout, "Username: ")?,
-        Some(ref u) => write!(stdout, "Username (default: {}): ", u)?,
+        Some(ref u) => write!(stdout, "Username (default: {u}): ")?,
     }
     stdout.flush()?;
     std::io::stdin().read_line(&mut username)?;
@@ -22,7 +22,7 @@ fn read_user_auth_details(user: Option<String>) -> Result<(String, String)> {
     if username.is_empty() {
         username = user.unwrap_or_default();
     }
-    let password = rpassword::prompt_password(format!("Password for {}: ", username))?;
+    let password = rpassword::prompt_password(format!("Password for {username}: "))?;
     Ok((username, password))
 }
 
@@ -102,8 +102,7 @@ pub async fn new_session(
                         new_session_with_new_creds(&cache, app_config).await
                     }
                     SessionError::IoError(err) => Err(anyhow!(format!(
-                        "{}\nPlease check your internet connection.",
-                        err
+                        "{err}\nPlease check your internet connection."
                     ))),
                 },
             }

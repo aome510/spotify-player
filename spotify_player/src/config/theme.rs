@@ -283,7 +283,7 @@ impl<'de> serde::de::Deserialize<'de> for Color {
     {
         let hex = String::deserialize(deserializer)?;
         match Self::from_hex(&hex) {
-            None => Err(serde::de::Error::custom(format!("invalid color {}", hex))),
+            None => Err(serde::de::Error::custom(format!("invalid color {hex}"))),
             Some(c) => Ok(c),
         }
     }
