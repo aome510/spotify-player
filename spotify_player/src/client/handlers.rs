@@ -149,12 +149,17 @@ pub async fn start_player_event_watchers(
                 }
             }
             #[cfg(feature = "lyric-finder")]
-            PageState::Lyric { track, artists, .. } => {
+            PageState::Lyric {
+                track,
+                artists,
+                scroll_offset,
+            } => {
                 if let Some(current_track) = state.player.read().current_playing_track() {
                     if current_track.name != *track {
                         tracing::info!("Current playing track \"{}\" is different from the track \"{track}\" shown up in the lyric page. Updating the track and fetching its lyric...", current_track.name);
                         *track = current_track.name.clone();
                         *artists = map_join(&current_track.artists, |a| &a.name, ", ");
+                        *scroll_offset = 0;
 
                         client_pub
                             .send(ClientRequest::GetLyric {
