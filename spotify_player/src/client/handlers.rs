@@ -2,6 +2,9 @@ use tracing::Instrument;
 
 use crate::{event::ClientRequest, state::*};
 
+#[cfg(feature = "lyric-finder")]
+use crate::utils::map_join;
+
 /// starts the client's request handler
 pub async fn start_client_handler(
     state: SharedState,
@@ -104,46 +107,70 @@ pub async fn start_player_event_watchers(
         }
 
         // update the context state and request new data when moving to a new context page
-        if let PageState::Context {
-            id,
-            context_page_type,
-            state: page_state,
-        } = state.ui.lock().current_page_mut()
-        {
-            let expected_id = match context_page_type {
-                ContextPageType::Browsing(context_id) => Some(context_id.clone()),
-                ContextPageType::CurrentPlaying => state.player.read().playing_context_id(),
-            };
+        match state.ui.lock().current_page_mut() {
+            PageState::Context {
+                id,
+                context_page_type,
+                state: page_state,
+            } => {
+                let expected_id = match context_page_type {
+                    ContextPageType::Browsing(context_id) => Some(context_id.clone()),
+                    ContextPageType::CurrentPlaying => state.player.read().playing_context_id(),
+                };
 
-            if *id != expected_id {
-                tracing::info!("Current context ID ({:?}) is different from the expected ID ({:?}), update the context state", id, expected_id);
+                if *id != expected_id {
+                    tracing::info!("Current context ID ({:?}) is different from the expected ID ({:?}), update the context state", id, expected_id);
 
-                *id = expected_id;
+                    *id = expected_id;
 
-                // update the UI page state based on the context's type
-                match id {
-                    Some(id) => {
-                        *page_state = Some(match id {
-                            ContextId::Album(_) => ContextPageUIState::new_album(),
-                            ContextId::Artist(_) => ContextPageUIState::new_artist(),
-                            ContextId::Playlist(_) => ContextPageUIState::new_playlist(),
-                            ContextId::Tracks(_) => ContextPageUIState::new_tracks(),
-                        });
+                    // update the UI page state based on the context's type
+                    match id {
+                        Some(id) => {
+                            *page_state = Some(match id {
+                                ContextId::Album(_) => ContextPageUIState::new_album(),
+                                ContextId::Artist(_) => ContextPageUIState::new_artist(),
+                                ContextId::Playlist(_) => ContextPageUIState::new_playlist(),
+                                ContextId::Tracks(_) => ContextPageUIState::new_tracks(),
+                            });
+                        }
+                        None => {
+                            *page_state = None;
+                        }
                     }
-                    None => {
-                        *page_state = None;
+
+                    // request new context's data if not found in memory
+                    if let Some(id) = id {
+                        if !state.data.read().caches.context.contains(&id.uri()) {
+                            client_pub
+                                .send(ClientRequest::GetContext(id.clone()))
+                                .unwrap_or_default();
+                        }
                     }
                 }
+            }
+            #[cfg(feature = "lyric-finder")]
+            PageState::Lyric {
+                track,
+                artists,
+                scroll_offset,
+            } => {
+                if let Some(current_track) = state.player.read().current_playing_track() {
+                    if current_track.name != *track {
+                        tracing::info!("Current playing track \"{}\" is different from the track \"{track}\" shown up in the lyric page. Updating the track and fetching its lyric...", current_track.name);
+                        *track = current_track.name.clone();
+                        *artists = map_join(&current_track.artists, |a| &a.name, ", ");
+                        *scroll_offset = 0;
 
-                // request new context's data if not found in memory
-                if let Some(id) = id {
-                    if !state.data.read().caches.context.contains(&id.uri()) {
                         client_pub
-                            .send(ClientRequest::GetContext(id.clone()))
+                            .send(ClientRequest::GetLyric {
+                                track: track.clone(),
+                                artists: artists.clone(),
+                            })
                             .unwrap_or_default();
                     }
                 }
             }
+            _ => {}
         }
     }
 }

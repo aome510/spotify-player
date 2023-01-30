@@ -16,8 +16,8 @@ const COMMAND_TABLE_CONSTRAINTS: [Constraint; 3] = [
 /// renders a popup (if any) to handle a command or show additional information
 /// depending on the current popup state.
 ///
-/// The function returns a rectangle area to render the main layout
-/// and a boolean `is_active` determining whether the focus is **not** placed on the popup.
+/// The function returns a rectangle area to render the main layout and
+/// a boolean value determining whether the focus should be placed in the main layout.
 pub fn render_popup(
     frame: &mut Frame,
     state: &SharedState,
@@ -44,7 +44,13 @@ pub fn render_popup(
             PopupState::CommandHelp { .. } => {
                 let chunks = Layout::default()
                     .direction(Direction::Vertical)
-                    .constraints([Constraint::Length(8), Constraint::Min(0)].as_ref())
+                    .constraints(
+                        [
+                            Constraint::Length((state.app_config.playback_window_width + 2) as u16),
+                            Constraint::Min(0),
+                        ]
+                        .as_ref(),
+                    )
                     .split(rect);
 
                 render_commands_help_popup(frame, state, ui, chunks[1]);
@@ -53,7 +59,13 @@ pub fn render_popup(
             PopupState::Queue { .. } => {
                 let chunks = Layout::default()
                     .direction(Direction::Vertical)
-                    .constraints([Constraint::Length(8), Constraint::Min(0)].as_ref())
+                    .constraints(
+                        [
+                            Constraint::Length((state.app_config.playback_window_width + 2) as u16),
+                            Constraint::Min(0),
+                        ]
+                        .as_ref(),
+                    )
                     .split(rect);
 
                 render_queue_popup(frame, state, ui, chunks[1]);
