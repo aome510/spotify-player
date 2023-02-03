@@ -12,6 +12,7 @@ pub struct ThemeConfig {
 #[derive(Clone, Debug, Deserialize)]
 pub struct Theme {
     pub name: String,
+    #[serde(default)]
     palette: Palette,
     #[serde(default)]
     component_style: ComponentStyle,
@@ -57,21 +58,18 @@ pub struct Palette {
     pub bright_yellow: Color,
 }
 
-// TODO: find a way to parse ComponentStyle config options without
-// having to specify all the fields
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize)]
 pub struct ComponentStyle {
-    pub block_title: Style,
-
-    pub playback_track: Style,
-    pub playback_album: Style,
-    pub playback_metadata: Style,
-    pub playback_progress_bar: Style,
-
-    pub current_playing: Style,
-
-    pub page_desc: Style,
-    pub table_header: Style,
+    pub block_title: Option<Style>,
+    pub border: Option<Style>,
+    pub playback_track: Option<Style>,
+    pub playback_album: Option<Style>,
+    pub playback_metadata: Option<Style>,
+    pub playback_progress_bar: Option<Style>,
+    pub current_playing: Option<Style>,
+    pub page_desc: Option<Style>,
+    pub table_header: Option<Style>,
+    pub selection: Option<Style>,
 }
 
 #[derive(Default, Clone, Debug, Deserialize)]
@@ -107,21 +105,12 @@ pub enum StyleColor {
 pub enum StyleModifier {
     Bold,
     Italic,
+    Reversed,
 }
 
 #[derive(Clone, Debug)]
 pub struct Color {
     pub color: style::Color,
-}
-
-macro_rules! impl_component_style_getters {
-	($($f:ident),+) => {
-		$(
-            pub fn $f(&self) -> tui::style::Style {
-                self.component_style.$f.style(&self.palette)
-            }
-        )*
-	};
 }
 
 impl ThemeConfig {
@@ -170,9 +159,12 @@ impl Theme {
 
     pub fn selection_style(&self, is_active: bool) -> style::Style {
         if is_active {
-            style::Style::default()
-                .add_modifier(style::Modifier::REVERSED)
-                .add_modifier(style::Modifier::BOLD)
+            match &self.component_style.selection {
+                None => style::Style::default()
+                    .add_modifier(style::Modifier::REVERSED)
+                    .add_modifier(style::Modifier::BOLD),
+                Some(s) => s.style(&self.palette),
+            }
         } else {
             style::Style::default()
         }
@@ -196,16 +188,84 @@ impl Theme {
         tui::text::Span::styled(content.into(), self.block_title())
     }
 
-    impl_component_style_getters!(
-        block_title,
-        playback_track,
-        playback_album,
-        playback_metadata,
-        playback_progress_bar,
-        current_playing,
-        page_desc,
-        table_header
-    );
+    pub fn block_title(&self) -> tui::style::Style {
+        match &self.component_style.block_title {
+            None => Style::default()
+                .fg(StyleColor::Magenta)
+                .style(&self.palette),
+            Some(s) => s.style(&self.palette),
+        }
+    }
+
+    pub fn border(&self) -> tui::style::Style {
+        match &self.component_style.border {
+            None => Style::default().style(&self.palette),
+            Some(s) => s.style(&self.palette),
+        }
+    }
+
+    pub fn playback_track(&self) -> tui::style::Style {
+        match &self.component_style.playback_track {
+            None => Style::default()
+                .fg(StyleColor::Cyan)
+                .modifiers(vec![StyleModifier::Bold])
+                .style(&self.palette),
+            Some(s) => s.style(&self.palette),
+        }
+    }
+
+    pub fn playback_album(&self) -> tui::style::Style {
+        match &self.component_style.playback_album {
+            None => Style::default().fg(StyleColor::Yellow).style(&self.palette),
+            Some(s) => s.style(&self.palette),
+        }
+    }
+
+    pub fn playback_metadata(&self) -> tui::style::Style {
+        match &self.component_style.playback_metadata {
+            None => Style::default()
+                .fg(StyleColor::BrightBlack)
+                .style(&self.palette),
+            Some(s) => s.style(&self.palette),
+        }
+    }
+
+    pub fn playback_progress_bar(&self) -> tui::style::Style {
+        match &self.component_style.playback_metadata {
+            None => Style::default()
+                .bg(StyleColor::BrightBlack)
+                .fg(StyleColor::Green)
+                .style(&self.palette),
+            Some(s) => s.style(&self.palette),
+        }
+    }
+
+    pub fn current_playing(&self) -> tui::style::Style {
+        match &self.component_style.current_playing {
+            None => Style::default()
+                .fg(StyleColor::Green)
+                .modifiers(vec![StyleModifier::Bold])
+                .style(&self.palette),
+            Some(s) => s.style(&self.palette),
+        }
+    }
+
+    pub fn page_desc(&self) -> tui::style::Style {
+        match &self.component_style.page_desc {
+            None => Style::default()
+                .fg(StyleColor::Cyan)
+                .modifiers(vec![StyleModifier::Bold])
+                .style(&self.palette),
+            Some(s) => s.style(&self.palette),
+        }
+    }
+
+    pub fn table_header(&self) -> tui::style::Style {
+        match &self.component_style.table_header {
+            None => Style::default().fg(StyleColor::Blue).style(&self.palette),
+            Some(s) => s.style(&self.palette),
+        }
+    }
 }
 
 impl Style {
@@ -268,6 +328,7 @@ impl From<StyleModifier> for style::Modifier {
         match m {
             StyleModifier::Bold => style::Modifier::BOLD,
             StyleModifier::Italic => style::Modifier::ITALIC,
+            StyleModifier::Reversed => style::Modifier::REVERSED,
         }
     }
 }
@@ -391,54 +452,34 @@ impl Default for Theme {
     fn default() -> Self {
         Self {
             name: "default".to_owned(),
-            palette: Palette {
-                background: None,
-                foreground: None,
-                // the default theme uses the terminal's ANSI colors
-                black: Color::black(),
-                red: Color::red(),
-                green: Color::green(),
-                yellow: Color::yellow(),
-                blue: Color::blue(),
-                magenta: Color::magenta(),
-                cyan: Color::cyan(),
-                white: Color::white(),
-                bright_black: Color::bright_black(),
-                bright_red: Color::bright_red(),
-                bright_green: Color::bright_green(),
-                bright_yellow: Color::bright_yellow(),
-                bright_blue: Color::bright_blue(),
-                bright_magenta: Color::bright_magenta(),
-                bright_cyan: Color::bright_cyan(),
-                bright_white: Color::bright_white(),
-            },
+            palette: Palette::default(),
             component_style: ComponentStyle::default(),
         }
     }
 }
 
-impl Default for ComponentStyle {
+impl Default for Palette {
     fn default() -> Self {
         Self {
-            block_title: Style::default().fg(StyleColor::Magenta),
-
-            playback_track: Style::default()
-                .fg(StyleColor::Cyan)
-                .modifiers(vec![StyleModifier::Bold]),
-            playback_album: Style::default().fg(StyleColor::Yellow),
-            playback_metadata: Style::default().fg(StyleColor::BrightBlack),
-            playback_progress_bar: Style::default()
-                .bg(StyleColor::BrightBlack)
-                .fg(StyleColor::Green),
-
-            current_playing: Style::default()
-                .fg(StyleColor::Green)
-                .modifiers(vec![StyleModifier::Bold]),
-
-            page_desc: Style::default()
-                .fg(StyleColor::Cyan)
-                .modifiers(vec![StyleModifier::Bold]),
-            table_header: Style::default().fg(StyleColor::Blue),
+            background: None,
+            foreground: None,
+            // the default theme uses the terminal's ANSI colors
+            black: Color::black(),
+            red: Color::red(),
+            green: Color::green(),
+            yellow: Color::yellow(),
+            blue: Color::blue(),
+            magenta: Color::magenta(),
+            cyan: Color::cyan(),
+            white: Color::white(),
+            bright_black: Color::bright_black(),
+            bright_red: Color::bright_red(),
+            bright_green: Color::bright_green(),
+            bright_yellow: Color::bright_yellow(),
+            bright_blue: Color::bright_blue(),
+            bright_magenta: Color::bright_magenta(),
+            bright_cyan: Color::bright_cyan(),
+            bright_white: Color::bright_white(),
         }
     }
 }

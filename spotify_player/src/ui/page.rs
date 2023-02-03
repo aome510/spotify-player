@@ -107,7 +107,8 @@ pub fn render_search_page(
     // renders borders with title
     let block = Block::default()
         .title(ui.theme.block_title_with_style("Search"))
-        .borders(Borders::ALL);
+        .borders(Borders::ALL)
+        .border_style(ui.theme.border());
     frame.render_widget(block, rect);
 
     // renders the query input box
@@ -198,7 +199,8 @@ pub fn render_context_page(
 
     let block = Block::default()
         .title(ui.theme.block_title_with_style(context_page_type.title()))
-        .borders(Borders::ALL);
+        .borders(Borders::ALL)
+        .border_style(ui.theme.border());
 
     let id = match id {
         None => {
@@ -455,7 +457,8 @@ pub fn render_lyric_page(
 
     let block = Block::default()
         .title(ui.theme.block_title_with_style("Lyric"))
-        .borders(Borders::ALL);
+        .borders(Borders::ALL)
+        .border_style(ui.theme.border());
 
     let result = data.caches.lyrics.peek(&format!("{track} {artists}"));
     match result {

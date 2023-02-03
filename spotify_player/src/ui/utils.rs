@@ -28,7 +28,8 @@ pub fn construct_list_widget<'a>(
         .block(
             Block::default()
                 .title(theme.block_title_with_style(title))
-                .borders(borders),
+                .borders(borders)
+                .border_style(theme.border()),
         ),
         n_items,
     )
@@ -79,7 +80,8 @@ pub fn render_loading_window(theme: &config::Theme, frame: &mut Frame, rect: Rec
         Paragraph::new("Loading...").block(
             Block::default()
                 .title(theme.block_title_with_style(title))
-                .borders(Borders::ALL),
+                .borders(Borders::ALL)
+                .border_style(theme.border()),
         ),
         rect,
     );
