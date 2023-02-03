@@ -89,7 +89,7 @@ The application's theme can be modified by setting the `theme` option in `app.to
 
 A theme has three main components: `name` (the theme's name), `palette` (the theme's color palette), `component_style` (a list of pre-defined styles for application's components).
 
-`name` is required when defining a new theme. If `palette` is not set, the terminals colorscheme will be used. If `component_style` is not specified, a default value will be used.
+`name` is required when defining a new theme. If `palette` is not set, a palette based on the terminal's colorscheme will be used. If `component_style` is not specified, a default value will be used.
 
 An example of user-defined themes can be found in the example [`theme.toml`](../examples/theme.toml) file
 
@@ -146,13 +146,13 @@ To define application's component styles, the user can specify any of the below 
 - `table_header`
 - `selection`
 
-A field in the component styles is a `Style` struct which has three optional fields: `fg`, `bg` and `modifiers`. `fg` and `bg` can be either a palette's color (string in pascal case) or a custom RGB color using the following format: `fg = { Rgb { r = ..., g = ..., b = ... } }`. `modifiers` can only be either `Italic` or `Bold`.
+A field in the component styles is a `Style` struct which has three optional fields: `fg`, `bg` and `modifiers`. `fg` and `bg` can be either a palette's color (string in pascal case) or a custom RGB color using the following format: `fg = { Rgb { r = ..., g = ..., b = ... } }`. The default values for `fg` and `bg` are the `palette`'s `fg` and `bg`. `modifiers` can only be `Italic`, `Bold` or `Reversed`.
 
 Default value for application's component styles:
 
 ```toml
 block_title = { fg = "Magenta"  }
-border = {} # uses the palette's fg and bg color
+border = {}
 playback_track = { fg = "Cyan", modifiers = ["Bold"] }
 playback_album = { fg = "Yellow" }
 playback_metadata = { fg = "BrightBlack" }
@@ -160,7 +160,7 @@ playback_progress_bar = { bg = "BrightBlack", fg = "Green" }
 current_playing = { fg = "Green", modifiers = ["Bold"] }
 page_desc = { fg = "Cyan", modifiers = ["Bold"] }
 table_header = { fg = "Blue" }
-selection = {} # if not set, this is bold and reverses fg and bg color
+selection = { modifiers = ["Bold", "Reversed"] }
 ```
 
 ## Keymaps

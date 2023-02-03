@@ -105,6 +105,7 @@ pub enum StyleColor {
 pub enum StyleModifier {
     Bold,
     Italic,
+    Reversed,
 }
 
 #[derive(Clone, Debug)]
@@ -327,6 +328,7 @@ impl From<StyleModifier> for style::Modifier {
         match m {
             StyleModifier::Bold => style::Modifier::BOLD,
             StyleModifier::Italic => style::Modifier::ITALIC,
+            StyleModifier::Reversed => style::Modifier::REVERSED,
         }
     }
 }
