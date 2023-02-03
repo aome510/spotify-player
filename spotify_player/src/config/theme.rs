@@ -61,6 +61,7 @@ pub struct Palette {
 #[derive(Clone, Debug, Default, Deserialize)]
 pub struct ComponentStyle {
     pub block_title: Option<Style>,
+    pub border: Option<Style>,
     pub playback_track: Option<Style>,
     pub playback_album: Option<Style>,
     pub playback_metadata: Option<Style>,
@@ -187,6 +188,13 @@ impl Theme {
             None => Style::default()
                 .fg(StyleColor::Magenta)
                 .style(&self.palette),
+            Some(s) => s.style(&self.palette),
+        }
+    }
+
+    pub fn border(&self) -> tui::style::Style {
+        match &self.component_style.border {
+            None => Style::default().style(&self.palette),
             Some(s) => s.style(&self.palette),
         }
     }

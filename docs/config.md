@@ -136,6 +136,7 @@ If specified, a field's value must be set to be a hex representation of a RGB co
 To define application's component styles, the user can specify any of the below fields:
 
 - `block_title`
+- `border`
 - `playback_track`
 - `playback_album`
 - `playback_metadata`
@@ -150,6 +151,7 @@ Default value for application's component styles:
 
 ```toml
 block_title = { fg = "Magenta"  }
+border = {} # uses the palette's fg and bg color
 playback_track = { fg = "Cyan", modifiers = ["Bold"] }
 playback_album = { fg = "Yellow" }
 playback_metadata = { fg = "BrightBlack" }

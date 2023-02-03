@@ -14,7 +14,8 @@ pub fn render_playback_window(
     // render borders and title
     let block = Block::default()
         .title(ui.theme.block_title_with_style("Playback"))
-        .borders(Borders::ALL);
+        .borders(Borders::ALL)
+        .border_style(ui.theme.border());
     frame.render_widget(block, rect);
 
     let rect = {

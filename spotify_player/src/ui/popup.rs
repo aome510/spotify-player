@@ -36,6 +36,7 @@ pub fn render_popup(
                 let widget = Paragraph::new(format!("/{query}")).block(
                     Block::default()
                         .borders(Borders::ALL)
+                        .border_style(ui.theme.border())
                         .title(ui.theme.block_title_with_style("Search")),
                 );
                 frame.render_widget(widget, chunks[1]);
@@ -234,7 +235,8 @@ pub fn render_shortcut_help_popup(
         .block(
             Block::default()
                 .title(ui.theme.block_title_with_style("Shortcuts"))
-                .borders(Borders::ALL),
+                .borders(Borders::ALL)
+                .border_style(ui.theme.border()),
         );
         frame.render_widget(help_table, chunks[1]);
         chunks[0]
@@ -297,7 +299,8 @@ pub fn render_commands_help_popup(
     .block(
         Block::default()
             .title(ui.theme.block_title_with_style("Commands"))
-            .borders(Borders::ALL),
+            .borders(Borders::ALL)
+            .border_style(ui.theme.border()),
     );
     frame.render_widget(help_table, rect);
 }
@@ -354,7 +357,8 @@ pub fn render_queue_popup(
         .block(
             Block::default()
                 .title(ui.theme.block_title_with_style("Queue"))
-                .borders(Borders::ALL),
+                .borders(Borders::ALL)
+                .border_style(ui.theme.border()),
         )
     };
     frame.render_widget(queue_table, rect);
