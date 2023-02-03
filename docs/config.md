@@ -89,7 +89,7 @@ The application's theme can be modified by setting the `theme` option in `app.to
 
 A theme has three main components: `name` (the theme's name), `palette` (the theme's color palette), `component_style` (a list of pre-defined styles for application's components).
 
-`name` and `palette` are required when defining a new theme. If `component_style` is not specified, a default value will be used.
+`name` is required when defining a new theme. If `palette` is not set, the terminals colorscheme will be used. If `component_style` is not specified, a default value will be used.
 
 An example of user-defined themes can be found in the example [`theme.toml`](../examples/theme.toml) file
 

@@ -12,6 +12,7 @@ pub struct ThemeConfig {
 #[derive(Clone, Debug, Deserialize)]
 pub struct Theme {
     pub name: String,
+    #[serde(default)]
     palette: Palette,
     #[serde(default)]
     component_style: ComponentStyle,
@@ -437,28 +438,34 @@ impl Default for Theme {
     fn default() -> Self {
         Self {
             name: "default".to_owned(),
-            palette: Palette {
-                background: None,
-                foreground: None,
-                // the default theme uses the terminal's ANSI colors
-                black: Color::black(),
-                red: Color::red(),
-                green: Color::green(),
-                yellow: Color::yellow(),
-                blue: Color::blue(),
-                magenta: Color::magenta(),
-                cyan: Color::cyan(),
-                white: Color::white(),
-                bright_black: Color::bright_black(),
-                bright_red: Color::bright_red(),
-                bright_green: Color::bright_green(),
-                bright_yellow: Color::bright_yellow(),
-                bright_blue: Color::bright_blue(),
-                bright_magenta: Color::bright_magenta(),
-                bright_cyan: Color::bright_cyan(),
-                bright_white: Color::bright_white(),
-            },
+            palette: Palette::default(),
             component_style: ComponentStyle::default(),
+        }
+    }
+}
+
+impl Default for Palette {
+    fn default() -> Self {
+        Self {
+            background: None,
+            foreground: None,
+            // the default theme uses the terminal's ANSI colors
+            black: Color::black(),
+            red: Color::red(),
+            green: Color::green(),
+            yellow: Color::yellow(),
+            blue: Color::blue(),
+            magenta: Color::magenta(),
+            cyan: Color::cyan(),
+            white: Color::white(),
+            bright_black: Color::bright_black(),
+            bright_red: Color::bright_red(),
+            bright_green: Color::bright_green(),
+            bright_yellow: Color::bright_yellow(),
+            bright_blue: Color::bright_blue(),
+            bright_magenta: Color::bright_magenta(),
+            bright_cyan: Color::bright_cyan(),
+            bright_white: Color::bright_white(),
         }
     }
 }
