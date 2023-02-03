@@ -144,6 +144,7 @@ To define application's component styles, the user can specify any of the below 
 - `current_playing`
 - `page_desc`
 - `table_header`
+- `selection`
 
 A field in the component styles is a `Style` struct which has three optional fields: `fg`, `bg` and `modifiers`. `fg` and `bg` can be either a palette's color (string in pascal case) or a custom RGB color using the following format: `fg = { Rgb { r = ..., g = ..., b = ... } }`. `modifiers` can only be either `Italic` or `Bold`.
 
@@ -159,6 +160,7 @@ playback_progress_bar = { bg = "BrightBlack", fg = "Green" }
 current_playing = { fg = "Green", modifiers = ["Bold"] }
 page_desc = { fg = "Cyan", modifiers = ["Bold"] }
 table_header = { fg = "Blue" }
+selection = {} # if not set, this is bold and reverses fg and bg color
 ```
 
 ## Keymaps

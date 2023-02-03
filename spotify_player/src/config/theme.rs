@@ -69,6 +69,7 @@ pub struct ComponentStyle {
     pub current_playing: Option<Style>,
     pub page_desc: Option<Style>,
     pub table_header: Option<Style>,
+    pub selection: Option<Style>,
 }
 
 #[derive(Default, Clone, Debug, Deserialize)]
@@ -157,9 +158,12 @@ impl Theme {
 
     pub fn selection_style(&self, is_active: bool) -> style::Style {
         if is_active {
-            style::Style::default()
-                .add_modifier(style::Modifier::REVERSED)
-                .add_modifier(style::Modifier::BOLD)
+            match &self.component_style.selection {
+                None => style::Style::default()
+                    .add_modifier(style::Modifier::REVERSED)
+                    .add_modifier(style::Modifier::BOLD),
+                Some(s) => s.style(&self.palette),
+            }
         } else {
             style::Style::default()
         }
