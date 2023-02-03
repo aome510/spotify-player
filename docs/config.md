@@ -133,7 +133,7 @@ If specified, a field's value must be set to be a hex representation of a RGB co
 
 ### Component Styles
 
-To define application's component styles, user needs to specify **all of the below fields**:
+To define application's component styles, the user can specify any of the below fields:
 
 - `block_title`
 - `playback_track`
