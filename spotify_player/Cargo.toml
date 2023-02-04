@@ -11,39 +11,39 @@ readme = "../README.md"
 
 [dependencies]
 anyhow = "1.0.68"
-clap = "4.0.32"
-config_parser2 = "0.1.3"
-crossterm = "0.25.0"
+clap = "4.1.4"
+config_parser2 = "0.1.4"
+crossterm = "0.26.0"
 dirs-next = "2.0.0"
 librespot-connect = { version = "0.4.2", optional = true }
 librespot-playback = { version = "0.4.2", optional = true }
 librespot-core = "0.4.2"
 log = "0.4.17"
-lru = "0.8.1"
+lru = "0.9.0"
 chrono = "0.4.23"
-reqwest = { version = "0.11.13", features = ["json"] }
+reqwest = { version = "0.11.14", features = ["json"] }
 rpassword = "7.2.0"
 rspotify = "0.11.6"
-serde = { version = "1.0.151", features = ["derive"] }
-tokio = { version = "1.23.0", features = ["rt", "rt-multi-thread", "macros", "time"] }
-toml = "0.5.10"
+serde = { version = "1.0.152", features = ["derive"] }
+tokio = { version = "1.25.0", features = ["rt", "rt-multi-thread", "macros", "time"] }
+toml = "0.7.1"
 tui = "0.19.0"
 unicode-width = "0.1.10"
 rand = "0.8.5"
-maybe-async = "0.2.6"
-async-trait = "0.1.60"
+maybe-async = "0.2.7"
+async-trait = "0.1.64"
 parking_lot = "0.12.1"
 tracing = "0.1.37"
 tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
 lyric_finder = { version = "0.1.2", path = "../lyric_finder" , optional = true }
 backtrace = "0.3.67"
 souvlaki = { version = "0.5.3", optional = true }
-winit = { version = "0.27.5", optional = true }
+winit = { version = "0.28.1", optional = true }
 viuer = { version = "0.6.2", optional = true }
 image = { version = "0.24.5", optional = true }
 flume = "0.10.14"
 serde_json = "1.0.91"
-once_cell = "1.16.0"
+once_cell = "1.17.0"
 
 [features]
 alsa-backend = ["streaming", "librespot-playback/alsa-backend"]
