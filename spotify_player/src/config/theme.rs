@@ -231,7 +231,7 @@ impl Theme {
     }
 
     pub fn playback_progress_bar(&self) -> tui::style::Style {
-        match &self.component_style.playback_metadata {
+        match &self.component_style.playback_progress_bar {
             None => Style::default()
                 .bg(StyleColor::BrightBlack)
                 .fg(StyleColor::Green)
