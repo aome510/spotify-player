@@ -35,6 +35,8 @@ pub struct AppConfig {
     #[cfg(feature = "image")]
     pub cover_image_refresh_duration_in_ms: u64,
 
+    pub page_size_in_rows: usize,
+
     pub track_table_item_max_len: usize,
 
     // icon configs
@@ -102,6 +104,8 @@ impl Default for AppConfig {
 
             #[cfg(feature = "image")]
             cover_image_refresh_duration_in_ms: 2000,
+
+            page_size_in_rows: 20,
 
             track_table_item_max_len: 32,
 
