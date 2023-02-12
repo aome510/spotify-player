@@ -1,3 +1,4 @@
+use rspotify::model::PlayableItem;
 use tracing::Instrument;
 
 use crate::{event::ClientRequest, state::*};
@@ -52,6 +53,59 @@ pub async fn start_client_handler(
     }
 }
 
+/// Handles the track ending event
+async fn handle_track_end_event(
+    state: &SharedState,
+    client_pub: &flume::Sender<ClientRequest>,
+) -> anyhow::Result<()> {
+    let mut needs_update = false;
+    {
+        let player = state.player.read();
+        if let (Some(playback), Some(track)) =
+            (player.playback.as_ref(), player.current_playing_track())
+        {
+            if let Some(progress) = player.playback_progress() {
+                needs_update = progress >= track.duration && playback.is_playing;
+            }
+        }
+    }
+    if needs_update {
+        client_pub
+            .send_async(ClientRequest::GetCurrentPlayback)
+            .await?;
+    }
+
+    Ok(())
+}
+
+async fn handle_queue_change_event(
+    state: &SharedState,
+    client_pub: &flume::Sender<ClientRequest>,
+) -> anyhow::Result<()> {
+    let mut needs_update = false;
+    {
+        let player = state.player.read();
+        if let (Some(track), Some(queue)) = (player.current_playing_track(), player.queue.as_ref())
+        {
+            if let Some(PlayableItem::Track(queue_track)) = queue.currently_playing.as_ref() {
+                // if the currently playing track in queue is different from the actual
+                // currently playing track stored inside player's playback, update the queue
+                needs_update = queue_track.id != track.id;
+            }
+        }
+    }
+    if needs_update {
+        client_pub
+            .send_async(ClientRequest::GetCurrentPlayback)
+            .await?;
+        client_pub
+            .send_async(ClientRequest::GetCurrentUserQueue)
+            .await?;
+    }
+
+    Ok(())
+}
+
 /// Starts multiple event watchers listening to events and
 /// notifying the client to make update requests if needed
 pub async fn start_player_event_watchers(
@@ -83,30 +137,13 @@ pub async fn start_player_event_watchers(
     loop {
         tokio::time::sleep(refresh_duration).await;
 
-        // update the playback when the current track ends
-        let (progress_ms, duration_ms, is_playing) = {
-            let player = state.player.read();
-
-            (
-                player.playback_progress(),
-                player.current_playing_track().map(|t| t.duration),
-                player
-                    .playback
-                    .as_ref()
-                    .map(|p| p.is_playing)
-                    .unwrap_or_default(),
-            )
-        };
-        if let (Some(progress_ms), Some(duration_ms)) = (progress_ms, duration_ms) {
-            if progress_ms >= duration_ms && is_playing {
-                client_pub
-                    .send_async(ClientRequest::GetCurrentPlayback)
-                    .await
-                    .unwrap_or_default();
-            }
+        if let Err(err) = handle_track_end_event(&state, &client_pub).await {
+            tracing::error!("Encountered error when handling track end event: {err}");
+        }
+        if let Err(err) = handle_queue_change_event(&state, &client_pub).await {
+            tracing::error!("Encountered error when handling queue change event: {err}");
         }
 
-        // update the context state and request new data when moving to a new context page
         match state.ui.lock().current_page_mut() {
             PageState::Context {
                 id,
@@ -118,6 +155,7 @@ pub async fn start_player_event_watchers(
                     ContextPageType::CurrentPlaying => state.player.read().playing_context_id(),
                 };
 
+                // update the context state and request new data when moving to a new context page
                 if *id != expected_id {
                     tracing::info!("Current context ID ({:?}) is different from the expected ID ({:?}), update the context state", id, expected_id);
 
