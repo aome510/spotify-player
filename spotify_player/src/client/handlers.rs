@@ -131,18 +131,34 @@ pub async fn start_player_event_watchers(
         });
     }
 
-    let refresh_duration = std::time::Duration::from_millis(200);
+    // Start the first task for handling "low-frequency" events.
+    // An event can be categorized as "low-frequency" when
+    // - we don't need to handle it "immediately"
+    // - we want to avoid handling it more than once within a period of time
+    tokio::task::spawn({
+        let client_pub = client_pub.clone();
+        let state = state.clone();
+        async move {
+            let refresh_duration = std::time::Duration::from_millis(1000); // frequency = 1Hz
+            loop {
+                tokio::time::sleep(refresh_duration).await;
 
-    // Main watcher task
+                if let Err(err) = handle_track_end_event(&state, &client_pub).await {
+                    tracing::error!("Encountered error when handling track end event: {err}");
+                }
+                if let Err(err) = handle_queue_change_event(&state, &client_pub).await {
+                    tracing::error!("Encountered error when handling queue change event: {err}");
+                }
+            }
+        }
+    });
+
+    // Start the second task (main blocking task) for handling "high-frequency" events.
+    // An event is categorized as "high-frequency" when
+    // - we want to handle it "immediately" to prevent users from experiencing a noticable delay
+    let refresh_duration = std::time::Duration::from_millis(200); // frequency = 5Hz
     loop {
         tokio::time::sleep(refresh_duration).await;
-
-        if let Err(err) = handle_track_end_event(&state, &client_pub).await {
-            tracing::error!("Encountered error when handling track end event: {err}");
-        }
-        if let Err(err) = handle_queue_change_event(&state, &client_pub).await {
-            tracing::error!("Encountered error when handling queue change event: {err}");
-        }
 
         match state.ui.lock().current_page_mut() {
             PageState::Context {
