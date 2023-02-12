@@ -53,7 +53,6 @@ pub async fn start_client_handler(
     }
 }
 
-/// Handles the track ending event
 async fn handle_track_end_event(
     state: &SharedState,
     client_pub: &flume::Sender<ClientRequest>,
@@ -95,6 +94,8 @@ async fn handle_queue_change_event(
         }
     }
     if needs_update {
+        // In addition to `GetCurrentUserQueue` request, also update the current playback
+        // as there can be a mistmatch between the current playback and the current queue.
         client_pub
             .send_async(ClientRequest::GetCurrentPlayback)
             .await?;
