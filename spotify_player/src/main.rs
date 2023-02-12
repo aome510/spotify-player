@@ -71,6 +71,7 @@ async fn init_spotify(
     }
 
     // request user data
+    client_pub.send(event::ClientRequest::GetCurrentUserQueue)?;
     client_pub.send(event::ClientRequest::GetCurrentUser)?;
     client_pub.send(event::ClientRequest::GetUserPlaylists)?;
     client_pub.send(event::ClientRequest::GetUserFollowedArtists)?;
