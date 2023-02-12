@@ -180,6 +180,9 @@ pub fn handle_command_for_track_table_window(
                 new_list_state(),
             ));
         }
+        Command::AddSelectedItemToQueue => {
+            client_pub.send(ClientRequest::AddTrackToQueue(tracks[id].id.clone()))?;
+        }
         _ => return Ok(false),
     }
     Ok(true)
@@ -224,6 +227,9 @@ pub fn handle_command_for_track_list_window(
                 ActionListItem::Track(tracks[id].clone(), actions),
                 new_list_state(),
             ));
+        }
+        Command::AddSelectedItemToQueue => {
+            client_pub.send(ClientRequest::AddTrackToQueue(tracks[id].id.clone()))?;
         }
         _ => return Ok(false),
     }
