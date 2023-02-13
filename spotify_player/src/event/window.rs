@@ -1,3 +1,4 @@
+use super::page::handle_navigation_commands_for_page;
 use super::*;
 use crate::{
     command::{AlbumAction, ArtistAction, PlaylistAction, TrackAction},
@@ -147,17 +148,8 @@ pub fn handle_command_for_track_table_window(
         return Ok(false);
     }
 
+    handle_navigation_commands_for_page!(command, tracks.len(), ui.current_page_mut(), id);
     match command {
-        Command::SelectNextOrScrollDown => {
-            if id + 1 < tracks.len() {
-                ui.current_page_mut().select(id + 1);
-            }
-        }
-        Command::SelectPreviousOrScrollUp => {
-            if id > 0 {
-                ui.current_page_mut().select(id - 1);
-            }
-        }
         Command::PlayRandom => {
             let id = rand::thread_rng().gen_range(0..tracks.len());
 
@@ -197,17 +189,8 @@ pub fn handle_command_for_track_list_window(
         return Ok(false);
     }
 
+    handle_navigation_commands_for_page!(command, tracks.len(), ui.current_page_mut(), id);
     match command {
-        Command::SelectNextOrScrollDown => {
-            if id + 1 < tracks.len() {
-                ui.current_page_mut().select(id + 1);
-            }
-        }
-        Command::SelectPreviousOrScrollUp => {
-            if id > 0 {
-                ui.current_page_mut().select(id - 1);
-            }
-        }
         Command::ChooseSelected => {
             // for the track list, `ChooseSelected` on a track
             // will start a `URIs` playback containing only that track.
@@ -241,17 +224,8 @@ pub fn handle_command_for_artist_list_window(
         return Ok(false);
     }
 
+    handle_navigation_commands_for_page!(command, artists.len(), ui.current_page_mut(), id);
     match command {
-        Command::SelectNextOrScrollDown => {
-            if id + 1 < artists.len() {
-                ui.current_page_mut().select(id + 1);
-            }
-        }
-        Command::SelectPreviousOrScrollUp => {
-            if id > 0 {
-                ui.current_page_mut().select(id - 1);
-            }
-        }
         Command::ChooseSelected => {
             let context_id = ContextId::Artist(artists[id].id.clone());
             ui.create_new_page(PageState::Context {
@@ -293,17 +267,8 @@ pub fn handle_command_for_album_list_window(
         return Ok(false);
     }
 
+    handle_navigation_commands_for_page!(command, albums.len(), ui.current_page_mut(), id);
     match command {
-        Command::SelectNextOrScrollDown => {
-            if id + 1 < albums.len() {
-                ui.current_page_mut().select(id + 1);
-            }
-        }
-        Command::SelectPreviousOrScrollUp => {
-            if id > 0 {
-                ui.current_page_mut().select(id - 1);
-            }
-        }
         Command::ChooseSelected => {
             let context_id = ContextId::Album(albums[id].id.clone());
             ui.create_new_page(PageState::Context {
@@ -350,17 +315,8 @@ pub fn handle_command_for_playlist_list_window(
         return Ok(false);
     }
 
+    handle_navigation_commands_for_page!(command, playlists.len(), ui.current_page_mut(), id);
     match command {
-        Command::SelectNextOrScrollDown => {
-            if id + 1 < playlists.len() {
-                ui.current_page_mut().select(id + 1);
-            }
-        }
-        Command::SelectPreviousOrScrollUp => {
-            if id > 0 {
-                ui.current_page_mut().select(id - 1);
-            }
-        }
         Command::ChooseSelected => {
             let context_id = ContextId::Playlist(playlists[id].id.clone());
             ui.create_new_page(PageState::Context {

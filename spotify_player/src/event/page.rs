@@ -2,6 +2,27 @@ use anyhow::Context as _;
 
 use super::*;
 
+macro_rules! handle_navigation_commands_for_page {
+    ($command:ident, $len:expr, $page:expr, $id:expr) => {
+        match $command {
+            Command::SelectNextOrScrollDown => {
+                if $id + 1 < $len {
+                    $page.select($id + 1);
+                }
+                return Ok(true);
+            }
+            Command::SelectPreviousOrScrollUp => {
+                if $id > 0 {
+                    $page.select($id - 1);
+                }
+                return Ok(true);
+            }
+            _ => {}
+        }
+    };
+}
+pub(super) use handle_navigation_commands_for_page;
+
 pub fn handle_key_sequence_for_library_page(
     key_sequence: &KeySequence,
     state: &SharedState,
@@ -206,6 +227,7 @@ pub fn handle_key_sequence_for_browse_page(
         return Ok(false);
     }
 
+    handle_navigation_commands_for_page!(command, len, page_state, selected);
     match command {
         Command::ChooseSelected => {
             match page_state {
@@ -242,16 +264,6 @@ pub fn handle_key_sequence_for_browse_page(
                 },
                 _ => anyhow::bail!("expect a browse page state"),
             };
-        }
-        Command::SelectNextOrScrollDown => {
-            if selected + 1 < len {
-                page_state.select(selected + 1);
-            }
-        }
-        Command::SelectPreviousOrScrollUp => {
-            if selected > 0 {
-                page_state.select(selected - 1);
-            }
         }
         Command::Search => {
             page_state.select(0);
