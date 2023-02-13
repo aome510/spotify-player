@@ -3,7 +3,7 @@ use anyhow::Context as _;
 use super::*;
 
 macro_rules! handle_navigation_commands_for_page {
-    ($command:ident, $len:expr, $page:expr, $id:expr) => {
+    ($state:ident, $command:ident, $len:expr, $page:expr, $id:expr) => {
         match $command {
             Command::SelectNextOrScrollDown => {
                 if $id + 1 < $len {
@@ -15,6 +15,17 @@ macro_rules! handle_navigation_commands_for_page {
                 if $id > 0 {
                     $page.select($id - 1);
                 }
+                return Ok(true);
+            }
+            Command::PageSelectNextOrScrollDown => {
+                $page.select(std::cmp::min(
+                    $id + $state.app_config.page_size_in_rows,
+                    $len - 1,
+                ));
+                return Ok(true);
+            }
+            Command::PageSelectPreviousOrScrollUp => {
+                $page.select($id.saturating_sub($state.app_config.page_size_in_rows));
                 return Ok(true);
             }
             _ => {}
@@ -56,12 +67,14 @@ pub fn handle_key_sequence_for_library_page(
                     ui.search_filtered_items(&data.user_data.playlists),
                     &data,
                     ui,
+                    state,
                 ),
                 LibraryFocusState::SavedAlbums => window::handle_command_for_album_list_window(
                     command,
                     ui.search_filtered_items(&data.user_data.saved_albums),
                     &data,
                     ui,
+                    state,
                 ),
                 LibraryFocusState::FollowedArtists => {
                     window::handle_command_for_artist_list_window(
@@ -69,6 +82,7 @@ pub fn handle_key_sequence_for_library_page(
                         ui.search_filtered_items(&data.user_data.followed_artists),
                         &data,
                         ui,
+                        state,
                     )
                 }
             }
@@ -138,25 +152,27 @@ pub fn handle_key_sequence_for_search_page(
             let tracks = search_results
                 .map(|s| s.tracks.iter().collect())
                 .unwrap_or_default();
-            window::handle_command_for_track_list_window(command, client_pub, tracks, &data, ui)
+            window::handle_command_for_track_list_window(
+                command, client_pub, tracks, &data, ui, state,
+            )
         }
         SearchFocusState::Artists => {
             let artists = search_results
                 .map(|s| s.artists.iter().collect())
                 .unwrap_or_default();
-            window::handle_command_for_artist_list_window(command, artists, &data, ui)
+            window::handle_command_for_artist_list_window(command, artists, &data, ui, state)
         }
         SearchFocusState::Albums => {
             let albums = search_results
                 .map(|s| s.albums.iter().collect())
                 .unwrap_or_default();
-            window::handle_command_for_album_list_window(command, albums, &data, ui)
+            window::handle_command_for_album_list_window(command, albums, &data, ui, state)
         }
         SearchFocusState::Playlists => {
             let playlists = search_results
                 .map(|s| s.playlists.iter().collect())
                 .unwrap_or_default();
-            window::handle_command_for_playlist_list_window(command, playlists, &data, ui)
+            window::handle_command_for_playlist_list_window(command, playlists, &data, ui, state)
         }
     }
 }
@@ -227,7 +243,7 @@ pub fn handle_key_sequence_for_browse_page(
         return Ok(false);
     }
 
-    handle_navigation_commands_for_page!(command, len, page_state, selected);
+    handle_navigation_commands_for_page!(state, command, len, page_state, selected);
     match command {
         Command::ChooseSelected => {
             match page_state {
