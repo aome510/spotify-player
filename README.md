@@ -277,6 +277,7 @@ List of supported commands:
 | `RestartIntegratedClient`      | restart the integrated librespot client (`streaming` feature only)      | `R`                |
 | `ShowActionsOnSelectedItem`    | open a popup showing actions on a selected item                         | `g a`, `C-space`   |
 | `ShowActionsOnCurrentTrack`    | open a popup showing actions on the current track                       | `a`                |
+| `AddSelectedItemToQueue`       | add the selected item to queue                                          | `Z`                |
 | `FocusNextWindow`              | focus the next focusable window (if any)                                | `tab`              |
 | `FocusPreviousWindow`          | focus the previous focusable window (if any)                            | `backtab`          |
 | `SwitchTheme`                  | open a popup for switching theme                                        | `T`                |
@@ -301,6 +302,8 @@ List of supported commands:
 | `SortTrackByDuration`          | sort the track table (if any) by track's duration                       | `s d`              |
 | `SortTrackByAddedDate`         | sort the track table (if any) by track's added date                     | `s D`              |
 | `ReverseOrder`                 | reverse the order of the track table (if any)                           | `s r`              |
+
+> > > > > > > origin/master
 
 To add new shortcuts or modify the default shortcuts, please refer to the [keymaps section](docs/config.md#keymaps) in the configuration documentation.
 

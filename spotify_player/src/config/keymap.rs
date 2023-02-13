@@ -80,6 +80,10 @@ impl Default for KeymapConfig {
                     command: Command::Queue,
                 },
                 Keymap {
+                    key_sequence: "Z".into(),
+                    command: Command::AddSelectedItemToQueue,
+                },
+                Keymap {
                     key_sequence: "C-space".into(),
                     command: Command::ShowActionsOnSelectedItem,
                 },

@@ -40,6 +40,7 @@ pub enum Command {
 
     ShowActionsOnSelectedItem,
     ShowActionsOnCurrentTrack,
+    AddSelectedItemToQueue,
 
     BrowseUserPlaylists,
     BrowseUserFollowedArtists,
@@ -160,6 +161,7 @@ impl Command {
             Self::RefreshPlayback => "manually refresh the current playback",
             Self::ShowActionsOnSelectedItem => "open a popup showing actions on a selected item",
             Self::ShowActionsOnCurrentTrack => "open a popup showing actions on the current track",
+            Self::AddSelectedItemToQueue => "add the selected item to queue",
             Self::FocusNextWindow => "focus the next focusable window (if any)",
             Self::FocusPreviousWindow => "focus the previous focusable window (if any)",
             Self::SwitchTheme => "open a popup for switching theme",
