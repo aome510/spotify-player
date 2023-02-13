@@ -303,8 +303,6 @@ List of supported commands:
 | `SortTrackByAddedDate`         | sort the track table (if any) by track's added date                     | `s D`              |
 | `ReverseOrder`                 | reverse the order of the track table (if any)                           | `s r`              |
 
-> > > > > > > origin/master
-
 To add new shortcuts or modify the default shortcuts, please refer to the [keymaps section](docs/config.md#keymaps) in the configuration documentation.
 
 **Tips**:
