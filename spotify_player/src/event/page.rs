@@ -324,6 +324,12 @@ pub fn handle_key_sequence_for_lyric_page(
                 *scroll_offset -= 1;
             }
         }
+        Command::PageSelectNextOrScrollDown => {
+            *scroll_offset += state.app_config.page_size_in_rows;
+        }
+        Command::PageSelectPreviousOrScrollUp => {
+            *scroll_offset = scroll_offset.saturating_sub(state.app_config.page_size_in_rows);
+        }
         _ => return Ok(false),
     }
     Ok(true)
