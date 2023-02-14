@@ -239,7 +239,15 @@ impl Default for KeymapConfig {
                     command: Command::SelectFirstOrScrollToTop,
                 },
                 Keymap {
+                    key_sequence: "home".into(),
+                    command: Command::SelectFirstOrScrollToTop,
+                },
+                Keymap {
                     key_sequence: "G".into(),
+                    command: Command::SelectLastOrScrollToBottom,
+                },
+                Keymap {
+                    key_sequence: "end".into(),
                     command: Command::SelectLastOrScrollToBottom,
                 },
                 Keymap {
