@@ -123,7 +123,7 @@ pub fn construct_track_actions(track: &Track, data: &DataReadGuard) -> Vec<Track
     ];
 
     // check if the track is a liked track
-    if data.user_data.saved_tracks.iter().any(|t| t.id == track.id) {
+    if data.user_data.is_liked_track(track) {
         actions.push(TrackAction::DeleteFromLikedTracks);
     } else {
         actions.push(TrackAction::AddToLikedTracks);

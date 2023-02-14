@@ -213,7 +213,8 @@ pub fn render_context_page(
         Some(id) => id,
     };
 
-    match state.data.read().caches.context.peek(&id.uri()) {
+    let data = state.data.read();
+    match data.caches.context.peek(&id.uri()) {
         Some(context) => {
             frame.render_widget(block, rect);
 
@@ -239,6 +240,7 @@ pub fn render_context_page(
                         frame,
                         state,
                         ui,
+                        &data,
                         chunks[1],
                         (top_tracks, albums, related_artists),
                     )?;
@@ -251,6 +253,7 @@ pub fn render_context_page(
                         state,
                         ui.search_filtered_items(tracks),
                         ui,
+                        &data,
                     )?;
                 }
                 Context::Album { tracks, .. } => {
@@ -261,6 +264,7 @@ pub fn render_context_page(
                         state,
                         ui.search_filtered_items(tracks),
                         ui,
+                        &data,
                     )?;
                 }
                 Context::Tracks { tracks, .. } => {
@@ -271,6 +275,7 @@ pub fn render_context_page(
                         state,
                         ui.search_filtered_items(tracks),
                         ui,
+                        &data,
                     )?;
                 }
             }
@@ -518,13 +523,14 @@ fn render_artist_context_page_windows(
     frame: &mut Frame,
     state: &SharedState,
     ui: &mut UIStateGuard,
+    data: &DataReadGuard,
     rect: Rect,
-    data: (&[Track], &[Album], &[Artist]),
+    artist_data: (&[Track], &[Album], &[Artist]),
 ) -> Result<()> {
     let (tracks, albums, artists) = (
-        ui.search_filtered_items(data.0),
-        ui.search_filtered_items(data.1),
-        ui.search_filtered_items(data.2),
+        ui.search_filtered_items(artist_data.0),
+        ui.search_filtered_items(artist_data.1),
+        ui.search_filtered_items(artist_data.2),
     );
 
     let focus_state = match ui.current_page() {
@@ -550,6 +556,7 @@ fn render_artist_context_page_windows(
             state,
             tracks,
             ui,
+            data,
         )?;
 
         chunks[1]
@@ -618,6 +625,7 @@ pub fn render_track_table_window(
     state: &SharedState,
     tracks: Vec<&Track>,
     ui: &mut UIStateGuard,
+    data: &DataReadGuard,
 ) -> Result<()> {
     // get the current playing track's URI to decorate such track (if exists) in the track table
     let mut playing_track_uri = "".to_string();
@@ -646,6 +654,11 @@ pub fn render_track_table_window(
                 ((id + 1).to_string(), Style::default())
             };
             Row::new(vec![
+                Cell::from(if data.user_data.is_liked_track(t) {
+                    &state.app_config.liked_icon
+                } else {
+                    ""
+                }),
                 Cell::from(id),
                 Cell::from(crate::utils::truncate_string(t.name.clone(), item_max_len)),
                 Cell::from(crate::utils::truncate_string(
@@ -662,6 +675,7 @@ pub fn render_track_table_window(
     let track_table = Table::new(rows)
         .header(
             Row::new(vec![
+                Cell::from(""),
                 Cell::from("#"),
                 Cell::from("Title"),
                 Cell::from("Artists"),
@@ -672,11 +686,12 @@ pub fn render_track_table_window(
         )
         .block(Block::default())
         .widths(&[
+            Constraint::Length(2),
             Constraint::Length(5),
             Constraint::Percentage(25),
             Constraint::Percentage(25),
             Constraint::Percentage(30),
-            Constraint::Percentage(15),
+            Constraint::Percentage(20),
         ])
         .highlight_style(ui.theme.selection_style(is_active));
 
