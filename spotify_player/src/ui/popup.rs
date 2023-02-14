@@ -43,34 +43,14 @@ pub fn render_popup(
                 (chunks[0], true)
             }
             PopupState::CommandHelp { .. } => {
-                let chunks = Layout::default()
-                    .direction(Direction::Vertical)
-                    .constraints(
-                        [
-                            Constraint::Length((state.app_config.playback_window_width + 2) as u16),
-                            Constraint::Min(0),
-                        ]
-                        .as_ref(),
-                    )
-                    .split(rect);
-
-                render_commands_help_popup(frame, state, ui, chunks[1]);
-                (chunks[0], false)
+                let (playback_rect, main_rect) = split_rect_for_playback_window(rect, state);
+                render_commands_help_popup(frame, state, ui, main_rect);
+                (playback_rect, false)
             }
             PopupState::Queue { .. } => {
-                let chunks = Layout::default()
-                    .direction(Direction::Vertical)
-                    .constraints(
-                        [
-                            Constraint::Length((state.app_config.playback_window_width + 2) as u16),
-                            Constraint::Min(0),
-                        ]
-                        .as_ref(),
-                    )
-                    .split(rect);
-
-                render_queue_popup(frame, state, ui, chunks[1]);
-                (chunks[0], false)
+                let (playback_rect, main_rect) = split_rect_for_playback_window(rect, state);
+                render_queue_popup(frame, state, ui, main_rect);
+                (playback_rect, false)
             }
             PopupState::ActionList(item, _) => {
                 let rect = render_list_popup(

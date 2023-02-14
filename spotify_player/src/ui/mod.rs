@@ -82,6 +82,30 @@ fn render_application(
     Ok(())
 }
 
+fn split_rect_for_playback_window(rect: Rect, state: &SharedState) -> (Rect, Rect) {
+    // +2 for top/bot borders
+    let playback_width = (state.app_config.playback_window_width + 2) as u16;
+
+    match state.app_config.playback_position {
+        config::Position::Top => {
+            let chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([Constraint::Length(playback_width), Constraint::Min(0)].as_ref())
+                .split(rect);
+
+            (chunks[0], chunks[1])
+        }
+        config::Position::Bottom => {
+            let chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([Constraint::Min(0), Constraint::Length(playback_width)].as_ref())
+                .split(rect);
+
+            (chunks[1], chunks[0])
+        }
+    }
+}
+
 /// renders the application's main layout
 fn render_main_layout(
     is_active: bool,
@@ -90,29 +114,7 @@ fn render_main_layout(
     ui: &mut UIStateGuard,
     rect: Rect,
 ) -> Result<()> {
-    let (playback_rect, main_rect) = {
-        // +2 for top/bot borders
-        let playback_width = (state.app_config.playback_window_width + 2) as u16;
-
-        match state.app_config.playback_position {
-            config::Position::Top => {
-                let chunks = Layout::default()
-                    .direction(Direction::Vertical)
-                    .constraints([Constraint::Length(playback_width), Constraint::Min(0)].as_ref())
-                    .split(rect);
-
-                (chunks[0], chunks[1])
-            }
-            config::Position::Bottom => {
-                let chunks = Layout::default()
-                    .direction(Direction::Vertical)
-                    .constraints([Constraint::Min(0), Constraint::Length(playback_width)].as_ref())
-                    .split(rect);
-
-                (chunks[1], chunks[0])
-            }
-        }
-    };
+    let (playback_rect, main_rect) = split_rect_for_playback_window(rect, state);
 
     playback::render_playback_window(frame, state, ui, playback_rect)?;
 
