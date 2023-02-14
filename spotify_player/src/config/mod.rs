@@ -42,6 +42,7 @@ pub struct AppConfig {
     // icon configs
     pub play_icon: String,
     pub pause_icon: String,
+    pub liked_icon: String,
 
     // layout configs
     #[cfg(feature = "image")]
@@ -111,6 +112,7 @@ impl Default for AppConfig {
 
             pause_icon: "▌▌".to_string(),
             play_icon: "▶".to_string(),
+            liked_icon: "♥".to_string(),
 
             #[cfg(feature = "image")]
             cover_img_length: 9,

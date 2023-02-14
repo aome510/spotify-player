@@ -33,6 +33,7 @@ All configuration files should be placed inside the application's configuration 
 | `default_device`                     | the default device to connect to on startup if no playing device found        | `spotify-player`                                           |
 | `play_icon`                          | the icon to indicate playing state of a Spotify item                          | `▶`                                                        |
 | `pause_icon`                         | the icon to indicate pause state of a Spotify item                            | `▌▌`                                                       |
+| `liked_icon`                         | the icon to indicate the liked state of a song                                | "♥"                                                        |
 | `playback_window_width`              | the width of the playback window                                              | `6`                                                        |
 | `cover_img_width`                    | the width of the cover image (`image` feature only)                           | `5`                                                        |
 | `cover_img_length`                   | the length of the cover image (`image` feature only)                          | `9`                                                        |
