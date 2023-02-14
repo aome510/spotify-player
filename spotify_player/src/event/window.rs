@@ -139,6 +139,7 @@ pub fn handle_command_for_focused_context_window(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 /// handles a command for the track table subwindow
 pub fn handle_command_for_track_table_window(
     command: Command,
