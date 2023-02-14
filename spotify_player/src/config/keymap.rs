@@ -235,6 +235,14 @@ impl Default for KeymapConfig {
                     command: Command::PageSelectNextOrScrollDown,
                 },
                 Keymap {
+                    key_sequence: "g g".into(),
+                    command: Command::SelectFirstOrScrollToTop,
+                },
+                Keymap {
+                    key_sequence: "G".into(),
+                    command: Command::SelectLastOrScrollToBottom,
+                },
+                Keymap {
                     key_sequence: "s t".into(),
                     command: Command::SortTrackByTitle,
                 },
