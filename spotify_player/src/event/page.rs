@@ -28,6 +28,14 @@ macro_rules! handle_navigation_commands_for_page {
                 $page.select($id.saturating_sub($state.app_config.page_size_in_rows));
                 return Ok(true);
             }
+            Command::SelectLastOrScrollToBottom => {
+                if $len > 0 {
+                    $page.select($len - 1);
+                }
+            }
+            Command::SelectFirstOrScrollToTop => {
+                $page.select(0);
+            }
             _ => {}
         }
     };
@@ -329,6 +337,14 @@ pub fn handle_key_sequence_for_lyric_page(
         }
         Command::PageSelectPreviousOrScrollUp => {
             *scroll_offset = scroll_offset.saturating_sub(state.app_config.page_size_in_rows);
+        }
+        Command::SelectFirstOrScrollToTop => {
+            *scroll_offset = 0;
+        }
+        // Don't know the number of rows of a lyric displayed in the page, so just use a "big" number.
+        // The `scroll_offset` will be adjust accordingly in the page rendering function.
+        Command::SelectLastOrScrollToBottom => {
+            *scroll_offset = 1024;
         }
         _ => return Ok(false),
     }

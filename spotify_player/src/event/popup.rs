@@ -428,6 +428,14 @@ fn handle_command_for_command_help_popup(
         Command::PageSelectPreviousOrScrollUp => {
             *scroll_offset = scroll_offset.saturating_sub(state.app_config.page_size_in_rows);
         }
+        Command::SelectFirstOrScrollToTop => {
+            *scroll_offset = 0;
+        }
+        // Don't know the number of commands displayed in the page, so just use a "big" number.
+        // The `scroll_offset` will be adjust accordingly in the popup rendering function.
+        Command::SelectLastOrScrollToBottom => {
+            *scroll_offset = 1024;
+        }
         _ => return Ok(false),
     }
     Ok(true)
