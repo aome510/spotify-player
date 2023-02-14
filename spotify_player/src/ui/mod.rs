@@ -90,25 +90,39 @@ fn render_main_layout(
     ui: &mut UIStateGuard,
     rect: Rect,
 ) -> Result<()> {
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints(
-            [
-                Constraint::Length((state.app_config.playback_window_width + 2) as u16),
-                Constraint::Min(0),
-            ]
-            .as_ref(),
-        ) // +2 for top/bot borders
-        .split(rect);
-    playback::render_playback_window(frame, state, ui, chunks[0])?;
+    let (playback_rect, main_rect) = {
+        // +2 for top/bot borders
+        let playback_width = (state.app_config.playback_window_width + 2) as u16;
+
+        match state.app_config.playback_position {
+            config::Position::Top => {
+                let chunks = Layout::default()
+                    .direction(Direction::Vertical)
+                    .constraints([Constraint::Length(playback_width), Constraint::Min(0)].as_ref())
+                    .split(rect);
+
+                (chunks[0], chunks[1])
+            }
+            config::Position::Bottom => {
+                let chunks = Layout::default()
+                    .direction(Direction::Vertical)
+                    .constraints([Constraint::Min(0), Constraint::Length(playback_width)].as_ref())
+                    .split(rect);
+
+                (chunks[1], chunks[0])
+            }
+        }
+    };
+
+    playback::render_playback_window(frame, state, ui, playback_rect)?;
 
     let page_type = ui.current_page().page_type();
     match page_type {
-        PageType::Library => page::render_library_page(is_active, frame, state, ui, chunks[1]),
-        PageType::Search => page::render_search_page(is_active, frame, state, ui, chunks[1]),
-        PageType::Context => page::render_context_page(is_active, frame, state, ui, chunks[1]),
-        PageType::Browse => page::render_browse_page(is_active, frame, state, ui, chunks[1]),
+        PageType::Library => page::render_library_page(is_active, frame, state, ui, main_rect),
+        PageType::Search => page::render_search_page(is_active, frame, state, ui, main_rect),
+        PageType::Context => page::render_context_page(is_active, frame, state, ui, main_rect),
+        PageType::Browse => page::render_browse_page(is_active, frame, state, ui, main_rect),
         #[cfg(feature = "lyric-finder")]
-        PageType::Lyric => page::render_lyric_page(is_active, frame, state, ui, chunks[1]),
+        PageType::Lyric => page::render_lyric_page(is_active, frame, state, ui, main_rect),
     }
 }

@@ -556,7 +556,7 @@ fn render_artist_context_page_windows(
             state,
             tracks,
             ui,
-            &data,
+            data,
         )?;
 
         chunks[1]

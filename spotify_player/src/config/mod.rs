@@ -45,6 +45,8 @@ pub struct AppConfig {
     pub liked_icon: String,
 
     // layout configs
+    pub playback_position: Position,
+
     #[cfg(feature = "image")]
     pub cover_img_length: usize,
     #[cfg(feature = "image")]
@@ -58,6 +60,13 @@ pub struct AppConfig {
 
     pub device: DeviceConfig,
 }
+
+#[derive(Debug, Deserialize, Clone)]
+pub enum Position {
+    Top,
+    Bottom,
+}
+config_parser_impl!(Position);
 
 #[derive(Debug, Deserialize, ConfigParse, Clone)]
 pub struct Command {
@@ -113,6 +122,8 @@ impl Default for AppConfig {
             pause_icon: "▌▌".to_string(),
             play_icon: "▶".to_string(),
             liked_icon: "♥".to_string(),
+
+            playback_position: Position::Top,
 
             #[cfg(feature = "image")]
             cover_img_length: 9,

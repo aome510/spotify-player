@@ -78,10 +78,8 @@ impl UserData {
         }
     }
 
+    /// checks if a track is a liked track
     pub fn is_liked_track(&self, track: &Track) -> bool {
-        self.saved_tracks
-            .iter()
-            .find(|t| t.id == track.id)
-            .is_some()
+        self.saved_tracks.iter().any(|t| t.id == track.id)
     }
 }
