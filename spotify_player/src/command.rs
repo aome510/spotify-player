@@ -21,6 +21,11 @@ pub enum Command {
 
     SelectNextOrScrollDown,
     SelectPreviousOrScrollUp,
+    PageSelectNextOrScrollDown,
+    PageSelectPreviousOrScrollUp,
+    SelectFirstOrScrollToTop,
+    SelectLastOrScrollToBottom,
+
     ChooseSelected,
 
     RefreshPlayback,
@@ -148,6 +153,18 @@ impl Command {
             Self::SelectNextOrScrollDown => "select the next item in a list/table or scroll down",
             Self::SelectPreviousOrScrollUp => {
                 "select the previous item in a list/table or scroll up"
+            }
+            Self::PageSelectNextOrScrollDown => {
+                "select the next page item in a list/table or scroll a page down"
+            }
+            Self::PageSelectPreviousOrScrollUp => {
+                "select the previous page item in a list/table or scroll a page up"
+            }
+            Self::SelectFirstOrScrollToTop => {
+                "select the first item in a list/table or scroll to the top"
+            }
+            Self::SelectLastOrScrollToBottom => {
+                "select the last item in a list/table or scroll to the bottom"
             }
             Self::ChooseSelected => "choose the selected item and act on it",
             Self::RefreshPlayback => "manually refresh the current playback",

@@ -1,3 +1,4 @@
+use super::page::handle_navigation_commands_for_page;
 use super::*;
 use crate::{
     command::{AlbumAction, ArtistAction, PlaylistAction, TrackAction},
@@ -76,12 +77,14 @@ pub fn handle_command_for_focused_context_window(
                         ui.search_filtered_items(albums),
                         &data,
                         ui,
+                        state,
                     ),
                     ArtistFocusState::RelatedArtists => handle_command_for_artist_list_window(
                         command,
                         ui.search_filtered_items(related_artists),
                         &data,
                         ui,
+                        state,
                     ),
                     ArtistFocusState::TopTracks => handle_command_for_track_table_window(
                         command,
@@ -97,6 +100,7 @@ pub fn handle_command_for_focused_context_window(
                         ui.search_filtered_items(top_tracks),
                         &data,
                         ui,
+                        state,
                     ),
                 }
             }
@@ -108,6 +112,7 @@ pub fn handle_command_for_focused_context_window(
                 ui.search_filtered_items(tracks),
                 &data,
                 ui,
+                state,
             ),
             Context::Playlist { tracks, .. } => handle_command_for_track_table_window(
                 command,
@@ -117,6 +122,7 @@ pub fn handle_command_for_focused_context_window(
                 ui.search_filtered_items(tracks),
                 &data,
                 ui,
+                state,
             ),
             Context::Tracks { tracks, .. } => handle_command_for_track_table_window(
                 command,
@@ -126,12 +132,14 @@ pub fn handle_command_for_focused_context_window(
                 ui.search_filtered_items(tracks),
                 &data,
                 ui,
+                state,
             ),
         },
         None => Ok(false),
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 /// handles a command for the track table subwindow
 pub fn handle_command_for_track_table_window(
     command: Command,
@@ -141,23 +149,15 @@ pub fn handle_command_for_track_table_window(
     tracks: Vec<&Track>,
     data: &DataReadGuard,
     mut ui: UIStateGuard,
+    state: &SharedState,
 ) -> Result<bool> {
     let id = ui.current_page_mut().selected().unwrap_or_default();
     if id >= tracks.len() {
         return Ok(false);
     }
 
+    handle_navigation_commands_for_page!(state, command, tracks.len(), ui.current_page_mut(), id);
     match command {
-        Command::SelectNextOrScrollDown => {
-            if id + 1 < tracks.len() {
-                ui.current_page_mut().select(id + 1);
-            }
-        }
-        Command::SelectPreviousOrScrollUp => {
-            if id > 0 {
-                ui.current_page_mut().select(id - 1);
-            }
-        }
         Command::PlayRandom => {
             let id = rand::thread_rng().gen_range(0..tracks.len());
 
@@ -194,23 +194,15 @@ pub fn handle_command_for_track_list_window(
     tracks: Vec<&Track>,
     data: &DataReadGuard,
     mut ui: UIStateGuard,
+    state: &SharedState,
 ) -> Result<bool> {
     let id = ui.current_page_mut().selected().unwrap_or_default();
     if id >= tracks.len() {
         return Ok(false);
     }
 
+    handle_navigation_commands_for_page!(state, command, tracks.len(), ui.current_page_mut(), id);
     match command {
-        Command::SelectNextOrScrollDown => {
-            if id + 1 < tracks.len() {
-                ui.current_page_mut().select(id + 1);
-            }
-        }
-        Command::SelectPreviousOrScrollUp => {
-            if id > 0 {
-                ui.current_page_mut().select(id - 1);
-            }
-        }
         Command::ChooseSelected => {
             // for the track list, `ChooseSelected` on a track
             // will start a `URIs` playback containing only that track.
@@ -241,23 +233,15 @@ pub fn handle_command_for_artist_list_window(
     artists: Vec<&Artist>,
     data: &DataReadGuard,
     mut ui: UIStateGuard,
+    state: &SharedState,
 ) -> Result<bool> {
     let id = ui.current_page_mut().selected().unwrap_or_default();
     if id >= artists.len() {
         return Ok(false);
     }
 
+    handle_navigation_commands_for_page!(state, command, artists.len(), ui.current_page_mut(), id);
     match command {
-        Command::SelectNextOrScrollDown => {
-            if id + 1 < artists.len() {
-                ui.current_page_mut().select(id + 1);
-            }
-        }
-        Command::SelectPreviousOrScrollUp => {
-            if id > 0 {
-                ui.current_page_mut().select(id - 1);
-            }
-        }
         Command::ChooseSelected => {
             let context_id = ContextId::Artist(artists[id].id.clone());
             ui.create_new_page(PageState::Context {
@@ -293,23 +277,15 @@ pub fn handle_command_for_album_list_window(
     albums: Vec<&Album>,
     data: &DataReadGuard,
     mut ui: UIStateGuard,
+    state: &SharedState,
 ) -> Result<bool> {
     let id = ui.current_page_mut().selected().unwrap_or_default();
     if id >= albums.len() {
         return Ok(false);
     }
 
+    handle_navigation_commands_for_page!(state, command, albums.len(), ui.current_page_mut(), id);
     match command {
-        Command::SelectNextOrScrollDown => {
-            if id + 1 < albums.len() {
-                ui.current_page_mut().select(id + 1);
-            }
-        }
-        Command::SelectPreviousOrScrollUp => {
-            if id > 0 {
-                ui.current_page_mut().select(id - 1);
-            }
-        }
         Command::ChooseSelected => {
             let context_id = ContextId::Album(albums[id].id.clone());
             ui.create_new_page(PageState::Context {
@@ -350,23 +326,21 @@ pub fn handle_command_for_playlist_list_window(
     playlists: Vec<&Playlist>,
     data: &DataReadGuard,
     mut ui: UIStateGuard,
+    state: &SharedState,
 ) -> Result<bool> {
     let id = ui.current_page_mut().selected().unwrap_or_default();
     if id >= playlists.len() {
         return Ok(false);
     }
 
+    handle_navigation_commands_for_page!(
+        state,
+        command,
+        playlists.len(),
+        ui.current_page_mut(),
+        id
+    );
     match command {
-        Command::SelectNextOrScrollDown => {
-            if id + 1 < playlists.len() {
-                ui.current_page_mut().select(id + 1);
-            }
-        }
-        Command::SelectPreviousOrScrollUp => {
-            if id > 0 {
-                ui.current_page_mut().select(id - 1);
-            }
-        }
         Command::ChooseSelected => {
             let context_id = ContextId::Playlist(playlists[id].id.clone());
             ui.create_new_page(PageState::Context {

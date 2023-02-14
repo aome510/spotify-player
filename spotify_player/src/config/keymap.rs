@@ -219,6 +219,38 @@ impl Default for KeymapConfig {
                     command: Command::SelectPreviousOrScrollUp,
                 },
                 Keymap {
+                    key_sequence: "page_up".into(),
+                    command: Command::PageSelectPreviousOrScrollUp,
+                },
+                Keymap {
+                    key_sequence: "C-b".into(),
+                    command: Command::PageSelectPreviousOrScrollUp,
+                },
+                Keymap {
+                    key_sequence: "page_down".into(),
+                    command: Command::PageSelectNextOrScrollDown,
+                },
+                Keymap {
+                    key_sequence: "C-f".into(),
+                    command: Command::PageSelectNextOrScrollDown,
+                },
+                Keymap {
+                    key_sequence: "g g".into(),
+                    command: Command::SelectFirstOrScrollToTop,
+                },
+                Keymap {
+                    key_sequence: "home".into(),
+                    command: Command::SelectFirstOrScrollToTop,
+                },
+                Keymap {
+                    key_sequence: "G".into(),
+                    command: Command::SelectLastOrScrollToBottom,
+                },
+                Keymap {
+                    key_sequence: "end".into(),
+                    command: Command::SelectLastOrScrollToBottom,
+                },
+                Keymap {
                     key_sequence: "s t".into(),
                     command: Command::SortTrackByTitle,
                 },

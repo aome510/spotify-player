@@ -27,6 +27,7 @@ All configuration files should be placed inside the application's configuration 
 | `app_refresh_duration_in_ms`         | the duration (in ms) between two consecutive application refreshes            | `32`                                                       |
 | `playback_refresh_duration_in_ms`    | the duration (in ms) between two consecutive playback refreshes               | `0`                                                        |
 | `cover_image_refresh_duration_in_ms` | the duration (in ms) between two cover image refreshes (`image` feature only) | `2000`                                                     |
+| `page_size_in_rows`                  | a page's size expressed as a number of rows (for page-navigation commands)    | `20`                                                       |
 | `track_table_item_max_len`           | the maximum length of a column in a track table                               | `32`                                                       |
 | `enable_media_control`               | enable application media control support (`media-control` feature only)       | `true` (Linux), `false` (Windows and MacOS)                |
 | `default_device`                     | the default device to connect to on startup if no playing device found        | `spotify-player`                                           |

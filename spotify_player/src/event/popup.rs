@@ -209,7 +209,7 @@ pub fn handle_key_sequence_for_popup(
                 },
             )
         }
-        PopupState::CommandHelp { .. } => handle_command_for_command_help_popup(command, ui),
+        PopupState::CommandHelp { .. } => handle_command_for_command_help_popup(command, ui, state),
         PopupState::ActionList(item, ..) => {
             handle_command_for_action_list_popup(item.n_actions(), command, client_pub, state, ui)
         }
@@ -399,7 +399,11 @@ fn handle_command_for_list_popup(
 }
 
 /// handles a command for a command shortcut help popup
-fn handle_command_for_command_help_popup(command: Command, mut ui: UIStateGuard) -> Result<bool> {
+fn handle_command_for_command_help_popup(
+    command: Command,
+    mut ui: UIStateGuard,
+    state: &SharedState,
+) -> Result<bool> {
     let scroll_offset = match ui.popup {
         Some(PopupState::CommandHelp {
             ref mut scroll_offset,
@@ -417,6 +421,20 @@ fn handle_command_for_command_help_popup(command: Command, mut ui: UIStateGuard)
             if *scroll_offset > 0 {
                 *scroll_offset -= 1;
             }
+        }
+        Command::PageSelectNextOrScrollDown => {
+            *scroll_offset += state.app_config.page_size_in_rows;
+        }
+        Command::PageSelectPreviousOrScrollUp => {
+            *scroll_offset = scroll_offset.saturating_sub(state.app_config.page_size_in_rows);
+        }
+        Command::SelectFirstOrScrollToTop => {
+            *scroll_offset = 0;
+        }
+        // Don't know the number of commands displayed in the page, so just use a "big" number.
+        // The `scroll_offset` will be adjust accordingly in the popup rendering function.
+        Command::SelectLastOrScrollToBottom => {
+            *scroll_offset = 1024;
         }
         _ => return Ok(false),
     }

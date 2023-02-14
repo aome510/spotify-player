@@ -446,58 +446,65 @@ pub fn render_lyric_page(
 ) -> Result<()> {
     let data = state.data.read();
 
-    let (track, artists, scroll_offset) = match ui.current_page() {
-        PageState::Lyric {
-            track,
-            artists,
-            scroll_offset,
-        } => (track, artists, *scroll_offset),
-        s => anyhow::bail!("expect a lyric page state, found {s:?}"),
-    };
-
     let block = Block::default()
         .title(ui.theme.block_title_with_style("Lyric"))
         .borders(Borders::ALL)
         .border_style(ui.theme.border());
 
-    let result = data.caches.lyrics.peek(&format!("{track} {artists}"));
-    match result {
+    let (track, artists, scroll_offset) = match ui.current_page_mut() {
+        PageState::Lyric {
+            track,
+            artists,
+            scroll_offset,
+        } => (track, artists, scroll_offset),
+        s => anyhow::bail!("expect a lyric page state, found {s:?}"),
+    };
+
+    let (desc, lyric) = match data.caches.lyrics.peek(&format!("{track} {artists}")) {
         None => {
             frame.render_widget(Paragraph::new("Loading...").block(block), rect);
+            return Ok(());
         }
         Some(lyric_finder::LyricResult::None) => {
             frame.render_widget(Paragraph::new("Lyric not found").block(block), rect);
+            return Ok(());
         }
         Some(lyric_finder::LyricResult::Some {
             track,
             artists,
             lyric,
-        }) => {
-            let chunks = Layout::default()
-                .direction(Direction::Vertical)
-                .margin(1)
-                .constraints([Constraint::Length(1), Constraint::Min(0)].as_ref())
-                .split(rect);
+        }) => (format!("{track} by {artists}"), format!("\n{lyric}")),
+    };
 
-            // render lyric page borders
-            frame.render_widget(block, rect);
-
-            // render lyric page description text
-            frame.render_widget(
-                Paragraph::new(format!("{track} by {artists}"))
-                    .block(Block::default().style(ui.theme.page_desc())),
-                chunks[0],
-            );
-
-            // render lyric text
-            frame.render_widget(
-                Paragraph::new(format!("\n{lyric}"))
-                    .scroll((scroll_offset as u16, 0))
-                    .block(Block::default()),
-                chunks[1],
-            );
-        }
+    // update the scroll offset so that it doesn't exceed the lyric's length
+    let n_rows = lyric.matches('\n').count() + 1;
+    if *scroll_offset >= n_rows {
+        *scroll_offset = n_rows - 1;
     }
+    let scroll_offset = *scroll_offset;
+
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .margin(1)
+        .constraints([Constraint::Length(1), Constraint::Min(0)].as_ref())
+        .split(rect);
+
+    // render lyric page borders
+    frame.render_widget(block, rect);
+
+    // render lyric page description text
+    frame.render_widget(
+        Paragraph::new(desc).block(Block::default().style(ui.theme.page_desc())),
+        chunks[0],
+    );
+
+    // render lyric text
+    frame.render_widget(
+        Paragraph::new(lyric)
+            .scroll((scroll_offset as u16, 0))
+            .block(Block::default()),
+        chunks[1],
+    );
 
     Ok(())
 }

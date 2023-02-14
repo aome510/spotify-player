@@ -7,7 +7,6 @@ use crate::{
 
 #[cfg(feature = "lyric-finder")]
 use crate::utils::map_join;
-
 use anyhow::Result;
 
 mod page;
