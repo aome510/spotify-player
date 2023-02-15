@@ -219,13 +219,27 @@ fn render_playback_cover_image(
     let data = state.data.read();
     if let Some(image) = data.caches.images.peek(&url) {
         ui.last_cover_image_render_info = Some((url, std::time::Instant::now()));
+
+        let width = rect.width as u32;
+        let height = rect.height as u32;
+
+        // `viuer` renders images using `sixel` in a different scale
+        // compared to other methods. Re-scale the width, length
+        // to make the rendered images more fit. `1.8` seems to
+        // be a "right" constant for scaling.
+        // See the discussion in https://github.com/aome510/spotify-player/issues/122.
+        #[cfg(feature = "sixel")]
+        let width = (rect.width as f32 * 1.8) as u32;
+        #[cfg(feature = "sixel")]
+        let height = (rect.height as f32 * 1.8) as u32;
+
         if let Err(err) = viuer::print(
             image,
             &viuer::Config {
                 x: rect.x,
                 y: rect.y as i16,
-                width: Some(rect.width as u32),
-                height: Some(rect.height as u32),
+                width: Some(width),
+                height: Some(height),
                 ..Default::default()
             },
         ) {
