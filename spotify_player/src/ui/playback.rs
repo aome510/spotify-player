@@ -259,7 +259,7 @@ pub fn split_rect_for_playback_window(rect: Rect, state: &SharedState) -> (Rect,
     // +2 for top/bottom borders
     let playback_width = (playback_width + 2) as u16;
 
-    match state.app_config.playback_position {
+    match state.app_config.playback_window_position {
         config::Position::Top => {
             let chunks = Layout::default()
                 .direction(Direction::Vertical)

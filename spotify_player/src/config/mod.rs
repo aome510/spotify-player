@@ -45,7 +45,7 @@ pub struct AppConfig {
     pub liked_icon: String,
 
     // layout configs
-    pub playback_position: Position,
+    pub playback_window_position: Position,
 
     #[cfg(feature = "image")]
     pub cover_img_length: usize,
@@ -123,7 +123,7 @@ impl Default for AppConfig {
             play_icon: "▶".to_string(),
             liked_icon: "♥".to_string(),
 
-            playback_position: Position::Top,
+            playback_window_position: Position::Top,
 
             #[cfg(feature = "image")]
             cover_img_length: 9,
