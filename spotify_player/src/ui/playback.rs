@@ -251,8 +251,13 @@ fn render_playback_cover_image(
 /// Splits the application rectangle into two rectangles, one for the playback window
 /// and another for the main application's layout (popup, page, etc).
 pub fn split_rect_for_playback_window(rect: Rect, state: &SharedState) -> (Rect, Rect) {
-    // +2 for top/bot borders
-    let playback_width = (state.app_config.playback_window_width + 2) as u16;
+    let playback_width = state.app_config.playback_window_width;
+    // the playback window's width should not be smaller than the cover image's width + 1
+    #[cfg(feature = "image")]
+    let playback_width = std::cmp::max(state.app_config.cover_img_width + 1, playback_width);
+
+    // +2 for top/bottom borders
+    let playback_width = (playback_width + 2) as u16;
 
     match state.app_config.playback_position {
         config::Position::Top => {
