@@ -177,6 +177,7 @@ async fn main() -> Result<()> {
         // initialize viuer supports for kitty and iterm2
         viuer::get_kitty_support();
         viuer::is_iterm_supported();
+        viuer::is_sixel_supported();
     }
 
     // Spawn application's tasks
