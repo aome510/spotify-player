@@ -43,14 +43,24 @@ pub fn render_popup(
                 (chunks[0], true)
             }
             PopupState::CommandHelp { .. } => {
-                let (playback_rect, main_rect) = split_rect_for_playback_window(rect, state);
-                render_commands_help_popup(frame, state, ui, main_rect);
-                (playback_rect, false)
+                // the command help popup will cover the entire main layout
+                let chunks = Layout::default()
+                    .direction(Direction::Vertical)
+                    .constraints([Constraint::Min(0), Constraint::Length(0)].as_ref())
+                    .split(rect);
+
+                render_commands_help_popup(frame, state, ui, chunks[0]);
+                (chunks[1], false)
             }
             PopupState::Queue { .. } => {
-                let (playback_rect, main_rect) = split_rect_for_playback_window(rect, state);
-                render_queue_popup(frame, state, ui, main_rect);
-                (playback_rect, false)
+                // the queue popup will cover the entire main layout
+                let chunks = Layout::default()
+                    .direction(Direction::Vertical)
+                    .constraints([Constraint::Min(0), Constraint::Length(0)].as_ref())
+                    .split(rect);
+
+                render_queue_popup(frame, state, ui, chunks[0]);
+                (chunks[1], false)
             }
             PopupState::ActionList(item, _) => {
                 let rect = render_list_popup(

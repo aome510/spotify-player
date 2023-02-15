@@ -75,6 +75,11 @@ fn render_application(
     ui: &mut UIStateGuard,
     rect: Rect,
 ) -> Result<()> {
+    // playback window is the window that is always displayed on the screen,
+    // hence it's rendered first
+    let (playback_rect, rect) = split_rect_for_playback_window(rect, state);
+    playback::render_playback_window(frame, state, ui, playback_rect)?;
+
     let rect = popup::render_shortcut_help_popup(frame, state, ui, rect);
     let (rect, is_active) = popup::render_popup(frame, state, ui, rect);
 
@@ -114,17 +119,13 @@ fn render_main_layout(
     ui: &mut UIStateGuard,
     rect: Rect,
 ) -> Result<()> {
-    let (playback_rect, main_rect) = split_rect_for_playback_window(rect, state);
-
-    playback::render_playback_window(frame, state, ui, playback_rect)?;
-
     let page_type = ui.current_page().page_type();
     match page_type {
-        PageType::Library => page::render_library_page(is_active, frame, state, ui, main_rect),
-        PageType::Search => page::render_search_page(is_active, frame, state, ui, main_rect),
-        PageType::Context => page::render_context_page(is_active, frame, state, ui, main_rect),
-        PageType::Browse => page::render_browse_page(is_active, frame, state, ui, main_rect),
+        PageType::Library => page::render_library_page(is_active, frame, state, ui, rect),
+        PageType::Search => page::render_search_page(is_active, frame, state, ui, rect),
+        PageType::Context => page::render_context_page(is_active, frame, state, ui, rect),
+        PageType::Browse => page::render_browse_page(is_active, frame, state, ui, rect),
         #[cfg(feature = "lyric-finder")]
-        PageType::Lyric => page::render_lyric_page(is_active, frame, state, ui, main_rect),
+        PageType::Lyric => page::render_lyric_page(is_active, frame, state, ui, rect),
     }
 }
