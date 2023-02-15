@@ -247,3 +247,29 @@ fn render_playback_cover_image(
         }
     }
 }
+
+/// Splits the application rectangle into two rectangles, one for the playback window
+/// and another for the main application's layout (popup, page, etc).
+pub fn split_rect_for_playback_window(rect: Rect, state: &SharedState) -> (Rect, Rect) {
+    // +2 for top/bot borders
+    let playback_width = (state.app_config.playback_window_width + 2) as u16;
+
+    match state.app_config.playback_position {
+        config::Position::Top => {
+            let chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([Constraint::Length(playback_width), Constraint::Min(0)].as_ref())
+                .split(rect);
+
+            (chunks[0], chunks[1])
+        }
+        config::Position::Bottom => {
+            let chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([Constraint::Min(0), Constraint::Length(playback_width)].as_ref())
+                .split(rect);
+
+            (chunks[1], chunks[0])
+        }
+    }
+}
