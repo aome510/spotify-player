@@ -1071,8 +1071,7 @@ impl Client {
         let playback = self.spotify.current_playback(None, None::<Vec<_>>).await?;
         let mut player = state.player.write();
 
-        player.playback = playback;
-        player.playback_last_updated_time = Some(std::time::Instant::now());
+        player.update_playback(playback);
 
         Ok(())
     }

@@ -14,6 +14,34 @@ pub struct PlayerState {
 }
 
 impl PlayerState {
+    pub fn update_playback(&mut self, playback: Option<rspotify_model::CurrentPlaybackContext>) {
+        #[cfg(feature = "notify")]
+        let prev_track_name = self.current_playing_track().map(|t| t.name.to_owned());
+
+        self.playback = playback;
+        self.playback_last_updated_time = Some(std::time::Instant::now());
+
+        #[cfg(feature = "notify")]
+        if let Some(t) = self.current_playing_track() {
+            let new_track = match prev_track_name {
+                None => true,
+                Some(name) => name != t.name,
+            };
+            if new_track {
+                notify_rust::Notification::new()
+                    .appname("spotify_player")
+                    .summary(&format!(
+                        "{} • {}",
+                        t.name,
+                        crate::utils::map_join(&t.artists, |a| &a.name, ", ")
+                    ))
+                    .body(&t.album.name)
+                    .show()
+                    .unwrap();
+            }
+        }
+    }
+
     /// gets a simplified version of the current playback
     pub fn simplified_playback(&self) -> Option<SimplifiedPlayback> {
         self.playback.as_ref().map(|p| SimplifiedPlayback {
