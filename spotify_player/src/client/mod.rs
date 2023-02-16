@@ -225,8 +225,6 @@ impl Client {
             }
             ClientRequest::GetCurrentPlayback => {
                 self.update_current_playback_state(state).await?;
-                #[cfg(feature = "image")]
-                self.get_current_track_cover_image(state).await?;
             }
             ClientRequest::GetDevices => {
                 let devices = self.spotify.device().await?;
@@ -375,11 +373,9 @@ impl Client {
             for _ in 0..5 {
                 tokio::time::sleep(delay).await;
                 if let Err(err) = client.update_current_playback_state(&state).await {
-                    tracing::error!("Failed to refresh the player's playback: {err:#}");
-                }
-                #[cfg(feature = "image")]
-                if let Err(err) = client.get_current_track_cover_image(&state).await {
-                    tracing::error!("Failed to get the current track's cover image: {err:#}");
+                    tracing::error!(
+                        "Encountered an error when updating the playback state: {err:#}"
+                    );
                 }
             }
         });
@@ -1068,10 +1064,50 @@ impl Client {
 
     /// updates the current playback state
     pub async fn update_current_playback_state(&self, state: &SharedState) -> Result<()> {
-        let playback = self.spotify.current_playback(None, None::<Vec<_>>).await?;
-        let mut player = state.player.write();
+        #[cfg(feature = "notify")]
+        let prev_track_name = state
+            .player
+            .read()
+            .current_playing_track()
+            .map(|t| t.name.to_owned());
 
-        player.update_playback(playback);
+        // update the playback state
+        {
+            let playback = self.spotify.current_playback(None, None::<Vec<_>>).await?;
+            let mut player = state.player.write();
+
+            player.playback = playback;
+            player.playback_last_updated_time = Some(std::time::Instant::now());
+        }
+
+        // fetch the track cover image if needed
+        #[cfg(feature = "image")]
+        self.get_current_track_cover_image(state).await?;
+
+        // notify user about the playback's change if any
+        #[cfg(feature = "notify")]
+        {
+            let player = state.player.read();
+            if let Some(t) = player.current_playing_track() {
+                let new_track = match prev_track_name {
+                    None => true,
+                    Some(name) => name != t.name,
+                };
+                if new_track {
+                    let mut n = notify_rust::Notification::new();
+
+                    n.appname("spotify_player")
+                        .summary(&format!(
+                            "{} • {}",
+                            t.name,
+                            crate::utils::map_join(&t.artists, |a| &a.name, ", ")
+                        ))
+                        .body(&t.album.name);
+
+                    n.show()?;
+                }
+            }
+        }
 
         Ok(())
     }
