@@ -25,6 +25,8 @@ pub struct State {
     pub keymap_config: config::KeymapConfig,
     pub theme_config: config::ThemeConfig,
 
+    pub cache_folder: std::path::PathBuf,
+
     pub ui: Mutex<UIState>,
     pub player: RwLock<PlayerState>,
     pub data: RwLock<AppData>,
@@ -65,6 +67,8 @@ impl Default for State {
             app_config: config::AppConfig::default(),
             theme_config: config::ThemeConfig::default(),
             keymap_config: config::KeymapConfig::default(),
+
+            cache_folder: std::path::PathBuf::new(),
 
             ui: Mutex::new(UIState::default()),
             player: RwLock::new(PlayerState::default()),

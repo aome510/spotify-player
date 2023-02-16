@@ -135,12 +135,17 @@ async fn main() -> Result<()> {
     if !cache_audio_folder.exists() {
         std::fs::create_dir_all(&cache_audio_folder)?;
     }
+    let cache_image_folder = cache_folder.join("image");
+    if !cache_image_folder.exists() {
+        std::fs::create_dir_all(&cache_image_folder)?;
+    }
 
     init_logging(&cache_folder).context("failed to initialize application's logging")?;
 
     // initialize the application state
     let state = {
         let mut state = state::State::default();
+        state.cache_folder = cache_folder;
         // parse config options from the config files into application's state
         state.parse_config_files(&config_folder, args.get_one::<String>("theme"))?;
         std::sync::Arc::new(state)
@@ -148,7 +153,7 @@ async fn main() -> Result<()> {
 
     // create a librespot session
     let session = auth::new_session(
-        &cache_folder,
+        &state.cache_folder,
         state.app_config.device.audio_cache,
         &state.app_config,
     )

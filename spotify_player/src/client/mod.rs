@@ -1,4 +1,4 @@
-use std::{borrow::Cow, sync::Arc};
+use std::{borrow::Cow, io::Write, sync::Arc};
 
 #[cfg(feature = "streaming")]
 use crate::streaming;
@@ -8,7 +8,6 @@ use crate::{
     state::*,
 };
 
-#[cfg(any(feature = "lyric-finder", feature = "image"))]
 use anyhow::Context as _;
 use anyhow::Result;
 use librespot_core::session::Session;
@@ -1080,68 +1079,87 @@ impl Client {
             player.playback_last_updated_time = Some(std::time::Instant::now());
         }
 
-        // fetch the track cover image if needed
-        #[cfg(feature = "image")]
-        self.get_current_track_cover_image(state).await?;
+        let track = match state.player.read().current_playing_track() {
+            None => return Ok(()),
+            Some(track) => track.clone(),
+        };
+
+        self.get_current_track_cover_image(&track, state).await?;
 
         // notify user about the playback's change if any
         #[cfg(feature = "notify")]
         {
-            let player = state.player.read();
-            if let Some(t) = player.current_playing_track() {
-                let new_track = match prev_track_name {
-                    None => true,
-                    Some(name) => name != t.name,
-                };
-                if new_track {
-                    let mut n = notify_rust::Notification::new();
+            let new_track = match prev_track_name {
+                None => true,
+                Some(name) => name != track.name,
+            };
 
-                    n.appname("spotify_player")
-                        .summary(&format!(
-                            "{} • {}",
-                            t.name,
-                            crate::utils::map_join(&t.artists, |a| &a.name, ", ")
-                        ))
-                        .body(&t.album.name);
+            if new_track {
+                let mut n = notify_rust::Notification::new();
 
-                    n.show()?;
-                }
+                n.appname("spotify_player")
+                    .summary(&format!(
+                        "{} • {}",
+                        track.name,
+                        crate::utils::map_join(&track.artists, |a| &a.name, ", ")
+                    ))
+                    .body(&track.album.name);
+
+                n.show()?;
             }
         }
 
         Ok(())
     }
 
-    #[cfg(feature = "image")]
-    pub async fn get_current_track_cover_image(&self, state: &SharedState) -> Result<()> {
-        let url = state
-            .player
-            .read()
-            .current_playing_track_album_cover_url()
-            .map(String::from);
+    async fn download_and_save_image(&self, url: &str, path: &std::path::PathBuf) -> Result<()> {
+        tracing::info!("Retrieving an image from url: {url}");
 
-        if let Some(url) = url {
-            if !state.data.read().caches.images.contains(&url) {
-                tracing::info!("Retrieving an image from url: {url}");
+        let bytes = self
+            .http
+            .get(url)
+            .send()
+            .await
+            .context(format!("Failed to get image data from url {url}"))?
+            .bytes()
+            .await?;
 
-                // Get the image from a url
-                let image = {
-                    let image_bytes = self
-                        .http
-                        .get(&url)
-                        .send()
-                        .await
-                        .context(format!("Failed to get image data from url {url}"))?
-                        .bytes()
-                        .await?;
+        let mut file = std::fs::File::create(path)?;
+        file.write_all(&bytes)?;
 
-                    image::load_from_memory(&image_bytes)
-                        .context("Failed to load image from memory")?
-                };
+        Ok(())
+    }
 
-                // Update the caches, so we don't have to make the same request multiple times.
-                state.data.write().caches.images.put(url, image);
-            }
+    pub async fn get_current_track_cover_image(
+        &self,
+        track: &rspotify_model::FullTrack,
+        state: &SharedState,
+    ) -> Result<()> {
+        let url = match crate::utils::get_track_album_image_url(track) {
+            Some(url) => url,
+            None => return Ok(()),
+        };
+
+        let path = state.cache_folder.join("image").join(format!(
+            "{}-{}-cover.jpg",
+            track.album.name,
+            crate::utils::map_join(&track.album.artists, |a| &a.name, ", ")
+        ));
+
+        if !path.exists() {
+            self.download_and_save_image(url, &path).await?;
+        }
+
+        #[cfg(feature = "image")]
+        if !state.data.read().caches.images.contains(url) {
+            tracing::info!("Retrieving an image from the file: {}", path.display());
+
+            let bytes = std::fs::read(path)?;
+            // Get the image from a url
+            let image =
+                image::load_from_memory(&bytes).context("Failed to load image from memory")?;
+
+            state.data.write().caches.images.put(url.to_owned(), image);
         }
 
         Ok(())
