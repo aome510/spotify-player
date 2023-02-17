@@ -144,8 +144,10 @@ async fn main() -> Result<()> {
 
     // initialize the application state
     let state = {
-        let mut state = state::State::default();
-        state.cache_folder = cache_folder;
+        let mut state = state::State {
+            cache_folder,
+            ..state::State::default()
+        };
         // parse config options from the config files into application's state
         state.parse_config_files(&config_folder, args.get_one::<String>("theme"))?;
         std::sync::Arc::new(state)
