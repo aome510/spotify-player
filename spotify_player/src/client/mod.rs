@@ -1063,21 +1063,26 @@ impl Client {
 
     /// updates the current playback state
     pub async fn update_current_playback_state(&self, state: &SharedState) -> Result<()> {
-        #[cfg(feature = "notify")]
-        let prev_track_name = state
-            .player
-            .read()
-            .current_playing_track()
-            .map(|t| t.name.to_owned());
-
         // update the playback state
-        {
+        let _new_track = {
             let playback = self.spotify.current_playback(None, None::<Vec<_>>).await?;
             let mut player = state.player.write();
 
+            let prev_track_name = player
+                .current_playing_track()
+                .map(|t| t.name.to_owned())
+                .unwrap_or_default();
+
             player.playback = playback;
             player.playback_last_updated_time = Some(std::time::Instant::now());
-        }
+
+            let curr_track_name = player
+                .current_playing_track()
+                .map(|t| t.name.to_owned())
+                .unwrap_or_default();
+
+            prev_track_name != curr_track_name && !curr_track_name.is_empty()
+        };
 
         let track = match state.player.read().current_playing_track() {
             None => return Ok(()),
@@ -1089,15 +1094,22 @@ impl Client {
         // notify user about the playback's change if any
         #[cfg(feature = "notify")]
         {
-            let new_track = match prev_track_name {
-                None => true,
-                Some(name) => name != track.name,
-            };
-
-            if new_track {
+            if _new_track {
                 let mut n = notify_rust::Notification::new();
 
                 n.appname("spotify_player")
+                    .icon(
+                        state
+                            .cache_folder
+                            .join("image")
+                            .join(format!(
+                                "{}-{}-cover.jpg",
+                                track.album.name,
+                                crate::utils::map_join(&track.album.artists, |a| &a.name, ", ")
+                            ))
+                            .to_str()
+                            .unwrap(),
+                    )
                     .summary(&format!(
                         "{} • {}",
                         track.name,
