@@ -219,17 +219,58 @@ fn render_playback_cover_image(
     let data = state.data.read();
     if let Some(image) = data.caches.images.peek(&url) {
         ui.last_cover_image_render_info = Some((url, std::time::Instant::now()));
+
+        // `viuer` renders image using `sixel` in a different scale compared to other methods.
+        // Scale the image to make the rendered image more fit if needed.
+        // This scaling factor is user configurable as the scale works differently
+        // with different fonts and terminals.
+        // For more context, see https://github.com/aome510/spotify-player/issues/122.
+        let scale = state.app_config.cover_img_scale;
+        let width = (rect.width as f32 * scale).round() as u32;
+        let height = (rect.height as f32 * scale).round() as u32;
+
         if let Err(err) = viuer::print(
             image,
             &viuer::Config {
                 x: rect.x,
                 y: rect.y as i16,
-                width: Some(rect.width as u32),
-                height: Some(rect.height as u32),
+                width: Some(width),
+                height: Some(height),
                 ..Default::default()
             },
         ) {
             tracing::error!("Failed to render the image: {err}",);
+        }
+    }
+}
+
+/// Splits the application rectangle into two rectangles, one for the playback window
+/// and another for the main application's layout (popup, page, etc).
+pub fn split_rect_for_playback_window(rect: Rect, state: &SharedState) -> (Rect, Rect) {
+    let playback_width = state.app_config.playback_window_width;
+    // the playback window's width should not be smaller than the cover image's width + 1
+    #[cfg(feature = "image")]
+    let playback_width = std::cmp::max(state.app_config.cover_img_width + 1, playback_width);
+
+    // +2 for top/bottom borders
+    let playback_width = (playback_width + 2) as u16;
+
+    match state.app_config.playback_window_position {
+        config::Position::Top => {
+            let chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([Constraint::Length(playback_width), Constraint::Min(0)].as_ref())
+                .split(rect);
+
+            (chunks[0], chunks[1])
+        }
+        config::Position::Bottom => {
+            let chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([Constraint::Min(0), Constraint::Length(playback_width)].as_ref())
+                .split(rect);
+
+            (chunks[1], chunks[0])
         }
     }
 }

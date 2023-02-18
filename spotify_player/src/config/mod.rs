@@ -45,12 +45,15 @@ pub struct AppConfig {
     pub liked_icon: String,
 
     // layout configs
-    pub playback_position: Position,
+    pub playback_window_position: Position,
 
     #[cfg(feature = "image")]
     pub cover_img_length: usize,
     #[cfg(feature = "image")]
     pub cover_img_width: usize,
+    #[cfg(feature = "image")]
+    pub cover_img_scale: f32,
+
     pub playback_window_width: usize,
 
     #[cfg(feature = "media-control")]
@@ -123,12 +126,14 @@ impl Default for AppConfig {
             play_icon: "▶".to_string(),
             liked_icon: "♥".to_string(),
 
-            playback_position: Position::Top,
+            playback_window_position: Position::Top,
 
             #[cfg(feature = "image")]
             cover_img_length: 9,
             #[cfg(feature = "image")]
             cover_img_width: 5,
+            #[cfg(feature = "image")]
+            cover_img_scale: 1.0,
 
             playback_window_width: 6,
 
