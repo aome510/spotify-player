@@ -229,6 +229,17 @@ cargo install --features image
 
 `spotify-player` supports rendering image in a full resolution if the application is run on either [Kitty](https://sw.kovidgoyal.net/kitty/graphics-protocol/) or [iTerm2](https://iterm2.com/documentation-images.html). Otherwise, the image will be displayed as [block characters](https://en.wikipedia.org/wiki/Block_Elements).
 
+`spotify-player` also supports rendering images with `sixel` behind `sixel` feature flag, which also enables `image` feature:
+
+```shell
+cargo install --features sixel
+```
+
+**Notes**:
+
+- Not all terminals supported by [libsixel](https://github.com/saitoha/libsixel) are supported by `spotify-player` as it relies on a [third-party library](https://github.com/atanunq/viuer) for image rendering. A possible list of supported terminals can be found in [here](https://github.com/atanunq/viuer/blob/dc81f44a97727e04be0b000712e9233c92116ff8/src/printer/sixel.rs#L83-L95).
+- Images rendered by `sixel` can have a _weird_ scale. It's recommended to tweak the `cover_img_scale` config option to get the best result as the scaling works differently with different terminals and fonts.
+
 Examples of image rendering:
 
 - iTerm2:
@@ -238,6 +249,10 @@ Examples of image rendering:
 - Kitty:
 
 ![kitty](https://user-images.githubusercontent.com/40011582/172967028-8cfb2daa-1642-499a-a5bf-8ed77f2b3fac.png)
+
+- Sixel (`foot` terminal, `cover_img_scale=1.8`):
+
+![sixel](https://user-images.githubusercontent.com/40011582/219880331-58ac1c30-bbb0-4c99-a6cc-e5b7c9c81455.png)
 
 - Others:
 
