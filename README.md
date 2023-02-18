@@ -12,6 +12,7 @@
   - [Lyric](#lyric)
   - [Media Control](#media-control)
   - [Image](#image)
+  - [Notify](#notify)
   - [Mouse support](#mouse-support)
 - [Commands](#commands)
 - [Configurations](#configurations)
@@ -33,6 +34,7 @@
 - Support [lyric](#lyric) for most songs.
 - Support [cross-platform media control](#media-control).
 - Support [image rendering](#image).
+- Support [desktop notification](#notify).
 
 ## Examples
 
@@ -167,7 +169,7 @@ An example of using Spotify connect to interact with the Spotify's official appl
 
 ### Streaming
 
-`spotify-player` supports streaming, which needs to be built/installed with `streaming` feature (enabled by default) **and** with an audio backend (`rodio-backend` by default). The streaming feature allows to `spotify-player` to play music directly from terminal.
+`spotify-player` supports streaming, which needs to be built/installed with `streaming` feature (**enabled** by default) **and** with an audio backend (`rodio-backend` by default). The streaming feature allows to `spotify-player` to play music directly from terminal.
 
 The application uses [librespot](https://github.com/librespot-org/librespot) library to create an integrated Spotify client while running. The integrated client will register a Spotify speaker device under the `spotify-player` name, which is accessible on the [Spotify connect](#spotify-connect) device list.
 
@@ -203,7 +205,7 @@ cargo install spotify_player --no-default-features
 
 ### Lyric
 
-To enable lyric support, `spotify_player` needs to be built/installed with `lyric-finder` feature (disabled by default). To install the application with `lyric-finder` feature included run:
+To enable lyric support, `spotify_player` needs to be built/installed with `lyric-finder` feature (**disabled** by default). To install the application with `lyric-finder` feature included run:
 
 ```shell
 cargo install --features lyric-finder
@@ -215,13 +217,13 @@ Under the hood, `spotify-player` retrieves the song's lyric using [Genius.com](h
 
 ### Media Control
 
-To enable media control support, `spotify_player` needs to be built/installed with `media-control` feature (enabled by default) and set the `enable_media_control` config option to `true` in the [general configuration file](docs/config.md#media-control).
+To enable media control support, `spotify_player` needs to be built/installed with `media-control` feature (**enabled** by default) and set the `enable_media_control` config option to `true` in the [general configuration file](docs/config.md#media-control).
 
 Media control support is implemented using [MPRIS DBus](https://wiki.archlinux.org/title/MPRIS) on Linux and OS window event listener on Windows and MacOS.
 
 ### Image
 
-To enable image rendering support, `spotify-player` needs to be built/installed with `image` feature (disabled by default). To install the application with `image` feature included, run:
+To enable image rendering support, `spotify-player` needs to be built/installed with `image` feature (**disabled** by default). To install the application with `image` feature included, run:
 
 ```shell
 cargo install --features image
@@ -257,6 +259,16 @@ Examples of image rendering:
 - Others:
 
 ![others](https://user-images.githubusercontent.com/40011582/172967325-d2098037-e19e-440a-a38a-5b076253ecb1.png)
+
+### Notify
+
+To enable desktop notification support, `spotify-player` needs to be built/installed with `notify` feature (**disabled** by default). To install the application with `notify` feature included, run:
+
+```shell
+cargo install --features notify
+```
+
+**Note**: the notification support in `MacOS` and `Windows` are quite restricted compared to `Linux`.
 
 ### Mouse support
 

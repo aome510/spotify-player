@@ -59,7 +59,7 @@ streaming = ["librespot-playback", "librespot-connect"]
 lyric-finder = ["lyric_finder"]
 media-control = ["souvlaki", "winit"]
 image = ["viuer", "dep:image"]
-notify = ["notify-rust"]
 sixel = ["image", "viuer/sixel"]
+notify = ["notify-rust"]
 
 default = ["rodio-backend", "media-control"]
