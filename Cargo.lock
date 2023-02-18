@@ -3851,9 +3851,9 @@ dependencies = [
 
 [[package]]
 name = "souvlaki"
-version = "0.5.3"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "30e432507b92ffbb7df7d07de3a0e0aa23490ee78522b679ae068eeaeba45879"
+checksum = "d38261efc06252ecdb5874507378369a2d3f948c13be2bf63d329c5be915ca0f"
 dependencies = [
  "block",
  "cocoa",
@@ -3862,7 +3862,7 @@ dependencies = [
  "dbus-crossroads",
  "dispatch",
  "objc",
- "windows",
+ "windows 0.44.0",
 ]
 
 [[package]]
@@ -3876,7 +3876,7 @@ dependencies = [
 
 [[package]]
 name = "spotify_player"
-version = "0.11.1"
+version = "0.12.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -4040,7 +4040,7 @@ checksum = "c58de036c4d2e20717024de2a3c4bf56c301f07b21bc8ef9b57189fce06f1f3b"
 dependencies = [
  "quick-xml",
  "strum 0.22.0",
- "windows",
+ "windows 0.39.0",
 ]
 
 [[package]]
@@ -4788,6 +4788,15 @@ dependencies = [
  "windows_i686_msvc 0.39.0",
  "windows_x86_64_gnu 0.39.0",
  "windows_x86_64_msvc 0.39.0",
+]
+
+[[package]]
+name = "windows"
+version = "0.44.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9e745dab35a0c4c77aa3ce42d595e13d2003d6902d6b08c9ef5fc326d08da12b"
+dependencies = [
+ "windows-targets",
 ]
 
 [[package]]
