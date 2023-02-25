@@ -145,6 +145,7 @@ To define application's component styles, the user can specify any of the below 
 - `block_title`
 - `border`
 - `playback_track`
+- `playback_artists`
 - `playback_album`
 - `playback_metadata`
 - `playback_progress_bar`
@@ -161,6 +162,7 @@ Default value for application's component styles:
 block_title = { fg = "Magenta"  }
 border = {}
 playback_track = { fg = "Cyan", modifiers = ["Bold"] }
+playback_artists = { fg = "Cyan", modifiers = ["Bold"] }
 playback_album = { fg = "Yellow" }
 playback_metadata = { fg = "BrightBlack" }
 playback_progress_bar = { bg = "BrightBlack", fg = "Green" }
