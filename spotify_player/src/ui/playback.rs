@@ -1,4 +1,8 @@
 use super::*;
+use once_cell::sync::Lazy;
+use regex::Regex;
+
+static FORMAT_ARG_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\{(?P<arg>.*?)\}").unwrap());
 
 /// Renders a playback window showing information about the current playback, which includes
 /// - track title, artists, album
@@ -104,7 +108,7 @@ pub fn render_playback_window(
                 (metadata_rect, progress_bar_rect)
             };
 
-            render_playback_metadata(frame, state, ui, metadata_rect, track, playback);
+            render_playback_text(frame, state, ui, metadata_rect, track, playback);
 
             let progress = std::cmp::min(
                 player
@@ -139,7 +143,7 @@ pub fn render_playback_window(
     Ok(())
 }
 
-fn render_playback_metadata(
+fn render_playback_text(
     frame: &mut Frame,
     state: &SharedState,
     ui: &UIStateGuard,
@@ -147,36 +151,54 @@ fn render_playback_metadata(
     track: &rspotify_model::FullTrack,
     playback: &rspotify_model::CurrentPlaybackContext,
 ) {
-    let playback_info = vec![
-        Span::styled(
-            format!(
-                "{} {} • {}",
-                if !playback.is_playing {
-                    &state.app_config.pause_icon
-                } else {
-                    &state.app_config.play_icon
-                },
-                track.name,
-                crate::utils::map_join(&track.artists, |a| &a.name, ", ")
-            ),
-            ui.theme.playback_track(),
-        )
-        .into(),
-        Span::styled(track.album.name.to_string(), ui.theme.playback_album()).into(),
-        Span::styled(
-            format!(
-                "repeat: {} | shuffle: {} | volume: {}% | device: {}",
-                <&'static str>::from(playback.repeat_state),
-                playback.shuffle_state,
-                playback.device.volume_percent.unwrap_or_default(),
-                playback.device.name,
-            ),
-            ui.theme.playback_metadata(),
-        )
-        .into(),
-    ];
+    let format_str = &state.app_config.playback_format;
+    let mut spans = vec![];
 
-    let playback_desc = Paragraph::new(playback_info)
+    let mut ptr = 0;
+    for m in FORMAT_ARG_RE.find_iter(format_str) {
+        let s = m.start();
+        let e = m.end();
+        if ptr < s {
+            spans.push(Span::raw(format_str[ptr..s].to_string()));
+        }
+        ptr = e;
+        let (text, style) = match m.as_str() {
+            "{track}" => (
+                format!(
+                    "{} {}",
+                    if !playback.is_playing {
+                        &state.app_config.pause_icon
+                    } else {
+                        &state.app_config.play_icon
+                    },
+                    track.name,
+                ),
+                ui.theme.playback_track(),
+            ),
+            "{artists}" => (
+                crate::utils::map_join(&track.artists, |a| &a.name, ", "),
+                ui.theme.playback_artists(),
+            ),
+            "{album}" => (track.album.name.to_owned(), ui.theme.playback_album()),
+            "{metadata}" => (
+                format!(
+                    "repeat: {} | shuffle: {} | volume: {}% | device: {}",
+                    <&'static str>::from(playback.repeat_state),
+                    playback.shuffle_state,
+                    playback.device.volume_percent.unwrap_or_default(),
+                    playback.device.name,
+                ),
+                ui.theme.playback_metadata(),
+            ),
+            _ => continue,
+        };
+        spans.push(Span::styled(text, style));
+    }
+    if ptr < format_str.len() {
+        spans.push(Span::raw(format_str[ptr..].to_string()));
+    }
+
+    let playback_desc = Paragraph::new(Spans::from(spans))
         .wrap(Wrap { trim: true })
         .block(Block::default());
 
