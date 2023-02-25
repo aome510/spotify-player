@@ -154,7 +154,7 @@ fn render_playback_text(
     let mut playback_text = Text { lines: vec![] };
     let mut spans = vec![];
 
-    // this regex is to handle a format argument or newline
+    // this regex is to handle a format argument or a newline
     let re = regex::Regex::new(r"\{.*?\}|\n").unwrap();
 
     let mut ptr = 0;
@@ -167,7 +167,7 @@ fn render_playback_text(
         ptr = e;
 
         let (text, style) = match m.as_str() {
-            // upon encoutering a newline, create a new `Spans`
+            // upon encountering a newline, create a new `Spans`
             "\n" => {
                 let mut tmp = vec![];
                 std::mem::swap(&mut tmp, &mut spans);
