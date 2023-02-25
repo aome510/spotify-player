@@ -1104,6 +1104,38 @@ impl Client {
     fn notify_new_track(track: rspotify_model::FullTrack, state: &SharedState) -> Result<()> {
         let mut n = notify_rust::Notification::new();
 
+        let re = regex::Regex::new(r"\{.*?\}").unwrap();
+        // Generate a text described a track from a format string.
+        // For example, a format string "{track} - {artists}" will generate
+        // a text consisting of the track's name followed by a dash then artists' names.
+        let get_text_from_format_str = |format_str: &str| {
+            let mut text = String::new();
+
+            let mut ptr = 0;
+            for m in re.find_iter(format_str) {
+                let s = m.start();
+                let e = m.end();
+
+                if ptr < s {
+                    text += &format_str[ptr..s];
+                }
+                ptr = e;
+                match m.as_str() {
+                    "{track}" => text += &track.name,
+                    "{artists}" => {
+                        text += &crate::utils::map_join(&track.artists, |a| &a.name, ", ")
+                    }
+                    "{album}" => text += &track.album.name,
+                    _ => continue,
+                }
+            }
+            if ptr < format_str.len() {
+                text += &format_str[ptr..];
+            }
+
+            text
+        };
+
         n.appname("spotify_player")
             .icon(
                 state
@@ -1117,12 +1149,12 @@ impl Client {
                     .to_str()
                     .unwrap(),
             )
-            .summary(&format!(
-                "{} • {}",
-                track.name,
-                crate::utils::map_join(&track.artists, |a| &a.name, ", ")
+            .summary(&get_text_from_format_str(
+                &state.app_config.notify_format.summary,
             ))
-            .body(&track.album.name);
+            .body(&get_text_from_format_str(
+                &state.app_config.notify_format.body,
+            ));
 
         n.show()?;
 

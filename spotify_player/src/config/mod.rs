@@ -26,6 +26,8 @@ pub struct AppConfig {
     pub copy_command: Command,
 
     pub playback_format: String,
+    #[cfg(feature = "notify")]
+    pub notify_format: NotifyFormat,
 
     // session configs
     pub proxy: Option<String>,
@@ -89,6 +91,13 @@ pub struct DeviceConfig {
     pub audio_cache: bool,
 }
 
+#[derive(Debug, Deserialize, ConfigParse, Clone)]
+#[cfg(feature = "notify")]
+pub struct NotifyFormat {
+    pub summary: String,
+    pub body: String,
+}
+
 impl Default for AppConfig {
     fn default() -> Self {
         Self {
@@ -97,6 +106,11 @@ impl Default for AppConfig {
             client_id: "65b708073fc0480ea92a077233ca87bd".to_string(),
 
             playback_format: String::from("{track} • {artists}\n{album}\n{metadata}"),
+            #[cfg(feature = "notify")]
+            notify_format: NotifyFormat {
+                summary: String::from("{track} • {artists}"),
+                body: String::from("{album}"),
+            },
 
             #[cfg(target_os = "macos")]
             copy_command: Command {
