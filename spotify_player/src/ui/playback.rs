@@ -1,8 +1,4 @@
 use super::*;
-use once_cell::sync::Lazy;
-use regex::Regex;
-
-static FORMAT_ARG_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\{(?P<arg>.*?)\}").unwrap());
 
 /// Renders a playback window showing information about the current playback, which includes
 /// - track title, artists, album
@@ -151,18 +147,33 @@ fn render_playback_text(
     track: &rspotify_model::FullTrack,
     playback: &rspotify_model::CurrentPlaybackContext,
 ) {
+    // Construct a "styled" text (`playback_text`) from playback's data
+    // based on a user-configurable format string (app_config.playback_format)
     let format_str = &state.app_config.playback_format;
+
+    let mut playback_text = Text { lines: vec![] };
     let mut spans = vec![];
 
+    // this regex is to handle a format argument or newline
+    let re = regex::Regex::new(r"\{.*?\}|\n").unwrap();
+
     let mut ptr = 0;
-    for m in FORMAT_ARG_RE.find_iter(format_str) {
+    for m in re.find_iter(format_str) {
         let s = m.start();
         let e = m.end();
         if ptr < s {
             spans.push(Span::raw(format_str[ptr..s].to_string()));
         }
         ptr = e;
+
         let (text, style) = match m.as_str() {
+            // upon encoutering a newline, create a new `Spans`
+            "\n" => {
+                let mut tmp = vec![];
+                std::mem::swap(&mut tmp, &mut spans);
+                playback_text.lines.push(Spans::from(tmp));
+                continue;
+            }
             "{track}" => (
                 format!(
                     "{} {}",
@@ -192,13 +203,17 @@ fn render_playback_text(
             ),
             _ => continue,
         };
+
         spans.push(Span::styled(text, style));
     }
     if ptr < format_str.len() {
         spans.push(Span::raw(format_str[ptr..].to_string()));
     }
+    if !spans.is_empty() {
+        playback_text.lines.push(Spans::from(spans));
+    }
 
-    let playback_desc = Paragraph::new(Spans::from(spans))
+    let playback_desc = Paragraph::new(playback_text)
         .wrap(Wrap { trim: true })
         .block(Block::default());
 
