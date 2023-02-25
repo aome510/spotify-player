@@ -23,6 +23,7 @@ bright_white = "#ffffff"
 block_title = { fg = "Magenta"  }
 border = {}
 playback_track = { fg = "Cyan", modifiers = ["Bold"] }
+playback_artists = { fg = "Cyan", modifiers = ["Bold"] }
 playback_album = { fg = "Yellow" }
 playback_metadata = { fg = "BrightBlack" }
 playback_progress_bar = { bg = "BrightBlack", fg = "Green" }
@@ -56,6 +57,7 @@ bright_white = "#ebdbb2"
 block_title = { fg = "Magenta"  }
 border = {}
 playback_track = { fg = "Cyan", modifiers = ["Bold"] }
+playback_artists = { fg = "Cyan", modifiers = ["Bold"] }
 playback_album = { fg = "Yellow" }
 playback_metadata = { fg = "BrightBlack" }
 playback_progress_bar = { bg = "BrightBlack", fg = "Green" }
@@ -89,6 +91,7 @@ bright_white = "#7c6f64"
 block_title = { fg = "Magenta"  }
 border = {}
 playback_track = { fg = "Cyan", modifiers = ["Bold"] }
+playback_artists = { fg = "Cyan", modifiers = ["Bold"] }
 playback_album = { fg = "Yellow" }
 playback_metadata = { fg = "BrightBlack" }
 playback_progress_bar = { bg = "BrightBlack", fg = "Green" }
@@ -123,6 +126,7 @@ bright_white = "#fdf6e3"
 block_title = { fg = "Magenta"  }
 border = {}
 playback_track = { fg = "Cyan", modifiers = ["Bold"] }
+playback_artists = { fg = "Cyan", modifiers = ["Bold"] }
 playback_album = { fg = "Yellow" }
 playback_metadata = { fg = "White" }
 playback_progress_bar = { bg = "BrightBlack", fg = "Green" }
@@ -156,6 +160,7 @@ bright_white = "#fdf6e3"
 block_title = { fg = "Magenta"  }
 border = {}
 playback_track = { fg = "Cyan", modifiers = ["Bold"] }
+playback_artists = { fg = "Cyan", modifiers = ["Bold"] }
 playback_album = { fg = "Yellow" }
 playback_metadata = { fg = "BrightBlack" }
 playback_progress_bar = { bg = "BrightBlack", fg = "Green" }

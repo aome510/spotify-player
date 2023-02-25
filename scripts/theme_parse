@@ -53,6 +53,7 @@ bright_white = "{data["colors"]["bright"]["white"]}"
 block_title = {{ fg = "Magenta"  }}
 border = {{}}
 playback_track = {{ fg = "Cyan", modifiers = ["Bold"] }}
+playback_artists = {{ fg = "Cyan", modifiers = ["Bold"] }}
 playback_album = {{ fg = "Yellow" }}
 playback_metadata = {{ fg = "BrightBlack" }}
 playback_progress_bar = {{ bg = "BrightBlack", fg = "Green" }}

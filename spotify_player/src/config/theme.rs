@@ -63,6 +63,7 @@ pub struct ComponentStyle {
     pub block_title: Option<Style>,
     pub border: Option<Style>,
     pub playback_track: Option<Style>,
+    pub playback_artists: Option<Style>,
     pub playback_album: Option<Style>,
     pub playback_metadata: Option<Style>,
     pub playback_progress_bar: Option<Style>,
@@ -206,6 +207,16 @@ impl Theme {
 
     pub fn playback_track(&self) -> tui::style::Style {
         match &self.component_style.playback_track {
+            None => Style::default()
+                .fg(StyleColor::Cyan)
+                .modifiers(vec![StyleModifier::Bold])
+                .style(&self.palette),
+            Some(s) => s.style(&self.palette),
+        }
+    }
+
+    pub fn playback_artists(&self) -> tui::style::Style {
+        match &self.component_style.playback_artists {
             None => Style::default()
                 .fg(StyleColor::Cyan)
                 .modifiers(vec![StyleModifier::Bold])

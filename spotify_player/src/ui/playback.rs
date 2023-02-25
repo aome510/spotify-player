@@ -104,7 +104,7 @@ pub fn render_playback_window(
                 (metadata_rect, progress_bar_rect)
             };
 
-            render_playback_metadata(frame, state, ui, metadata_rect, track, playback);
+            render_playback_text(frame, state, ui, metadata_rect, track, playback);
 
             let progress = std::cmp::min(
                 player
@@ -139,7 +139,7 @@ pub fn render_playback_window(
     Ok(())
 }
 
-fn render_playback_metadata(
+fn render_playback_text(
     frame: &mut Frame,
     state: &SharedState,
     ui: &UIStateGuard,
@@ -147,36 +147,73 @@ fn render_playback_metadata(
     track: &rspotify_model::FullTrack,
     playback: &rspotify_model::CurrentPlaybackContext,
 ) {
-    let playback_info = vec![
-        Span::styled(
-            format!(
-                "{} {} • {}",
-                if !playback.is_playing {
-                    &state.app_config.pause_icon
-                } else {
-                    &state.app_config.play_icon
-                },
-                track.name,
-                crate::utils::map_join(&track.artists, |a| &a.name, ", ")
-            ),
-            ui.theme.playback_track(),
-        )
-        .into(),
-        Span::styled(track.album.name.to_string(), ui.theme.playback_album()).into(),
-        Span::styled(
-            format!(
-                "repeat: {} | shuffle: {} | volume: {}% | device: {}",
-                <&'static str>::from(playback.repeat_state),
-                playback.shuffle_state,
-                playback.device.volume_percent.unwrap_or_default(),
-                playback.device.name,
-            ),
-            ui.theme.playback_metadata(),
-        )
-        .into(),
-    ];
+    // Construct a "styled" text (`playback_text`) from playback's data
+    // based on a user-configurable format string (app_config.playback_format)
+    let format_str = &state.app_config.playback_format;
 
-    let playback_desc = Paragraph::new(playback_info)
+    let mut playback_text = Text { lines: vec![] };
+    let mut spans = vec![];
+
+    // this regex is to handle a format argument or a newline
+    let re = regex::Regex::new(r"\{.*?\}|\n").unwrap();
+
+    let mut ptr = 0;
+    for m in re.find_iter(format_str) {
+        let s = m.start();
+        let e = m.end();
+        if ptr < s {
+            spans.push(Span::raw(format_str[ptr..s].to_string()));
+        }
+        ptr = e;
+
+        let (text, style) = match m.as_str() {
+            // upon encountering a newline, create a new `Spans`
+            "\n" => {
+                let mut tmp = vec![];
+                std::mem::swap(&mut tmp, &mut spans);
+                playback_text.lines.push(Spans::from(tmp));
+                continue;
+            }
+            "{track}" => (
+                format!(
+                    "{} {}",
+                    if !playback.is_playing {
+                        &state.app_config.pause_icon
+                    } else {
+                        &state.app_config.play_icon
+                    },
+                    track.name,
+                ),
+                ui.theme.playback_track(),
+            ),
+            "{artists}" => (
+                crate::utils::map_join(&track.artists, |a| &a.name, ", "),
+                ui.theme.playback_artists(),
+            ),
+            "{album}" => (track.album.name.to_owned(), ui.theme.playback_album()),
+            "{metadata}" => (
+                format!(
+                    "repeat: {} | shuffle: {} | volume: {}% | device: {}",
+                    <&'static str>::from(playback.repeat_state),
+                    playback.shuffle_state,
+                    playback.device.volume_percent.unwrap_or_default(),
+                    playback.device.name,
+                ),
+                ui.theme.playback_metadata(),
+            ),
+            _ => continue,
+        };
+
+        spans.push(Span::styled(text, style));
+    }
+    if ptr < format_str.len() {
+        spans.push(Span::raw(format_str[ptr..].to_string()));
+    }
+    if !spans.is_empty() {
+        playback_text.lines.push(Spans::from(spans));
+    }
+
+    let playback_desc = Paragraph::new(playback_text)
         .wrap(Wrap { trim: true })
         .block(Block::default());
 
