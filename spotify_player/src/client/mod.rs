@@ -1093,33 +1093,38 @@ impl Client {
 
         // notify user about the playback's change if any
         #[cfg(feature = "notify")]
-        {
-            if _new_track {
-                let mut n = notify_rust::Notification::new();
-
-                n.appname("spotify_player")
-                    .icon(
-                        state
-                            .cache_folder
-                            .join("image")
-                            .join(format!(
-                                "{}-{}-cover.jpg",
-                                track.album.name,
-                                crate::utils::map_join(&track.album.artists, |a| &a.name, ", ")
-                            ))
-                            .to_str()
-                            .unwrap(),
-                    )
-                    .summary(&format!(
-                        "{} • {}",
-                        track.name,
-                        crate::utils::map_join(&track.artists, |a| &a.name, ", ")
-                    ))
-                    .body(&track.album.name);
-
-                n.show()?;
-            }
+        if _new_track {
+            Self::notify_new_track(track, state)?;
         }
+
+        Ok(())
+    }
+
+    #[cfg(feature = "notify")]
+    fn notify_new_track(track: rspotify_model::FullTrack, state: &SharedState) -> Result<()> {
+        let mut n = notify_rust::Notification::new();
+
+        n.appname("spotify_player")
+            .icon(
+                state
+                    .cache_folder
+                    .join("image")
+                    .join(format!(
+                        "{}-{}-cover.jpg",
+                        track.album.name,
+                        crate::utils::map_join(&track.album.artists, |a| &a.name, ", ")
+                    ))
+                    .to_str()
+                    .unwrap(),
+            )
+            .summary(&format!(
+                "{} • {}",
+                track.name,
+                crate::utils::map_join(&track.artists, |a| &a.name, ", ")
+            ))
+            .body(&track.album.name);
+
+        n.show()?;
 
         Ok(())
     }
