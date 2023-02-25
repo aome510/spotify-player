@@ -1,5 +1,8 @@
 theme = "default"
 client_id = "65b708073fc0480ea92a077233ca87bd"
+playack_format = "{track} • {artists}\n{album}\n{metadata}"
+notify_format = { summary = "{track} • {artists}", body = "{album}" }
+# the default `copy_command` is based on the OS
 copy_command = { command = "pbcopy", args = [] } # macos
 # copy_command = { command = "xclip", args = ["-sel", "c"] } # linux
 # copy_command = { command = "clip", args = [] } # windows

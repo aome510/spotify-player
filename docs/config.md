@@ -20,6 +20,8 @@ All configuration files should be placed inside the application's configuration 
 | Option                               | Description                                                                   | Default                                                    |
 | ------------------------------------ | ----------------------------------------------------------------------------- | ---------------------------------------------------------- |
 | `client_id`                          | the Spotify client's ID                                                       | `65b708073fc0480ea92a077233ca87bd`                         |
+| `playack_format`                     | the format of the text in the playback's window                               | `{track} • {artists}\n{album}\n{metadata}`                 |
+| `notify_format`                      | the format of a notification for new track (`notify` feature only)            | `{ summary = "{track} • {artists}", body = "{album}" }`    |
 | `copy_command`                       | the command used to execute a copy-to-clipboard action                        | `xclip -sel c` (Linux), `pbcopy` (MacOS), `clip` (Windows) |
 | `ap_port`                            | the application's Spotify session connection port                             | `None`                                                     |
 | `proxy`                              | the application's Spotify session connection proxy                            | `None`                                                     |
