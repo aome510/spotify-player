@@ -25,6 +25,8 @@ pub struct AppConfig {
 
     pub copy_command: Command,
 
+    pub playback_format: String,
+
     // session configs
     pub proxy: Option<String>,
     pub ap_port: Option<u16>,
@@ -93,6 +95,8 @@ impl Default for AppConfig {
             theme: "dracula".to_owned(),
             // official spotify web app's client id
             client_id: "65b708073fc0480ea92a077233ca87bd".to_string(),
+
+            playback_format: String::from("{track} • {artists}\n{album}\n{metadata}"),
 
             #[cfg(target_os = "macos")]
             copy_command: Command {
