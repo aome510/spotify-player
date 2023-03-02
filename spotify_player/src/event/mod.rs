@@ -70,7 +70,17 @@ pub fn start_event_handler(state: SharedState, client_pub: flume::Sender<ClientR
         let _enter = tracing::info_span!("terminal_event", event = ?event).entered();
         if let Err(err) = match event {
             crossterm::event::Event::Mouse(event) => handle_mouse_event(event, &client_pub, &state),
-            crossterm::event::Event::Key(event) => handle_key_event(event, &client_pub, &state),
+            crossterm::event::Event::Key(event) => {
+                if event.kind == crossterm::event::KeyEventKind::Press {
+                    // only handle key press event to avoid handling a key event multiple times
+                    // context:
+                    // - https://github.com/crossterm-rs/crossterm/issues/752
+                    // - https://github.com/aome510/spotify-player/issues/136
+                    handle_key_event(event, &client_pub, &state)
+                } else {
+                    Ok(())
+                }
+            }
             _ => Ok(()),
         } {
             tracing::error!("Failed to handle event: {err:#}");
