@@ -8,8 +8,6 @@ use crate::{
 #[cfg(feature = "lyric-finder")]
 use crate::utils::map_join;
 use anyhow::Result;
-use std::time::{Duration, Instant};
-use std::env;
 
 mod page;
 mod popup;
@@ -68,18 +66,24 @@ pub enum ClientRequest {
 
 /// starts a terminal event handler (key pressed, mouse clicked, etc)
 pub fn start_event_handler(state: SharedState, client_pub: flume::Sender<ClientRequest>) {
-    let mut last_cache_time = Instant::now();
     while let Ok(event) = crossterm::event::read() {
-        if env::consts::OS.to_string() != "windows" || last_cache_time.elapsed() >= Duration::from_millis(300) {
-            let _enter = tracing::info_span!("terminal_event", event = ?event).entered();
-            if let Err(err) = match event {
-                crossterm::event::Event::Mouse(event) => handle_mouse_event(event, &client_pub, &state),
-                crossterm::event::Event::Key(event) => handle_key_event(event, &client_pub, &state),
-                _ => Ok(()),
-            } {
-                tracing::error!("Failed to handle event: {err:#}");
+        let _enter = tracing::info_span!("terminal_event", event = ?event).entered();
+        if let Err(err) = match event {
+            crossterm::event::Event::Mouse(event) => handle_mouse_event(event, &client_pub, &state),
+            crossterm::event::Event::Key(event) => {
+                if event.kind == crossterm::event::KeyEventKind::Press {
+                    // only handle key press event to avoid handling a key event multiple times
+                    // context:
+                    // - https://github.com/crossterm-rs/crossterm/issues/752
+                    // - https://github.com/aome510/spotify-player/issues/136
+                    handle_key_event(event, &client_pub, &state)
+                } else {
+                    Ok(())
+                }
             }
-            last_cache_time = Instant::now();
+            _ => Ok(()),
+        } {
+            tracing::error!("Failed to handle event: {err:#}");
         }
     }
 }
