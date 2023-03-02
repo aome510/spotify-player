@@ -68,10 +68,9 @@ pub enum ClientRequest {
 
 /// starts a terminal event handler (key pressed, mouse clicked, etc)
 pub fn start_event_handler(state: SharedState, client_pub: flume::Sender<ClientRequest>) {
-    let mut cached_var = false;
     let mut last_cache_time = Instant::now();
     while let Ok(event) = crossterm::event::read() {
-        if env::consts::OS.to_string() != "windows" || (!cached_var || last_cache_time.elapsed() >= Duration::from_millis(300)) {
+        if env::consts::OS.to_string() != "windows" || last_cache_time.elapsed() >= Duration::from_millis(300) {
             let _enter = tracing::info_span!("terminal_event", event = ?event).entered();
             if let Err(err) = match event {
                 crossterm::event::Event::Mouse(event) => handle_mouse_event(event, &client_pub, &state),
@@ -80,7 +79,6 @@ pub fn start_event_handler(state: SharedState, client_pub: flume::Sender<ClientR
             } {
                 tracing::error!("Failed to handle event: {err:#}");
             }
-            cached_var = true;
             last_cache_time = Instant::now();
         }
     }
