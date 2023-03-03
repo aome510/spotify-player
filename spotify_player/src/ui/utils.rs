@@ -37,9 +37,7 @@ pub fn construct_list_widget<'a>(
     state: &SharedState,
     theme: &config::Theme,
     items: Vec<(String, bool)>,
-    title: &str,
     is_active: bool,
-    borders: Option<Borders>,
 ) -> (List<'a>, usize) {
     let n_items = items.len();
 
@@ -56,8 +54,7 @@ pub fn construct_list_widget<'a>(
                 })
                 .collect::<Vec<_>>(),
         )
-        .highlight_style(theme.selection_style(is_active))
-        .block(construct_block(title, theme, state, borders)),
+        .highlight_style(theme.selection_style(is_active)),
         n_items,
     )
 }
@@ -109,8 +106,6 @@ pub fn render_loading_window(
     rect: Rect,
     title: &str,
 ) {
-    frame.render_widget(
-        Paragraph::new("Loading...").block(construct_block(title, theme, state, None)),
-        rect,
-    );
+    let rect = construct_and_render_block(title, theme, state, None, frame, rect);
+    frame.render_widget(Paragraph::new("Loading..."), rect);
 }
