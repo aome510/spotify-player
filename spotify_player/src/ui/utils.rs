@@ -106,6 +106,6 @@ pub fn render_loading_window(
     rect: Rect,
     title: &str,
 ) {
-    let rect = construct_and_render_block(title, theme, state, None, frame, rect);
+    let rect = construct_and_render_block(title, theme, state, Borders::ALL, frame, rect);
     frame.render_widget(Paragraph::new("Loading..."), rect);
 }

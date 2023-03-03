@@ -58,20 +58,26 @@ pub fn render_search_page(
         state,
         Borders::TOP | Borders::RIGHT,
         frame,
-        rect,
+        chunks[0],
     );
     let album_rect =
-        construct_and_render_block("Albums", &ui.theme, state, Borders::TOP, frame, rect);
+        construct_and_render_block("Albums", &ui.theme, state, Borders::TOP, frame, chunks[1]);
     let artist_rect = construct_and_render_block(
         "Artists",
         &ui.theme,
         state,
         Borders::TOP | Borders::RIGHT,
         frame,
-        rect,
+        chunks[2],
     );
-    let playlist_rect =
-        construct_and_render_block("Playlists", &ui.theme, state, Borders::TOP, frame, rect);
+    let playlist_rect = construct_and_render_block(
+        "Playlists",
+        &ui.theme,
+        state,
+        Borders::TOP,
+        frame,
+        chunks[3],
+    );
 
     // 3. Construct the page's widgets
     let (track_list, n_tracks) = {
@@ -141,7 +147,7 @@ pub fn render_search_page(
             ui.theme
                 .selection_style(is_active && focus_state == SearchFocusState::Input),
         ),
-        chunks[0],
+        search_input_rect,
     );
 
     // Render the search result windows.
@@ -635,6 +641,16 @@ fn render_artist_context_page_windows(
     };
 
     // 4. Render the widgets
+    render_track_table_window(
+        frame,
+        top_tracks_rect,
+        is_active && focus_state == ArtistFocusState::TopTracks,
+        state,
+        tracks,
+        ui,
+        data,
+    )?;
+
     let (album_list_state, artist_list_state) = match ui.current_page_mut() {
         PageState::Context {
             state:
@@ -647,16 +663,6 @@ fn render_artist_context_page_windows(
         } => (album_list, related_artist_list),
         s => anyhow::bail!("expect an artist context page state, found {s:?}"),
     };
-
-    render_track_table_window(
-        frame,
-        top_tracks_rect,
-        is_active && focus_state == ArtistFocusState::TopTracks,
-        state,
-        tracks,
-        ui,
-        data,
-    )?;
 
     utils::render_list_window(frame, album_list, albums_rect, n_albums, album_list_state);
     utils::render_list_window(

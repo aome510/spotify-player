@@ -251,12 +251,7 @@ pub fn render_commands_help_popup(
     ui: &mut UIStateGuard,
     rect: Rect,
 ) {
-    let scroll_offset = match ui.popup {
-        Some(PopupState::CommandHelp {
-            ref mut scroll_offset,
-        }) => scroll_offset,
-        _ => return,
-    };
+    let rect = construct_and_render_block("Commands", &ui.theme, state, Borders::ALL, frame, rect);
 
     let mut map = BTreeMap::new();
     state.keymap_config.keymaps.iter().for_each(|km| {
@@ -272,12 +267,16 @@ pub fn render_commands_help_popup(
         }
     });
 
+    let scroll_offset = match ui.popup {
+        Some(PopupState::CommandHelp {
+            ref mut scroll_offset,
+        }) => scroll_offset,
+        _ => return,
+    };
     // offset should not be greater than or equal the number of available commands
     if *scroll_offset >= map.len() {
         *scroll_offset = map.len() - 1
     }
-
-    let rect = construct_and_render_block("Commands", &ui.theme, state, Borders::ALL, frame, rect);
 
     let help_table = Table::new(
         map.into_iter()
@@ -319,14 +318,14 @@ pub fn render_queue_popup(
         }
     }
 
+    let rect = construct_and_render_block("Queue", &ui.theme, state, Borders::ALL, frame, rect);
+
     let scroll_offset = match ui.popup {
         Some(PopupState::Queue {
             ref mut scroll_offset,
         }) => scroll_offset,
         _ => return,
     };
-
-    let rect = construct_and_render_block("Queue", &ui.theme, state, Borders::ALL, frame, rect);
 
     // Minimize the time we have a lock on the player state
     let queue_table = {
