@@ -1,12 +1,17 @@
 use super::*;
 
-pub fn construct_block<'a>(
+/// Construct and render a block.
+///
+/// This function should only be used to render a window's borders and its title.
+/// It returns the rectangle to render the inner widgets inside the block.
+pub fn construct_and_render_block(
     title: &str,
     theme: &config::Theme,
     state: &SharedState,
-    borders: Option<Borders>,
-) -> Block<'a> {
-    let borders = borders.unwrap_or(Borders::ALL);
+    borders: Borders,
+    frame: &mut Frame,
+    rect: Rect,
+) -> Rect {
     let (borders, border_type) = match state.app_config.border_type {
         config::BorderType::None => (Borders::NONE, BorderType::Plain),
         config::BorderType::Plain => (borders, BorderType::Plain),
@@ -15,11 +20,16 @@ pub fn construct_block<'a>(
         config::BorderType::Thick => (borders, BorderType::Thick),
     };
 
-    Block::default()
+    let block = Block::default()
         .title(theme.block_title_with_style(title))
         .borders(borders)
         .border_style(theme.border())
-        .border_type(border_type)
+        .border_type(border_type);
+
+    frame.render_widget(block, rect);
+
+    // margin to separate the block with its inner widget(s)
+    Layout::default().margin(1).split(rect)[0]
 }
 
 /// constructs a generic list widget
