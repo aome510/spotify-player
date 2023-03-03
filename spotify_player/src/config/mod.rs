@@ -49,6 +49,8 @@ pub struct AppConfig {
     pub liked_icon: String,
 
     // layout configs
+    pub border_type: BorderType,
+
     pub playback_window_position: Position,
 
     #[cfg(feature = "image")]
@@ -74,6 +76,16 @@ pub enum Position {
     Bottom,
 }
 config_parser_impl!(Position);
+
+#[derive(Debug, Deserialize, Clone)]
+pub enum BorderType {
+    None,
+    Plain,
+    Rounded,
+    Double,
+    Thick,
+}
+config_parser_impl!(BorderType);
 
 #[derive(Debug, Deserialize, ConfigParse, Clone)]
 pub struct Command {
@@ -143,6 +155,8 @@ impl Default for AppConfig {
             pause_icon: "▌▌".to_string(),
             play_icon: "▶".to_string(),
             liked_icon: "♥".to_string(),
+
+            border_type: BorderType::Plain,
 
             playback_window_position: Position::Top,
 
