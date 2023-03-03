@@ -1,4 +1,4 @@
-use super::{utils::construct_block, *};
+use super::{utils::construct_and_render_block, *};
 use std::collections::{btree_map::Entry, BTreeMap};
 
 const SHORTCUT_TABLE_N_COLUMNS: usize = 3;
@@ -33,9 +33,16 @@ pub fn render_popup(
                     .constraints([Constraint::Min(0), Constraint::Length(3)].as_ref())
                     .split(rect);
 
-                let widget = Paragraph::new(format!("/{query}"))
-                    .block(construct_block("Search", &ui.theme, state, None));
-                frame.render_widget(widget, chunks[1]);
+                let rect = construct_and_render_block(
+                    "Search",
+                    &ui.theme,
+                    state,
+                    Borders::ALL,
+                    frame,
+                    chunks[1],
+                );
+
+                frame.render_widget(Paragraph::new(format!("/{query}")), rect);
                 (chunks[0], true)
             }
             PopupState::CommandHelp { .. } => {
@@ -161,12 +168,13 @@ fn render_list_popup(
         .constraints([Constraint::Min(0), Constraint::Length(length)].as_ref())
         .split(rect);
 
-    let (list, len) = utils::construct_list_widget(state, &ui.theme, items, title, true, None);
+    let rect = construct_and_render_block(title, &ui.theme, state, Borders::ALL, frame, chunks[1]);
+    let (list, len) = utils::construct_list_widget(state, &ui.theme, items, true);
 
     utils::render_list_window(
         frame,
         list,
-        chunks[1],
+        rect,
         len,
         ui.popup.as_mut().unwrap().list_state_mut().unwrap(),
     );
@@ -211,6 +219,15 @@ pub fn render_shortcut_help_popup(
             .constraints([Constraint::Min(0), Constraint::Length(7)].as_ref())
             .split(rect);
 
+        let rect = construct_and_render_block(
+            "Shortcuts",
+            &ui.theme,
+            state,
+            Borders::ALL,
+            frame,
+            chunks[1],
+        );
+
         let help_table = Table::new(
             matches
                 .into_iter()
@@ -220,9 +237,9 @@ pub fn render_shortcut_help_popup(
                 .map(|c| Row::new(c.iter().map(|i| Cell::from(i.to_owned()))))
                 .collect::<Vec<_>>(),
         )
-        .widths(&SHORTCUT_TABLE_CONSTRAINS)
-        .block(construct_block("Shortcuts", &ui.theme, state, None));
-        frame.render_widget(help_table, chunks[1]);
+        .widths(&SHORTCUT_TABLE_CONSTRAINS);
+
+        frame.render_widget(help_table, rect);
         chunks[0]
     }
 }
@@ -259,6 +276,9 @@ pub fn render_commands_help_popup(
     if *scroll_offset >= map.len() {
         *scroll_offset = map.len() - 1
     }
+
+    let rect = construct_and_render_block("Commands", &ui.theme, state, Borders::ALL, frame, rect);
+
     let help_table = Table::new(
         map.into_iter()
             .skip(*scroll_offset)
@@ -279,8 +299,8 @@ pub fn render_commands_help_popup(
         ])
         .style(ui.theme.table_header()),
     )
-    .widths(&COMMAND_TABLE_CONSTRAINTS)
-    .block(construct_block("Commands", &ui.theme, state, None));
+    .widths(&COMMAND_TABLE_CONSTRAINTS);
+
     frame.render_widget(help_table, rect);
 }
 
@@ -305,6 +325,8 @@ pub fn render_queue_popup(
         }) => scroll_offset,
         _ => return,
     };
+
+    let rect = construct_and_render_block("Queue", &ui.theme, state, Borders::ALL, frame, rect);
 
     // Minimize the time we have a lock on the player state
     let queue_table = {
@@ -333,7 +355,7 @@ pub fn render_queue_popup(
         )
         .header(Row::new(vec![Cell::from("#"), Cell::from("Title")]).style(ui.theme.table_header()))
         .widths(&[Constraint::Percentage(10), Constraint::Percentage(90)])
-        .block(construct_block("Queue", &ui.theme, state, None))
     };
+
     frame.render_widget(queue_table, rect);
 }
