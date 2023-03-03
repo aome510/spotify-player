@@ -1,4 +1,4 @@
-use super::{utils::construct_block, *};
+use super::{utils::construct_and_render_block, *};
 
 /// Renders a playback window showing information about the current playback, which includes
 /// - track title, artists, album
@@ -11,18 +11,7 @@ pub fn render_playback_window(
     ui: &mut UIStateGuard,
     rect: Rect,
 ) -> Result<()> {
-    // render borders and title
-    let block = construct_block("Playback", &ui.theme, state, None);
-    frame.render_widget(block, rect);
-
-    let rect = {
-        // remove top/bot margins
-        Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([Constraint::Min(0)].as_ref())
-            .margin(1)
-            .split(rect)[0]
-    };
+    let rect = construct_and_render_block("Playback", &ui.theme, state, Borders::ALL, frame, rect);
 
     let player = state.player.read();
     if let Some(ref playback) = player.playback {
@@ -127,8 +116,7 @@ pub fn render_playback_window(
                 "No playback found. \
                  Please make sure there is a running Spotify client and try to connect to it using the `SwitchDevice` command."
             )
-            .wrap(Wrap { trim: true })
-            .block(Block::default()),
+            .wrap(Wrap { trim: true }),
             rect,
         );
     };
@@ -210,9 +198,7 @@ fn render_playback_text(
         playback_text.lines.push(Spans::from(spans));
     }
 
-    let playback_desc = Paragraph::new(playback_text)
-        .wrap(Wrap { trim: true })
-        .block(Block::default());
+    let playback_desc = Paragraph::new(playback_text).wrap(Wrap { trim: true });
 
     frame.render_widget(playback_desc, rect);
 }
@@ -225,7 +211,6 @@ fn render_playback_progress_bar(
     rect: Rect,
 ) {
     let progress_bar = Gauge::default()
-        .block(Block::default())
         .gauge_style(ui.theme.playback_progress_bar())
         .ratio(progress.as_secs_f64() / track.duration.as_secs_f64())
         .label(Span::styled(
