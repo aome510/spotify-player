@@ -1,4 +1,4 @@
-use super::*;
+use super::{utils::construct_block, *};
 use std::collections::{btree_map::Entry, BTreeMap};
 
 const SHORTCUT_TABLE_N_COLUMNS: usize = 3;
@@ -33,12 +33,8 @@ pub fn render_popup(
                     .constraints([Constraint::Min(0), Constraint::Length(3)].as_ref())
                     .split(rect);
 
-                let widget = Paragraph::new(format!("/{query}")).block(
-                    Block::default()
-                        .borders(Borders::ALL)
-                        .border_style(ui.theme.border())
-                        .title(ui.theme.block_title_with_style("Search")),
-                );
+                let widget = Paragraph::new(format!("/{query}"))
+                    .block(construct_block("Search", &ui.theme, state, None));
                 frame.render_widget(widget, chunks[1]);
                 (chunks[0], true)
             }
@@ -72,6 +68,7 @@ pub fn render_popup(
                         .map(|d| (d, false))
                         .collect(),
                     7,
+                    state,
                     ui,
                 );
                 (rect, false)
@@ -89,13 +86,13 @@ pub fn render_popup(
                     .map(|d| (format!("{} | {}", d.name, d.id), current_device_id == d.id))
                     .collect();
 
-                let rect = render_list_popup(frame, rect, "Devices", items, 5, ui);
+                let rect = render_list_popup(frame, rect, "Devices", items, 5, state, ui);
                 (rect, false)
             }
             PopupState::ThemeList(themes, ..) => {
                 let items = themes.iter().map(|t| (t.name.clone(), false)).collect();
 
-                let rect = render_list_popup(frame, rect, "Themes", items, 7, ui);
+                let rect = render_list_popup(frame, rect, "Themes", items, 7, state, ui);
                 (rect, false)
             }
             PopupState::UserPlaylistList(action, _) => {
@@ -109,7 +106,7 @@ pub fn render_popup(
                     .map(|p| (p.to_string(), false))
                     .collect();
 
-                let rect = render_list_popup(frame, rect, "User Playlists", items, 10, ui);
+                let rect = render_list_popup(frame, rect, "User Playlists", items, 10, state, ui);
                 (rect, false)
             }
             PopupState::UserFollowedArtistList { .. } => {
@@ -122,7 +119,8 @@ pub fn render_popup(
                     .map(|a| (a.to_string(), false))
                     .collect();
 
-                let rect = render_list_popup(frame, rect, "User Followed Artists", items, 7, ui);
+                let rect =
+                    render_list_popup(frame, rect, "User Followed Artists", items, 7, state, ui);
                 (rect, false)
             }
             PopupState::UserSavedAlbumList { .. } => {
@@ -135,13 +133,13 @@ pub fn render_popup(
                     .map(|a| (a.to_string(), false))
                     .collect();
 
-                let rect = render_list_popup(frame, rect, "User Saved Albums", items, 7, ui);
+                let rect = render_list_popup(frame, rect, "User Saved Albums", items, 7, state, ui);
                 (rect, false)
             }
             PopupState::ArtistList(_, artists, ..) => {
                 let items = artists.iter().map(|a| (a.to_string(), false)).collect();
 
-                let rect = render_list_popup(frame, rect, "Artists", items, 5, ui);
+                let rect = render_list_popup(frame, rect, "Artists", items, 5, state, ui);
                 (rect, false)
             }
         },
@@ -155,6 +153,7 @@ fn render_list_popup(
     title: &str,
     items: Vec<(String, bool)>,
     length: u16,
+    state: &SharedState,
     ui: &mut UIStateGuard,
 ) -> Rect {
     let chunks = Layout::default()
@@ -162,7 +161,7 @@ fn render_list_popup(
         .constraints([Constraint::Min(0), Constraint::Length(length)].as_ref())
         .split(rect);
 
-    let (list, len) = utils::construct_list_widget(&ui.theme, items, title, true, None);
+    let (list, len) = utils::construct_list_widget(state, &ui.theme, items, title, true, None);
 
     utils::render_list_window(
         frame,
@@ -222,12 +221,7 @@ pub fn render_shortcut_help_popup(
                 .collect::<Vec<_>>(),
         )
         .widths(&SHORTCUT_TABLE_CONSTRAINS)
-        .block(
-            Block::default()
-                .title(ui.theme.block_title_with_style("Shortcuts"))
-                .borders(Borders::ALL)
-                .border_style(ui.theme.border()),
-        );
+        .block(construct_block("Shortcuts", &ui.theme, state, None));
         frame.render_widget(help_table, chunks[1]);
         chunks[0]
     }
@@ -286,12 +280,7 @@ pub fn render_commands_help_popup(
         .style(ui.theme.table_header()),
     )
     .widths(&COMMAND_TABLE_CONSTRAINTS)
-    .block(
-        Block::default()
-            .title(ui.theme.block_title_with_style("Commands"))
-            .borders(Borders::ALL)
-            .border_style(ui.theme.border()),
-    );
+    .block(construct_block("Commands", &ui.theme, state, None));
     frame.render_widget(help_table, rect);
 }
 
@@ -344,12 +333,7 @@ pub fn render_queue_popup(
         )
         .header(Row::new(vec![Cell::from("#"), Cell::from("Title")]).style(ui.theme.table_header()))
         .widths(&[Constraint::Percentage(10), Constraint::Percentage(90)])
-        .block(
-            Block::default()
-                .title(ui.theme.block_title_with_style("Queue"))
-                .borders(Borders::ALL)
-                .border_style(ui.theme.border()),
-        )
+        .block(construct_block("Queue", &ui.theme, state, None))
     };
     frame.render_widget(queue_table, rect);
 }

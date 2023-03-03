@@ -1,4 +1,4 @@
-use super::*;
+use super::{utils::construct_block, *};
 
 pub fn render_search_page(
     is_active: bool,
@@ -33,6 +33,7 @@ pub fn render_search_page(
         let is_active = is_active && focus_state == SearchFocusState::Tracks;
 
         utils::construct_list_widget(
+            state,
             &ui.theme,
             track_items,
             &format!("Tracks{}", if is_active { " [*]" } else { "" }),
@@ -54,6 +55,7 @@ pub fn render_search_page(
         let is_active = is_active && focus_state == SearchFocusState::Albums;
 
         utils::construct_list_widget(
+            state,
             &ui.theme,
             album_items,
             &format!("Albums{}", if is_active { " [*]" } else { "" }),
@@ -75,6 +77,7 @@ pub fn render_search_page(
         let is_active = is_active && focus_state == SearchFocusState::Artists;
 
         utils::construct_list_widget(
+            state,
             &ui.theme,
             artist_items,
             &format!("Artists{}", if is_active { " [*]" } else { "" }),
@@ -96,6 +99,7 @@ pub fn render_search_page(
         let is_active = is_active && focus_state == SearchFocusState::Playlists;
 
         utils::construct_list_widget(
+            state,
             &ui.theme,
             playlist_items,
             &format!("Playlists{}", if is_active { " [*]" } else { "" }),
@@ -105,10 +109,7 @@ pub fn render_search_page(
     };
 
     // renders borders with title
-    let block = Block::default()
-        .title(ui.theme.block_title_with_style("Search"))
-        .borders(Borders::ALL)
-        .border_style(ui.theme.border());
+    let block = construct_block("Search", &ui.theme, state, None);
     frame.render_widget(block, rect);
 
     // renders the query input box
@@ -197,10 +198,7 @@ pub fn render_context_page(
         s => anyhow::bail!("expect a context page state, found {s:?}"),
     };
 
-    let block = Block::default()
-        .title(ui.theme.block_title_with_style(context_page_type.title()))
-        .borders(Borders::ALL)
-        .border_style(ui.theme.border());
+    let block = construct_block(&context_page_type.title(), &ui.theme, state, None);
 
     let id = match id {
         None => {
@@ -322,6 +320,7 @@ pub fn render_library_page(
 
     // Construct the playlist window
     let (playlist_list, n_playlists) = utils::construct_list_widget(
+        state,
         &ui.theme,
         ui.search_filtered_items(&data.user_data.playlists)
             .into_iter()
@@ -333,6 +332,7 @@ pub fn render_library_page(
     );
     // Construct the saved album window
     let (album_list, n_albums) = utils::construct_list_widget(
+        state,
         &ui.theme,
         ui.search_filtered_items(&data.user_data.saved_albums)
             .into_iter()
@@ -344,6 +344,7 @@ pub fn render_library_page(
     );
     // Construct the followed artist window
     let (artist_list, n_artists) = utils::construct_list_widget(
+        state,
         &ui.theme,
         ui.search_filtered_items(&data.user_data.followed_artists)
             .into_iter()
@@ -396,8 +397,9 @@ pub fn render_browse_page(
     let data = state.data.read();
 
     let (list, len) = match ui.current_page() {
-        PageState::Browse { state } => match state {
+        PageState::Browse { state: ui_state } => match ui_state {
             BrowsePageUIState::CategoryList { .. } => utils::construct_list_widget(
+                state,
                 &ui.theme,
                 ui.search_filtered_items(&data.browse.categories)
                     .into_iter()
@@ -412,11 +414,12 @@ pub fn render_browse_page(
                 let playlists = match data.browse.category_playlists.get(&category.id) {
                     Some(playlists) => playlists,
                     None => {
-                        utils::render_loading_window(&ui.theme, frame, rect, &title);
+                        utils::render_loading_window(state, &ui.theme, frame, rect, &title);
                         return Ok(());
                     }
                 };
                 utils::construct_list_widget(
+                    state,
                     &ui.theme,
                     ui.search_filtered_items(playlists)
                         .into_iter()
@@ -451,10 +454,7 @@ pub fn render_lyric_page(
 ) -> Result<()> {
     let data = state.data.read();
 
-    let block = Block::default()
-        .title(ui.theme.block_title_with_style("Lyric"))
-        .borders(Borders::ALL)
-        .border_style(ui.theme.border());
+    let block = construct_block("Lyric", &ui.theme, state, None);
 
     let (track, artists, scroll_offset) = match ui.current_page_mut() {
         PageState::Lyric {
@@ -575,6 +575,7 @@ fn render_artist_context_page_windows(
             .collect::<Vec<_>>();
 
         utils::construct_list_widget(
+            state,
             &ui.theme,
             album_items,
             "Albums",
@@ -591,6 +592,7 @@ fn render_artist_context_page_windows(
             .collect::<Vec<_>>();
 
         utils::construct_list_widget(
+            state,
             &ui.theme,
             artist_items,
             "Related Artists",

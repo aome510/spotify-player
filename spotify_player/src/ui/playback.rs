@@ -1,4 +1,4 @@
-use super::*;
+use super::{utils::construct_block, *};
 
 /// Renders a playback window showing information about the current playback, which includes
 /// - track title, artists, album
@@ -12,10 +12,7 @@ pub fn render_playback_window(
     rect: Rect,
 ) -> Result<()> {
     // render borders and title
-    let block = Block::default()
-        .title(ui.theme.block_title_with_style("Playback"))
-        .borders(Borders::ALL)
-        .border_style(ui.theme.border());
+    let block = construct_block("Playback", &ui.theme, state, None);
     frame.render_widget(block, rect);
 
     let rect = {
