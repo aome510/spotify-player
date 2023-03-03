@@ -29,7 +29,10 @@ pub fn construct_and_render_block(
     frame.render_widget(block, rect);
 
     // margin to separate the block with its inner widget(s)
-    Layout::default().margin(1).split(rect)[0]
+    Layout::default()
+        .margin(1)
+        .constraints([Constraint::Min(0)])
+        .split(rect)[0]
 }
 
 /// constructs a generic list widget

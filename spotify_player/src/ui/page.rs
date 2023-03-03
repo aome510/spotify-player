@@ -346,10 +346,10 @@ pub fn render_library_page(
         state,
         Borders::TOP | Borders::LEFT | Borders::BOTTOM,
         frame,
-        chunks[0],
+        chunks[1],
     );
     let artist_rect =
-        construct_and_render_block("Artists", &ui.theme, state, Borders::ALL, frame, chunks[0]);
+        construct_and_render_block("Artists", &ui.theme, state, Borders::ALL, frame, chunks[2]);
 
     // 3. Construct the page's widgets
     // Construct the playlist window
@@ -504,6 +504,14 @@ pub fn render_lyric_page(
     // 1. Get the data
     let data = state.data.read();
 
+    // 2. Construct the app's layout
+    let rect = construct_and_render_block("Lyric", &ui.theme, state, Borders::ALL, frame, rect);
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Length(1), Constraint::Min(0)].as_ref())
+        .split(rect);
+
+    // 3. Construct the app's widgets
     let (track, artists, scroll_offset) = match ui.current_page_mut() {
         PageState::Lyric {
             track,
@@ -513,14 +521,6 @@ pub fn render_lyric_page(
         s => anyhow::bail!("expect a lyric page state, found {s:?}"),
     };
 
-    // 2. Construct the app's layout
-    let rect = construct_and_render_block("Lyric", &ui.theme, state, Borders::ALL, frame, rect);
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Length(1), Constraint::Min(0)].as_ref())
-        .split(rect);
-
-    // 3. Construct the app's widgets
     let (desc, lyric) = match data.caches.lyrics.peek(&format!("{track} {artists}")) {
         None => {
             frame.render_widget(Paragraph::new("Loading..."), rect);
@@ -546,7 +546,10 @@ pub fn render_lyric_page(
 
     // 4. Render the app's widgets
     // render lyric page description text
-    frame.render_widget(Paragraph::new(desc), chunks[0]);
+    frame.render_widget(
+        Paragraph::new(Text::styled(desc, ui.theme.page_desc())),
+        chunks[0],
+    );
 
     // render lyric text
     frame.render_widget(
@@ -598,13 +601,19 @@ fn render_artist_context_page_windows(
         .direction(Direction::Horizontal)
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
         .split(chunks[1]);
-    let albums_rect =
-        construct_and_render_block("Albums", &ui.theme, state, Borders::TOP, frame, chunks[0]);
+    let albums_rect = construct_and_render_block(
+        "Albums",
+        &ui.theme,
+        state,
+        Borders::TOP | Borders::RIGHT,
+        frame,
+        chunks[0],
+    );
     let related_artists_rect = construct_and_render_block(
         "Related Artists",
         &ui.theme,
         state,
-        Borders::TOP | Borders::LEFT,
+        Borders::TOP,
         frame,
         chunks[1],
     );
