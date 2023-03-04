@@ -169,7 +169,7 @@ fn render_list_popup(
         .split(rect);
 
     let rect = construct_and_render_block(title, &ui.theme, state, Borders::ALL, frame, chunks[1]);
-    let (list, len) = utils::construct_list_widget(state, &ui.theme, items, true);
+    let (list, len) = utils::construct_list_widget(&ui.theme, items, true);
 
     utils::render_list_window(
         frame,

@@ -37,7 +37,6 @@ pub fn construct_and_render_block(
 
 /// constructs a generic list widget
 pub fn construct_list_widget<'a>(
-    state: &SharedState,
     theme: &config::Theme,
     items: Vec<(String, bool)>,
     is_active: bool,

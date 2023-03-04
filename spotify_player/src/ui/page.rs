@@ -92,7 +92,7 @@ pub fn render_search_page(
 
         let is_active = is_active && focus_state == SearchFocusState::Tracks;
 
-        utils::construct_list_widget(state, &ui.theme, track_items, is_active)
+        utils::construct_list_widget(&ui.theme, track_items, is_active)
     };
 
     let (album_list, n_albums) = {
@@ -107,7 +107,7 @@ pub fn render_search_page(
 
         let is_active = is_active && focus_state == SearchFocusState::Albums;
 
-        utils::construct_list_widget(state, &ui.theme, album_items, is_active)
+        utils::construct_list_widget(&ui.theme, album_items, is_active)
     };
 
     let (artist_list, n_artists) = {
@@ -122,7 +122,7 @@ pub fn render_search_page(
 
         let is_active = is_active && focus_state == SearchFocusState::Artists;
 
-        utils::construct_list_widget(state, &ui.theme, artist_items, is_active)
+        utils::construct_list_widget(&ui.theme, artist_items, is_active)
     };
 
     let (playlist_list, n_playlists) = {
@@ -137,7 +137,7 @@ pub fn render_search_page(
 
         let is_active = is_active && focus_state == SearchFocusState::Playlists;
 
-        utils::construct_list_widget(state, &ui.theme, playlist_items, is_active)
+        utils::construct_list_widget(&ui.theme, playlist_items, is_active)
     };
 
     // 4. Render the page's widgets
@@ -354,7 +354,6 @@ pub fn render_library_page(
     // 3. Construct the page's widgets
     // Construct the playlist window
     let (playlist_list, n_playlists) = utils::construct_list_widget(
-        state,
         &ui.theme,
         ui.search_filtered_items(&data.user_data.playlists)
             .into_iter()
@@ -364,7 +363,6 @@ pub fn render_library_page(
     );
     // Construct the saved album window
     let (album_list, n_albums) = utils::construct_list_widget(
-        state,
         &ui.theme,
         ui.search_filtered_items(&data.user_data.saved_albums)
             .into_iter()
@@ -374,7 +372,6 @@ pub fn render_library_page(
     );
     // Construct the followed artist window
     let (artist_list, n_artists) = utils::construct_list_widget(
-        state,
         &ui.theme,
         ui.search_filtered_items(&data.user_data.followed_artists)
             .into_iter()
@@ -433,14 +430,13 @@ pub fn render_browse_page(
                 rect = construct_and_render_block(
                     "Categories",
                     &ui.theme,
-                    &state,
+                    state,
                     Borders::ALL,
                     frame,
                     rect,
                 );
 
                 utils::construct_list_widget(
-                    state,
                     &ui.theme,
                     ui.search_filtered_items(&data.browse.categories)
                         .into_iter()
@@ -459,17 +455,10 @@ pub fn render_browse_page(
                     }
                 };
 
-                rect = construct_and_render_block(
-                    &title,
-                    &ui.theme,
-                    &state,
-                    Borders::ALL,
-                    frame,
-                    rect,
-                );
+                rect =
+                    construct_and_render_block(&title, &ui.theme, state, Borders::ALL, frame, rect);
 
                 utils::construct_list_widget(
-                    state,
                     &ui.theme,
                     ui.search_filtered_items(playlists)
                         .into_iter()
@@ -627,7 +616,6 @@ fn render_artist_context_page_windows(
             .collect::<Vec<_>>();
 
         utils::construct_list_widget(
-            state,
             &ui.theme,
             album_items,
             is_active && focus_state == ArtistFocusState::Albums,
@@ -642,7 +630,6 @@ fn render_artist_context_page_windows(
             .collect::<Vec<_>>();
 
         utils::construct_list_widget(
-            state,
             &ui.theme,
             artist_items,
             is_active && focus_state == ArtistFocusState::RelatedArtists,
