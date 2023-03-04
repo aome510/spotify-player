@@ -77,9 +77,9 @@ pub enum Position {
 }
 config_parser_impl!(Position);
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
 pub enum BorderType {
-    None,
+    Hidden,
     Plain,
     Rounded,
     Double,

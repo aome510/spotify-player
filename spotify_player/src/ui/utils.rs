@@ -13,26 +13,28 @@ pub fn construct_and_render_block(
     rect: Rect,
 ) -> Rect {
     let (borders, border_type) = match state.app_config.border_type {
-        config::BorderType::None => (Borders::NONE, BorderType::Plain),
+        config::BorderType::Hidden => (borders, BorderType::Plain),
         config::BorderType::Plain => (borders, BorderType::Plain),
         config::BorderType::Rounded => (borders, BorderType::Rounded),
         config::BorderType::Double => (borders, BorderType::Double),
         config::BorderType::Thick => (borders, BorderType::Thick),
     };
 
-    let block = Block::default()
+    let mut block = Block::default()
         .title(theme.block_title_with_style(title))
         .borders(borders)
         .border_style(theme.border())
         .border_type(border_type);
 
-    frame.render_widget(block, rect);
+    let inner_rect = block.inner(rect);
 
-    // margin to separate the block with its inner widget(s)
-    Layout::default()
-        .margin(1)
-        .constraints([Constraint::Min(0)])
-        .split(rect)[0]
+    // Handle `BorderType::Hidden` after determining the inner rectangle
+    if state.app_config.border_type == config::BorderType::Hidden {
+        block = block.borders(Borders::NONE);
+    }
+
+    frame.render_widget(block, rect);
+    inner_rect
 }
 
 /// constructs a generic list widget
