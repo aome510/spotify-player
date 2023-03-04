@@ -36,6 +36,8 @@ All configuration files should be placed inside the application's configuration 
 | `play_icon`                          | the icon to indicate playing state of a Spotify item                          | `▶`                                                        |
 | `pause_icon`                         | the icon to indicate pause state of a Spotify item                            | `▌▌`                                                       |
 | `liked_icon`                         | the icon to indicate the liked state of a song                                | `♥`                                                        |
+| `border_type`                        | the type of the application's borders                                         | `Plain`                                                    |
+| `progress_bar_type`                  | the type of the playback progress bar                                         | `Rectangle`                                                |
 | `playback_window_position`           | the position of the playback window                                           | `Top`                                                      |
 | `playback_window_width`              | the width of the playback window                                              | `6`                                                        |
 | `cover_img_width`                    | the width of the cover image (`image` feature only)                           | `5`                                                        |
@@ -67,6 +69,8 @@ The default `app.toml` can be found in the example [`app.toml`](../examples/app.
 - An example of event that triggers a playback update is the one happening when the current track ends.
 - `copy_command` is represented by a struct with two fields `command` and `args`. For example, `copy_command = { command = "xclip", args = ["-sel", "c"] }`. The copy command should read input from **standard input**.
 - `playback_window_position` can only be either `Top` or `Bottom`.
+- `border_type` can be either `Hidden`, `Plain`, `Rounded`, `Double`, `Thick`.
+- `progress_bar_type` can be either `Rectangle` or `Line`.
 
 #### Media control
 

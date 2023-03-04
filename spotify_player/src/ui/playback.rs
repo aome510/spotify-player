@@ -1,4 +1,4 @@
-use super::*;
+use super::{utils::construct_and_render_block, *};
 
 /// Renders a playback window showing information about the current playback, which includes
 /// - track title, artists, album
@@ -11,21 +11,7 @@ pub fn render_playback_window(
     ui: &mut UIStateGuard,
     rect: Rect,
 ) -> Result<()> {
-    // render borders and title
-    let block = Block::default()
-        .title(ui.theme.block_title_with_style("Playback"))
-        .borders(Borders::ALL)
-        .border_style(ui.theme.border());
-    frame.render_widget(block, rect);
-
-    let rect = {
-        // remove top/bot margins
-        Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([Constraint::Min(0)].as_ref())
-            .margin(1)
-            .split(rect)[0]
-    };
+    let rect = construct_and_render_block("Playback", &ui.theme, state, Borders::ALL, frame, rect);
 
     let player = state.player.read();
     if let Some(ref playback) = player.playback {
@@ -112,7 +98,7 @@ pub fn render_playback_window(
                     .context("playback should exist")?,
                 track.duration,
             );
-            render_playback_progress_bar(frame, ui, progress, track, progress_bar_rect);
+            render_playback_progress_bar(frame, state, ui, progress, track, progress_bar_rect);
         } else {
             tracing::warn!("Got a non-track playable item: {:?}", playback.item);
         }
@@ -130,8 +116,7 @@ pub fn render_playback_window(
                 "No playback found. \
                  Please make sure there is a running Spotify client and try to connect to it using the `SwitchDevice` command."
             )
-            .wrap(Wrap { trim: true })
-            .block(Block::default()),
+            .wrap(Wrap { trim: true }),
             rect,
         );
     };
@@ -213,37 +198,52 @@ fn render_playback_text(
         playback_text.lines.push(Spans::from(spans));
     }
 
-    let playback_desc = Paragraph::new(playback_text)
-        .wrap(Wrap { trim: true })
-        .block(Block::default());
+    let playback_desc = Paragraph::new(playback_text).wrap(Wrap { trim: true });
 
     frame.render_widget(playback_desc, rect);
 }
 
 fn render_playback_progress_bar(
     frame: &mut Frame,
+    state: &SharedState,
     ui: &mut UIStateGuard,
     progress: std::time::Duration,
     track: &rspotify_model::FullTrack,
     rect: Rect,
 ) {
-    let progress_bar = Gauge::default()
-        .block(Block::default())
-        .gauge_style(ui.theme.playback_progress_bar())
-        .ratio(progress.as_secs_f64() / track.duration.as_secs_f64())
-        .label(Span::styled(
-            format!(
-                "{}/{}",
-                crate::utils::format_duration(progress),
-                crate::utils::format_duration(track.duration),
-            ),
-            Style::default().add_modifier(Modifier::BOLD),
-        ));
+    match state.app_config.progress_bar_type {
+        config::ProgressBarType::Line => frame.render_widget(
+            LineGauge::default()
+                .gauge_style(ui.theme.playback_progress_bar())
+                .ratio(progress.as_secs_f64() / track.duration.as_secs_f64())
+                .label(Span::styled(
+                    format!(
+                        "{}/{}",
+                        crate::utils::format_duration(progress),
+                        crate::utils::format_duration(track.duration),
+                    ),
+                    Style::default().add_modifier(Modifier::BOLD),
+                )),
+            rect,
+        ),
+        config::ProgressBarType::Rectangle => frame.render_widget(
+            Gauge::default()
+                .gauge_style(ui.theme.playback_progress_bar())
+                .ratio(progress.as_secs_f64() / track.duration.as_secs_f64())
+                .label(Span::styled(
+                    format!(
+                        "{}/{}",
+                        crate::utils::format_duration(progress),
+                        crate::utils::format_duration(track.duration),
+                    ),
+                    Style::default().add_modifier(Modifier::BOLD),
+                )),
+            rect,
+        ),
+    }
 
     // update the progress bar's position stored inside the UI state
     ui.playback_progress_bar_rect = rect;
-
-    frame.render_widget(progress_bar, rect);
 }
 
 #[cfg(feature = "image")]

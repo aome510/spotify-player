@@ -49,6 +49,9 @@ pub struct AppConfig {
     pub liked_icon: String,
 
     // layout configs
+    pub border_type: BorderType,
+    pub progress_bar_type: ProgressBarType,
+
     pub playback_window_position: Position,
 
     #[cfg(feature = "image")]
@@ -74,6 +77,23 @@ pub enum Position {
     Bottom,
 }
 config_parser_impl!(Position);
+
+#[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
+pub enum BorderType {
+    Hidden,
+    Plain,
+    Rounded,
+    Double,
+    Thick,
+}
+config_parser_impl!(BorderType);
+
+#[derive(Debug, Deserialize, Clone)]
+pub enum ProgressBarType {
+    Line,
+    Rectangle,
+}
+config_parser_impl!(ProgressBarType);
 
 #[derive(Debug, Deserialize, ConfigParse, Clone)]
 pub struct Command {
@@ -143,6 +163,9 @@ impl Default for AppConfig {
             pause_icon: "▌▌".to_string(),
             play_icon: "▶".to_string(),
             liked_icon: "♥".to_string(),
+
+            border_type: BorderType::Plain,
+            progress_bar_type: ProgressBarType::Rectangle,
 
             playback_window_position: Position::Top,
 
