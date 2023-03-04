@@ -98,7 +98,7 @@ pub fn render_playback_window(
                     .context("playback should exist")?,
                 track.duration,
             );
-            render_playback_progress_bar(frame, ui, progress, track, progress_bar_rect);
+            render_playback_progress_bar(frame, state, ui, progress, track, progress_bar_rect);
         } else {
             tracing::warn!("Got a non-track playable item: {:?}", playback.item);
         }
@@ -205,27 +205,45 @@ fn render_playback_text(
 
 fn render_playback_progress_bar(
     frame: &mut Frame,
+    state: &SharedState,
     ui: &mut UIStateGuard,
     progress: std::time::Duration,
     track: &rspotify_model::FullTrack,
     rect: Rect,
 ) {
-    let progress_bar = Gauge::default()
-        .gauge_style(ui.theme.playback_progress_bar())
-        .ratio(progress.as_secs_f64() / track.duration.as_secs_f64())
-        .label(Span::styled(
-            format!(
-                "{}/{}",
-                crate::utils::format_duration(progress),
-                crate::utils::format_duration(track.duration),
-            ),
-            Style::default().add_modifier(Modifier::BOLD),
-        ));
+    match state.app_config.progress_bar_type {
+        config::ProgressBarType::Line => frame.render_widget(
+            LineGauge::default()
+                .gauge_style(ui.theme.playback_progress_bar())
+                .ratio(progress.as_secs_f64() / track.duration.as_secs_f64())
+                .label(Span::styled(
+                    format!(
+                        "{}/{}",
+                        crate::utils::format_duration(progress),
+                        crate::utils::format_duration(track.duration),
+                    ),
+                    Style::default().add_modifier(Modifier::BOLD),
+                )),
+            rect,
+        ),
+        config::ProgressBarType::Rectangle => frame.render_widget(
+            Gauge::default()
+                .gauge_style(ui.theme.playback_progress_bar())
+                .ratio(progress.as_secs_f64() / track.duration.as_secs_f64())
+                .label(Span::styled(
+                    format!(
+                        "{}/{}",
+                        crate::utils::format_duration(progress),
+                        crate::utils::format_duration(track.duration),
+                    ),
+                    Style::default().add_modifier(Modifier::BOLD),
+                )),
+            rect,
+        ),
+    }
 
     // update the progress bar's position stored inside the UI state
     ui.playback_progress_bar_rect = rect;
-
-    frame.render_widget(progress_bar, rect);
 }
 
 #[cfg(feature = "image")]
