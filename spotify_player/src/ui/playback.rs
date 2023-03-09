@@ -258,12 +258,10 @@ fn render_playback_cover_image(
         // possible freeze because of too many temp files in the temp folder.
         // Context: https://github.com/aome510/spotify-player/issues/148
         let tmp_dir = std::env::temp_dir();
-        for path in std::fs::read_dir(tmp_dir)? {
-            if let Ok(path) = path {
-                let path = path.path();
-                if path.display().to_string().contains(".tmp.viuer") {
-                    std::fs::remove_file(path)?;
-                }
+        for path in (std::fs::read_dir(tmp_dir)?).flatten() {
+            let path = path.path();
+            if path.display().to_string().contains(".tmp.viuer") {
+                std::fs::remove_file(path)?;
             }
         }
 
