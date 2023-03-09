@@ -253,6 +253,25 @@ fn render_playback_cover_image(
     rect: Rect,
     url: String,
 ) {
+    fn remove_temp_files() -> Result<()> {
+        // Clean up temp files created by `viuer`'s kitty printer to avoid
+        // possible freeze because of too many temp files in the temp folder.
+        // Context: https://github.com/aome510/spotify-player/issues/148
+        let tmp_dir = std::env::temp_dir();
+        for path in (std::fs::read_dir(tmp_dir)?).flatten() {
+            let path = path.path();
+            if path.display().to_string().contains(".tmp.viuer") {
+                std::fs::remove_file(path)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    if let Err(err) = remove_temp_files() {
+        tracing::error!("Failed to remove temp files: {err}");
+    }
+
     let data = state.data.read();
     if let Some(image) = data.caches.images.peek(&url) {
         ui.last_cover_image_render_info = Some((url, std::time::Instant::now()));
