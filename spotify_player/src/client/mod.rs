@@ -22,7 +22,7 @@ use serde::Deserialize;
 /// The application's client
 #[derive(Clone)]
 pub struct Client {
-    spotify: Arc<spotify::Spotify>,
+    pub spotify: Arc<spotify::Spotify>,
     http: reqwest::Client,
 }
 
