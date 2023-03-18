@@ -3,7 +3,10 @@ use std::process::exit;
 use crate::client::Client;
 use anyhow::Result;
 use clap::{builder::EnumValueParser, value_parser, Arg, ArgMatches, Command};
-use rspotify::{model::RepeatState, prelude::*};
+use rspotify::{
+    model::{AlbumId, ArtistId, PlaylistId, RepeatState},
+    prelude::*,
+};
 
 #[derive(clap::ValueEnum, Clone)]
 enum Key {
@@ -17,10 +20,11 @@ enum Key {
     Queue,
 }
 
+#[derive(clap::ValueEnum, Clone)]
 enum ContextType {
     Playlist,
     Album,
-    Artist
+    Artist,
 }
 
 pub fn init_get_subcommand() -> Command {
@@ -34,6 +38,11 @@ pub fn init_get_subcommand() -> Command {
 fn init_playback_play_subcommand() -> Command {
     Command::new("play")
         .about("Start a playback")
+        .arg(
+            Arg::new("context_type")
+                .value_parser(EnumValueParser::<ContextType>::new())
+                .required(true),
+        )
         .arg(Arg::new("context_id").required(true))
 }
 
@@ -126,7 +135,35 @@ async fn handle_playback_subcommand(args: &ArgMatches, client: Client) -> Result
 
     let (cmd, args) = args.subcommand().expect("playback subcommand is required");
     match cmd {
-        "play" => todo!(),
+        "play" => {
+            let context_id = args
+                .get_one::<String>("context_id")
+                .expect("context_id is required");
+            let context_type = args
+                .get_one::<ContextType>("context_type")
+                .expect("context_type is required");
+
+            let context_id = match context_type {
+                ContextType::Playlist => PlayContextId::Playlist(PlaylistId::from_id(context_id)?),
+                ContextType::Album => PlayContextId::Album(AlbumId::from_id(context_id)?),
+                ContextType::Artist => PlayContextId::Artist(ArtistId::from_id(context_id)?),
+            };
+
+            client
+                .spotify
+                .start_context_playback(context_id, device_id, None, None)
+                .await?;
+
+            // for some reasons, when starting a new playback, the integrated `spotify-player`
+            // client doesn't respect the initial shuffle state, so we need to manually update the state
+            client
+                .spotify
+                .shuffle(playback.shuffle_state, device_id)
+                .await?
+        }
+        "resume" => {
+            client.spotify.resume_playback(device_id, None).await?;
+        }
         "pause" => {
             client.spotify.pause_playback(device_id).await?;
         }
