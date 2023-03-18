@@ -28,11 +28,26 @@ enum ContextType {
 }
 
 pub fn init_get_subcommand() -> Command {
-    Command::new("get").about("Get spotify data").arg(
-        Arg::new("key")
-            .value_parser(EnumValueParser::<Key>::new())
-            .required(true),
-    )
+    Command::new("get")
+        .about("Get spotify data")
+        .subcommand_required(true)
+        .subcommand(
+            Command::new("key").about("Get data by key").arg(
+                Arg::new("key")
+                    .value_parser(EnumValueParser::<Key>::new())
+                    .required(true),
+            ),
+        )
+        .subcommand(
+            Command::new("context")
+                .about("Get context data")
+                .arg(
+                    Arg::new("context_type")
+                        .value_parser(EnumValueParser::<ContextType>::new())
+                        .required(true),
+                )
+                .arg(Arg::new("context_id").required(true)),
+        )
 }
 
 fn init_playback_play_subcommand() -> Command {
@@ -77,7 +92,7 @@ pub fn init_playback_subcommand() -> Command {
         )
 }
 
-async fn handle_get_subcommand(args: &ArgMatches, client: Client) -> Result<()> {
+async fn handle_get_key_subcommand(args: &ArgMatches, client: Client) -> Result<()> {
     let key = args.get_one::<Key>("key").expect("key is required");
     match key {
         Key::Playback => {
@@ -115,6 +130,45 @@ async fn handle_get_subcommand(args: &ArgMatches, client: Client) -> Result<()> 
             let queue = client.spotify.current_user_queue().await?;
             println!("{}", serde_json::to_string(&queue)?);
         }
+    }
+    Ok(())
+}
+
+async fn handle_get_context_subcommand(args: &ArgMatches, client: Client) -> Result<()> {
+    let context_id = args
+        .get_one::<String>("context_id")
+        .expect("context_id is required");
+    let context_type = args
+        .get_one::<ContextType>("context_type")
+        .expect("context_type is required");
+
+    let context = match context_type {
+        ContextType::Playlist => {
+            let id = PlaylistId::from_id(context_id)?;
+            client.playlist_context(id).await?
+        }
+        ContextType::Album => {
+            let id = AlbumId::from_id(context_id)?;
+            client.album_context(id).await?
+        }
+        ContextType::Artist => {
+            let id = ArtistId::from_id(context_id)?;
+            client.artist_context(id).await?
+        }
+    };
+
+    println!("{}", serde_json::to_string(&context)?);
+
+    Ok(())
+}
+
+async fn handle_get_subcommand(args: &ArgMatches, client: Client) -> Result<()> {
+    let (cmd, args) = args.subcommand().expect("playback subcommand is required");
+
+    match cmd {
+        "key" => handle_get_key_subcommand(args, client).await?,
+        "context" => handle_get_context_subcommand(args, client).await?,
+        _ => unreachable!(),
     }
     Ok(())
 }

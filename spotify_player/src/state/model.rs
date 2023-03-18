@@ -4,7 +4,8 @@ pub use rspotify::model::{AlbumId, ArtistId, Id, PlaylistId, TrackId, UserId};
 use crate::utils::map_join;
 use serde::Serialize;
 
-#[derive(Clone, Debug)]
+#[derive(Serialize, Clone, Debug)]
+#[serde(untagged)]
 /// A Spotify context (playlist, album, artist)
 pub enum Context {
     Playlist {
