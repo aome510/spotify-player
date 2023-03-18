@@ -1,7 +1,7 @@
 use crate::client::Client;
 use anyhow::Result;
-use clap::{builder::PossibleValue, Arg, ArgMatches, Command};
-use rspotify::prelude::*;
+use clap::{builder::PossibleValue, value_parser, Arg, ArgMatches, Command};
+use rspotify::{model::RepeatState, prelude::*};
 
 fn init_get_subcommand() -> Command {
     Command::new("get")
@@ -31,6 +31,9 @@ fn init_playback_subcommand() -> Command {
         .subcommand(Command::new("repeat"))
         .subcommand(
             Command::new("volume").arg(Arg::new("percent").value_parser(-100..=100).required(true)),
+        )
+        .subcommand(
+            Command::new("seek").arg(Arg::new("position_ms").value_parser(value_parser!(u32))),
         )
 }
 
@@ -78,16 +81,48 @@ async fn handle_get_subcommand(args: &ArgMatches, client: Client) -> Result<()> 
 }
 
 async fn handle_playback_subcommand(args: &ArgMatches, client: Client) -> Result<()> {
+    let playback = match client
+        .spotify
+        .current_playback(None, None::<Vec<_>>)
+        .await?
+    {
+        Some(playback) => playback,
+        None => {
+            return Ok(());
+        }
+    };
+    let device_id = playback.device.id.as_deref();
+
     match args.subcommand() {
         None => {}
         Some((cmd, args)) => match cmd {
             "play" => todo!(),
-            "pause" => todo!(),
-            "next" => todo!(),
-            "previous" => todo!(),
-            "shuffle" => todo!(),
-            "repeat" => todo!(),
+            "pause" => {
+                client.spotify.pause_playback(device_id).await?;
+            }
+            "next" => {
+                client.spotify.next_track(device_id).await?;
+            }
+            "previous" => {
+                client.spotify.previous_track(device_id).await?;
+            }
+            "shuffle" => {
+                client
+                    .spotify
+                    .shuffle(!playback.shuffle_state, device_id)
+                    .await?;
+            }
+            "repeat" => {
+                let next_repeat_state = match playback.repeat_state {
+                    RepeatState::Off => RepeatState::Track,
+                    RepeatState::Track => RepeatState::Context,
+                    RepeatState::Context => RepeatState::Off,
+                };
+
+                client.spotify.repeat(next_repeat_state, device_id).await?;
+            }
             "volume" => todo!(),
+            "seek" => todo!(),
             _ => {
                 println!("Unknown subcommand: {cmd}!");
             }
