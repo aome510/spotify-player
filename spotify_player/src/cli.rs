@@ -2,22 +2,25 @@ use std::process::exit;
 
 use crate::client::Client;
 use anyhow::Result;
-use clap::{builder::PossibleValue, value_parser, Arg, ArgMatches, Command};
+use clap::{builder::EnumValueParser, value_parser, Arg, ArgMatches, Command};
 use rspotify::{model::RepeatState, prelude::*};
+
+#[derive(clap::ValueEnum, Clone)]
+enum Key {
+    Playback,
+    Devices,
+    UserPlaylists,
+    UserLikedTracks,
+    UserTopTracks,
+    Queue,
+}
 
 pub fn init_get_subcommand() -> Command {
     Command::new("get")
         .about("Command(s) to get spotify data")
         .arg(
             Arg::new("key")
-                .value_parser([
-                    PossibleValue::new("playback"),
-                    PossibleValue::new("devices"),
-                    PossibleValue::new("user_playlists"),
-                    PossibleValue::new("user_liked_tracks"),
-                    PossibleValue::new("user_top_tracks"),
-                    PossibleValue::new("queue"),
-                ])
+                .value_parser(EnumValueParser::<Key>::new())
                 .required(true),
         )
 }
@@ -57,36 +60,35 @@ pub fn init_playback_subcommand() -> Command {
 }
 
 async fn handle_get_subcommand(args: &ArgMatches, client: Client) -> Result<()> {
-    let key = args.get_one::<String>("key").expect("key is required");
-    match key.as_str() {
-        "playback" => {
+    let key = args.get_one::<Key>("key").expect("key is required");
+    match key {
+        Key::Playback => {
             let playback = client
                 .spotify
                 .current_playback(None, None::<Vec<_>>)
                 .await?;
             println!("{}", serde_json::to_string(&playback)?);
         }
-        "devices" => {
+        Key::Devices => {
             let devices = client.spotify.device().await?;
             println!("{}", serde_json::to_string(&devices)?);
         }
-        "user_playlists" => {
+        Key::UserPlaylists => {
             let playlists = client.current_user_playlists().await?;
             println!("{}", serde_json::to_string(&playlists)?);
         }
-        "user_liked_tracks" => {
+        Key::UserLikedTracks => {
             let tracks = client.current_user_saved_tracks().await?;
             println!("{}", serde_json::to_string(&tracks)?);
         }
-        "user_top_tracks" => {
+        Key::UserTopTracks => {
             let tracks = client.current_user_top_tracks().await?;
             println!("{}", serde_json::to_string(&tracks)?);
         }
-        "queue" => {
+        Key::Queue => {
             let queue = client.spotify.current_user_queue().await?;
             println!("{}", serde_json::to_string(&queue)?);
         }
-        _ => unreachable!(),
     }
     Ok(())
 }

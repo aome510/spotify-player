@@ -11,7 +11,7 @@ readme = "../README.md"
 
 [dependencies]
 anyhow = "1.0.69"
-clap = "4.1.8"
+clap = { version = "4.1.8", features = ["derive"] }
 config_parser2 = "0.1.4"
 crossterm = "0.26.1"
 dirs-next = "2.0.0"
