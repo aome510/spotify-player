@@ -22,7 +22,8 @@ fn init_app_cli_arguments() -> clap::ArgMatches {
         .version("0.12.1")
         .about("A command driven spotify player")
         .author("Thang Pham <phamducthang1234@gmail>")
-        .subcommand(cli::init_cli_command())
+        .subcommand(cli::init_get_subcommand())
+        .subcommand(cli::init_playback_subcommand())
         .arg(
             clap::Arg::new("theme")
                 .short('t')
@@ -276,12 +277,6 @@ async fn main() -> Result<()> {
 
     match args.subcommand() {
         None => start_app(state, client, cache_folder).await,
-        Some((cmd, args)) => match cmd {
-            "cli" => cli::handle_cli_command(args, client).await,
-            _ => {
-                println!("Unknown command: {cmd}!");
-                Ok(())
-            }
-        },
+        Some((cmd, args)) => cli::handle_cli_subcommand(cmd, args, client).await,
     }
 }
