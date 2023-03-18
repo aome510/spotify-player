@@ -1,24 +1,47 @@
 use crate::client::Client;
 use anyhow::Result;
-use clap::builder::PossibleValue;
+use clap::{builder::PossibleValue, Arg, ArgMatches, Command};
 use rspotify::prelude::*;
 
-pub fn init_cli_command() -> clap::Command {
-    clap::Command::new("cli")
-        .about("cli to interact with a running instance")
+fn init_get_subcommand() -> Command {
+    Command::new("get")
+        .about("Command(s) to get spotify data")
+        .arg(Arg::new("key").value_parser([
+            PossibleValue::new("playback"),
+            PossibleValue::new("devices"),
+            PossibleValue::new("user_playlists"),
+            PossibleValue::new("user_liked_tracks"),
+            PossibleValue::new("user_top_tracks"),
+            PossibleValue::new("queue"),
+        ]))
+}
+
+fn init_playback_play_subcommand() -> Command {
+    Command::new("play").about("Command(s) to start a playback")
+}
+
+fn init_playback_subcommand() -> Command {
+    Command::new("playback")
+        .about("Command(s) to interact with the playback")
+        .subcommand(init_playback_play_subcommand())
+        .subcommand(Command::new("pause"))
+        .subcommand(Command::new("next").about(""))
+        .subcommand(Command::new("previous"))
+        .subcommand(Command::new("shuffle"))
+        .subcommand(Command::new("repeat"))
         .subcommand(
-            clap::Command::new("get").arg(clap::Arg::new("key").value_parser([
-                PossibleValue::new("playback"),
-                PossibleValue::new("devices"),
-                PossibleValue::new("user_playlists"),
-                PossibleValue::new("user_liked_tracks"),
-                PossibleValue::new("user_top_tracks"),
-                PossibleValue::new("queue"),
-            ])),
+            Command::new("volume").arg(Arg::new("percent").value_parser(-100..=100).required(true)),
         )
 }
 
-async fn handle_get_subcommand(args: &clap::ArgMatches, client: Client) -> Result<()> {
+pub fn init_cli_command() -> Command {
+    Command::new("cli")
+        .about("cli to interact with a running instance")
+        .subcommand(init_get_subcommand())
+        .subcommand(init_playback_subcommand())
+}
+
+async fn handle_get_subcommand(args: &ArgMatches, client: Client) -> Result<()> {
     if let Some(key) = args.get_one::<String>("key") {
         match key.as_str() {
             "playback" => {
@@ -54,11 +77,31 @@ async fn handle_get_subcommand(args: &clap::ArgMatches, client: Client) -> Resul
     Ok(())
 }
 
-pub async fn handle_cli_command(args: &clap::ArgMatches, client: Client) -> Result<()> {
+async fn handle_playback_subcommand(args: &ArgMatches, client: Client) -> Result<()> {
+    match args.subcommand() {
+        None => {}
+        Some((cmd, args)) => match cmd {
+            "play" => todo!(),
+            "pause" => todo!(),
+            "next" => todo!(),
+            "previous" => todo!(),
+            "shuffle" => todo!(),
+            "repeat" => todo!(),
+            "volume" => todo!(),
+            _ => {
+                println!("Unknown subcommand: {cmd}!");
+            }
+        },
+    }
+    Ok(())
+}
+
+pub async fn handle_cli_command(args: &ArgMatches, client: Client) -> Result<()> {
     match args.subcommand() {
         None => {}
         Some((cmd, args)) => match cmd {
             "get" => handle_get_subcommand(args, client).await?,
+            "playback" => handle_playback_subcommand(args, client).await?,
             _ => {
                 println!("Unknown subcommand: {cmd}!");
             }
