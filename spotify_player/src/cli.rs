@@ -11,29 +11,38 @@ enum Key {
     Devices,
     UserPlaylists,
     UserLikedTracks,
+    UserSavedAlbums,
+    UserFollowedArtists,
     UserTopTracks,
     Queue,
 }
 
+enum ContextType {
+    Playlist,
+    Album,
+    Artist
+}
+
 pub fn init_get_subcommand() -> Command {
-    Command::new("get")
-        .about("Command(s) to get spotify data")
-        .arg(
-            Arg::new("key")
-                .value_parser(EnumValueParser::<Key>::new())
-                .required(true),
-        )
+    Command::new("get").about("Get spotify data").arg(
+        Arg::new("key")
+            .value_parser(EnumValueParser::<Key>::new())
+            .required(true),
+    )
 }
 
 fn init_playback_play_subcommand() -> Command {
-    Command::new("play").about("Command(s) to start a playback")
+    Command::new("play")
+        .about("Start a playback")
+        .arg(Arg::new("context_id").required(true))
 }
 
 pub fn init_playback_subcommand() -> Command {
     Command::new("playback")
-        .about("Command(s) to interact with the playback")
+        .about("Interact with the playback")
         .subcommand_required(true)
         .subcommand(init_playback_play_subcommand())
+        .subcommand(Command::new("resume").about("Resume the playback"))
         .subcommand(Command::new("pause").about("Pause the playback"))
         .subcommand(Command::new("next").about("Next track"))
         .subcommand(Command::new("previous").about("Previous track"))
@@ -84,6 +93,14 @@ async fn handle_get_subcommand(args: &ArgMatches, client: Client) -> Result<()> 
         Key::UserTopTracks => {
             let tracks = client.current_user_top_tracks().await?;
             println!("{}", serde_json::to_string(&tracks)?);
+        }
+        Key::UserSavedAlbums => {
+            let albums = client.current_user_saved_albums().await?;
+            println!("{}", serde_json::to_string(&albums)?);
+        }
+        Key::UserFollowedArtists => {
+            let artists = client.current_user_followed_artists().await?;
+            println!("{}", serde_json::to_string(&artists)?);
         }
         Key::Queue => {
             let queue = client.spotify.current_user_queue().await?;
