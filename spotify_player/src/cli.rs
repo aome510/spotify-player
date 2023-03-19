@@ -77,7 +77,7 @@ pub fn init_playback_subcommand() -> Command {
                 .about("Set playback's volume percentage")
                 .arg(
                     Arg::new("percent")
-                        .value_parser(value_parser!(u8).range(0..100))
+                        .value_parser(value_parser!(u8).range(0..=100))
                         .required(true),
                 ),
         )
