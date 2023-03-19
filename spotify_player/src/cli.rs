@@ -50,9 +50,9 @@ pub fn init_get_subcommand() -> Command {
         )
 }
 
-fn init_playback_play_subcommand() -> Command {
-    Command::new("play")
-        .about("Start a playback")
+fn init_playback_start_subcommand() -> Command {
+    Command::new("start")
+        .about("Start a context playback")
         .arg(
             Arg::new("context_type")
                 .value_parser(EnumValueParser::<ContextType>::new())
@@ -65,15 +65,15 @@ pub fn init_playback_subcommand() -> Command {
     Command::new("playback")
         .about("Interact with the playback")
         .subcommand_required(true)
-        .subcommand(init_playback_play_subcommand())
-        .subcommand(Command::new("resume-pause").about("Resume/pause the playback"))
-        .subcommand(Command::new("next").about("Next track"))
-        .subcommand(Command::new("previous").about("Previous track"))
+        .subcommand(init_playback_start_subcommand())
+        .subcommand(Command::new("play-pause").about("Toggle between play and pause"))
+        .subcommand(Command::new("next").about("Skip to the next track"))
+        .subcommand(Command::new("previous").about("Skip to the previous track"))
         .subcommand(Command::new("shuffle").about("Toggle the shuffle mode"))
         .subcommand(Command::new("repeat").about("Cycle the repeat mode"))
         .subcommand(
             Command::new("volume")
-                .about("Set playback's volume percentage")
+                .about("Set the volume percentage")
                 .arg(
                     Arg::new("percent")
                         .value_parser(value_parser!(u8).range(0..=100))
@@ -82,7 +82,7 @@ pub fn init_playback_subcommand() -> Command {
         )
         .subcommand(
             Command::new("seek")
-                .about("Seek the playback by an offset")
+                .about("Seek by an offset milliseconds")
                 .arg(
                     Arg::new("position_offset_ms")
                         .value_parser(value_parser!(i32))
@@ -188,7 +188,7 @@ async fn handle_playback_subcommand(args: &ArgMatches, client: Client) -> Result
 
     let (cmd, args) = args.subcommand().expect("playback subcommand is required");
     match cmd {
-        "play" => {
+        "start" => {
             let context_id = args
                 .get_one::<String>("context_id")
                 .expect("context_id is required");
@@ -214,7 +214,7 @@ async fn handle_playback_subcommand(args: &ArgMatches, client: Client) -> Result
                 .shuffle(playback.shuffle_state, device_id)
                 .await?
         }
-        "resume-pause" => {
+        "play-pause" => {
             if playback.is_playing {
                 client.spotify.pause_playback(device_id).await?;
             } else {
