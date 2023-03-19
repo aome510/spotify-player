@@ -66,8 +66,7 @@ pub fn init_playback_subcommand() -> Command {
         .about("Interact with the playback")
         .subcommand_required(true)
         .subcommand(init_playback_play_subcommand())
-        .subcommand(Command::new("resume").about("Resume the playback"))
-        .subcommand(Command::new("pause").about("Pause the playback"))
+        .subcommand(Command::new("resume-pause").about("Resume/pause the playback"))
         .subcommand(Command::new("next").about("Next track"))
         .subcommand(Command::new("previous").about("Previous track"))
         .subcommand(Command::new("shuffle").about("Toggle the shuffle mode"))
@@ -215,11 +214,12 @@ async fn handle_playback_subcommand(args: &ArgMatches, client: Client) -> Result
                 .shuffle(playback.shuffle_state, device_id)
                 .await?
         }
-        "resume" => {
-            client.spotify.resume_playback(device_id, None).await?;
-        }
-        "pause" => {
-            client.spotify.pause_playback(device_id).await?;
+        "resume-pause" => {
+            if playback.is_playing {
+                client.spotify.pause_playback(device_id).await?;
+            } else {
+                client.spotify.resume_playback(device_id, None).await?;
+            }
         }
         "next" => {
             client.spotify.next_track(device_id).await?;
