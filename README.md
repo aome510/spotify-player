@@ -173,7 +173,7 @@ An example of using Spotify connect to interact with the Spotify's official appl
 
 `spotify_player` supports streaming, which needs to be built/installed with `streaming` feature (**enabled** by default) **and** with an audio backend (`rodio-backend` by default). The streaming feature allows to `spotify_player` to play music directly from terminal.
 
-The application uses [librespot](https://github.com/librespot-org/librespot) library to create an integrated Spotify client while running. The integrated client will register a Spotify speaker device under the `spotify_player` name, which is accessible on the [Spotify connect](#spotify-connect) device list.
+The application uses [librespot](https://github.com/librespot-org/librespot) library to create an integrated Spotify client while running. The integrated client will register a Spotify speaker device under the `spotify-player` name, which is accessible on the [Spotify connect](#spotify-connect) device list.
 
 #### Audio backend
 
