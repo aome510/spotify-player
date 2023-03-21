@@ -1,4 +1,4 @@
-# spotify-player
+# spotify_player
 
 ## Table of Contents
 
@@ -22,7 +22,7 @@
 
 ## Introduction
 
-`spotify-player` is a fast, easy to use, and [configurable](docs/config.md) terminal music player.
+`spotify_player` is a fast, easy to use, and [configurable](docs/config.md) terminal music player.
 
 **Features**
 
@@ -40,7 +40,7 @@
 
 ### Demo
 
-A demo of `spotify-player` `v0.5.0-pre-release` on [youtube](https://www.youtube.com/shorts/Jbfe9GLNWbA) or on [asciicast](https://asciinema.org/a/446913):
+A demo of `spotify_player` `v0.5.0-pre-release` on [youtube](https://www.youtube.com/shorts/Jbfe9GLNWbA) or on [asciicast](https://asciinema.org/a/446913):
 
 [![asciicast](https://asciinema.org/a/446913.svg)](https://asciinema.org/a/446913)
 
@@ -73,6 +73,8 @@ A demo of `spotify-player` `v0.5.0-pre-release` on [youtube](https://www.youtube
 ![Recommendation page example](https://user-images.githubusercontent.com/40011582/169440280-2f075ab1-04c3-419a-8614-0cad9c004d4f.gif)
 
 ## Installation
+
+By default, the application's installed binary is `spotify_player`.
 
 ### Requirements
 
@@ -169,13 +171,13 @@ An example of using Spotify connect to interact with the Spotify's official appl
 
 ### Streaming
 
-`spotify-player` supports streaming, which needs to be built/installed with `streaming` feature (**enabled** by default) **and** with an audio backend (`rodio-backend` by default). The streaming feature allows to `spotify-player` to play music directly from terminal.
+`spotify_player` supports streaming, which needs to be built/installed with `streaming` feature (**enabled** by default) **and** with an audio backend (`rodio-backend` by default). The streaming feature allows to `spotify_player` to play music directly from terminal.
 
-The application uses [librespot](https://github.com/librespot-org/librespot) library to create an integrated Spotify client while running. The integrated client will register a Spotify speaker device under the `spotify-player` name, which is accessible on the [Spotify connect](#spotify-connect) device list.
+The application uses [librespot](https://github.com/librespot-org/librespot) library to create an integrated Spotify client while running. The integrated client will register a Spotify speaker device under the `spotify_player` name, which is accessible on the [Spotify connect](#spotify-connect) device list.
 
 #### Audio backend
 
-`spotify-player` uses [rodio](https://github.com/RustAudio/rodio) as the default [audio backend](https://github.com/librespot-org/librespot/wiki/Audio-Backends). List of available audio backends:
+`spotify_player` uses [rodio](https://github.com/RustAudio/rodio) as the default [audio backend](https://github.com/librespot-org/librespot/wiki/Audio-Backends). List of available audio backends:
 
 - `alsa-backend`
 - `pulseaudio-backend`
@@ -186,7 +188,7 @@ The application uses [librespot](https://github.com/librespot-org/librespot) lib
 - `sdl-backend`
 - `gstreamer-backend`
 
-User can change the audio backend when building/installing the application by specifying the `--features` option. For example, to install `spotify-player` with `pulseaudio-backend`, run
+User can change the audio backend when building/installing the application by specifying the `--features` option. For example, to install `spotify_player` with `pulseaudio-backend`, run
 
 ```shell
 cargo install spotify_player --no-default-features --features pulseaudio-backend
@@ -211,9 +213,9 @@ To enable lyric support, `spotify_player` needs to be built/installed with `lyri
 cargo install --features lyric-finder
 ```
 
-User can view lyric of the currently playing track by calling the `LyricPage` command to go the lyric page. To do this, `spotify-player` needs to be built with a `lyric-finder` feature.
+User can view lyric of the currently playing track by calling the `LyricPage` command to go the lyric page. To do this, `spotify_player` needs to be built with a `lyric-finder` feature.
 
-Under the hood, `spotify-player` retrieves the song's lyric using [Genius.com](https://genius.com).
+Under the hood, `spotify_player` retrieves the song's lyric using [Genius.com](https://genius.com).
 
 ### Media Control
 
@@ -223,15 +225,15 @@ Media control support is implemented using [MPRIS DBus](https://wiki.archlinux.o
 
 ### Image
 
-To enable image rendering support, `spotify-player` needs to be built/installed with `image` feature (**disabled** by default). To install the application with `image` feature included, run:
+To enable image rendering support, `spotify_player` needs to be built/installed with `image` feature (**disabled** by default). To install the application with `image` feature included, run:
 
 ```shell
 cargo install --features image
 ```
 
-`spotify-player` supports rendering image in a full resolution if the application is run on either [Kitty](https://sw.kovidgoyal.net/kitty/graphics-protocol/) or [iTerm2](https://iterm2.com/documentation-images.html). Otherwise, the image will be displayed as [block characters](https://en.wikipedia.org/wiki/Block_Elements).
+`spotify_player` supports rendering image in a full resolution if the application is run on either [Kitty](https://sw.kovidgoyal.net/kitty/graphics-protocol/) or [iTerm2](https://iterm2.com/documentation-images.html). Otherwise, the image will be displayed as [block characters](https://en.wikipedia.org/wiki/Block_Elements).
 
-`spotify-player` also supports rendering images with `sixel` behind `sixel` feature flag, which also enables `image` feature:
+`spotify_player` also supports rendering images with `sixel` behind `sixel` feature flag, which also enables `image` feature:
 
 ```shell
 cargo install --features sixel
@@ -239,7 +241,7 @@ cargo install --features sixel
 
 **Notes**:
 
-- Not all terminals supported by [libsixel](https://github.com/saitoha/libsixel) are supported by `spotify-player` as it relies on a [third-party library](https://github.com/atanunq/viuer) for image rendering. A possible list of supported terminals can be found in [here](https://github.com/atanunq/viuer/blob/dc81f44a97727e04be0b000712e9233c92116ff8/src/printer/sixel.rs#L83-L95).
+- Not all terminals supported by [libsixel](https://github.com/saitoha/libsixel) are supported by `spotify_player` as it relies on a [third-party library](https://github.com/atanunq/viuer) for image rendering. A possible list of supported terminals can be found in [here](https://github.com/atanunq/viuer/blob/dc81f44a97727e04be0b000712e9233c92116ff8/src/printer/sixel.rs#L83-L95).
 - Images rendered by `sixel` can have a _weird_ scale. It's recommended to tweak the `cover_img_scale` config option to get the best result as the scaling works differently with different terminals and fonts.
 
 Examples of image rendering:
@@ -262,7 +264,7 @@ Examples of image rendering:
 
 ### Notify
 
-To enable desktop notification support, `spotify-player` needs to be built/installed with `notify` feature (**disabled** by default). To install the application with `notify` feature included, run:
+To enable desktop notification support, `spotify_player` needs to be built/installed with `notify` feature (**disabled** by default). To install the application with `notify` feature included, run:
 
 ```shell
 cargo install --features notify
@@ -354,20 +356,20 @@ To move the focus from the search input to the other windows such as track resul
 
 ## Configurations
 
-By default, `spotify-player` will look into `$HOME/.config/spotify-player` for application's configuration files. This can be changed by either specifying `-c <FOLDER_PATH>` or `--config-folder <FOLDER_PATH>` option.
+By default, `spotify_player` will look into `$HOME/.config/spotify-player` for application's configuration files. This can be changed by either specifying `-c <FOLDER_PATH>` or `--config-folder <FOLDER_PATH>` option.
 
 Please refer to [the configuration documentation](docs/config.md) for more details on the configuration options.
 
 ## Caches
 
-By default, `spotify-player` will look into `$HOME/.cache/spotify-player` for application's cache files, which include log files, Spotify's authorization credentials, audio cache files, etc. This can be changed by either specifying `-C <FOLDER_PATH>` or `--cache-folder <FOLDER_PATH>` option.
+By default, `spotify_player` will look into `$HOME/.cache/spotify-player` for application's cache files, which include log files, Spotify's authorization credentials, audio cache files, etc. This can be changed by either specifying `-C <FOLDER_PATH>` or `--cache-folder <FOLDER_PATH>` option.
 
 ### Logging
 
 The application stores logs inside the `$APP_CACHE_FOLDER/spotify-player-*.log` file. For debugging or submitting an issue, user can also refer to the backtrace file in `$APP_CACHE_FOLDER/spotify-player-*.backtrace`, which includes the application's backtrace in case of panics/unexpected errors.
 
-`spotify-player` uses `RUST_LOG` environment variable to define the application's [logging level](https://docs.rs/log/0.4.14/log/enum.Level.html). `RUST_LOG` is default to be `spotify_player=INFO`, which only shows the application's logs.
+`spotify_player` uses `RUST_LOG` environment variable to define the application's [logging level](https://docs.rs/log/0.4.14/log/enum.Level.html). `RUST_LOG` is default to be `spotify_player=INFO`, which only shows the application's logs.
 
 ## Acknowledgement
 
-`spotify-player` is written in [Rust](https://www.rust-lang.org) and is built on top of awesome libraries such as [tui-rs](https://github.com/fdehau/tui-rs), [rspotify](https://github.com/ramsayleung/rspotify), [librespot](https://github.com/librespot-org/librespot), and [many more](spotify_player/Cargo.toml). It's highly inspired by [spotify-tui](https://github.com/Rigellute/spotify-tui) and [ncspot](https://github.com/hrkfdn/ncspot).
+`spotify_player` is written in [Rust](https://www.rust-lang.org) and is built on top of awesome libraries such as [tui-rs](https://github.com/fdehau/tui-rs), [rspotify](https://github.com/ramsayleung/rspotify), [librespot](https://github.com/librespot-org/librespot), and [many more](spotify_player/Cargo.toml). It's highly inspired by [spotify-tui](https://github.com/Rigellute/spotify-tui) and [ncspot](https://github.com/hrkfdn/ncspot).

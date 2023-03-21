@@ -17,7 +17,7 @@ use anyhow::{Context, Result};
 use std::io::Write;
 
 fn init_app_cli_arguments() -> clap::ArgMatches {
-    clap::Command::new("spotify-player")
+    clap::Command::new("spotify_player")
         .version("0.12.1")
         .about("A command driven spotify player")
         .author("Thang Pham <phamducthang1234@gmail>")
