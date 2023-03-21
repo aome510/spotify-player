@@ -15,7 +15,7 @@ All configuration files should be placed inside the application's configuration 
 
 ## General
 
-`spotify-player` uses `app.toml` to configure general application configurations:
+`spotify_player` uses `app.toml` to configure general application configurations:
 
 | Option                               | Description                                                                   | Default                                                    |
 | ------------------------------------ | ----------------------------------------------------------------------------- | ---------------------------------------------------------- |
@@ -48,11 +48,11 @@ The default `app.toml` can be found in the example [`app.toml`](../examples/app.
 
 ### Notes
 
-- By default, `spotify-player` uses the official Spotify Web app's client (`client_id = 65b708073fc0480ea92a077233ca87bd`)
+- By default, `spotify_player` uses the official Spotify Web app's client (`client_id = 65b708073fc0480ea92a077233ca87bd`)
 - It's recommended to specify [your own Client ID](https://developer.spotify.com/documentation/general/guides/authorization/app-settings/) to avoid possible rate limits and to allow a full [Spotify connect](https://www.spotify.com/us/connect/) support.
-- `ap_port` and `proxy` are [Librespot's session configurations](https://github.com/librespot-org/librespot/wiki/Behind-web-proxy). By default, `spotify-player` doesn't set those values, which means the Librespot library will fallback to use its default options.
+- `ap_port` and `proxy` are [Librespot's session configurations](https://github.com/librespot-org/librespot/wiki/Behind-web-proxy). By default, `spotify_player` doesn't set those values, which means the Librespot library will fallback to use its default options.
 - Positive-value `app_refresh_duration_in_ms` is used to refresh the playback periodically. This can result in hitting a Spotify rate limit if the application is running for a long time.
-- To prevent the rate limit, `spotify-player` sets `playback_refresh_duration_in_ms=0` by default and makes additional API calls when there is an event or a command triggering a playback update.
+- To prevent the rate limit, `spotify_player` sets `playback_refresh_duration_in_ms=0` by default and makes additional API calls when there is an event or a command triggering a playback update.
 - List of commands that triggers a playback update:
 
   - `NextTrack`
@@ -76,7 +76,7 @@ The default `app.toml` can be found in the example [`app.toml`](../examples/app.
 
 Media control support (`enable_media_control` option) is enabled by default on Linux but disabled by default on MacOS and Windows.
 
-MacOS and Windows require **an open window** to listen to OS media event. As a result, `spotify_player` needs to spawn an invisible window on startup, which may steal focus from the running terminal. To interact with `spotify-player`, which is run on the terminal, user will need to re-focus the terminal. Because of this extra re-focus step, the media control support is disabled by default on MacOS and Windows to avoid possible confusion for first-time users.
+MacOS and Windows require **an open window** to listen to OS media event. As a result, `spotify_player` needs to spawn an invisible window on startup, which may steal focus from the running terminal. To interact with `spotify_player`, which is run on the terminal, user will need to re-focus the terminal. Because of this extra re-focus step, the media control support is disabled by default on MacOS and Windows to avoid possible confusion for first-time users.
 
 ### Device configurations
 
@@ -94,7 +94,7 @@ More details on the above configuration options can be found under the [Librespo
 
 ## Themes
 
-`spotify-player` uses `theme.toml` to look for user-defined themes.
+`spotify_player` uses `theme.toml` to look for user-defined themes.
 
 The application's theme can be modified by setting the `theme` option in `app.toml` or by specifying the `-t <THEME>` (`--theme <THEME>`) option when running the player.
 
@@ -106,7 +106,7 @@ An example of user-defined themes can be found in the example [`theme.toml`](../
 
 ### Use script to add theme
 
-[a `theme_parse` python script](../scripts/theme_parse) (require `pyaml` and `requests` libraries) can be used to parse [Iterm2 alacritty's color schemes](https://github.com/mbadolato/iTerm2-Color-Schemes/tree/master/alacritty) into `spotify-player` compatible theme configurations.
+[a `theme_parse` python script](../scripts/theme_parse) (require `pyaml` and `requests` libraries) can be used to parse [Iterm2 alacritty's color schemes](https://github.com/mbadolato/iTerm2-Color-Schemes/tree/master/alacritty) into `spotify_player` compatible theme configurations.
 
 For example, you can run
 
@@ -178,7 +178,7 @@ selection = { modifiers = ["Bold", "Reversed"] }
 
 ## Keymaps
 
-`spotify-player` uses `keymap.toml` to add or override new key mappings in additional to [the default key mappings](../README.md#commands). To define a new key mapping, simply add a `keymaps` entry. For example,
+`spotify_player` uses `keymap.toml` to add or override new key mappings in additional to [the default key mappings](../README.md#commands). To define a new key mapping, simply add a `keymaps` entry. For example,
 
 ```toml
 [[keymaps]]

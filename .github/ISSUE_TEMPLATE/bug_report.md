@@ -25,7 +25,7 @@ If applicable, add screenshots to help explain your problem.
 
 - OS:
 - Application version:
-- Application features: if applicable, provide [cargo features](https://doc.rust-lang.org/cargo/reference/features.html) used to build with `spotify-player`
+- Application features: if applicable, provide [cargo features](https://doc.rust-lang.org/cargo/reference/features.html) used to build `spotify_player`
 
 **Additional context**
 Add any other context about the problem here.
