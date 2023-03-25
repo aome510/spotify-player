@@ -84,7 +84,7 @@ async fn init_spotify(
 fn init_logging(cache_folder: &std::path::Path) -> Result<()> {
     let log_prefix = format!(
         "spotify-player-{}",
-        chrono::Local::now().format("%y-%m-%d-%R")
+        chrono::Local::now().format("%y-%m-%d-%H-%M")
     );
 
     // initialize the application's logging
