@@ -80,10 +80,6 @@ impl Client {
                 .transfer_playback(&device_id, Some(force_play))
                 .await?;
 
-            // set the buffered playback to `None` to force updating it
-            // when transferring to a new device
-            state.player.write().buffered_playback = None;
-
             tracing::info!("Transfered the playback to device with {} id", device_id);
             return Ok(());
         }
@@ -1090,7 +1086,13 @@ impl Client {
                 .map(|t| t.name.to_owned())
                 .unwrap_or_default();
 
-            if player.buffered_playback.is_some() != playback.is_some() {
+            let needs_update = match (&player.buffered_playback, &playback) {
+                (Some(bp), Some(p)) => bp.device_id != p.device.id,
+                (None, None) => false,
+                _ => true,
+            };
+
+            if needs_update {
                 // new playback updates, the buffered playback becomes invalid and needs to be updated
                 player.buffered_playback = playback.as_ref().map(|p| SimplifiedPlayback {
                     device_name: p.device.name.clone(),
