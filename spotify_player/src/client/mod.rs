@@ -191,6 +191,8 @@ impl Client {
                             tracing::warn!("Connection failed (device_id={id}): {err}");
                         } else {
                             tracing::info!("Connection succeeded (device_id={id})!");
+                            // upon new connection, reset the buffered playback
+                            state.player.write().buffered_playback = None;
                             self.update_playback(state);
                             break;
                         }
