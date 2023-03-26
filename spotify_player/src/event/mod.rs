@@ -212,17 +212,17 @@ fn handle_global_command(
             client_pub.send(ClientRequest::Player(PlayerRequest::Shuffle))?;
         }
         Command::VolumeUp => {
-            if let Some(ref playback) = state.player.read().playback {
-                if let Some(percent) = playback.device.volume_percent {
-                    let volume = std::cmp::min(percent + 5, 100_u32);
+            if let Some(ref playback) = state.player.read().buffered_playback {
+                if let Some(volume) = playback.volume {
+                    let volume = std::cmp::min(volume + 5, 100_u32);
                     client_pub.send(ClientRequest::Player(PlayerRequest::Volume(volume as u8)))?;
                 }
             }
         }
         Command::VolumeDown => {
-            if let Some(ref playback) = state.player.read().playback {
-                if let Some(percent) = playback.device.volume_percent {
-                    let volume = percent.saturating_sub(5_u32);
+            if let Some(ref playback) = state.player.read().buffered_playback {
+                if let Some(volume) = playback.volume {
+                    let volume = volume.saturating_sub(5_u32);
                     client_pub.send(ClientRequest::Player(PlayerRequest::Volume(volume as u8)))?;
                 }
             }
@@ -248,6 +248,8 @@ fn handle_global_command(
         }
         Command::RefreshPlayback => {
             client_pub.send(ClientRequest::GetCurrentPlayback)?;
+            // this will also reset the buffered playback
+            state.player.write().buffered_playback = None;
         }
         Command::ShowActionsOnCurrentTrack => {
             if let Some(track) = state.player.read().current_playing_track() {

@@ -90,7 +90,9 @@ pub fn render_playback_window(
                 (metadata_rect, progress_bar_rect)
             };
 
-            render_playback_text(frame, state, ui, metadata_rect, track, playback);
+            if let Some(ref playback) = player.buffered_playback {
+                render_playback_text(frame, state, ui, metadata_rect, track, playback);
+            }
 
             let progress = std::cmp::min(
                 player
@@ -130,7 +132,7 @@ fn render_playback_text(
     ui: &UIStateGuard,
     rect: Rect,
     track: &rspotify_model::FullTrack,
-    playback: &rspotify_model::CurrentPlaybackContext,
+    playback: &SimplifiedPlayback,
 ) {
     // Construct a "styled" text (`playback_text`) from playback's data
     // based on a user-configurable format string (app_config.playback_format)
@@ -181,8 +183,8 @@ fn render_playback_text(
                     "repeat: {} | shuffle: {} | volume: {}% | device: {}",
                     <&'static str>::from(playback.repeat_state),
                     playback.shuffle_state,
-                    playback.device.volume_percent.unwrap_or_default(),
-                    playback.device.name,
+                    playback.volume.unwrap_or_default(),
+                    playback.device_name,
                 ),
                 ui.theme.playback_metadata(),
             ),
