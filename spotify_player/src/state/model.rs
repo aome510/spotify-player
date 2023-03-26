@@ -90,9 +90,11 @@ pub enum ItemId {
 }
 
 /// A simplified version of `rspotify::CurrentPlaybackContext`
-/// containing only fields needed to handle a `event::PlayerRequest`
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SimplifiedPlayback {
+    pub device_name: String,
     pub device_id: Option<String>,
+    pub volume: Option<u32>,
     pub is_playing: bool,
     pub repeat_state: rspotify_model::RepeatState,
     pub shuffle_state: bool,

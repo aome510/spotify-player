@@ -7,20 +7,14 @@ pub struct PlayerState {
 
     pub playback: Option<rspotify_model::CurrentPlaybackContext>,
     pub playback_last_updated_time: Option<std::time::Instant>,
+    /// a buffered state to speedup the feedback of playback metadata update to user
+    // Related issue: https://github.com/aome510/spotify-player/issues/109
+    pub buffered_playback: Option<SimplifiedPlayback>,
+
     pub queue: Option<rspotify_model::CurrentUserQueue>,
 }
 
 impl PlayerState {
-    /// gets a simplified version of the current playback
-    pub fn simplified_playback(&self) -> Option<SimplifiedPlayback> {
-        self.playback.as_ref().map(|p| SimplifiedPlayback {
-            device_id: p.device.id.clone(),
-            is_playing: p.is_playing,
-            repeat_state: p.repeat_state,
-            shuffle_state: p.shuffle_state,
-        })
-    }
-
     /// gets the current playing track
     pub fn current_playing_track(&self) -> Option<&rspotify_model::FullTrack> {
         match self.playback {

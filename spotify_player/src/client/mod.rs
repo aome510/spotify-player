@@ -84,8 +84,8 @@ impl Client {
             return Ok(());
         }
 
-        let playback = match state.player.read().simplified_playback() {
-            Some(playback) => playback,
+        let mut playback = match state.player.read().buffered_playback {
+            Some(ref playback) => playback.clone(),
             None => {
                 anyhow::bail!("failed to handle the player request: there is no active playback");
             }
@@ -101,6 +101,8 @@ impl Client {
                 } else {
                     self.spotify.pause_playback(device_id).await?
                 }
+                playback.is_playing = !playback.is_playing;
+                state.player.write().buffered_playback = Some(playback);
             }
             PlayerRequest::SeekTrack(position_ms) => {
                 self.spotify.seek_track(position_ms, device_id).await?
@@ -112,14 +114,25 @@ impl Client {
                     rspotify_model::RepeatState::Context => rspotify_model::RepeatState::Off,
                 };
 
-                self.spotify.repeat(next_repeat_state, device_id).await?
+                self.spotify.repeat(next_repeat_state, device_id).await?;
+
+                playback.repeat_state = next_repeat_state;
+                state.player.write().buffered_playback = Some(playback);
             }
             PlayerRequest::Shuffle => {
                 self.spotify
                     .shuffle(!playback.shuffle_state, device_id)
-                    .await?
+                    .await?;
+
+                playback.shuffle_state = !playback.shuffle_state;
+                state.player.write().buffered_playback = Some(playback);
             }
-            PlayerRequest::Volume(volume) => self.spotify.volume(volume, device_id).await?,
+            PlayerRequest::Volume(volume) => {
+                self.spotify.volume(volume, device_id).await?;
+
+                playback.volume = Some(volume as u32);
+                state.player.write().buffered_playback = Some(playback);
+            }
             PlayerRequest::StartPlayback(p) => {
                 self.start_playback(p, device_id).await?;
                 // for some reasons, when starting a new playback, the integrated `spotify_player`
@@ -178,6 +191,8 @@ impl Client {
                             tracing::warn!("Connection failed (device_id={id}): {err}");
                         } else {
                             tracing::info!("Connection succeeded (device_id={id})!");
+                            // upon new connection, reset the buffered playback
+                            state.player.write().buffered_playback = None;
                             self.update_playback(state);
                             break;
                         }
@@ -1072,6 +1087,24 @@ impl Client {
                 .current_playing_track()
                 .map(|t| t.name.to_owned())
                 .unwrap_or_default();
+
+            let needs_update = match (&player.buffered_playback, &playback) {
+                (Some(bp), Some(p)) => bp.device_id != p.device.id,
+                (None, None) => false,
+                _ => true,
+            };
+
+            if needs_update {
+                // new playback updates, the buffered playback becomes invalid and needs to be updated
+                player.buffered_playback = playback.as_ref().map(|p| SimplifiedPlayback {
+                    device_name: p.device.name.clone(),
+                    device_id: p.device.id.clone(),
+                    is_playing: p.is_playing,
+                    volume: p.device.volume_percent,
+                    repeat_state: p.repeat_state,
+                    shuffle_state: p.shuffle_state,
+                });
+            }
 
             player.playback = playback;
             player.playback_last_updated_time = Some(std::time::Instant::now());
