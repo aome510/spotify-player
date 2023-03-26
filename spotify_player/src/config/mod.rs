@@ -66,6 +66,9 @@ pub struct AppConfig {
     #[cfg(feature = "media-control")]
     pub enable_media_control: bool,
 
+    #[cfg(feature = "streaming")]
+    pub enable_streaming: bool,
+
     pub default_device: String,
 
     pub device: DeviceConfig,
@@ -188,6 +191,9 @@ impl Default for AppConfig {
             #[cfg(feature = "media-control")]
             #[cfg(all(unix, not(target_os = "macos")))]
             enable_media_control: true,
+
+            #[cfg(feature = "streaming")]
+            enable_streaming: true,
 
             default_device: "spotify-player".to_string(),
 

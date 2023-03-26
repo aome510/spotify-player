@@ -12,6 +12,7 @@ cover_image_refresh_duration_in_ms = 2000
 page_size_in_rows = 20
 track_table_item_max_len = 32
 enable_media_control = false
+enable_streaming = true
 default_device = "spotify-player"
 play_icon = "▶"
 pause_icon = "▌▌"
