@@ -69,6 +69,8 @@ pub struct AppConfig {
     #[cfg(feature = "streaming")]
     pub enable_streaming: bool,
 
+    pub enable_cover_image_cache: bool,
+
     pub default_device: String,
 
     pub device: DeviceConfig,
@@ -194,6 +196,8 @@ impl Default for AppConfig {
 
             #[cfg(feature = "streaming")]
             enable_streaming: true,
+
+            enable_cover_image_cache: true,
 
             default_device: "spotify-player".to_string(),
 
