@@ -1163,7 +1163,7 @@ impl Client {
     #[cfg(feature = "notify")]
     fn notify_new_track(
         track: rspotify_model::FullTrack,
-        path: &std::path::PathBuf,
+        path: &std::path::Path,
         state: &SharedState,
     ) -> Result<()> {
         let mut n = notify_rust::Notification::new();
@@ -1201,7 +1201,7 @@ impl Client {
         };
 
         n.appname("spotify_player")
-            .icon(&path.to_str().unwrap())
+            .icon(path.to_str().unwrap())
             .summary(&get_text_from_format_str(
                 &state.app_config.notify_format.summary,
             ))
@@ -1218,7 +1218,7 @@ impl Client {
     async fn retrieve_image(
         &self,
         url: &str,
-        path: &std::path::PathBuf,
+        path: &std::path::Path,
         saved: bool,
     ) -> Result<Vec<u8>> {
         if path.exists() {
