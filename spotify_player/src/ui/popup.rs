@@ -72,9 +72,10 @@ pub fn render_popup(
                     &format!("Actions on {}", item.name()),
                     item.actions_desc()
                         .into_iter()
-                        .map(|d| (d, false))
+                        .enumerate()
+                        .map(|(id, d)| (format!("[{id}] {d}"), false))
                         .collect(),
-                    7,
+                    item.n_actions() as u16 + 2, // 2 for top/bot paddings
                     state,
                     ui,
                 );
