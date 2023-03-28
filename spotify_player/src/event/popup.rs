@@ -441,9 +441,9 @@ fn handle_command_for_command_help_popup(
     Ok(true)
 }
 
-fn execute_copy_command(cmd: config::Command, text: String) -> Result<()> {
-    let mut child = std::process::Command::new(cmd.command)
-        .args(cmd.args)
+fn execute_copy_command(cmd: &config::Command, text: String) -> Result<()> {
+    let mut child = std::process::Command::new(&cmd.command)
+        .args(&cmd.args)
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .spawn()?;
