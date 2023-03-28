@@ -15,7 +15,7 @@ pub enum PopupState {
     Queue { scroll_offset: usize },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ActionListItem {
     Track(Track, Vec<command::TrackAction>),
     Artist(Artist, Vec<command::ArtistAction>),

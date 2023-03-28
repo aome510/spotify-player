@@ -473,201 +473,201 @@ fn handle_command_for_action_list_popup(
         |_, _| {},
         |ui: &mut UIStateGuard, id: usize| -> Result<()> {
             let item = match ui.popup {
-                Some(PopupState::ActionList(ref item, ..)) => item,
+                Some(PopupState::ActionList(ref item, ..)) => item.clone(),
                 _ => return Ok(()),
             };
 
-            match item {
-                ActionListItem::Track(track, actions) => match actions[id] {
-                    TrackAction::GoToAlbum => {
-                        if let Some(ref album) = track.album {
-                            let uri = album.id.uri();
-                            let context_id = ContextId::Album(
-                                AlbumId::from_uri(&crate::utils::parse_uri(&uri))?.into_static(),
-                            );
-                            ui.create_new_page(PageState::Context {
-                                id: None,
-                                context_page_type: ContextPageType::Browsing(context_id),
-                                state: None,
-                            });
-                        }
-                    }
-                    TrackAction::GoToArtist => {
-                        ui.popup = Some(PopupState::ArtistList(
-                            ArtistPopupAction::Browse,
-                            track.artists.clone(),
-                            new_list_state(),
-                        ));
-                    }
-                    TrackAction::AddToQueue => {
-                        client_pub.send(ClientRequest::AddTrackToQueue(track.id.clone()))?;
-                        ui.popup = None;
-                    }
-                    TrackAction::CopyTrackLink => {
-                        let track_url = format!("http://open.spotify.com/track/{}", track.id.id());
-                        execute_copy_command(state.app_config.copy_command.clone(), track_url)?;
-                        ui.popup = None;
-                    }
-                    TrackAction::AddToPlaylist => {
-                        client_pub.send(ClientRequest::GetUserPlaylists)?;
-                        ui.popup = Some(PopupState::UserPlaylistList(
-                            PlaylistPopupAction::AddTrack(track.id.clone()),
-                            new_list_state(),
-                        ));
-                    }
-                    TrackAction::AddToLikedTracks => {
-                        client_pub.send(ClientRequest::AddToLibrary(Item::Track(track.clone())))?;
-                        ui.popup = None;
-                    }
-                    TrackAction::GoToTrackRadio => {
-                        let uri = track.id.uri();
-                        let name = track.name.to_owned();
-                        ui.create_new_radio_page(&uri);
-                        client_pub.send(ClientRequest::GetRadioTracks {
-                            seed_uri: uri,
-                            seed_name: name,
-                        })?;
-                    }
-                    TrackAction::GoToArtistRadio => {
-                        ui.popup = Some(PopupState::ArtistList(
-                            ArtistPopupAction::GoToRadio,
-                            track.artists.clone(),
-                            new_list_state(),
-                        ));
-                    }
-                    TrackAction::GoToAlbumRadio => {
-                        if let Some(ref album) = track.album {
-                            let uri = album.id.uri();
-                            let name = album.name.to_owned();
-                            ui.create_new_radio_page(&uri);
-                            client_pub.send(ClientRequest::GetRadioTracks {
-                                seed_uri: uri,
-                                seed_name: name,
-                            })?;
-                        }
-                    }
-                    TrackAction::DeleteFromLikedTracks => {
-                        client_pub.send(ClientRequest::DeleteFromLibrary(ItemId::Track(
-                            track.id.clone(),
-                        )))?;
-                        ui.popup = None;
-                    }
-                    TrackAction::DeleteFromCurrentPlaylist => {
-                        if let PageState::Context {
-                            id: Some(ContextId::Playlist(playlist_id)),
-                            ..
-                        } = ui.current_page()
-                        {
-                            client_pub.send(ClientRequest::DeleteTrackFromPlaylist(
-                                playlist_id.clone(),
-                                track.id.clone(),
-                            ))?;
-                        }
-                        ui.popup = None;
-                    }
-                },
-                ActionListItem::Album(album, actions) => match actions[id] {
-                    AlbumAction::GoToArtist => {
-                        ui.popup = Some(PopupState::ArtistList(
-                            ArtistPopupAction::Browse,
-                            album.artists.clone(),
-                            new_list_state(),
-                        ));
-                    }
-                    AlbumAction::GoToAlbumRadio => {
-                        let uri = album.id.uri();
-                        let name = album.name.to_owned();
-                        ui.create_new_radio_page(&uri);
-                        client_pub.send(ClientRequest::GetRadioTracks {
-                            seed_uri: uri,
-                            seed_name: name,
-                        })?;
-                    }
-                    AlbumAction::GoToArtistRadio => {
-                        ui.popup = Some(PopupState::ArtistList(
-                            ArtistPopupAction::GoToRadio,
-                            album.artists.clone(),
-                            new_list_state(),
-                        ));
-                    }
-                    AlbumAction::CopyAlbumLink => {
-                        let album_url = format!("http://open.spotify.com/album/{}", album.id.id());
-                        execute_copy_command(state.app_config.copy_command.clone(), album_url)?;
-                        ui.popup = None;
-                    }
-                    AlbumAction::AddToLibrary => {
-                        client_pub.send(ClientRequest::AddToLibrary(Item::Album(album.clone())))?;
-                        ui.popup = None;
-                    }
-                    AlbumAction::DeleteFromLibrary => {
-                        client_pub.send(ClientRequest::DeleteFromLibrary(ItemId::Album(
-                            album.id.clone(),
-                        )))?;
-                        ui.popup = None;
-                    }
-                },
-                ActionListItem::Artist(artist, actions) => match actions[id] {
-                    ArtistAction::Follow => {
-                        client_pub
-                            .send(ClientRequest::AddToLibrary(Item::Artist(artist.clone())))?;
-                        ui.popup = None;
-                    }
-                    ArtistAction::GoToArtistRadio => {
-                        let uri = artist.id.uri();
-                        let name = artist.name.to_owned();
-                        ui.create_new_radio_page(&uri);
-                        client_pub.send(ClientRequest::GetRadioTracks {
-                            seed_uri: uri,
-                            seed_name: name,
-                        })?;
-                    }
-                    ArtistAction::CopyArtistLink => {
-                        let artist_url =
-                            format!("http://open.spotify.com/artist/{}", artist.id.id());
-                        execute_copy_command(state.app_config.copy_command.clone(), artist_url)?;
-                        ui.popup = None;
-                    }
-                    ArtistAction::Unfollow => {
-                        client_pub.send(ClientRequest::DeleteFromLibrary(ItemId::Artist(
-                            artist.id.clone(),
-                        )))?;
-                        ui.popup = None;
-                    }
-                },
-                ActionListItem::Playlist(playlist, actions) => match actions[id] {
-                    PlaylistAction::AddToLibrary => {
-                        client_pub.send(ClientRequest::AddToLibrary(Item::Playlist(
-                            playlist.clone(),
-                        )))?;
-                        ui.popup = None;
-                    }
-                    PlaylistAction::GoToPlaylistRadio => {
-                        let uri = playlist.id.uri();
-                        let name = playlist.name.to_owned();
-                        ui.create_new_radio_page(&uri);
-                        client_pub.send(ClientRequest::GetRadioTracks {
-                            seed_uri: uri,
-                            seed_name: name,
-                        })?;
-                    }
-                    PlaylistAction::CopyPlaylistLink => {
-                        let playlist_url =
-                            format!("http://open.spotify.com/playlist/{}", playlist.id.id());
-                        execute_copy_command(state.app_config.copy_command.clone(), playlist_url)?;
-                        ui.popup = None;
-                    }
-                    PlaylistAction::DeleteFromLibrary => {
-                        client_pub.send(ClientRequest::DeleteFromLibrary(ItemId::Playlist(
-                            playlist.id.clone(),
-                        )))?;
-                        ui.popup = None;
-                    }
-                },
-            }
-            Ok(())
+            handle_nth_action(id, item, client_pub, state, ui)
         },
         |ui: &mut UIStateGuard| {
             ui.popup = None;
         },
     )
+}
+
+fn handle_nth_action(
+    n: usize,
+    item: ActionListItem,
+    client_pub: &flume::Sender<ClientRequest>,
+    state: &SharedState,
+    ui: &mut UIStateGuard,
+) -> Result<()> {
+    match item {
+        ActionListItem::Track(track, actions) => match actions[n] {
+            TrackAction::GoToAlbum => {
+                if let Some(album) = track.album {
+                    let uri = album.id.uri();
+                    let context_id = ContextId::Album(
+                        AlbumId::from_uri(&crate::utils::parse_uri(&uri))?.into_static(),
+                    );
+                    ui.create_new_page(PageState::Context {
+                        id: None,
+                        context_page_type: ContextPageType::Browsing(context_id),
+                        state: None,
+                    });
+                }
+            }
+            TrackAction::GoToArtist => {
+                ui.popup = Some(PopupState::ArtistList(
+                    ArtistPopupAction::Browse,
+                    track.artists,
+                    new_list_state(),
+                ));
+            }
+            TrackAction::AddToQueue => {
+                client_pub.send(ClientRequest::AddTrackToQueue(track.id))?;
+                ui.popup = None;
+            }
+            TrackAction::CopyTrackLink => {
+                let track_url = format!("http://open.spotify.com/track/{}", track.id.id());
+                execute_copy_command(&state.app_config.copy_command, track_url)?;
+                ui.popup = None;
+            }
+            TrackAction::AddToPlaylist => {
+                client_pub.send(ClientRequest::GetUserPlaylists)?;
+                ui.popup = Some(PopupState::UserPlaylistList(
+                    PlaylistPopupAction::AddTrack(track.id),
+                    new_list_state(),
+                ));
+            }
+            TrackAction::AddToLikedTracks => {
+                client_pub.send(ClientRequest::AddToLibrary(Item::Track(track)))?;
+                ui.popup = None;
+            }
+            TrackAction::GoToTrackRadio => {
+                let uri = track.id.uri();
+                let name = track.name;
+                ui.create_new_radio_page(&uri);
+                client_pub.send(ClientRequest::GetRadioTracks {
+                    seed_uri: uri,
+                    seed_name: name,
+                })?;
+            }
+            TrackAction::GoToArtistRadio => {
+                ui.popup = Some(PopupState::ArtistList(
+                    ArtistPopupAction::GoToRadio,
+                    track.artists,
+                    new_list_state(),
+                ));
+            }
+            TrackAction::GoToAlbumRadio => {
+                if let Some(album) = track.album {
+                    let uri = album.id.uri();
+                    let name = album.name;
+                    ui.create_new_radio_page(&uri);
+                    client_pub.send(ClientRequest::GetRadioTracks {
+                        seed_uri: uri,
+                        seed_name: name,
+                    })?;
+                }
+            }
+            TrackAction::DeleteFromLikedTracks => {
+                client_pub.send(ClientRequest::DeleteFromLibrary(ItemId::Track(track.id)))?;
+                ui.popup = None;
+            }
+            TrackAction::DeleteFromCurrentPlaylist => {
+                if let PageState::Context {
+                    id: Some(ContextId::Playlist(playlist_id)),
+                    ..
+                } = ui.current_page()
+                {
+                    client_pub.send(ClientRequest::DeleteTrackFromPlaylist(
+                        playlist_id.clone_static(),
+                        track.id,
+                    ))?;
+                }
+                ui.popup = None;
+            }
+        },
+        ActionListItem::Album(album, actions) => match actions[n] {
+            AlbumAction::GoToArtist => {
+                ui.popup = Some(PopupState::ArtistList(
+                    ArtistPopupAction::Browse,
+                    album.artists,
+                    new_list_state(),
+                ));
+            }
+            AlbumAction::GoToAlbumRadio => {
+                let uri = album.id.uri();
+                let name = album.name;
+                ui.create_new_radio_page(&uri);
+                client_pub.send(ClientRequest::GetRadioTracks {
+                    seed_uri: uri,
+                    seed_name: name,
+                })?;
+            }
+            AlbumAction::GoToArtistRadio => {
+                ui.popup = Some(PopupState::ArtistList(
+                    ArtistPopupAction::GoToRadio,
+                    album.artists,
+                    new_list_state(),
+                ));
+            }
+            AlbumAction::CopyAlbumLink => {
+                let album_url = format!("http://open.spotify.com/album/{}", album.id.id());
+                execute_copy_command(&state.app_config.copy_command, album_url)?;
+                ui.popup = None;
+            }
+            AlbumAction::AddToLibrary => {
+                client_pub.send(ClientRequest::AddToLibrary(Item::Album(album)))?;
+                ui.popup = None;
+            }
+            AlbumAction::DeleteFromLibrary => {
+                client_pub.send(ClientRequest::DeleteFromLibrary(ItemId::Album(album.id)))?;
+                ui.popup = None;
+            }
+        },
+        ActionListItem::Artist(artist, actions) => match actions[n] {
+            ArtistAction::Follow => {
+                client_pub.send(ClientRequest::AddToLibrary(Item::Artist(artist)))?;
+                ui.popup = None;
+            }
+            ArtistAction::GoToArtistRadio => {
+                let uri = artist.id.uri();
+                let name = artist.name;
+                ui.create_new_radio_page(&uri);
+                client_pub.send(ClientRequest::GetRadioTracks {
+                    seed_uri: uri,
+                    seed_name: name,
+                })?;
+            }
+            ArtistAction::CopyArtistLink => {
+                let artist_url = format!("http://open.spotify.com/artist/{}", artist.id.id());
+                execute_copy_command(&state.app_config.copy_command, artist_url)?;
+                ui.popup = None;
+            }
+            ArtistAction::Unfollow => {
+                client_pub.send(ClientRequest::DeleteFromLibrary(ItemId::Artist(artist.id)))?;
+                ui.popup = None;
+            }
+        },
+        ActionListItem::Playlist(playlist, actions) => match actions[n] {
+            PlaylistAction::AddToLibrary => {
+                client_pub.send(ClientRequest::AddToLibrary(Item::Playlist(playlist)))?;
+                ui.popup = None;
+            }
+            PlaylistAction::GoToPlaylistRadio => {
+                let uri = playlist.id.uri();
+                let name = playlist.name;
+                ui.create_new_radio_page(&uri);
+                client_pub.send(ClientRequest::GetRadioTracks {
+                    seed_uri: uri,
+                    seed_name: name,
+                })?;
+            }
+            PlaylistAction::CopyPlaylistLink => {
+                let playlist_url = format!("http://open.spotify.com/playlist/{}", playlist.id.id());
+                execute_copy_command(&state.app_config.copy_command, playlist_url)?;
+                ui.popup = None;
+            }
+            PlaylistAction::DeleteFromLibrary => {
+                client_pub.send(ClientRequest::DeleteFromLibrary(ItemId::Playlist(
+                    playlist.id,
+                )))?;
+                ui.popup = None;
+            }
+        },
+    }
+
+    Ok(())
 }
