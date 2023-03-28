@@ -13,6 +13,7 @@ page_size_in_rows = 20
 track_table_item_max_len = 32
 enable_media_control = false
 enable_streaming = true
+enable_cover_image_cache = true
 default_device = "spotify-player"
 play_icon = "▶"
 pause_icon = "▌▌"

@@ -32,7 +32,8 @@ All configuration files should be placed inside the application's configuration 
 | `page_size_in_rows`                  | a page's size expressed as a number of rows (for page-navigation commands)    | `20`                                                       |
 | `track_table_item_max_len`           | the maximum length of a column in a track table                               | `32`                                                       |
 | `enable_media_control`               | enable application media control support (`media-control` feature only)       | `true` (Linux), `false` (Windows and MacOS)                |
-| `enable_streaming`                   | create a device for streaming (streaming` feature only)                       | `true`                                                     |
+| `enable_streaming`                   | create a device for streaming (streaming feature only)                        | `true`                                                     |
+| `enable_cover_image_cache`           | store album's cover images in the cache folder                                | `true`                                                     |
 | `default_device`                     | the default device to connect to on startup if no playing device found        | `spotify-player`                                           |
 | `play_icon`                          | the icon to indicate playing state of a Spotify item                          | `▶`                                                        |
 | `pause_icon`                         | the icon to indicate pause state of a Spotify item                            | `▌▌`                                                       |

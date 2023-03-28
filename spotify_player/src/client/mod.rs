@@ -1079,7 +1079,7 @@ impl Client {
     /// updates the current playback state
     pub async fn update_current_playback_state(&self, state: &SharedState) -> Result<()> {
         // update the playback state
-        let _new_track = {
+        let new_track = {
             let playback = self.spotify.current_playback(None, None::<Vec<_>>).await?;
             let mut player = state.player.write();
 
@@ -1117,24 +1117,55 @@ impl Client {
             prev_track_name != curr_track_name && !curr_track_name.is_empty()
         };
 
+        if !new_track {
+            return Ok(());
+        }
+
         let track = match state.player.read().current_playing_track() {
             None => return Ok(()),
             Some(track) => track.clone(),
         };
 
-        self.get_current_track_cover_image(&track, state).await?;
+        let url = match crate::utils::get_track_album_image_url(&track) {
+            Some(url) => url,
+            None => return Ok(()),
+        };
+
+        let path = state.cache_folder.join("image").join(format!(
+            "{}-{}-cover.jpg",
+            track.album.name,
+            crate::utils::map_join(&track.album.artists, |a| &a.name, ", ")
+        ));
+
+        // Retrieve and save the new track's cover image into the cache folder.
+        // The notify feature still requires the cover images to be stored inside the cache folder.
+        if state.app_config.enable_cover_image_cache || cfg!(feature = "notify") {
+            self.retrieve_image(url, &path, true).await?;
+        }
+
+        #[cfg(feature = "image")]
+        if !state.data.read().caches.images.contains(url) {
+            let bytes = self.retrieve_image(url, &path, false).await?;
+            // Get the image from a url
+            let image =
+                image::load_from_memory(&bytes).context("Failed to load image from memory")?;
+
+            state.data.write().caches.images.put(url.to_owned(), image);
+        }
 
         // notify user about the playback's change if any
         #[cfg(feature = "notify")]
-        if _new_track {
-            Self::notify_new_track(track, state)?;
-        }
+        Self::notify_new_track(track, &path, state)?;
 
         Ok(())
     }
 
     #[cfg(feature = "notify")]
-    fn notify_new_track(track: rspotify_model::FullTrack, state: &SharedState) -> Result<()> {
+    fn notify_new_track(
+        track: rspotify_model::FullTrack,
+        path: &std::path::Path,
+        state: &SharedState,
+    ) -> Result<()> {
         let mut n = notify_rust::Notification::new();
 
         let re = regex::Regex::new(r"\{.*?\}").unwrap();
@@ -1170,18 +1201,7 @@ impl Client {
         };
 
         n.appname("spotify_player")
-            .icon(
-                state
-                    .cache_folder
-                    .join("image")
-                    .join(format!(
-                        "{}-{}-cover.jpg",
-                        track.album.name,
-                        crate::utils::map_join(&track.album.artists, |a| &a.name, ", ")
-                    ))
-                    .to_str()
-                    .unwrap(),
-            )
+            .icon(path.to_str().unwrap())
             .summary(&get_text_from_format_str(
                 &state.app_config.notify_format.summary,
             ))
@@ -1194,7 +1214,18 @@ impl Client {
         Ok(())
     }
 
-    async fn download_and_save_image(&self, url: &str, path: &std::path::PathBuf) -> Result<()> {
+    /// retrieves an image from a `url` and saves it into a `path` (if specified)
+    async fn retrieve_image(
+        &self,
+        url: &str,
+        path: &std::path::Path,
+        saved: bool,
+    ) -> Result<Vec<u8>> {
+        if path.exists() {
+            tracing::info!("Retrieving an image from the file: {}", path.display());
+            return Ok(std::fs::read(path)?);
+        }
+
         tracing::info!("Retrieving an image from url: {url}");
 
         let bytes = self
@@ -1206,45 +1237,13 @@ impl Client {
             .bytes()
             .await?;
 
-        let mut file = std::fs::File::create(path)?;
-        file.write_all(&bytes)?;
-
-        Ok(())
-    }
-
-    pub async fn get_current_track_cover_image(
-        &self,
-        track: &rspotify_model::FullTrack,
-        state: &SharedState,
-    ) -> Result<()> {
-        let url = match crate::utils::get_track_album_image_url(track) {
-            Some(url) => url,
-            None => return Ok(()),
-        };
-
-        let path = state.cache_folder.join("image").join(format!(
-            "{}-{}-cover.jpg",
-            track.album.name,
-            crate::utils::map_join(&track.album.artists, |a| &a.name, ", ")
-        ));
-
-        if !path.exists() {
-            self.download_and_save_image(url, &path).await?;
+        if saved {
+            tracing::info!("Saving the retrieved image into {}", path.display());
+            let mut file = std::fs::File::create(path)?;
+            file.write_all(&bytes)?;
         }
 
-        #[cfg(feature = "image")]
-        if !state.data.read().caches.images.contains(url) {
-            tracing::info!("Retrieving an image from the file: {}", path.display());
-
-            let bytes = std::fs::read(path)?;
-            // Get the image from a url
-            let image =
-                image::load_from_memory(&bytes).context("Failed to load image from memory")?;
-
-            state.data.write().caches.images.put(url.to_owned(), image);
-        }
-
-        Ok(())
+        Ok(bytes.to_vec())
     }
 
     /// cleans up a list of albums, which includes
