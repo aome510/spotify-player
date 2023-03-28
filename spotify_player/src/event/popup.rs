@@ -19,7 +19,7 @@ pub fn handle_key_sequence_for_popup(
         .as_ref()
         .with_context(|| "expect a popup".to_string())?;
 
-    // handle popups that needs reading the raw key sequence instead of matched command
+    // handle popups that need reading the raw key sequence instead of the matched command
     match popup {
         PopupState::Search { .. } => {
             return handle_key_sequence_for_search_popup(key_sequence, client_pub, state);
