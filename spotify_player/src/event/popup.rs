@@ -19,9 +19,21 @@ pub fn handle_key_sequence_for_popup(
         .as_ref()
         .with_context(|| "expect a popup".to_string())?;
 
-    if let PopupState::Search { .. } = popup {
-        drop(ui);
-        return handle_key_sequence_for_search_popup(key_sequence, client_pub, state);
+    // handle popups that needs reading the raw key sequence instead of matched command
+    match popup {
+        PopupState::Search { .. } => {
+            return handle_key_sequence_for_search_popup(key_sequence, client_pub, state);
+        }
+        PopupState::ActionList(item, ..) => {
+            return handle_key_sequence_for_action_list_popup(
+                item.n_actions(),
+                key_sequence,
+                client_pub,
+                state,
+                ui,
+            );
+        }
+        _ => {}
     }
 
     let command = match state
@@ -33,7 +45,10 @@ pub fn handle_key_sequence_for_popup(
     };
 
     match popup {
-        PopupState::Search { .. } => anyhow::bail!("should be handled before"),
+        PopupState::Search { .. } => anyhow::bail!("search popup should be handled before"),
+        PopupState::ActionList(..) => {
+            anyhow::bail!("action list popup should be handled before")
+        }
         PopupState::ArtistList(_, artists, _) => {
             let n_items = artists.len();
 
@@ -210,9 +225,6 @@ pub fn handle_key_sequence_for_popup(
             )
         }
         PopupState::CommandHelp { .. } => handle_command_for_command_help_popup(command, ui, state),
-        PopupState::ActionList(item, ..) => {
-            handle_command_for_action_list_popup(item.n_actions(), command, client_pub, state, ui)
-        }
         PopupState::Queue { .. } => handle_command_for_queue_popup(command, ui),
     }
 }
@@ -458,26 +470,41 @@ fn execute_copy_command(cmd: &config::Command, text: String) -> Result<()> {
     Ok(())
 }
 
-/// handles a command for an action list popup
-fn handle_command_for_action_list_popup(
+/// handles a key sequence for an action list popup
+fn handle_key_sequence_for_action_list_popup(
     n_actions: usize,
-    command: Command,
+    key_sequence: &KeySequence,
     client_pub: &flume::Sender<ClientRequest>,
     state: &SharedState,
-    ui: UIStateGuard,
+    mut ui: UIStateGuard,
 ) -> Result<bool> {
+    let command = match state
+        .keymap_config
+        .find_command_from_key_sequence(key_sequence)
+    {
+        Some(command) => command,
+        None => {
+            // handle selecting an action by pressing a key from '0' to '9'
+            if let Some(Key::None(crossterm::event::KeyCode::Char(c))) = key_sequence.keys.first() {
+                if let Some(id) = c.to_digit(10) {
+                    let id = id as usize;
+                    if id < n_actions {
+                        handle_nth_action(id, client_pub, state, &mut ui)?;
+                        return Ok(true);
+                    }
+                }
+            }
+            return Ok(false);
+        }
+    };
+
     handle_command_for_list_popup(
         command,
         ui,
         n_actions,
         |_, _| {},
         |ui: &mut UIStateGuard, id: usize| -> Result<()> {
-            let item = match ui.popup {
-                Some(PopupState::ActionList(ref item, ..)) => item.clone(),
-                _ => return Ok(()),
-            };
-
-            handle_nth_action(id, item, client_pub, state, ui)
+            handle_nth_action(id, client_pub, state, ui)
         },
         |ui: &mut UIStateGuard| {
             ui.popup = None;
@@ -487,11 +514,15 @@ fn handle_command_for_action_list_popup(
 
 fn handle_nth_action(
     n: usize,
-    item: ActionListItem,
     client_pub: &flume::Sender<ClientRequest>,
     state: &SharedState,
     ui: &mut UIStateGuard,
 ) -> Result<()> {
+    let item = match ui.popup {
+        Some(PopupState::ActionList(ref item, ..)) => item.clone(),
+        _ => return Ok(()),
+    };
+
     match item {
         ActionListItem::Track(track, actions) => match actions[n] {
             TrackAction::GoToAlbum => {
