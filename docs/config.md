@@ -51,7 +51,7 @@ The default `app.toml` can be found in the example [`app.toml`](../examples/app.
 ### Notes
 
 - By default, `spotify_player` uses the official Spotify Web app's client (`client_id = 65b708073fc0480ea92a077233ca87bd`)
-- It's recommended to specify [your own Client ID](https://developer.spotify.com/documentation/general/guides/authorization/app-settings/) to avoid possible rate limits and to allow a full [Spotify connect](https://www.spotify.com/us/connect/) support.
+- It's recommended to specify [your own Client ID](https://developer.spotify.com/documentation/web-api/concepts/apps) to avoid possible rate limits and to allow a full [Spotify connect](https://www.spotify.com/us/connect/) support.
 - `ap_port` and `proxy` are [Librespot's session configurations](https://github.com/librespot-org/librespot/wiki/Behind-web-proxy). By default, `spotify_player` doesn't set those values, which means the Librespot library will fallback to use its default options.
 - Positive-value `app_refresh_duration_in_ms` is used to refresh the playback periodically. This can result in hitting a Spotify rate limit if the application is running for a long time.
 - To prevent the rate limit, `spotify_player` sets `playback_refresh_duration_in_ms=0` by default and makes additional API calls when there is an event or a command triggering a playback update.
