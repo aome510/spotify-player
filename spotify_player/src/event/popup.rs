@@ -22,6 +22,9 @@ pub fn handle_key_sequence_for_popup(
     // handle popups that need reading the raw key sequence instead of the matched command
     match popup {
         PopupState::Search { .. } => {
+            // NOTE: the `drop(ui)` is important as the handle function for search
+            // re-acquire the UI lock, so we need to drop the current UI lock to avoid a deadlock.
+            drop(ui);
             return handle_key_sequence_for_search_popup(key_sequence, client_pub, state);
         }
         PopupState::ActionList(item, ..) => {
