@@ -1088,15 +1088,25 @@ impl Client {
                 .map(|t| t.name.to_owned())
                 .unwrap_or_default();
 
-            let needs_update = match (&player.buffered_playback, &playback) {
-                (Some(bp), Some(p)) => bp.device_id != p.device.id,
+            player.playback = playback;
+            player.playback_last_updated_time = Some(std::time::Instant::now());
+
+            let curr_track_name = player
+                .current_playing_track()
+                .map(|t| t.name.to_owned())
+                .unwrap_or_default();
+
+            let new_track = prev_track_name != curr_track_name && !curr_track_name.is_empty();
+            // check if we need to update the buffered playback
+            let needs_update = match (&player.buffered_playback, &player.playback) {
+                (Some(bp), Some(p)) => bp.device_id != p.device.id || new_track,
                 (None, None) => false,
                 _ => true,
             };
 
             if needs_update {
                 // new playback updates, the buffered playback becomes invalid and needs to be updated
-                player.buffered_playback = playback.as_ref().map(|p| SimplifiedPlayback {
+                player.buffered_playback = player.playback.as_ref().map(|p| SimplifiedPlayback {
                     device_name: p.device.name.clone(),
                     device_id: p.device.id.clone(),
                     is_playing: p.is_playing,
@@ -1106,15 +1116,7 @@ impl Client {
                 });
             }
 
-            player.playback = playback;
-            player.playback_last_updated_time = Some(std::time::Instant::now());
-
-            let curr_track_name = player
-                .current_playing_track()
-                .map(|t| t.name.to_owned())
-                .unwrap_or_default();
-
-            prev_track_name != curr_track_name && !curr_track_name.is_empty()
+            new_track
         };
 
         if !new_track {
