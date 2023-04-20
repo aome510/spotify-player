@@ -23,6 +23,8 @@ pub struct AppConfig {
     pub theme: String,
     pub client_id: String,
 
+    pub client_port: u16,
+
     pub copy_command: Command,
 
     pub playback_format: String,
@@ -129,6 +131,8 @@ impl Default for AppConfig {
             theme: "dracula".to_owned(),
             // official spotify web app's client id
             client_id: "65b708073fc0480ea92a077233ca87bd".to_string(),
+
+            client_port: 8080,
 
             playback_format: String::from("{track} • {artists}\n{album}\n{metadata}"),
             #[cfg(feature = "notify")]

@@ -147,6 +147,8 @@ async fn start_app(
 
     // Spawn application's tasks
 
+    client.start_socket(state.app_config.client_port)?;
+
     // client event handler task
     tokio::task::spawn({
         let state = state.clone();
