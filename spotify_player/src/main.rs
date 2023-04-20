@@ -18,8 +18,8 @@ use anyhow::{Context, Result};
 use std::io::Write;
 
 fn init_app_cli_arguments() -> clap::ArgMatches {
-    clap::Command::new("spotify-player")
-        .version("0.12.1")
+    clap::Command::new("spotify_player")
+        .version("0.13.1")
         .about("A command driven spotify player")
         .author("Thang Pham <phamducthang1234@gmail>")
         .subcommand(cli::init_get_subcommand())
@@ -58,10 +58,12 @@ async fn init_spotify(
 ) -> Result<()> {
     // if `streaming` feature is enabled, create a new streaming connection
     #[cfg(feature = "streaming")]
-    client
-        .new_streaming_connection(streaming_sub.clone(), client_pub.clone())
-        .await
-        .context("failed to create a new streaming connection")?;
+    if state.app_config.enable_streaming {
+        client
+            .new_streaming_connection(streaming_sub.clone(), client_pub.clone())
+            .await
+            .context("failed to create a new streaming connection")?;
+    }
 
     // initialize the playback state
     client.update_current_playback_state(state).await?;
@@ -85,7 +87,7 @@ async fn init_spotify(
 fn init_logging(cache_folder: &std::path::Path) -> Result<()> {
     let log_prefix = format!(
         "spotify-player-{}",
-        chrono::Local::now().format("%y-%m-%d-%R")
+        chrono::Local::now().format("%y-%m-%d-%H-%M")
     );
 
     // initialize the application's logging

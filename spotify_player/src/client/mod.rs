@@ -84,8 +84,8 @@ impl Client {
             return Ok(());
         }
 
-        let playback = match state.player.read().simplified_playback() {
-            Some(playback) => playback,
+        let mut playback = match state.player.read().buffered_playback {
+            Some(ref playback) => playback.clone(),
             None => {
                 anyhow::bail!("failed to handle the player request: there is no active playback");
             }
@@ -101,6 +101,8 @@ impl Client {
                 } else {
                     self.spotify.pause_playback(device_id).await?
                 }
+                playback.is_playing = !playback.is_playing;
+                state.player.write().buffered_playback = Some(playback);
             }
             PlayerRequest::SeekTrack(position_ms) => {
                 self.spotify.seek_track(position_ms, device_id).await?
@@ -112,17 +114,28 @@ impl Client {
                     rspotify_model::RepeatState::Context => rspotify_model::RepeatState::Off,
                 };
 
-                self.spotify.repeat(next_repeat_state, device_id).await?
+                self.spotify.repeat(next_repeat_state, device_id).await?;
+
+                playback.repeat_state = next_repeat_state;
+                state.player.write().buffered_playback = Some(playback);
             }
             PlayerRequest::Shuffle => {
                 self.spotify
                     .shuffle(!playback.shuffle_state, device_id)
-                    .await?
+                    .await?;
+
+                playback.shuffle_state = !playback.shuffle_state;
+                state.player.write().buffered_playback = Some(playback);
             }
-            PlayerRequest::Volume(volume) => self.spotify.volume(volume, device_id).await?,
+            PlayerRequest::Volume(volume) => {
+                self.spotify.volume(volume, device_id).await?;
+
+                playback.volume = Some(volume as u32);
+                state.player.write().buffered_playback = Some(playback);
+            }
             PlayerRequest::StartPlayback(p) => {
                 self.start_playback(p, device_id).await?;
-                // for some reasons, when starting a new playback, the integrated `spotify-player`
+                // for some reasons, when starting a new playback, the integrated `spotify_player`
                 // client doesn't respect the initial shuffle state, so we need to manually update the state
                 self.spotify
                     .shuffle(playback.shuffle_state, device_id)
@@ -178,6 +191,8 @@ impl Client {
                             tracing::warn!("Connection failed (device_id={id}): {err}");
                         } else {
                             tracing::info!("Connection succeeded (device_id={id})!");
+                            // upon new connection, reset the buffered playback
+                            state.player.write().buffered_playback = None;
                             self.update_playback(state);
                             break;
                         }
@@ -1064,7 +1079,7 @@ impl Client {
     /// updates the current playback state
     pub async fn update_current_playback_state(&self, state: &SharedState) -> Result<()> {
         // update the playback state
-        let _new_track = {
+        let new_track = {
             let playback = self.spotify.current_playback(None, None::<Vec<_>>).await?;
             let mut player = state.player.write();
 
@@ -1081,27 +1096,78 @@ impl Client {
                 .map(|t| t.name.to_owned())
                 .unwrap_or_default();
 
-            prev_track_name != curr_track_name && !curr_track_name.is_empty()
+            let new_track = prev_track_name != curr_track_name && !curr_track_name.is_empty();
+            // check if we need to update the buffered playback
+            let needs_update = match (&player.buffered_playback, &player.playback) {
+                (Some(bp), Some(p)) => bp.device_id != p.device.id || new_track,
+                (None, None) => false,
+                _ => true,
+            };
+
+            if needs_update {
+                // new playback updates, the buffered playback becomes invalid and needs to be updated
+                player.buffered_playback = player.playback.as_ref().map(|p| SimplifiedPlayback {
+                    device_name: p.device.name.clone(),
+                    device_id: p.device.id.clone(),
+                    is_playing: p.is_playing,
+                    volume: p.device.volume_percent,
+                    repeat_state: p.repeat_state,
+                    shuffle_state: p.shuffle_state,
+                });
+            }
+
+            new_track
         };
+
+        if !new_track {
+            return Ok(());
+        }
 
         let track = match state.player.read().current_playing_track() {
             None => return Ok(()),
             Some(track) => track.clone(),
         };
 
-        self.get_current_track_cover_image(&track, state).await?;
+        let url = match crate::utils::get_track_album_image_url(&track) {
+            Some(url) => url,
+            None => return Ok(()),
+        };
+
+        let path = state.cache_folder.join("image").join(format!(
+            "{}-{}-cover.jpg",
+            track.album.name,
+            crate::utils::map_join(&track.album.artists, |a| &a.name, ", ")
+        ));
+
+        // Retrieve and save the new track's cover image into the cache folder.
+        // The notify feature still requires the cover images to be stored inside the cache folder.
+        if state.app_config.enable_cover_image_cache || cfg!(feature = "notify") {
+            self.retrieve_image(url, &path, true).await?;
+        }
+
+        #[cfg(feature = "image")]
+        if !state.data.read().caches.images.contains(url) {
+            let bytes = self.retrieve_image(url, &path, false).await?;
+            // Get the image from a url
+            let image =
+                image::load_from_memory(&bytes).context("Failed to load image from memory")?;
+
+            state.data.write().caches.images.put(url.to_owned(), image);
+        }
 
         // notify user about the playback's change if any
         #[cfg(feature = "notify")]
-        if _new_track {
-            Self::notify_new_track(track, state)?;
-        }
+        Self::notify_new_track(track, &path, state)?;
 
         Ok(())
     }
 
     #[cfg(feature = "notify")]
-    fn notify_new_track(track: rspotify_model::FullTrack, state: &SharedState) -> Result<()> {
+    fn notify_new_track(
+        track: rspotify_model::FullTrack,
+        path: &std::path::Path,
+        state: &SharedState,
+    ) -> Result<()> {
         let mut n = notify_rust::Notification::new();
 
         let re = regex::Regex::new(r"\{.*?\}").unwrap();
@@ -1137,18 +1203,7 @@ impl Client {
         };
 
         n.appname("spotify_player")
-            .icon(
-                state
-                    .cache_folder
-                    .join("image")
-                    .join(format!(
-                        "{}-{}-cover.jpg",
-                        track.album.name,
-                        crate::utils::map_join(&track.album.artists, |a| &a.name, ", ")
-                    ))
-                    .to_str()
-                    .unwrap(),
-            )
+            .icon(path.to_str().unwrap())
             .summary(&get_text_from_format_str(
                 &state.app_config.notify_format.summary,
             ))
@@ -1161,7 +1216,18 @@ impl Client {
         Ok(())
     }
 
-    async fn download_and_save_image(&self, url: &str, path: &std::path::PathBuf) -> Result<()> {
+    /// retrieves an image from a `url` and saves it into a `path` (if specified)
+    async fn retrieve_image(
+        &self,
+        url: &str,
+        path: &std::path::Path,
+        saved: bool,
+    ) -> Result<Vec<u8>> {
+        if path.exists() {
+            tracing::info!("Retrieving an image from the file: {}", path.display());
+            return Ok(std::fs::read(path)?);
+        }
+
         tracing::info!("Retrieving an image from url: {url}");
 
         let bytes = self
@@ -1173,45 +1239,13 @@ impl Client {
             .bytes()
             .await?;
 
-        let mut file = std::fs::File::create(path)?;
-        file.write_all(&bytes)?;
-
-        Ok(())
-    }
-
-    pub async fn get_current_track_cover_image(
-        &self,
-        track: &rspotify_model::FullTrack,
-        state: &SharedState,
-    ) -> Result<()> {
-        let url = match crate::utils::get_track_album_image_url(track) {
-            Some(url) => url,
-            None => return Ok(()),
-        };
-
-        let path = state.cache_folder.join("image").join(format!(
-            "{}-{}-cover.jpg",
-            track.album.name,
-            crate::utils::map_join(&track.album.artists, |a| &a.name, ", ")
-        ));
-
-        if !path.exists() {
-            self.download_and_save_image(url, &path).await?;
+        if saved {
+            tracing::info!("Saving the retrieved image into {}", path.display());
+            let mut file = std::fs::File::create(path)?;
+            file.write_all(&bytes)?;
         }
 
-        #[cfg(feature = "image")]
-        if !state.data.read().caches.images.contains(url) {
-            tracing::info!("Retrieving an image from the file: {}", path.display());
-
-            let bytes = std::fs::read(path)?;
-            // Get the image from a url
-            let image =
-                image::load_from_memory(&bytes).context("Failed to load image from memory")?;
-
-            state.data.write().caches.images.put(url.to_owned(), image);
-        }
-
-        Ok(())
+        Ok(bytes.to_vec())
     }
 
     /// cleans up a list of albums, which includes
