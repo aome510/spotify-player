@@ -74,7 +74,7 @@ fn handle_playback_subcommand(args: &ArgMatches, socket: UdpSocket) -> Result<()
     Ok(())
 }
 
-pub async fn handle_cli_subcommand(cmd: &str, args: &ArgMatches, client_port: u16) -> Result<()> {
+pub fn handle_cli_subcommand(cmd: &str, args: &ArgMatches, client_port: u16) -> Result<()> {
     let socket = UdpSocket::bind("127.0.0.1:0")?;
     socket.connect(("127.0.0.1", client_port))?;
 

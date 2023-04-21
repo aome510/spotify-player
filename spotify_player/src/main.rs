@@ -285,8 +285,6 @@ async fn main() -> Result<()> {
 
     match args.subcommand() {
         None => start_app(state, cache_folder).await,
-        Some((cmd, args)) => {
-            cli::handle_cli_subcommand(cmd, args, state.app_config.client_port).await
-        }
+        Some((cmd, args)) => cli::handle_cli_subcommand(cmd, args, state.app_config.client_port),
     }
 }
