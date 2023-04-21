@@ -3,6 +3,23 @@ use anyhow::Result;
 use clap::ArgMatches;
 use std::net::UdpSocket;
 
+fn receive_data(socket: &UdpSocket) -> Result<Vec<u8>> {
+    // read response from the server's socket, which can be splitted into
+    // smaller chunks of data
+    let mut data = Vec::new();
+    let mut buf = [0; 4096];
+    loop {
+        let (n_bytes, _) = socket.recv_from(&mut buf)?;
+        if n_bytes == 0 {
+            // end of chunk
+            break;
+        }
+        data.extend_from_slice(&buf[..n_bytes]);
+    }
+
+    Ok(data)
+}
+
 fn handle_get_subcommand(args: &ArgMatches, socket: UdpSocket) -> Result<()> {
     let (cmd, args) = args.subcommand().expect("playback subcommand is required");
 
@@ -29,9 +46,8 @@ fn handle_get_subcommand(args: &ArgMatches, socket: UdpSocket) -> Result<()> {
     };
 
     socket.send(&serde_json::to_vec(&request)?)?;
-    let mut buf = [0; 4096];
-    let n_bytes = socket.recv(&mut buf)?;
-    println!("{}", String::from_utf8_lossy(&buf[..n_bytes]));
+    let data = receive_data(&socket)?;
+    println!("{}", String::from_utf8_lossy(&data));
 
     Ok(())
 }

@@ -33,6 +33,17 @@ pub async fn start_socket(client: Client, state: SharedState) -> Result<()> {
     }
 }
 
+async fn send_data(data: Vec<u8>, socket: &UdpSocket, dest_addr: SocketAddr) -> Result<()> {
+    // as the result data can be large and may not be sent in a single UDP datagram,
+    // split it into smaller chunks
+    for chunk in data.chunks(4096) {
+        socket.send_to(chunk, dest_addr).await?;
+    }
+    // send an empty data at the end to indicate end of chunks
+    socket.send_to(&[], dest_addr).await?;
+    Ok(())
+}
+
 async fn handle_socket_request(
     client: &Client,
     state: &SharedState,
@@ -43,11 +54,11 @@ async fn handle_socket_request(
     match request {
         Request::Get(GetRequest::Key(key)) => {
             let result = handle_get_key_request(client, key).await?;
-            socket.send_to(&result, dest_addr).await?;
+            send_data(result, socket, dest_addr).await?;
         }
         Request::Get(GetRequest::Context(context_id, context_type)) => {
             let result = handle_get_context_request(client, context_id, context_type).await?;
-            socket.send_to(&result, dest_addr).await?;
+            send_data(result, socket, dest_addr).await?;
         }
         Request::Playback(command) => {
             handle_playback_request(client, command).await?;
