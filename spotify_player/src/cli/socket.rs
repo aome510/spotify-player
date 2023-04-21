@@ -1,5 +1,7 @@
-use anyhow::{Context, Result};
-use std::net::{SocketAddr, UdpSocket};
+use std::net::SocketAddr;
+
+use anyhow::Result;
+use tokio::net::UdpSocket;
 
 use rspotify::{model::*, prelude::OAuthClient};
 
@@ -13,13 +15,12 @@ use super::*;
 pub async fn start_socket(client: Client, port: u16) -> Result<()> {
     tracing::info!("Starting a client socket at 127.0.0.1:{port}");
 
-    let socket = UdpSocket::bind(("127.0.0.1", port))
-        .context(format!("failed to bind a new socket to port {port}"))?;
+    let socket = UdpSocket::bind(("127.0.0.1", port)).await?;
 
     // initialize the receive buffer to be 4096 bytes
     let mut buf = [0; 4096];
     loop {
-        match socket.recv_from(&mut buf) {
+        match socket.recv_from(&mut buf).await {
             Err(err) => tracing::warn!("failed to receive from the socket: {err}"),
             Ok((n_bytes, dest_addr)) => {
                 let request: Request = serde_json::from_slice(&buf[0..n_bytes])?;
@@ -39,11 +40,11 @@ async fn handle_socket_request(
     match request {
         Request::Get(GetRequest::Key(key)) => {
             let result = handle_get_key_request(client, key).await?;
-            socket.send_to(&result, dest_addr)?;
+            socket.send_to(&result, dest_addr).await?;
         }
         Request::Get(GetRequest::Context(context_id, context_type)) => {
             let result = handle_get_context_request(client, context_id, context_type).await?;
-            socket.send_to(&result, dest_addr)?;
+            socket.send_to(&result, dest_addr).await?;
         }
         Request::Playback(command) => {
             handle_playback_request(client, command).await?;
