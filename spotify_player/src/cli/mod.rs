@@ -8,7 +8,7 @@ pub use commands::{init_get_subcommand, init_playback_subcommand};
 pub use handlers::handle_cli_subcommand;
 pub use socket::start_socket;
 
-#[derive(Serialize, Deserialize, clap::ValueEnum, Clone)]
+#[derive(Debug, Serialize, Deserialize, clap::ValueEnum, Clone)]
 pub enum Key {
     Playback,
     Devices,
@@ -20,20 +20,20 @@ pub enum Key {
     Queue,
 }
 
-#[derive(Serialize, Deserialize, clap::ValueEnum, Clone)]
+#[derive(Debug, Serialize, Deserialize, clap::ValueEnum, Clone)]
 pub enum ContextType {
     Playlist,
     Album,
     Artist,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum GetRequest {
     Key(Key),
     Context(String, ContextType),
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum Command {
     Start(String, ContextType),
     PlayPause,
@@ -45,7 +45,7 @@ pub enum Command {
     Seek(i32),
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum Request {
     Get(GetRequest),
     Playback(Command),

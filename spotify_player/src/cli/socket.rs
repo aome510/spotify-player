@@ -23,6 +23,7 @@ pub async fn start_socket(client: Client, port: u16) -> Result<()> {
             Err(err) => tracing::warn!("failed to receive from the socket: {err}"),
             Ok((n_bytes, dest_addr)) => {
                 let request: Request = serde_json::from_slice(&buf[0..n_bytes])?;
+                tracing::info!("Handle socket request: {request:?}");
                 handle_socket_request(&client, request, &socket, dest_addr).await?;
             }
         }
