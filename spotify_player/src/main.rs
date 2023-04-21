@@ -117,11 +117,7 @@ fn init_logging(cache_folder: &std::path::Path) -> Result<()> {
     Ok(())
 }
 
-async fn start_app(
-    state: state::SharedState,
-    client: client::Client,
-    cache_folder: std::path::PathBuf,
-) -> Result<()> {
+async fn start_app(state: state::SharedState, cache_folder: std::path::PathBuf) -> Result<()> {
     // initialize the application's log
     init_logging(&cache_folder).context("failed to initialize application's logging")?;
 
@@ -130,6 +126,22 @@ async fn start_app(
     // streaming channels, which are used to notify a shutdown to running streaming connections
     // upon creating a new connection.
     let (streaming_pub, streaming_sub) = flume::unbounded::<()>();
+
+    // create a librespot session
+    let session = auth::new_session(
+        &state.cache_folder,
+        state.app_config.device.audio_cache,
+        &state.app_config,
+    )
+    .await?;
+
+    // create a spotify API client
+    let client = client::Client::new(
+        session.clone(),
+        state.app_config.device.clone(),
+        state.app_config.client_id.clone(),
+    );
+    client.init_token().await?;
 
     // initialize Spotify-related stuff
     init_spotify(&client_pub, &streaming_sub, &client, &state)
@@ -147,7 +159,15 @@ async fn start_app(
 
     // Spawn application's tasks
 
-    client.start_socket(state.app_config.client_port)?;
+    tokio::task::spawn({
+        let client = client.clone();
+        let client_port = state.app_config.client_port;
+        async move {
+            if let Err(err) = cli::start_socket(client, client_port).await {
+                tracing::warn!("encountered the following error with client socket for cli: {err}");
+            }
+        }
+    });
 
     // client event handler task
     tokio::task::spawn({
@@ -263,24 +283,10 @@ async fn main() -> Result<()> {
         std::sync::Arc::new(state)
     };
 
-    // create a librespot session
-    let session = auth::new_session(
-        &state.cache_folder,
-        state.app_config.device.audio_cache,
-        &state.app_config,
-    )
-    .await?;
-
-    // create a spotify API client
-    let client = client::Client::new(
-        session.clone(),
-        state.app_config.device.clone(),
-        state.app_config.client_id.clone(),
-    );
-    client.init_token().await?;
-
     match args.subcommand() {
-        None => start_app(state, client, cache_folder).await,
-        Some((cmd, args)) => cli::handle_cli_subcommand(cmd, args, client).await,
+        None => start_app(state, cache_folder).await,
+        Some((cmd, args)) => {
+            cli::handle_cli_subcommand(cmd, args, state.app_config.client_port).await
+        }
     }
 }

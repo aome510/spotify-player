@@ -1,11 +1,12 @@
 mod commands;
 mod handlers;
+mod socket;
 
-use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
 pub use commands::{init_get_subcommand, init_playback_subcommand};
 pub use handlers::handle_cli_subcommand;
+pub use socket::start_socket;
 
 #[derive(Serialize, Deserialize, clap::ValueEnum, Clone)]
 pub enum Key {
@@ -29,16 +30,10 @@ pub enum ContextType {
 #[derive(Serialize, Deserialize)]
 pub enum GetRequest {
     Key(Key),
-    Context(ContextType),
+    Context(String, ContextType),
 }
 
 #[derive(Serialize, Deserialize)]
 pub enum Request {
     Get(GetRequest),
-}
-
-pub trait ClientSocket {
-    fn start_socket(&self, port: u16) -> Result<()>;
-
-    fn handle_request(&self, request: Request) -> Result<()>;
 }
