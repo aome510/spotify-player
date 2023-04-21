@@ -164,7 +164,7 @@ async fn start_app(state: state::SharedState, cache_folder: std::path::PathBuf) 
         let state = state.clone();
         async move {
             if let Err(err) = cli::start_socket(client, state).await {
-                tracing::warn!("encountered the following error with client socket for cli: {err}");
+                tracing::warn!("Failed to run client socket for CLI: {err}");
             }
         }
     });
