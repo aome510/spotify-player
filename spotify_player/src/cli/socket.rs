@@ -44,6 +44,9 @@ async fn handle_socket_request(
             let result = handle_get_context_request(client, context_id, context_type).await?;
             socket.send_to(&result, dest_addr)?;
         }
+        Request::Playback(command) => {
+            handle_playback_request(client, command).await?;
+        }
     }
     Ok(())
 }
@@ -109,4 +112,90 @@ async fn handle_get_context_request(
     };
 
     Ok(serde_json::to_vec(&context)?)
+}
+
+async fn handle_playback_request(client: &Client, command: Command) -> Result<()> {
+    let playback = match client
+        .spotify
+        .current_playback(None, None::<Vec<_>>)
+        .await?
+    {
+        Some(playback) => playback,
+        None => {
+            eprintln!("No playback found!");
+            std::process::exit(1);
+        }
+    };
+    let device_id = playback.device.id.as_deref();
+
+    match command {
+        Command::Start(context_id, context_type) => {
+            let context_id = match context_type {
+                ContextType::Playlist => PlayContextId::Playlist(PlaylistId::from_id(context_id)?),
+                ContextType::Album => PlayContextId::Album(AlbumId::from_id(context_id)?),
+                ContextType::Artist => PlayContextId::Artist(ArtistId::from_id(context_id)?),
+            };
+
+            client
+                .spotify
+                .start_context_playback(context_id, device_id, None, None)
+                .await?;
+
+            // for some reasons, when starting a new playback, the integrated `spotify-player`
+            // client doesn't respect the initial shuffle state, so we need to manually update the state
+            client
+                .spotify
+                .shuffle(playback.shuffle_state, device_id)
+                .await?
+        }
+        Command::PlayPause => {
+            if playback.is_playing {
+                client.spotify.pause_playback(device_id).await?;
+            } else {
+                client.spotify.resume_playback(device_id, None).await?;
+            }
+        }
+        Command::Next => {
+            client.spotify.next_track(device_id).await?;
+        }
+        Command::Previous => {
+            client.spotify.previous_track(device_id).await?;
+        }
+        Command::Shuffle => {
+            client
+                .spotify
+                .shuffle(!playback.shuffle_state, device_id)
+                .await?;
+        }
+        Command::Repeat => {
+            let next_repeat_state = match playback.repeat_state {
+                RepeatState::Off => RepeatState::Track,
+                RepeatState::Track => RepeatState::Context,
+                RepeatState::Context => RepeatState::Off,
+            };
+
+            client.spotify.repeat(next_repeat_state, device_id).await?;
+        }
+        Command::Volume(percent) => {
+            client.spotify.volume(percent, device_id).await?;
+        }
+        Command::Seek(position_offset_ms) => {
+            let progress_ms = match playback.progress {
+                Some(progress) => progress.as_millis(),
+                None => {
+                    eprintln!("Playback has no progress!");
+                    std::process::exit(1);
+                }
+            };
+            client
+                .spotify
+                .seek_track(
+                    (progress_ms as u32).saturating_add_signed(position_offset_ms),
+                    device_id,
+                )
+                .await?;
+        }
+    }
+
+    Ok(())
 }

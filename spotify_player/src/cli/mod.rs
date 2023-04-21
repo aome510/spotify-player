@@ -34,6 +34,19 @@ pub enum GetRequest {
 }
 
 #[derive(Serialize, Deserialize)]
+pub enum Command {
+    Start(String, ContextType),
+    PlayPause,
+    Next,
+    Previous,
+    Shuffle,
+    Repeat,
+    Volume(u8),
+    Seek(i32),
+}
+
+#[derive(Serialize, Deserialize)]
 pub enum Request {
     Get(GetRequest),
+    Playback(Command),
 }
