@@ -161,9 +161,9 @@ async fn start_app(state: state::SharedState, cache_folder: std::path::PathBuf) 
 
     tokio::task::spawn({
         let client = client.clone();
-        let client_port = state.app_config.client_port;
+        let state = state.clone();
         async move {
-            if let Err(err) = cli::start_socket(client, client_port).await {
+            if let Err(err) = cli::start_socket(client, state).await {
                 tracing::warn!("encountered the following error with client socket for cli: {err}");
             }
         }

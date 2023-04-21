@@ -8,11 +8,13 @@ use rspotify::{model::*, prelude::OAuthClient};
 use crate::{
     cli::{ContextType, Request},
     client::Client,
+    state::SharedState,
 };
 
 use super::*;
 
-pub async fn start_socket(client: Client, port: u16) -> Result<()> {
+pub async fn start_socket(client: Client, state: SharedState) -> Result<()> {
+    let port = state.app_config.client_port;
     tracing::info!("Starting a client socket at 127.0.0.1:{port}");
 
     let socket = UdpSocket::bind(("127.0.0.1", port)).await?;
@@ -25,7 +27,7 @@ pub async fn start_socket(client: Client, port: u16) -> Result<()> {
             Ok((n_bytes, dest_addr)) => {
                 let request: Request = serde_json::from_slice(&buf[0..n_bytes])?;
                 tracing::info!("Handle socket request: {request:?}");
-                handle_socket_request(&client, request, &socket, dest_addr).await?;
+                handle_socket_request(&client, &state, request, &socket, dest_addr).await?;
             }
         }
     }
@@ -33,6 +35,7 @@ pub async fn start_socket(client: Client, port: u16) -> Result<()> {
 
 async fn handle_socket_request(
     client: &Client,
+    state: &SharedState,
     request: super::Request,
     socket: &UdpSocket,
     dest_addr: SocketAddr,
@@ -48,6 +51,7 @@ async fn handle_socket_request(
         }
         Request::Playback(command) => {
             handle_playback_request(client, command).await?;
+            client.update_playback(state);
         }
     }
     Ok(())

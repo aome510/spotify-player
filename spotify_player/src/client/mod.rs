@@ -372,7 +372,7 @@ impl Client {
         Ok(())
     }
 
-    fn update_playback(&self, state: &SharedState) {
+    pub fn update_playback(&self, state: &SharedState) {
         // After handling a request that updates the player's playback,
         // update the playback state by making additional refresh requests.
         //
