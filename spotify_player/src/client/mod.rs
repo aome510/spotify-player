@@ -22,7 +22,7 @@ use serde::Deserialize;
 /// The application's client
 #[derive(Clone)]
 pub struct Client {
-    spotify: Arc<spotify::Spotify>,
+    pub spotify: Arc<spotify::Spotify>,
     http: reqwest::Client,
 }
 
@@ -372,7 +372,7 @@ impl Client {
         Ok(())
     }
 
-    fn update_playback(&self, state: &SharedState) {
+    pub fn update_playback(&self, state: &SharedState) {
         // After handling a request that updates the player's playback,
         // update the playback state by making additional refresh requests.
         //
@@ -928,7 +928,7 @@ impl Client {
     }
 
     /// gets a playlist context data
-    async fn playlist_context(&self, playlist_id: PlaylistId<'_>) -> Result<Context> {
+    pub async fn playlist_context(&self, playlist_id: PlaylistId<'_>) -> Result<Context> {
         let playlist_uri = playlist_id.uri();
         tracing::info!("Get playlist context: {}", playlist_uri);
 
@@ -955,7 +955,7 @@ impl Client {
     }
 
     /// gets an album context data
-    async fn album_context(&self, album_id: AlbumId<'_>) -> Result<Context> {
+    pub async fn album_context(&self, album_id: AlbumId<'_>) -> Result<Context> {
         let album_uri = album_id.uri();
         tracing::info!("Get album context: {}", album_uri);
 
@@ -985,7 +985,7 @@ impl Client {
     }
 
     /// gets an artist context data
-    async fn artist_context(&self, artist_id: ArtistId<'_>) -> Result<Context> {
+    pub async fn artist_context(&self, artist_id: ArtistId<'_>) -> Result<Context> {
         let artist_uri = artist_id.uri();
         tracing::info!("Get artist context: {}", artist_uri);
 

@@ -1,4 +1,5 @@
 mod auth;
+mod cli;
 mod client;
 mod command;
 mod config;
@@ -21,6 +22,8 @@ fn init_app_cli_arguments() -> clap::ArgMatches {
         .version("0.13.1")
         .about("A command driven spotify player")
         .author("Thang Pham <phamducthang1234@gmail>")
+        .subcommand(cli::init_get_subcommand())
+        .subcommand(cli::init_playback_subcommand())
         .arg(
             clap::Arg::new("theme")
                 .short('t')
@@ -53,8 +56,6 @@ async fn init_spotify(
     client: &client::Client,
     state: &state::SharedState,
 ) -> Result<()> {
-    client.init_token().await?;
-
     // if `streaming` feature is enabled, create a new streaming connection
     #[cfg(feature = "streaming")]
     if state.app_config.enable_streaming {
@@ -116,44 +117,15 @@ fn init_logging(cache_folder: &std::path::Path) -> Result<()> {
     Ok(())
 }
 
-#[tokio::main]
-async fn main() -> Result<()> {
-    // parse command line arguments
-    let args = init_app_cli_arguments();
-
-    // initialize the application's cache folder and config folder
-    let config_folder = match args.get_one::<String>("config-folder") {
-        Some(path) => path.into(),
-        None => config::get_config_folder_path()?,
-    };
-    let cache_folder = match args.get_one::<String>("cache-folder") {
-        Some(path) => path.into(),
-        None => config::get_cache_folder_path()?,
-    };
-    if !config_folder.exists() {
-        std::fs::create_dir_all(&config_folder)?;
-    }
-    let cache_audio_folder = cache_folder.join("audio");
-    if !cache_audio_folder.exists() {
-        std::fs::create_dir_all(&cache_audio_folder)?;
-    }
-    let cache_image_folder = cache_folder.join("image");
-    if !cache_image_folder.exists() {
-        std::fs::create_dir_all(&cache_image_folder)?;
-    }
-
+async fn start_app(state: state::SharedState, cache_folder: std::path::PathBuf) -> Result<()> {
+    // initialize the application's log
     init_logging(&cache_folder).context("failed to initialize application's logging")?;
 
-    // initialize the application state
-    let state = {
-        let mut state = state::State {
-            cache_folder,
-            ..state::State::default()
-        };
-        // parse config options from the config files into application's state
-        state.parse_config_files(&config_folder, args.get_one::<String>("theme"))?;
-        std::sync::Arc::new(state)
-    };
+    // client channels
+    let (client_pub, client_sub) = flume::unbounded::<event::ClientRequest>();
+    // streaming channels, which are used to notify a shutdown to running streaming connections
+    // upon creating a new connection.
+    let (streaming_pub, streaming_sub) = flume::unbounded::<()>();
 
     // create a librespot session
     let session = auth::new_session(
@@ -169,12 +141,7 @@ async fn main() -> Result<()> {
         state.app_config.device.clone(),
         state.app_config.client_id.clone(),
     );
-
-    // client channels
-    let (client_pub, client_sub) = flume::unbounded::<event::ClientRequest>();
-    // streaming channels, which are used to notify a shutdown to running streaming connections
-    // upon creating a new connection.
-    let (streaming_pub, streaming_sub) = flume::unbounded::<()>();
+    client.init_token().await?;
 
     // initialize Spotify-related stuff
     init_spotify(&client_pub, &streaming_sub, &client, &state)
@@ -191,6 +158,16 @@ async fn main() -> Result<()> {
     }
 
     // Spawn application's tasks
+
+    tokio::task::spawn({
+        let client = client.clone();
+        let state = state.clone();
+        async move {
+            if let Err(err) = cli::start_socket(client, state).await {
+                tracing::warn!("Failed to run client socket for CLI: {err}");
+            }
+        }
+    });
 
     // client event handler task
     tokio::task::spawn({
@@ -265,5 +242,49 @@ async fn main() -> Result<()> {
     {
         ui_task.await??;
         Ok(())
+    }
+}
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    // parse command line arguments
+    let args = init_app_cli_arguments();
+
+    // initialize the application's cache folder and config folder
+    let config_folder = match args.get_one::<String>("config-folder") {
+        Some(path) => path.into(),
+        None => config::get_config_folder_path()?,
+    };
+    if !config_folder.exists() {
+        std::fs::create_dir_all(&config_folder)?;
+    }
+
+    let cache_folder = match args.get_one::<String>("cache-folder") {
+        Some(path) => path.into(),
+        None => config::get_cache_folder_path()?,
+    };
+    let cache_audio_folder = cache_folder.join("audio");
+    if !cache_audio_folder.exists() {
+        std::fs::create_dir_all(&cache_audio_folder)?;
+    }
+    let cache_image_folder = cache_folder.join("image");
+    if !cache_image_folder.exists() {
+        std::fs::create_dir_all(&cache_image_folder)?;
+    }
+
+    // initialize the application state
+    let state = {
+        let mut state = state::State {
+            cache_folder: cache_folder.clone(),
+            ..state::State::default()
+        };
+        // parse config options from the config files into application's state
+        state.parse_config_files(&config_folder, args.get_one::<String>("theme"))?;
+        std::sync::Arc::new(state)
+    };
+
+    match args.subcommand() {
+        None => start_app(state, cache_folder).await,
+        Some((cmd, args)) => cli::handle_cli_subcommand(cmd, args, state.app_config.client_port),
     }
 }

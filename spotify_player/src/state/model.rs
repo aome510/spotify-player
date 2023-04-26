@@ -2,8 +2,10 @@ pub use rspotify::model as rspotify_model;
 pub use rspotify::model::{AlbumId, ArtistId, Id, PlaylistId, TrackId, UserId};
 
 use crate::utils::map_join;
+use serde::Serialize;
 
-#[derive(Clone, Debug)]
+#[derive(Serialize, Clone, Debug)]
+#[serde(untagged)]
 /// A Spotify context (playlist, album, artist)
 pub enum Context {
     Playlist {
@@ -107,7 +109,7 @@ pub struct Device {
     pub name: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Debug, Clone)]
 /// A Spotify track
 pub struct Track {
     pub id: TrackId<'static>,
@@ -115,10 +117,11 @@ pub struct Track {
     pub artists: Vec<Artist>,
     pub album: Option<Album>,
     pub duration: std::time::Duration,
+    #[serde(skip)]
     pub added_at: u64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Debug, Clone)]
 /// A Spotify album
 pub struct Album {
     pub id: AlbumId<'static>,
@@ -127,14 +130,14 @@ pub struct Album {
     pub artists: Vec<Artist>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Debug, Clone)]
 /// A Spotify artist
 pub struct Artist {
     pub id: ArtistId<'static>,
     pub name: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Debug, Clone)]
 /// A Spotify playlist
 pub struct Playlist {
     pub id: PlaylistId<'static>,
