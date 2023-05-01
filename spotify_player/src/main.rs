@@ -25,6 +25,13 @@ fn init_app_cli_arguments() -> clap::ArgMatches {
         .subcommand(cli::init_get_subcommand())
         .subcommand(cli::init_playback_subcommand())
         .arg(
+            clap::Arg::new("daemon")
+                .short('d')
+                .long("daemon")
+                .action(clap::ArgAction::SetTrue)
+                .help("Running the application as a daemon")
+        )
+        .arg(
             clap::Arg::new("theme")
                 .short('t')
                 .long("theme")
@@ -117,7 +124,11 @@ fn init_logging(cache_folder: &std::path::Path) -> Result<()> {
     Ok(())
 }
 
-async fn start_app(state: state::SharedState, cache_folder: std::path::PathBuf) -> Result<()> {
+async fn start_app(
+    state: state::SharedState,
+    cache_folder: std::path::PathBuf,
+    is_daemon: bool,
+) -> Result<()> {
     // initialize the application's log
     init_logging(&cache_folder).context("failed to initialize application's logging")?;
 
@@ -148,17 +159,9 @@ async fn start_app(state: state::SharedState, cache_folder: std::path::PathBuf) 
         .await
         .context("failed to initialize the spotify client")?;
 
-    #[cfg(feature = "image")]
-    {
-        // initialize viuer supports for kitty and iterm2
-        viuer::get_kitty_support();
-        viuer::is_iterm_supported();
-        #[cfg(feature = "sixel")]
-        viuer::is_sixel_supported();
-    }
-
     // Spawn application's tasks
 
+    // client socket task (for handling CLI commands)
     tokio::task::spawn({
         let client = client.clone();
         let state = state.clone();
@@ -186,15 +189,6 @@ async fn start_app(state: state::SharedState, cache_folder: std::path::PathBuf) 
         }
     });
 
-    // terminal event handler task
-    tokio::task::spawn_blocking({
-        let client_pub = client_pub.clone();
-        let state = state.clone();
-        move || {
-            event::start_event_handler(state, client_pub);
-        }
-    });
-
     // player event watcher task
     tokio::task::spawn({
         let state = state.clone();
@@ -204,12 +198,30 @@ async fn start_app(state: state::SharedState, cache_folder: std::path::PathBuf) 
         }
     });
 
-    // application UI task
-    #[allow(unused_variables)]
-    let ui_task = tokio::task::spawn_blocking({
-        let state = state.clone();
-        move || ui::run(state)
-    });
+    // if is_daemon {
+    let stdout = std::fs::File::create("/tmp/spotify_player.out").unwrap();
+    let stderr = std::fs::File::create("/tmp/spotify_player.err").unwrap();
+    let daemonize = daemonize::Daemonize::new()
+        .pid_file("/tmp/spotify_player.pid")
+        .stderr(stderr)
+        .stdout(stdout);
+    daemonize.start()?;
+    // } else {
+    //     // terminal event handler task
+    //     tokio::task::spawn_blocking({
+    //         let client_pub = client_pub.clone();
+    //         let state = state.clone();
+    //         move || {
+    //             event::start_event_handler(state, client_pub);
+    //         }
+    //     });
+
+    //     // application UI task
+    //     tokio::task::spawn_blocking({
+    //         let state = state.clone();
+    //         move || ui::run(state)
+    //     });
+    // }
 
     #[cfg(feature = "media-control")]
     if state.app_config.enable_media_control {
@@ -238,17 +250,16 @@ async fn start_app(state: state::SharedState, cache_folder: std::path::PathBuf) 
             });
         }
     }
-    #[allow(unreachable_code)]
-    {
-        ui_task.await??;
-        Ok(())
-    }
+
+    Ok(())
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
     // parse command line arguments
     let args = init_app_cli_arguments();
+
+    let is_daemon = args.get_flag("daemon");
 
     // initialize the application's cache folder and config folder
     let config_folder = match args.get_one::<String>("config-folder") {
@@ -284,7 +295,7 @@ async fn main() -> Result<()> {
     };
 
     match args.subcommand() {
-        None => start_app(state, cache_folder).await,
+        None => start_app(state, cache_folder, is_daemon).await,
         Some((cmd, args)) => cli::handle_cli_subcommand(cmd, args, state.app_config.client_port),
     }
 }
