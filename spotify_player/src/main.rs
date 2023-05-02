@@ -68,7 +68,6 @@ async fn init_spotify(
     if state.app_config.enable_streaming {
         client
             .new_streaming_connection(streaming_sub.clone(), client_pub.clone())
-            .await
             .context("failed to create a new streaming connection")?;
     }
 

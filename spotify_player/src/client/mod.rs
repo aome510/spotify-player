@@ -47,7 +47,7 @@ impl Client {
 
     /// creates a new streaming connection
     #[cfg(feature = "streaming")]
-    pub async fn new_streaming_connection(
+    pub fn new_streaming_connection(
         &self,
         streaming_sub: flume::Receiver<()>,
         client_pub: flume::Sender<ClientRequest>,

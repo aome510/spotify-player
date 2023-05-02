@@ -21,10 +21,7 @@ pub async fn start_client_handler(
             ClientRequest::NewStreamingConnection => {
                 // send a notification to current streaming subcriber channels to shutdown all running connections
                 streaming_pub.send(()).unwrap_or_default();
-                match client
-                    .new_streaming_connection(streaming_sub.clone(), client_pub.clone())
-                    .await
-                {
+                match client.new_streaming_connection(streaming_sub.clone(), client_pub.clone()) {
                     Err(err) => tracing::error!(
                         "Encountered an error during creating a new streaming connection: {err:#}",
                     ),
