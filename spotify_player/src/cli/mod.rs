@@ -42,7 +42,7 @@ pub enum Command {
     Shuffle,
     Repeat,
     Volume(u8),
-    Seek(i32),
+    Seek(i64),
 }
 
 #[derive(Debug, Serialize, Deserialize)]

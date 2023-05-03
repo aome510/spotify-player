@@ -209,7 +209,7 @@ fn render_playback_progress_bar(
     frame: &mut Frame,
     state: &SharedState,
     ui: &mut UIStateGuard,
-    progress: std::time::Duration,
+    progress: chrono::Duration,
     track: &rspotify_model::FullTrack,
     rect: Rect,
 ) {
@@ -217,12 +217,12 @@ fn render_playback_progress_bar(
         config::ProgressBarType::Line => frame.render_widget(
             LineGauge::default()
                 .gauge_style(ui.theme.playback_progress_bar())
-                .ratio(progress.as_secs_f64() / track.duration.as_secs_f64())
+                .ratio(progress.num_seconds() as f64 / track.duration.num_seconds() as f64)
                 .label(Span::styled(
                     format!(
                         "{}/{}",
-                        crate::utils::format_duration(progress),
-                        crate::utils::format_duration(track.duration),
+                        crate::utils::format_duration(&progress),
+                        crate::utils::format_duration(&track.duration),
                     ),
                     Style::default().add_modifier(Modifier::BOLD),
                 )),
@@ -231,12 +231,12 @@ fn render_playback_progress_bar(
         config::ProgressBarType::Rectangle => frame.render_widget(
             Gauge::default()
                 .gauge_style(ui.theme.playback_progress_bar())
-                .ratio(progress.as_secs_f64() / track.duration.as_secs_f64())
+                .ratio(progress.num_seconds() as f64 / track.duration.num_seconds() as f64)
                 .label(Span::styled(
                     format!(
                         "{}/{}",
-                        crate::utils::format_duration(progress),
-                        crate::utils::format_duration(track.duration),
+                        crate::utils::format_duration(&progress),
+                        crate::utils::format_duration(&track.duration),
                     ),
                     Style::default().add_modifier(Modifier::BOLD),
                 )),

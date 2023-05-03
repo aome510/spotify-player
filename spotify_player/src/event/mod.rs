@@ -19,7 +19,7 @@ pub enum PlayerRequest {
     NextTrack,
     PreviousTrack,
     ResumePause,
-    SeekTrack(u32),
+    SeekTrack(chrono::Duration),
     Repeat,
     Shuffle,
     Volume(u8),
@@ -109,8 +109,10 @@ fn handle_mouse_event(
                 .map(|t| t.duration);
             if let Some(duration) = duration {
                 let position_ms =
-                    (duration.as_millis() as u32) * (event.column as u32) / (rect.width as u32);
-                client_pub.send(ClientRequest::Player(PlayerRequest::SeekTrack(position_ms)))?;
+                    (duration.num_milliseconds()) * (event.column as i64) / (rect.width as i64);
+                client_pub.send(ClientRequest::Player(PlayerRequest::SeekTrack(
+                    chrono::Duration::milliseconds(position_ms),
+                )))?;
             }
         }
     }
@@ -229,17 +231,18 @@ fn handle_global_command(
         }
         Command::SeekForward => {
             if let Some(progress) = state.player.read().playback_progress() {
-                let progress_ms = progress.as_millis();
                 client_pub.send(ClientRequest::Player(PlayerRequest::SeekTrack(
-                    (progress_ms as u32) + 5000,
+                    progress + chrono::Duration::seconds(5),
                 )))?;
             }
         }
         Command::SeekBackward => {
             if let Some(progress) = state.player.read().playback_progress() {
-                let progress_ms = progress.as_millis();
                 client_pub.send(ClientRequest::Player(PlayerRequest::SeekTrack(
-                    (progress_ms as u32).saturating_sub(5000),
+                    std::cmp::max(
+                        chrono::Duration::zero(),
+                        progress - chrono::Duration::seconds(5),
+                    ),
                 )))?;
             }
         }

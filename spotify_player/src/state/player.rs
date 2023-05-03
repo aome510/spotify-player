@@ -27,16 +27,18 @@ impl PlayerState {
     }
 
     /// gets the current playback progress
-    pub fn playback_progress(&self) -> Option<std::time::Duration> {
+    pub fn playback_progress(&self) -> Option<chrono::Duration> {
         match self.playback {
             None => None,
             Some(ref playback) => {
                 let progress = playback.progress.unwrap()
                     + if playback.is_playing {
-                        self.playback_last_updated_time.unwrap().elapsed()
+                        chrono::Duration::from_std(
+                            self.playback_last_updated_time.unwrap().elapsed(),
+                        )
+                        .ok()?
                     } else {
-                        // zero duration
-                        std::time::Duration::default()
+                        chrono::Duration::zero()
                     };
                 Some(progress)
             }

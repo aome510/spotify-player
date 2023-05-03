@@ -20,7 +20,10 @@ fn update_control_metadata(
         None => {}
         Some(track) => {
             if let Some(ref playback) = player.playback {
-                let progress = player.playback_progress().map(MediaPosition);
+                let progress = player
+                    .playback_progress()
+                    .and_then(|p| Some(MediaPosition(p.to_std().ok()?)));
+
                 if playback.is_playing {
                     controls.set_playback(MediaPlayback::Playing { progress })?;
                 } else {
@@ -35,7 +38,7 @@ fn update_control_metadata(
                     title: Some(&track.name),
                     album: Some(&track.album.name),
                     artist: Some(&map_join(&track.artists, |a| &a.name, ", ")),
-                    duration: Some(track.duration),
+                    duration: track.duration.to_std().ok(),
                     cover_url: utils::get_track_album_image_url(track),
                 })?;
 
@@ -71,11 +74,11 @@ pub fn start_event_watcher(
                     .unwrap_or_default();
             }
             MediaControlEvent::SetPosition(MediaPosition(dur)) => {
-                client_pub
-                    .send(ClientRequest::Player(PlayerRequest::SeekTrack(
-                        dur.as_millis() as u32,
-                    )))
-                    .unwrap_or_default();
+                if let Ok(dur) = chrono::Duration::from_std(dur) {
+                    client_pub
+                        .send(ClientRequest::Player(PlayerRequest::SeekTrack(dur)))
+                        .unwrap_or_default();
+                }
             }
             MediaControlEvent::Next => {
                 client_pub
