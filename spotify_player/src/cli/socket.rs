@@ -198,7 +198,7 @@ async fn handle_playback_request(client: &Client, command: Command) -> Result<()
         }
         Command::Seek(position_offset_ms) => {
             let progress_ms = match playback.progress {
-                Some(progress) => progress.as_millis(),
+                Some(progress) => progress,
                 None => {
                     eprintln!("Playback has no progress!");
                     std::process::exit(1);
@@ -207,7 +207,10 @@ async fn handle_playback_request(client: &Client, command: Command) -> Result<()
             client
                 .spotify
                 .seek_track(
-                    (progress_ms as u32).saturating_add_signed(position_offset_ms),
+                    std::cmp::max(
+                        chrono::Duration::zero(),
+                        progress_ms - chrono::Duration::milliseconds(position_offset_ms as i64),
+                    ),
                     device_id,
                 )
                 .await?;
