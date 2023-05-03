@@ -108,10 +108,10 @@ fn handle_mouse_event(
                 .current_playing_track()
                 .map(|t| t.duration);
             if let Some(duration) = duration {
-                let position_ms = (duration.num_milliseconds() as u32) * (event.column as u32)
-                    / (rect.width as u32);
+                let position_ms =
+                    (duration.num_milliseconds()) * (event.column as i64) / (rect.width as i64);
                 client_pub.send(ClientRequest::Player(PlayerRequest::SeekTrack(
-                    chrono::Duration::milliseconds(position_ms as i64),
+                    chrono::Duration::milliseconds(position_ms),
                 )))?;
             }
         }
