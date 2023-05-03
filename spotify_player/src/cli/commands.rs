@@ -60,7 +60,7 @@ pub fn init_playback_subcommand() -> Command {
                 .about("Seek by an offset milliseconds")
                 .arg(
                     Arg::new("position_offset_ms")
-                        .value_parser(value_parser!(i32))
+                        .value_parser(value_parser!(i64))
                         .required(true),
                 ),
         )

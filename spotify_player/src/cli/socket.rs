@@ -207,7 +207,7 @@ async fn handle_playback_request(client: &Client, command: Command) -> Result<()
             client
                 .spotify
                 .seek_track(
-                    progress + chrono::Duration::milliseconds(position_offset_ms as i64),
+                    progress + chrono::Duration::milliseconds(position_offset_ms),
                     device_id,
                 )
                 .await?;
