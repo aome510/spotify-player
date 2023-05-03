@@ -77,7 +77,7 @@ fn handle_playback_subcommand(args: &ArgMatches, socket: UdpSocket) -> Result<()
         }
         "seek" => {
             let position_offset_ms = args
-                .get_one::<i32>("position_offset_ms")
+                .get_one::<i64>("position_offset_ms")
                 .expect("position_offset_ms is required");
             Command::Seek(*position_offset_ms)
         }

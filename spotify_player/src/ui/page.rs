@@ -720,7 +720,7 @@ pub fn render_track_table_window(
                     item_max_len,
                 )),
                 Cell::from(crate::utils::truncate_string(t.album_info(), item_max_len)),
-                Cell::from(crate::utils::format_duration(t.duration)),
+                Cell::from(crate::utils::format_duration(&t.duration)),
             ])
             .style(style)
         })

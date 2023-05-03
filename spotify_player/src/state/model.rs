@@ -1,7 +1,7 @@
 pub use rspotify::model as rspotify_model;
 pub use rspotify::model::{AlbumId, ArtistId, Id, PlaylistId, TrackId, UserId};
 
-use crate::utils::map_join;
+use crate::utils::{format_duration, map_join};
 use serde::Serialize;
 
 #[derive(Serialize, Clone, Debug)]
@@ -116,9 +116,17 @@ pub struct Track {
     pub name: String,
     pub artists: Vec<Artist>,
     pub album: Option<Album>,
-    pub duration: std::time::Duration,
+    #[serde(serialize_with = "serialize_duration")]
+    pub duration: chrono::Duration,
     #[serde(skip)]
     pub added_at: u64,
+}
+
+pub fn serialize_duration<S>(dur: &chrono::Duration, s: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    s.serialize_str(&format_duration(dur))
 }
 
 #[derive(Serialize, Debug, Clone)]
