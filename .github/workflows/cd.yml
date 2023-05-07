@@ -19,18 +19,17 @@ jobs:
             target: aarch64-apple-darwin
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
+            dependencies: "libssl-dev libasound2-dev libdbus-1-dev"
           - os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
+            dependencies: "libssl-dev:arm64 libasound2-dev:arm64 libdbus-1-dev:arm64"
           - os: ubuntu-latest
             target: arm-unknown-linux-gnueabihf
+            dependencies: "libssl-dev:armhf libasound2-dev:armhf libdbus-1-dev:armhf"
           - os: windows-latest
             target: x86_64-pc-windows-msvc
 
     steps:
-      - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install libssl-dev libasound2-dev libdbus-1-dev
-        if: ${{ runner.os == 'Linux' }}
-
       - name: Checkout source
         uses: actions/checkout@v2
 
