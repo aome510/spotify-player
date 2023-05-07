@@ -40,7 +40,7 @@ jobs:
 
       - name: Install Linux dependencies
         if: matrix.dependencies
-        run: apt update && apt install -y ${{ matrix.dependencies }}
+        run: sudo apt update && sudo apt install -y ${{ matrix.dependencies }}
 
       - name: Set up cross compilation
         if: matrix.cross_arch
