@@ -39,16 +39,16 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v2
 
-      - name: Install Linux dependencies
-        if: matrix.dependencies
-        run: apt update && apt install -y ${{ matrix.dependencies }}
-
       - name: Set up cross compilation
         if: matrix.cross_arch
         run: |
           dpkg --add-architecture ${{ matrix.cross_arch }}
           echo "PKG_CONFIG_PATH=${{ matrix.pkg_config_path }}" >> $GITHUB_ENV
           echo "PKG_CONFIG_ALLOW_CROSS=1" >> $GITHUB_ENV
+
+      - name: Install Linux dependencies
+        if: matrix.dependencies
+        run: apt update && apt install -y ${{ matrix.dependencies }}
 
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
