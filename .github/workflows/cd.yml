@@ -9,6 +9,7 @@ jobs:
   publish:
     name: Publishing ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
+    container: $${ matrix.container }
 
     strategy:
       matrix:
@@ -22,9 +23,13 @@ jobs:
             dependencies: "libssl-dev libasound2-dev libdbus-1-dev"
           - os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
+            container: rustembedded/cross:aarch64-unknown-linux-gnu
+            cross_arch: "arm64"
             dependencies: "libssl-dev:arm64 libasound2-dev:arm64 libdbus-1-dev:arm64"
           - os: ubuntu-latest
             target: arm-unknown-linux-gnueabihf
+            cross_arch: "armhf"
+            container: rustembedded/cross:armv7-unknown-linux-gnueabihf
             dependencies: "libssl-dev:armhf libasound2-dev:armhf libdbus-1-dev:armhf"
           - os: windows-latest
             target: x86_64-pc-windows-msvc
@@ -32,6 +37,17 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v2
+
+      - name: Install Linux dependencies
+        if: matrix.dependencies
+        run: apt update && apt install -y {{ matrix.dependencies }}
+
+      - name: Set up cross compilation
+        if: matrix.cross_arch
+        run: |
+          dpkg --add-architecture ${{ matrix.cross_arch }}
+          echo "PKG_CONFIG_PATH=${{ matrix.pkg_config_path }}" >> $GITHUB_ENV
+          echo "PKG_CONFIG_ALLOW_CROSS=1" >> $GITHUB_ENV
 
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
