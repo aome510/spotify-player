@@ -7,22 +7,37 @@ on:
 
 jobs:
   publish:
+    name: Publishing ${{ matrix.build-target }}
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest]
+        build-target:
+          [
+            macos-x86_64,
+            macos-arm64,
+            linux-x86_64,
+            linux-arm64,
+            linux-armhf,
+            windows-x86_64,
+          ]
         rust: [stable]
         include:
-          - os: macos-latest
+          - build-target: macos-x86_64
+            os: macos-latest
             target: x86_64-apple-darwin
-          - os: macos-latest
+          - build-target: macos-arm64
+            os: macos-latest
             target: aarch64-apple-darwin
-          - os: ubuntu-latest
+          - build-target: linux-x86_64
+            os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-          - os: ubuntu-latest
+          - build-target: linux-arm64
+            os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
-          - os: ubuntu-latest
+          - build-target: linux-armhf
+            os: ubuntu-latest
             target: armv7-unknown-linux-gnueabihf
-          - os: windows-latest
+          - build-target: windows-x86_64
+            os: windows-latest
             target: x86_64-pc-windows-msvc
 
     runs-on: ${{ matrix.os }}
