@@ -29,7 +29,7 @@ jobs:
             pkg_config_path: "/usr/lib/aarch64-linux-gnu/pkgconfig/"
             dependencies: "libssl-dev:arm64 libasound2-dev:arm64 libdbus-1-dev:arm64"
           - os: ubuntu-latest
-            target: arm-unknown-linux-gnueabihf
+            target: armv7-unknown-linux-gnueabihf
             cross_arch: "armhf"
             pkg_config_path: "/usr/lib/arm-linux-gnueabihf/pkgconfig/"
             container: rustembedded/cross:armv7-unknown-linux-gnueabihf
