@@ -9,7 +9,7 @@ jobs:
   publish:
     name: Publishing ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
-    container: $${ matrix.container }
+    container: ${{ matrix.container }}
 
     strategy:
       matrix:
@@ -40,7 +40,7 @@ jobs:
 
       - name: Install Linux dependencies
         if: matrix.dependencies
-        run: apt update && apt install -y {{ matrix.dependencies }}
+        run: apt update && apt install -y ${{ matrix.dependencies }}
 
       - name: Set up cross compilation
         if: matrix.cross_arch
