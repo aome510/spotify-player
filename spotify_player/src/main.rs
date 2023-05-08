@@ -18,19 +18,12 @@ use anyhow::{Context, Result};
 use std::io::Write;
 
 fn init_app_cli_arguments() -> clap::ArgMatches {
-    clap::Command::new("spotify_player")
+    let cmd = clap::Command::new("spotify_player")
         .version("0.13.1")
         .about("A command driven spotify player")
         .author("Thang Pham <phamducthang1234@gmail>")
         .subcommand(cli::init_get_subcommand())
         .subcommand(cli::init_playback_subcommand())
-        .arg(
-            clap::Arg::new("daemon")
-                .short('d')
-                .long("daemon")
-                .action(clap::ArgAction::SetTrue)
-                .help("Running the application as a daemon")
-        )
         .arg(
             clap::Arg::new("theme")
                 .short('t')
@@ -53,8 +46,18 @@ fn init_app_cli_arguments() -> clap::ArgMatches {
                 .value_name("FOLDER")
                 .help("Path to the application's cache folder (default: $HOME/.cache/spotify-player)")
                 .next_line_help(true)
-        )
-        .get_matches()
+        );
+
+    #[cfg(feature = "daemon")]
+    let cmd = cmd.arg(
+        clap::Arg::new("daemon")
+            .short('d')
+            .long("daemon")
+            .action(clap::ArgAction::SetTrue)
+            .help("Running the application as a daemon"),
+    );
+
+    cmd.get_matches()
 }
 
 async fn init_spotify(
@@ -152,6 +155,20 @@ fn spawn_ui_tasks(state: &state::SharedState, client_pub: flume::Sender<event::C
                 }
             }
         });
+
+        // the winit's event loop must be run in the main thread
+        #[cfg(any(target_os = "macos", target_os = "windows"))]
+        {
+            // Start an event loop that listens to OS window events.
+            //
+            // MacOS and Windows require an open window to be able to listen to media
+            // control events. The below code will create an invisible window on startup
+            // to listen to such events.
+            let event_loop = winit::event_loop::EventLoop::new();
+            event_loop.run(move |_, _, control_flow| {
+                *control_flow = winit::event_loop::ControlFlow::Wait;
+            });
+        }
     }
 }
 
@@ -180,9 +197,16 @@ async fn start_app(state: state::SharedState, is_daemon: bool) -> Result<()> {
     client.init_token().await?;
 
     // initialize Spotify-related stuff
-    init_spotify(&client_pub, &streaming_sub, &client, &state)
-        .await
-        .context("failed to initialize the spotify client")?;
+    if is_daemon {
+        #[cfg(feature = "streaming")]
+        client
+            .new_streaming_connection(streaming_sub.clone(), client_pub.clone())
+            .context("failed to create a new streaming connection")?;
+    } else {
+        init_spotify(&client_pub, &streaming_sub, &client, &state)
+            .await
+            .context("failed to initialize the spotify client")?;
+    }
 
     // Spawn application's tasks
     let mut tasks = Vec::new();
@@ -225,27 +249,13 @@ async fn start_app(state: state::SharedState, is_daemon: bool) -> Result<()> {
     }));
 
     if !is_daemon {
+        // spawn tasks needed for running the application UI
         spawn_ui_tasks(&state, client_pub);
     }
 
-    #[cfg(feature = "media-control")]
-    if state.app_config.enable_media_control && !is_daemon {
-        // the winit's event loop cannot be run in a forked process
-        #[cfg(any(target_os = "macos", target_os = "windows"))]
-        {
-            // Start an event loop that listens to OS window events.
-            //
-            // MacOS and Windows require an open window to be able to listen to media
-            // control events. The below code will create an invisible window on startup
-            // to listen to such events.
-            let event_loop = winit::event_loop::EventLoop::new();
-            event_loop.run(move |_, _, control_flow| {
-                *control_flow = winit::event_loop::ControlFlow::Wait;
-            });
-        }
+    for task in tasks {
+        task.await?;
     }
-
-    tracing::info!("something something");
 
     Ok(())
 }
@@ -253,18 +263,6 @@ async fn start_app(state: state::SharedState, is_daemon: bool) -> Result<()> {
 fn main() -> Result<()> {
     // parse command line arguments
     let args = init_app_cli_arguments();
-
-    let is_daemon = args.get_flag("daemon");
-
-    if is_daemon {
-        let stdout = std::fs::File::create("/tmp/spotify_player.out").unwrap();
-        let stderr = std::fs::File::create("/tmp/spotify_player.err").unwrap();
-        let daemonize = daemonize::Daemonize::new()
-            .pid_file("/tmp/spotify_player.pid")
-            .stdout(stdout)
-            .stderr(stderr);
-        daemonize.start()?;
-    }
 
     // initialize the application's cache folder and config folder
     let config_folder = match args.get_one::<String>("config-folder") {
@@ -303,7 +301,31 @@ fn main() -> Result<()> {
     };
 
     match args.subcommand() {
-        None => start_app(state, is_daemon),
+        None => {
+            #[cfg(feature = "daemon")]
+            {
+                let is_daemon = args.get_flag("daemon");
+                if is_daemon {
+                    if cfg!(any(target_os = "macos", target_os = "windows"))
+                        && cfg!(feature = "media-control")
+                    {
+                        eprintln!("Running the application as a daemon on windows/macos with `media-control` feature enabled is not supported!");
+                        std::process::exit(1);
+                    }
+                    if cfg!(not(feature = "streaming")) {
+                        eprintln!("`streaming` feature must be enabled to run the application as a daemon!");
+                        std::process::exit(1);
+                    }
+
+                    let daemonize = daemonize::Daemonize::new();
+                    daemonize.start()?;
+                }
+                start_app(state, is_daemon)
+            }
+
+            #[cfg(not(feature = "daemon"))]
+            start_app(state, false)
+        }
         Some((cmd, args)) => cli::handle_cli_subcommand(cmd, args, state.app_config.client_port),
     }
 }
