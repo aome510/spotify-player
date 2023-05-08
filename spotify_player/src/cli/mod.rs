@@ -1,12 +1,12 @@
+mod client;
 mod commands;
 mod handlers;
-mod socket;
 
 use serde::{Deserialize, Serialize};
 
+pub use client::start_socket;
 pub use commands::{init_get_subcommand, init_playback_subcommand};
 pub use handlers::handle_cli_subcommand;
-pub use socket::start_socket;
 
 #[derive(Debug, Serialize, Deserialize, clap::ValueEnum, Clone)]
 pub enum Key {

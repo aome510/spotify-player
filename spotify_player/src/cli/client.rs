@@ -158,17 +158,6 @@ async fn handle_playback_request(client: &Client, command: Command) -> Result<()
 
     match command {
         Command::Start(context_id, context_type) => {
-            let context_id = match context_type {
-                ContextType::Playlist => PlayContextId::Playlist(PlaylistId::from_id(context_id)?),
-                ContextType::Album => PlayContextId::Album(AlbumId::from_id(context_id)?),
-                ContextType::Artist => PlayContextId::Artist(ArtistId::from_id(context_id)?),
-            };
-
-            client
-                .spotify
-                .start_context_playback(context_id, device_id, None, None)
-                .await?;
-
             // for some reasons, when starting a new playback, the integrated `spotify-player`
             // client doesn't respect the initial shuffle state, so we need to manually update the state
             client
