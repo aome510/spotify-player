@@ -24,6 +24,11 @@ fn init_playback_start_subcommand() -> Command {
         .subcommand(add_context_args(
             Command::new("context").about("Start a context playback"),
         ))
+        .arg(
+            Arg::new("liked")
+                .action(ArgAction::SetTrue)
+                .help("Play liked songs playlist"),
+        )
 }
 
 fn add_context_args(cmd: Command) -> Command {

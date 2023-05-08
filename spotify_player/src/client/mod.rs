@@ -729,7 +729,7 @@ impl Client {
         })
     }
 
-    async fn search_specific_type(
+    pub async fn search_specific_type(
         &self,
         query: &str,
         _type: rspotify_model::SearchType,

@@ -13,6 +13,13 @@ use crate::{
 
 use super::*;
 
+/// Context's spotify ID
+enum ContextSid {
+    Playlist(PlaylistId<'static>),
+    Artist(ArtistId<'static>),
+    Album(AlbumId<'static>),
+}
+
 pub async fn start_socket(client: Client, state: SharedState) -> Result<()> {
     let port = state.app_config.client_port;
     tracing::info!("Starting a client socket at 127.0.0.1:{port}");
@@ -67,8 +74,8 @@ async fn handle_socket_request(
             let result = handle_get_key_request(client, key).await?;
             send_data(result, socket, dest_addr).await?;
         }
-        Request::Get(GetRequest::Context(context_id, context_type)) => {
-            let result = handle_get_context_request(client, context_id, context_type).await?;
+        Request::Get(GetRequest::Context(context_type, context_id)) => {
+            let result = handle_get_context_request(client, context_type, context_id).await?;
             send_data(result, socket, dest_addr).await?;
         }
         Request::Playback(command) => {
@@ -119,24 +126,73 @@ async fn handle_get_key_request(client: &Client, key: Key) -> Result<Vec<u8>> {
     })
 }
 
+/// Get a context's Spotify ID from its `cli::ContextId` representation
+async fn get_spotify_id_from_context_id(
+    client: &Client,
+    context_type: ContextType,
+    context_id: ContextId,
+) -> Result<ContextSid> {
+    // For `cli::ContextId::Name`, we search for the first item matching the name and return its spotify id
+
+    let sid = match context_type {
+        ContextType::Playlist => match context_id {
+            ContextId::Id(id) => ContextSid::Playlist(PlaylistId::from_id(id)?),
+            ContextId::Name(name) => {
+                let results = client
+                    .search_specific_type(&name, SearchType::Playlist)
+                    .await?;
+
+                match results {
+                    SearchResult::Playlists(page) => {
+                        ContextSid::Playlist(page.items[0].id.to_owned())
+                    }
+                    _ => unreachable!(),
+                }
+            }
+        },
+        ContextType::Album => match context_id {
+            ContextId::Id(id) => ContextSid::Album(AlbumId::from_id(id)?),
+            ContextId::Name(name) => {
+                let results = client
+                    .search_specific_type(&name, SearchType::Album)
+                    .await?;
+
+                match results {
+                    SearchResult::Albums(page) => {
+                        ContextSid::Album(page.items[0].id.to_owned().unwrap())
+                    }
+                    _ => unreachable!(),
+                }
+            }
+        },
+        ContextType::Artist => match context_id {
+            ContextId::Id(id) => ContextSid::Artist(ArtistId::from_id(id)?),
+            ContextId::Name(name) => {
+                let results = client
+                    .search_specific_type(&name, SearchType::Artist)
+                    .await?;
+
+                match results {
+                    SearchResult::Artists(page) => ContextSid::Artist(page.items[0].id.to_owned()),
+                    _ => unreachable!(),
+                }
+            }
+        },
+    };
+
+    Ok(sid)
+}
+
 async fn handle_get_context_request(
     client: &Client,
-    context_id: String,
     context_type: ContextType,
+    context_id: ContextId,
 ) -> Result<Vec<u8>> {
-    let context = match context_type {
-        ContextType::Playlist => {
-            let id = PlaylistId::from_id(context_id)?;
-            client.playlist_context(id).await?
-        }
-        ContextType::Album => {
-            let id = AlbumId::from_id(context_id)?;
-            client.album_context(id).await?
-        }
-        ContextType::Artist => {
-            let id = ArtistId::from_id(context_id)?;
-            client.artist_context(id).await?
-        }
+    let sid = get_spotify_id_from_context_id(client, context_type, context_id).await?;
+    let context = match sid {
+        ContextSid::Playlist(id) => client.playlist_context(id).await?,
+        ContextSid::Album(id) => client.album_context(id).await?,
+        ContextSid::Artist(id) => client.artist_context(id).await?,
     };
 
     Ok(serde_json::to_vec(&context)?)
@@ -157,7 +213,7 @@ async fn handle_playback_request(client: &Client, command: Command) -> Result<()
     let device_id = playback.device.id.as_deref();
 
     match command {
-        Command::Start(context_id, context_type) => {
+        Command::Start(context_type, context_id) => {
             // for some reasons, when starting a new playback, the integrated `spotify-player`
             // client doesn't respect the initial shuffle state, so we need to manually update the state
             client
