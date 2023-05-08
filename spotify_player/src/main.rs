@@ -314,6 +314,7 @@ fn main() -> Result<()> {
                         std::process::exit(1);
                     }
 
+                    tracing::info!("Starting the application as a daemon...");
                     let daemonize = daemonize::Daemonize::new();
                     daemonize.start()?;
                 }
