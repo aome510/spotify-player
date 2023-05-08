@@ -30,12 +30,18 @@ pub enum ContextType {
 #[derive(Debug, Serialize, Deserialize)]
 pub enum GetRequest {
     Key(Key),
-    Context(String, ContextType),
+    Context(ContextType, ContextId),
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum ContextId {
+    Id(String),
+    Name(String),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Command {
-    Start(String, ContextType),
+    Start(ContextType, ContextId),
     PlayPause,
     Next,
     Previous,

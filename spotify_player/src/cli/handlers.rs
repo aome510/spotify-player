@@ -1,6 +1,6 @@
 use super::*;
 use anyhow::Result;
-use clap::ArgMatches;
+use clap::{ArgMatches, Id};
 use std::net::UdpSocket;
 
 fn receive_data(socket: &UdpSocket) -> Result<Vec<u8>> {
@@ -20,6 +20,26 @@ fn receive_data(socket: &UdpSocket) -> Result<Vec<u8>> {
     Ok(data)
 }
 
+fn get_context_id(args: &ArgMatches) -> Result<ContextId> {
+    let id = args
+        .get_one::<Id>("context")
+        .expect("context group is required");
+
+    match id.as_str() {
+        "name" => Ok(ContextId::Name(
+            args.get_one::<String>("name")
+                .expect("name should be specified")
+                .to_owned(),
+        )),
+        "id" => Ok(ContextId::Id(
+            args.get_one::<String>("id")
+                .expect("id should be specified")
+                .to_owned(),
+        )),
+        id => anyhow::bail!("unknown id: {id}"),
+    }
+}
+
 fn handle_get_subcommand(args: &ArgMatches, socket: UdpSocket) -> Result<()> {
     let (cmd, args) = args.subcommand().expect("playback subcommand is required");
 
@@ -32,15 +52,12 @@ fn handle_get_subcommand(args: &ArgMatches, socket: UdpSocket) -> Result<()> {
             Request::Get(GetRequest::Key(key))
         }
         "context" => {
-            let context_id = args
-                .get_one::<String>("context_id")
-                .expect("context_id is required")
-                .to_owned();
             let context_type = args
                 .get_one::<ContextType>("context_type")
                 .expect("context_type is required")
                 .to_owned();
-            Request::Get(GetRequest::Context(context_id, context_type))
+            let context_id = get_context_id(args)?;
+            Request::Get(GetRequest::Context(context_type, context_id))
         }
         _ => unreachable!(),
     };
@@ -55,15 +72,17 @@ fn handle_get_subcommand(args: &ArgMatches, socket: UdpSocket) -> Result<()> {
 fn handle_playback_subcommand(args: &ArgMatches, socket: UdpSocket) -> Result<()> {
     let (cmd, args) = args.subcommand().expect("playback subcommand is required");
     let command = match cmd {
-        "start" => {
-            let context_id = args
-                .get_one::<String>("context_id")
-                .expect("context_id is required");
-            let context_type = args
-                .get_one::<ContextType>("context_type")
-                .expect("context_type is required");
-            Command::Start(context_id.to_owned(), context_type.to_owned())
-        }
+        "start" => match args.subcommand() {
+            Some(("context", args)) => {
+                let context_type = args
+                    .get_one::<ContextType>("context_type")
+                    .expect("context_type is required")
+                    .to_owned();
+                let context_id = get_context_id(args)?;
+                Command::Start(context_type, context_id)
+            }
+            _ => unimplemented!(),
+        },
         "play-pause" => Command::PlayPause,
         "next" => Command::Next,
         "previous" => Command::Previous,
