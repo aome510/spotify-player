@@ -23,11 +23,22 @@ pub async fn start_socket(client: Client, state: SharedState) -> Result<()> {
     let mut buf = [0; 4096];
     loop {
         match socket.recv_from(&mut buf).await {
-            Err(err) => tracing::warn!("failed to receive from the socket: {err}"),
+            Err(err) => tracing::warn!("Failed to receive from the socket: {err}"),
             Ok((n_bytes, dest_addr)) => {
-                let request: Request = serde_json::from_slice(&buf[0..n_bytes])?;
-                tracing::info!("Handle socket request: {request:?}");
-                handle_socket_request(&client, &state, request, &socket, dest_addr).await?;
+                let req_buf = &buf[0..n_bytes];
+                let request: Request = match serde_json::from_slice(req_buf) {
+                    Ok(v) => v,
+                    Err(err) => {
+                        tracing::error!("Cannot deserialize the socket request: {err}");
+                        continue;
+                    }
+                };
+                tracing::info!("Handling socket request: {request:?}...");
+                if let Err(err) =
+                    handle_socket_request(&client, &state, request, &socket, dest_addr).await
+                {
+                    tracing::error!("Failed to handle socket request: {err}");
+                }
             }
         }
     }

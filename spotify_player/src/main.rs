@@ -18,7 +18,7 @@ use anyhow::{Context, Result};
 use std::io::Write;
 
 fn init_app_cli_arguments() -> clap::ArgMatches {
-    clap::Command::new("spotify_player")
+    let cmd = clap::Command::new("spotify_player")
         .version("0.13.1")
         .about("A command driven spotify player")
         .author("Thang Pham <phamducthang1234@gmail>")
@@ -46,8 +46,18 @@ fn init_app_cli_arguments() -> clap::ArgMatches {
                 .value_name("FOLDER")
                 .help("Path to the application's cache folder (default: $HOME/.cache/spotify-player)")
                 .next_line_help(true)
-        )
-        .get_matches()
+        );
+
+    #[cfg(feature = "daemon")]
+    let cmd = cmd.arg(
+        clap::Arg::new("daemon")
+            .short('d')
+            .long("daemon")
+            .action(clap::ArgAction::SetTrue)
+            .help("Running the application as a daemon"),
+    );
+
+    cmd.get_matches()
 }
 
 async fn init_spotify(
@@ -61,7 +71,6 @@ async fn init_spotify(
     if state.app_config.enable_streaming {
         client
             .new_streaming_connection(streaming_sub.clone(), client_pub.clone())
-            .await
             .context("failed to create a new streaming connection")?;
     }
 
@@ -117,10 +126,8 @@ fn init_logging(cache_folder: &std::path::Path) -> Result<()> {
     Ok(())
 }
 
-async fn start_app(state: state::SharedState, cache_folder: std::path::PathBuf) -> Result<()> {
-    // initialize the application's log
-    init_logging(&cache_folder).context("failed to initialize application's logging")?;
-
+#[tokio::main]
+async fn start_app(state: state::SharedState, is_daemon: bool) -> Result<()> {
     // client channels
     let (client_pub, client_sub) = flume::unbounded::<event::ClientRequest>();
     // streaming channels, which are used to notify a shutdown to running streaming connections
@@ -144,22 +151,22 @@ async fn start_app(state: state::SharedState, cache_folder: std::path::PathBuf) 
     client.init_token().await?;
 
     // initialize Spotify-related stuff
-    init_spotify(&client_pub, &streaming_sub, &client, &state)
-        .await
-        .context("failed to initialize the spotify client")?;
-
-    #[cfg(feature = "image")]
-    {
-        // initialize viuer supports for kitty and iterm2
-        viuer::get_kitty_support();
-        viuer::is_iterm_supported();
-        #[cfg(feature = "sixel")]
-        viuer::is_sixel_supported();
+    if is_daemon {
+        #[cfg(feature = "streaming")]
+        client
+            .new_streaming_connection(streaming_sub.clone(), client_pub.clone())
+            .context("failed to create a new streaming connection")?;
+    } else {
+        init_spotify(&client_pub, &streaming_sub, &client, &state)
+            .await
+            .context("failed to initialize the spotify client")?;
     }
 
     // Spawn application's tasks
+    let mut tasks = Vec::new();
 
-    tokio::task::spawn({
+    // client socket task (for handling CLI commands)
+    tasks.push(tokio::task::spawn({
         let client = client.clone();
         let state = state.clone();
         async move {
@@ -167,10 +174,10 @@ async fn start_app(state: state::SharedState, cache_folder: std::path::PathBuf) 
                 tracing::warn!("Failed to run client socket for CLI: {err}");
             }
         }
-    });
+    }));
 
     // client event handler task
-    tokio::task::spawn({
+    tasks.push(tokio::task::spawn({
         let state = state.clone();
         let client_pub = client_pub.clone();
         async move {
@@ -184,32 +191,35 @@ async fn start_app(state: state::SharedState, cache_folder: std::path::PathBuf) 
             )
             .await;
         }
-    });
-
-    // terminal event handler task
-    tokio::task::spawn_blocking({
-        let client_pub = client_pub.clone();
-        let state = state.clone();
-        move || {
-            event::start_event_handler(state, client_pub);
-        }
-    });
+    }));
 
     // player event watcher task
-    tokio::task::spawn({
+    tasks.push(tokio::task::spawn({
         let state = state.clone();
         let client_pub = client_pub.clone();
         async move {
             client::start_player_event_watchers(state, client_pub).await;
         }
-    });
+    }));
 
-    // application UI task
-    #[allow(unused_variables)]
-    let ui_task = tokio::task::spawn_blocking({
-        let state = state.clone();
-        move || ui::run(state)
-    });
+    if !is_daemon {
+        // spawn tasks needed for running the application UI
+
+        // terminal event handler task
+        tokio::task::spawn_blocking({
+            let client_pub = client_pub.clone();
+            let state = state.clone();
+            move || {
+                event::start_event_handler(state, client_pub);
+            }
+        });
+
+        // application UI task
+        tokio::task::spawn_blocking({
+            let state = state.clone();
+            move || ui::run(state)
+        });
+    }
 
     #[cfg(feature = "media-control")]
     if state.app_config.enable_media_control {
@@ -225,6 +235,7 @@ async fn start_app(state: state::SharedState, cache_folder: std::path::PathBuf) 
             }
         });
 
+        // the winit's event loop must be run in the main thread
         #[cfg(any(target_os = "macos", target_os = "windows"))]
         {
             // Start an event loop that listens to OS window events.
@@ -238,15 +249,15 @@ async fn start_app(state: state::SharedState, cache_folder: std::path::PathBuf) 
             });
         }
     }
-    #[allow(unreachable_code)]
-    {
-        ui_task.await??;
-        Ok(())
+
+    for task in tasks {
+        task.await?;
     }
+
+    Ok(())
 }
 
-#[tokio::main]
-async fn main() -> Result<()> {
+fn main() -> Result<()> {
     // parse command line arguments
     let args = init_app_cli_arguments();
 
@@ -272,10 +283,13 @@ async fn main() -> Result<()> {
         std::fs::create_dir_all(&cache_image_folder)?;
     }
 
+    // initialize the application's log
+    init_logging(&cache_folder).context("failed to initialize application's logging")?;
+
     // initialize the application state
     let state = {
         let mut state = state::State {
-            cache_folder: cache_folder.clone(),
+            cache_folder,
             ..state::State::default()
         };
         // parse config options from the config files into application's state
@@ -284,7 +298,32 @@ async fn main() -> Result<()> {
     };
 
     match args.subcommand() {
-        None => start_app(state, cache_folder).await,
+        None => {
+            #[cfg(feature = "daemon")]
+            {
+                let is_daemon = args.get_flag("daemon");
+                if is_daemon {
+                    if cfg!(any(target_os = "macos", target_os = "windows"))
+                        && cfg!(feature = "media-control")
+                    {
+                        eprintln!("Running the application as a daemon on windows/macos with `media-control` feature enabled is not supported!");
+                        std::process::exit(1);
+                    }
+                    if cfg!(not(feature = "streaming")) {
+                        eprintln!("`streaming` feature must be enabled to run the application as a daemon!");
+                        std::process::exit(1);
+                    }
+
+                    tracing::info!("Starting the application as a daemon...");
+                    let daemonize = daemonize::Daemonize::new();
+                    daemonize.start()?;
+                }
+                start_app(state, is_daemon)
+            }
+
+            #[cfg(not(feature = "daemon"))]
+            start_app(state, false)
+        }
         Some((cmd, args)) => cli::handle_cli_subcommand(cmd, args, state.app_config.client_port),
     }
 }
