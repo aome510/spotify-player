@@ -204,8 +204,20 @@ async fn handle_playback_request(client: &Client, command: Command) -> Result<()
 
             client.spotify.repeat(next_repeat_state, device_id).await?;
         }
-        Command::Volume(percent) => {
-            client.spotify.volume(percent, device_id).await?;
+        Command::Volume(percent, offset) => {
+            let percent = if offset {
+                std::cmp::max(
+                    0,
+                    (playback.device.volume_percent.unwrap_or_default() as i8) + percent,
+                )
+            } else {
+                percent
+            };
+
+            client
+                .spotify
+                .volume(percent.try_into()?, device_id)
+                .await?;
         }
         Command::Seek(position_offset_ms) => {
             let progress = match playback.progress {

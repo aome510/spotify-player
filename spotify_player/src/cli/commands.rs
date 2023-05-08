@@ -51,8 +51,14 @@ pub fn init_playback_subcommand() -> Command {
                 .about("Set the volume percentage")
                 .arg(
                     Arg::new("percent")
-                        .value_parser(value_parser!(u8).range(0..=100))
+                        .value_parser(value_parser!(i8).range(-100..=100))
                         .required(true),
+                )
+                .arg(
+                    Arg::new("offset")
+                        .long("offset")
+                        .action(clap::ArgAction::SetTrue)
+                        .help("Modify the volume percent by an offset"),
                 ),
         )
         .subcommand(

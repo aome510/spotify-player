@@ -41,7 +41,7 @@ pub enum Command {
     Previous,
     Shuffle,
     Repeat,
-    Volume(u8),
+    Volume(i8, bool),
     Seek(i64),
 }
 
