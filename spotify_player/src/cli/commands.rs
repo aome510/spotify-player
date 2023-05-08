@@ -1,4 +1,4 @@
-use clap::{builder::EnumValueParser, value_parser, Arg, Command};
+use clap::{builder::EnumValueParser, value_parser, Arg, ArgGroup, Command};
 
 use super::{ContextType, Key};
 
@@ -13,27 +13,38 @@ pub fn init_get_subcommand() -> Command {
                     .required(true),
             ),
         )
-        .subcommand(
-            Command::new("context")
-                .about("Get context data")
-                .arg(
-                    Arg::new("context_type")
-                        .value_parser(EnumValueParser::<ContextType>::new())
-                        .required(true),
-                )
-                .arg(Arg::new("context_id").required(true)),
-        )
+        .subcommand(add_context_args(
+            Command::new("context").about("Get context data"),
+        ))
 }
 
 fn init_playback_start_subcommand() -> Command {
     Command::new("start")
-        .about("Start a context playback")
-        .arg(
-            Arg::new("context_type")
-                .value_parser(EnumValueParser::<ContextType>::new())
-                .required(true),
-        )
-        .arg(Arg::new("context_id").required(true))
+        .about("Start a new playback")
+        .subcommand(add_context_args(
+            Command::new("context").about("Start a context playback"),
+        ))
+}
+
+fn add_context_args(cmd: Command) -> Command {
+    cmd.arg(
+        Arg::new("context_type")
+            .value_parser(EnumValueParser::<ContextType>::new())
+            .required(true),
+    )
+    .arg(
+        Arg::new("id")
+            .long("id")
+            .short('i')
+            .help("id of the context item"),
+    )
+    .arg(
+        Arg::new("name")
+            .long("name")
+            .short('n')
+            .help("name of the context item"),
+    )
+    .group(ArgGroup::new("context").args(["id", "name"]).required(true))
 }
 
 pub fn init_playback_subcommand() -> Command {
