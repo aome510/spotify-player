@@ -62,6 +62,15 @@ async fn send_data(data: Vec<u8>, socket: &UdpSocket, dest_addr: SocketAddr) -> 
     Ok(())
 }
 
+async fn send_err_message(
+    err: anyhow::Error,
+    socket: &UdpSocket,
+    dest_addr: SocketAddr,
+) -> Result<()> {
+    let msg = format!("Bad request: {err}");
+    send_data(msg.into_bytes(), socket, dest_addr).await
+}
+
 async fn handle_socket_request(
     client: &Client,
     state: &SharedState,
@@ -70,13 +79,15 @@ async fn handle_socket_request(
     dest_addr: SocketAddr,
 ) -> Result<()> {
     match request {
-        Request::Get(GetRequest::Key(key)) => {
-            let result = handle_get_key_request(client, key).await?;
-            send_data(result, socket, dest_addr).await?;
-        }
+        Request::Get(GetRequest::Key(key)) => match handle_get_key_request(client, key).await {
+            Ok(result) => send_data(result, socket, dest_addr).await?,
+            Err(err) => send_err_message(err, socket, dest_addr).await?,
+        },
         Request::Get(GetRequest::Context(context_type, context_id)) => {
-            let result = handle_get_context_request(client, context_type, context_id).await?;
-            send_data(result, socket, dest_addr).await?;
+            match handle_get_context_request(client, context_type, context_id).await {
+                Ok(result) => send_data(result, socket, dest_addr).await?,
+                Err(err) => send_err_message(err, socket, dest_addr).await?,
+            }
         }
         Request::Playback(command) => {
             handle_playback_request(client, command).await?;
@@ -144,7 +155,11 @@ async fn get_spotify_id_from_context_id(
 
                 match results {
                     SearchResult::Playlists(page) => {
-                        ContextSid::Playlist(page.items[0].id.to_owned())
+                        if !page.items.is_empty() {
+                            ContextSid::Playlist(page.items[0].id.to_owned())
+                        } else {
+                            anyhow::bail!("Cannot find playlist with name='{name}'");
+                        }
                     }
                     _ => unreachable!(),
                 }
@@ -159,7 +174,11 @@ async fn get_spotify_id_from_context_id(
 
                 match results {
                     SearchResult::Albums(page) => {
-                        ContextSid::Album(page.items[0].id.to_owned().unwrap())
+                        if !page.items.is_empty() && page.items[0].id.is_some() {
+                            ContextSid::Album(page.items[0].id.to_owned().unwrap())
+                        } else {
+                            anyhow::bail!("Cannot find album with name='{name}'");
+                        }
                     }
                     _ => unreachable!(),
                 }
@@ -173,7 +192,13 @@ async fn get_spotify_id_from_context_id(
                     .await?;
 
                 match results {
-                    SearchResult::Artists(page) => ContextSid::Artist(page.items[0].id.to_owned()),
+                    SearchResult::Artists(page) => {
+                        if !page.items.is_empty() {
+                            ContextSid::Artist(page.items[0].id.to_owned())
+                        } else {
+                            anyhow::bail!("Cannot find artist with name='{name}'");
+                        }
+                    }
                     _ => unreachable!(),
                 }
             }
