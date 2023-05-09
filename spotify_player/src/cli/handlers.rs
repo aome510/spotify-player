@@ -21,11 +21,11 @@ fn receive_data(socket: &UdpSocket) -> Result<Vec<u8>> {
 }
 
 fn get_context_id(args: &ArgMatches) -> Result<IdOrName> {
-    let id = args
-        .get_one::<Id>("context")
-        .expect("context group is required");
-
-    match id.as_str() {
+    match args
+        .get_one::<Id>("id_or_name")
+        .expect("id_or_name group is required")
+        .as_str()
+    {
         "name" => Ok(IdOrName::Name(
             args.get_one::<String>("name")
                 .expect("name should be specified")
@@ -120,11 +120,11 @@ fn handle_playback_subcommand(args: &ArgMatches, socket: UdpSocket) -> Result<()
 }
 
 fn handle_connect_subcommand(args: &ArgMatches, socket: UdpSocket) -> Result<()> {
-    let id = args
-        .get_one::<Id>("device")
-        .expect("device group is required");
-
-    let data = match id.as_str() {
+    let data = match args
+        .get_one::<Id>("id_or_name")
+        .expect("id_or_name group is required")
+        .as_str()
+    {
         "name" => IdOrName::Name(
             args.get_one::<String>("name")
                 .expect("name should be specified")
