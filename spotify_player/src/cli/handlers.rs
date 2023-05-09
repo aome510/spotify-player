@@ -20,18 +20,18 @@ fn receive_data(socket: &UdpSocket) -> Result<Vec<u8>> {
     Ok(data)
 }
 
-fn get_context_id(args: &ArgMatches) -> Result<ContextId> {
+fn get_context_id(args: &ArgMatches) -> Result<IdOrName> {
     let id = args
         .get_one::<Id>("context")
         .expect("context group is required");
 
     match id.as_str() {
-        "name" => Ok(ContextId::Name(
+        "name" => Ok(IdOrName::Name(
             args.get_one::<String>("name")
                 .expect("name should be specified")
                 .to_owned(),
         )),
-        "id" => Ok(ContextId::Id(
+        "id" => Ok(IdOrName::Id(
             args.get_one::<String>("id")
                 .expect("id should be specified")
                 .to_owned(),

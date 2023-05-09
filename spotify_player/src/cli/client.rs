@@ -141,14 +141,14 @@ async fn handle_get_key_request(client: &Client, key: Key) -> Result<Vec<u8>> {
 async fn get_spotify_id_from_context_id(
     client: &Client,
     context_type: ContextType,
-    context_id: ContextId,
+    context_id: IdOrName,
 ) -> Result<ContextSid> {
     // For `cli::ContextId::Name`, we search for the first item matching the name and return its spotify id
 
     let sid = match context_type {
         ContextType::Playlist => match context_id {
-            ContextId::Id(id) => ContextSid::Playlist(PlaylistId::from_id(id)?),
-            ContextId::Name(name) => {
+            IdOrName::Id(id) => ContextSid::Playlist(PlaylistId::from_id(id)?),
+            IdOrName::Name(name) => {
                 let results = client
                     .search_specific_type(&name, SearchType::Playlist)
                     .await?;
@@ -166,8 +166,8 @@ async fn get_spotify_id_from_context_id(
             }
         },
         ContextType::Album => match context_id {
-            ContextId::Id(id) => ContextSid::Album(AlbumId::from_id(id)?),
-            ContextId::Name(name) => {
+            IdOrName::Id(id) => ContextSid::Album(AlbumId::from_id(id)?),
+            IdOrName::Name(name) => {
                 let results = client
                     .search_specific_type(&name, SearchType::Album)
                     .await?;
@@ -185,8 +185,8 @@ async fn get_spotify_id_from_context_id(
             }
         },
         ContextType::Artist => match context_id {
-            ContextId::Id(id) => ContextSid::Artist(ArtistId::from_id(id)?),
-            ContextId::Name(name) => {
+            IdOrName::Id(id) => ContextSid::Artist(ArtistId::from_id(id)?),
+            IdOrName::Name(name) => {
                 let results = client
                     .search_specific_type(&name, SearchType::Artist)
                     .await?;
@@ -211,7 +211,7 @@ async fn get_spotify_id_from_context_id(
 async fn handle_get_context_request(
     client: &Client,
     context_type: ContextType,
-    context_id: ContextId,
+    context_id: IdOrName,
 ) -> Result<Vec<u8>> {
     let sid = get_spotify_id_from_context_id(client, context_type, context_id).await?;
     let context = match sid {
