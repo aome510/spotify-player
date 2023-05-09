@@ -110,6 +110,31 @@ fn handle_playback_subcommand(args: &ArgMatches, socket: UdpSocket) -> Result<()
     Ok(())
 }
 
+fn handle_connect_subcommand(args: &ArgMatches, socket: UdpSocket) -> Result<()> {
+    let id = args
+        .get_one::<Id>("device")
+        .expect("device group is required");
+
+    let data = match id.as_str() {
+        "name" => IdOrName::Name(
+            args.get_one::<String>("name")
+                .expect("name should be specified")
+                .to_owned(),
+        ),
+        "id" => IdOrName::Id(
+            args.get_one::<String>("id")
+                .expect("id should be specified")
+                .to_owned(),
+        ),
+        id => anyhow::bail!("unknown id: {id}"),
+    };
+
+    let request = Request::Connect(data);
+    socket.send(&serde_json::to_vec(&request)?)?;
+
+    Ok(())
+}
+
 pub fn handle_cli_subcommand(cmd: &str, args: &ArgMatches, client_port: u16) -> Result<()> {
     let socket = UdpSocket::bind("127.0.0.1:0")?;
     socket.connect(("127.0.0.1", client_port))?;
@@ -117,6 +142,7 @@ pub fn handle_cli_subcommand(cmd: &str, args: &ArgMatches, client_port: u16) -> 
     match cmd {
         "get" => handle_get_subcommand(args, socket),
         "playback" => handle_playback_subcommand(args, socket),
+        "connect" => handle_connect_subcommand(args, socket),
         _ => unreachable!(),
     }
 }

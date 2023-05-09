@@ -5,7 +5,7 @@ mod handlers;
 use serde::{Deserialize, Serialize};
 
 pub use client::start_socket;
-pub use commands::{init_get_subcommand, init_playback_subcommand};
+pub use commands::{init_connect_subcommand, init_get_subcommand, init_playback_subcommand};
 pub use handlers::handle_cli_subcommand;
 
 #[derive(Debug, Serialize, Deserialize, clap::ValueEnum, Clone)]
@@ -55,4 +55,5 @@ pub enum Command {
 pub enum Request {
     Get(GetRequest),
     Playback(Command),
+    Connect(IdOrName),
 }

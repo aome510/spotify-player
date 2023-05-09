@@ -2,6 +2,19 @@ use clap::{builder::EnumValueParser, value_parser, Arg, ArgAction, ArgGroup, Com
 
 use super::{ContextType, Key};
 
+pub fn init_connect_subcommand() -> Command {
+    Command::new("connect")
+        .about("Connect to a Spotify device")
+        .arg(Arg::new("id").long("id").short('i').help("device's id"))
+        .arg(
+            Arg::new("name")
+                .long("name")
+                .short('n')
+                .help("device's name"),
+        )
+        .group(ArgGroup::new("device").args(["id", "name"]).required(true))
+}
+
 pub fn init_get_subcommand() -> Command {
     Command::new("get")
         .about("Get spotify data")
@@ -39,17 +52,12 @@ fn add_context_args(cmd: Command) -> Command {
             .value_parser(EnumValueParser::<ContextType>::new())
             .required(true),
     )
-    .arg(
-        Arg::new("id")
-            .long("id")
-            .short('i')
-            .help("id of the context item"),
-    )
+    .arg(Arg::new("id").long("id").short('i').help("context's id"))
     .arg(
         Arg::new("name")
             .long("name")
             .short('n')
-            .help("name of the context item"),
+            .help("context's name"),
     )
     .group(ArgGroup::new("context").args(["id", "name"]).required(true))
 }

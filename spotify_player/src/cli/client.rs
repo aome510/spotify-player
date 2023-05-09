@@ -93,6 +93,26 @@ async fn handle_socket_request(
             handle_playback_request(client, command).await?;
             client.update_playback(state);
         }
+        Request::Connect(data) => {
+            let id = match data {
+                IdOrName::Id(id) => id,
+                IdOrName::Name(name) => {
+                    let devices = client.spotify.device().await?;
+                    match devices
+                        .into_iter()
+                        .find(|d| d.name == name)
+                        .and_then(|d| d.id)
+                    {
+                        Some(id) => id,
+                        None => {
+                            anyhow::bail!("No device with name={name} found");
+                        }
+                    }
+                }
+            };
+
+            client.spotify.transfer_playback(&id, None).await?;
+        }
     }
     Ok(())
 }
