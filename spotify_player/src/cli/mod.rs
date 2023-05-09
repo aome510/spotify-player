@@ -41,7 +41,8 @@ pub enum IdOrName {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Command {
-    Start(ContextType, IdOrName),
+    StartContext(ContextType, IdOrName),
+    StartLikedTracks { limit: usize, random: bool },
     PlayPause,
     Next,
     Previous,

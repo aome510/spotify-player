@@ -1,6 +1,7 @@
 use std::net::SocketAddr;
 
 use anyhow::Result;
+use rand::seq::SliceRandom;
 use tokio::net::UdpSocket;
 
 use rspotify::{model::*, prelude::OAuthClient};
@@ -257,7 +258,28 @@ async fn handle_playback_request(client: &Client, command: Command) -> Result<()
     let device_id = playback.device.id.as_deref();
 
     match command {
-        Command::Start(context_type, context_id) => {
+        Command::StartLikedTracks { limit, random } => {
+            let mut tracks = client.current_user_saved_tracks().await?;
+
+            if random {
+                let mut rng = rand::thread_rng();
+                tracks.shuffle(&mut rng)
+            }
+
+            let ids = if tracks.len() > limit {
+                tracks[0..limit].iter()
+            } else {
+                tracks.iter()
+            }
+            .map(|t| PlayableId::from(t.id.to_owned()))
+            .collect::<Vec<_>>();
+
+            client
+                .spotify
+                .start_uris_playback(ids, device_id, None, None)
+                .await?;
+        }
+        Command::StartContext(context_type, context_id) => {
             let sid = get_spotify_id_from_context_id(client, context_type, context_id).await?;
             let context_id = match sid {
                 ContextSid::Playlist(id) => PlayContextId::Playlist(id),

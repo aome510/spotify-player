@@ -79,9 +79,18 @@ fn handle_playback_subcommand(args: &ArgMatches, socket: UdpSocket) -> Result<()
                     .expect("context_type is required")
                     .to_owned();
                 let context_id = get_context_id(args)?;
-                Command::Start(context_type, context_id)
+                Command::StartContext(context_type, context_id)
             }
-            _ => unimplemented!(),
+            Some(("liked", args)) => {
+                let limit = *args
+                    .get_one::<usize>("limit")
+                    .expect("limit should have a default value");
+                let random = args.get_flag("random");
+                Command::StartLikedTracks { limit, random }
+            }
+            _ => {
+                anyhow::bail!("invalid command!");
+            }
         },
         "play-pause" => Command::PlayPause,
         "next" => Command::Next,

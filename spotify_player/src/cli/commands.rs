@@ -34,15 +34,30 @@ pub fn init_get_subcommand() -> Command {
 fn init_playback_start_subcommand() -> Command {
     Command::new("start")
         .about("Start a new playback")
+        .subcommand_required(true)
         .subcommand(add_context_args(
             Command::new("context").about("Start a context playback"),
         ))
-        .arg(
-            Arg::new("liked")
-                .short('l')
-                .long("liked")
-                .action(ArgAction::SetTrue)
-                .help("Play liked songs playlist"),
+        .subcommand(
+            Command::new("liked")
+                .about("Start liked tracks playback")
+                .arg(
+                    Arg::new("limit")
+                        .short('l')
+                        .long("limit")
+                        .default_value("200")
+                        .value_parser(value_parser!(usize))
+                        .help("The limit for number of tracks to play"),
+                )
+                .arg(
+                    Arg::new("random")
+                        .short('r')
+                        .long("random")
+                        .action(ArgAction::SetTrue)
+                        .help(
+                            "Randomly pick the tracks instead of picking tracks from the beginning",
+                        ),
+                ),
         )
 }
 
