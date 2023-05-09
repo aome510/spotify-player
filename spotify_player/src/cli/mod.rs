@@ -27,6 +27,14 @@ pub enum ContextType {
     Artist,
 }
 
+#[derive(Debug, Serialize, Deserialize, clap::ValueEnum, Clone)]
+pub enum PlayableType {
+    Playlist,
+    Album,
+    Artist,
+    Track,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub enum GetRequest {
     Key(Key),
@@ -43,6 +51,7 @@ pub enum IdOrName {
 pub enum Command {
     StartContext(ContextType, IdOrName),
     StartLikedTracks { limit: usize, random: bool },
+    StartRadio(PlayableType, IdOrName),
     PlayPause,
     Next,
     Previous,

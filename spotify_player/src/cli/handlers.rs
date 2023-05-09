@@ -20,7 +20,7 @@ fn receive_data(socket: &UdpSocket) -> Result<Vec<u8>> {
     Ok(data)
 }
 
-fn get_context_id(args: &ArgMatches) -> Result<IdOrName> {
+fn get_id_or_name(args: &ArgMatches) -> Result<IdOrName> {
     match args
         .get_one::<Id>("id_or_name")
         .expect("id_or_name group is required")
@@ -56,8 +56,8 @@ fn handle_get_subcommand(args: &ArgMatches, socket: UdpSocket) -> Result<()> {
                 .get_one::<ContextType>("context_type")
                 .expect("context_type is required")
                 .to_owned();
-            let context_id = get_context_id(args)?;
-            Request::Get(GetRequest::Context(context_type, context_id))
+            let id_or_name = get_id_or_name(args)?;
+            Request::Get(GetRequest::Context(context_type, id_or_name))
         }
         _ => unreachable!(),
     };
@@ -78,8 +78,8 @@ fn handle_playback_subcommand(args: &ArgMatches, socket: UdpSocket) -> Result<()
                     .get_one::<ContextType>("context_type")
                     .expect("context_type is required")
                     .to_owned();
-                let context_id = get_context_id(args)?;
-                Command::StartContext(context_type, context_id)
+                let id_or_name = get_id_or_name(args)?;
+                Command::StartContext(context_type, id_or_name)
             }
             Some(("liked", args)) => {
                 let limit = *args
@@ -87,6 +87,14 @@ fn handle_playback_subcommand(args: &ArgMatches, socket: UdpSocket) -> Result<()
                     .expect("limit should have a default value");
                 let random = args.get_flag("random");
                 Command::StartLikedTracks { limit, random }
+            }
+            Some(("radio", args)) => {
+                let playable_type = args
+                    .get_one::<PlayableType>("playable_type")
+                    .expect("context_type is required")
+                    .to_owned();
+                let id_or_name = get_id_or_name(args)?;
+                Command::StartRadio(playable_type, id_or_name)
             }
             _ => {
                 anyhow::bail!("invalid command!");
@@ -120,25 +128,9 @@ fn handle_playback_subcommand(args: &ArgMatches, socket: UdpSocket) -> Result<()
 }
 
 fn handle_connect_subcommand(args: &ArgMatches, socket: UdpSocket) -> Result<()> {
-    let data = match args
-        .get_one::<Id>("id_or_name")
-        .expect("id_or_name group is required")
-        .as_str()
-    {
-        "name" => IdOrName::Name(
-            args.get_one::<String>("name")
-                .expect("name should be specified")
-                .to_owned(),
-        ),
-        "id" => IdOrName::Id(
-            args.get_one::<String>("id")
-                .expect("id should be specified")
-                .to_owned(),
-        ),
-        id => anyhow::bail!("unknown id: {id}"),
-    };
+    let id_or_name = get_id_or_name(args)?;
 
-    let request = Request::Connect(data);
+    let request = Request::Connect(id_or_name);
     socket.send(&serde_json::to_vec(&request)?)?;
 
     Ok(())
