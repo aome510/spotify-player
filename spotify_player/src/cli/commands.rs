@@ -26,6 +26,8 @@ fn init_playback_start_subcommand() -> Command {
         ))
         .arg(
             Arg::new("liked")
+                .short('l')
+                .long("liked")
                 .action(ArgAction::SetTrue)
                 .help("Play liked songs playlist"),
         )

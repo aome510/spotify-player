@@ -231,14 +231,25 @@ async fn handle_playback_request(client: &Client, command: Command) -> Result<()
     {
         Some(playback) => playback,
         None => {
-            eprintln!("No playback found!");
-            std::process::exit(1);
+            anyhow::bail!("No playback found!");
         }
     };
     let device_id = playback.device.id.as_deref();
 
     match command {
         Command::Start(context_type, context_id) => {
+            let sid = get_spotify_id_from_context_id(client, context_type, context_id).await?;
+            let context_id = match sid {
+                ContextSid::Playlist(id) => PlayContextId::Playlist(id),
+                ContextSid::Album(id) => PlayContextId::Album(id),
+                ContextSid::Artist(id) => PlayContextId::Artist(id),
+            };
+
+            client
+                .spotify
+                .start_context_playback(context_id, device_id, None, None)
+                .await?;
+
             // for some reasons, when starting a new playback, the integrated `spotify-player`
             // client doesn't respect the initial shuffle state, so we need to manually update the state
             client
@@ -293,8 +304,7 @@ async fn handle_playback_request(client: &Client, command: Command) -> Result<()
             let progress = match playback.progress {
                 Some(progress) => progress,
                 None => {
-                    eprintln!("Playback has no progress!");
-                    std::process::exit(1);
+                    anyhow::bail!("Playback has no progress!");
                 }
             };
             client
