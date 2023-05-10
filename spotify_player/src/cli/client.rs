@@ -350,8 +350,8 @@ async fn handle_playback_request(client: &Client, command: Command) -> Result<()
 
             client.spotify.repeat(next_repeat_state, device_id).await?;
         }
-        Command::Volume(percent, offset) => {
-            let percent = if offset {
+        Command::Volume { percent, is_offset } => {
+            let percent = if is_offset {
                 std::cmp::max(
                     0,
                     (playback.device.volume_percent.unwrap_or_default() as i8) + percent,

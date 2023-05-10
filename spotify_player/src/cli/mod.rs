@@ -66,7 +66,7 @@ pub enum Command {
     Previous,
     Shuffle,
     Repeat,
-    Volume(i8, bool),
+    Volume { percent: i8, is_offset: bool },
     Seek(i64),
     Like { unlike: bool },
 }

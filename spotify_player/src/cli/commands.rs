@@ -99,7 +99,7 @@ pub fn init_playback_subcommand() -> Command {
                     Arg::new("offset")
                         .long("offset")
                         .action(clap::ArgAction::SetTrue)
-                        .help("Modify the volume percent by an offset"),
+                        .help("Increase the volume percent by an offset"),
                 ),
         )
         .subcommand(

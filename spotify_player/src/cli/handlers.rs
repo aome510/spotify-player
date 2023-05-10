@@ -110,7 +110,10 @@ fn handle_playback_subcommand(args: &ArgMatches, socket: UdpSocket) -> Result<()
                 .get_one::<i8>("percent")
                 .expect("percent arg is required");
             let offset = args.get_flag("offset");
-            Command::Volume(*percent, offset)
+            Command::Volume {
+                percent: *percent,
+                is_offset: offset,
+            }
         }
         "seek" => {
             let position_offset_ms = args
