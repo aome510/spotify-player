@@ -1,6 +1,6 @@
 use super::*;
 use anyhow::Result;
-use clap::ArgMatches;
+use clap::{ArgMatches, Id};
 use std::net::UdpSocket;
 
 fn receive_data(socket: &UdpSocket) -> Result<Vec<u8>> {
@@ -20,6 +20,26 @@ fn receive_data(socket: &UdpSocket) -> Result<Vec<u8>> {
     Ok(data)
 }
 
+fn get_id_or_name(args: &ArgMatches) -> Result<IdOrName> {
+    match args
+        .get_one::<Id>("id_or_name")
+        .expect("id_or_name group is required")
+        .as_str()
+    {
+        "name" => Ok(IdOrName::Name(
+            args.get_one::<String>("name")
+                .expect("name should be specified")
+                .to_owned(),
+        )),
+        "id" => Ok(IdOrName::Id(
+            args.get_one::<String>("id")
+                .expect("id should be specified")
+                .to_owned(),
+        )),
+        id => anyhow::bail!("unknown id: {id}"),
+    }
+}
+
 fn handle_get_subcommand(args: &ArgMatches, socket: UdpSocket) -> Result<()> {
     let (cmd, args) = args.subcommand().expect("playback subcommand is required");
 
@@ -32,15 +52,12 @@ fn handle_get_subcommand(args: &ArgMatches, socket: UdpSocket) -> Result<()> {
             Request::Get(GetRequest::Key(key))
         }
         "context" => {
-            let context_id = args
-                .get_one::<String>("context_id")
-                .expect("context_id is required")
-                .to_owned();
             let context_type = args
                 .get_one::<ContextType>("context_type")
                 .expect("context_type is required")
                 .to_owned();
-            Request::Get(GetRequest::Context(context_id, context_type))
+            let id_or_name = get_id_or_name(args)?;
+            Request::Get(GetRequest::Context(context_type, id_or_name))
         }
         _ => unreachable!(),
     };
@@ -55,15 +72,34 @@ fn handle_get_subcommand(args: &ArgMatches, socket: UdpSocket) -> Result<()> {
 fn handle_playback_subcommand(args: &ArgMatches, socket: UdpSocket) -> Result<()> {
     let (cmd, args) = args.subcommand().expect("playback subcommand is required");
     let command = match cmd {
-        "start" => {
-            let context_id = args
-                .get_one::<String>("context_id")
-                .expect("context_id is required");
-            let context_type = args
-                .get_one::<ContextType>("context_type")
-                .expect("context_type is required");
-            Command::Start(context_id.to_owned(), context_type.to_owned())
-        }
+        "start" => match args.subcommand() {
+            Some(("context", args)) => {
+                let context_type = args
+                    .get_one::<ContextType>("context_type")
+                    .expect("context_type is required")
+                    .to_owned();
+                let id_or_name = get_id_or_name(args)?;
+                Command::StartContext(context_type, id_or_name)
+            }
+            Some(("liked", args)) => {
+                let limit = *args
+                    .get_one::<usize>("limit")
+                    .expect("limit should have a default value");
+                let random = args.get_flag("random");
+                Command::StartLikedTracks { limit, random }
+            }
+            Some(("radio", args)) => {
+                let item_type = args
+                    .get_one::<ItemType>("item_type")
+                    .expect("item_type is required")
+                    .to_owned();
+                let id_or_name = get_id_or_name(args)?;
+                Command::StartRadio(item_type, id_or_name)
+            }
+            _ => {
+                anyhow::bail!("invalid command!");
+            }
+        },
         "play-pause" => Command::PlayPause,
         "next" => Command::Next,
         "previous" => Command::Previous,
@@ -71,9 +107,13 @@ fn handle_playback_subcommand(args: &ArgMatches, socket: UdpSocket) -> Result<()
         "repeat" => Command::Repeat,
         "volume" => {
             let percent = args
-                .get_one::<u8>("percent")
+                .get_one::<i8>("percent")
                 .expect("percent arg is required");
-            Command::Volume(*percent)
+            let offset = args.get_flag("offset");
+            Command::Volume {
+                percent: *percent,
+                is_offset: offset,
+            }
         }
         "seek" => {
             let position_offset_ms = args
@@ -81,10 +121,23 @@ fn handle_playback_subcommand(args: &ArgMatches, socket: UdpSocket) -> Result<()
                 .expect("position_offset_ms is required");
             Command::Seek(*position_offset_ms)
         }
+        "like" => {
+            let unlike = args.get_flag("unlike");
+            Command::Like { unlike }
+        }
         _ => unreachable!(),
     };
 
     let request = Request::Playback(command);
+    socket.send(&serde_json::to_vec(&request)?)?;
+
+    Ok(())
+}
+
+fn handle_connect_subcommand(args: &ArgMatches, socket: UdpSocket) -> Result<()> {
+    let id_or_name = get_id_or_name(args)?;
+
+    let request = Request::Connect(id_or_name);
     socket.send(&serde_json::to_vec(&request)?)?;
 
     Ok(())
@@ -97,6 +150,7 @@ pub fn handle_cli_subcommand(cmd: &str, args: &ArgMatches, client_port: u16) -> 
     match cmd {
         "get" => handle_get_subcommand(args, socket),
         "playback" => handle_playback_subcommand(args, socket),
+        "connect" => handle_connect_subcommand(args, socket),
         _ => unreachable!(),
     }
 }

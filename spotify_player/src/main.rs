@@ -24,6 +24,7 @@ fn init_app_cli_arguments() -> clap::ArgMatches {
         .author("Thang Pham <phamducthang1234@gmail>")
         .subcommand(cli::init_get_subcommand())
         .subcommand(cli::init_playback_subcommand())
+        .subcommand(cli::init_connect_subcommand())
         .arg(
             clap::Arg::new("theme")
                 .short('t')
