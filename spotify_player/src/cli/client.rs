@@ -14,14 +14,6 @@ use crate::{
 
 use super::*;
 
-/// Spotify item's ID
-enum ItemId {
-    Playlist(PlaylistId<'static>),
-    Artist(ArtistId<'static>),
-    Album(AlbumId<'static>),
-    Track(TrackId<'static>),
-}
-
 pub async fn start_socket(client: Client, state: SharedState) -> Result<()> {
     let port = state.app_config.client_port;
     tracing::info!("Starting a client socket at 127.0.0.1:{port}");
@@ -275,6 +267,20 @@ async fn handle_playback_request(client: &Client, command: Command) -> Result<()
     let device_id = playback.device.id.as_deref();
 
     match command {
+        Command::StartRadio(item_type, id_or_name) => {
+            let sid = get_spotify_id(client, item_type, id_or_name).await?;
+            let tracks = client.radio_tracks(sid.uri()).await?;
+
+            client
+                .spotify
+                .start_uris_playback(
+                    tracks.into_iter().map(|t| PlayableId::from(t.id)),
+                    device_id,
+                    None,
+                    None,
+                )
+                .await?;
+        }
         Command::StartLikedTracks { limit, random } => {
             let mut tracks = client.current_user_saved_tracks().await?;
 
@@ -288,8 +294,7 @@ async fn handle_playback_request(client: &Client, command: Command) -> Result<()
             } else {
                 tracks.iter()
             }
-            .map(|t| PlayableId::from(t.id.to_owned()))
-            .collect::<Vec<_>>();
+            .map(|t| PlayableId::from(t.id.to_owned()));
 
             client
                 .spotify
@@ -375,7 +380,6 @@ async fn handle_playback_request(client: &Client, command: Command) -> Result<()
                 )
                 .await?;
         }
-        Command::StartRadio(item_type, id_or_name) => todo!(),
     }
 
     Ok(())

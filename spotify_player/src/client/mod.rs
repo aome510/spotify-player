@@ -632,7 +632,7 @@ impl Client {
         Ok(())
     }
 
-    async fn radio_tracks(&self, seed_uri: String) -> Result<Vec<Track>> {
+    pub async fn radio_tracks(&self, seed_uri: String) -> Result<Vec<Track>> {
         let session = self.spotify.session()?;
 
         // Get an autoplay URI from the seed URI.

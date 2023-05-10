@@ -2,6 +2,7 @@ mod client;
 mod commands;
 mod handlers;
 
+use rspotify::model::*;
 use serde::{Deserialize, Serialize};
 
 pub use client::start_socket;
@@ -33,6 +34,14 @@ pub enum ItemType {
     Album,
     Artist,
     Track,
+}
+
+/// Spotify item's ID
+enum ItemId {
+    Playlist(PlaylistId<'static>),
+    Artist(ArtistId<'static>),
+    Album(AlbumId<'static>),
+    Track(TrackId<'static>),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -74,6 +83,17 @@ impl From<ContextType> for ItemType {
             ContextType::Playlist => Self::Playlist,
             ContextType::Album => Self::Album,
             ContextType::Artist => Self::Artist,
+        }
+    }
+}
+
+impl ItemId {
+    pub fn uri(&self) -> String {
+        match self {
+            ItemId::Playlist(id) => id.uri(),
+            ItemId::Artist(id) => id.uri(),
+            ItemId::Album(id) => id.uri(),
+            ItemId::Track(id) => id.uri(),
         }
     }
 }
