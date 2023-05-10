@@ -28,7 +28,7 @@ pub enum ContextType {
 }
 
 #[derive(Debug, Serialize, Deserialize, clap::ValueEnum, Clone)]
-pub enum PlayableType {
+pub enum ItemType {
     Playlist,
     Album,
     Artist,
@@ -51,7 +51,7 @@ pub enum IdOrName {
 pub enum Command {
     StartContext(ContextType, IdOrName),
     StartLikedTracks { limit: usize, random: bool },
-    StartRadio(PlayableType, IdOrName),
+    StartRadio(ItemType, IdOrName),
     PlayPause,
     Next,
     Previous,
@@ -66,4 +66,14 @@ pub enum Request {
     Get(GetRequest),
     Playback(Command),
     Connect(IdOrName),
+}
+
+impl From<ContextType> for ItemType {
+    fn from(value: ContextType) -> Self {
+        match value {
+            ContextType::Playlist => Self::Playlist,
+            ContextType::Album => Self::Album,
+            ContextType::Artist => Self::Artist,
+        }
+    }
 }

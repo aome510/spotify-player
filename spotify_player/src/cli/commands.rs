@@ -1,6 +1,6 @@
 use clap::{builder::EnumValueParser, value_parser, Arg, ArgAction, ArgGroup, Command};
 
-use super::{ContextType, Key, PlayableType};
+use super::{ContextType, ItemType, Key};
 
 pub fn init_connect_subcommand() -> Command {
     add_id_or_name_group(Command::new("connect").about("Connect to a Spotify device"))
@@ -51,9 +51,9 @@ fn init_playback_start_subcommand() -> Command {
                 ),
         )
         .subcommand(add_id_or_name_group(
-            Command::new("radio").about("Start a radio playback").arg(
-                Arg::new("playable_type").value_parser(EnumValueParser::<PlayableType>::new()),
-            ),
+            Command::new("radio")
+                .about("Start a radio playback")
+                .arg(Arg::new("item_type").value_parser(EnumValueParser::<ItemType>::new())),
         ))
 }
 

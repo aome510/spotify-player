@@ -89,12 +89,12 @@ fn handle_playback_subcommand(args: &ArgMatches, socket: UdpSocket) -> Result<()
                 Command::StartLikedTracks { limit, random }
             }
             Some(("radio", args)) => {
-                let playable_type = args
-                    .get_one::<PlayableType>("playable_type")
-                    .expect("context_type is required")
+                let item_type = args
+                    .get_one::<ItemType>("item_type")
+                    .expect("item_type is required")
                     .to_owned();
                 let id_or_name = get_id_or_name(args)?;
-                Command::StartRadio(playable_type, id_or_name)
+                Command::StartRadio(item_type, id_or_name)
             }
             _ => {
                 anyhow::bail!("invalid command!");

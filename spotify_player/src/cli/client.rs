@@ -14,11 +14,12 @@ use crate::{
 
 use super::*;
 
-/// Context's spotify ID
-enum ContextSid {
+/// Spotify item's ID
+enum ItemId {
     Playlist(PlaylistId<'static>),
     Artist(ArtistId<'static>),
     Album(AlbumId<'static>),
+    Track(TrackId<'static>),
 }
 
 pub async fn start_socket(client: Client, state: SharedState) -> Result<()> {
@@ -158,17 +159,13 @@ async fn handle_get_key_request(client: &Client, key: Key) -> Result<Vec<u8>> {
     })
 }
 
-/// Get a context's Spotify ID from its `cli::ContextId` representation
-async fn get_spotify_id_from_context_id(
-    client: &Client,
-    context_type: ContextType,
-    context_id: IdOrName,
-) -> Result<ContextSid> {
+/// Get a Spotify item's ID from its `IdOrName` representation
+async fn get_spotify_id(client: &Client, typ: ItemType, id_or_name: IdOrName) -> Result<ItemId> {
     // For `cli::ContextId::Name`, we search for the first item matching the name and return its spotify id
 
-    let sid = match context_type {
-        ContextType::Playlist => match context_id {
-            IdOrName::Id(id) => ContextSid::Playlist(PlaylistId::from_id(id)?),
+    let sid = match typ {
+        ItemType::Playlist => match id_or_name {
+            IdOrName::Id(id) => ItemId::Playlist(PlaylistId::from_id(id)?),
             IdOrName::Name(name) => {
                 let results = client
                     .search_specific_type(&name, SearchType::Playlist)
@@ -177,7 +174,7 @@ async fn get_spotify_id_from_context_id(
                 match results {
                     SearchResult::Playlists(page) => {
                         if !page.items.is_empty() {
-                            ContextSid::Playlist(page.items[0].id.to_owned())
+                            ItemId::Playlist(page.items[0].id.to_owned())
                         } else {
                             anyhow::bail!("Cannot find playlist with name='{name}'");
                         }
@@ -186,8 +183,8 @@ async fn get_spotify_id_from_context_id(
                 }
             }
         },
-        ContextType::Album => match context_id {
-            IdOrName::Id(id) => ContextSid::Album(AlbumId::from_id(id)?),
+        ItemType::Album => match id_or_name {
+            IdOrName::Id(id) => ItemId::Album(AlbumId::from_id(id)?),
             IdOrName::Name(name) => {
                 let results = client
                     .search_specific_type(&name, SearchType::Album)
@@ -196,7 +193,7 @@ async fn get_spotify_id_from_context_id(
                 match results {
                     SearchResult::Albums(page) => {
                         if !page.items.is_empty() && page.items[0].id.is_some() {
-                            ContextSid::Album(page.items[0].id.to_owned().unwrap())
+                            ItemId::Album(page.items[0].id.to_owned().unwrap())
                         } else {
                             anyhow::bail!("Cannot find album with name='{name}'");
                         }
@@ -205,8 +202,8 @@ async fn get_spotify_id_from_context_id(
                 }
             }
         },
-        ContextType::Artist => match context_id {
-            IdOrName::Id(id) => ContextSid::Artist(ArtistId::from_id(id)?),
+        ItemType::Artist => match id_or_name {
+            IdOrName::Id(id) => ItemId::Artist(ArtistId::from_id(id)?),
             IdOrName::Name(name) => {
                 let results = client
                     .search_specific_type(&name, SearchType::Artist)
@@ -215,9 +212,28 @@ async fn get_spotify_id_from_context_id(
                 match results {
                     SearchResult::Artists(page) => {
                         if !page.items.is_empty() {
-                            ContextSid::Artist(page.items[0].id.to_owned())
+                            ItemId::Artist(page.items[0].id.to_owned())
                         } else {
                             anyhow::bail!("Cannot find artist with name='{name}'");
+                        }
+                    }
+                    _ => unreachable!(),
+                }
+            }
+        },
+        ItemType::Track => match id_or_name {
+            IdOrName::Id(id) => ItemId::Track(TrackId::from_id(id)?),
+            IdOrName::Name(name) => {
+                let results = client
+                    .search_specific_type(&name, SearchType::Track)
+                    .await?;
+
+                match results {
+                    SearchResult::Tracks(page) => {
+                        if !page.items.is_empty() && page.items[0].id.is_some() {
+                            ItemId::Track(page.items[0].id.to_owned().unwrap())
+                        } else {
+                            anyhow::bail!("Cannot find track with name='{name}'");
                         }
                     }
                     _ => unreachable!(),
@@ -234,11 +250,12 @@ async fn handle_get_context_request(
     context_type: ContextType,
     context_id: IdOrName,
 ) -> Result<Vec<u8>> {
-    let sid = get_spotify_id_from_context_id(client, context_type, context_id).await?;
+    let sid = get_spotify_id(client, context_type.into(), context_id).await?;
     let context = match sid {
-        ContextSid::Playlist(id) => client.playlist_context(id).await?,
-        ContextSid::Album(id) => client.album_context(id).await?,
-        ContextSid::Artist(id) => client.artist_context(id).await?,
+        ItemId::Playlist(id) => client.playlist_context(id).await?,
+        ItemId::Album(id) => client.album_context(id).await?,
+        ItemId::Artist(id) => client.artist_context(id).await?,
+        _ => unreachable!(),
     };
 
     Ok(serde_json::to_vec(&context)?)
@@ -280,11 +297,12 @@ async fn handle_playback_request(client: &Client, command: Command) -> Result<()
                 .await?;
         }
         Command::StartContext(context_type, context_id) => {
-            let sid = get_spotify_id_from_context_id(client, context_type, context_id).await?;
+            let sid = get_spotify_id(client, context_type.into(), context_id).await?;
             let context_id = match sid {
-                ContextSid::Playlist(id) => PlayContextId::Playlist(id),
-                ContextSid::Album(id) => PlayContextId::Album(id),
-                ContextSid::Artist(id) => PlayContextId::Artist(id),
+                ItemId::Playlist(id) => PlayContextId::Playlist(id),
+                ItemId::Album(id) => PlayContextId::Album(id),
+                ItemId::Artist(id) => PlayContextId::Artist(id),
+                _ => unreachable!(),
             };
 
             client
@@ -357,6 +375,7 @@ async fn handle_playback_request(client: &Client, command: Command) -> Result<()
                 )
                 .await?;
         }
+        Command::StartRadio(item_type, id_or_name) => todo!(),
     }
 
     Ok(())
