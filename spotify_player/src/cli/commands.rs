@@ -31,7 +31,7 @@ fn init_playback_start_subcommand() -> Command {
         ))
         .subcommand(
             Command::new("liked")
-                .about("Start liked tracks playback")
+                .about("Start a liked tracks playback")
                 .arg(
                     Arg::new("limit")
                         .short('l')
