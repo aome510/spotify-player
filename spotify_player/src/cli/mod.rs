@@ -68,6 +68,7 @@ pub enum Command {
     Repeat,
     Volume(i8, bool),
     Seek(i64),
+    Like { unlike: bool },
 }
 
 #[derive(Debug, Serialize, Deserialize)]

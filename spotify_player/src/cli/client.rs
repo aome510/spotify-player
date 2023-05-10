@@ -380,6 +380,20 @@ async fn handle_playback_request(client: &Client, command: Command) -> Result<()
                 )
                 .await?;
         }
+        Command::Like { unlike } => {
+            if let Some(PlayableItem::Track(t)) = playback.item {
+                if let Some(id) = t.id {
+                    if unlike {
+                        client
+                            .spotify
+                            .current_user_saved_tracks_delete([id])
+                            .await?;
+                    } else {
+                        client.spotify.current_user_saved_tracks_add([id]).await?;
+                    }
+                }
+            }
+        }
     }
 
     Ok(())

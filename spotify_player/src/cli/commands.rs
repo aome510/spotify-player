@@ -111,4 +111,15 @@ pub fn init_playback_subcommand() -> Command {
                         .required(true),
                 ),
         )
+        .subcommand(
+            Command::new("like")
+                .about("Like the currently playing track")
+                .arg(
+                    Arg::new("unlike")
+                        .long("unlike")
+                        .short('u')
+                        .action(ArgAction::SetTrue)
+                        .help("Unlike the currently playing track"),
+                ),
+        )
 }

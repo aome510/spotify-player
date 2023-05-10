@@ -118,6 +118,10 @@ fn handle_playback_subcommand(args: &ArgMatches, socket: UdpSocket) -> Result<()
                 .expect("position_offset_ms is required");
             Command::Seek(*position_offset_ms)
         }
+        "like" => {
+            let unlike = args.get_flag("unlike");
+            Command::Like { unlike }
+        }
         _ => unreachable!(),
     };
 
