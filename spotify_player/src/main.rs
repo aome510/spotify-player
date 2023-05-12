@@ -145,7 +145,7 @@ async fn start_app(state: state::SharedState, is_daemon: bool) -> Result<()> {
 
     // create a spotify API client
     let client = client::Client::new(
-        session.clone(),
+        session,
         state.app_config.device.clone(),
         state.app_config.client_id.clone(),
     );

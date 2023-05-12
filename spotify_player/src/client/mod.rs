@@ -55,7 +55,12 @@ impl Client {
         let session = self.spotify.session()?.clone();
         let device = self.spotify.device.clone();
         let device_id = session.device_id().to_string();
-        streaming::new_connection(session, device, client_pub, streaming_sub)?;
+        tokio::task::spawn_blocking(|| {
+            if let Err(err) = streaming::new_connection(session, device, client_pub, streaming_sub)
+            {
+                tracing::warn!("Failed to create a new streaming connection: {err}");
+            }
+        });
 
         Ok(device_id)
     }
