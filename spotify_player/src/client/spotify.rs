@@ -21,7 +21,7 @@ pub struct Spotify {
     pub client_id: String,
     pub http: HttpClient,
     pub device: config::DeviceConfig,
-    pub session: Option<Session>,
+    session: Arc<tokio::sync::Mutex<Option<Session>>>,
 }
 
 impl fmt::Debug for Spotify {
@@ -48,16 +48,18 @@ impl Spotify {
             },
             token: Arc::new(Mutex::new(None)),
             http: HttpClient::default(),
-            session: Some(session),
+            session: Arc::new(tokio::sync::Mutex::new(Some(session))),
             device,
             client_id,
         }
     }
 
-    pub fn session(&self) -> Result<&Session> {
+    pub async fn session(&self) -> Session {
         self.session
-            .as_ref()
-            .ok_or_else(|| anyhow::anyhow!("Client has no Spotify session"))
+            .lock()
+            .await
+            .clone()
+            .expect("Spotify client's session should not be empty")
     }
 
     /// gets a Spotify access token.
@@ -103,14 +105,8 @@ impl BaseClient for Spotify {
     }
 
     async fn refetch_token(&self) -> ClientResult<Option<Token>> {
-        let session = match self.session {
-            None => {
-                tracing::warn!("There is no session inside the spotify client");
-                return Ok(None);
-            }
-            Some(ref session) => session,
-        };
-        match token::get_token(session, &self.client_id).await {
+        let session = self.session().await;
+        match token::get_token(&session, &self.client_id).await {
             Ok(token) => Ok(Some(token)),
             Err(err) => {
                 tracing::error!("Failed to get access token: {err:#}");

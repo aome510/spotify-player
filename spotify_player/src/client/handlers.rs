@@ -21,17 +21,14 @@ pub async fn start_client_handler(
             ClientRequest::NewStreamingConnection => {
                 // send a notification to current streaming subcriber channels to shutdown all running connections
                 streaming_pub.send(()).unwrap_or_default();
-                match client.new_streaming_connection(streaming_sub.clone(), client_pub.clone()) {
-                    Err(err) => tracing::error!(
-                        "Encountered an error during creating a new streaming connection: {err:#}",
-                    ),
-                    Ok(id) => {
-                        // By default, when `NewStreamingConnection` is called, the app also connects to the new device
-                        client_pub
-                            .send(ClientRequest::ConnectDevice(Some(id)))
-                            .unwrap_or_default();
-                    }
-                }
+                let device_id = client
+                    .new_streaming_connection(streaming_sub.clone(), client_pub.clone())
+                    .await;
+
+                // By default, when `NewStreamingConnection` is called, the app also connects to the new device
+                client_pub
+                    .send(ClientRequest::ConnectDevice(Some(device_id)))
+                    .unwrap_or_default();
             }
             _ => {
                 let state = state.clone();

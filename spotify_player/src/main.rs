@@ -72,7 +72,7 @@ async fn init_spotify(
     if state.app_config.enable_streaming {
         client
             .new_streaming_connection(streaming_sub.clone(), client_pub.clone())
-            .context("failed to create a new streaming connection")?;
+            .await;
     }
 
     // initialize the playback state
@@ -156,7 +156,7 @@ async fn start_app(state: state::SharedState, is_daemon: bool) -> Result<()> {
         #[cfg(feature = "streaming")]
         client
             .new_streaming_connection(streaming_sub.clone(), client_pub.clone())
-            .context("failed to create a new streaming connection")?;
+            .await;
     } else {
         init_spotify(&client_pub, &streaming_sub, &client, &state)
             .await

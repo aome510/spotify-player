@@ -47,12 +47,12 @@ impl Client {
 
     /// creates a new streaming connection
     #[cfg(feature = "streaming")]
-    pub fn new_streaming_connection(
+    pub async fn new_streaming_connection(
         &self,
         streaming_sub: flume::Receiver<()>,
         client_pub: flume::Sender<ClientRequest>,
-    ) -> Result<String> {
-        let session = self.spotify.session()?.clone();
+    ) -> String {
+        let session = self.spotify.session().await;
         let device = self.spotify.device.clone();
         let device_id = session.device_id().to_string();
         tokio::task::spawn_blocking(|| {
@@ -62,7 +62,7 @@ impl Client {
             }
         });
 
-        Ok(device_id)
+        device_id
     }
 
     /// initializes the authentication token inside the Spotify client
@@ -441,12 +441,11 @@ impl Client {
         //    access to user's active devices.
         #[cfg(feature = "streaming")]
         {
-            if let Some(ref session) = self.spotify.session {
-                devices.push((
-                    self.spotify.device.name.clone(),
-                    session.device_id().to_string(),
-                ))
-            }
+            let session = self.spotify.session().await;
+            devices.push((
+                self.spotify.device.name.clone(),
+                session.device_id().to_string(),
+            ));
         }
 
         if devices.is_empty() {
@@ -638,7 +637,7 @@ impl Client {
     }
 
     pub async fn radio_tracks(&self, seed_uri: String) -> Result<Vec<Track>> {
-        let session = self.spotify.session()?;
+        let session = self.spotify.session().await;
 
         // Get an autoplay URI from the seed URI.
         // The return URI is a Spotify station's URI
