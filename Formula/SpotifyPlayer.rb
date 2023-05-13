@@ -1,4 +1,4 @@
-class SpotifyPlayer < Formula
+class Spotifyplayer < Formula
   desc "Cross-platform Text Expander written in Rust"
   homepage "https://github.com/aome510/spotify-player"
   url "https://github.com/slano-ls/homebrew-spotify-player/releases/latest/download/spotify-player-mac.tar.gz"
@@ -6,6 +6,6 @@ class SpotifyPlayer < Formula
   version "0.1.0"
 
   def install
-    bin.install "SpotifyPlayer"
+    bin.install "Spotifyplayer"
   end
 end
