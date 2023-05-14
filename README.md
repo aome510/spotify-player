@@ -86,6 +86,13 @@ A Spotify Premium account is **required**.
 
 - [Rust and cargo](https://www.rust-lang.org/tools/install) as the build dependencies
 
+###### Homebrew (MacOS)
+
+```
+$ brew tap slano-ls/homebrew-spotify-player
+$ brew install spotifyplayer
+```
+
 ##### Linux
 
 - [Rust and cargo](https://www.rust-lang.org/tools/install) as the build dependencies
