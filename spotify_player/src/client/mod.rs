@@ -159,51 +159,6 @@ impl Client {
         let timer = std::time::SystemTime::now();
 
         match request {
-            ClientRequest::ConnectDevice(id) => {
-                // Device connection can fail when the specified device hasn't shown up
-                // in the Spotify's server, which makes the `TransferPlayback` request fail
-                // with an error like "404 Not Found".
-                // This is why we need a retry mechanism to make multiple connect requests.
-                let delay = std::time::Duration::from_secs(1);
-
-                for _ in 0..10 {
-                    tokio::time::sleep(delay).await;
-
-                    let id = match &id {
-                        Some(id) => Some(Cow::Borrowed(id)),
-                        None => {
-                            // no device id is specified, try to connect to an available device
-                            match self
-                                .find_available_device(&state.app_config.default_device)
-                                .await
-                            {
-                                Ok(Some(id)) => Some(Cow::Owned(id)),
-                                Ok(None) => {
-                                    tracing::info!("No device found.");
-                                    None
-                                }
-                                Err(err) => {
-                                    tracing::error!("Failed to find an available device: {err}");
-                                    None
-                                }
-                            }
-                        }
-                    };
-
-                    if let Some(id) = id {
-                        tracing::info!("Trying to connect to device (id={id})");
-                        if let Err(err) = self.spotify.transfer_playback(&id, Some(false)).await {
-                            tracing::warn!("Connection failed (device_id={id}): {err}");
-                        } else {
-                            tracing::info!("Connection succeeded (device_id={id})!");
-                            // upon new connection, reset the buffered playback
-                            state.player.write().buffered_playback = None;
-                            self.update_playback(state);
-                            break;
-                        }
-                    }
-                }
-            }
             ClientRequest::GetBrowseCategories => {
                 let categories = self.browse_categories().await?;
                 state.data.write().browse.categories = categories;
@@ -375,6 +330,52 @@ impl Client {
         );
 
         Ok(())
+    }
+
+    pub async fn connect_device(&self, state: &SharedState, id: Option<String>) {
+        // Device connection can fail when the specified device hasn't shown up
+        // in the Spotify's server, which makes the `TransferPlayback` request fail
+        // with an error like "404 Not Found".
+        // This is why we need a retry mechanism to make multiple connect requests.
+        let delay = std::time::Duration::from_secs(1);
+
+        for _ in 0..10 {
+            tokio::time::sleep(delay).await;
+
+            let id = match &id {
+                Some(id) => Some(Cow::Borrowed(id)),
+                None => {
+                    // no device id is specified, try to connect to an available device
+                    match self
+                        .find_available_device(&state.app_config.default_device)
+                        .await
+                    {
+                        Ok(Some(id)) => Some(Cow::Owned(id)),
+                        Ok(None) => {
+                            tracing::info!("No device found.");
+                            None
+                        }
+                        Err(err) => {
+                            tracing::error!("Failed to find an available device: {err}");
+                            None
+                        }
+                    }
+                }
+            };
+
+            if let Some(id) = id {
+                tracing::info!("Trying to connect to device (id={id})");
+                if let Err(err) = self.spotify.transfer_playback(&id, Some(false)).await {
+                    tracing::warn!("Connection failed (device_id={id}): {err}");
+                } else {
+                    tracing::info!("Connection succeeded (device_id={id})!");
+                    // upon new connection, reset the buffered playback
+                    state.player.write().buffered_playback = None;
+                    self.update_playback(state);
+                    break;
+                }
+            }
+        }
     }
 
     pub fn update_playback(&self, state: &SharedState) {
