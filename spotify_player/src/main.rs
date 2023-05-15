@@ -63,16 +63,13 @@ fn init_app_cli_arguments() -> clap::ArgMatches {
 
 async fn init_spotify(
     client_pub: &flume::Sender<event::ClientRequest>,
-    streaming_sub: &flume::Receiver<()>,
     client: &client::Client,
     state: &state::SharedState,
 ) -> Result<()> {
     // if `streaming` feature is enabled, create a new streaming connection
     #[cfg(feature = "streaming")]
     if state.app_config.enable_streaming {
-        client
-            .new_streaming_connection(streaming_sub.clone(), client_pub.clone())
-            .await;
+        client.new_streaming_connection().await;
     }
 
     // initialize the playback state
@@ -80,7 +77,7 @@ async fn init_spotify(
 
     if state.player.read().playback.is_none() {
         tracing::info!("No playback found on startup, trying to connect to an available device...");
-        client_pub.send(event::ClientRequest::ConnectDevice(None))?;
+        client.connect_device(state, None).await;
     }
 
     // request user data
@@ -131,9 +128,6 @@ fn init_logging(cache_folder: &std::path::Path) -> Result<()> {
 async fn start_app(state: state::SharedState, is_daemon: bool) -> Result<()> {
     // client channels
     let (client_pub, client_sub) = flume::unbounded::<event::ClientRequest>();
-    // streaming channels, which are used to notify a shutdown to running streaming connections
-    // upon creating a new connection.
-    let (streaming_pub, streaming_sub) = flume::unbounded::<()>();
 
     // create a librespot session
     let session = auth::new_session(
@@ -148,17 +142,16 @@ async fn start_app(state: state::SharedState, is_daemon: bool) -> Result<()> {
         session,
         state.app_config.device.clone(),
         state.app_config.client_id.clone(),
+        client_pub.clone(),
     );
     client.init_token().await?;
 
     // initialize Spotify-related stuff
     if is_daemon {
         #[cfg(feature = "streaming")]
-        client
-            .new_streaming_connection(streaming_sub.clone(), client_pub.clone())
-            .await;
+        client.new_streaming_connection().await;
     } else {
-        init_spotify(&client_pub, &streaming_sub, &client, &state)
+        init_spotify(&client_pub, &client, &state)
             .await
             .context("failed to initialize the spotify client")?;
     }
@@ -180,17 +173,8 @@ async fn start_app(state: state::SharedState, is_daemon: bool) -> Result<()> {
     // client event handler task
     tasks.push(tokio::task::spawn({
         let state = state.clone();
-        let client_pub = client_pub.clone();
         async move {
-            client::start_client_handler(
-                state,
-                client,
-                client_pub,
-                client_sub,
-                streaming_pub,
-                streaming_sub,
-            )
-            .await;
+            client::start_client_handler(state, client, client_sub).await;
         }
     }));
 

@@ -21,7 +21,7 @@ pub struct Spotify {
     pub client_id: String,
     pub http: HttpClient,
     pub device: config::DeviceConfig,
-    session: Arc<tokio::sync::Mutex<Option<Session>>>,
+    pub session: Arc<tokio::sync::Mutex<Option<Session>>>,
 }
 
 impl fmt::Debug for Spotify {

@@ -10,6 +10,7 @@ use crate::{
 
 use anyhow::Context as _;
 use anyhow::Result;
+use librespot_connect::spirc::Spirc;
 use librespot_core::session::Session;
 use rspotify::prelude::*;
 
@@ -24,6 +25,9 @@ use serde::Deserialize;
 pub struct Client {
     pub spotify: Arc<spotify::Spotify>,
     http: reqwest::Client,
+    client_pub: flume::Sender<ClientRequest>,
+    #[cfg(feature = "streaming")]
+    stream_conn: Arc<Mutex<Option<Spirc>>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -38,29 +42,35 @@ struct TrackData {
 
 impl Client {
     /// creates a new client
-    pub fn new(session: Session, device: config::DeviceConfig, client_id: String) -> Self {
+    pub fn new(
+        session: Session,
+        device: config::DeviceConfig,
+        client_id: String,
+        client_pub: flume::Sender<ClientRequest>,
+    ) -> Self {
         Self {
             spotify: Arc::new(spotify::Spotify::new(session, device, client_id)),
             http: reqwest::Client::new(),
+            #[cfg(feature = "streaming")]
+            stream_conn: Arc::new(Mutex::new(None)),
+            client_pub,
         }
     }
 
     /// creates a new streaming connection
     #[cfg(feature = "streaming")]
-    pub async fn new_streaming_connection(
-        &self,
-        streaming_sub: flume::Receiver<()>,
-        client_pub: flume::Sender<ClientRequest>,
-    ) -> String {
+    pub async fn new_streaming_connection(&self) -> String {
         let session = self.spotify.session().await;
         let device = self.spotify.device.clone();
         let device_id = session.device_id().to_string();
-        tokio::task::spawn_blocking(|| {
-            if let Err(err) = streaming::new_connection(session, device, client_pub, streaming_sub)
-            {
-                tracing::warn!("Failed to create a new streaming connection: {err}");
-            }
-        });
+        let new_conn = streaming::new_connection(session, device, self.client_pub.clone());
+
+        let mut stream_conn = self.stream_conn.lock();
+        // shutdown old streaming connection and replace it with a new connection
+        if let Some(conn) = stream_conn.as_ref() {
+            conn.shutdown();
+        }
+        *stream_conn = Some(new_conn);
 
         device_id
     }
@@ -187,7 +197,9 @@ impl Client {
             }
             #[cfg(feature = "streaming")]
             ClientRequest::NewStreamingConnection => {
-                anyhow::bail!("request should be already handled by the caller function");
+                let device_id = self.new_streaming_connection().await;
+                // upon creating a new streaming connection, connect to it
+                self.connect_device(state, Some(device_id)).await;
             }
             ClientRequest::GetCurrentUser => {
                 let user = self.spotify.current_user().await?;

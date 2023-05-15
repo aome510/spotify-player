@@ -10,40 +10,42 @@ use crate::utils::map_join;
 pub async fn start_client_handler(
     state: SharedState,
     client: super::Client,
-    client_pub: flume::Sender<ClientRequest>,
     client_sub: flume::Receiver<ClientRequest>,
-    streaming_pub: flume::Sender<()>,
-    streaming_sub: flume::Receiver<()>,
 ) {
     while let Ok(request) = client_sub.recv_async().await {
-        match request {
-            #[cfg(feature = "streaming")]
-            ClientRequest::NewStreamingConnection => {
-                // send a notification to current streaming subcriber channels to shutdown all running connections
-                streaming_pub.send(()).unwrap_or_default();
-                let device_id = client
-                    .new_streaming_connection(streaming_sub.clone(), client_pub.clone())
-                    .await;
+        if client.spotify.session().await.is_invalid() {
+            tracing::info!("Spotify client's session is invalid, re-creating a new session...");
 
-                // By default, when `NewStreamingConnection` is called, the app also connects to the new device
-                client_pub
-                    .send(ClientRequest::ConnectDevice(Some(device_id)))
-                    .unwrap_or_default();
-            }
-            _ => {
-                let state = state.clone();
-                let client = client.clone();
-                let span = tracing::info_span!("client_request", request = ?request);
-                tokio::task::spawn(
-                    async move {
-                        if let Err(err) = client.handle_request(&state, request).await {
-                            tracing::error!("Failed to handle client request: {err:#}");
-                        }
-                    }
-                    .instrument(span),
-                );
+            match crate::auth::new_session(
+                &state.cache_folder,
+                state.app_config.device.audio_cache,
+                &state.app_config,
+            )
+            .await
+            {
+                Err(err) => {
+                    tracing::error!("Failed to create a new session: {err}!");
+                    continue;
+                }
+                Ok(session) => {
+                    *client.spotify.session.lock().await = Some(session);
+                    tracing::info!("Used a new session for Spotify client.");
+                }
             }
         }
+
+        let state = state.clone();
+        let client = client.clone();
+        let span = tracing::info_span!("client_request", request = ?request);
+
+        tokio::task::spawn(
+            async move {
+                if let Err(err) = client.handle_request(&state, request).await {
+                    tracing::error!("Failed to handle client request: {err:#}");
+                }
+            }
+            .instrument(span),
+        );
     }
 }
 
