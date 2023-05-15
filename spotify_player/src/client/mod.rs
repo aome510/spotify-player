@@ -57,6 +57,26 @@ impl Client {
         }
     }
 
+    pub async fn new_session(&self, state: &SharedState) -> Result<()> {
+        let session = crate::auth::new_session(
+            &state.cache_folder,
+            state.app_config.device.audio_cache,
+            &state.app_config,
+        )
+        .await?;
+        *self.spotify.session.lock().await = Some(session);
+        tracing::info!("Used a new session for Spotify client.");
+
+        // upon creating a new session, also create a new streaming connection
+        #[cfg(feature = "streaming")]
+        {
+            self.new_streaming_connection().await;
+            self.client_pub.send(ClientRequest::ConnectDevice(None))?;
+        }
+
+        Ok(())
+    }
+
     /// creates a new streaming connection
     #[cfg(feature = "streaming")]
     pub async fn new_streaming_connection(&self) -> String {

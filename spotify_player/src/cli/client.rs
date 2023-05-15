@@ -70,6 +70,11 @@ async fn handle_socket_request(
     socket: &UdpSocket,
     dest_addr: SocketAddr,
 ) -> Result<()> {
+    if client.spotify.session().await.is_invalid() {
+        tracing::info!("Spotify client's session is invalid, re-creating a new session...");
+        client.new_session(state).await?;
+    }
+
     match request {
         Request::Get(GetRequest::Key(key)) => match handle_get_key_request(client, key).await {
             Ok(result) => send_data(result, socket, dest_addr).await?,

@@ -15,32 +15,9 @@ pub async fn start_client_handler(
     while let Ok(request) = client_sub.recv_async().await {
         if client.spotify.session().await.is_invalid() {
             tracing::info!("Spotify client's session is invalid, re-creating a new session...");
-
-            match crate::auth::new_session(
-                &state.cache_folder,
-                state.app_config.device.audio_cache,
-                &state.app_config,
-            )
-            .await
-            {
-                Err(err) => {
-                    tracing::error!("Failed to create a new session: {err}!");
-                    continue;
-                }
-                Ok(session) => {
-                    *client.spotify.session.lock().await = Some(session);
-                    tracing::info!("Used a new session for Spotify client.");
-
-                    // upon creating a new session, also create a new streaming connection
-                    #[cfg(feature = "streaming")]
-                    {
-                        client.new_streaming_connection().await;
-                        client
-                            .client_pub
-                            .send(ClientRequest::ConnectDevice(None))
-                            .unwrap_or_default();
-                    }
-                }
+            if let Err(err) = client.new_session(&state).await {
+                tracing::error!("Failed to create a new session: {err}");
+                continue;
             }
         }
 
