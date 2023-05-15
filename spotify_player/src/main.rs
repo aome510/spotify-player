@@ -268,13 +268,10 @@ fn main() -> Result<()> {
         std::fs::create_dir_all(&cache_image_folder)?;
     }
 
-    // initialize the application's log
-    init_logging(&cache_folder).context("failed to initialize application's logging")?;
-
     // initialize the application state
     let state = {
         let mut state = state::State {
-            cache_folder,
+            cache_folder: cache_folder.clone(),
             ..state::State::default()
         };
         // parse config options from the config files into application's state
@@ -284,6 +281,9 @@ fn main() -> Result<()> {
 
     match args.subcommand() {
         None => {
+            // initialize the application's log
+            init_logging(&cache_folder).context("failed to initialize application's logging")?;
+
             #[cfg(feature = "daemon")]
             {
                 let is_daemon = args.get_flag("daemon");

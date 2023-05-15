@@ -227,15 +227,8 @@ impl AppConfig {
     // then updates the current configurations accordingly.
     pub fn parse_config_file(&mut self, path: &Path) -> Result<()> {
         let file_path = path.join(APP_CONFIG_FILE);
-        match std::fs::read_to_string(&file_path) {
-            Err(err) => {
-                tracing::warn!(
-                    "Failed to open the application config file (path={file_path:?}): {err:#}. Use the default configurations instead",
-                );
-            }
-            Ok(content) => {
-                self.parse(toml::from_str::<toml::Value>(&content)?)?;
-            }
+        if let Ok(content) = std::fs::read_to_string(file_path) {
+            self.parse(toml::from_str::<toml::Value>(&content)?)?;
         }
         Ok(())
     }
