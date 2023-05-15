@@ -30,6 +30,16 @@ pub async fn start_client_handler(
                 Ok(session) => {
                     *client.spotify.session.lock().await = Some(session);
                     tracing::info!("Used a new session for Spotify client.");
+
+                    // upon creating a new session, also create a new streaming connection
+                    #[cfg(feature = "streaming")]
+                    {
+                        client.new_streaming_connection().await;
+                        client
+                            .client_pub
+                            .send(ClientRequest::ConnectDevice(None))
+                            .unwrap_or_default();
+                    }
                 }
             }
         }

@@ -62,7 +62,7 @@ pub fn new_connection(
         move || backend(None, AudioFormat::default()),
     );
 
-    tokio::task::spawn({
+    let player_event_task = tokio::task::spawn({
         async move {
             while let Some(event) = channel.recv().await {
                 tracing::info!("Got an event from the integrated player: {:?}", event);
@@ -77,7 +77,12 @@ pub fn new_connection(
     tracing::info!("Starting an integrated Spotify player using librespot's spirc protocol");
 
     let (spirc, spirc_task) = Spirc::new(connect_config, session, player, mixer);
-    tokio::task::spawn(spirc_task);
+    tokio::task::spawn(async move {
+        tokio::select! {
+            _ = spirc_task => {},
+            _ = player_event_task => {}
+        }
+    });
 
     spirc
 }

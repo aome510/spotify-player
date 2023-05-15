@@ -23,9 +23,9 @@ use serde::Deserialize;
 /// The application's client
 #[derive(Clone)]
 pub struct Client {
-    pub spotify: Arc<spotify::Spotify>,
     http: reqwest::Client,
-    client_pub: flume::Sender<ClientRequest>,
+    pub spotify: Arc<spotify::Spotify>,
+    pub client_pub: flume::Sender<ClientRequest>,
     #[cfg(feature = "streaming")]
     stream_conn: Arc<Mutex<Option<Spirc>>>,
 }
@@ -194,6 +194,9 @@ impl Client {
 
                     state.data.write().caches.lyrics.put(query, result);
                 }
+            }
+            ClientRequest::ConnectDevice(id) => {
+                self.connect_device(state, id).await;
             }
             #[cfg(feature = "streaming")]
             ClientRequest::NewStreamingConnection => {
