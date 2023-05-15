@@ -51,6 +51,8 @@ async fn send_data(data: Vec<u8>, socket: &UdpSocket, dest_addr: SocketAddr) -> 
     for chunk in data.chunks(4096) {
         socket.send_to(chunk, dest_addr).await?;
     }
+    // send an empty buffer to indicate end of chunk
+    socket.send_to(&[], dest_addr).await?;
     Ok(())
 }
 
