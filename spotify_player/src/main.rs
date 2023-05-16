@@ -63,16 +63,14 @@ fn init_app_cli_arguments() -> clap::ArgMatches {
 
 async fn init_spotify(
     client_pub: &flume::Sender<event::ClientRequest>,
-    streaming_sub: &flume::Receiver<()>,
     client: &client::Client,
     state: &state::SharedState,
+    is_daemon: bool,
 ) -> Result<()> {
     // if `streaming` feature is enabled, create a new streaming connection
     #[cfg(feature = "streaming")]
     if state.app_config.enable_streaming {
-        client
-            .new_streaming_connection(streaming_sub.clone(), client_pub.clone())
-            .context("failed to create a new streaming connection")?;
+        client.new_streaming_connection(state).await;
     }
 
     // initialize the playback state
@@ -84,12 +82,13 @@ async fn init_spotify(
     }
 
     // request user data
-    client_pub.send(event::ClientRequest::GetCurrentUserQueue)?;
-    client_pub.send(event::ClientRequest::GetCurrentUser)?;
-    client_pub.send(event::ClientRequest::GetUserPlaylists)?;
-    client_pub.send(event::ClientRequest::GetUserFollowedArtists)?;
-    client_pub.send(event::ClientRequest::GetUserSavedAlbums)?;
-    client_pub.send(event::ClientRequest::GetUserSavedTracks)?;
+    if !is_daemon {
+        client_pub.send(event::ClientRequest::GetCurrentUser)?;
+        client_pub.send(event::ClientRequest::GetUserPlaylists)?;
+        client_pub.send(event::ClientRequest::GetUserFollowedArtists)?;
+        client_pub.send(event::ClientRequest::GetUserSavedAlbums)?;
+        client_pub.send(event::ClientRequest::GetUserSavedTracks)?;
+    }
 
     Ok(())
 }
@@ -131,37 +130,24 @@ fn init_logging(cache_folder: &std::path::Path) -> Result<()> {
 async fn start_app(state: state::SharedState, is_daemon: bool) -> Result<()> {
     // client channels
     let (client_pub, client_sub) = flume::unbounded::<event::ClientRequest>();
-    // streaming channels, which are used to notify a shutdown to running streaming connections
-    // upon creating a new connection.
-    let (streaming_pub, streaming_sub) = flume::unbounded::<()>();
 
     // create a librespot session
-    let session = auth::new_session(
-        &state.cache_folder,
-        state.app_config.device.audio_cache,
-        &state.app_config,
-    )
-    .await?;
+    let auth_config = auth::AuthConfig::new(&state)?;
+    let session = auth::new_session(&auth_config, true).await?;
 
     // create a spotify API client
     let client = client::Client::new(
-        session.clone(),
-        state.app_config.device.clone(),
+        session,
+        auth_config,
         state.app_config.client_id.clone(),
+        client_pub.clone(),
     );
     client.init_token().await?;
 
     // initialize Spotify-related stuff
-    if is_daemon {
-        #[cfg(feature = "streaming")]
-        client
-            .new_streaming_connection(streaming_sub.clone(), client_pub.clone())
-            .context("failed to create a new streaming connection")?;
-    } else {
-        init_spotify(&client_pub, &streaming_sub, &client, &state)
-            .await
-            .context("failed to initialize the spotify client")?;
-    }
+    init_spotify(&client_pub, &client, &state, is_daemon)
+        .await
+        .context("failed to initialize the spotify data")?;
 
     // Spawn application's tasks
     let mut tasks = Vec::new();
@@ -180,17 +166,8 @@ async fn start_app(state: state::SharedState, is_daemon: bool) -> Result<()> {
     // client event handler task
     tasks.push(tokio::task::spawn({
         let state = state.clone();
-        let client_pub = client_pub.clone();
         async move {
-            client::start_client_handler(
-                state,
-                client,
-                client_pub,
-                client_sub,
-                streaming_pub,
-                streaming_sub,
-            )
-            .await;
+            client::start_client_handler(state, client, client_sub).await;
         }
     }));
 
@@ -284,13 +261,10 @@ fn main() -> Result<()> {
         std::fs::create_dir_all(&cache_image_folder)?;
     }
 
-    // initialize the application's log
-    init_logging(&cache_folder).context("failed to initialize application's logging")?;
-
     // initialize the application state
     let state = {
         let mut state = state::State {
-            cache_folder,
+            cache_folder: cache_folder.clone(),
             ..state::State::default()
         };
         // parse config options from the config files into application's state
@@ -300,6 +274,14 @@ fn main() -> Result<()> {
 
     match args.subcommand() {
         None => {
+            // initialize the application's log
+            init_logging(&cache_folder).context("failed to initialize application's logging")?;
+
+            // log the application's configurations
+            tracing::info!("General configurations: {:?}", state.app_config);
+            tracing::info!("Theme configurations: {:?}", state.theme_config);
+            tracing::info!("Keymap configurations: {:?}", state.keymap_config);
+
             #[cfg(feature = "daemon")]
             {
                 let is_daemon = args.get_flag("daemon");

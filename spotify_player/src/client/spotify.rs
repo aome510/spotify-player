@@ -9,19 +9,19 @@ use rspotify::{
 };
 use std::{fmt, sync::Arc};
 
-use crate::{config, token};
+use crate::{auth::AuthConfig, token};
 
 #[derive(Clone, Default)]
 /// A Spotify client to interact with Spotify API server
 pub struct Spotify {
+    pub auth_config: AuthConfig,
     pub creds: Credentials,
     pub oauth: OAuth,
     pub config: Config,
     pub token: Arc<Mutex<Option<Token>>>,
     pub client_id: String,
     pub http: HttpClient,
-    pub device: config::DeviceConfig,
-    pub session: Option<Session>,
+    pub session: Arc<tokio::sync::Mutex<Option<Session>>>,
 }
 
 impl fmt::Debug for Spotify {
@@ -38,7 +38,7 @@ impl fmt::Debug for Spotify {
 
 impl Spotify {
     /// creates a new Spotify client
-    pub fn new(session: Session, device: config::DeviceConfig, client_id: String) -> Spotify {
+    pub fn new(session: Session, auth_config: AuthConfig, client_id: String) -> Spotify {
         Self {
             creds: Credentials::default(),
             oauth: OAuth::default(),
@@ -48,16 +48,18 @@ impl Spotify {
             },
             token: Arc::new(Mutex::new(None)),
             http: HttpClient::default(),
-            session: Some(session),
-            device,
+            session: Arc::new(tokio::sync::Mutex::new(Some(session))),
+            auth_config,
             client_id,
         }
     }
 
-    pub fn session(&self) -> Result<&Session> {
+    pub async fn session(&self) -> Session {
         self.session
-            .as_ref()
-            .ok_or_else(|| anyhow::anyhow!("Client has no Spotify session"))
+            .lock()
+            .await
+            .clone()
+            .expect("Spotify client's session should not be empty")
     }
 
     /// gets a Spotify access token.
@@ -103,18 +105,19 @@ impl BaseClient for Spotify {
     }
 
     async fn refetch_token(&self) -> ClientResult<Option<Token>> {
-        let session = match self.session {
-            None => {
-                tracing::warn!("There is no session inside the spotify client");
-                return Ok(None);
-            }
-            Some(ref session) => session,
-        };
-        match token::get_token(session, &self.client_id).await {
+        let session = self.session().await;
+        let old_token = self.token.lock().await.unwrap().clone();
+
+        if session.is_invalid() {
+            tracing::error!("Failed to get a new token: invalid session");
+            return Ok(old_token);
+        }
+
+        match token::get_token(&session, &self.client_id).await {
             Ok(token) => Ok(Some(token)),
             Err(err) => {
-                tracing::error!("Failed to get access token: {err:#}");
-                Ok(None)
+                tracing::error!("Failed to get a new token: {err:#}");
+                Ok(old_token)
             }
         }
     }

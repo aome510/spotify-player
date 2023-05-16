@@ -3,13 +3,14 @@ use std::{borrow::Cow, io::Write, sync::Arc};
 #[cfg(feature = "streaming")]
 use crate::streaming;
 use crate::{
-    config,
+    auth::AuthConfig,
     event::{ClientRequest, PlayerRequest},
     state::*,
 };
 
 use anyhow::Context as _;
 use anyhow::Result;
+use librespot_connect::spirc::Spirc;
 use librespot_core::session::Session;
 use rspotify::prelude::*;
 
@@ -22,8 +23,11 @@ use serde::Deserialize;
 /// The application's client
 #[derive(Clone)]
 pub struct Client {
-    pub spotify: Arc<spotify::Spotify>,
     http: reqwest::Client,
+    pub spotify: Arc<spotify::Spotify>,
+    pub client_pub: flume::Sender<ClientRequest>,
+    #[cfg(feature = "streaming")]
+    stream_conn: Arc<Mutex<Option<Spirc>>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -38,26 +42,55 @@ struct TrackData {
 
 impl Client {
     /// creates a new client
-    pub fn new(session: Session, device: config::DeviceConfig, client_id: String) -> Self {
+    pub fn new(
+        session: Session,
+        auth_config: AuthConfig,
+        client_id: String,
+        client_pub: flume::Sender<ClientRequest>,
+    ) -> Self {
         Self {
-            spotify: Arc::new(spotify::Spotify::new(session, device, client_id)),
+            spotify: Arc::new(spotify::Spotify::new(session, auth_config, client_id)),
             http: reqwest::Client::new(),
+            #[cfg(feature = "streaming")]
+            stream_conn: Arc::new(Mutex::new(None)),
+            client_pub,
         }
+    }
+
+    pub async fn new_session(&self, state: &SharedState) -> Result<()> {
+        let session = crate::auth::new_session(&self.spotify.auth_config, false).await?;
+        *self.spotify.session.lock().await = Some(session);
+        tracing::info!("Used a new session for Spotify client.");
+
+        // upon creating a new session, also create a new streaming connection
+        #[cfg(feature = "streaming")]
+        {
+            self.new_streaming_connection(state).await;
+            self.client_pub.send(ClientRequest::ConnectDevice(None))?;
+        }
+
+        Ok(())
     }
 
     /// creates a new streaming connection
     #[cfg(feature = "streaming")]
-    pub fn new_streaming_connection(
-        &self,
-        streaming_sub: flume::Receiver<()>,
-        client_pub: flume::Sender<ClientRequest>,
-    ) -> Result<String> {
-        let session = self.spotify.session()?.clone();
-        let device = self.spotify.device.clone();
+    pub async fn new_streaming_connection(&self, state: &SharedState) -> String {
+        let session = self.spotify.session().await;
         let device_id = session.device_id().to_string();
-        streaming::new_connection(session, device, client_pub, streaming_sub)?;
+        let new_conn = streaming::new_connection(
+            session,
+            state.app_config.device.clone(),
+            self.client_pub.clone(),
+        );
 
-        Ok(device_id)
+        let mut stream_conn = self.stream_conn.lock();
+        // shutdown old streaming connection and replace it with a new connection
+        if let Some(conn) = stream_conn.as_ref() {
+            conn.shutdown();
+        }
+        *stream_conn = Some(new_conn);
+
+        device_id
     }
 
     /// initializes the authentication token inside the Spotify client
@@ -154,51 +187,6 @@ impl Client {
         let timer = std::time::SystemTime::now();
 
         match request {
-            ClientRequest::ConnectDevice(id) => {
-                // Device connection can fail when the specified device hasn't shown up
-                // in the Spotify's server, which makes the `TransferPlayback` request fail
-                // with an error like "404 Not Found".
-                // This is why we need a retry mechanism to make multiple connect requests.
-                let delay = std::time::Duration::from_secs(1);
-
-                for _ in 0..10 {
-                    tokio::time::sleep(delay).await;
-
-                    let id = match &id {
-                        Some(id) => Some(Cow::Borrowed(id)),
-                        None => {
-                            // no device id is specified, try to connect to an available device
-                            match self
-                                .find_available_device(&state.app_config.default_device)
-                                .await
-                            {
-                                Ok(Some(id)) => Some(Cow::Owned(id)),
-                                Ok(None) => {
-                                    tracing::info!("No device found.");
-                                    None
-                                }
-                                Err(err) => {
-                                    tracing::error!("Failed to find an available device: {err}");
-                                    None
-                                }
-                            }
-                        }
-                    };
-
-                    if let Some(id) = id {
-                        tracing::info!("Trying to connect to device (id={id})");
-                        if let Err(err) = self.spotify.transfer_playback(&id, Some(false)).await {
-                            tracing::warn!("Connection failed (device_id={id}): {err}");
-                        } else {
-                            tracing::info!("Connection succeeded (device_id={id})!");
-                            // upon new connection, reset the buffered playback
-                            state.player.write().buffered_playback = None;
-                            self.update_playback(state);
-                            break;
-                        }
-                    }
-                }
-            }
             ClientRequest::GetBrowseCategories => {
                 let categories = self.browse_categories().await?;
                 state.data.write().browse.categories = categories;
@@ -225,9 +213,14 @@ impl Client {
                     state.data.write().caches.lyrics.put(query, result);
                 }
             }
+            ClientRequest::ConnectDevice(id) => {
+                self.connect_device(state, id).await;
+            }
             #[cfg(feature = "streaming")]
             ClientRequest::NewStreamingConnection => {
-                anyhow::bail!("request should be already handled by the caller function");
+                let device_id = self.new_streaming_connection(state).await;
+                // upon creating a new streaming connection, connect to it
+                self.connect_device(state, Some(device_id)).await;
             }
             ClientRequest::GetCurrentUser => {
                 let user = self.spotify.current_user().await?;
@@ -372,6 +365,49 @@ impl Client {
         Ok(())
     }
 
+    pub async fn connect_device(&self, state: &SharedState, id: Option<String>) {
+        // Device connection can fail when the specified device hasn't shown up
+        // in the Spotify's server, which makes the `TransferPlayback` request fail
+        // with an error like "404 Not Found".
+        // This is why we need a retry mechanism to make multiple connect requests.
+        let delay = std::time::Duration::from_secs(1);
+
+        for _ in 0..10 {
+            tokio::time::sleep(delay).await;
+
+            let id = match &id {
+                Some(id) => Some(Cow::Borrowed(id)),
+                None => {
+                    // no device id is specified, try to connect to an available device
+                    match self.find_available_device(state).await {
+                        Ok(Some(id)) => Some(Cow::Owned(id)),
+                        Ok(None) => {
+                            tracing::info!("No device found.");
+                            None
+                        }
+                        Err(err) => {
+                            tracing::error!("Failed to find an available device: {err}");
+                            None
+                        }
+                    }
+                }
+            };
+
+            if let Some(id) = id {
+                tracing::info!("Trying to connect to device (id={id})");
+                if let Err(err) = self.spotify.transfer_playback(&id, Some(false)).await {
+                    tracing::warn!("Connection failed (device_id={id}): {err}");
+                } else {
+                    tracing::info!("Connection succeeded (device_id={id})!");
+                    // upon new connection, reset the buffered playback
+                    state.player.write().buffered_playback = None;
+                    self.update_playback(state);
+                    break;
+                }
+            }
+        }
+    }
+
     pub fn update_playback(&self, state: &SharedState) {
         // After handling a request that updates the player's playback,
         // update the playback state by making additional refresh requests.
@@ -416,8 +452,7 @@ impl Client {
     }
 
     /// Find an available device. If found, return the device ID.
-    // This function will prioritize the device whose name matches `default_device`.
-    pub async fn find_available_device(&self, default_device: &str) -> Result<Option<String>> {
+    pub async fn find_available_device(&self, state: &SharedState) -> Result<Option<String>> {
         let devices = self.spotify.device().await?.into_iter().collect::<Vec<_>>();
         tracing::info!("Available devices: {devices:?}");
 
@@ -436,19 +471,22 @@ impl Client {
         //    access to user's active devices.
         #[cfg(feature = "streaming")]
         {
-            if let Some(ref session) = self.spotify.session {
-                devices.push((
-                    self.spotify.device.name.clone(),
-                    session.device_id().to_string(),
-                ))
-            }
+            let session = self.spotify.session().await;
+            devices.push((
+                state.app_config.device.name.clone(),
+                session.device_id().to_string(),
+            ));
         }
 
         if devices.is_empty() {
             return Ok(None);
         }
 
-        let id = if let Some(id) = devices.iter().position(|d| d.0 == default_device) {
+        // Prioritize the `default_device` specified in the application's configurations
+        let id = if let Some(id) = devices
+            .iter()
+            .position(|d| d.0 == state.app_config.default_device)
+        {
             // prioritize the default device (specified in the app configs) if available
             id
         } else {
@@ -633,7 +671,7 @@ impl Client {
     }
 
     pub async fn radio_tracks(&self, seed_uri: String) -> Result<Vec<Track>> {
-        let session = self.spotify.session()?;
+        let session = self.spotify.session().await;
 
         // Get an autoplay URI from the seed URI.
         // The return URI is a Spotify station's URI
