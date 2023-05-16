@@ -35,6 +35,7 @@ pub async fn get_token(session: &Session, client_id: &str) -> Result<Token> {
     // converts the token returned by librespot `get_token` function to a `rspotify::Token`
 
     let expires_in = Duration::from_std(std::time::Duration::from_secs(token.expires_in as u64))?;
+    // let expires_in = Duration::from_std(std::time::Duration::from_secs(5))?;
     let expires_at = Utc::now() + expires_in;
 
     let token = Token {

@@ -65,6 +65,7 @@ async fn init_spotify(
     client_pub: &flume::Sender<event::ClientRequest>,
     client: &client::Client,
     state: &state::SharedState,
+    is_daemon: bool,
 ) -> Result<()> {
     // if `streaming` feature is enabled, create a new streaming connection
     #[cfg(feature = "streaming")]
@@ -81,12 +82,13 @@ async fn init_spotify(
     }
 
     // request user data
-    client_pub.send(event::ClientRequest::GetCurrentUserQueue)?;
-    client_pub.send(event::ClientRequest::GetCurrentUser)?;
-    client_pub.send(event::ClientRequest::GetUserPlaylists)?;
-    client_pub.send(event::ClientRequest::GetUserFollowedArtists)?;
-    client_pub.send(event::ClientRequest::GetUserSavedAlbums)?;
-    client_pub.send(event::ClientRequest::GetUserSavedTracks)?;
+    if !is_daemon {
+        client_pub.send(event::ClientRequest::GetCurrentUser)?;
+        client_pub.send(event::ClientRequest::GetUserPlaylists)?;
+        client_pub.send(event::ClientRequest::GetUserFollowedArtists)?;
+        client_pub.send(event::ClientRequest::GetUserSavedAlbums)?;
+        client_pub.send(event::ClientRequest::GetUserSavedTracks)?;
+    }
 
     Ok(())
 }
@@ -143,14 +145,9 @@ async fn start_app(state: state::SharedState, is_daemon: bool) -> Result<()> {
     client.init_token().await?;
 
     // initialize Spotify-related stuff
-    if is_daemon {
-        #[cfg(feature = "streaming")]
-        client.new_streaming_connection(&state).await;
-    } else {
-        init_spotify(&client_pub, &client, &state)
-            .await
-            .context("failed to initialize the spotify client")?;
-    }
+    init_spotify(&client_pub, &client, &state, is_daemon)
+        .await
+        .context("failed to initialize the spotify data")?;
 
     // Spawn application's tasks
     let mut tasks = Vec::new();

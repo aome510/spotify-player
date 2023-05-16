@@ -39,6 +39,10 @@ pub async fn start_socket(client: Client, state: SharedState) -> Result<()> {
                     handle_socket_request(&client, &state, request, &socket, dest_addr).await
                 {
                     tracing::error!("Failed to handle socket request: {err}");
+
+                    send_err_message(err, &socket, dest_addr)
+                        .await
+                        .unwrap_or_default();
                 }
             }
         }
@@ -78,15 +82,13 @@ async fn handle_socket_request(
     }
 
     match request {
-        Request::Get(GetRequest::Key(key)) => match handle_get_key_request(client, key).await {
-            Ok(result) => send_data(result, socket, dest_addr).await?,
-            Err(err) => send_err_message(err, socket, dest_addr).await?,
-        },
+        Request::Get(GetRequest::Key(key)) => {
+            let result = handle_get_key_request(client, key).await?;
+            send_data(result, socket, dest_addr).await?
+        }
         Request::Get(GetRequest::Context(context_type, context_id)) => {
-            match handle_get_context_request(client, context_type, context_id).await {
-                Ok(result) => send_data(result, socket, dest_addr).await?,
-                Err(err) => send_err_message(err, socket, dest_addr).await?,
-            }
+            let result = handle_get_context_request(client, context_type, context_id).await?;
+            send_data(result, socket, dest_addr).await?
         }
         Request::Playback(command) => {
             handle_playback_request(client, command).await?;
