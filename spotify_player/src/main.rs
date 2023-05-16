@@ -277,6 +277,11 @@ fn main() -> Result<()> {
             // initialize the application's log
             init_logging(&cache_folder).context("failed to initialize application's logging")?;
 
+            // log the application's configurations
+            tracing::info!("General configurations: {:?}", state.app_config);
+            tracing::info!("Theme configurations: {:?}", state.theme_config);
+            tracing::info!("Keymap configurations: {:?}", state.keymap_config);
+
             #[cfg(feature = "daemon")]
             {
                 let is_daemon = args.get_flag("daemon");
