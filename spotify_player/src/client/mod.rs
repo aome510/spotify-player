@@ -10,6 +10,7 @@ use crate::{
 
 use anyhow::Context as _;
 use anyhow::Result;
+#[cfg(feature = "streaming")]
 use librespot_connect::spirc::Spirc;
 use librespot_core::session::Session;
 use rspotify::prelude::*;
