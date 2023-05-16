@@ -3,7 +3,7 @@ use std::{borrow::Cow, io::Write, sync::Arc};
 #[cfg(feature = "streaming")]
 use crate::streaming;
 use crate::{
-    config,
+    auth::AuthConfig,
     event::{ClientRequest, PlayerRequest},
     state::*,
 };
@@ -44,12 +44,12 @@ impl Client {
     /// creates a new client
     pub fn new(
         session: Session,
-        device: config::DeviceConfig,
+        auth_config: AuthConfig,
         client_id: String,
         client_pub: flume::Sender<ClientRequest>,
     ) -> Self {
         Self {
-            spotify: Arc::new(spotify::Spotify::new(session, device, client_id)),
+            spotify: Arc::new(spotify::Spotify::new(session, auth_config, client_id)),
             http: reqwest::Client::new(),
             #[cfg(feature = "streaming")]
             stream_conn: Arc::new(Mutex::new(None)),
@@ -58,19 +58,14 @@ impl Client {
     }
 
     pub async fn new_session(&self, state: &SharedState) -> Result<()> {
-        let session = crate::auth::new_session(
-            &state.cache_folder,
-            state.app_config.device.audio_cache,
-            &state.app_config,
-        )
-        .await?;
+        let session = crate::auth::new_session(&self.spotify.auth_config, false).await?;
         *self.spotify.session.lock().await = Some(session);
         tracing::info!("Used a new session for Spotify client.");
 
         // upon creating a new session, also create a new streaming connection
         #[cfg(feature = "streaming")]
         {
-            self.new_streaming_connection().await;
+            self.new_streaming_connection(state).await;
             self.client_pub.send(ClientRequest::ConnectDevice(None))?;
         }
 
@@ -79,11 +74,14 @@ impl Client {
 
     /// creates a new streaming connection
     #[cfg(feature = "streaming")]
-    pub async fn new_streaming_connection(&self) -> String {
+    pub async fn new_streaming_connection(&self, state: &SharedState) -> String {
         let session = self.spotify.session().await;
-        let device = self.spotify.device.clone();
         let device_id = session.device_id().to_string();
-        let new_conn = streaming::new_connection(session, device, self.client_pub.clone());
+        let new_conn = streaming::new_connection(
+            session,
+            state.app_config.device.clone(),
+            self.client_pub.clone(),
+        );
 
         let mut stream_conn = self.stream_conn.lock();
         // shutdown old streaming connection and replace it with a new connection
@@ -220,7 +218,7 @@ impl Client {
             }
             #[cfg(feature = "streaming")]
             ClientRequest::NewStreamingConnection => {
-                let device_id = self.new_streaming_connection().await;
+                let device_id = self.new_streaming_connection(state).await;
                 // upon creating a new streaming connection, connect to it
                 self.connect_device(state, Some(device_id)).await;
             }
@@ -381,10 +379,7 @@ impl Client {
                 Some(id) => Some(Cow::Borrowed(id)),
                 None => {
                     // no device id is specified, try to connect to an available device
-                    match self
-                        .find_available_device(&state.app_config.default_device)
-                        .await
-                    {
+                    match self.find_available_device(state).await {
                         Ok(Some(id)) => Some(Cow::Owned(id)),
                         Ok(None) => {
                             tracing::info!("No device found.");
@@ -457,8 +452,7 @@ impl Client {
     }
 
     /// Find an available device. If found, return the device ID.
-    // This function will prioritize the device whose name matches `default_device`.
-    pub async fn find_available_device(&self, default_device: &str) -> Result<Option<String>> {
+    pub async fn find_available_device(&self, state: &SharedState) -> Result<Option<String>> {
         let devices = self.spotify.device().await?.into_iter().collect::<Vec<_>>();
         tracing::info!("Available devices: {devices:?}");
 
@@ -479,7 +473,7 @@ impl Client {
         {
             let session = self.spotify.session().await;
             devices.push((
-                self.spotify.device.name.clone(),
+                state.app_config.device.name.clone(),
                 session.device_id().to_string(),
             ));
         }
@@ -488,7 +482,11 @@ impl Client {
             return Ok(None);
         }
 
-        let id = if let Some(id) = devices.iter().position(|d| d.0 == default_device) {
+        // Prioritize the `default_device` specified in the application's configurations
+        let id = if let Some(id) = devices
+            .iter()
+            .position(|d| d.0 == state.app_config.default_device)
+        {
             // prioritize the default device (specified in the app configs) if available
             id
         } else {

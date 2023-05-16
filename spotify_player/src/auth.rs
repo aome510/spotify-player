@@ -4,10 +4,48 @@ use anyhow::{anyhow, Result};
 use librespot_core::{
     authentication::Credentials,
     cache::Cache,
+    config::SessionConfig,
     session::{Session, SessionError},
 };
 
-use crate::config::AppConfig;
+use crate::state::SharedState;
+
+#[derive(Clone)]
+pub struct AuthConfig {
+    pub cache: Cache,
+    pub session_config: SessionConfig,
+}
+
+impl Default for AuthConfig {
+    fn default() -> Self {
+        AuthConfig {
+            cache: Cache::new(None::<String>, None, None, None).unwrap(),
+            session_config: SessionConfig::default(),
+        }
+    }
+}
+
+impl AuthConfig {
+    pub fn new(state: &SharedState) -> Result<AuthConfig> {
+        let audio_cache_folder = if state.app_config.device.audio_cache {
+            Some(state.cache_folder.join("audio"))
+        } else {
+            None
+        };
+
+        let cache = Cache::new(
+            Some(state.cache_folder.clone()),
+            None,
+            audio_cache_folder,
+            None,
+        )?;
+
+        Ok(AuthConfig {
+            cache,
+            session_config: state.app_config.session_config(),
+        })
+    }
+}
 
 fn read_user_auth_details(user: Option<String>) -> Result<(String, String)> {
     let mut username = String::new();
@@ -26,7 +64,7 @@ fn read_user_auth_details(user: Option<String>) -> Result<(String, String)> {
     Ok((username, password))
 }
 
-async fn new_session_with_new_creds(cache: &Cache, app_config: &AppConfig) -> Result<Session> {
+async fn new_session_with_new_creds(auth_config: &AuthConfig) -> Result<Session> {
     tracing::info!("Creating a new session with new authentication credentials");
 
     println!("Authentication token not found or invalid, please reauthenticate.");
@@ -37,9 +75,9 @@ async fn new_session_with_new_creds(cache: &Cache, app_config: &AppConfig) -> Re
         let (username, password) = read_user_auth_details(user)?;
         user = Some(username.clone());
         match Session::connect(
-            app_config.session_config(),
+            auth_config.session_config.clone(),
             Credentials::with_password(username, password),
-            Some(cache.clone()),
+            Some(auth_config.cache.clone()),
             true,
         )
         .await
@@ -58,52 +96,49 @@ async fn new_session_with_new_creds(cache: &Cache, app_config: &AppConfig) -> Re
     Err(anyhow!("authentication failed!"))
 }
 
-/// creates new Librespot session
-pub async fn new_session(
-    cache_folder: &std::path::Path,
-    audio_cache: bool,
-    app_config: &AppConfig,
-) -> Result<Session> {
-    // specifying `audio_cache` to `None` to disable audio cache
-    let audio_cache_folder = if audio_cache {
-        Some(cache_folder.join("audio"))
-    } else {
-        None
-    };
-
-    let cache = Cache::new(
-        Some(cache_folder),
-        None,
-        audio_cache_folder.as_deref(),
-        None,
-    )?;
-
-    // create a new session if either
-    // - there is no cached credentials or
-    // - the cached credentials are expired or invalid
-    match cache.credentials() {
-        None => new_session_with_new_creds(&cache, app_config).await,
+/// Creates a new Librespot session
+///
+/// By default, the function will look for cached credentials in the `APP_CACHE_FOLDER` folder.
+///
+/// If `reauth` is true, re-authenticate by asking the user for Spotify's username and password.
+/// The re-authentication process should only happen on the terminal using stdin/stdout.
+pub async fn new_session(auth_config: &AuthConfig, reauth: bool) -> Result<Session> {
+    match auth_config.cache.credentials() {
+        None => {
+            if reauth {
+                new_session_with_new_creds(auth_config).await
+            } else {
+                anyhow::bail!(
+                    "No cached credentials found, please authenticate the application first."
+                );
+            }
+        }
         Some(creds) => {
             match Session::connect(
-                app_config.session_config(),
+                auth_config.session_config.clone(),
                 creds,
-                Some(cache.clone()),
+                Some(auth_config.cache.clone()),
                 true,
             )
             .await
             {
                 Ok((session, _)) => {
-                    tracing::info!("Use the cached credentials");
+                    tracing::info!(
+                        "Successfully used the cached credentials to create a new session!"
+                    );
                     Ok(session)
                 }
                 Err(err) => match err {
                     SessionError::AuthenticationError(err) => {
-                        tracing::warn!("Failed to authenticate: {err:#}");
-                        new_session_with_new_creds(&cache, app_config).await
+                        if reauth {
+                            new_session_with_new_creds(auth_config).await
+                        } else {
+                            anyhow::bail!("Failed to authenticate using cached credentials: {err}");
+                        }
                     }
-                    SessionError::IoError(err) => Err(anyhow!(format!(
-                        "{err}\nPlease check your internet connection."
-                    ))),
+                    SessionError::IoError(err) => {
+                        anyhow::bail!("{err}\nPlease check your internet connection.");
+                    }
                 },
             }
         }

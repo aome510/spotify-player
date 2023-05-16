@@ -69,7 +69,7 @@ async fn init_spotify(
     // if `streaming` feature is enabled, create a new streaming connection
     #[cfg(feature = "streaming")]
     if state.app_config.enable_streaming {
-        client.new_streaming_connection().await;
+        client.new_streaming_connection(state).await;
     }
 
     // initialize the playback state
@@ -130,17 +130,13 @@ async fn start_app(state: state::SharedState, is_daemon: bool) -> Result<()> {
     let (client_pub, client_sub) = flume::unbounded::<event::ClientRequest>();
 
     // create a librespot session
-    let session = auth::new_session(
-        &state.cache_folder,
-        state.app_config.device.audio_cache,
-        &state.app_config,
-    )
-    .await?;
+    let auth_config = auth::AuthConfig::new(&state)?;
+    let session = auth::new_session(&auth_config, true).await?;
 
     // create a spotify API client
     let client = client::Client::new(
         session,
-        state.app_config.device.clone(),
+        auth_config,
         state.app_config.client_id.clone(),
         client_pub.clone(),
     );
@@ -149,7 +145,7 @@ async fn start_app(state: state::SharedState, is_daemon: bool) -> Result<()> {
     // initialize Spotify-related stuff
     if is_daemon {
         #[cfg(feature = "streaming")]
-        client.new_streaming_connection().await;
+        client.new_streaming_connection(&state).await;
     } else {
         init_spotify(&client_pub, &client, &state)
             .await
