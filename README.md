@@ -214,7 +214,7 @@ cargo install spotify_player --no-default-features
 To enable lyric support, `spotify_player` needs to be built/installed with `lyric-finder` feature (**disabled** by default). To install the application with `lyric-finder` feature included run:
 
 ```shell
-cargo install --features lyric-finder
+cargo install spotify_player --features lyric-finder
 ```
 
 User can view lyric of the currently playing track by calling the `LyricPage` command to go the lyric page. To do this, `spotify_player` needs to be built with a `lyric-finder` feature.
@@ -232,7 +232,7 @@ Media control support is implemented using [MPRIS DBus](https://wiki.archlinux.o
 To enable image rendering support, `spotify_player` needs to be built/installed with `image` feature (**disabled** by default). To install the application with `image` feature included, run:
 
 ```shell
-cargo install --features image
+cargo install spotify_player --features image
 ```
 
 `spotify_player` supports rendering image in a full resolution if the application is run on either [Kitty](https://sw.kovidgoyal.net/kitty/graphics-protocol/) or [iTerm2](https://iterm2.com/documentation-images.html). Otherwise, the image will be displayed as [block characters](https://en.wikipedia.org/wiki/Block_Elements).
@@ -240,7 +240,7 @@ cargo install --features image
 `spotify_player` also supports rendering images with `sixel` behind `sixel` feature flag, which also enables `image` feature:
 
 ```shell
-cargo install --features sixel
+cargo install spotify_player --features sixel
 ```
 
 **Notes**:
@@ -271,7 +271,7 @@ Examples of image rendering:
 To enable desktop notification support, `spotify_player` needs to be built/installed with `notify` feature (**disabled** by default). To install the application with `notify` feature included, run:
 
 ```shell
-cargo install --features notify
+cargo install spotify_player --features notify
 ```
 
 **Note**: the notification support in `MacOS` and `Windows` are quite restricted compared to `Linux`.
