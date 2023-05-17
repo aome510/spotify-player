@@ -282,10 +282,10 @@ Currently, the only supported use case for mouse is to seek to a position of the
 
 ### Daemon
 
-To enable a [daemon](<https://en.wikipedia.org/wiki/Daemon_(computing)>) support,`spotify_player` needs to be built/installed with `daemon` feature (**disabled** by default). To install the application with `daemon` feature included, run:
+To enable a [daemon](<https://en.wikipedia.org/wiki/Daemon_(computing)>) support, `spotify_player` needs to be built/installed with `daemon` feature (**disabled** by default). To install the application with `daemon` feature included, run:
 
 ```shell
-cargo install --features daemon
+cargo install spotify_player --features daemon
 ```
 
 You can run the application as a daemon by specifying the `-d` or `--daemon` option: `spotify_player -d`.
@@ -293,11 +293,11 @@ You can run the application as a daemon by specifying the `-d` or `--daemon` opt
 **Notes**:
 
 - `daemon` feature requires the `streaming` feature to be enabled and the application to be built with [an audio backend](#audio-backend)
-- because of the OS's restrictions, `daemon` feature doesn't work with the `media-control` feature on Windows and MacOS, which is **enabled by default**. In other words, if you want to use the `daemon` feature on Windows or MacOS, you must install the application with `media-control` feature disabled:
+- because of the OS's restrictions, `daemon` feature doesn't work with the `media-control` feature on Windows and MacOS, which is **enabled by default**. In other words, if you want to use the `daemon` feature on Windows or MacOS, you must install the application with `media-control` feature **disabled**:
 
-```shell
-cargo install --no-default-features --features daemon,rodio-backend
-```
+  ```shell
+  cargo install spotify_player --no-default-features --features daemon,rodio-backend
+  ```
 
 ### CLI Commands
 
