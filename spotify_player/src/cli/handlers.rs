@@ -118,10 +118,6 @@ fn handle_playback_subcommand(args: &ArgMatches, socket: &UdpSocket) -> Result<(
                 .expect("position_offset_ms is required");
             Command::Seek(*position_offset_ms)
         }
-        "like" => {
-            let unlike = args.get_flag("unlike");
-            Command::Like { unlike }
-        }
         _ => unreachable!(),
     };
 
@@ -140,6 +136,15 @@ fn handle_connect_subcommand(args: &ArgMatches, socket: &UdpSocket) -> Result<()
     Ok(())
 }
 
+fn handle_like_subcommand(args: &ArgMatches, socket: &UdpSocket) -> Result<()> {
+    let unlike = args.get_flag("unlike");
+
+    let request = Request::Like { unlike };
+    socket.send(&serde_json::to_vec(&request)?)?;
+
+    Ok(())
+}
+
 pub fn handle_cli_subcommand(cmd: &str, args: &ArgMatches, client_port: u16) -> Result<()> {
     let socket = UdpSocket::bind("127.0.0.1:0")?;
     socket.connect(("127.0.0.1", client_port))?;
@@ -148,6 +153,7 @@ pub fn handle_cli_subcommand(cmd: &str, args: &ArgMatches, client_port: u16) -> 
         "get" => handle_get_subcommand(args, &socket)?,
         "playback" => handle_playback_subcommand(args, &socket)?,
         "connect" => handle_connect_subcommand(args, &socket)?,
+        "like" => handle_like_subcommand(args, &socket)?,
         _ => unreachable!(),
     }
 

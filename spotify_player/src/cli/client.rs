@@ -110,6 +110,26 @@ async fn handle_socket_request(
             client.spotify.transfer_playback(&id, None).await?;
             Ok(Vec::new())
         }
+        Request::Like { unlike } => {
+            let id = state
+                .player
+                .read()
+                .current_playing_track()
+                .and_then(|t| t.id.to_owned());
+
+            if let Some(id) = id {
+                if unlike {
+                    client
+                        .spotify
+                        .current_user_saved_tracks_delete([id])
+                        .await?;
+                } else {
+                    client.spotify.current_user_saved_tracks_add([id]).await?;
+                }
+            }
+
+            Ok(Vec::new())
+        }
     }
 }
 
@@ -323,24 +343,6 @@ async fn handle_playback_request(
                 }
             };
             PlayerRequest::SeekTrack(progress + chrono::Duration::milliseconds(position_offset_ms))
-        }
-        Command::Like { unlike } => {
-            todo!()
-            // if let Some(t) = state.player.read().current_playing_track() {
-            //     if let Some(ref id) = t.id {
-            //         let id = id.to_owned();
-            //         if unlike {
-            //             client
-            //                 .spotify
-            //                 .current_user_saved_tracks_delete([id])
-            //                 .await?;
-            //         } else {
-            //             client.spotify.current_user_saved_tracks_add([id]).await?;
-            //         }
-            //     }
-            // }
-
-            // return Ok(());
         }
     };
 
