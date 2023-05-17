@@ -78,6 +78,12 @@ pub enum Request {
     Connect(IdOrName),
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub enum Response {
+    Ok(Vec<u8>),
+    Err(Vec<u8>),
+}
+
 impl From<ContextType> for ItemType {
     fn from(value: ContextType) -> Self {
         match value {

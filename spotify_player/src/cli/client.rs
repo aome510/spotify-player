@@ -34,22 +34,31 @@ pub async fn start_socket(client: Client, state: SharedState) -> Result<()> {
                         continue;
                     }
                 };
-                tracing::info!("Handling socket request: {request:?}...");
-                if let Err(err) =
-                    handle_socket_request(&client, &state, request, &socket, dest_addr).await
-                {
-                    tracing::error!("Failed to handle socket request: {err}");
 
-                    send_err_message(err, &socket, dest_addr)
-                        .await
-                        .unwrap_or_default();
-                }
+                tracing::info!("Handling socket request: {request:?}...");
+                let response = match handle_socket_request(&client, &state, request).await {
+                    Err(err) => {
+                        tracing::error!("Failed to handle socket request: {err}");
+                        let msg = format!("Bad request: {err}");
+                        Response::Err(msg.into_bytes())
+                    }
+                    Ok(data) => Response::Ok(data),
+                };
+                send_response(response, &socket, dest_addr)
+                    .await
+                    .unwrap_or_default();
             }
         }
     }
 }
 
-async fn send_data(data: Vec<u8>, socket: &UdpSocket, dest_addr: SocketAddr) -> Result<()> {
+async fn send_response(
+    response: Response,
+    socket: &UdpSocket,
+    dest_addr: SocketAddr,
+) -> Result<()> {
+    let data = serde_json::to_vec(&response)?;
+
     // as the result data can be large and may not be sent in a single UDP datagram,
     // split it into smaller chunks
     for chunk in data.chunks(4096) {
@@ -60,39 +69,24 @@ async fn send_data(data: Vec<u8>, socket: &UdpSocket, dest_addr: SocketAddr) -> 
     Ok(())
 }
 
-async fn send_err_message(
-    err: anyhow::Error,
-    socket: &UdpSocket,
-    dest_addr: SocketAddr,
-) -> Result<()> {
-    let msg = format!("Bad request: {err}");
-    send_data(msg.into_bytes(), socket, dest_addr).await
-}
-
 async fn handle_socket_request(
     client: &Client,
     state: &SharedState,
     request: super::Request,
-    socket: &UdpSocket,
-    dest_addr: SocketAddr,
-) -> Result<()> {
+) -> Result<Vec<u8>> {
     if client.spotify.session().await.is_invalid() {
         tracing::info!("Spotify client's session is invalid, re-creating a new session...");
         client.new_session(state).await?;
     }
 
     match request {
-        Request::Get(GetRequest::Key(key)) => {
-            let result = handle_get_key_request(client, key).await?;
-            send_data(result, socket, dest_addr).await?
-        }
+        Request::Get(GetRequest::Key(key)) => handle_get_key_request(client, key).await,
         Request::Get(GetRequest::Context(context_type, context_id)) => {
-            let result = handle_get_context_request(client, context_type, context_id).await?;
-            send_data(result, socket, dest_addr).await?
+            handle_get_context_request(client, context_type, context_id).await
         }
         Request::Playback(command) => {
-            handle_playback_request(client, command).await?;
-            client.update_playback(state);
+            handle_playback_request(client, state, command).await?;
+            Ok(Vec::new())
         }
         Request::Connect(data) => {
             let id = match data {
@@ -113,9 +107,9 @@ async fn handle_socket_request(
             };
 
             client.spotify.transfer_playback(&id, None).await?;
+            Ok(Vec::new())
         }
     }
-    Ok(())
 }
 
 async fn handle_get_key_request(client: &Client, key: Key) -> Result<Vec<u8>> {

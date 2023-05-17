@@ -3,7 +3,7 @@ use anyhow::Result;
 use clap::{ArgMatches, Id};
 use std::net::UdpSocket;
 
-fn receive_data(socket: &UdpSocket) -> Result<Vec<u8>> {
+fn receive_response(socket: &UdpSocket) -> Result<Response> {
     // read response from the server's socket, which can be splitted into
     // smaller chunks of data
     let mut data = Vec::new();
@@ -17,7 +17,7 @@ fn receive_data(socket: &UdpSocket) -> Result<Vec<u8>> {
         data.extend_from_slice(&buf[..n_bytes]);
     }
 
-    Ok(data)
+    Ok(serde_json::from_slice(&data)?)
 }
 
 fn get_id_or_name(args: &ArgMatches) -> Result<IdOrName> {
@@ -40,7 +40,7 @@ fn get_id_or_name(args: &ArgMatches) -> Result<IdOrName> {
     }
 }
 
-fn handle_get_subcommand(args: &ArgMatches, socket: UdpSocket) -> Result<()> {
+fn handle_get_subcommand(args: &ArgMatches, socket: &UdpSocket) -> Result<()> {
     let (cmd, args) = args.subcommand().expect("playback subcommand is required");
 
     let request = match cmd {
@@ -63,13 +63,10 @@ fn handle_get_subcommand(args: &ArgMatches, socket: UdpSocket) -> Result<()> {
     };
 
     socket.send(&serde_json::to_vec(&request)?)?;
-    let data = receive_data(&socket)?;
-    println!("{}", String::from_utf8_lossy(&data));
-
     Ok(())
 }
 
-fn handle_playback_subcommand(args: &ArgMatches, socket: UdpSocket) -> Result<()> {
+fn handle_playback_subcommand(args: &ArgMatches, socket: &UdpSocket) -> Result<()> {
     let (cmd, args) = args.subcommand().expect("playback subcommand is required");
     let command = match cmd {
         "start" => match args.subcommand() {
@@ -134,7 +131,7 @@ fn handle_playback_subcommand(args: &ArgMatches, socket: UdpSocket) -> Result<()
     Ok(())
 }
 
-fn handle_connect_subcommand(args: &ArgMatches, socket: UdpSocket) -> Result<()> {
+fn handle_connect_subcommand(args: &ArgMatches, socket: &UdpSocket) -> Result<()> {
     let id_or_name = get_id_or_name(args)?;
 
     let request = Request::Connect(id_or_name);
@@ -148,9 +145,20 @@ pub fn handle_cli_subcommand(cmd: &str, args: &ArgMatches, client_port: u16) -> 
     socket.connect(("127.0.0.1", client_port))?;
 
     match cmd {
-        "get" => handle_get_subcommand(args, socket),
-        "playback" => handle_playback_subcommand(args, socket),
-        "connect" => handle_connect_subcommand(args, socket),
+        "get" => handle_get_subcommand(args, &socket)?,
+        "playback" => handle_playback_subcommand(args, &socket)?,
+        "connect" => handle_connect_subcommand(args, &socket)?,
         _ => unreachable!(),
+    }
+
+    match receive_response(&socket)? {
+        Response::Err(err) => {
+            eprint!("{}", String::from_utf8_lossy(&err));
+            std::process::exit(1);
+        }
+        Response::Ok(data) => {
+            print!("{}", String::from_utf8_lossy(&data));
+            std::process::exit(0);
+        }
     }
 }
