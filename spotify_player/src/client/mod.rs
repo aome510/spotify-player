@@ -101,7 +101,7 @@ impl Client {
     }
 
     /// handles a player request
-    async fn handle_player_request(
+    pub async fn handle_player_request(
         &self,
         state: &SharedState,
         request: PlayerRequest,
@@ -121,7 +121,7 @@ impl Client {
         let mut playback = match state.player.read().buffered_playback {
             Some(ref playback) => playback.clone(),
             None => {
-                anyhow::bail!("failed to handle the player request: there is no active playback");
+                anyhow::bail!("failed to handle the player request: no playback found");
             }
         };
         let device_id = playback.device_id.as_deref();
