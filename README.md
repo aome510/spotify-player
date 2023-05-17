@@ -14,6 +14,8 @@
   - [Image](#image)
   - [Notify](#notify)
   - [Mouse support](#mouse-support)
+  - [Daemon](#daemon)
+  - [CLI commands](#cli-commands)
 - [Commands](#commands)
 - [Configurations](#configurations)
 - [Caches](#caches)
@@ -22,12 +24,12 @@
 
 ## Introduction
 
-`spotify_player` is a fast, easy to use, and [configurable](docs/config.md) terminal music player.
+`spotify_player` is a fast, easy to use, and configurable terminal music player.
 
 **Features**
 
 - Minimalist UI with an intuitive paging and popup system.
-- Highly configurable, allow to easily customize application's shortcuts or theme/color scheme.
+- Highly [configurable](docs/config.md)
 - Feature parity with the official Spotify application.
 - Support remote control with [Spotify Connect](#spotify-connect).
 - Support [streaming](#streaming) songs directly from the terminal.
@@ -35,6 +37,8 @@
 - Support [cross-platform media control](#media-control).
 - Support [image rendering](#image).
 - Support [desktop notification](#notify).
+- Support running the application as [a daemon](#daemon)
+- Offer a wide range of [CLI commands](#cli-commands)
 
 ## Examples
 
@@ -275,6 +279,33 @@ cargo install --features notify
 ### Mouse support
 
 Currently, the only supported use case for mouse is to seek to a position of the current playback by left-clicking to such position in the playback's progress bar.
+
+### Daemon
+
+To enable a [daemon](<https://en.wikipedia.org/wiki/Daemon_(computing)>) support,`spotify_player` needs to be built/installed with `daemon` feature (**disabled** by default). To install the application with `daemon` feature included, run:
+
+```shell
+cargo install --features daemon
+```
+
+You can run the application as a daemon by specifying the `-d` or `--daemon` option: `spotify_player -d`.
+
+**Notes**:
+
+- `daemon` feature requires the `streaming` feature to be enabled and the application to be built with [an audio backend](#audio-backend)
+- because of the OS's restrictions, `daemon` feature doesn't work with the `media-control` feature on Windows and MacOS, which is **enabled by default**. In other words, if you want to use the `daemon` feature on Windows or MacOS, you must install the application with `media-control` feature disabled:
+
+```shell
+cargo install --no-default-features --features daemon,rodio-backend
+```
+
+### CLI Commands
+
+`spotify_player` offers several CLI commands to interact with **a running `spotify_player` instance**.
+
+Under the hood, the application handles a CLI command by sending requests to a `spotify_player` instance's client socket running on the `client_port` port, a general application configuration - default value: `8080`.
+
+For more details, run `spotify_player -h` or `spotify_player {command} -h`, in which `{command}` is a CLI command.
 
 ## Commands
 
