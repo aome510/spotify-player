@@ -138,7 +138,7 @@ async fn start_app(state: state::SharedState, is_daemon: bool) -> Result<()> {
 
     // create a librespot session
     let auth_config = auth::AuthConfig::new(&state)?;
-    let session = auth::new_session(&auth_config, true).await?;
+    let session = auth::new_session(&auth_config, !is_daemon).await?;
 
     // create a spotify API client
     let client = client::Client::new(
@@ -306,7 +306,10 @@ fn main() -> Result<()> {
                     let daemonize = daemonize::Daemonize::new();
                     daemonize.start()?;
                 }
-                start_app(state, is_daemon)
+                if let Err(err) = start_app(state, is_daemon) {
+                    tracing::error!("Encountered an error when running the application: {err}");
+                }
+                Ok(())
             }
 
             #[cfg(not(feature = "daemon"))]
