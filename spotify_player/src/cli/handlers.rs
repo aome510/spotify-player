@@ -1,3 +1,8 @@
+use crate::{
+    auth::{new_session_with_new_creds, AuthConfig},
+    state,
+};
+
 use super::*;
 use anyhow::Result;
 use clap::{ArgMatches, Id};
@@ -145,15 +150,25 @@ fn handle_like_subcommand(args: &ArgMatches, socket: &UdpSocket) -> Result<()> {
     Ok(())
 }
 
-pub fn handle_cli_subcommand(cmd: &str, args: &ArgMatches, client_port: u16) -> Result<()> {
+pub fn handle_cli_subcommand(
+    cmd: &str,
+    args: &ArgMatches,
+    state: state::SharedState,
+) -> Result<()> {
     let socket = UdpSocket::bind("127.0.0.1:0")?;
-    socket.connect(("127.0.0.1", client_port))?;
+    socket.connect(("127.0.0.1", state.app_config.client_port))?;
 
     match cmd {
         "get" => handle_get_subcommand(args, &socket)?,
         "playback" => handle_playback_subcommand(args, &socket)?,
         "connect" => handle_connect_subcommand(args, &socket)?,
         "like" => handle_like_subcommand(args, &socket)?,
+        "authenticate" => {
+            let auth_config = AuthConfig::new(&state)?;
+            let rt = tokio::runtime::Runtime::new()?;
+            rt.block_on(new_session_with_new_creds(&auth_config))?;
+            std::process::exit(0);
+        }
         _ => unreachable!(),
     }
 

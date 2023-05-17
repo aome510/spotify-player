@@ -124,3 +124,7 @@ pub fn init_like_command() -> Command {
                 .help("Unlike the currently playing track"),
         )
 }
+
+pub fn init_authenticate_command() -> Command {
+    Command::new("authenticate").about("Authenticate the application")
+}

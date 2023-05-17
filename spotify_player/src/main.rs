@@ -29,6 +29,7 @@ fn init_app_cli_arguments() -> Result<clap::ArgMatches> {
         .subcommand(cli::init_playback_subcommand())
         .subcommand(cli::init_connect_subcommand())
         .subcommand(cli::init_like_command())
+        .subcommand(cli::init_authenticate_command())
         .arg(
             clap::Arg::new("theme")
                 .short('t')
@@ -311,6 +312,6 @@ fn main() -> Result<()> {
             #[cfg(not(feature = "daemon"))]
             start_app(state, false)
         }
-        Some((cmd, args)) => cli::handle_cli_subcommand(cmd, args, state.app_config.client_port),
+        Some((cmd, args)) => cli::handle_cli_subcommand(cmd, args, state),
     }
 }

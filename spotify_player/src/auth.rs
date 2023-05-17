@@ -64,10 +64,8 @@ fn read_user_auth_details(user: Option<String>) -> Result<(String, String)> {
     Ok((username, password))
 }
 
-async fn new_session_with_new_creds(auth_config: &AuthConfig) -> Result<Session> {
+pub async fn new_session_with_new_creds(auth_config: &AuthConfig) -> Result<Session> {
     tracing::info!("Creating a new session with new authentication credentials");
-
-    println!("Authentication token not found or invalid, please reauthenticate.");
 
     let mut user: Option<String> = None;
 
@@ -87,7 +85,7 @@ async fn new_session_with_new_creds(auth_config: &AuthConfig) -> Result<Session>
                 return Ok(session);
             }
             Err(err) => {
-                println!("Failed to authenticate, {} tries left", 2 - i);
+                eprintln!("Failed to authenticate, {} tries left", 2 - i);
                 tracing::warn!("Failed to authenticate: {err:#}")
             }
         }
@@ -105,12 +103,12 @@ async fn new_session_with_new_creds(auth_config: &AuthConfig) -> Result<Session>
 pub async fn new_session(auth_config: &AuthConfig, reauth: bool) -> Result<Session> {
     match auth_config.cache.credentials() {
         None => {
+            let msg = "No cached credentials found, please authenticate the application first.";
             if reauth {
+                eprint!("{msg}");
                 new_session_with_new_creds(auth_config).await
             } else {
-                anyhow::bail!(
-                    "No cached credentials found, please authenticate the application first."
-                );
+                anyhow::bail!(msg);
             }
         }
         Some(creds) => {
@@ -130,10 +128,12 @@ pub async fn new_session(auth_config: &AuthConfig, reauth: bool) -> Result<Sessi
                 }
                 Err(err) => match err {
                     SessionError::AuthenticationError(err) => {
+                        let msg = format!("Failed to authenticate using cached credentials: {err}");
                         if reauth {
+                            eprintln!("{msg}");
                             new_session_with_new_creds(auth_config).await
                         } else {
-                            anyhow::bail!("Failed to authenticate using cached credentials: {err}");
+                            anyhow::bail!(msg);
                         }
                     }
                     SessionError::IoError(err) => {
