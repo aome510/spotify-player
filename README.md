@@ -303,7 +303,7 @@ You can run the application as a daemon by specifying the `-d` or `--daemon` opt
 
 `spotify_player` offers several CLI commands to interact with **a running `spotify_player` instance**.
 
-Under the hood, the application handles a CLI command by sending requests to a `spotify_player` instance's client socket running on the `client_port` port, a general application configuration - default value: `8080`.
+Under the hood, the application handles a CLI command by sending requests to a `spotify_player` instance's client socket running on the `client_port` port, a general application configuration with a default value `8080`.
 
 For more details, run `spotify_player -h` or `spotify_player {command} -h`, in which `{command}` is a CLI command.
 

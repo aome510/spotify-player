@@ -105,7 +105,7 @@ pub async fn new_session(auth_config: &AuthConfig, reauth: bool) -> Result<Sessi
         None => {
             let msg = "No cached credentials found, please authenticate the application first.";
             if reauth {
-                eprint!("{msg}");
+                eprintln!("{msg}");
                 new_session_with_new_creds(auth_config).await
             } else {
                 anyhow::bail!(msg);

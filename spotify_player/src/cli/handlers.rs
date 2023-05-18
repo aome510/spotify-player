@@ -153,7 +153,7 @@ fn handle_like_subcommand(args: &ArgMatches, socket: &UdpSocket) -> Result<()> {
 pub fn handle_cli_subcommand(
     cmd: &str,
     args: &ArgMatches,
-    state: state::SharedState,
+    state: &state::SharedState,
 ) -> Result<()> {
     let socket = UdpSocket::bind("127.0.0.1:0")?;
     socket.connect(("127.0.0.1", state.app_config.client_port))?;
@@ -164,7 +164,7 @@ pub fn handle_cli_subcommand(
         "connect" => handle_connect_subcommand(args, &socket)?,
         "like" => handle_like_subcommand(args, &socket)?,
         "authenticate" => {
-            let auth_config = AuthConfig::new(&state)?;
+            let auth_config = AuthConfig::new(state)?;
             let rt = tokio::runtime::Runtime::new()?;
             rt.block_on(new_session_with_new_creds(&auth_config))?;
             std::process::exit(0);
@@ -174,11 +174,11 @@ pub fn handle_cli_subcommand(
 
     match receive_response(&socket)? {
         Response::Err(err) => {
-            eprint!("{}", String::from_utf8_lossy(&err));
+            eprintln!("{}", String::from_utf8_lossy(&err));
             std::process::exit(1);
         }
         Response::Ok(data) => {
-            print!("{}", String::from_utf8_lossy(&data));
+            println!("{}", String::from_utf8_lossy(&data));
             std::process::exit(0);
         }
     }
