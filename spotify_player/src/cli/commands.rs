@@ -111,15 +111,20 @@ pub fn init_playback_subcommand() -> Command {
                         .required(true),
                 ),
         )
-        .subcommand(
-            Command::new("like")
-                .about("Like the currently playing track")
-                .arg(
-                    Arg::new("unlike")
-                        .long("unlike")
-                        .short('u')
-                        .action(ArgAction::SetTrue)
-                        .help("Unlike the currently playing track"),
-                ),
+}
+
+pub fn init_like_command() -> Command {
+    Command::new("like")
+        .about("Like currently playing track")
+        .arg(
+            Arg::new("unlike")
+                .long("unlike")
+                .short('u')
+                .action(ArgAction::SetTrue)
+                .help("Unlike the currently playing track"),
         )
+}
+
+pub fn init_authenticate_command() -> Command {
+    Command::new("authenticate").about("Authenticate the application")
 }

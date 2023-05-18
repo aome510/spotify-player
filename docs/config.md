@@ -15,11 +15,14 @@ All configuration files should be placed inside the application's configuration 
 
 ## General
 
+**The default `app.toml` can be found in the example [`app.toml`](../examples/app.toml) file.**
+
 `spotify_player` uses `app.toml` to configure general application configurations:
 
 | Option                               | Description                                                                   | Default                                                    |
 | ------------------------------------ | ----------------------------------------------------------------------------- | ---------------------------------------------------------- |
 | `client_id`                          | the Spotify client's ID                                                       | `65b708073fc0480ea92a077233ca87bd`                         |
+| `client_port`                        | the port that the application's client is running on to handle CLI commands   | `8080`                                                     |
 | `playback_format`                    | the format of the text in the playback's window                               | `{track} • {artists}\n{album}\n{metadata}`                 |
 | `notify_format`                      | the format of a notification (`notify` feature only)                          | `{ summary = "{track} • {artists}", body = "{album}" }`    |
 | `copy_command`                       | the command used to execute a copy-to-clipboard action                        | `xclip -sel c` (Linux), `pbcopy` (MacOS), `clip` (Windows) |
@@ -45,8 +48,6 @@ All configuration files should be placed inside the application's configuration 
 | `cover_img_width`                    | the width of the cover image (`image` feature only)                           | `5`                                                        |
 | `cover_img_length`                   | the length of the cover image (`image` feature only)                          | `9`                                                        |
 | `cover_img_scale`                    | the scale of the cover image (`image` feature only)                           | `1.0`                                                      |
-
-The default `app.toml` can be found in the example [`app.toml`](../examples/app.toml) file
 
 ### Notes
 
@@ -98,13 +99,13 @@ More details on the above configuration options can be found under the [Librespo
 
 `spotify_player` uses `theme.toml` to look for user-defined themes.
 
+**An example of user-defined themes can be found in the example [`theme.toml`](../examples/theme.toml) file.**
+
 The application's theme can be modified by setting the `theme` option in `app.toml` or by specifying the `-t <THEME>` (`--theme <THEME>`) option when running the player.
 
 A theme has three main components: `name` (the theme's name), `palette` (the theme's color palette), `component_style` (a list of pre-defined styles for application's components).
 
 `name` is required when defining a new theme. If `palette` is not set, a palette based on the terminal's colorscheme will be used. If `component_style` is not specified, a default value will be used.
-
-An example of user-defined themes can be found in the example [`theme.toml`](../examples/theme.toml) file
 
 ### Use script to add theme
 

@@ -6,7 +6,7 @@ use rspotify::model::*;
 use serde::{Deserialize, Serialize};
 
 pub use client::start_socket;
-pub use commands::{init_connect_subcommand, init_get_subcommand, init_playback_subcommand};
+pub use commands::*;
 pub use handlers::handle_cli_subcommand;
 
 #[derive(Debug, Serialize, Deserialize, clap::ValueEnum, Clone)]
@@ -68,7 +68,6 @@ pub enum Command {
     Repeat,
     Volume { percent: i8, is_offset: bool },
     Seek(i64),
-    Like { unlike: bool },
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -76,6 +75,13 @@ pub enum Request {
     Get(GetRequest),
     Playback(Command),
     Connect(IdOrName),
+    Like { unlike: bool },
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum Response {
+    Ok(Vec<u8>),
+    Err(Vec<u8>),
 }
 
 impl From<ContextType> for ItemType {

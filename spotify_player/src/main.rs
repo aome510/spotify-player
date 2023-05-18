@@ -17,7 +17,10 @@ mod utils;
 use anyhow::{Context, Result};
 use std::io::Write;
 
-fn init_app_cli_arguments() -> clap::ArgMatches {
+fn init_app_cli_arguments() -> Result<clap::ArgMatches> {
+    let default_cache_folder = config::get_cache_folder_path()?;
+    let default_config_folder = config::get_config_folder_path()?;
+
     let cmd = clap::Command::new("spotify_player")
         .version("0.13.1")
         .about("A command driven spotify player")
@@ -25,28 +28,30 @@ fn init_app_cli_arguments() -> clap::ArgMatches {
         .subcommand(cli::init_get_subcommand())
         .subcommand(cli::init_playback_subcommand())
         .subcommand(cli::init_connect_subcommand())
+        .subcommand(cli::init_like_command())
+        .subcommand(cli::init_authenticate_command())
         .arg(
             clap::Arg::new("theme")
                 .short('t')
                 .long("theme")
                 .value_name("THEME")
-                .help("Application theme (default: dracula)")
+                .help("Application theme"),
         )
         .arg(
             clap::Arg::new("config-folder")
                 .short('c')
                 .long("config-folder")
                 .value_name("FOLDER")
-                .help("Path to the application's config folder (default: $HOME/.config/spotify-player)")
-                .next_line_help(true)
+                .default_value(default_config_folder.into_os_string())
+                .help("Path to the application's config folder"),
         )
         .arg(
             clap::Arg::new("cache-folder")
                 .short('C')
                 .long("cache-folder")
                 .value_name("FOLDER")
-                .help("Path to the application's cache folder (default: $HOME/.cache/spotify-player)")
-                .next_line_help(true)
+                .default_value(default_cache_folder.into_os_string())
+                .help("Path to the application's cache folder"),
         );
 
     #[cfg(feature = "daemon")]
@@ -58,7 +63,7 @@ fn init_app_cli_arguments() -> clap::ArgMatches {
             .help("Running the application as a daemon"),
     );
 
-    cmd.get_matches()
+    Ok(cmd.get_matches())
 }
 
 async fn init_spotify(
@@ -133,7 +138,7 @@ async fn start_app(state: state::SharedState, is_daemon: bool) -> Result<()> {
 
     // create a librespot session
     let auth_config = auth::AuthConfig::new(&state)?;
-    let session = auth::new_session(&auth_config, true).await?;
+    let session = auth::new_session(&auth_config, !is_daemon).await?;
 
     // create a spotify API client
     let client = client::Client::new(
@@ -237,21 +242,21 @@ async fn start_app(state: state::SharedState, is_daemon: bool) -> Result<()> {
 
 fn main() -> Result<()> {
     // parse command line arguments
-    let args = init_app_cli_arguments();
+    let args = init_app_cli_arguments()?;
 
-    // initialize the application's cache folder and config folder
-    let config_folder = match args.get_one::<String>("config-folder") {
-        Some(path) => path.into(),
-        None => config::get_config_folder_path()?,
-    };
+    // initialize the application's cache and config folders
+    let config_folder: std::path::PathBuf = args
+        .get_one::<String>("config-folder")
+        .expect("config-folder should have default value")
+        .into();
     if !config_folder.exists() {
         std::fs::create_dir_all(&config_folder)?;
     }
 
-    let cache_folder = match args.get_one::<String>("cache-folder") {
-        Some(path) => path.into(),
-        None => config::get_cache_folder_path()?,
-    };
+    let cache_folder: std::path::PathBuf = args
+        .get_one::<String>("cache-folder")
+        .expect("cache-folder should have a default value")
+        .into();
     let cache_audio_folder = cache_folder.join("audio");
     if !cache_audio_folder.exists() {
         std::fs::create_dir_all(&cache_audio_folder)?;
@@ -301,12 +306,27 @@ fn main() -> Result<()> {
                     let daemonize = daemonize::Daemonize::new();
                     daemonize.start()?;
                 }
-                start_app(state, is_daemon)
+                if let Err(err) = start_app(state, is_daemon) {
+                    tracing::error!("Encountered an error when running the application: {err}");
+                }
+                Ok(())
             }
 
             #[cfg(not(feature = "daemon"))]
             start_app(state, false)
         }
-        Some((cmd, args)) => cli::handle_cli_subcommand(cmd, args, state.app_config.client_port),
+        Some((cmd, args)) => match cli::handle_cli_subcommand(cmd, args, &state) {
+            Err(err) => match err.downcast_ref::<std::io::Error>() {
+                None => Err(err),
+                Some(io_err) => match io_err.kind() {
+                    std::io::ErrorKind::ConnectionRefused => {
+                        eprintln!("Error: {err}\nPlease make sure that there is a running `spotify_player` instance with a client socket running on port {}.", state.app_config.client_port);
+                        std::process::exit(1)
+                    }
+                    _ => Err(err),
+                },
+            },
+            Ok(()) => Ok(()),
+        },
     }
 }
