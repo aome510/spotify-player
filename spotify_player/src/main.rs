@@ -133,6 +133,17 @@ fn init_logging(cache_folder: &std::path::Path) -> Result<()> {
 
 #[tokio::main]
 async fn start_app(state: state::SharedState, is_daemon: bool) -> Result<()> {
+    if !is_daemon {
+        #[cfg(feature = "image")]
+        {
+            // initialize `viuer` supports for kitty, iterm2, and sixel
+            viuer::get_kitty_support();
+            viuer::is_iterm_supported();
+            #[cfg(feature = "sixel")]
+            viuer::is_sixel_supported();
+        }
+    }
+
     // client channels
     let (client_pub, client_sub) = flume::unbounded::<event::ClientRequest>();
 

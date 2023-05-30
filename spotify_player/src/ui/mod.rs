@@ -12,15 +12,6 @@ mod utils;
 
 /// run the application UI
 pub fn run(state: SharedState) -> Result<()> {
-    #[cfg(feature = "image")]
-    {
-        // initialize viuer supports for kitty and iterm2
-        viuer::get_kitty_support();
-        viuer::is_iterm_supported();
-        #[cfg(feature = "sixel")]
-        viuer::is_sixel_supported();
-    }
-
     let mut terminal = init_ui().context("failed to initialize the application's UI")?;
 
     let ui_refresh_duration =
