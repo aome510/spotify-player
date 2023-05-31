@@ -16,7 +16,7 @@ pub async fn start_client_handler(
         if client.spotify.session().await.is_invalid() {
             tracing::info!("Spotify client's session is invalid, re-creating a new session...");
             if let Err(err) = client.new_session(&state).await {
-                tracing::error!("Failed to create a new session: {err}");
+                tracing::error!("Failed to create a new session: {err:#}");
                 continue;
             }
         }
@@ -128,10 +128,10 @@ pub async fn start_player_event_watchers(
                 tokio::time::sleep(refresh_duration).await;
 
                 if let Err(err) = handle_track_end_event(&state, &client_pub).await {
-                    tracing::error!("Encountered error when handling track end event: {err}");
+                    tracing::error!("Encountered error when handling track end event: {err:#}");
                 }
                 if let Err(err) = handle_queue_change_event(&state, &client_pub).await {
-                    tracing::error!("Encountered error when handling queue change event: {err}");
+                    tracing::error!("Encountered error when handling queue change event: {err:#}");
                 }
             }
         }

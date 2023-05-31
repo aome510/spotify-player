@@ -25,13 +25,13 @@ pub async fn start_socket(client: Client, state: SharedState) -> Result<()> {
     let mut buf = [0; 4096];
     loop {
         match socket.recv_from(&mut buf).await {
-            Err(err) => tracing::warn!("Failed to receive from the socket: {err}"),
+            Err(err) => tracing::warn!("Failed to receive from the socket: {err:#}"),
             Ok((n_bytes, dest_addr)) => {
                 let req_buf = &buf[0..n_bytes];
                 let request: Request = match serde_json::from_slice(req_buf) {
                     Ok(v) => v,
                     Err(err) => {
-                        tracing::error!("Cannot deserialize the socket request: {err}");
+                        tracing::error!("Cannot deserialize the socket request: {err:#}");
                         continue;
                     }
                 };
@@ -39,7 +39,7 @@ pub async fn start_socket(client: Client, state: SharedState) -> Result<()> {
                 tracing::info!("Handling socket request: {request:?}...");
                 let response = match handle_socket_request(&client, &state, request).await {
                     Err(err) => {
-                        tracing::error!("Failed to handle socket request: {err}");
+                        tracing::error!("Failed to handle socket request: {err:#}");
                         let msg = format!("Bad request: {err}");
                         Response::Err(msg.into_bytes())
                     }

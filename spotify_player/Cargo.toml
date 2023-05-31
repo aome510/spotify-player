@@ -27,7 +27,7 @@ rspotify = "0.11.7"
 serde = { version = "1.0.163", features = ["derive"] }
 tokio = { version = "1.28.1", features = ["rt", "rt-multi-thread", "macros", "time"] }
 toml = "0.7.3"
-tui = "0.19.0"
+ratatui = "0.21.0"
 unicode-width = "0.1.10"
 rand = "0.8.5"
 maybe-async = "0.2.7"

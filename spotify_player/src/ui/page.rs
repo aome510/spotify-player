@@ -43,12 +43,13 @@ pub fn render_search_page(
         .direction(Direction::Vertical)
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
         .split(rect)
-        .into_iter()
+        .iter()
         .flat_map(|rect| {
             Layout::default()
                 .direction(Direction::Horizontal)
                 .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
-                .split(rect)
+                .split(*rect)
+                .to_vec()
         })
         .collect::<Vec<_>>();
 

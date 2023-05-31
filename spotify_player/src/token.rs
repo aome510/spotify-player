@@ -30,7 +30,7 @@ pub async fn get_token(session: &Session, client_id: &str) -> Result<Token> {
 
     let token = keymaster::get_token(session, client_id, &SCOPES.join(","))
         .await
-        .map_err(|err| anyhow!(format!("failed to get token: {err:?}")))?;
+        .map_err(|err| anyhow!(format!("failed to get token: {err:#?}")))?;
 
     // converts the token returned by librespot `get_token` function to a `rspotify::Token`
 

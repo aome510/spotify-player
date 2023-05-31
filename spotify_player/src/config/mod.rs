@@ -239,7 +239,7 @@ impl AppConfig {
             .as_ref()
             .and_then(|proxy| match Url::parse(proxy) {
                 Err(err) => {
-                    tracing::warn!("failed to parse proxy url {proxy}: {err}");
+                    tracing::warn!("failed to parse proxy url {proxy}: {err:#}");
                     None
                 }
                 Ok(url) => Some(url),
