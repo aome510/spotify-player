@@ -271,7 +271,7 @@ fn render_playback_cover_image(
     }
 
     if let Err(err) = remove_temp_files() {
-        tracing::error!("Failed to remove temp files: {err}");
+        tracing::error!("Failed to remove temp files: {err:#}");
     }
 
     let data = state.data.read();
@@ -297,7 +297,7 @@ fn render_playback_cover_image(
                 ..Default::default()
             },
         ) {
-            tracing::error!("Failed to render the image: {err}",);
+            tracing::error!("Failed to render the image: {err:#}",);
         }
     }
 }

@@ -174,7 +174,7 @@ async fn start_app(state: state::SharedState, is_daemon: bool) -> Result<()> {
         let state = state.clone();
         async move {
             if let Err(err) = cli::start_socket(client, state).await {
-                tracing::warn!("Failed to run client socket for CLI: {err}");
+                tracing::warn!("Failed to run client socket for CLI: {err:#}");
             }
         }
     }));
@@ -223,7 +223,7 @@ async fn start_app(state: state::SharedState, is_daemon: bool) -> Result<()> {
             move || {
                 if let Err(err) = media_control::start_event_watcher(state, client_pub) {
                     tracing::error!(
-                        "Failed to start the application's media control event watcher: err={err:?}"
+                        "Failed to start the application's media control event watcher: err={err:#?}"
                     );
                 }
             }
@@ -318,7 +318,7 @@ fn main() -> Result<()> {
                     daemonize.start()?;
                 }
                 if let Err(err) = start_app(state, is_daemon) {
-                    tracing::error!("Encountered an error when running the application: {err}");
+                    tracing::error!("Encountered an error when running the application: {err:#}");
                 }
                 Ok(())
             }

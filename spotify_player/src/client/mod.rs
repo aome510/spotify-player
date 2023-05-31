@@ -387,7 +387,7 @@ impl Client {
                             None
                         }
                         Err(err) => {
-                            tracing::error!("Failed to find an available device: {err}");
+                            tracing::error!("Failed to find an available device: {err:#}");
                             None
                         }
                     }
@@ -397,7 +397,7 @@ impl Client {
             if let Some(id) = id {
                 tracing::info!("Trying to connect to device (id={id})");
                 if let Err(err) = self.spotify.transfer_playback(&id, Some(false)).await {
-                    tracing::warn!("Connection failed (device_id={id}): {err}");
+                    tracing::warn!("Connection failed (device_id={id}): {err:#}");
                 } else {
                     tracing::info!("Connection succeeded (device_id={id})!");
                     // upon new connection, reset the buffered playback
