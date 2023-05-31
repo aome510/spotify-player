@@ -14,6 +14,9 @@ mod token;
 mod ui;
 mod utils;
 
+// as `tui` is not actively maintained, we migrate to use `ratatui`
+extern crate ratatui as tui;
+
 use anyhow::{Context, Result};
 use std::io::Write;
 

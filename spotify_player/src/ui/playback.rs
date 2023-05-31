@@ -158,7 +158,7 @@ fn render_playback_text(
             "\n" => {
                 let mut tmp = vec![];
                 std::mem::swap(&mut tmp, &mut spans);
-                playback_text.lines.push(Spans::from(tmp));
+                playback_text.lines.push(Line::from(tmp));
                 continue;
             }
             "{track}" => (
@@ -197,7 +197,7 @@ fn render_playback_text(
         spans.push(Span::raw(format_str[ptr..].to_string()));
     }
     if !spans.is_empty() {
-        playback_text.lines.push(Spans::from(spans));
+        playback_text.lines.push(Line::from(spans));
     }
 
     let playback_desc = Paragraph::new(playback_text).wrap(Wrap { trim: true });
