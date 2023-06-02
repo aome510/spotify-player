@@ -13,7 +13,7 @@ use anyhow::Result;
 #[cfg(feature = "streaming")]
 use librespot_connect::spirc::Spirc;
 use librespot_core::session::Session;
-use rspotify::{prelude::*, model::Market};
+use rspotify::{prelude::*, model::Market, http::Query};
 
 mod handlers;
 mod spotify;
@@ -504,8 +504,9 @@ impl Client {
             .spotify
             .current_user_saved_tracks_manual(Some(Market::FromToken), Some(50), None)
             .await?;
-
-        let tracks = self.all_paging_items(first_page).await?;
+        let mut payload = Query::with_capacity(1);
+        payload.insert("market", "from_token");
+        let tracks = self.all_paging_items(first_page, &payload).await?;
         Ok(tracks
             .into_iter()
             .filter_map(|t| Track::try_from_full_track(t.track))
@@ -540,7 +541,7 @@ impl Client {
             .current_user_top_tracks_manual(None, Some(50), None)
             .await?;
 
-        let tracks = self.all_paging_items(first_page).await?;
+        let tracks = self.all_paging_items(first_page, &Query::new()).await?;
         Ok(tracks
             .into_iter()
             .filter_map(Track::try_from_full_track)
@@ -554,7 +555,7 @@ impl Client {
             .current_user_playlists_manual(Some(50), None)
             .await?;
 
-        let playlists = self.all_paging_items(first_page).await?;
+        let playlists = self.all_paging_items(first_page, &Query::new()).await?;
         Ok(playlists.into_iter().map(|p| p.into()).collect())
     }
 
@@ -571,7 +572,7 @@ impl Client {
         let mut maybe_next = first_page.next;
         while let Some(url) = maybe_next {
             let mut next_page = self
-                .internal_call::<rspotify_model::CursorPageFullArtists>(&url)
+                .internal_call::<rspotify_model::CursorPageFullArtists>(&url, &Query::new())
                 .await?
                 .artists;
             artists.append(&mut next_page.items);
@@ -589,7 +590,7 @@ impl Client {
             .current_user_saved_albums_manual(None, Some(50), None)
             .await?;
 
-        let albums = self.all_paging_items(first_page).await?;
+        let albums = self.all_paging_items(first_page, &Query::new()).await?;
 
         // converts `rspotify_model::SavedAlbum` into `state::Album`
         Ok(albums.into_iter().map(|a| a.album.into()).collect())
@@ -597,18 +598,21 @@ impl Client {
 
     /// gets all albums of an artist
     pub async fn artist_albums(&self, artist_id: ArtistId<'_>) -> Result<Vec<Album>> {
+        let mut payload = Query::with_capacity(1);
+        payload.insert("market", "from_token");
+
         let mut singles = {
             let first_page = self
                 .spotify
                 .artist_albums_manual(
                     artist_id.as_ref(),
                     Some(rspotify_model::AlbumType::Single),
-                    None,
+                    Some(Market::FromToken),
                     Some(50),
                     None,
                 )
                 .await?;
-            self.all_paging_items(first_page).await
+            self.all_paging_items(first_page, &payload).await
         }?;
         let mut albums = {
             let first_page = self
@@ -616,12 +620,12 @@ impl Client {
                 .artist_albums_manual(
                     artist_id.as_ref(),
                     Some(rspotify_model::AlbumType::Album),
-                    None,
+                    Some(Market::FromToken),
                     Some(50),
                     None,
                 )
                 .await?;
-            self.all_paging_items(first_page).await
+            self.all_paging_items(first_page, &payload).await
         }?;
         albums.append(&mut singles);
 
@@ -973,11 +977,13 @@ impl Client {
 
         // we use the `market=from_token` query parameter to ensure that the playlist has the is_playable field
         let playlist = self.spotify.playlist(playlist_id, None, Some(Market::FromToken)).await?;
+        let mut payload = Query::with_capacity(1);
+        payload.insert("market", "from_token");
 
         // get the playlist's tracks
         let first_page = playlist.tracks.clone();
         let tracks = self
-            .all_paging_items(first_page)
+            .all_paging_items(first_page, &payload)
             .await?
             .into_iter()
             .filter_map(|item| match item.track {
@@ -998,7 +1004,8 @@ impl Client {
     pub async fn album_context(&self, album_id: AlbumId<'_>) -> Result<Context> {
         let album_uri = album_id.uri();
         tracing::info!("Get album context: {}", album_uri);
-
+        
+        // BLOCKING: we can't send a payload to the album endpoint due to the respotify not supporting it 
         let album = self.spotify.album(album_id).await?;
         let first_page = album.tracks.clone();
 
@@ -1007,7 +1014,7 @@ impl Client {
 
         // get the album's tracks
         let tracks = self
-            .all_paging_items(first_page)
+            .all_paging_items(first_page, &Query::new())
             .await?
             .into_iter()
             .filter_map(|t| {
@@ -1063,7 +1070,7 @@ impl Client {
 
     /// calls a GET HTTP request to the Spotify server,
     /// and parses the response into a specific type `T`.
-    async fn internal_call<T>(&self, url: &str) -> Result<T>
+    async fn internal_call<T>(&self, url: &str, payload: &Query<'_>) -> Result<T>
     where
         T: serde::de::DeserializeOwned,
     {
@@ -1071,6 +1078,7 @@ impl Client {
         Ok(self
             .http
             .get(url)
+            .query(payload)
             .header(
                 reqwest::header::AUTHORIZATION,
                 format!("Bearer {access_token}"),
@@ -1082,14 +1090,15 @@ impl Client {
     }
 
     /// gets all paging items starting from a pagination object of the first page
-    async fn all_paging_items<T>(&self, first_page: rspotify_model::Page<T>) -> Result<Vec<T>>
+    async fn all_paging_items<T>(&self, first_page: rspotify_model::Page<T>, payload: &Query<'_>) -> Result<Vec<T>>
     where
         T: serde::de::DeserializeOwned,
     {
         let mut items = first_page.items;
         let mut maybe_next = first_page.next;
+
         while let Some(url) = maybe_next {
-            let mut next_page = self.internal_call::<rspotify_model::Page<T>>(&url).await?;
+            let mut next_page = self.internal_call::<rspotify_model::Page<T>>(&url, &payload).await?;
             items.append(&mut next_page.items);
             maybe_next = next_page.next;
         }
@@ -1108,7 +1117,7 @@ impl Client {
         let mut maybe_next = first_page.next;
         while let Some(url) = maybe_next {
             let mut next_page = self
-                .internal_call::<rspotify_model::CursorBasedPage<T>>(&url)
+                .internal_call::<rspotify_model::CursorBasedPage<T>>(&url, &Query::new())
                 .await?;
             items.append(&mut next_page.items);
             maybe_next = next_page.next;
