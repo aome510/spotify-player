@@ -166,6 +166,11 @@ pub fn handle_command_for_track_table_window(
             )))?;
         }
         Command::ChooseSelected => {
+            // TODO: this is a bit of a hack, but it works for now.
+            // Returns early if the track is not playable. Probably should have a UI 
+            if !tracks[id].is_playable() {
+                return Ok(false);
+            } 
             client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
                 base_playback.uri_offset(tracks[id].id.uri()),
             )))?;
@@ -209,6 +214,12 @@ pub fn handle_command_for_track_list_window(
             // It's different for the track table, in which
             // `ChooseSelected` on a track will start a `URIs` playback
             // containing all the tracks in the table.
+
+            // TODO: this is a bit of a hack, but it works for now.
+            // Returns early if the track is not playable. Probably should have a UI 
+            if !tracks[id].is_playable() {
+                return Ok(false);
+            }
             client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
                 Playback::URIs(vec![tracks[id].id.clone()], None),
             )))?;
