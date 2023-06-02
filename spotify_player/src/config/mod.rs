@@ -49,6 +49,7 @@ pub struct AppConfig {
     pub play_icon: String,
     pub pause_icon: String,
     pub liked_icon: String,
+    pub unplayable_icon: String,
 
     // layout configs
     pub border_type: BorderType,
@@ -172,6 +173,7 @@ impl Default for AppConfig {
             pause_icon: "▌▌".to_string(),
             play_icon: "▶".to_string(),
             liked_icon: "♥".to_string(),
+            unplayable_icon: "⊗".to_string(),
 
             border_type: BorderType::Plain,
             progress_bar_type: ProgressBarType::Rectangle,

@@ -116,6 +116,7 @@ pub struct Track {
     pub name: String,
     pub artists: Vec<Artist>,
     pub album: Option<Album>,
+    pub is_playable: Option<bool>,
     #[serde(serialize_with = "serialize_duration")]
     pub duration: chrono::Duration,
     #[serde(skip)]
@@ -240,6 +241,15 @@ impl Track {
             .unwrap_or_default()
     }
 
+    /// gets if the track is playable
+    pub fn is_playable(&self) -> bool {
+        match self.is_playable {
+            Some(is_playable) => is_playable,
+            // if we don't know if the track is playable, we (kinda) have to assume it is, because spotify is weird with track relinking
+            None => true,
+        }
+    }
+
     /// tries to convert from a `rspotify_model::SimplifiedTrack` into `Track`
     pub fn try_from_simplified_track(track: rspotify_model::SimplifiedTrack) -> Option<Self> {
         Some(Self {
@@ -249,6 +259,7 @@ impl Track {
             album: None,
             duration: track.duration,
             added_at: 0,
+            is_playable: track.is_playable,
         })
     }
 
@@ -261,6 +272,7 @@ impl Track {
             album: Album::try_from_simplified_album(track.album),
             duration: track.duration,
             added_at: 0,
+            is_playable: track.is_playable,
         })
     }
 }

@@ -1,4 +1,4 @@
-use std::{borrow::Cow, io::Write, sync::Arc};
+use std::{borrow::{Cow}, io::Write, sync::Arc};
 
 #[cfg(feature = "streaming")]
 use crate::streaming;
@@ -13,7 +13,7 @@ use anyhow::Result;
 #[cfg(feature = "streaming")]
 use librespot_connect::spirc::Spirc;
 use librespot_core::session::Session;
-use rspotify::prelude::*;
+use rspotify::{prelude::*, model::Market};
 
 mod handlers;
 mod spotify;
@@ -502,7 +502,7 @@ impl Client {
     pub async fn current_user_saved_tracks(&self) -> Result<Vec<Track>> {
         let first_page = self
             .spotify
-            .current_user_saved_tracks_manual(None, Some(50), None)
+            .current_user_saved_tracks_manual(Some(Market::FromToken), Some(50), None)
             .await?;
 
         let tracks = self.all_paging_items(first_page).await?;
@@ -971,7 +971,8 @@ impl Client {
         let playlist_uri = playlist_id.uri();
         tracing::info!("Get playlist context: {}", playlist_uri);
 
-        let playlist = self.spotify.playlist(playlist_id, None, None).await?;
+        // we use the `market=from_token` query parameter to ensure that the playlist has the is_playable field
+        let playlist = self.spotify.playlist(playlist_id, None, Some(Market::FromToken)).await?;
 
         // get the playlist's tracks
         let first_page = playlist.tracks.clone();

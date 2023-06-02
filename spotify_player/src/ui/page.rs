@@ -714,6 +714,11 @@ pub fn render_track_table_window(
                 } else {
                     ""
                 }),
+                Cell::from(if !t.is_playable() {
+                    &state.app_config.unplayable_icon
+                } else {
+                    ""
+                }),
                 Cell::from(id),
                 Cell::from(crate::utils::truncate_string(t.name.clone(), item_max_len)),
                 Cell::from(crate::utils::truncate_string(
@@ -730,6 +735,7 @@ pub fn render_track_table_window(
     let track_table = Table::new(rows)
         .header(
             Row::new(vec![
+                Cell::from(""),
                 Cell::from(""),
                 Cell::from("#"),
                 Cell::from("Title"),
