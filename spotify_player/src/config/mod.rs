@@ -173,7 +173,7 @@ impl Default for AppConfig {
             pause_icon: "▌▌".to_string(),
             play_icon: "▶".to_string(),
             liked_icon: "♥".to_string(),
-            unplayable_icon: "⊗".to_string(),
+            unplayable_icon: "✖".to_string(),
 
             border_type: BorderType::Plain,
             progress_bar_type: ProgressBarType::Rectangle,
