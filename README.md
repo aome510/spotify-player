@@ -117,6 +117,10 @@ Run `cargo install spotify_player` to install the application from [crates.io](h
 
 Run `yay -S spotify-player` to install the application as an AUR package.
 
+### Void Linux 
+
+Run `xbps-install -S spotify-player` to install the application.  
+
 ### FreeBSD
 
 Run `pkg install spotify-player` to install the `spotify_player` binary from FreeBSD ports.
