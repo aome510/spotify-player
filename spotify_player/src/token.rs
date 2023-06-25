@@ -36,7 +36,14 @@ pub async fn get_token(session: &Session, client_id: &str) -> Result<Token> {
         match tokio::time::timeout(std::time::Duration::from_secs(TIMEOUT_IN_SECS), fut).await {
             Ok(Ok(token)) => token,
             Ok(Err(err)) => anyhow::bail!("failed to get the token: {:?}", err),
-            Err(_) => anyhow::bail!("timeout when getting the token"),
+            Err(_) => {
+                // The timeout likely happens because of the "corrupted" session,
+                // shutdown it to force re-initializing.
+                if !session.is_invalid() {
+                    session.shutdown();
+                }
+                anyhow::bail!("timeout when getting the token");
+            }
         };
 
     // converts the token returned by librespot `get_token` function to a `rspotify::Token`
