@@ -128,3 +128,31 @@ pub fn init_like_command() -> Command {
 pub fn init_authenticate_command() -> Command {
     Command::new("authenticate").about("Authenticate the application")
 }
+
+pub fn init_playlist_subcommand() -> Command {
+    Command::new("playlist")
+        .about("Playlist editing")
+        .subcommand_required(true)
+        .subcommand(Command::new("new").about("Create a new playlist")
+            .arg(Arg::new("name")
+                .value_parser(clap::builder::NonEmptyStringValueParser::new()))
+            .arg(Arg::new("description")
+                .value_parser(clap::builder::NonEmptyStringValueParser::new())
+                .required(false))
+            .arg(Arg::new("public")
+                .short('p')
+                .long("public")
+                .action(clap::ArgAction::SetTrue)
+                .help("Sets the playlist to public"))
+            .arg(Arg::new("collab")
+                .short('c')
+                .long("collab")
+                .action(clap::ArgAction::SetTrue)
+                .help("Sets the playlist to collaborative"))
+            )
+        .subcommand(Command::new("delete").about("Delete a playlist"))
+        .subcommand(Command::new("import").about("Imports a playlist into another playlist.")
+            .after_help("Copies all tracks into a playlist. If imported again, it adds new tracks and prompts for deletion of deleted tracks since last import."))
+        .subcommand(Command::new("fork").about("Creates a copy of a playlist."))
+        .subcommand(Command::new("update").about("Updates all imported playlists."))
+}

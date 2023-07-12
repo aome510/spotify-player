@@ -161,6 +161,7 @@ pub fn handle_cli_subcommand(
     match cmd {
         "get" => handle_get_subcommand(args, &socket)?,
         "playback" => handle_playback_subcommand(args, &socket)?,
+        "playlist" => handle_playlist_subcommand(args, &socket)?,
         "connect" => handle_connect_subcommand(args, &socket)?,
         "like" => handle_like_subcommand(args, &socket)?,
         "authenticate" => {
@@ -182,4 +183,35 @@ pub fn handle_cli_subcommand(
             std::process::exit(0);
         }
     }
+}
+
+fn handle_playlist_subcommand(args: &ArgMatches, socket: &UdpSocket) -> Result<()> {
+
+    let (cmd, args) = args.subcommand().expect("playlist subcommand is required");
+    let command = match cmd {
+        "new" => {
+          let empty = String::new();
+
+          let name = args
+              .get_one::<String>("name")
+              .expect("name arg is required");
+
+          let description = args
+              .get_one::<String>("description").or(Some(&empty));
+
+          let public = args.get_flag("public");
+          let collab = args.get_flag("collab");
+            Command::PlaylistNew { name: name.to_owned(), public, collab, description: description.unwrap().to_owned() }
+        },
+        "delete" => Command::PlaylistDelete,
+        "import" => Command::PlaylistImport,
+        "fork" => Command::PlaylistFork,
+        "update" => Command::PlaylistUpdate,
+        _ => unreachable!(),
+    };
+
+    let request = Request::Playlist(command);
+    socket.send(&serde_json::to_vec(&request)?)?;
+
+    Ok(())
 }

@@ -1,6 +1,6 @@
 use std::net::SocketAddr;
 
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use rand::seq::SliceRandom;
 use tokio::net::UdpSocket;
 
@@ -128,6 +128,10 @@ async fn handle_socket_request(
                 }
             }
 
+            Ok(Vec::new())
+        }
+        Request::Playlist(command) => {
+            handle_playlist_request(client, state, command).await?;
             Ok(Vec::new())
         }
     }
@@ -343,10 +347,34 @@ async fn handle_playback_request(
                 }
             };
             PlayerRequest::SeekTrack(progress + chrono::Duration::milliseconds(position_offset_ms))
-        }
+        },
+        _ => unreachable!()
     };
 
     client.handle_player_request(state, player_request).await?;
     client.update_playback(state);
     Ok(())
+}
+
+async fn handle_playlist_request(
+    client: &Client,
+    state: &SharedState,
+    command: Command,
+) -> Result<()> {
+
+    match command {
+        Command::PlaylistNew { name,public,collab, description } => {
+            let user = state.data.read().user_data.user.to_owned().unwrap();
+            let id = user.id;
+            let resp = client.spotify.user_playlist_create(id, name.as_str(), Some(public), Some(collab), Some(description.as_str())).await;
+            if resp.is_err() {
+                Err(anyhow!(resp.unwrap_err()))
+            } else {
+                Ok(())
+            }
+
+        },
+        _ => unreachable!()
+    }
+
 }

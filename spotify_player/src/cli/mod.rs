@@ -68,6 +68,11 @@ pub enum Command {
     Repeat,
     Volume { percent: i8, is_offset: bool },
     Seek(i64),
+    PlaylistNew{name: String, public: bool, collab: bool, description: String},
+    PlaylistDelete,
+    PlaylistImport,
+    PlaylistFork,
+    PlaylistUpdate,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -76,6 +81,7 @@ pub enum Request {
     Playback(Command),
     Connect(IdOrName),
     Like { unlike: bool },
+    Playlist(Command),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
