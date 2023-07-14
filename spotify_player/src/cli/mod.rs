@@ -59,17 +59,30 @@ pub enum IdOrName {
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Command {
     StartContext(ContextType, IdOrName),
-    StartLikedTracks { limit: usize, random: bool },
+    StartLikedTracks {
+        limit: usize,
+        random: bool,
+    },
     StartRadio(ItemType, IdOrName),
     PlayPause,
     Next,
     Previous,
     Shuffle,
     Repeat,
-    Volume { percent: i8, is_offset: bool },
+    Volume {
+        percent: i8,
+        is_offset: bool,
+    },
     Seek(i64),
-    PlaylistNew{name: String, public: bool, collab: bool, description: String},
-    PlaylistDelete,
+    PlaylistNew {
+        name: String,
+        public: bool,
+        collab: bool,
+        description: String,
+    },
+    PlaylistDelete {
+        id: PlaylistId<'static>,
+    },
     PlaylistImport,
     PlaylistFork,
     PlaylistUpdate,

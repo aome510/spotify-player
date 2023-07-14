@@ -1,10 +1,13 @@
 use std::net::SocketAddr;
 
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
 use rand::seq::SliceRandom;
 use tokio::net::UdpSocket;
 
-use rspotify::{model::*, prelude::OAuthClient};
+use rspotify::{
+    model::*,
+    prelude::{BaseClient, OAuthClient},
+};
 
 use crate::{
     cli::{ContextType, Request},
@@ -131,8 +134,14 @@ async fn handle_socket_request(
             Ok(Vec::new())
         }
         Request::Playlist(command) => {
-            handle_playlist_request(client, state, command).await?;
-            Ok(Vec::new())
+            let resp = handle_playlist_request(client, state, command).await?;
+
+            // Allowing command output of success
+            let mut resp_vec = serde_json::to_vec_pretty(&resp)?;
+            // Removing quotation marks
+            resp_vec.pop();
+            resp_vec.remove(0);
+            Ok(resp_vec)
         }
     }
 }
@@ -347,8 +356,8 @@ async fn handle_playback_request(
                 }
             };
             PlayerRequest::SeekTrack(progress + chrono::Duration::milliseconds(position_offset_ms))
-        },
-        _ => unreachable!()
+        }
+        _ => unreachable!(),
     };
 
     client.handle_player_request(state, player_request).await?;
@@ -360,21 +369,53 @@ async fn handle_playlist_request(
     client: &Client,
     state: &SharedState,
     command: Command,
-) -> Result<()> {
-
+) -> Result<String> {
     match command {
-        Command::PlaylistNew { name,public,collab, description } => {
+        Command::PlaylistNew {
+            name,
+            public,
+            collab,
+            description,
+        } => {
             let user = state.data.read().user_data.user.to_owned().unwrap();
             let id = user.id;
-            let resp = client.spotify.user_playlist_create(id, name.as_str(), Some(public), Some(collab), Some(description.as_str())).await;
-            if resp.is_err() {
-                Err(anyhow!(resp.unwrap_err()))
-            } else {
-                Ok(())
+
+            let resp = client
+                .spotify
+                .user_playlist_create(
+                    id,
+                    name.as_str(),
+                    Some(public),
+                    Some(collab),
+                    Some(description.as_str()),
+                )
+                .await?;
+            Ok(format!(
+                "Playlist '{}' with id '{}' was created.",
+                resp.name,
+                resp.id.to_string()
+            ))
+        }
+        Command::PlaylistDelete { id } => {
+            let user = state.data.read().user_data.user.to_owned().unwrap();
+            let uid = user.id;
+
+            let playlist_check = client
+                .spotify
+                .playlist_check_follow(id.to_owned(), &[uid])
+                .await;
+            if playlist_check.is_err() {
+                anyhow::bail!("Could not find playlist {}", id.to_string())
             }
 
-        },
-        _ => unreachable!()
+            let following = playlist_check.unwrap().pop();
+            if following.unwrap() {
+                client.spotify.playlist_unfollow(id.to_owned()).await?;
+                Ok(format!("'{}' was deleted", id.to_string()))
+            } else {
+                Ok(format!("'{}' was not followed.", id.to_string()))
+            }
+        }
+        _ => unreachable!(),
     }
-
 }

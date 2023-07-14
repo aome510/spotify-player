@@ -186,24 +186,36 @@ pub fn handle_cli_subcommand(
 }
 
 fn handle_playlist_subcommand(args: &ArgMatches, socket: &UdpSocket) -> Result<()> {
-
     let (cmd, args) = args.subcommand().expect("playlist subcommand is required");
     let command = match cmd {
         "new" => {
-          let empty = String::new();
+            let empty = String::new();
 
-          let name = args
-              .get_one::<String>("name")
-              .expect("name arg is required");
+            let name = args
+                .get_one::<String>("name")
+                .expect("name arg is required");
 
-          let description = args
-              .get_one::<String>("description").or(Some(&empty));
+            let description = args.get_one::<String>("description").or(Some(&empty));
 
-          let public = args.get_flag("public");
-          let collab = args.get_flag("collab");
-            Command::PlaylistNew { name: name.to_owned(), public, collab, description: description.unwrap().to_owned() }
-        },
-        "delete" => Command::PlaylistDelete,
+            let public = args.get_flag("public");
+            let collab = args.get_flag("collab");
+            Command::PlaylistNew {
+                name: name.to_owned(),
+                public,
+                collab,
+                description: description.unwrap().to_owned(),
+            }
+        }
+        "delete" => {
+            let id = args
+                .get_one::<String>("id")
+                .expect("id arg is required")
+                .to_owned();
+
+            let pid = PlaylistId::from_id(id)?;
+
+            Command::PlaylistDelete { id: pid }
+        }
         "import" => Command::PlaylistImport,
         "fork" => Command::PlaylistFork,
         "update" => Command::PlaylistUpdate,
