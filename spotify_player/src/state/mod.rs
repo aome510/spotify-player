@@ -19,7 +19,6 @@ pub use parking_lot::{Mutex, RwLock};
 pub type SharedState = std::sync::Arc<State>;
 
 /// Application's state
-#[derive(Debug)]
 pub struct State {
     pub app_config: config::AppConfig,
     pub keymap_config: config::KeymapConfig,

@@ -55,7 +55,7 @@ pub fn handle_command_for_focused_context_window(
 
     let data = state.data.read();
 
-    match data.caches.context.peek(&context_id.uri()) {
+    match data.caches.context.get(&context_id.uri()) {
         Some(context) => match context {
             Context::Artist {
                 top_tracks,

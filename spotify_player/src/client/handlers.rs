@@ -178,7 +178,7 @@ pub async fn start_player_event_watchers(
 
                     // request new context's data if not found in memory
                     if let Some(id) = id {
-                        if !state.data.read().caches.context.contains(&id.uri()) {
+                        if !state.data.read().caches.context.contains_key(&id.uri()) {
                             client_pub
                                 .send(ClientRequest::GetContext(id.clone()))
                                 .unwrap_or_default();
