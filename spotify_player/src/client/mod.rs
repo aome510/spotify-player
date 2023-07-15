@@ -206,12 +206,17 @@ impl Client {
                 let client = lyric_finder::Client::from_http_client(&self.http);
                 let query = format!("{track} {artists}");
 
-                if !state.data.read().caches.lyrics.contains(&query) {
+                if !state.data.read().caches.lyrics.contains_key(&query) {
                     let result = client.get_lyric(&query).await.context(format!(
                         "failed to get lyric for track {track} - artists {artists}"
                     ))?;
 
-                    state.data.write().caches.lyrics.put(query, result);
+                    state
+                        .data
+                        .write()
+                        .caches
+                        .lyrics
+                        .insert(query, result, *CACHE_DURATION);
                 }
             }
             ClientRequest::ConnectDevice(id) => {
@@ -255,44 +260,47 @@ impl Client {
             }
             ClientRequest::GetUserTopTracks => {
                 let uri = &USER_TOP_TRACKS_ID.uri;
-                if !state.data.read().caches.context.contains(uri) {
+                if !state.data.read().caches.context.contains_key(uri) {
                     let tracks = self.current_user_top_tracks().await?;
-                    state.data.write().caches.context.put(
+                    state.data.write().caches.context.insert(
                         uri.to_owned(),
                         Context::Tracks {
                             tracks,
                             desc: "User's top tracks".to_string(),
                         },
+                        *CACHE_DURATION,
                     );
                 }
             }
             ClientRequest::GetUserSavedTracks => {
                 let tracks = self.current_user_saved_tracks().await?;
-                state.data.write().caches.context.put(
+                state.data.write().caches.context.insert(
                     USER_LIKED_TRACKS_ID.uri.to_owned(),
                     Context::Tracks {
                         tracks: tracks.clone(),
                         desc: "User's liked tracks".to_string(),
                     },
+                    *CACHE_DURATION,
                 );
                 state.data.write().user_data.saved_tracks = tracks;
             }
             ClientRequest::GetUserRecentlyPlayedTracks => {
                 let uri = &USER_RECENTLY_PLAYED_TRACKS_ID.uri;
-                if !state.data.read().caches.context.contains(uri) {
+                if !state.data.read().caches.context.contains_key(uri) {
                     let tracks = self.current_user_recently_played_tracks().await?;
-                    state.data.write().caches.context.put(
+                    state.data.write().caches.context.insert(
                         uri.to_owned(),
                         Context::Tracks {
                             tracks,
                             desc: "User's recently played tracks".to_string(),
                         },
+                        *CACHE_DURATION,
                     );
                 }
             }
             ClientRequest::GetContext(context) => {
                 let uri = context.uri();
-                if !state.data.read().caches.context.contains(&uri) {
+                if !state.data.read().caches.context.contains_key(&uri) {
                     let context = match context {
                         ContextId::Playlist(playlist_id) => {
                             self.playlist_context(playlist_id).await?
@@ -306,14 +314,24 @@ impl Client {
                         }
                     };
 
-                    state.data.write().caches.context.put(uri, context);
+                    state
+                        .data
+                        .write()
+                        .caches
+                        .context
+                        .insert(uri, context, *CACHE_DURATION);
                 }
             }
             ClientRequest::Search(query) => {
-                if !state.data.read().caches.search.contains(&query) {
+                if !state.data.read().caches.search.contains_key(&query) {
                     let results = self.search(&query).await?;
 
-                    state.data.write().caches.search.put(query, results);
+                    state
+                        .data
+                        .write()
+                        .caches
+                        .search
+                        .insert(query, results, *CACHE_DURATION);
                 }
             }
             ClientRequest::GetRadioTracks {
@@ -321,15 +339,16 @@ impl Client {
                 seed_name: name,
             } => {
                 let radio_uri = format!("radio:{uri}");
-                if !state.data.read().caches.context.contains(&radio_uri) {
+                if !state.data.read().caches.context.contains_key(&radio_uri) {
                     let tracks = self.radio_tracks(uri).await?;
 
-                    state.data.write().caches.context.put(
+                    state.data.write().caches.context.insert(
                         radio_uri,
                         Context::Tracks {
                             tracks,
                             desc: format!("{name} Radio"),
                         },
+                        *CACHE_DURATION,
                     );
                 }
             }
@@ -812,7 +831,7 @@ impl Client {
             .await?;
 
         // After adding a new track to a playlist, remove the cache of that playlist to force refetching new data
-        state.data.write().caches.context.pop(&playlist_id.uri());
+        state.data.write().caches.context.remove(&playlist_id.uri());
 
         Ok(())
     }
@@ -1185,13 +1204,18 @@ impl Client {
         }
 
         #[cfg(feature = "image")]
-        if !state.data.read().caches.images.contains(url) {
+        if !state.data.read().caches.images.contains_key(url) {
             let bytes = self.retrieve_image(url, &path, false).await?;
             // Get the image from a url
             let image =
                 image::load_from_memory(&bytes).context("Failed to load image from memory")?;
 
-            state.data.write().caches.images.put(url.to_owned(), image);
+            state
+                .data
+                .write()
+                .caches
+                .images
+                .insert(url.to_owned(), image, *CACHE_DURATION);
         }
 
         // notify user about the playback's change if any
