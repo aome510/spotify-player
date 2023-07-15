@@ -162,12 +162,14 @@ pub fn handle_command_for_track_table_window(
             let id = rand::thread_rng().gen_range(0..tracks.len());
 
             client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
-                base_playback.uri_offset(tracks[id].id.uri()),
+                base_playback
+                    .uri_offset(tracks[id].id.uri(), state.app_config.tracks_playback_limit),
             )))?;
         }
         Command::ChooseSelected => {
             client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
-                base_playback.uri_offset(tracks[id].id.uri()),
+                base_playback
+                    .uri_offset(tracks[id].id.uri(), state.app_config.tracks_playback_limit),
             )))?;
         }
         Command::ShowActionsOnSelectedItem => {
