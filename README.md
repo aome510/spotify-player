@@ -111,7 +111,7 @@ Application's prebuilt binaries can be found in the [Releases Page](https://gith
 
 ### Homebrew
 
-Run `brew install spotify-player` to install the application.
+Run `brew install spotify_player` to install the application.
 
 ### Cargo
 
