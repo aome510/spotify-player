@@ -31,6 +31,8 @@ pub struct AppConfig {
     #[cfg(feature = "notify")]
     pub notify_format: NotifyFormat,
 
+    pub tracks_playback_limit: usize,
+
     // session configs
     pub proxy: Option<String>,
     pub ap_port: Option<u16>,
@@ -133,6 +135,8 @@ impl Default for AppConfig {
             client_id: "65b708073fc0480ea92a077233ca87bd".to_string(),
 
             client_port: 8080,
+
+            tracks_playback_limit: 50,
 
             playback_format: String::from("{track} • {artists}\n{album}\n{metadata}"),
             #[cfg(feature = "notify")]
