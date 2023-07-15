@@ -428,7 +428,7 @@ impl Playback {
                     let r = std::cmp::min(l + limit, ids.len());
                     // For a list with too many tracks, to avoid payload limit when making the `start_playback`
                     // API request, we restrict the range of tracks to be played, which is based on the
-                    // playing track's position (if any) and the application's limit (PLAYBACK_TRACKS_LIMIT).
+                    // playing track's position (if any) and the application's limit (`app_config.tracks_playback_limit`).
                     // Related issue: https://github.com/aome510/spotify-player/issues/78
                     ids[l..r].to_vec()
                 };
