@@ -83,9 +83,17 @@ pub enum Command {
     PlaylistDelete {
         id: PlaylistId<'static>,
     },
-    PlaylistImport,
-    PlaylistFork,
-    PlaylistUpdate,
+    PlaylistList,
+    PlaylistImport {
+        from: PlaylistId<'static>,
+        to: PlaylistId<'static>,
+    },
+    PlaylistFork {
+        id: PlaylistId<'static>,
+    },
+    PlaylistUpdate {
+        id: Option<PlaylistId<'static>>,
+    },
 }
 
 #[derive(Debug, Serialize, Deserialize)]

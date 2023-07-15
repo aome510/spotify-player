@@ -179,7 +179,7 @@ pub fn handle_cli_subcommand(
             std::process::exit(1);
         }
         Response::Ok(data) => {
-            println!("{}", String::from_utf8_lossy(&data));
+            println!("{}", String::from_utf8_lossy(&data).replace("\\n", "\n"));
             std::process::exit(0);
         }
     }
@@ -216,9 +216,43 @@ fn handle_playlist_subcommand(args: &ArgMatches, socket: &UdpSocket) -> Result<(
 
             Command::PlaylistDelete { id: pid }
         }
-        "import" => Command::PlaylistImport,
-        "fork" => Command::PlaylistFork,
-        "update" => Command::PlaylistUpdate,
+        "list" => Command::PlaylistList,
+        "import" => {
+            let from_s = args
+                .get_one::<String>("from")
+                .expect("'from' PlaylistID is required.")
+                .to_owned();
+
+            let to_s = args
+                .get_one::<String>("to")
+                .expect("'to' PlaylistID is required.")
+                .to_owned();
+
+            let from = PlaylistId::from_id(from_s)?;
+            let to = PlaylistId::from_id(to_s)?;
+
+            Command::PlaylistImport { from, to }
+        }
+        "fork" => {
+            let id_s = args
+                .get_one::<String>("id")
+                .expect("Playlist id is required.")
+                .to_owned();
+
+            let id = PlaylistId::from_id(id_s)?;
+
+            Command::PlaylistFork { id }
+        }
+        "update" => {
+            let id_s = args.get_one::<String>("id");
+
+            let pid = if id_s.is_some() {
+                Some(PlaylistId::from_id(id_s.unwrap().to_owned())?)
+            } else {
+                None
+            };
+            Command::PlaylistUpdate { id: pid }
+        }
         _ => unreachable!(),
     };
 

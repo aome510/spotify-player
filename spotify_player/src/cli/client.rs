@@ -1,6 +1,6 @@
 use std::net::SocketAddr;
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use rand::seq::SliceRandom;
 use tokio::net::UdpSocket;
 
@@ -416,6 +416,24 @@ async fn handle_playlist_request(
                 Ok(format!("'{}' was not followed.", id.to_string()))
             }
         }
+        Command::PlaylistList => {
+            let resp = client
+                .spotify
+                .current_user_playlists_manual(Some(50), None)
+                .await?;
+
+            let mut out = String::new();
+            for pl in resp.items {
+                //out.push_str(format!("{}:{}\n", pl.name, pl.id.id()).as_str());
+                out.push_str(format!("{}:{}\n", pl.id.id(), pl.name).as_str());
+            }
+            out = out.trim().to_string();
+
+            Ok(out)
+        }
+        Command::PlaylistImport { from, to } => Ok(String::new()),
+        Command::PlaylistFork { id } => Ok(String::new()),
+        Command::PlaylistUpdate { id } => Ok(String::new()),
         _ => unreachable!(),
     }
 }
