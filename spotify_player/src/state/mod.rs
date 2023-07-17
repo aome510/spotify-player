@@ -34,18 +34,15 @@ pub struct State {
 impl State {
     /// parses application's configurations
     pub fn new(config_folder: &std::path::Path, theme: Option<&String>) -> Result<Self> {
-        let mut state = Self {
+        let state = Self {
             app_config: config::AppConfig::new(config_folder, theme)?,
-            keymap_config: config::KeymapConfig::default(),
-            theme_config: config::ThemeConfig::default(),
+            keymap_config: config::KeymapConfig::new(config_folder)?,
+            theme_config: config::ThemeConfig::new(config_folder)?,
             cache_folder: std::path::PathBuf::new(),
             ui: Mutex::new(UIState::default()),
             player: RwLock::new(PlayerState::default()),
             data: RwLock::new(AppData::default()),
         };
-
-        state.theme_config.parse_config_file(config_folder)?;
-        state.keymap_config.parse_config_file(config_folder)?;
 
         if let Some(theme) = state.theme_config.find_theme(&state.app_config.theme) {
             // update the UI theme based on the `theme` config option
