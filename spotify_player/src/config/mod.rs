@@ -229,7 +229,7 @@ impl Default for DeviceConfig {
 impl AppConfig {
     pub fn new(path: &Path, theme: Option<&String>) -> Result<Self> {
         let mut config = Self::default();
-        if config.parse_config_file(path)?.is_none() {
+        if !config.parse_config_file(path)? {
             config.write_config_file(path)?
         }
 
@@ -242,13 +242,14 @@ impl AppConfig {
 
     // parses configurations from an application config file in `path` folder,
     // then updates the current configurations accordingly.
-    fn parse_config_file(&mut self, path: &Path) -> Result<Option<()>> {
+    // returns false if no config file found and true otherwise
+    fn parse_config_file(&mut self, path: &Path) -> Result<bool> {
         let file_path = path.join(APP_CONFIG_FILE);
         match std::fs::read_to_string(file_path) {
             Ok(content) => self
                 .parse(toml::from_str::<toml::Value>(&content)?)
-                .map(Option::Some),
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
+                .map(|_| true),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(false),
             Err(error) => Err(error.into()),
         }
     }
