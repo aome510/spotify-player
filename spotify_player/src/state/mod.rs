@@ -10,7 +10,7 @@ pub use model::*;
 pub use player::*;
 pub use ui::*;
 
-use crate::config::{self};
+use crate::config;
 use anyhow::Result;
 
 pub use parking_lot::{Mutex, RwLock};
