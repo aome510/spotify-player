@@ -32,7 +32,7 @@ pub struct State {
 }
 
 impl State {
-    /// parses application's configurations
+    /// creates an application's state based on files in a configuration folder and an optional pre-defined theme
     pub fn new(config_folder: &std::path::Path, theme: Option<&String>) -> Result<Self> {
         let state = Self {
             app_config: config::AppConfig::new(config_folder, theme)?,
