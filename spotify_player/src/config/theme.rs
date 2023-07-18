@@ -120,9 +120,16 @@ impl ThemeConfig {
         self.themes.iter().find(|&t| t.name == name).cloned()
     }
 
+    pub fn new(path: &std::path::Path) -> Result<Self> {
+        let mut config = Self::default();
+        config.parse_config_file(path)?;
+
+        Ok(config)
+    }
+
     /// parses configurations from a theme config file in `path` folder,
     /// then updates the current configurations accordingly.
-    pub fn parse_config_file(&mut self, path: &std::path::Path) -> Result<()> {
+    fn parse_config_file(&mut self, path: &std::path::Path) -> Result<()> {
         let file_path = path.join(super::THEME_CONFIG_FILE);
         match std::fs::read_to_string(&file_path) {
             Err(err) => {

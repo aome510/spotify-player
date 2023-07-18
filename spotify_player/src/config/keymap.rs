@@ -280,9 +280,15 @@ impl Default for KeymapConfig {
 }
 
 impl KeymapConfig {
+    pub fn new(path: &std::path::Path) -> Result<Self> {
+        let mut config = Self::default();
+        config.parse_config_file(path)?;
+
+        Ok(config)
+    }
     /// parses a list of keymaps from the keymap config file in `path` folder
     /// and updates the current keymaps accordingly.
-    pub fn parse_config_file(&mut self, path: &std::path::Path) -> Result<()> {
+    fn parse_config_file(&mut self, path: &std::path::Path) -> Result<()> {
         let file_path = path.join(super::KEYMAP_CONFIG_FILE);
         match std::fs::read_to_string(&file_path) {
             Err(err) => {

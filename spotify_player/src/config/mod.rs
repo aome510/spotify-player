@@ -11,13 +11,13 @@ use anyhow::{anyhow, Result};
 use config_parser2::*;
 use librespot_core::config::SessionConfig;
 use reqwest::Url;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
 pub use keymap::*;
 pub use theme::*;
 
-#[derive(Debug, Deserialize, ConfigParse)]
+#[derive(Debug, Deserialize, Serialize, ConfigParse)]
 /// Application configurations
 pub struct AppConfig {
     pub theme: String,
@@ -80,14 +80,14 @@ pub struct AppConfig {
     pub device: DeviceConfig,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub enum Position {
     Top,
     Bottom,
 }
 config_parser_impl!(Position);
 
-#[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub enum BorderType {
     Hidden,
     Plain,
@@ -97,20 +97,20 @@ pub enum BorderType {
 }
 config_parser_impl!(BorderType);
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub enum ProgressBarType {
     Line,
     Rectangle,
 }
 config_parser_impl!(ProgressBarType);
 
-#[derive(Debug, Deserialize, ConfigParse, Clone)]
+#[derive(Debug, Deserialize, Serialize, ConfigParse, Clone)]
 pub struct Command {
     pub command: String,
     pub args: Vec<String>,
 }
 
-#[derive(Debug, Deserialize, ConfigParse, Clone)]
+#[derive(Debug, Deserialize, Serialize, ConfigParse, Clone)]
 /// Application device configurations
 pub struct DeviceConfig {
     pub name: String,
@@ -120,7 +120,7 @@ pub struct DeviceConfig {
     pub audio_cache: bool,
 }
 
-#[derive(Debug, Deserialize, ConfigParse, Clone)]
+#[derive(Debug, Deserialize, Serialize, ConfigParse, Clone)]
 #[cfg(feature = "notify")]
 pub struct NotifyFormat {
     pub summary: String,
@@ -227,14 +227,39 @@ impl Default for DeviceConfig {
 }
 
 impl AppConfig {
+    pub fn new(path: &Path, theme: Option<&String>) -> Result<Self> {
+        let mut config = Self::default();
+        if !config.parse_config_file(path)? {
+            config.write_config_file(path)?
+        }
+
+        if let Some(theme) = theme {
+            config.theme = theme.to_owned()
+        }
+
+        Ok(config)
+    }
+
     // parses configurations from an application config file in `path` folder,
     // then updates the current configurations accordingly.
-    pub fn parse_config_file(&mut self, path: &Path) -> Result<()> {
+    // returns false if no config file found and true otherwise
+    fn parse_config_file(&mut self, path: &Path) -> Result<bool> {
         let file_path = path.join(APP_CONFIG_FILE);
-        if let Ok(content) = std::fs::read_to_string(file_path) {
-            self.parse(toml::from_str::<toml::Value>(&content)?)?;
+        match std::fs::read_to_string(file_path) {
+            Ok(content) => self
+                .parse(toml::from_str::<toml::Value>(&content)?)
+                .map(|_| true),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(false),
+            Err(error) => Err(error.into()),
         }
-        Ok(())
+    }
+
+    fn write_config_file(&self, path: &Path) -> Result<()> {
+        toml::to_string_pretty(&self)
+            .map_err(From::from)
+            .and_then(|content| {
+                std::fs::write(path.join(APP_CONFIG_FILE), content).map_err(From::from)
+            })
     }
 
     pub fn session_config(&self) -> SessionConfig {

@@ -32,41 +32,24 @@ pub struct State {
 }
 
 impl State {
-    /// parses application's configurations
-    pub fn parse_config_files(
-        &mut self,
-        config_folder: &std::path::Path,
-        theme: Option<&String>,
-    ) -> Result<()> {
-        self.app_config.parse_config_file(config_folder)?;
-        if let Some(theme) = theme {
-            self.app_config.theme = theme.to_owned();
-        };
-        self.theme_config.parse_config_file(config_folder)?;
-        self.keymap_config.parse_config_file(config_folder)?;
-
-        if let Some(theme) = self.theme_config.find_theme(&self.app_config.theme) {
-            // update the UI theme based on the `theme` config option
-            // specified in the app's general configurations
-            self.ui.lock().theme = theme;
-        }
-
-        Ok(())
-    }
-}
-
-impl Default for State {
-    fn default() -> Self {
-        State {
-            app_config: config::AppConfig::default(),
-            theme_config: config::ThemeConfig::default(),
-            keymap_config: config::KeymapConfig::default(),
-
+    /// creates an application's state based on files in a configuration folder and an optional pre-defined theme
+    pub fn new(config_folder: &std::path::Path, theme: Option<&String>) -> Result<Self> {
+        let state = Self {
+            app_config: config::AppConfig::new(config_folder, theme)?,
+            keymap_config: config::KeymapConfig::new(config_folder)?,
+            theme_config: config::ThemeConfig::new(config_folder)?,
             cache_folder: std::path::PathBuf::new(),
-
             ui: Mutex::new(UIState::default()),
             player: RwLock::new(PlayerState::default()),
             data: RwLock::new(AppData::default()),
+        };
+
+        if let Some(theme) = state.theme_config.find_theme(&state.app_config.theme) {
+            // update the UI theme based on the `theme` config option
+            // specified in the app's general configurations
+            state.ui.lock().theme = theme;
         }
+
+        Ok(state)
     }
 }
