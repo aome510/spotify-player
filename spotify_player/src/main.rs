@@ -283,6 +283,7 @@ fn main() -> Result<()> {
     // initialize the application state
     let state = std::sync::Arc::new(state::State::new(
         &config_folder,
+        &cache_folder,
         args.get_one::<String>("theme"),
     )?);
 

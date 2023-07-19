@@ -33,12 +33,16 @@ pub struct State {
 
 impl State {
     /// creates an application's state based on files in a configuration folder and an optional pre-defined theme
-    pub fn new(config_folder: &std::path::Path, theme: Option<&String>) -> Result<Self> {
+    pub fn new(
+        config_folder: &std::path::Path,
+        cache_folder: &std::path::Path,
+        theme: Option<&String>,
+    ) -> Result<Self> {
         let state = Self {
             app_config: config::AppConfig::new(config_folder, theme)?,
             keymap_config: config::KeymapConfig::new(config_folder)?,
             theme_config: config::ThemeConfig::new(config_folder)?,
-            cache_folder: std::path::PathBuf::new(),
+            cache_folder: cache_folder.to_path_buf(),
             ui: Mutex::new(UIState::default()),
             player: RwLock::new(PlayerState::default()),
             data: RwLock::new(AppData::default()),
