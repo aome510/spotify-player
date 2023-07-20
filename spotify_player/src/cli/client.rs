@@ -1,20 +1,28 @@
-use std::net::SocketAddr;
+use std::{
+    collections::{hash_map::DefaultHasher, HashSet},
+    fs::{create_dir_all, remove_file, OpenOptions},
+    hash::Hasher,
+    io::BufReader,
+    net::SocketAddr,
+};
 
 use anyhow::Result;
 use rand::seq::SliceRandom;
 use tokio::net::UdpSocket;
 
+use crate::{
+    cli::{ContextType, Request},
+    client::Client,
+    config::get_config_folder_path,
+    event::PlayerRequest,
+    state::{ContextId, Playback, SharedState},
+};
 use rspotify::{
     model::*,
     prelude::{BaseClient, OAuthClient},
 };
-
-use crate::{
-    cli::{ContextType, Request},
-    client::Client,
-    event::PlayerRequest,
-    state::{ContextId, Playback, SharedState},
-};
+use std::io::BufRead;
+use std::io::Write;
 
 use super::*;
 
@@ -408,6 +416,7 @@ async fn handle_playlist_request(
                 anyhow::bail!("Could not find playlist {}", id.to_string())
             }
 
+            // Won't delete if not following
             let following = playlist_check.unwrap().pop();
             if following.unwrap() {
                 client.spotify.playlist_unfollow(id.to_owned()).await?;
@@ -424,6 +433,8 @@ async fn handle_playlist_request(
 
             let mut out = String::new();
             for pl in resp.items {
+                // Opposite way, don't know which is better
+                // Might want to add color
                 //out.push_str(format!("{}:{}\n", pl.name, pl.id.id()).as_str());
                 out.push_str(format!("{}:{}\n", pl.id.id(), pl.name).as_str());
             }
@@ -431,7 +442,227 @@ async fn handle_playlist_request(
 
             Ok(out)
         }
-        Command::PlaylistImport { from, to } => Ok(String::new()),
+        Command::PlaylistImport {
+            from: import_from,
+            to: import_to,
+        } => {
+            #[derive(PartialEq, Eq, Hash)]
+            struct PlaylistData {
+                id: TrackId<'static>,
+                name: String,
+            }
+
+            // Get playlists' info, checking if they exist
+            let from = client
+                .spotify
+                .playlist(
+                    import_from.to_owned(),
+                    None,
+                    Some(Market::Country(Country::UnitedStates)),
+                )
+                .await
+                .expect(
+                    format!(
+                        "Cannot import from {}. Playlist not found.",
+                        import_from.id()
+                    )
+                    .as_str(),
+                );
+
+            let to = client
+                .spotify
+                .playlist(
+                    import_to.to_owned(),
+                    None,
+                    Some(Market::Country(Country::UnitedStates)),
+                )
+                .await
+                .expect(
+                    format!("Cannot import to {}. Playlist not found.", import_to.id()).as_str(),
+                );
+
+            // Create hashset of import_to playlist
+            // Will use to check before adding track
+            let mut to_hash = HashSet::new();
+            for pl_item in to.tracks.items {
+                let track = pl_item.track.unwrap();
+                if let PlayableId::Track(track_id) = track.id().unwrap().into_static() {
+                    to_hash.insert(track_id);
+                }
+            }
+
+            // Create hash and vec of 'from_ids'
+            let mut hasher = DefaultHasher::new();
+            let mut from_ids = Vec::new();
+            for pl_item in from.tracks.items {
+                if let Some(PlayableItem::Track(track)) = pl_item.track {
+                    if let Some(id) = track.id {
+                        let song = PlaylistData {
+                            id: id.to_owned(),
+                            name: track.name,
+                        };
+
+                        from_ids.push(song);
+                        hasher.write(id.id().as_bytes());
+                    }
+                }
+            }
+            let hash = hasher.finish().to_string();
+
+            // Get import dir/file
+            let conf_dir = get_config_folder_path()?;
+            let imports_dir = conf_dir.join("imports");
+            let to_dir = imports_dir.join(import_to.id());
+            let from_file = to_dir.join(import_from.id());
+
+            if !to_dir.exists() {
+                create_dir_all(to_dir)?;
+            }
+
+            if !from_file.exists() {
+                let num_songs = from_ids.len();
+
+                let mut file = OpenOptions::new()
+                    .write(true)
+                    .create(true)
+                    .open(&from_file)?;
+
+                // Write hash and new line to top of file
+                writeln!(file, "{}", hash)?;
+                writeln!(file, "")?;
+
+                for track in from_ids {
+                    writeln!(file, "{}:{}", track.id.id(), track.name)?;
+
+                    if !to_hash.contains(&track.id) {
+                        client
+                            .spotify
+                            .playlist_add_items(
+                                import_to.to_owned(),
+                                [PlayableId::Track(track.id)],
+                                None,
+                            )
+                            .await?;
+                    }
+                }
+                // Possibly create a buffer of tracks that will make for fewer spotify requests
+
+                Ok(format!(
+                    "Successfully imported '{}' into '{}'.\n{} songs were added.",
+                    from.name, to.name, num_songs
+                ))
+            } else {
+                let file = OpenOptions::new().read(true).open(&from_file)?;
+                let reader = BufReader::new(file);
+                let mut iter = reader.lines();
+
+                let old_hash = iter.next().unwrap()?;
+
+                // Consume empty line
+                iter.next();
+
+                // If old hash doesn't match,
+                // need to do import
+                if !old_hash.eq(&hash) {
+                    let mut old_ids = HashSet::new();
+                    let mut new_ids = HashSet::new();
+
+                    // Write playlists new info to file
+                    remove_file(&from_file)?; // Writing wasn't overwriting
+                    let mut file = OpenOptions::new()
+                        .write(true)
+                        .create(true)
+                        .open(&from_file)?;
+
+                    writeln!(file, "{}", hash)?;
+                    writeln!(file, "")?;
+
+                    for track in from_ids {
+                        let id = track.id.to_owned();
+
+                        writeln!(file, "{}:{}", id.id(), track.name)?;
+
+                        // Add tracks to hashset
+                        new_ids.insert(track);
+
+                        if !to_hash.contains(&id) {
+                            client
+                                .spotify
+                                .playlist_add_items(
+                                    import_to.to_owned(),
+                                    [PlayableId::Track(id)],
+                                    None,
+                                )
+                                .await?;
+                        }
+                    }
+
+                    // Read from old file, getting id and name
+                    while let Some(Ok(line)) = iter.next() {
+                        let mut split = line.trim().split(":");
+                        let id_s = split.next().unwrap().to_string();
+                        let name = split.next().unwrap().to_string();
+
+                        let id = TrackId::from_id(id_s.to_owned())?;
+                        let track = PlaylistData { id, name };
+
+                        old_ids.insert(track);
+                    }
+
+                    let mut result = String::new();
+
+                    // This is meant to prompt for deletion,
+                    // May not be able to do input/output because of
+                    // client and cli structure
+                    // Might add command option to automatically delete
+                    let mut xtra_nl = false;
+                    let deleted_tracks = old_ids.difference(&new_ids);
+                    for track in deleted_tracks {
+                        if result.is_empty() {
+                            result.push_str("The import has deleted these tracks:\n");
+                            xtra_nl = true;
+                        }
+
+                        result.push_str(format!("{}:{}\n", track.id.id(), track.name).as_str());
+                        //client.spotify.playlist_remove_all_occurrences_of_items(to.id, [PlayableId::Track(track.id.to_owned())], None).await?;
+                    }
+                    // Formatting if there is any deletion
+                    if xtra_nl {
+                        result.push('\n');
+                    }
+
+                    // Add all new tracks
+                    let new_tracks = new_ids.difference(&old_ids);
+                    let mut new_tracks_count = 0;
+                    for track in new_tracks {
+                        if !to_hash.contains(&track.id) {
+                            client
+                                .spotify
+                                .playlist_add_items(
+                                    import_to.to_owned(),
+                                    [PlayableId::Track(track.id.to_owned())],
+                                    None,
+                                )
+                                .await?;
+                            new_tracks_count = new_tracks_count + 1;
+                        }
+                    }
+                    result.push_str(
+                        format!(
+                            "Updated the import '{}' for '{}'.\nAdded '{}' new songs.",
+                            from.name, to.name, new_tracks_count
+                        )
+                        .as_str(),
+                    );
+                    Ok(result)
+                } else {
+                    Ok(format!(
+                        "No updates to the import '{}' for '{}'",
+                        from.name, to.name
+                    ))
+                }
+            }
+        }
         Command::PlaylistFork { id } => Ok(String::new()),
         Command::PlaylistUpdate { id } => Ok(String::new()),
         _ => unreachable!(),

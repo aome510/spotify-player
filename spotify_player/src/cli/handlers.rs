@@ -228,9 +228,10 @@ fn handle_playlist_subcommand(args: &ArgMatches, socket: &UdpSocket) -> Result<(
                 .expect("'to' PlaylistID is required.")
                 .to_owned();
 
-            let from = PlaylistId::from_id(from_s)?;
-            let to = PlaylistId::from_id(to_s)?;
+            let from = PlaylistId::from_id(from_s.to_owned())?;
+            let to = PlaylistId::from_id(to_s.to_owned())?;
 
+            println!("Importing '{}' into '{}'...\n", from_s, to_s);
             Command::PlaylistImport { from, to }
         }
         "fork" => {
