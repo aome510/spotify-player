@@ -111,7 +111,7 @@ Application's prebuilt binaries can be found in the [Releases Page](https://gith
 
 ### Homebrew
 
-Run `brew install spotify-player` to install the application.
+Run `brew install spotify_player` to install the application.
 
 ### Cargo
 
@@ -396,6 +396,8 @@ To move the focus from the search input to the other windows such as track resul
 ## Configurations
 
 By default, `spotify_player` will look into `$HOME/.config/spotify-player` for application's configuration files. This can be changed by either specifying `-c <FOLDER_PATH>` or `--config-folder <FOLDER_PATH>` option.
+
+If an application configuration file is not found, one will be created with default values.
 
 Please refer to [the configuration documentation](docs/config.md) for more details on the configuration options.
 

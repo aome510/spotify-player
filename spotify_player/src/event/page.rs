@@ -152,7 +152,7 @@ pub fn handle_key_sequence_for_search_page(
     };
 
     let data = state.data.read();
-    let search_results = data.caches.search.peek(current_query);
+    let search_results = data.caches.search.get(current_query);
 
     match focus_state {
         SearchFocusState::Input => anyhow::bail!("user's search input should be handled before"),

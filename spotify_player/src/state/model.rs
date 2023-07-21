@@ -411,24 +411,24 @@ impl TracksId {
 
 impl Playback {
     /// creates new playback with a specified offset based on the current playback
-    pub fn uri_offset(&self, uri: String) -> Self {
+    pub fn uri_offset(&self, uri: String, limit: usize) -> Self {
         match self {
             Playback::Context(id, _) => {
                 Playback::Context(id.clone(), Some(rspotify_model::Offset::Uri(uri)))
             }
             Playback::URIs(ids, _) => {
-                let ids = if ids.len() < super::PLAYBACK_TRACKS_LIMIT {
+                let ids = if ids.len() < limit {
                     ids.clone()
                 } else {
                     let pos = ids
                         .iter()
                         .position(|id| id.uri() == uri)
                         .unwrap_or_default();
-                    let l = pos.saturating_sub(super::PLAYBACK_TRACKS_LIMIT / 2);
-                    let r = std::cmp::min(l + super::PLAYBACK_TRACKS_LIMIT, ids.len());
+                    let l = pos.saturating_sub(limit / 2);
+                    let r = std::cmp::min(l + limit, ids.len());
                     // For a list with too many tracks, to avoid payload limit when making the `start_playback`
                     // API request, we restrict the range of tracks to be played, which is based on the
-                    // playing track's position (if any) and the application's limit (PLAYBACK_TRACKS_LIMIT).
+                    // playing track's position (if any) and the application's limit (`app_config.tracks_playback_limit`).
                     // Related issue: https://github.com/aome510/spotify-player/issues/78
                     ids[l..r].to_vec()
                 };

@@ -1,10 +1,16 @@
-use std::{collections::HashMap, num::NonZeroUsize};
+use std::collections::HashMap;
+
+use once_cell::sync::Lazy;
 
 use super::model::*;
 
 pub type DataReadGuard<'a> = parking_lot::RwLockReadGuard<'a, AppData>;
 
-#[derive(Default, Debug)]
+// cache duration, which is default to be 1h
+pub static CACHE_DURATION: Lazy<std::time::Duration> =
+    Lazy::new(|| std::time::Duration::from_secs(60 * 60));
+
+#[derive(Default)]
 /// the application's data
 pub struct AppData {
     pub user_data: UserData,
@@ -22,15 +28,14 @@ pub struct UserData {
     pub saved_tracks: Vec<Track>,
 }
 
-#[derive(Debug)]
 /// the application's caches
 pub struct Caches {
-    pub context: lru::LruCache<String, Context>,
-    pub search: lru::LruCache<String, SearchResults>,
+    pub context: ttl_cache::TtlCache<String, Context>,
+    pub search: ttl_cache::TtlCache<String, SearchResults>,
     #[cfg(feature = "lyric-finder")]
-    pub lyrics: lru::LruCache<String, lyric_finder::LyricResult>,
+    pub lyrics: ttl_cache::TtlCache<String, lyric_finder::LyricResult>,
     #[cfg(feature = "image")]
-    pub images: lru::LruCache<String, image::DynamicImage>,
+    pub images: ttl_cache::TtlCache<String, image::DynamicImage>,
 }
 
 #[derive(Default, Debug)]
@@ -42,19 +47,19 @@ pub struct BrowseData {
 impl Default for Caches {
     fn default() -> Self {
         Self {
-            context: lru::LruCache::new(NonZeroUsize::new(64).unwrap()),
-            search: lru::LruCache::new(NonZeroUsize::new(64).unwrap()),
+            context: ttl_cache::TtlCache::new(64),
+            search: ttl_cache::TtlCache::new(64),
             #[cfg(feature = "lyric-finder")]
-            lyrics: lru::LruCache::new(NonZeroUsize::new(64).unwrap()),
+            lyrics: ttl_cache::TtlCache::new(64),
             #[cfg(feature = "image")]
-            images: lru::LruCache::new(NonZeroUsize::new(64).unwrap()),
+            images: ttl_cache::TtlCache::new(64),
         }
     }
 }
 
 impl AppData {
     pub fn get_tracks_by_id_mut(&mut self, id: &ContextId) -> Option<&mut Vec<Track>> {
-        self.caches.context.peek_mut(&id.uri()).map(|c| match c {
+        self.caches.context.get_mut(&id.uri()).map(|c| match c {
             Context::Album { tracks, .. } => tracks,
             Context::Playlist { tracks, .. } => tracks,
             Context::Artist {
