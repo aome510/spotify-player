@@ -240,8 +240,9 @@ fn handle_playlist_subcommand(args: &ArgMatches, socket: &UdpSocket) -> Result<(
                 .expect("Playlist id is required.")
                 .to_owned();
 
-            let id = PlaylistId::from_id(id_s)?;
+            let id = PlaylistId::from_id(id_s.to_owned())?;
 
+            println!("Forking '{}'...", id_s);
             Command::PlaylistFork { id }
         }
         "update" => {
