@@ -1,12 +1,12 @@
 use std::{
     collections::{hash_map::DefaultHasher, HashSet},
-    fs::{create_dir_all, remove_file, OpenOptions},
+    fs::{create_dir_all, remove_dir_all, remove_file, OpenOptions},
     hash::Hasher,
     io::BufReader,
     net::SocketAddr,
 };
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use rand::seq::SliceRandom;
 use tokio::net::UdpSocket;
 
@@ -458,32 +458,137 @@ async fn handle_playlist_request(
                     Some(Market::Country(Country::UnitedStates)),
                 )
                 .await
-                .expect(
-                    format!(
-                        "Cannot import from {}. Playlist not found.",
-                        id.id()
-                    )
-                    .as_str(),
-                );
+                .expect(format!("Cannot import from {}. Playlist not found.", id.id()).as_str());
             let from_desc = from.description.unwrap_or("".to_owned());
 
             let to = client
                 .spotify
-                .user_playlist_create(uid, &from.name, from.public, Some(from.collaborative), Some(from_desc.as_str()))
+                .user_playlist_create(
+                    uid,
+                    &from.name,
+                    from.public,
+                    Some(from.collaborative),
+                    Some(from_desc.as_str()),
+                )
                 .await?;
-            let mut result = format!("Forked {}.\nNew playlist: {}:{}\n", id.id(), to.name, to.id.id());
+            let mut result = format!(
+                "Forked {}.\nNew playlist: {}:{}\n",
+                id.id(),
+                to.name,
+                to.id.id()
+            );
 
             result.push_str(playlist_import(client, id, to.id).await?.as_str());
 
             Ok(result)
-        },
-        Command::PlaylistUpdate { id } => Ok(String::new()),
+        }
+        Command::PlaylistUpdate { id } => {
+            let user = state.data.read().user_data.user.to_owned().unwrap();
+            let uid = user.id;
+
+            // Get import dir/file
+            let conf_dir = get_config_folder_path()?;
+            let imports_dir = conf_dir.join("imports");
+
+            // If use specific id option
+            if id.is_some() {
+                let to_id = id.unwrap();
+                let to_dir = imports_dir.join(to_id.id());
+
+                let pl_follow = client
+                    .spotify
+                    .playlist_check_follow(to_id.to_owned(), &[uid])
+                    .await?
+                    .pop()
+                    .unwrap();
+
+                // Import is useless if not following your own playlist
+                if pl_follow {
+
+                    // Must have imported to update
+                    if to_dir.exists() {
+                        let mut result = String::new();
+
+                        for dir in to_dir.read_dir()? {
+                            let from_id =
+                                PlaylistId::from_id(dir?.file_name().into_string().unwrap())?;
+
+                            // Add each import's output
+                            result.push_str(
+                                playlist_import(client, to_id.to_owned(), from_id)
+                                    .await?
+                                    .as_str(),
+                            );
+                            result.push('\n');
+                        }
+                        Ok(result)
+                    } else {
+                        Err(anyhow!("No imports found for '{}'", to_id.id()))
+                    }
+                } else {
+                    Ok(format!("Not following '{}'", to_id.id()))
+                }
+
+            } else {
+                // Updating all imports
+
+                let mut result = String::new();
+
+                let dirs = imports_dir.read_dir()?;
+                for dir in dirs {
+                    let dir_path = dir?.path();
+                    let dir_name = dir_path.file_name().unwrap().to_str().unwrap();
+
+                    let to_id = PlaylistId::from_id(dir_name.to_owned())?;
+
+                    let pl_follow = client
+                        .spotify
+                        .playlist_check_follow(to_id.to_owned(), &[uid.to_owned()])
+                        .await?
+                        .pop()
+                        .unwrap();
+
+                    // No import for non following playlist
+                    if pl_follow {
+
+                        let to_dir = imports_dir.join(dir_name);
+                        for file in to_dir.read_dir()? {
+                            let file_name = file?.file_name().into_string().unwrap();
+
+                            let from_id = PlaylistId::from_id(file_name)?;
+
+                            result.push_str(
+                                playlist_import(client, from_id, to_id.to_owned())
+                                    .await?
+                                    .as_str(),
+                            );
+                            result.push('\n');
+                        }
+                    } else {
+                        // Remove non following imports as they are now useless
+                        remove_dir_all(dir_path)?;
+                        result.push_str(
+                            format!(
+                                "Not following playlist '{}'. Deleting import...\n",
+                                to_id.id()
+                            )
+                            .as_str(),
+                        )
+                    }
+                }
+
+                Ok(result)
+            }
+        }
         _ => unreachable!(),
     }
 }
 
-async fn playlist_import(client: &Client, import_from: PlaylistId<'static>, import_to: PlaylistId<'static>) -> Result<String> {
-
+async fn playlist_import(
+    client: &Client,
+    import_from: PlaylistId<'static>,
+    import_to: PlaylistId<'static>,
+) -> Result<String> {
     #[derive(PartialEq, Eq, Hash)]
     struct PlaylistData {
         id: TrackId<'static>,
