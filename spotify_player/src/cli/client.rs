@@ -744,26 +744,6 @@ async fn playlist_import(
 
             let mut result = String::new();
 
-            // This is meant to prompt for deletion,
-            // May not be able to do input/output because of
-            // client and cli structure
-            // Might add command option to automatically delete
-            let mut xtra_nl = false;
-            let deleted_tracks = old_ids.difference(&new_ids);
-            for track in deleted_tracks {
-                if result.is_empty() {
-                    result.push_str("The import has deleted these tracks:\n");
-                    xtra_nl = true;
-                }
-
-                result.push_str(format!("{}:{}\n", track.id.id(), track.name).as_str());
-                //client.spotify.playlist_remove_all_occurrences_of_items(to.id, [PlayableId::Track(track.id.to_owned())], None).await?;
-            }
-            // Formatting if there is any deletion
-            if xtra_nl {
-                result.push('\n');
-            }
-
             // Add all new tracks
             let new_tracks = new_ids.difference(&old_ids);
             let mut new_tracks_count = 0;
@@ -787,10 +767,31 @@ async fn playlist_import(
                 )
                 .as_str(),
             );
+
+            // This is meant to prompt for deletion,
+            // May not be able to do input/output because of
+            // client and cli structure
+            // Might add command option to automatically delete
+            let mut have_removed = false;
+            let deleted_tracks = old_ids.difference(&new_ids);
+            for track in deleted_tracks {
+                if !have_removed {
+                    result.push_str("The import has deleted these tracks:\n");
+                    have_removed = true;
+                }
+
+                result.push_str(format!("{}:{}\n", track.id.id(), track.name).as_str());
+                //client.spotify.playlist_remove_all_occurrences_of_items(to.id, [PlayableId::Track(track.id.to_owned())], None).await?;
+            }
+
+            if !have_removed {
+                result.push('\n');
+            }
+
             Ok(result)
         } else {
             Ok(format!(
-                "No updates to the import '{}' for '{}'",
+                "No updates to the import '{}' for '{}'\n",
                 from.name, to.name
             ))
         }

@@ -163,7 +163,7 @@ pub fn init_playlist_subcommand() -> Command {
         .subcommand(Command::new("fork").about("Creates a copy of a playlist and imports it.")
             .arg(Arg::new("id")
                 .value_parser(clap::builder::NonEmptyStringValueParser::new())))
-        .subcommand(Command::new("update").about("Updates all imported playlists.")
+        .subcommand(Command::new("update").about("Updates all imported playlists or a single individual import.")
             .arg(Arg::new("id")
                 .required(false)
                 .value_parser(clap::builder::NonEmptyStringValueParser::new())))
