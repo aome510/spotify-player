@@ -189,21 +189,22 @@ fn handle_playlist_subcommand(args: &ArgMatches, socket: &UdpSocket) -> Result<(
     let (cmd, args) = args.subcommand().expect("playlist subcommand is required");
     let command = match cmd {
         "new" => {
-            let empty = String::new();
-
             let name = args
                 .get_one::<String>("name")
                 .expect("name arg is required");
 
-            let description = args.get_one::<String>("description").or(Some(&empty));
+            let description = args
+                .get_one::<String>("description")
+                .map(|s| s.to_owned())
+                .unwrap_or_default();
 
             let public = args.get_flag("public");
             let collab = args.get_flag("collab");
-            Command::PlaylistNew {
+            PlaylistCommand::New {
                 name: name.to_owned(),
                 public,
                 collab,
-                description: description.unwrap().to_owned(),
+                description,
             }
         }
         "delete" => {
@@ -214,9 +215,9 @@ fn handle_playlist_subcommand(args: &ArgMatches, socket: &UdpSocket) -> Result<(
 
             let pid = PlaylistId::from_id(id)?;
 
-            Command::PlaylistDelete { id: pid }
+            PlaylistCommand::Delete { id: pid }
         }
-        "list" => Command::PlaylistList,
+        "list" => PlaylistCommand::List,
         "import" => {
             let from_s = args
                 .get_one::<String>("from")
@@ -232,7 +233,7 @@ fn handle_playlist_subcommand(args: &ArgMatches, socket: &UdpSocket) -> Result<(
             let to = PlaylistId::from_id(to_s.to_owned())?;
 
             println!("Importing '{}' into '{}'...\n", from_s, to_s);
-            Command::PlaylistImport { from, to }
+            PlaylistCommand::Import { from, to }
         }
         "fork" => {
             let id_s = args
@@ -243,7 +244,7 @@ fn handle_playlist_subcommand(args: &ArgMatches, socket: &UdpSocket) -> Result<(
             let id = PlaylistId::from_id(id_s.to_owned())?;
 
             println!("Forking '{}'...\n", id_s);
-            Command::PlaylistFork { id }
+            PlaylistCommand::Fork { id }
         }
         "update" => {
             let id_s = args.get_one::<String>("id");
@@ -260,7 +261,7 @@ fn handle_playlist_subcommand(args: &ArgMatches, socket: &UdpSocket) -> Result<(
                 println!("Updating all imports...\n");
             }
 
-            Command::PlaylistUpdate { id: pid }
+            PlaylistCommand::Update { id: pid }
         }
         _ => unreachable!(),
     };

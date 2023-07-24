@@ -57,6 +57,30 @@ pub enum IdOrName {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub enum PlaylistCommand {
+    New {
+        name: String,
+        public: bool,
+        collab: bool,
+        description: String,
+    },
+    Delete {
+        id: PlaylistId<'static>,
+    },
+    List,
+    Import {
+        from: PlaylistId<'static>,
+        to: PlaylistId<'static>,
+    },
+    Fork {
+        id: PlaylistId<'static>,
+    },
+    Update {
+        id: Option<PlaylistId<'static>>,
+    },
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub enum Command {
     StartContext(ContextType, IdOrName),
     StartLikedTracks {
@@ -74,26 +98,6 @@ pub enum Command {
         is_offset: bool,
     },
     Seek(i64),
-    PlaylistNew {
-        name: String,
-        public: bool,
-        collab: bool,
-        description: String,
-    },
-    PlaylistDelete {
-        id: PlaylistId<'static>,
-    },
-    PlaylistList,
-    PlaylistImport {
-        from: PlaylistId<'static>,
-        to: PlaylistId<'static>,
-    },
-    PlaylistFork {
-        id: PlaylistId<'static>,
-    },
-    PlaylistUpdate {
-        id: Option<PlaylistId<'static>>,
-    },
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -102,7 +106,7 @@ pub enum Request {
     Playback(Command),
     Connect(IdOrName),
     Like { unlike: bool },
-    Playlist(Command),
+    Playlist(PlaylistCommand),
 }
 
 #[derive(Debug, Serialize, Deserialize)]

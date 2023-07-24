@@ -143,13 +143,7 @@ async fn handle_socket_request(
         }
         Request::Playlist(command) => {
             let resp = handle_playlist_request(client, state, command).await?;
-
-            // Allowing command output of success
-            let mut resp_vec = serde_json::to_vec_pretty(&resp)?;
-            // Removing quotation marks
-            resp_vec.pop();
-            resp_vec.remove(0);
-            Ok(resp_vec)
+            Ok(resp.into_bytes())
         }
     }
 }
@@ -365,7 +359,6 @@ async fn handle_playback_request(
             };
             PlayerRequest::SeekTrack(progress + chrono::Duration::milliseconds(position_offset_ms))
         }
-        _ => unreachable!(),
     };
 
     client.handle_player_request(state, player_request).await?;
@@ -376,10 +369,10 @@ async fn handle_playback_request(
 async fn handle_playlist_request(
     client: &Client,
     state: &SharedState,
-    command: Command,
+    command: PlaylistCommand,
 ) -> Result<String> {
     match command {
-        Command::PlaylistNew {
+        PlaylistCommand::New {
             name,
             public,
             collab,
@@ -404,7 +397,7 @@ async fn handle_playlist_request(
                 resp.id.to_string()
             ))
         }
-        Command::PlaylistDelete { id } => {
+        PlaylistCommand::Delete { id } => {
             let user = state.data.read().user_data.user.to_owned().unwrap();
             let uid = user.id;
 
@@ -413,50 +406,44 @@ async fn handle_playlist_request(
                 .playlist_check_follow(id.to_owned(), &[uid])
                 .await;
             if playlist_check.is_err() {
-                anyhow::bail!("Could not find playlist {}", id.to_string())
+                anyhow::bail!("Could not find playlist {}", id)
             }
 
             // Won't delete if not following
-            let following = playlist_check.unwrap().pop();
-            if following.unwrap() {
+            let following = playlist_check.unwrap().pop().unwrap();
+            if following {
                 client.spotify.playlist_unfollow(id.to_owned()).await?;
-                Ok(format!("'{}' was deleted", id.to_string()))
+                Ok(format!("Playlist '{}' was deleted/unfollowed", id))
             } else {
-                Ok(format!("'{}' was not followed.", id.to_string()))
+                Ok(format!(
+                    "Playlist '{}' was not followed by the user, nothing to be done.",
+                    id
+                ))
             }
         }
-        Command::PlaylistList => {
-            let resp = client
-                .spotify
-                .current_user_playlists_manual(Some(50), None)
-                .await?;
+        PlaylistCommand::List => {
+            let resp = client.current_user_playlists().await?;
 
             let mut out = String::new();
-            for pl in resp.items {
-                // Opposite way, don't know which is better
+            for pl in resp {
                 // Might want to add color
-                //out.push_str(format!("{}:{}\n", pl.name, pl.id.id()).as_str());
-                out.push_str(format!("{}:{}\n", pl.id.id(), pl.name).as_str());
+                out.push_str(format!("{}: {}\n", pl.id.id(), pl.name).as_str());
             }
             out = out.trim().to_string();
 
             Ok(out)
         }
-        Command::PlaylistImport {
+        PlaylistCommand::Import {
             from: import_from,
             to: import_to,
         } => playlist_import(client, import_from, import_to).await,
-        Command::PlaylistFork { id } => {
+        PlaylistCommand::Fork { id } => {
             let user = state.data.read().user_data.user.to_owned().unwrap();
             let uid = user.id;
 
             let from = client
                 .spotify
-                .playlist(
-                    id.to_owned(),
-                    None,
-                    Some(Market::Country(Country::UnitedStates)),
-                )
+                .playlist(id.to_owned(), None, None)
                 .await
                 .expect(format!("Cannot import from {}. Playlist not found.", id.id()).as_str());
             let from_desc = from.description.unwrap_or("".to_owned());
@@ -482,7 +469,7 @@ async fn handle_playlist_request(
 
             Ok(result)
         }
-        Command::PlaylistUpdate { id } => {
+        PlaylistCommand::Update { id } => {
             let user = state.data.read().user_data.user.to_owned().unwrap();
             let uid = user.id;
 
@@ -504,7 +491,6 @@ async fn handle_playlist_request(
 
                 // Import is useless if not following your own playlist
                 if pl_follow {
-
                     // Must have imported to update
                     if to_dir.exists() {
                         let mut result = String::new();
@@ -528,7 +514,6 @@ async fn handle_playlist_request(
                 } else {
                     Ok(format!("Not following '{}'", to_id.id()))
                 }
-
             } else {
                 // Updating all imports
 
@@ -550,7 +535,6 @@ async fn handle_playlist_request(
 
                     // No import for non following playlist
                     if pl_follow {
-
                         let to_dir = imports_dir.join(dir_name);
                         for file in to_dir.read_dir()? {
                             let file_name = file?.file_name().into_string().unwrap();
@@ -580,10 +564,16 @@ async fn handle_playlist_request(
                 Ok(result)
             }
         }
-        _ => unreachable!(),
     }
 }
 
+/// Imports a playlist into another playlist.
+/// All tracks from the imported playlist are added to the import-to playlist if they are not in there already.
+/// The state of the imported playlist and a hash of the track ids are written to a file
+///
+/// This file is used in subsequent imports of the same two playlists
+/// It is first used to see if the state of the imported playlist has changed
+/// then if so, is used to see what has differed in the change.
 async fn playlist_import(
     client: &Client,
     import_from: PlaylistId<'static>,
