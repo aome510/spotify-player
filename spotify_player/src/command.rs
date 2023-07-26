@@ -68,7 +68,7 @@ pub enum Command {
     ReverseTrackOrder,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum TrackAction {
     GoToArtist,
     GoToAlbum,
@@ -78,6 +78,8 @@ pub enum TrackAction {
     AddToQueue,
     AddToPlaylist,
     DeleteFromCurrentPlaylist,
+    MoveUpInCurrentPlaylist,
+    MoveDownInCurrentPlaylist,
     AddToLikedTracks,
     DeleteFromLikedTracks,
     CopyTrackLink,

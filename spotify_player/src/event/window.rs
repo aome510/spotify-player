@@ -174,8 +174,23 @@ pub fn handle_command_for_track_table_window(
         }
         Command::ShowActionsOnSelectedItem => {
             let mut actions = command::construct_track_actions(tracks[id], data);
-            if let ContextId::Playlist(_) = context_id {
+            if let ContextId::Playlist(playlist_id) = context_id {
                 actions.push(TrackAction::DeleteFromCurrentPlaylist);
+
+                if let (Some(Context::Playlist { tracks, playlist }), Some(user_id)) = (
+                    state.data.read().caches.context.get(&playlist_id.uri()),
+                    state
+                        .data
+                        .read()
+                        .user_data
+                        .user
+                        .as_ref()
+                        .map(|user| &user.id),
+                ) {
+                    actions.append(&mut track_actions_for_playlist_owner(
+                        tracks, id, user_id, playlist,
+                    ));
+                }
             }
             ui.popup = Some(PopupState::ActionList(
                 ActionListItem::Track(tracks[id].clone(), actions),
@@ -374,4 +389,91 @@ pub fn handle_command_for_playlist_list_window(
         _ => return Ok(false),
     }
     Ok(true)
+}
+
+fn track_actions_for_playlist_owner(
+    tracks: &[Track],
+    track_index: usize,
+    user_id: &UserId<'_>,
+    playlist: &Playlist,
+) -> Vec<TrackAction> {
+    if &playlist.owner.1 != user_id {
+        return vec![];
+    };
+
+    let mut actions = vec![];
+    if track_index > 0 {
+        actions.push(TrackAction::MoveUpInCurrentPlaylist);
+    }
+    if track_index + 1 < tracks.len() {
+        actions.push(TrackAction::MoveDownInCurrentPlaylist);
+    }
+
+    actions
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_track_actions_for_playlist_owner() {
+        fn create_dummy_track(track_id: &str) -> Track {
+            Track {
+                id: TrackId::from_id(track_id.to_owned()).unwrap(),
+                name: "".to_string(),
+                artists: vec![],
+                album: None,
+                duration: chrono::Duration::minutes(1),
+                added_at: 0,
+            }
+        }
+
+        let user_id = "jhgDSLJahsgd";
+        let tracks = vec![
+            create_dummy_track("37BTh5g05cxBIRYMbw8g2T"),
+            create_dummy_track("4cOdK2wGLETKBW3PvgPWqT"),
+            create_dummy_track("6tASfEUyB7lE2r6DLzURji"),
+        ];
+
+        let playlist = Playlist {
+            id: PlaylistId::from_id(user_id.to_owned()).unwrap(),
+            collaborative: false,
+            name: "".to_string(),
+            owner: (
+                user_id.to_string(),
+                UserId::from_id(user_id.to_owned()).unwrap(),
+            ),
+        };
+
+        // test when the track index is neither first or last
+        let actions = track_actions_for_playlist_owner(
+            &tracks,
+            1,
+            &UserId::from_id(user_id).unwrap(),
+            &playlist,
+        );
+        assert!(actions.contains(&TrackAction::MoveUpInCurrentPlaylist));
+        assert!(actions.contains(&TrackAction::MoveDownInCurrentPlaylist));
+
+        // test when the track index is first
+        let actions = track_actions_for_playlist_owner(
+            &tracks,
+            0,
+            &UserId::from_id(user_id).unwrap(),
+            &playlist,
+        );
+        assert!(!actions.contains(&TrackAction::MoveUpInCurrentPlaylist));
+        assert!(actions.contains(&TrackAction::MoveDownInCurrentPlaylist));
+
+        // test when the track index is last
+        let actions = track_actions_for_playlist_owner(
+            &tracks,
+            2,
+            &UserId::from_id(user_id).unwrap(),
+            &playlist,
+        );
+        assert!(actions.contains(&TrackAction::MoveUpInCurrentPlaylist));
+        assert!(!actions.contains(&TrackAction::MoveDownInCurrentPlaylist));
+    }
 }
