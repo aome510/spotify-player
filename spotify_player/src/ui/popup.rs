@@ -255,18 +255,23 @@ pub fn render_commands_help_popup(
     let rect = construct_and_render_block("Commands", &ui.theme, state, Borders::ALL, frame, rect);
 
     let mut map = BTreeMap::new();
-    state.keymap_config.keymaps.iter().for_each(|km| {
-        let v = map.entry(km.command);
-        match v {
-            Entry::Vacant(v) => {
-                v.insert(format!("\"{}\"", km.key_sequence));
+    state
+        .keymap_config
+        .keymaps
+        .iter()
+        .filter(|km| km.include_in_help_screen())
+        .for_each(|km| {
+            let v = map.entry(km.command);
+            match v {
+                Entry::Vacant(v) => {
+                    v.insert(format!("\"{}\"", km.key_sequence));
+                }
+                Entry::Occupied(mut v) => {
+                    let desc = format!("{}, \"{}\"", v.get(), km.key_sequence);
+                    *v.get_mut() = desc;
+                }
             }
-            Entry::Occupied(mut v) => {
-                let desc = format!("{}, \"{}\"", v.get(), km.key_sequence);
-                *v.get_mut() = desc;
-            }
-        }
-    });
+        });
 
     let scroll_offset = match ui.popup {
         Some(PopupState::CommandHelp {

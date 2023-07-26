@@ -333,6 +333,12 @@ impl KeymapConfig {
     }
 }
 
+impl Keymap {
+    pub fn include_in_help_screen(&self) -> bool {
+        !matches!(&self.command, Command::None)
+    }
+}
+
 impl From<&str> for Key {
     /// converts a string into a `Key`.
     /// # Panics

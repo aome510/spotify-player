@@ -182,7 +182,7 @@ selection = { modifiers = ["Bold", "Reversed"] }
 
 ## Keymaps
 
-`spotify_player` uses `keymap.toml` to add or override new key mappings in additional to [the default key mappings](../README.md#commands). To define a new key mapping, simply add a `keymaps` entry. For example,
+`spotify_player` uses `keymap.toml` to add or override new key mappings in additional to [the default key mappings](../README.md#commands). To define a new key mapping, simply add a `keymaps` entry. To remove a key mapping, set its command to `None`. For example,
 
 ```toml
 [[keymaps]]
@@ -197,4 +197,7 @@ key_sequence = "C-c C-x /"
 [[keymaps]]
 command = "ResumePause"
 key_sequence = "M-enter"
+[[keymaps]]
+command = "None"
+key_sequence = "q"
 ```
