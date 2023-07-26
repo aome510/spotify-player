@@ -83,20 +83,14 @@ pub enum PlaylistCommand {
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Command {
     StartContext(ContextType, IdOrName),
-    StartLikedTracks {
-        limit: usize,
-        random: bool,
-    },
+    StartLikedTracks { limit: usize, random: bool },
     StartRadio(ItemType, IdOrName),
     PlayPause,
     Next,
     Previous,
     Shuffle,
     Repeat,
-    Volume {
-        percent: i8,
-        is_offset: bool,
-    },
+    Volume { percent: i8, is_offset: bool },
     Seek(i64),
 }
 

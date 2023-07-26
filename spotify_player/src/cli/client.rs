@@ -15,7 +15,7 @@ use crate::{
     client::Client,
     config::get_config_folder_path,
     event::PlayerRequest,
-    state::{ContextId, Playback, SharedState},
+    state::{Context, ContextId, Playback, SharedState},
 };
 use rspotify::{
     model::*,
@@ -393,8 +393,7 @@ async fn handle_playlist_request(
                 .await?;
             Ok(format!(
                 "Playlist '{}' with id '{}' was created.",
-                resp.name,
-                resp.id.to_string()
+                resp.name, resp.id
             ))
         }
         PlaylistCommand::Delete { id } => {
@@ -445,7 +444,7 @@ async fn handle_playlist_request(
                 .spotify
                 .playlist(id.to_owned(), None, None)
                 .await
-                .expect(format!("Cannot import from {}. Playlist not found.", id.id()).as_str());
+                .unwrap_or_else(|_| panic!("Cannot import from {}. Playlist not found.", id.id()));
             let from_desc = from.description.unwrap_or("".to_owned());
 
             let to = client
@@ -586,57 +585,37 @@ async fn playlist_import(
     }
 
     // Get playlists' info, checking if they exist
-    let from = client
-        .spotify
-        .playlist(
-            import_from.to_owned(),
-            None,
-            Some(Market::Country(Country::UnitedStates)),
-        )
-        .await
-        .expect(
-            format!(
-                "Cannot import from {}. Playlist not found.",
-                import_from.id()
-            )
-            .as_str(),
-        );
+    let (from, from_tracks) = match client.playlist_context(import_from.to_owned()).await? {
+        Context::Playlist { playlist, tracks } => (playlist, tracks),
+        _ => panic!(
+            "Cannot import from {}. Playlist not found.",
+            import_from.id()
+        ),
+    };
 
-    let to = client
-        .spotify
-        .playlist(
-            import_to.to_owned(),
-            None,
-            Some(Market::Country(Country::UnitedStates)),
-        )
-        .await
-        .expect(format!("Cannot import to {}. Playlist not found.", import_to.id()).as_str());
+    let (to, to_tracks) = match client.playlist_context(import_from.to_owned()).await? {
+        Context::Playlist { playlist, tracks } => (playlist, tracks),
+        _ => panic!("Cannot import to {}. Playlist not found.", import_to.id()),
+    };
 
     // Create hashset of import_to playlist
     // Will use to check before adding track
     let mut to_hash = HashSet::new();
-    for pl_item in to.tracks.items {
-        let track = pl_item.track.unwrap();
-        if let PlayableId::Track(track_id) = track.id().unwrap().into_static() {
-            to_hash.insert(track_id);
-        }
+    for track in to_tracks {
+        to_hash.insert(track.id);
     }
 
     // Create hash and vec of 'from_ids'
     let mut hasher = DefaultHasher::new();
     let mut from_ids = Vec::new();
-    for pl_item in from.tracks.items {
-        if let Some(PlayableItem::Track(track)) = pl_item.track {
-            if let Some(id) = track.id {
-                let song = PlaylistData {
-                    id: id.to_owned(),
-                    name: track.name,
-                };
+    for track in from_tracks {
+        let song = PlaylistData {
+            id: track.id.to_owned(),
+            name: track.name,
+        };
 
-                from_ids.push(song);
-                hasher.write(id.id().as_bytes());
-            }
-        }
+        from_ids.push(song);
+        hasher.write(track.id.id().as_bytes());
     }
     let hash = hasher.finish().to_string();
 
@@ -650,6 +629,7 @@ async fn playlist_import(
         create_dir_all(to_dir)?;
     }
 
+    // If this import has not happened before
     if !from_file.exists() {
         let num_songs = from_ids.len();
 
@@ -660,25 +640,40 @@ async fn playlist_import(
 
         // Write hash and new line to top of file
         writeln!(file, "{}", hash)?;
-        writeln!(file, "")?;
+        writeln!(file)?;
 
+        let mut track_buff = Vec::new();
         for track in from_ids {
             writeln!(file, "{}:{}", track.id.id(), track.name)?;
 
             if !to_hash.contains(&track.id) {
-                client
-                    .spotify
-                    .playlist_add_items(import_to.to_owned(), [PlayableId::Track(track.id)], None)
-                    .await?;
+                track_buff.push(PlayableId::Track(track.id));
+
+                if track_buff.len() > 90 {
+                    client
+                        .spotify
+                        .playlist_add_items(import_to.to_owned(), track_buff, None)
+                        .await?;
+                    track_buff = Vec::new();
+                }
             }
         }
-        // Possibly create a buffer of tracks that will make for fewer spotify requests
+
+        if !track_buff.is_empty() {
+            client
+                .spotify
+                .playlist_add_items(import_to.to_owned(), track_buff, None)
+                .await?;
+        }
 
         Ok(format!(
             "Successfully imported '{}' into '{}'.\n{} songs were added.",
             from.name, to.name, num_songs
         ))
     } else {
+        // If the import has happened before, read from hash to check from changes
+        // If the hashes don't match reimport
+
         let file = OpenOptions::new().read(true).open(&from_file)?;
         let reader = BufReader::new(file);
         let mut iter = reader.lines();
@@ -702,7 +697,7 @@ async fn playlist_import(
                 .open(&from_file)?;
 
             writeln!(file, "{}", hash)?;
-            writeln!(file, "")?;
+            writeln!(file)?;
 
             for track in from_ids {
                 let id = track.id.to_owned();
@@ -722,7 +717,7 @@ async fn playlist_import(
 
             // Read from old file, getting id and name
             while let Some(Ok(line)) = iter.next() {
-                let mut split = line.trim().split(":");
+                let mut split = line.trim().split(':');
                 let id_s = split.next().unwrap().to_string();
                 let name = split.next().unwrap().to_string();
 
@@ -735,21 +730,31 @@ async fn playlist_import(
             let mut result = String::new();
 
             // Add all new tracks
+            let mut track_buff = Vec::new();
             let new_tracks = new_ids.difference(&old_ids);
             let mut new_tracks_count = 0;
             for track in new_tracks {
                 if !to_hash.contains(&track.id) {
-                    client
-                        .spotify
-                        .playlist_add_items(
-                            import_to.to_owned(),
-                            [PlayableId::Track(track.id.to_owned())],
-                            None,
-                        )
-                        .await?;
-                    new_tracks_count = new_tracks_count + 1;
+                    track_buff.push(PlayableId::Track(track.id.to_owned()));
+                    new_tracks_count += 1;
+
+                    if track_buff.len() > 90 {
+                        client
+                            .spotify
+                            .playlist_add_items(import_to.to_owned(), track_buff, None)
+                            .await?;
+                        track_buff = Vec::new();
+                    }
                 }
             }
+
+            if !track_buff.is_empty() {
+                client
+                    .spotify
+                    .playlist_add_items(import_to.to_owned(), track_buff, None)
+                    .await?;
+            }
+
             result.push_str(
                 format!(
                     "Updated the import '{}' for '{}'.\nAdded '{}' new songs.",
