@@ -435,7 +435,8 @@ async fn handle_playlist_request(
         PlaylistCommand::Import {
             from: import_from,
             to: import_to,
-        } => playlist_import(client, import_from, import_to).await,
+            delete,
+        } => playlist_import(client, import_from, import_to, delete).await,
         PlaylistCommand::Fork { id } => {
             let user = state.data.read().user_data.user.to_owned().unwrap();
             let uid = user.id;
@@ -464,11 +465,11 @@ async fn handle_playlist_request(
                 to.id.id()
             );
 
-            result.push_str(playlist_import(client, id, to.id).await?.as_str());
+            result.push_str(playlist_import(client, id, to.id, false).await?.as_str());
 
             Ok(result)
         }
-        PlaylistCommand::Update { id } => {
+        PlaylistCommand::Update { id, delete } => {
             let user = state.data.read().user_data.user.to_owned().unwrap();
             let uid = user.id;
 
@@ -500,7 +501,7 @@ async fn handle_playlist_request(
 
                             // Add each import's output
                             result.push_str(
-                                playlist_import(client, to_id.to_owned(), from_id)
+                                playlist_import(client, to_id.to_owned(), from_id, delete)
                                     .await?
                                     .as_str(),
                             );
@@ -541,7 +542,7 @@ async fn handle_playlist_request(
                             let from_id = PlaylistId::from_id(file_name)?;
 
                             result.push_str(
-                                playlist_import(client, from_id, to_id.to_owned())
+                                playlist_import(client, from_id, to_id.to_owned(), delete)
                                     .await?
                                     .as_str(),
                             );
@@ -577,6 +578,7 @@ async fn playlist_import(
     client: &Client,
     import_from: PlaylistId<'static>,
     import_to: PlaylistId<'static>,
+    delete: bool,
 ) -> Result<String> {
     #[derive(PartialEq, Eq, Hash)]
     struct PlaylistData {
@@ -593,7 +595,7 @@ async fn playlist_import(
         ),
     };
 
-    let (to, to_tracks) = match client.playlist_context(import_from.to_owned()).await? {
+    let (to, to_tracks) = match client.playlist_context(import_to.to_owned()).await? {
         Context::Playlist { playlist, tracks } => (playlist, tracks),
         _ => panic!("Cannot import to {}. Playlist not found.", import_to.id()),
     };
@@ -757,7 +759,7 @@ async fn playlist_import(
 
             result.push_str(
                 format!(
-                    "Updated the import '{}' for '{}'.\nAdded '{}' new songs.",
+                    "Updated the import '{}' for '{}'.\nAdded '{}' new songs.\n",
                     from.name, to.name, new_tracks_count
                 )
                 .as_str(),
@@ -766,7 +768,7 @@ async fn playlist_import(
             // This is meant to prompt for deletion,
             // May not be able to do input/output because of
             // client and cli structure
-            // Might add command option to automatically delete
+            let mut delete_buff = Vec::new();
             let mut have_removed = false;
             let deleted_tracks = old_ids.difference(&new_ids);
             for track in deleted_tracks {
@@ -776,7 +778,20 @@ async fn playlist_import(
                 }
 
                 result.push_str(format!("{}:{}\n", track.id.id(), track.name).as_str());
-                //client.spotify.playlist_remove_all_occurrences_of_items(to.id, [PlayableId::Track(track.id.to_owned())], None).await?;
+                if delete {
+                    delete_buff.push(PlayableId::Track(track.id.to_owned()));
+                    if delete_buff.len() > 90 {
+                        client.spotify.playlist_remove_all_occurrences_of_items(to.id.to_owned(), delete_buff, None).await?;
+                        delete_buff = Vec::new();
+
+                    }
+                }
+            }
+
+            if delete {
+                result.push_str("These tracks have been deleted from the playlist.");
+                client.spotify.playlist_remove_all_occurrences_of_items(to.id, delete_buff, None).await?;
+
             }
 
             if !have_removed {

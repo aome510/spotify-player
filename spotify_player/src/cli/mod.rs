@@ -71,12 +71,14 @@ pub enum PlaylistCommand {
     Import {
         from: PlaylistId<'static>,
         to: PlaylistId<'static>,
+        delete: bool,
     },
     Fork {
         id: PlaylistId<'static>,
     },
     Update {
         id: Option<PlaylistId<'static>>,
+        delete: bool,
     },
 }
 

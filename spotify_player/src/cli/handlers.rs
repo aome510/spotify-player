@@ -229,11 +229,13 @@ fn handle_playlist_subcommand(args: &ArgMatches, socket: &UdpSocket) -> Result<(
                 .expect("'to' PlaylistID is required.")
                 .to_owned();
 
+            let delete = args.get_flag("delete");
+
             let from = PlaylistId::from_id(from_s.to_owned())?;
             let to = PlaylistId::from_id(to_s.to_owned())?;
 
             println!("Importing '{}' into '{}'...\n", from_s, to_s);
-            PlaylistCommand::Import { from, to }
+            PlaylistCommand::Import { from, to, delete }
         }
         "fork" => {
             let id_s = args
@@ -255,13 +257,15 @@ fn handle_playlist_subcommand(args: &ArgMatches, socket: &UdpSocket) -> Result<(
                 None
             };
 
+            let delete = args.get_flag("delete");
+
             if pid.is_some() {
                 println!("Updating '{}'...\n", id_s.unwrap());
             } else {
                 println!("Updating all imports...\n");
             }
 
-            PlaylistCommand::Update { id: pid }
+            PlaylistCommand::Update { id: pid, delete }
         }
         _ => unreachable!(),
     };
