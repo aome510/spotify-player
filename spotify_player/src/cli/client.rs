@@ -781,17 +781,25 @@ async fn playlist_import(
                 if delete {
                     delete_buff.push(PlayableId::Track(track.id.to_owned()));
                     if delete_buff.len() > 90 {
-                        client.spotify.playlist_remove_all_occurrences_of_items(to.id.to_owned(), delete_buff, None).await?;
+                        client
+                            .spotify
+                            .playlist_remove_all_occurrences_of_items(
+                                to.id.to_owned(),
+                                delete_buff,
+                                None,
+                            )
+                            .await?;
                         delete_buff = Vec::new();
-
                     }
                 }
             }
 
             if delete {
                 result.push_str("These tracks have been deleted from the playlist.");
-                client.spotify.playlist_remove_all_occurrences_of_items(to.id, delete_buff, None).await?;
-
+                client
+                    .spotify
+                    .playlist_remove_all_occurrences_of_items(to.id, delete_buff, None)
+                    .await?;
             }
 
             if !have_removed {
