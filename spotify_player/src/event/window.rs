@@ -258,7 +258,6 @@ pub fn handle_command_for_track_list_window(
     mut ui: UIStateGuard,
     state: &SharedState,
 ) -> Result<bool> {
-    tracing::info!("here 0");
     let id = ui.current_page_mut().selected().unwrap_or_default();
     if id >= tracks.len() {
         return Ok(false);
