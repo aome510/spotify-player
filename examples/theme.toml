@@ -100,7 +100,7 @@ page_desc = { fg = "Cyan", modifiers = ["Bold"] }
 table_header = { fg = "Blue" }
 selection = { modifiers = ["Bold", "Reversed"] }
 
-    
+
 [[themes]]
 name = "solarized_dark"
 [themes.palette]
@@ -134,7 +134,7 @@ current_playing = { fg = "Green", modifiers = ["Bold"] }
 page_desc = { fg = "Cyan", modifiers = ["Bold"] }
 table_header = { fg = "Blue" }
 selection = { modifiers = ["Bold", "Reversed"] }
-    
+
 [[themes]]
 name = "solarized_light"
 [themes.palette]
@@ -163,6 +163,40 @@ playback_track = { fg = "Cyan", modifiers = ["Bold"] }
 playback_artists = { fg = "Cyan", modifiers = ["Bold"] }
 playback_album = { fg = "Yellow" }
 playback_metadata = { fg = "BrightBlack" }
+playback_progress_bar = { bg = "BrightBlack", fg = "Green" }
+current_playing = { fg = "Green", modifiers = ["Bold"] }
+page_desc = { fg = "Cyan", modifiers = ["Bold"] }
+table_header = { fg = "Blue" }
+selection = { modifiers = ["Bold", "Reversed"] }
+
+[[themes]]
+name = "tokyonight"
+[themes.palette]
+background = "#1f2335"
+foreground = "#c0caf5"
+black = "#414868"
+red = "#f7768e"
+green = "#9ece6a"
+yellow = "#e0af68"
+blue = "#2ac3de"
+magenta = "#bb9af7"
+cyan = "#7dcfff"
+white = "#eee8d5"
+bright_black = "#24283b"
+bright_red = "#ff4499"
+bright_green = "#73daca"
+bright_yellow = "#657b83"
+bright_blue = "#839496"
+bright_magenta = "#ff007c"
+bright_cyan = "#93a1a1"
+bright_white = "#fdf6e3"
+[themes.component_style]
+block_title = { fg = "Magenta"  }
+border = {}
+playback_track = { fg = "Cyan", modifiers = ["Bold"] }
+playback_artists = { fg = "Cyan", modifiers = ["Bold"] }
+playback_album = { fg = "Yellow" }
+playback_metadata = { fg = "White" }
 playback_progress_bar = { bg = "BrightBlack", fg = "Green" }
 current_playing = { fg = "Green", modifiers = ["Bold"] }
 page_desc = { fg = "Cyan", modifiers = ["Bold"] }
