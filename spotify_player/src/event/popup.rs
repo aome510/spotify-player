@@ -612,66 +612,6 @@ fn handle_nth_action(
                 }
                 ui.popup = None;
             }
-            TrackAction::MoveUpInCurrentPlaylist => {
-                if let PageState::Context {
-                    id: Some(ContextId::Playlist(playlist_id)),
-                    state: Some(ContextPageUIState::Playlist { track_table }),
-                    ..
-                } = ui.current_page()
-                {
-                    if let (Some(_), Some(selected)) = (
-                        state
-                            .data
-                            .read()
-                            .user_data
-                            .playlists
-                            .iter()
-                            .find(|playlist| &playlist.id == playlist_id),
-                        track_table.selected(),
-                    ) {
-                        let insert_before = selected - 1;
-                        client_pub.send(ClientRequest::ReorderPlaylistItems {
-                            playlist_id: playlist_id.clone_static(),
-                            insert_before,
-                            range_start: selected,
-                            range_length: None,
-                            snapshot_id: None,
-                        })?;
-                        ui.current_page_mut().select(insert_before);
-                    };
-                }
-                ui.popup = None;
-            }
-            TrackAction::MoveDownInCurrentPlaylist => {
-                if let PageState::Context {
-                    id: Some(ContextId::Playlist(playlist_id)),
-                    state: Some(ContextPageUIState::Playlist { track_table }),
-                    ..
-                } = ui.current_page()
-                {
-                    if let (Some(_), Some(selected)) = (
-                        state
-                            .data
-                            .read()
-                            .user_data
-                            .playlists
-                            .iter()
-                            .find(|playlist| &playlist.id == playlist_id),
-                        track_table.selected(),
-                    ) {
-                        let insert_before = selected + 1;
-                        client_pub.send(ClientRequest::ReorderPlaylistItems {
-                            playlist_id: playlist_id.clone_static(),
-                            insert_before,
-                            range_start: selected,
-                            range_length: None,
-                            snapshot_id: None,
-                        })?;
-                        ui.current_page_mut().select(insert_before);
-                    };
-                }
-                ui.popup = None;
-            }
         },
         ActionListItem::Album(album, actions) => match actions[n] {
             AlbumAction::GoToArtist => {
