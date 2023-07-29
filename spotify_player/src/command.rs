@@ -4,6 +4,8 @@ use serde::Deserialize;
 #[derive(Copy, Clone, Debug, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 /// Application's command
 pub enum Command {
+    None,
+
     NextTrack,
     PreviousTrack,
     ResumePause,
@@ -135,6 +137,7 @@ pub fn construct_track_actions(track: &Track, data: &DataReadGuard) -> Vec<Track
 impl Command {
     pub fn desc(&self) -> &'static str {
         match self {
+            Self::None => "do nothing",
             Self::NextTrack => "next track",
             Self::PreviousTrack => "previous track",
             Self::ResumePause => "resume/pause based on the current playback",
