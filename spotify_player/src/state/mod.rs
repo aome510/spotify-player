@@ -1,10 +1,10 @@
-mod consant;
+mod constant;
 mod data;
 mod model;
 mod player;
 mod ui;
 
-pub use consant::*;
+pub use constant::*;
 pub use data::*;
 pub use model::*;
 pub use player::*;
