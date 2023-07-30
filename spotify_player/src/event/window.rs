@@ -192,15 +192,11 @@ pub fn handle_command_for_track_table_window(
             } = ui.current_page()
             {
                 if id > 0
-                    && data
-                        .user_data
-                        .playlists
-                        .iter()
-                        .find(|playlist| &playlist.id == playlist_id)
-                        .is_some_and(|playlist| {
-                            Some(&playlist.owner.1)
+                    && data.user_data.playlists.iter().any(|playlist| {
+                        &playlist.id == playlist_id
+                            && Some(&playlist.owner.1)
                                 == data.user_data.user.as_ref().map(|user| &user.id)
-                        })
+                    })
                 {
                     let insert_index = id - 1;
                     client_pub.send(ClientRequest::ReorderPlaylistItems {
@@ -223,15 +219,11 @@ pub fn handle_command_for_track_table_window(
             {
                 let insert_index = id + 1;
                 if insert_index < tracks.len()
-                    && data
-                        .user_data
-                        .playlists
-                        .iter()
-                        .find(|playlist| &playlist.id == playlist_id)
-                        .is_some_and(|playlist| {
-                            Some(&playlist.owner.1)
+                    && data.user_data.playlists.iter().any(|playlist| {
+                        &playlist.id == playlist_id
+                            && Some(&playlist.owner.1)
                                 == data.user_data.user.as_ref().map(|user| &user.id)
-                        })
+                    })
                 {
                     client_pub.send(ClientRequest::ReorderPlaylistItems {
                         playlist_id: playlist_id.clone_static(),
