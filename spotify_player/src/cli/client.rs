@@ -1,19 +1,18 @@
 use std::{
-    collections::{hash_map::DefaultHasher, HashSet},
-    fs::{create_dir_all, remove_dir_all, remove_file, OpenOptions},
-    hash::Hasher,
-    io::BufReader,
+    collections::HashSet,
+    fs::{create_dir_all, remove_dir_all},
+    io::Write,
     net::SocketAddr,
 };
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context as _, Result};
 use rand::seq::SliceRandom;
 use tokio::net::UdpSocket;
 
 use crate::{
     cli::{ContextType, Request},
     client::Client,
-    config::get_config_folder_path,
+    config::{get_cache_folder_path, get_config_folder_path},
     event::PlayerRequest,
     state::{Context, ContextId, Playback, SharedState},
 };
@@ -21,8 +20,6 @@ use rspotify::{
     model::*,
     prelude::{BaseClient, OAuthClient},
 };
-use std::io::BufRead;
-use std::io::Write;
 
 use super::*;
 
@@ -51,7 +48,7 @@ pub async fn start_socket(client: Client, state: SharedState) -> Result<()> {
                 let response = match handle_socket_request(&client, &state, request).await {
                     Err(err) => {
                         tracing::error!("Failed to handle socket request: {err:#}");
-                        let msg = format!("Bad request: {err}");
+                        let msg = format!("Bad request: {err:#}");
                         Response::Err(msg.into_bytes())
                     }
                     Ok(data) => Response::Ok(data),
@@ -567,251 +564,146 @@ async fn handle_playlist_request(
     }
 }
 
+const TRACK_BUFFER_CAP: usize = 100;
+
 /// Imports a playlist into another playlist.
-/// All tracks from the imported playlist are added to the import-to playlist if they are not in there already.
-/// The state of the imported playlist and a hash of the track ids are written to a file
 ///
-/// This file is used in subsequent imports of the same two playlists
-/// It is first used to see if the state of the imported playlist has changed
-/// then if so, is used to see what has differed in the change.
+/// All tracks from the `import_from` playlist are added to the `import_to` playlist if they are not in there already.
+///
+/// The state of `import_from` playlist is stored into a cache file to add/delete the differed tracks between
+/// subsequent imports of the same two playlists.
 async fn playlist_import(
     client: &Client,
     import_from: PlaylistId<'static>,
     import_to: PlaylistId<'static>,
     delete: bool,
 ) -> Result<String> {
-    #[derive(PartialEq, Eq, Hash)]
-    struct PlaylistData {
+    #[derive(Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
+    struct TrackData {
         id: TrackId<'static>,
         name: String,
     }
-
-    // Get playlists' info, checking if they exist
-    let (from, from_tracks) = match client.playlist_context(import_from.to_owned()).await? {
-        Context::Playlist { playlist, tracks } => (playlist, tracks),
-        _ => panic!(
-            "Cannot import from {}. Playlist not found.",
-            import_from.id()
-        ),
+    // Get playlists' info
+    let from_tracks = match client.playlist_context(import_from.to_owned()).await? {
+        Context::Playlist { tracks, .. } => tracks.into_iter().map(|t| TrackData {
+            id: t.id,
+            name: t.name,
+        }),
+        _ => unreachable!(),
     };
-
-    let (to, to_tracks) = match client.playlist_context(import_to.to_owned()).await? {
-        Context::Playlist { playlist, tracks } => (playlist, tracks),
-        _ => panic!("Cannot import to {}. Playlist not found.", import_to.id()),
+    let to_tracks = match client.playlist_context(import_to.to_owned()).await? {
+        Context::Playlist { tracks, .. } => tracks.into_iter().map(|t| TrackData {
+            id: t.id,
+            name: t.name,
+        }),
+        _ => unreachable!(),
     };
-
-    // Create hashset of import_to playlist
-    // Will use to check before adding track
-    let mut to_hash = HashSet::new();
-    for track in to_tracks {
-        to_hash.insert(track.id);
-    }
-
-    // Create hash and vec of 'from_ids'
-    let mut hasher = DefaultHasher::new();
-    let mut from_ids = Vec::new();
-    for track in from_tracks {
-        let song = PlaylistData {
-            id: track.id.to_owned(),
-            name: track.name,
-        };
-
-        from_ids.push(song);
-        hasher.write(track.id.id().as_bytes());
-    }
-    let hash = hasher.finish().to_string();
 
     // Get import dir/file
-    let conf_dir = get_config_folder_path()?;
-    let imports_dir = conf_dir.join("imports");
+    let cache_dir = get_cache_folder_path()?;
+    let imports_dir = cache_dir.join("imports");
     let to_dir = imports_dir.join(import_to.id());
     let from_file = to_dir.join(import_from.id());
 
     if !to_dir.exists() {
         create_dir_all(to_dir)?;
     }
+    // Construct hash sets of the playlists' track IDs
+    let to_hash_set: HashSet<TrackData> = HashSet::from_iter(to_tracks);
+    let from_hash_set: HashSet<TrackData> = HashSet::from_iter(from_tracks);
 
-    // If this import has not happened before
-    if !from_file.exists() {
-        let num_songs = from_ids.len();
+    let mut new_tracks_hash_set = &from_hash_set - &to_hash_set;
 
-        let mut file = OpenOptions::new()
-            .write(true)
-            .create(true)
-            .open(&from_file)?;
+    let mut result = String::new();
 
-        // Write hash and new line to top of file
-        writeln!(file, "{}", hash)?;
-        writeln!(file)?;
+    let mut track_buff = Vec::new();
+    if from_file.exists() {
+        let hash_set_bytes = std::fs::read(&from_file).context(format!(
+            "Read cached playlist import data from {}",
+            from_file.display()
+        ))?;
+        std::fs::remove_file(&from_file)?;
+        let old_from_hash_set: HashSet<TrackData> =
+            serde_json::from_slice(&hash_set_bytes).context("Deserialize playlist import data")?;
 
-        let mut track_buff = Vec::new();
-        for track in from_ids {
-            writeln!(file, "{}:{}", track.id.id(), track.name)?;
+        // Only consider new tracks that were not included in the previous import.
+        new_tracks_hash_set = &new_tracks_hash_set - &old_from_hash_set;
 
-            if !to_hash.contains(&track.id) {
-                track_buff.push(PlayableId::Track(track.id));
+        // If `delete` option is specified, delete previously imported tracks that are not in the current `from` playlist
+        if delete {
+            result +=
+                &format!("Deleting previously imported tracks in {import_to} that are not in the current {import_from}...\n");
 
-                if track_buff.len() > 90 {
+            let deleted_hash_set = &old_from_hash_set - &from_hash_set;
+
+            for t in &deleted_hash_set {
+                track_buff.push(PlayableId::Track(t.id.as_ref()));
+
+                if track_buff.len() == TRACK_BUFFER_CAP {
                     client
                         .spotify
-                        .playlist_add_items(import_to.to_owned(), track_buff, None)
+                        .playlist_remove_all_occurrences_of_items(
+                            import_to.as_ref(),
+                            track_buff,
+                            None,
+                        )
                         .await?;
                     track_buff = Vec::new();
-                }
-            }
-        }
-
-        if !track_buff.is_empty() {
-            client
-                .spotify
-                .playlist_add_items(import_to.to_owned(), track_buff, None)
-                .await?;
-        }
-
-        Ok(format!(
-            "Successfully imported '{}' into '{}'.\n{} songs were added.",
-            from.name, to.name, num_songs
-        ))
-    } else {
-        // If the import has happened before, read from hash to check from changes
-        // If the hashes don't match reimport
-
-        let file = OpenOptions::new().read(true).open(&from_file)?;
-        let reader = BufReader::new(file);
-        let mut iter = reader.lines();
-
-        let old_hash = iter.next().unwrap()?;
-
-        // Consume empty line
-        iter.next();
-
-        // If old hash doesn't match,
-        // need to do import
-        if !old_hash.eq(&hash) {
-            let mut old_ids = HashSet::new();
-            let mut new_ids = HashSet::new();
-
-            // Write playlists new info to file
-            remove_file(&from_file)?; // Writing wasn't overwriting
-            let mut file = OpenOptions::new()
-                .write(true)
-                .create(true)
-                .open(&from_file)?;
-
-            writeln!(file, "{}", hash)?;
-            writeln!(file)?;
-
-            for track in from_ids {
-                let id = track.id.to_owned();
-
-                writeln!(file, "{}:{}", id.id(), track.name)?;
-
-                // Add tracks to hashset
-                new_ids.insert(track);
-
-                if !to_hash.contains(&id) {
-                    client
-                        .spotify
-                        .playlist_add_items(import_to.to_owned(), [PlayableId::Track(id)], None)
-                        .await?;
-                }
-            }
-
-            // Read from old file, getting id and name
-            while let Some(Ok(line)) = iter.next() {
-                let mut split = line.trim().split(':');
-                let id_s = split.next().unwrap().to_string();
-                let name = split.next().unwrap().to_string();
-
-                let id = TrackId::from_id(id_s.to_owned())?;
-                let track = PlaylistData { id, name };
-
-                old_ids.insert(track);
-            }
-
-            let mut result = String::new();
-
-            // Add all new tracks
-            let mut track_buff = Vec::new();
-            let new_tracks = new_ids.difference(&old_ids);
-            let mut new_tracks_count = 0;
-            for track in new_tracks {
-                if !to_hash.contains(&track.id) {
-                    track_buff.push(PlayableId::Track(track.id.to_owned()));
-                    new_tracks_count += 1;
-
-                    if track_buff.len() > 90 {
-                        client
-                            .spotify
-                            .playlist_add_items(import_to.to_owned(), track_buff, None)
-                            .await?;
-                        track_buff = Vec::new();
-                    }
                 }
             }
 
             if !track_buff.is_empty() {
                 client
                     .spotify
-                    .playlist_add_items(import_to.to_owned(), track_buff, None)
+                    .playlist_remove_all_occurrences_of_items(import_to.as_ref(), track_buff, None)
                     .await?;
             }
 
-            result.push_str(
-                format!(
-                    "Updated the import '{}' for '{}'.\nAdded '{}' new songs.\n",
-                    from.name, to.name, new_tracks_count
-                )
-                .as_str(),
+            result += &format!(
+                "Deleted tracks: {}\n",
+                serde_json::to_string_pretty(&deleted_hash_set)?
             );
-
-            // This is meant to prompt for deletion,
-            // May not be able to do input/output because of
-            // client and cli structure
-            let mut delete_buff = Vec::new();
-            let mut have_removed = false;
-            let deleted_tracks = old_ids.difference(&new_ids);
-            for track in deleted_tracks {
-                if !have_removed {
-                    result.push_str("The import has deleted these tracks:\n");
-                    have_removed = true;
-                }
-
-                result.push_str(format!("{}:{}\n", track.id.id(), track.name).as_str());
-                if delete {
-                    delete_buff.push(PlayableId::Track(track.id.to_owned()));
-                    if delete_buff.len() > 90 {
-                        client
-                            .spotify
-                            .playlist_remove_all_occurrences_of_items(
-                                to.id.to_owned(),
-                                delete_buff,
-                                None,
-                            )
-                            .await?;
-                        delete_buff = Vec::new();
-                    }
-                }
-            }
-
-            if delete {
-                result.push_str("These tracks have been deleted from the playlist.");
-                client
-                    .spotify
-                    .playlist_remove_all_occurrences_of_items(to.id, delete_buff, None)
-                    .await?;
-            }
-
-            if !have_removed {
-                result.push('\n');
-            }
-
-            Ok(result)
-        } else {
-            Ok(format!(
-                "No updates to the import '{}' for '{}'\n",
-                from.name, to.name
-            ))
         }
     }
+
+    result += &format!("Importing new tracks from {import_from} to {import_to}...\n");
+
+    track_buff = Vec::new();
+    for t in &new_tracks_hash_set {
+        track_buff.push(PlayableId::Track(t.id.as_ref()));
+
+        if track_buff.len() == TRACK_BUFFER_CAP {
+            client
+                .spotify
+                .playlist_add_items(import_to.as_ref(), track_buff, None)
+                .await?;
+            track_buff = Vec::new();
+        }
+    }
+
+    if !track_buff.is_empty() {
+        client
+            .spotify
+            .playlist_add_items(import_to.as_ref(), track_buff, None)
+            .await?;
+    }
+
+    result += &format!(
+        "Imported tracks: {}\n",
+        serde_json::to_string_pretty(&new_tracks_hash_set)?
+    );
+
+    // Create a new cache file storing the latest import data
+    let mut f = std::fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .open(&from_file)?;
+    let hash_set_bytes =
+        serde_json::to_vec(&from_hash_set).context("Serialize new playlist import data")?;
+    f.write_all(&hash_set_bytes).context(format!(
+        "Save new playlist import data into a cache file {}",
+        from_file.display()
+    ))?;
+
+    Ok(result)
 }
