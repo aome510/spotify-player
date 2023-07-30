@@ -71,7 +71,7 @@ pub enum Command {
     MovePlaylistItemDown,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone)]
 pub enum TrackAction {
     GoToArtist,
     GoToAlbum,
