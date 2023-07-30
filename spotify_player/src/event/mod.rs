@@ -52,7 +52,7 @@ pub enum ClientRequest {
     DeleteTrackFromPlaylist(PlaylistId<'static>, TrackId<'static>),
     ReorderPlaylistItems {
         playlist_id: PlaylistId<'static>,
-        insert_before: usize,
+        insert_index: usize,
         range_start: usize,
         range_length: Option<usize>,
         snapshot_id: Option<String>,

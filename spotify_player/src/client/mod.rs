@@ -377,7 +377,7 @@ impl Client {
             }
             ClientRequest::ReorderPlaylistItems {
                 playlist_id,
-                insert_before,
+                insert_index,
                 range_start,
                 range_length,
                 snapshot_id,
@@ -385,7 +385,7 @@ impl Client {
                 self.reorder_playlist_items(
                     state,
                     playlist_id,
-                    insert_before,
+                    insert_index,
                     range_start,
                     range_length,
                     snapshot_id.as_deref(),
@@ -888,11 +888,16 @@ impl Client {
         &self,
         state: &SharedState,
         playlist_id: PlaylistId<'_>,
-        insert_before: usize,
+        insert_index: usize,
         range_start: usize,
         range_length: Option<usize>,
         snapshot_id: Option<&str>,
     ) -> Result<()> {
+        let insert_before = match insert_index > range_start {
+            true => insert_index + 1,
+            false => insert_index,
+        };
+
         self.spotify
             .playlist_reorder_items(
                 playlist_id.clone(),
@@ -912,7 +917,7 @@ impl Client {
             .get_mut(&playlist_id.uri())
         {
             let track = tracks.remove(range_start);
-            tracks.insert(insert_before, track);
+            tracks.insert(insert_index, track);
         }
 
         Ok(())

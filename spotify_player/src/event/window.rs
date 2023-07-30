@@ -202,15 +202,15 @@ pub fn handle_command_for_track_table_window(
                                 == data.user_data.user.as_ref().map(|user| &user.id)
                         })
                 {
-                    let insert_before = id - 1;
+                    let insert_index = id - 1;
                     client_pub.send(ClientRequest::ReorderPlaylistItems {
                         playlist_id: playlist_id.clone_static(),
-                        insert_before,
+                        insert_index,
                         range_start: id,
                         range_length: None,
                         snapshot_id: None,
                     })?;
-                    ui.current_page_mut().select(insert_before);
+                    ui.current_page_mut().select(insert_index);
                 };
             }
             ui.popup = None;
@@ -221,8 +221,8 @@ pub fn handle_command_for_track_table_window(
                 ..
             } = ui.current_page()
             {
-                let insert_before = id + 1;
-                if insert_before < tracks.len()
+                let insert_index = id + 1;
+                if insert_index < tracks.len()
                     && data
                         .user_data
                         .playlists
@@ -235,12 +235,12 @@ pub fn handle_command_for_track_table_window(
                 {
                     client_pub.send(ClientRequest::ReorderPlaylistItems {
                         playlist_id: playlist_id.clone_static(),
-                        insert_before,
+                        insert_index,
                         range_start: id,
                         range_length: None,
                         snapshot_id: None,
                     })?;
-                    ui.current_page_mut().select(insert_before);
+                    ui.current_page_mut().select(insert_index);
                 };
             }
             ui.popup = None;
