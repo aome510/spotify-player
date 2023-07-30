@@ -68,6 +68,9 @@ pub enum Command {
     SortTrackByDuration,
     SortTrackByAddedDate,
     ReverseTrackOrder,
+
+    MovePlaylistItemUp,
+    MovePlaylistItemDown,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -199,6 +202,8 @@ impl Command {
             Self::SortTrackByDuration => "sort the track table (if any) by track's duration",
             Self::SortTrackByAddedDate => "sort the track table (if any) by track's added date",
             Self::ReverseTrackOrder => "reverse the order of the track table (if any)",
+            Self::MovePlaylistItemUp => "move playlist item up one position",
+            Self::MovePlaylistItemDown => "move playlist item down one position",
         }
     }
 }

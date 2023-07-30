@@ -375,6 +375,23 @@ impl Client {
                     state.player.write().queue = Some(queue);
                 }
             }
+            ClientRequest::ReorderPlaylistItems {
+                playlist_id,
+                insert_index,
+                range_start,
+                range_length,
+                snapshot_id,
+            } => {
+                self.reorder_playlist_items(
+                    state,
+                    playlist_id,
+                    insert_index,
+                    range_start,
+                    range_length,
+                    snapshot_id.as_deref(),
+                )
+                .await?;
+            }
         };
 
         tracing::info!(
@@ -861,6 +878,46 @@ impl Client {
             .get_mut(&playlist_id.uri())
         {
             tracks.retain(|t| t.id != track_id);
+        }
+
+        Ok(())
+    }
+
+    /// reorder items in a playlist
+    pub async fn reorder_playlist_items(
+        &self,
+        state: &SharedState,
+        playlist_id: PlaylistId<'_>,
+        insert_index: usize,
+        range_start: usize,
+        range_length: Option<usize>,
+        snapshot_id: Option<&str>,
+    ) -> Result<()> {
+        let insert_before = match insert_index > range_start {
+            true => insert_index + 1,
+            false => insert_index,
+        };
+
+        self.spotify
+            .playlist_reorder_items(
+                playlist_id.clone(),
+                Some(range_start as i32),
+                Some(insert_before as i32),
+                range_length.map(|range_length| range_length as u32),
+                snapshot_id,
+            )
+            .await?;
+
+        // After making a reorder request, update the playlist in-memory data stored inside the app caches.
+        if let Some(Context::Playlist { tracks, .. }) = state
+            .data
+            .write()
+            .caches
+            .context
+            .get_mut(&playlist_id.uri())
+        {
+            let track = tracks.remove(range_start);
+            tracks.insert(insert_index, track);
         }
 
         Ok(())

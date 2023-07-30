@@ -372,6 +372,8 @@ List of supported commands:
 | `SortTrackByDuration`          | sort the track table (if any) by track's duration                       | `s d`              |
 | `SortTrackByAddedDate`         | sort the track table (if any) by track's added date                     | `s D`              |
 | `ReverseOrder`                 | reverse the order of the track table (if any)                           | `s r`              |
+| `MovePlaylistItemUp`           | move playlist item up one position                                      | `C-k`              |
+| `MovePlaylistItemDown`         | move playlist item down one position                                    | `C-j`              |
 
 To add new shortcuts or modify the default shortcuts, please refer to the [keymaps section](docs/config.md#keymaps) in the configuration documentation.
 

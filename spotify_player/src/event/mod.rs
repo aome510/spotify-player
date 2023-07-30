@@ -50,6 +50,13 @@ pub enum ClientRequest {
     AddTrackToQueue(TrackId<'static>),
     AddTrackToPlaylist(PlaylistId<'static>, TrackId<'static>),
     DeleteTrackFromPlaylist(PlaylistId<'static>, TrackId<'static>),
+    ReorderPlaylistItems {
+        playlist_id: PlaylistId<'static>,
+        insert_index: usize,
+        range_start: usize,
+        range_length: Option<usize>,
+        snapshot_id: Option<String>,
+    },
     AddToLibrary(Item),
     DeleteFromLibrary(ItemId),
     ConnectDevice(Option<String>),

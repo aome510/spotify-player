@@ -274,6 +274,14 @@ impl Default for KeymapConfig {
                     key_sequence: "s r".into(),
                     command: Command::ReverseTrackOrder,
                 },
+                Keymap {
+                    key_sequence: "C-k".into(),
+                    command: Command::MovePlaylistItemUp,
+                },
+                Keymap {
+                    key_sequence: "C-j".into(),
+                    command: Command::MovePlaylistItemDown,
+                },
             ],
         }
     }
