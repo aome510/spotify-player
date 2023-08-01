@@ -12,7 +12,7 @@ use tokio::net::UdpSocket;
 use crate::{
     cli::{ContextType, Request},
     client::Client,
-    config::{get_cache_folder_path, get_config_folder_path},
+    config::get_cache_folder_path,
     event::PlayerRequest,
     state::{Context, ContextId, Playback, SharedState},
 };
@@ -471,7 +471,7 @@ async fn handle_playlist_request(
             let uid = user.id;
 
             // Get import dir/file
-            let conf_dir = get_config_folder_path()?;
+            let conf_dir = get_cache_folder_path()?;
             let imports_dir = conf_dir.join("imports");
 
             // If use specific id option
@@ -584,18 +584,24 @@ async fn playlist_import(
         name: String,
     }
     // Get playlists' info
-    let from_tracks = match client.playlist_context(import_from.to_owned()).await? {
-        Context::Playlist { tracks, .. } => tracks.into_iter().map(|t| TrackData {
-            id: t.id,
-            name: t.name,
-        }),
+    let (from_tracks, from_name) = match client.playlist_context(import_from.to_owned()).await? {
+        Context::Playlist { tracks, playlist } => (
+            tracks.into_iter().map(|t| TrackData {
+                id: t.id,
+                name: t.name,
+            }),
+            playlist.name,
+        ),
         _ => unreachable!(),
     };
-    let to_tracks = match client.playlist_context(import_to.to_owned()).await? {
-        Context::Playlist { tracks, .. } => tracks.into_iter().map(|t| TrackData {
-            id: t.id,
-            name: t.name,
-        }),
+    let (to_tracks, to_name) = match client.playlist_context(import_to.to_owned()).await? {
+        Context::Playlist { tracks, playlist } => (
+            tracks.into_iter().map(|t| TrackData {
+                id: t.id,
+                name: t.name,
+            }),
+            playlist.name,
+        ),
         _ => unreachable!(),
     };
 
@@ -615,6 +621,13 @@ async fn playlist_import(
     let mut new_tracks_hash_set = &from_hash_set - &to_hash_set;
 
     let mut result = String::new();
+    result += &format!(
+        "Importing tracks from {}:{} to {}:{}...\n",
+        import_from.id(),
+        from_name,
+        import_to.id(),
+        to_name
+    );
 
     let mut track_buff = Vec::new();
     if from_file.exists() {
@@ -630,11 +643,10 @@ async fn playlist_import(
         new_tracks_hash_set = &new_tracks_hash_set - &old_from_hash_set;
 
         // If `delete` option is specified, delete previously imported tracks that are not in the current `from` playlist
+        let deleted_hash_set = &old_from_hash_set - &from_hash_set;
         if delete {
             result +=
-                &format!("Deleting previously imported tracks in {import_to} that are not in the current {import_from}...\n");
-
-            let deleted_hash_set = &old_from_hash_set - &from_hash_set;
+                &format!("Deleting previously imported tracks in {to_name} that are not in the current {from_name}...\n");
 
             for t in &deleted_hash_set {
                 track_buff.push(PlayableId::Track(t.id.as_ref()));
@@ -658,15 +670,17 @@ async fn playlist_import(
                     .playlist_remove_all_occurrences_of_items(import_to.as_ref(), track_buff, None)
                     .await?;
             }
+            result += &format!("Deleted tracks: \n");
+        } else {
+            result += &format!("Import removed tracks: \n");
+        }
 
-            result += &format!(
-                "Deleted tracks: {}\n",
-                serde_json::to_string_pretty(&deleted_hash_set)?
-            );
+        for t in &deleted_hash_set {
+            result += &format!("    {}: {}\n", t.id.id(), t.name);
         }
     }
 
-    result += &format!("Importing new tracks from {import_from} to {import_to}...\n");
+    result += &format!("Imported tracks: \n");
 
     track_buff = Vec::new();
     for t in &new_tracks_hash_set {
@@ -679,6 +693,8 @@ async fn playlist_import(
                 .await?;
             track_buff = Vec::new();
         }
+
+        result += &format!("    {}: {}\n", t.id.id(), t.name);
     }
 
     if !track_buff.is_empty() {
@@ -687,11 +703,6 @@ async fn playlist_import(
             .playlist_add_items(import_to.as_ref(), track_buff, None)
             .await?;
     }
-
-    result += &format!(
-        "Imported tracks: {}\n",
-        serde_json::to_string_pretty(&new_tracks_hash_set)?
-    );
 
     // Create a new cache file storing the latest import data
     let mut f = std::fs::OpenOptions::new()
