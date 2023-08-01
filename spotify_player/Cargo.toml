@@ -62,6 +62,7 @@ lyric-finder = ["lyric_finder"]
 media-control = ["souvlaki", "winit"]
 image = ["viuer", "dep:image"]
 sixel = ["image", "viuer/sixel"]
+block-image = ["image"]
 notify = ["notify-rust"]
 daemon = ["daemonize"]
 

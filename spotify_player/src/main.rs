@@ -137,7 +137,7 @@ fn init_logging(cache_folder: &std::path::Path) -> Result<()> {
 #[tokio::main]
 async fn start_app(state: state::SharedState, is_daemon: bool) -> Result<()> {
     if !is_daemon {
-        #[cfg(feature = "image")]
+        #[cfg(all(feature = "image", not(feature = "block-image")))]
         {
             // initialize `viuer` supports for kitty, iterm2, and sixel
             viuer::get_kitty_support();

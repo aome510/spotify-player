@@ -247,6 +247,9 @@ cargo install spotify_player --features image
 
 `spotify_player` also supports rendering images with `sixel` behind `sixel` feature flag, which also enables `image` feature:
 
+To disable full resolution images rendering, `spotify_player` needs to be built with `block-image` feature enabled.
+In that case, the images would be rendered using half-blocks.
+This feature enables `image` feature.
 ```shell
 cargo install spotify_player --features sixel
 ```

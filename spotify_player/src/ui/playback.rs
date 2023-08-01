@@ -287,16 +287,25 @@ fn render_playback_cover_image(
         let width = (rect.width as f32 * scale).round() as u32;
         let height = (rect.height as f32 * scale).round() as u32;
 
-        if let Err(err) = viuer::print(
-            image,
-            &viuer::Config {
-                x: rect.x,
-                y: rect.y as i16,
-                width: Some(width),
-                height: Some(height),
-                ..Default::default()
-            },
-        ) {
+        #[cfg(not(feature = "block-image"))]
+        let config = viuer::Config {
+            x: rect.x,
+            y: rect.y as i16,
+            width: Some(width),
+            height: Some(height),
+            ..Default::default()
+        };
+        #[cfg(feature = "block-image")]
+        let config = viuer::Config {
+            x: rect.x,
+            y: rect.y as i16,
+            width: Some(width),
+            height: Some(height),
+            use_kitty: false,
+            use_iterm: false,
+            ..Default::default()
+        };
+        if let Err(err) = viuer::print(image, &config) {
             tracing::error!("Failed to render the image: {err:#}",);
         }
     }
