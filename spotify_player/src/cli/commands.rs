@@ -162,7 +162,7 @@ pub fn init_playlist_subcommand() -> Command {
                 .short('d')
                 .long("delete")
                 .action(clap::ArgAction::SetTrue)
-                .help("Will delete any tracks that the import does."))
+                .help("Deletes any tracks that were deleted by imported playlist since last import."))
             .after_help("Copies all tracks into a playlist. If imported again, it adds new tracks and outputs information on deleted tracks since last import."))
         .subcommand(Command::new("list").about("Lists all user playlists."))
         .subcommand(Command::new("fork").about("Creates a copy of a playlist and imports it.")
@@ -176,5 +176,5 @@ pub fn init_playlist_subcommand() -> Command {
                 .short('d')
                 .long("delete")
                 .action(clap::ArgAction::SetTrue)
-                .help("Will delete any tracks that the import does.")))
+                .help("Deletes any tracks that were deleted by imported playlist since last import.")))
 }
