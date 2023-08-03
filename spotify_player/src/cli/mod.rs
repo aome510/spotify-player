@@ -76,7 +76,7 @@ pub enum PlaylistCommand {
     Fork {
         id: PlaylistId<'static>,
     },
-    Update {
+    Sync {
         id: Option<PlaylistId<'static>>,
         delete: bool,
     },

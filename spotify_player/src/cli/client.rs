@@ -5,7 +5,7 @@ use std::{
     net::SocketAddr,
 };
 
-use anyhow::{anyhow, Context as _, Result};
+use anyhow::{Context as _, Result};
 use rand::seq::SliceRandom;
 use tokio::net::UdpSocket;
 
@@ -397,16 +397,15 @@ async fn handle_playlist_request(
             let user = state.data.read().user_data.user.to_owned().unwrap();
             let uid = user.id;
 
-            let playlist_check = client
+            let following = client
                 .spotify
                 .playlist_check_follow(id.to_owned(), &[uid])
-                .await;
-            if playlist_check.is_err() {
-                anyhow::bail!("Could not find playlist {}", id)
-            }
+                .await
+                .context(format!("Could not find playlist '{}'", id.id()))?
+                .pop()
+                .unwrap();
 
             // Won't delete if not following
-            let following = playlist_check.unwrap().pop().unwrap();
             if following {
                 client.spotify.playlist_unfollow(id.to_owned()).await?;
                 Ok(format!("Playlist '{}' was deleted/unfollowed", id))
@@ -442,8 +441,8 @@ async fn handle_playlist_request(
                 .spotify
                 .playlist(id.to_owned(), None, None)
                 .await
-                .unwrap_or_else(|_| panic!("Cannot import from {}. Playlist not found.", id.id()));
-            let from_desc = from.description.unwrap_or("".to_owned());
+                .context(format!("Cannot import from {}.", id.id()))?;
+            let from_desc = from.description.unwrap_or_default();
 
             let to = client
                 .spotify
@@ -458,15 +457,15 @@ async fn handle_playlist_request(
             let mut result = format!(
                 "Forked {}.\nNew playlist: {}:{}\n",
                 id.id(),
-                to.name,
-                to.id.id()
+                to.id.id(),
+                to.name
             );
 
             result.push_str(playlist_import(client, id, to.id, false).await?.as_str());
 
             Ok(result)
         }
-        PlaylistCommand::Update { id, delete } => {
+        PlaylistCommand::Sync { id, delete } => {
             let user = state.data.read().user_data.user.to_owned().unwrap();
             let uid = user.id;
 
@@ -474,92 +473,69 @@ async fn handle_playlist_request(
             let conf_dir = get_cache_folder_path()?;
             let imports_dir = conf_dir.join("imports");
 
-            // If use specific id option
+            let mut path_pool = Vec::new();
+
+            let mut result = String::new();
+
+            // If one ID is specified, add its dir contents
             if id.is_some() {
                 let to_id = id.unwrap();
-                let to_dir = imports_dir.join(to_id.id());
-
                 let pl_follow = client
                     .spotify
-                    .playlist_check_follow(to_id.to_owned(), &[uid])
+                    .playlist_check_follow(to_id.as_ref(), &[uid])
                     .await?
                     .pop()
                     .unwrap();
 
-                // Import is useless if not following your own playlist
                 if pl_follow {
-                    // Must have imported to update
-                    if to_dir.exists() {
-                        let mut result = String::new();
-
-                        for dir in to_dir.read_dir()? {
-                            let from_id =
-                                PlaylistId::from_id(dir?.file_name().into_string().unwrap())?;
-
-                            // Add each import's output
-                            result.push_str(
-                                playlist_import(client, to_id.to_owned(), from_id, delete)
-                                    .await?
-                                    .as_str(),
-                            );
-                            result.push('\n');
-                        }
-                        Ok(result)
-                    } else {
-                        Err(anyhow!("No imports found for '{}'", to_id.id()))
-                    }
+                    let to_dir = imports_dir.join(to_id.id());
+                    path_pool = to_dir.read_dir()?.map(|x| x.unwrap().path()).collect();
                 } else {
-                    Ok(format!("Not following '{}'", to_id.id()))
+                    panic!("Not following '{}'", to_id.id())
                 }
+            // If no ID is specified, get every dir contents
             } else {
-                // Updating all imports
-
-                let mut result = String::new();
-
                 let dirs = imports_dir.read_dir()?;
-                for dir in dirs {
-                    let dir_path = dir?.path();
-                    let dir_name = dir_path.file_name().unwrap().to_str().unwrap();
 
-                    let to_id = PlaylistId::from_id(dir_name.to_owned())?;
+                for dir in dirs {
+                    let to_dir = dir?.path();
+                    let to_id = PlaylistId::from_id(to_dir.file_name().unwrap().to_str().unwrap())?;
 
                     let pl_follow = client
                         .spotify
-                        .playlist_check_follow(to_id.to_owned(), &[uid.to_owned()])
+                        .playlist_check_follow(to_id.as_ref(), &[uid.as_ref()])
                         .await?
                         .pop()
                         .unwrap();
 
-                    // No import for non following playlist
                     if pl_follow {
-                        let to_dir = imports_dir.join(dir_name);
-                        for file in to_dir.read_dir()? {
-                            let file_name = file?.file_name().into_string().unwrap();
-
-                            let from_id = PlaylistId::from_id(file_name)?;
-
-                            result.push_str(
-                                playlist_import(client, from_id, to_id.to_owned(), delete)
-                                    .await?
-                                    .as_str(),
-                            );
-                            result.push('\n');
+                        for i in to_dir.read_dir()? {
+                            path_pool.push(i?.path());
                         }
                     } else {
-                        // Remove non following imports as they are now useless
-                        remove_dir_all(dir_path)?;
-                        result.push_str(
-                            format!(
-                                "Not following playlist '{}'. Deleting import...\n",
-                                to_id.id()
-                            )
-                            .as_str(),
-                        )
+                        remove_dir_all(to_dir.to_owned())?;
+                        result += &format!(
+                            "Not following playlist '{}'. Deleting import...\n",
+                            to_id.id()
+                        );
                     }
                 }
-
-                Ok(result)
             }
+
+            // Import each import that is in the path_pool
+            for import in path_pool {
+                let parent = import.parent().unwrap();
+
+                let to_id =
+                    PlaylistId::from_id(parent.file_name().unwrap().to_str().unwrap().to_owned())?;
+                let from_id =
+                    PlaylistId::from_id(import.file_name().unwrap().to_str().unwrap().to_owned())?;
+
+                result += &playlist_import(client, from_id, to_id, delete).await?;
+                result += &"\n";
+            }
+
+            Ok(result)
         }
     }
 }
@@ -622,7 +598,7 @@ async fn playlist_import(
 
     let mut result = String::new();
     result += &format!(
-        "Importing tracks from {}:{} to {}:{}...\n",
+        "Importing from {}:{} to {}:{}...\n",
         import_from.id(),
         from_name,
         import_to.id(),
@@ -680,6 +656,10 @@ async fn playlist_import(
         }
     }
 
+    result += &format!(
+        "Importing new tracks since the last import to '{}'...\n",
+        to_name
+    );
     result += &format!("Imported tracks: \n");
 
     track_buff = Vec::new();

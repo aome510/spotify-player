@@ -248,7 +248,7 @@ fn handle_playlist_subcommand(args: &ArgMatches, socket: &UdpSocket) -> Result<(
             println!("Forking '{}'...\n", id_s);
             PlaylistCommand::Fork { id }
         }
-        "update" => {
+        "sync" => {
             let id_s = args.get_one::<String>("id");
 
             let pid = if id_s.is_some() {
@@ -260,12 +260,12 @@ fn handle_playlist_subcommand(args: &ArgMatches, socket: &UdpSocket) -> Result<(
             let delete = args.get_flag("delete");
 
             if pid.is_some() {
-                println!("Updating '{}'...\n", id_s.unwrap());
+                println!("Syncing imports for playlist '{}'...\n", id_s.unwrap());
             } else {
-                println!("Updating all imports...\n");
+                println!("Syncing imports for all playlists...\n");
             }
 
-            PlaylistCommand::Update { id: pid, delete }
+            PlaylistCommand::Sync { id: pid, delete }
         }
         _ => unreachable!(),
     };
