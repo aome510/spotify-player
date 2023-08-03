@@ -648,7 +648,7 @@ async fn playlist_import(
             }
             result += &format!("Deleted tracks: \n");
         } else {
-            result += &format!("Import removed tracks: \n");
+            result += &format!("Tracks that are no longer in the imported playlist since last import: \n");
         }
 
         for t in &deleted_hash_set {
