@@ -6,9 +6,9 @@ use super::model::*;
 
 pub type DataReadGuard<'a> = parking_lot::RwLockReadGuard<'a, AppData>;
 
-// cache duration, which is default to be 1h
+// cache duration, which is default to be 3h
 pub static CACHE_DURATION: Lazy<std::time::Duration> =
-    Lazy::new(|| std::time::Duration::from_secs(60 * 60));
+    Lazy::new(|| std::time::Duration::from_secs(60 * 60 * 3));
 
 #[derive(Default)]
 /// the application's data

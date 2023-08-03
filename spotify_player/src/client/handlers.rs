@@ -141,6 +141,10 @@ pub async fn start_player_event_watchers(
     // An event is categorized as "high-frequency" when
     // - we want to handle it "immediately" to prevent users from experiencing a noticable delay
     let refresh_duration = std::time::Duration::from_millis(200); // frequency = 5Hz
+
+    // This timer is used to avoid making multiple `GetContext` requests in a short period of time.
+    let mut last_request_timer = std::time::Instant::now();
+
     loop {
         tokio::time::sleep(refresh_duration).await;
 
@@ -175,17 +179,21 @@ pub async fn start_player_event_watchers(
                             *page_state = None;
                         }
                     }
+                }
 
-                    // request new context's data if not found in memory
-                    if let Some(id) = id {
-                        if !state.data.read().caches.context.contains_key(&id.uri()) {
-                            client_pub
-                                .send(ClientRequest::GetContext(id.clone()))
-                                .unwrap_or_default();
-                        }
+                // request new context's data if not found in memory
+                if let Some(id) = id {
+                    if !state.data.read().caches.context.contains_key(&id.uri())
+                        && last_request_timer.elapsed() >= std::time::Duration::from_secs(1)
+                    {
+                        last_request_timer = std::time::Instant::now();
+                        client_pub
+                            .send(ClientRequest::GetContext(id.clone()))
+                            .unwrap_or_default();
                     }
                 }
             }
+
             #[cfg(feature = "lyric-finder")]
             PageState::Lyric {
                 track,
