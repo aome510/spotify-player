@@ -175,17 +175,18 @@ pub async fn start_player_event_watchers(
                             *page_state = None;
                         }
                     }
+                }
 
-                    // request new context's data if not found in memory
-                    if let Some(id) = id {
-                        if !state.data.read().caches.context.contains_key(&id.uri()) {
-                            client_pub
-                                .send(ClientRequest::GetContext(id.clone()))
-                                .unwrap_or_default();
-                        }
+                // request new context's data if not found in memory
+                if let Some(id) = id {
+                    if !state.data.read().caches.context.contains_key(&id.uri()) {
+                        client_pub
+                            .send(ClientRequest::GetContext(id.clone()))
+                            .unwrap_or_default();
                     }
                 }
             }
+
             #[cfg(feature = "lyric-finder")]
             PageState::Lyric {
                 track,
