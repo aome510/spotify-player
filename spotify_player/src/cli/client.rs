@@ -452,6 +452,7 @@ async fn handle_playlist_request(
                     Some(from_desc.as_str()),
                 )
                 .await?;
+
             let mut result = format!(
                 "Forked {}.\nNew playlist: {}:{}\n",
                 id.id(),
@@ -468,69 +469,47 @@ async fn handle_playlist_request(
             let uid = user.id;
 
             // Get import dir/file
-            let conf_dir = get_cache_folder_path()?;
-            let imports_dir = conf_dir.join("imports");
-
-            let mut path_pool = Vec::new();
+            let imports_dir = get_cache_folder_path()?.join("imports");
 
             let mut result = String::new();
 
-            // If one ID is specified, add its dir contents
-            if id.is_some() {
-                let to_id = id.unwrap();
+            // Iterate through the playlist `imports` folder in the cache folder to
+            // get all playlists' import data represented as subdirectories with `import_to` name.
+            // Inside each `import_to` subdirectory, an import `import_from -> import_to`
+            // data is represented as a file with `import_from` name.
+            for dir in imports_dir.read_dir()? {
+                let to_dir = dir?.path();
+                let to_id = PlaylistId::from_id(to_dir.file_name().unwrap().to_str().unwrap())?;
+
+                // If a playlist id is specified, only consider sync imports of that playlist
+                if let Some(id) = &id {
+                    if to_id != *id {
+                        continue;
+                    }
+                }
+
                 let pl_follow = client
                     .spotify
-                    .playlist_check_follow(to_id.as_ref(), &[uid])
+                    .playlist_check_follow(to_id.as_ref(), &[uid.as_ref()])
                     .await?
                     .pop()
                     .unwrap();
 
                 if pl_follow {
-                    let to_dir = imports_dir.join(to_id.id());
-                    path_pool = to_dir.read_dir()?.map(|x| x.unwrap().path()).collect();
-                } else {
-                    panic!("Not following '{}'", to_id.id())
-                }
-            // If no ID is specified, get every dir contents
-            } else {
-                let dirs = imports_dir.read_dir()?;
-
-                for dir in dirs {
-                    let to_dir = dir?.path();
-                    let to_id = PlaylistId::from_id(to_dir.file_name().unwrap().to_str().unwrap())?;
-
-                    let pl_follow = client
-                        .spotify
-                        .playlist_check_follow(to_id.as_ref(), &[uid.as_ref()])
-                        .await?
-                        .pop()
-                        .unwrap();
-
-                    if pl_follow {
-                        for i in to_dir.read_dir()? {
-                            path_pool.push(i?.path());
-                        }
-                    } else {
-                        remove_dir_all(to_dir.to_owned())?;
-                        result += &format!(
-                            "Not following playlist '{}'. Deleting import...\n",
-                            to_id.id()
-                        );
+                    for i in to_dir.read_dir()? {
+                        let from_id =
+                            PlaylistId::from_id(i?.file_name().to_str().unwrap().to_owned())?;
+                        result +=
+                            &playlist_import(client, from_id, to_id.clone_static(), delete).await?;
+                        result += "\n";
                     }
+                } else {
+                    remove_dir_all(&to_dir)?;
+                    result += &format!(
+                        "Not following playlist '{}'. Deleted its import data in the cache folder...\n",
+                        to_id.id()
+                    );
                 }
-            }
-
-            // Import each import that is in the path_pool
-            for import in path_pool {
-                let parent = import.parent().unwrap();
-
-                let to_id =
-                    PlaylistId::from_id(parent.file_name().unwrap().to_str().unwrap().to_owned())?;
-                let from_id =
-                    PlaylistId::from_id(import.file_name().unwrap().to_str().unwrap().to_owned())?;
-
-                result += &playlist_import(client, from_id, to_id, delete).await?;
-                result += &"\n";
             }
 
             Ok(result)
