@@ -313,6 +313,15 @@ You can run the application as a daemon by specifying the `-d` or `--daemon` opt
 
 Under the hood, the application handles a CLI command by sending requests to a `spotify_player` instance's client socket running on the `client_port` port, a general application configuration with a default value `8080`.
 
+Lists of CLI commands:
+
+- `get`: Get Spotify data (playlist/album/artist data, user's data, etc)
+- `playback`: Interact with the playback (start a playback, play-pause, next, etc)
+- `connect`: Connect to a Spotify device
+- `like`: Like currently playing track
+- `authenticate`: Authenticate the application
+- `playlist`: Playlist editing (new, delete, import, fork, etc)
+
 For more details, run `spotify_player -h` or `spotify_player {command} -h`, in which `{command}` is a CLI command.
 
 ## Commands

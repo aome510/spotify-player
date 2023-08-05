@@ -33,6 +33,7 @@ fn init_app_cli_arguments() -> Result<clap::ArgMatches> {
         .subcommand(cli::init_connect_subcommand())
         .subcommand(cli::init_like_command())
         .subcommand(cli::init_authenticate_command())
+        .subcommand(cli::init_playlist_subcommand())
         .arg(
             clap::Arg::new("theme")
                 .short('t')

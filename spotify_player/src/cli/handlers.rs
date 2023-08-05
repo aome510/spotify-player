@@ -161,6 +161,7 @@ pub fn handle_cli_subcommand(
     match cmd {
         "get" => handle_get_subcommand(args, &socket)?,
         "playback" => handle_playback_subcommand(args, &socket)?,
+        "playlist" => handle_playlist_subcommand(args, &socket)?,
         "connect" => handle_connect_subcommand(args, &socket)?,
         "like" => handle_like_subcommand(args, &socket)?,
         "authenticate" => {
@@ -178,8 +179,99 @@ pub fn handle_cli_subcommand(
             std::process::exit(1);
         }
         Response::Ok(data) => {
-            println!("{}", String::from_utf8_lossy(&data));
+            println!("{}", String::from_utf8_lossy(&data).replace("\\n", "\n"));
             std::process::exit(0);
         }
     }
+}
+
+fn handle_playlist_subcommand(args: &ArgMatches, socket: &UdpSocket) -> Result<()> {
+    let (cmd, args) = args.subcommand().expect("playlist subcommand is required");
+    let command = match cmd {
+        "new" => {
+            let name = args
+                .get_one::<String>("name")
+                .expect("name arg is required")
+                .to_owned();
+
+            let description = args
+                .get_one::<String>("description")
+                .map(|s| s.to_owned())
+                .unwrap_or_default();
+
+            let public = args.get_flag("public");
+            let collab = args.get_flag("collab");
+
+            PlaylistCommand::New {
+                name,
+                public,
+                collab,
+                description,
+            }
+        }
+        "delete" => {
+            let id = args
+                .get_one::<String>("id")
+                .expect("id arg is required")
+                .to_owned();
+
+            let pid = PlaylistId::from_id(id)?;
+
+            PlaylistCommand::Delete { id: pid }
+        }
+        "list" => PlaylistCommand::List,
+        "import" => {
+            let from_s = args
+                .get_one::<String>("from")
+                .expect("'from' PlaylistID is required.")
+                .to_owned();
+
+            let to_s = args
+                .get_one::<String>("to")
+                .expect("'to' PlaylistID is required.")
+                .to_owned();
+
+            let delete = args.get_flag("delete");
+
+            let from = PlaylistId::from_id(from_s.to_owned())?;
+            let to = PlaylistId::from_id(to_s.to_owned())?;
+
+            println!("Importing '{from_s}' into '{to_s}'...\n");
+            PlaylistCommand::Import { from, to, delete }
+        }
+        "fork" => {
+            let id_s = args
+                .get_one::<String>("id")
+                .expect("Playlist id is required.")
+                .to_owned();
+
+            let id = PlaylistId::from_id(id_s.to_owned())?;
+
+            println!("Forking '{id_s}'...\n");
+            PlaylistCommand::Fork { id }
+        }
+        "sync" => {
+            let id_s = args.get_one::<String>("id");
+            let delete = args.get_flag("delete");
+
+            let pid = match id_s {
+                Some(id_s) => {
+                    println!("Syncing imports for playlist '{id_s}'...\n");
+                    Some(PlaylistId::from_id(id_s.to_owned())?)
+                }
+                None => {
+                    println!("Syncing imports for all playlists...\n");
+                    None
+                }
+            };
+
+            PlaylistCommand::Sync { id: pid, delete }
+        }
+        _ => unreachable!(),
+    };
+
+    let request = Request::Playlist(command);
+    socket.send(&serde_json::to_vec(&request)?)?;
+
+    Ok(())
 }
