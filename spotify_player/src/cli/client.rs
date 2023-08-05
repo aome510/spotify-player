@@ -375,45 +375,28 @@ async fn handle_playlist_request(
             collab,
             description,
         } => {
-            let user = state.data.read().user_data.user.to_owned().unwrap();
-            let id = user.id;
-
-            let resp = client
-                .spotify
-                .user_playlist_create(
-                    id,
+            let user_id = state.data.read().user_data.user.to_owned().unwrap().id;
+            let playlist_id = client
+                .create_new_playlist(
+                    state,
+                    user_id.clone(),
                     name.as_str(),
-                    Some(public),
-                    Some(collab),
-                    Some(description.as_str()),
+                    public,
+                    collab,
+                    description.as_str(),
                 )
                 .await?;
             Ok(format!(
                 "Playlist '{}' with id '{}' was created.",
-                resp.name, resp.id
+                name,
+                playlist_id.id()
             ))
         }
         PlaylistCommand::Delete { id } => {
-            let user = state.data.read().user_data.user.to_owned().unwrap();
-            let uid = user.id;
-
-            let following = client
-                .spotify
-                .playlist_check_follow(id.to_owned(), &[uid])
-                .await
-                .context(format!("Could not find playlist '{}'", id.id()))?
-                .pop()
-                .unwrap();
-
-            // Won't delete if not following
-            if following {
-                client.spotify.playlist_unfollow(id.to_owned()).await?;
-                Ok(format!("Playlist '{id}' was deleted/unfollowed"))
-            } else {
-                Ok(format!(
-                    "Playlist '{id}' was not followed by the user, nothing to be done.",
-                ))
-            }
+            client
+                .delete_from_library(state, crate::state::ItemId::Playlist(id.to_owned()))
+                .await?;
+            Ok(format!("Playlist with id '{}' was deleted.", id.id()))
         }
         PlaylistCommand::List => {
             let resp = client.current_user_playlists().await?;

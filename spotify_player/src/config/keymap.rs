@@ -282,6 +282,10 @@ impl Default for KeymapConfig {
                     key_sequence: "C-j".into(),
                     command: Command::MovePlaylistItemDown,
                 },
+                Keymap {
+                    key_sequence: "N".into(),
+                    command: Command::CreatePlaylist,
+                },
             ],
         }
     }

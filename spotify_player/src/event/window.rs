@@ -423,6 +423,13 @@ pub fn handle_command_for_playlist_list_window(
                 new_list_state(),
             ));
         }
+        Command::CreatePlaylist => {
+            ui.popup = Some(PopupState::PlaylistCreate {
+                name: "".into(),
+                desc: "".into(),
+                current_field: PlaylistCreateCurrentField::Name,
+            });
+        }
         _ => return Ok(false),
     }
     Ok(true)
