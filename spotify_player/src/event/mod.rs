@@ -77,6 +77,12 @@ pub enum ClientRequest {
     },
     #[cfg(feature = "streaming")]
     RestartIntegratedClient,
+    CreatePlaylist {
+        playlist_name: String,
+        public: bool,
+        collab: bool,
+        desc: String,
+    },
 }
 
 /// starts a terminal event handler (key pressed, mouse clicked, etc)

@@ -452,6 +452,24 @@ impl Client {
                 )
                 .await?;
             }
+            ClientRequest::CreatePlaylist {
+                playlist_name,
+                public,
+                collab,
+                desc,
+            } => {
+                let user_id = state.data.read().user_data.user.to_owned().unwrap().id;
+                let _ = self
+                    .create_new_playlist(
+                        state,
+                        user_id.clone(),
+                        playlist_name.as_str(),
+                        public,
+                        collab,
+                        desc.as_str(),
+                    )
+                    .await?;
+            }
         };
 
         tracing::info!(
@@ -1385,6 +1403,37 @@ impl Client {
         }
 
         Ok(())
+    }
+
+    pub async fn create_new_playlist(
+        &self,
+        state: &SharedState,
+        user_id: UserId<'static>,
+        playlist_name: &str,
+        public: bool,
+        collab: bool,
+        desc: &str,
+    ) -> Result<PlaylistId> {
+        let resp = self
+            .spotify
+            .user_playlist_create(
+                user_id.to_owned(),
+                playlist_name,
+                Some(public),
+                Some(collab),
+                Some(desc),
+            )
+            .await?;
+        state.data.write().user_data.playlists.insert(
+            0,
+            Playlist {
+                id: resp.id.to_owned(),
+                collaborative: collab,
+                name: playlist_name.to_string(),
+                owner: ("".into(), user_id),
+            },
+        );
+        Ok(resp.id)
     }
 
     #[cfg(feature = "notify")]

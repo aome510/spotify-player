@@ -25,10 +25,15 @@ pub fn handle_key_sequence_for_popup(
     // handle popups that need reading the raw key sequence instead of the matched command
     match popup {
         PopupState::Search { .. } => {
-            // NOTE: the `drop(ui)` is important as the handle function for search
+            // NOTE: the `drop(ui)` is important as the handle function for the popup
             // re-acquire the UI lock, so we need to drop the current UI lock to avoid a deadlock.
             drop(ui);
             return handle_key_sequence_for_search_popup(key_sequence, client_pub, state);
+        }
+        PopupState::PlaylistCreate { .. } => {
+            // NOTE: same here.
+            drop(ui);
+            return handle_key_sequence_for_create_playlist_popup(key_sequence, client_pub, state);
         }
         PopupState::ActionList(item, ..) => {
             return handle_key_sequence_for_action_list_popup(
@@ -53,6 +58,9 @@ pub fn handle_key_sequence_for_popup(
 
     match popup {
         PopupState::Search { .. } => anyhow::bail!("search popup should be handled before"),
+        PopupState::PlaylistCreate { .. } => {
+            anyhow::bail!("create playlist popup should be handled before")
+        }
         PopupState::ActionList(..) => {
             anyhow::bail!("action list popup should be handled before")
         }
@@ -262,6 +270,100 @@ fn handle_command_for_queue_popup(
         _ => return Ok(false),
     }
     Ok(true)
+}
+
+fn handle_key_sequence_for_create_playlist_popup(
+    key_sequence: &KeySequence,
+    client_pub: &flume::Sender<ClientRequest>,
+    state: &SharedState,
+) -> Result<bool> {
+    {
+        let mut ui = state.ui.lock();
+        let (name, desc, current_field) = match ui.popup {
+            Some(PopupState::PlaylistCreate {
+                ref mut name,
+                ref mut desc,
+                ref mut current_field,
+            }) => (name, desc, current_field),
+            _ => return Ok(false),
+        };
+        if key_sequence.keys.len() == 1 {
+            if let Key::None(c) = key_sequence.keys[0] {
+                match c {
+                    crossterm::event::KeyCode::Char(c) => {
+                        match &current_field {
+                            PlaylistCreateCurrentField::Name => {
+                                name.push(c);
+                            }
+                            PlaylistCreateCurrentField::Desc => {
+                                desc.push(c);
+                            }
+                        }
+                        return Ok(true);
+                    }
+                    crossterm::event::KeyCode::Backspace => {
+                        match &current_field {
+                            PlaylistCreateCurrentField::Name => {
+                                if !name.is_empty() {
+                                    name.pop().unwrap();
+                                }
+                            }
+                            PlaylistCreateCurrentField::Desc => {
+                                if !desc.is_empty() {
+                                    desc.pop().unwrap();
+                                }
+                            }
+                        }
+                        return Ok(true);
+                    }
+                    crossterm::event::KeyCode::Tab => {
+                        *current_field = match &current_field {
+                            PlaylistCreateCurrentField::Name => PlaylistCreateCurrentField::Desc,
+                            PlaylistCreateCurrentField::Desc => PlaylistCreateCurrentField::Name,
+                        };
+                        return Ok(true);
+                    }
+                    crossterm::event::KeyCode::Enter => {
+                        client_pub.send(ClientRequest::CreatePlaylist {
+                            playlist_name: name.to_owned(),
+                            public: false,
+                            collab: false,
+                            desc: desc.to_owned(),
+                        })?;
+                        ui.popup = None;
+                        return Ok(true);
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+
+    let command = state
+        .keymap_config
+        .find_command_from_key_sequence(key_sequence);
+    if let Some(Command::ClosePopup) = command {
+        state.ui.lock().popup = None;
+        return Ok(true);
+    }
+
+    let page_type = state.ui.lock().current_page().page_type();
+    match page_type {
+        PageType::Library => page::handle_key_sequence_for_library_page(key_sequence, state),
+        PageType::Search => {
+            page::handle_key_sequence_for_search_page(key_sequence, client_pub, state)
+        }
+        PageType::Context => {
+            page::handle_key_sequence_for_context_page(key_sequence, client_pub, state)
+        }
+        PageType::Browse => {
+            page::handle_key_sequence_for_browse_page(key_sequence, client_pub, state)
+        }
+        #[cfg(feature = "lyric-finder")]
+        PageType::Lyric => {
+            page::handle_key_sequence_for_lyric_page(key_sequence, client_pub, state)
+        }
+    }
 }
 
 /// handles a key sequence for a context search popup
