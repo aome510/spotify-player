@@ -408,11 +408,10 @@ async fn handle_playlist_request(
             // Won't delete if not following
             if following {
                 client.spotify.playlist_unfollow(id.to_owned()).await?;
-                Ok(format!("Playlist '{}' was deleted/unfollowed", id))
+                Ok(format!("Playlist '{id}' was deleted/unfollowed"))
             } else {
                 Ok(format!(
-                    "Playlist '{}' was not followed by the user, nothing to be done.",
-                    id
+                    "Playlist '{id}' was not followed by the user, nothing to be done.",
                 ))
             }
         }
@@ -421,8 +420,7 @@ async fn handle_playlist_request(
 
             let mut out = String::new();
             for pl in resp {
-                // Might want to add color
-                out.push_str(format!("{}: {}\n", pl.id.id(), pl.name).as_str());
+                out += &format!("{}: {}\n", pl.id.id(), pl.name);
             }
             out = out.trim().to_string();
 
@@ -461,7 +459,7 @@ async fn handle_playlist_request(
                 to.name
             );
 
-            result.push_str(playlist_import(client, id, to.id, false).await?.as_str());
+            result += &playlist_import(client, id, to.id, false).await?;
 
             Ok(result)
         }
@@ -621,9 +619,6 @@ async fn playlist_import(
         // If `delete` option is specified, delete previously imported tracks that are not in the current `from` playlist
         let deleted_hash_set = &old_from_hash_set - &from_hash_set;
         if delete {
-            result +=
-                &format!("Deleting previously imported tracks in {to_name} that are not in the current {from_name}...\n");
-
             for t in &deleted_hash_set {
                 track_buff.push(PlayableId::Track(t.id.as_ref()));
 
@@ -646,9 +641,9 @@ async fn playlist_import(
                     .playlist_remove_all_occurrences_of_items(import_to.as_ref(), track_buff, None)
                     .await?;
             }
-            result += &format!("Deleted tracks: \n");
+            result += &format!("Tracks deleted from {from_name}: \n");
         } else {
-            result += &format!("Tracks that are no longer in the imported playlist since last import: \n");
+            result += &format!("Tracks that are no longer in {from_name} since last import: \n");
         }
 
         for t in &deleted_hash_set {
@@ -656,11 +651,7 @@ async fn playlist_import(
         }
     }
 
-    result += &format!(
-        "Importing new tracks since the last import to '{}'...\n",
-        to_name
-    );
-    result += &format!("Imported tracks: \n");
+    result += &format!("New tracks imported to {to_name}: \n");
 
     track_buff = Vec::new();
     for t in &new_tracks_hash_set {

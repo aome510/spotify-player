@@ -191,7 +191,8 @@ fn handle_playlist_subcommand(args: &ArgMatches, socket: &UdpSocket) -> Result<(
         "new" => {
             let name = args
                 .get_one::<String>("name")
-                .expect("name arg is required");
+                .expect("name arg is required")
+                .to_owned();
 
             let description = args
                 .get_one::<String>("description")
@@ -200,8 +201,9 @@ fn handle_playlist_subcommand(args: &ArgMatches, socket: &UdpSocket) -> Result<(
 
             let public = args.get_flag("public");
             let collab = args.get_flag("collab");
+
             PlaylistCommand::New {
-                name: name.to_owned(),
+                name,
                 public,
                 collab,
                 description,
@@ -234,7 +236,7 @@ fn handle_playlist_subcommand(args: &ArgMatches, socket: &UdpSocket) -> Result<(
             let from = PlaylistId::from_id(from_s.to_owned())?;
             let to = PlaylistId::from_id(to_s.to_owned())?;
 
-            println!("Importing '{}' into '{}'...\n", from_s, to_s);
+            println!("Importing '{from_s}' into '{to_s}'...\n");
             PlaylistCommand::Import { from, to, delete }
         }
         "fork" => {
@@ -245,25 +247,23 @@ fn handle_playlist_subcommand(args: &ArgMatches, socket: &UdpSocket) -> Result<(
 
             let id = PlaylistId::from_id(id_s.to_owned())?;
 
-            println!("Forking '{}'...\n", id_s);
+            println!("Forking '{id_s}'...\n");
             PlaylistCommand::Fork { id }
         }
         "sync" => {
             let id_s = args.get_one::<String>("id");
-
-            let pid = if id_s.is_some() {
-                Some(PlaylistId::from_id(id_s.unwrap().to_owned())?)
-            } else {
-                None
-            };
-
             let delete = args.get_flag("delete");
 
-            if pid.is_some() {
-                println!("Syncing imports for playlist '{}'...\n", id_s.unwrap());
-            } else {
-                println!("Syncing imports for all playlists...\n");
-            }
+            let pid = match id_s {
+                Some(id_s) => {
+                    println!("Syncing imports for playlist '{id_s}'...\n");
+                    Some(PlaylistId::from_id(id_s.to_owned())?)
+                }
+                None => {
+                    println!("Syncing imports for all playlists...\n");
+                    None
+                }
+            };
 
             PlaylistCommand::Sync { id: pid, delete }
         }
