@@ -78,7 +78,9 @@ async fn init_spotify(
 ) -> Result<()> {
     // if `streaming` feature is enabled, create a new streaming connection
     #[cfg(feature = "streaming")]
-    if state.app_config.enable_streaming {
+    if state.app_config.enable_streaming == config::StreamingType::Always
+        || (state.app_config.enable_streaming == config::StreamingType::DaemonOnly && is_daemon)
+    {
         client.new_streaming_connection(state).await;
     }
 

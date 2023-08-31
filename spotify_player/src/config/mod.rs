@@ -71,7 +71,7 @@ pub struct AppConfig {
     pub enable_media_control: bool,
 
     #[cfg(feature = "streaming")]
-    pub enable_streaming: bool,
+    pub enable_streaming: StreamingType,
 
     pub enable_cover_image_cache: bool,
 
@@ -126,6 +126,14 @@ pub struct NotifyFormat {
     pub summary: String,
     pub body: String,
 }
+
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+pub enum StreamingType {
+    Always,
+    DaemonOnly,
+    Never,
+}
+config_parser_impl!(StreamingType);
 
 impl Default for AppConfig {
     fn default() -> Self {
@@ -203,7 +211,7 @@ impl Default for AppConfig {
             enable_media_control: true,
 
             #[cfg(feature = "streaming")]
-            enable_streaming: true,
+            enable_streaming: StreamingType::Always,
 
             enable_cover_image_cache: true,
 
