@@ -72,7 +72,7 @@ All configuration files should be placed inside the application's configuration 
 
 - An example of event that triggers a playback update is the one happening when the current track ends.
 - `copy_command` is represented by a struct with two fields `command` and `args`. For example, `copy_command = { command = "xclip", args = ["-sel", "c"] }`. The copy command should read input from **standard input**.
-- `enable_streaming` can be either `Always`, `Never` or `DaemonOnly`.
+- `enable_streaming` can be either `Always`, `Never` or `DaemonOnly`. For backwards compatibility, `true` and `false` are still accepted as aliases for `Always` and `Never`.
 - `playback_window_position` can only be either `Top` or `Bottom`.
 - `border_type` can be either `Hidden`, `Plain`, `Rounded`, `Double` or `Thick`.
 - `progress_bar_type` can be either `Rectangle` or `Line`.

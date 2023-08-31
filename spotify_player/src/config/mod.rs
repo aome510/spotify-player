@@ -128,12 +128,40 @@ pub struct NotifyFormat {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[serde(from = "StreamingTypeOrBool")]
 pub enum StreamingType {
     Always,
     DaemonOnly,
     Never,
 }
 config_parser_impl!(StreamingType);
+
+// For backward compatibility, to accept booleans for enable_streaming
+#[derive(Deserialize)]
+enum RawStreamingType {
+    Always,
+    DaemonOnly,
+    Never,
+}
+
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum StreamingTypeOrBool {
+    Bool(bool),
+    Type(RawStreamingType),
+}
+
+impl From<StreamingTypeOrBool> for StreamingType {
+    fn from(v: StreamingTypeOrBool) -> Self {
+        match v {
+            StreamingTypeOrBool::Bool(true) => StreamingType::Always,
+            StreamingTypeOrBool::Bool(false) => StreamingType::Never,
+            StreamingTypeOrBool::Type(RawStreamingType::Always) => StreamingType::Always,
+            StreamingTypeOrBool::Type(RawStreamingType::DaemonOnly) => StreamingType::DaemonOnly,
+            StreamingTypeOrBool::Type(RawStreamingType::Never) => StreamingType::Never,
+        }
+    }
+}
 
 impl Default for AppConfig {
     fn default() -> Self {
