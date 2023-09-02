@@ -71,7 +71,7 @@ pub struct AppConfig {
     pub enable_media_control: bool,
 
     #[cfg(feature = "streaming")]
-    pub enable_streaming: bool,
+    pub enable_streaming: StreamingType,
 
     pub enable_cover_image_cache: bool,
 
@@ -125,6 +125,42 @@ pub struct DeviceConfig {
 pub struct NotifyFormat {
     pub summary: String,
     pub body: String,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[serde(from = "StreamingTypeOrBool")]
+pub enum StreamingType {
+    Always,
+    DaemonOnly,
+    Never,
+}
+config_parser_impl!(StreamingType);
+
+// For backward compatibility, to accept booleans for enable_streaming
+#[derive(Deserialize)]
+enum RawStreamingType {
+    Always,
+    DaemonOnly,
+    Never,
+}
+
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum StreamingTypeOrBool {
+    Bool(bool),
+    Type(RawStreamingType),
+}
+
+impl From<StreamingTypeOrBool> for StreamingType {
+    fn from(v: StreamingTypeOrBool) -> Self {
+        match v {
+            StreamingTypeOrBool::Bool(true) => StreamingType::Always,
+            StreamingTypeOrBool::Bool(false) => StreamingType::Never,
+            StreamingTypeOrBool::Type(RawStreamingType::Always) => StreamingType::Always,
+            StreamingTypeOrBool::Type(RawStreamingType::DaemonOnly) => StreamingType::DaemonOnly,
+            StreamingTypeOrBool::Type(RawStreamingType::Never) => StreamingType::Never,
+        }
+    }
 }
 
 impl Default for AppConfig {
@@ -203,7 +239,7 @@ impl Default for AppConfig {
             enable_media_control: true,
 
             #[cfg(feature = "streaming")]
-            enable_streaming: true,
+            enable_streaming: StreamingType::Always,
 
             enable_cover_image_cache: true,
 

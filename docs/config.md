@@ -36,7 +36,7 @@ All configuration files should be placed inside the application's configuration 
 | `page_size_in_rows`                  | a page's size expressed as a number of rows (for page-navigation commands)    | `20`                                                       |
 | `track_table_item_max_len`           | the maximum length of a column in a track table                               | `32`                                                       |
 | `enable_media_control`               | enable application media control support (`media-control` feature only)       | `true` (Linux), `false` (Windows and MacOS)                |
-| `enable_streaming`                   | create a device for streaming (streaming feature only)                        | `true`                                                     |
+| `enable_streaming`                   | create a device for streaming (streaming feature only)                        | `Always`                                                     |
 | `enable_cover_image_cache`           | store album's cover images in the cache folder                                | `true`                                                     |
 | `default_device`                     | the default device to connect to on startup if no playing device found        | `spotify-player`                                           |
 | `play_icon`                          | the icon to indicate playing state of a Spotify item                          | `▶`                                                        |
@@ -72,8 +72,9 @@ All configuration files should be placed inside the application's configuration 
 
 - An example of event that triggers a playback update is the one happening when the current track ends.
 - `copy_command` is represented by a struct with two fields `command` and `args`. For example, `copy_command = { command = "xclip", args = ["-sel", "c"] }`. The copy command should read input from **standard input**.
+- `enable_streaming` can be either `Always`, `Never` or `DaemonOnly`. For backwards compatibility, `true` and `false` are still accepted as aliases for `Always` and `Never`.
 - `playback_window_position` can only be either `Top` or `Bottom`.
-- `border_type` can be either `Hidden`, `Plain`, `Rounded`, `Double`, `Thick`.
+- `border_type` can be either `Hidden`, `Plain`, `Rounded`, `Double` or `Thick`.
 - `progress_bar_type` can be either `Rectangle` or `Line`.
 
 #### Media control
