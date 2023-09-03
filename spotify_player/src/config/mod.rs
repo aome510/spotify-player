@@ -26,6 +26,7 @@ pub struct AppConfig {
     pub client_port: u16,
 
     pub copy_command: Command,
+    pub player_event_hook_command: Option<Command>,
 
     pub playback_format: String,
     #[cfg(feature = "notify")]
@@ -196,6 +197,8 @@ impl Default for AppConfig {
                 command: "clip".to_string(),
                 args: vec![],
             },
+
+            player_event_hook_command: None,
 
             proxy: None,
             ap_port: None,

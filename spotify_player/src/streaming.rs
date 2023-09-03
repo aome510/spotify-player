@@ -1,4 +1,7 @@
+use std::io::Write;
+
 use crate::{config, event::ClientRequest};
+use anyhow::Context;
 use librespot_connect::spirc::Spirc;
 use librespot_core::{
     config::{ConnectConfig, DeviceType},
@@ -33,9 +36,6 @@ enum PlayerEvent {
     },
     EndOfTrack {
         track_id: TrackId<'static>,
-    },
-    VolumeSet {
-        volume_percent: u8,
     },
 }
 
@@ -77,15 +77,30 @@ impl PlayerEvent {
             player::PlayerEvent::EndOfTrack { track_id, .. } => Some(PlayerEvent::EndOfTrack {
                 track_id: spotify_id_to_track_id(track_id)?,
             }),
-            // `librespot` volume is a u16 number ranging from 0 to 65535,
-            // convert it to a percentage format (from 0 to 100)
-            player::PlayerEvent::VolumeSet { volume } => {
-                let volume_percent = ((volume as f64) * 100.0 / 65535.0).round() as u8;
-                Some(PlayerEvent::VolumeSet { volume_percent })
-            }
             _ => None,
         })
     }
+}
+
+fn execute_player_event_hook_command(
+    cmd: &config::Command,
+    event: PlayerEvent,
+) -> anyhow::Result<()> {
+    let data = serde_json::to_vec(&event).context("serialize player event into json")?;
+
+    let mut child = std::process::Command::new(&cmd.command)
+        .args(&cmd.args)
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()?;
+
+    let mut stdin = match child.stdin.take() {
+        Some(stdin) => stdin,
+        None => anyhow::bail!("no stdin found in the child command"),
+    };
+
+    stdin.write_all(&data)?;
+    Ok(())
 }
 
 /// Create a new streaming connection
@@ -93,6 +108,7 @@ pub fn new_connection(
     session: Session,
     device: config::DeviceConfig,
     client_pub: flume::Sender<ClientRequest>,
+    player_event_hook_command: Option<config::Command>,
 ) -> Spirc {
     // `librespot` volume is a u16 number ranging from 0 to 65535,
     // while a percentage volume value (from 0 to 100) is used for the device configuration.
@@ -148,6 +164,16 @@ pub fn new_connection(
                     Ok(Some(event)) => {
                         tracing::info!("Got a new player event: {event:?}");
 
+                        // execute a player event hook command
+                        if let Some(ref cmd) = player_event_hook_command {
+                            if let Err(err) = execute_player_event_hook_command(cmd, event) {
+                                tracing::warn!(
+                                    "Failed to execute player event hook command: {err:#}"
+                                );
+                            }
+                        }
+
+                        // notify the application about the new player event by making playback update request
                         client_pub
                             .send_async(ClientRequest::GetCurrentPlayback)
                             .await
