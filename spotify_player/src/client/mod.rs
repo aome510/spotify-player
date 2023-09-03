@@ -1042,6 +1042,12 @@ impl Client {
         Ok(())
     }
 
+    /// gets a track data
+    pub async fn track(&self, track_id: TrackId<'_>) -> Result<Track> {
+        Track::try_from_full_track(self.spotify.track(track_id).await?)
+            .context("convert rspotify_model::FullTrack into spotify_player::state::Track")
+    }
+
     /// gets a playlist context data
     pub async fn playlist_context(&self, playlist_id: PlaylistId<'_>) -> Result<Context> {
         let playlist_uri = playlist_id.uri();

@@ -10,7 +10,7 @@ use rand::seq::SliceRandom;
 use tokio::net::UdpSocket;
 
 use crate::{
-    cli::{ContextType, Request},
+    cli::Request,
     client::Client,
     config::get_cache_folder_path,
     event::PlayerRequest,
@@ -90,8 +90,8 @@ async fn handle_socket_request(
 
     match request {
         Request::Get(GetRequest::Key(key)) => handle_get_key_request(client, key).await,
-        Request::Get(GetRequest::Context(context_type, context_id)) => {
-            handle_get_context_request(client, context_type, context_id).await
+        Request::Get(GetRequest::Item(item_type, context_id)) => {
+            handle_get_item_request(client, item_type, context_id).await
         }
         Request::Playback(command) => {
             handle_playback_request(client, state, command).await?;
@@ -271,20 +271,18 @@ async fn get_spotify_id(client: &Client, typ: ItemType, id_or_name: IdOrName) ->
     Ok(sid)
 }
 
-async fn handle_get_context_request(
+async fn handle_get_item_request(
     client: &Client,
-    context_type: ContextType,
+    item_type: ItemType,
     context_id: IdOrName,
 ) -> Result<Vec<u8>> {
-    let sid = get_spotify_id(client, context_type.into(), context_id).await?;
-    let context = match sid {
-        ItemId::Playlist(id) => client.playlist_context(id).await?,
-        ItemId::Album(id) => client.album_context(id).await?,
-        ItemId::Artist(id) => client.artist_context(id).await?,
-        _ => unreachable!(),
-    };
-
-    Ok(serde_json::to_vec(&context)?)
+    let sid = get_spotify_id(client, item_type, context_id).await?;
+    Ok(match sid {
+        ItemId::Playlist(id) => serde_json::to_vec(&client.playlist_context(id).await?)?,
+        ItemId::Album(id) => serde_json::to_vec(&client.album_context(id).await?)?,
+        ItemId::Artist(id) => serde_json::to_vec(&client.artist_context(id).await?)?,
+        ItemId::Track(id) => serde_json::to_vec(&client.track(id).await?)?,
+    })
 }
 
 async fn handle_playback_request(

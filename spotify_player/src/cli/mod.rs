@@ -47,7 +47,7 @@ enum ItemId {
 #[derive(Debug, Serialize, Deserialize)]
 pub enum GetRequest {
     Key(Key),
-    Context(ContextType, IdOrName),
+    Item(ItemType, IdOrName),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
