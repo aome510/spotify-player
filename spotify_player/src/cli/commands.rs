@@ -17,8 +17,12 @@ pub fn init_get_subcommand() -> Command {
                     .required(true),
             ),
         )
-        .subcommand(add_context_args(
-            Command::new("context").about("Get context data"),
+        .subcommand(add_id_or_name_group(
+            Command::new("item").about("Get a Spotify item's data").arg(
+                Arg::new("item_type")
+                    .value_parser(EnumValueParser::<ItemType>::new())
+                    .required(true),
+            ),
         ))
 }
 
@@ -26,8 +30,14 @@ fn init_playback_start_subcommand() -> Command {
     Command::new("start")
         .about("Start a new playback")
         .subcommand_required(true)
-        .subcommand(add_context_args(
-            Command::new("context").about("Start a context playback"),
+        .subcommand(add_id_or_name_group(
+            Command::new("context")
+                .about("Start a context playback")
+                .arg(
+                    Arg::new("context_type")
+                        .value_parser(EnumValueParser::<ContextType>::new())
+                        .required(true),
+                ),
         ))
         .subcommand(
             Command::new("liked")
@@ -55,16 +65,6 @@ fn init_playback_start_subcommand() -> Command {
                 .about("Start a radio playback")
                 .arg(Arg::new("item_type").value_parser(EnumValueParser::<ItemType>::new())),
         ))
-}
-
-fn add_context_args(cmd: Command) -> Command {
-    add_id_or_name_group(
-        cmd.arg(
-            Arg::new("context_type")
-                .value_parser(EnumValueParser::<ContextType>::new())
-                .required(true),
-        ),
-    )
 }
 
 fn add_id_or_name_group(cmd: Command) -> Command {

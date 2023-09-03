@@ -56,13 +56,13 @@ fn handle_get_subcommand(args: &ArgMatches, socket: &UdpSocket) -> Result<()> {
                 .to_owned();
             Request::Get(GetRequest::Key(key))
         }
-        "context" => {
-            let context_type = args
-                .get_one::<ContextType>("context_type")
+        "item" => {
+            let item_type = args
+                .get_one::<ItemType>("item_type")
                 .expect("context_type is required")
                 .to_owned();
             let id_or_name = get_id_or_name(args)?;
-            Request::Get(GetRequest::Context(context_type, id_or_name))
+            Request::Get(GetRequest::Item(item_type, id_or_name))
         }
         _ => unreachable!(),
     };
