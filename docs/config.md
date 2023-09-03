@@ -4,6 +4,8 @@
 
 - [General](#general)
   - [Notes](#notes)
+  - [Media control](#media-control)
+  - [Player event hook command](#player-event-hook-command)
   - [Device configurations](#device-configurations)
 - [Themes](#themes)
   - [Use script to add theme](#use-script-to-add-theme)
@@ -72,7 +74,7 @@ All configuration files should be placed inside the application's configuration 
   **Note**: the above list might not be up-to-date.
 
 - An example of event that triggers a playback update is the one happening when the current track ends.
-- `copy_command` is represented by a struct with 2 fields `command` and `args`. For example, `copy_command = { command = "xclip", args = ["-sel", "c"] }`. The copy command should read input from **standard input**.
+- `copy_command` is represented by a struct with two fields `command` and `args`. For example, `copy_command = { command = "xclip", args = ["-sel", "c"] }`. The copy command should read input from **standard input**.
 - `enable_streaming` can be either `Always`, `Never` or `DaemonOnly`. For backwards compatibility, `true` and `false` are still accepted as aliases for `Always` and `Never`.
 - `playback_window_position` can only be either `Top` or `Bottom`.
 - `border_type` can be either `Hidden`, `Plain`, `Rounded`, `Double` or `Thick`.
@@ -84,18 +86,18 @@ Media control support (`enable_media_control` option) is enabled by default on L
 
 MacOS and Windows require **an open window** to listen to OS media event. As a result, `spotify_player` needs to spawn an invisible window on startup, which may steal focus from the running terminal. To interact with `spotify_player`, which is run on the terminal, user will need to re-focus the terminal. Because of this extra re-focus step, the media control support is disabled by default on MacOS and Windows to avoid possible confusion for first-time users.
 
-### Player hook event command
+### Player event hook command
 
-Similar to `copy_command`, if specified, `player_event_hook_command` should a struct with 2 fields `command` and `args`. When there is a new player event, `player_event_hook_command` is executed with the event as the **standard input**.
+Similar to `copy_command`, if specified, `player_event_hook_command` should be a struct with two fields `command` and `args`. Each time `spotify_player` receives a new player event, `player_event_hook_command` is executed with the event as the **standard input**.
 
-Player event is a json string with either of the following values:
+A player event is a `json` string with either of the following values:
 
 - `{ Changed: { old_track_id: String, new_track_id: String } }`
 - `{ Playing: { track_id: String, position_ms: Number, duration_ms: Number } }`
 - `{ Paused: { track_id: String, position_ms: Number, duration_ms: Number } }`
 - `{ EndOfTrack: { track_id: String } }`
 
-Example `player_event_hook_command` script, which reads the event from **stdin**, parse the event as a `json` string, and write the parsed event into a file:
+Example `player_event_hook_command` script, which reads the event from **stdin**, parses the event as a `json` string, and writes the parsed event into a file:
 
 ```python
 #!/usr/bin/python3
