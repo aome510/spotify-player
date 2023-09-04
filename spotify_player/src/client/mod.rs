@@ -1045,7 +1045,7 @@ impl Client {
 
     /// gets a track data
     pub async fn track(&self, track_id: TrackId<'_>) -> Result<Track> {
-        Track::try_from_full_track(self.spotify.track(track_id).await?)
+        Track::try_from_full_track(self.spotify.track(track_id, None).await?)
             .context("convert rspotify_model::FullTrack into spotify_player::state::Track")
     }
 
@@ -1081,7 +1081,7 @@ impl Client {
         let album_uri = album_id.uri();
         tracing::info!("Get album context: {}", album_uri);
 
-        let album = self.spotify.album(album_id).await?;
+        let album = self.spotify.album(album_id, None).await?;
         let first_page = album.tracks.clone();
 
         // converts `rspotify_model::FullAlbum` into `state::Album`
@@ -1116,10 +1116,7 @@ impl Client {
 
         let top_tracks = self
             .spotify
-            .artist_top_tracks(
-                artist_id.as_ref(),
-                rspotify_model::enums::misc::Market::FromToken,
-            )
+            .artist_top_tracks(artist_id.as_ref(), None)
             .await?
             .into_iter()
             .filter_map(Track::try_from_full_track)
