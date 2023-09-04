@@ -116,7 +116,6 @@ pub struct Track {
     pub name: String,
     pub artists: Vec<Artist>,
     pub album: Option<Album>,
-    pub is_playable: bool,
     #[serde(serialize_with = "serialize_duration")]
     pub duration: chrono::Duration,
     #[serde(skip)]
@@ -243,28 +242,34 @@ impl Track {
 
     /// tries to convert from a `rspotify_model::SimplifiedTrack` into `Track`
     pub fn try_from_simplified_track(track: rspotify_model::SimplifiedTrack) -> Option<Self> {
-        Some(Self {
-            id: track.id?,
-            name: track.name,
-            artists: from_simplified_artists_to_artists(track.artists),
-            album: None,
-            duration: track.duration,
-            added_at: 0,
-            is_playable: track.is_playable.unwrap_or(true),
-        })
+        if track.is_playable.unwrap_or(true) {
+            Some(Self {
+                id: track.id?,
+                name: track.name,
+                artists: from_simplified_artists_to_artists(track.artists),
+                album: None,
+                duration: track.duration,
+                added_at: 0,
+            })
+        } else {
+            None
+        }
     }
 
     /// tries to convert from a `rspotify_model::FullTrack` into `Track`
     pub fn try_from_full_track(track: rspotify_model::FullTrack) -> Option<Self> {
-        Some(Self {
-            id: track.id?,
-            name: track.name,
-            artists: from_simplified_artists_to_artists(track.artists),
-            album: Album::try_from_simplified_album(track.album),
-            duration: track.duration,
-            added_at: 0,
-            is_playable: track.is_playable.unwrap_or(true),
-        })
+        if track.is_playable.unwrap_or(true) {
+            Some(Self {
+                id: track.id?,
+                name: track.name,
+                artists: from_simplified_artists_to_artists(track.artists),
+                album: Album::try_from_simplified_album(track.album),
+                duration: track.duration,
+                added_at: 0,
+            })
+        } else {
+            None
+        }
     }
 }
 

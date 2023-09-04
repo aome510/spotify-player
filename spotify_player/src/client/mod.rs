@@ -816,7 +816,7 @@ impl Client {
     ) -> Result<rspotify_model::SearchResult> {
         Ok(self
             .spotify
-            .search(query, _type, Some(Market::FromToken), None, None, None)
+            .search(query, _type, None, None, None, None)
             .await?)
     }
 
