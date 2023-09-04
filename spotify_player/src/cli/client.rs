@@ -1,16 +1,24 @@
-use std::net::SocketAddr;
+use std::{
+    collections::HashSet,
+    fs::{create_dir_all, remove_dir_all},
+    io::Write,
+    net::SocketAddr,
+};
 
-use anyhow::Result;
+use anyhow::{Context as _, Result};
 use rand::seq::SliceRandom;
 use tokio::net::UdpSocket;
 
-use rspotify::{model::*, prelude::OAuthClient};
-
 use crate::{
-    cli::{ContextType, Request},
+    cli::Request,
     client::Client,
+    config::get_cache_folder_path,
     event::PlayerRequest,
-    state::{ContextId, Playback, SharedState},
+    state::{Context, ContextId, Playback, SharedState},
+};
+use rspotify::{
+    model::*,
+    prelude::{BaseClient, OAuthClient},
 };
 
 use super::*;
@@ -40,7 +48,7 @@ pub async fn start_socket(client: Client, state: SharedState) -> Result<()> {
                 let response = match handle_socket_request(&client, &state, request).await {
                     Err(err) => {
                         tracing::error!("Failed to handle socket request: {err:#}");
-                        let msg = format!("Bad request: {err}");
+                        let msg = format!("Bad request: {err:#}");
                         Response::Err(msg.into_bytes())
                     }
                     Ok(data) => Response::Ok(data),
@@ -82,8 +90,8 @@ async fn handle_socket_request(
 
     match request {
         Request::Get(GetRequest::Key(key)) => handle_get_key_request(client, key).await,
-        Request::Get(GetRequest::Context(context_type, context_id)) => {
-            handle_get_context_request(client, context_type, context_id).await
+        Request::Get(GetRequest::Item(item_type, id_or_name)) => {
+            handle_get_item_request(client, item_type, id_or_name).await
         }
         Request::Playback(command) => {
             handle_playback_request(client, state, command).await?;
@@ -130,6 +138,10 @@ async fn handle_socket_request(
 
             Ok(Vec::new())
         }
+        Request::Playlist(command) => {
+            let resp = handle_playlist_request(client, state, command).await?;
+            Ok(resp.into_bytes())
+        }
     }
 }
 
@@ -175,7 +187,8 @@ async fn handle_get_key_request(client: &Client, key: Key) -> Result<Vec<u8>> {
 
 /// Get a Spotify item's ID from its `IdOrName` representation
 async fn get_spotify_id(client: &Client, typ: ItemType, id_or_name: IdOrName) -> Result<ItemId> {
-    // For `cli::ContextId::Name`, we search for the first item matching the name and return its spotify id
+    // For `IdOrName::Name`, we search for the first item matching the name and return its spotify id.
+    // The item's id is then used to retrieve the item's data.
 
     let sid = match typ {
         ItemType::Playlist => match id_or_name {
@@ -259,20 +272,18 @@ async fn get_spotify_id(client: &Client, typ: ItemType, id_or_name: IdOrName) ->
     Ok(sid)
 }
 
-async fn handle_get_context_request(
+async fn handle_get_item_request(
     client: &Client,
-    context_type: ContextType,
-    context_id: IdOrName,
+    item_type: ItemType,
+    id_or_name: IdOrName,
 ) -> Result<Vec<u8>> {
-    let sid = get_spotify_id(client, context_type.into(), context_id).await?;
-    let context = match sid {
-        ItemId::Playlist(id) => client.playlist_context(id).await?,
-        ItemId::Album(id) => client.album_context(id).await?,
-        ItemId::Artist(id) => client.artist_context(id).await?,
-        _ => unreachable!(),
-    };
-
-    Ok(serde_json::to_vec(&context)?)
+    let sid = get_spotify_id(client, item_type, id_or_name).await?;
+    Ok(match sid {
+        ItemId::Playlist(id) => serde_json::to_vec(&client.playlist_context(id).await?)?,
+        ItemId::Album(id) => serde_json::to_vec(&client.album_context(id).await?)?,
+        ItemId::Artist(id) => serde_json::to_vec(&client.artist_context(id).await?)?,
+        ItemId::Track(id) => serde_json::to_vec(&client.track(id).await?)?,
+    })
 }
 
 async fn handle_playback_request(
@@ -308,8 +319,8 @@ async fn handle_playback_request(
 
             PlayerRequest::StartPlayback(Playback::URIs(ids, None))
         }
-        Command::StartContext(context_type, context_id) => {
-            let sid = get_spotify_id(client, context_type.into(), context_id).await?;
+        Command::StartContext(context_type, id_or_name) => {
+            let sid = get_spotify_id(client, context_type.into(), id_or_name).await?;
             let context_id = match sid {
                 ItemId::Playlist(id) => ContextId::Playlist(id),
                 ItemId::Album(id) => ContextId::Album(id),
@@ -349,4 +360,310 @@ async fn handle_playback_request(
     client.handle_player_request(state, player_request).await?;
     client.update_playback(state);
     Ok(())
+}
+
+async fn handle_playlist_request(
+    client: &Client,
+    state: &SharedState,
+    command: PlaylistCommand,
+) -> Result<String> {
+    match command {
+        PlaylistCommand::New {
+            name,
+            public,
+            collab,
+            description,
+        } => {
+            let user = state.data.read().user_data.user.to_owned().unwrap();
+            let id = user.id;
+
+            let resp = client
+                .spotify
+                .user_playlist_create(
+                    id,
+                    name.as_str(),
+                    Some(public),
+                    Some(collab),
+                    Some(description.as_str()),
+                )
+                .await?;
+            Ok(format!(
+                "Playlist '{}' with id '{}' was created.",
+                resp.name, resp.id
+            ))
+        }
+        PlaylistCommand::Delete { id } => {
+            let user = state.data.read().user_data.user.to_owned().unwrap();
+            let uid = user.id;
+
+            let following = client
+                .spotify
+                .playlist_check_follow(id.to_owned(), &[uid])
+                .await
+                .context(format!("Could not find playlist '{}'", id.id()))?
+                .pop()
+                .unwrap();
+
+            // Won't delete if not following
+            if following {
+                client.spotify.playlist_unfollow(id.to_owned()).await?;
+                Ok(format!("Playlist '{id}' was deleted/unfollowed"))
+            } else {
+                Ok(format!(
+                    "Playlist '{id}' was not followed by the user, nothing to be done.",
+                ))
+            }
+        }
+        PlaylistCommand::List => {
+            let resp = client.current_user_playlists().await?;
+
+            let mut out = String::new();
+            for pl in resp {
+                out += &format!("{}: {}\n", pl.id.id(), pl.name);
+            }
+            out = out.trim().to_string();
+
+            Ok(out)
+        }
+        PlaylistCommand::Import {
+            from: import_from,
+            to: import_to,
+            delete,
+        } => playlist_import(client, import_from, import_to, delete).await,
+        PlaylistCommand::Fork { id } => {
+            let user = state.data.read().user_data.user.to_owned().unwrap();
+            let uid = user.id;
+
+            let from = client
+                .spotify
+                .playlist(id.to_owned(), None, None)
+                .await
+                .context(format!("Cannot import from {}.", id.id()))?;
+            let from_desc = from.description.unwrap_or_default();
+
+            let to = client
+                .spotify
+                .user_playlist_create(
+                    uid,
+                    &from.name,
+                    from.public,
+                    Some(from.collaborative),
+                    Some(from_desc.as_str()),
+                )
+                .await?;
+
+            let mut result = format!(
+                "Forked {}.\nNew playlist: {}:{}\n",
+                id.id(),
+                to.id.id(),
+                to.name
+            );
+
+            result += &playlist_import(client, id, to.id, false).await?;
+
+            Ok(result)
+        }
+        PlaylistCommand::Sync { id, delete } => {
+            let user = state.data.read().user_data.user.to_owned().unwrap();
+            let uid = user.id;
+
+            // Get import dir/file
+            let imports_dir = get_cache_folder_path()?.join("imports");
+
+            let mut result = String::new();
+
+            // Iterate through the playlist `imports` folder in the cache folder to
+            // get all playlists' import data represented as subdirectories with `import_to` name.
+            // Inside each `import_to` subdirectory, an import `import_from -> import_to`
+            // data is represented as a file with `import_from` name.
+            for dir in imports_dir.read_dir()? {
+                let to_dir = dir?.path();
+                let to_id = PlaylistId::from_id(to_dir.file_name().unwrap().to_str().unwrap())?;
+
+                // If a playlist id is specified, only consider sync imports of that playlist
+                if let Some(id) = &id {
+                    if to_id != *id {
+                        continue;
+                    }
+                }
+
+                let pl_follow = client
+                    .spotify
+                    .playlist_check_follow(to_id.as_ref(), &[uid.as_ref()])
+                    .await?
+                    .pop()
+                    .unwrap();
+
+                if pl_follow {
+                    for i in to_dir.read_dir()? {
+                        let from_id =
+                            PlaylistId::from_id(i?.file_name().to_str().unwrap().to_owned())?;
+                        result +=
+                            &playlist_import(client, from_id, to_id.clone_static(), delete).await?;
+                        result += "\n";
+                    }
+                } else {
+                    remove_dir_all(&to_dir)?;
+                    result += &format!(
+                        "Not following playlist '{}'. Deleted its import data in the cache folder...\n",
+                        to_id.id()
+                    );
+                }
+            }
+
+            Ok(result)
+        }
+    }
+}
+
+const TRACK_BUFFER_CAP: usize = 100;
+
+/// Imports a playlist into another playlist.
+///
+/// All tracks from the `import_from` playlist are added to the `import_to` playlist if they are not in there already.
+///
+/// The state of `import_from` playlist is stored into a cache file to add/delete the differed tracks between
+/// subsequent imports of the same two playlists.
+async fn playlist_import(
+    client: &Client,
+    import_from: PlaylistId<'static>,
+    import_to: PlaylistId<'static>,
+    delete: bool,
+) -> Result<String> {
+    #[derive(Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
+    struct TrackData {
+        id: TrackId<'static>,
+        name: String,
+    }
+    // Get playlists' info
+    let (from_tracks, from_name) = match client.playlist_context(import_from.to_owned()).await? {
+        Context::Playlist { tracks, playlist } => (
+            tracks.into_iter().map(|t| TrackData {
+                id: t.id,
+                name: t.name,
+            }),
+            playlist.name,
+        ),
+        _ => unreachable!(),
+    };
+    let (to_tracks, to_name) = match client.playlist_context(import_to.to_owned()).await? {
+        Context::Playlist { tracks, playlist } => (
+            tracks.into_iter().map(|t| TrackData {
+                id: t.id,
+                name: t.name,
+            }),
+            playlist.name,
+        ),
+        _ => unreachable!(),
+    };
+
+    // Get import dir/file
+    let cache_dir = get_cache_folder_path()?;
+    let imports_dir = cache_dir.join("imports");
+    let to_dir = imports_dir.join(import_to.id());
+    let from_file = to_dir.join(import_from.id());
+
+    if !to_dir.exists() {
+        create_dir_all(to_dir)?;
+    }
+    // Construct hash sets of the playlists' track IDs
+    let to_hash_set: HashSet<TrackData> = HashSet::from_iter(to_tracks);
+    let from_hash_set: HashSet<TrackData> = HashSet::from_iter(from_tracks);
+
+    let mut new_tracks_hash_set = &from_hash_set - &to_hash_set;
+
+    let mut result = String::new();
+    result += &format!(
+        "Importing from {}:{} to {}:{}...\n",
+        import_from.id(),
+        from_name,
+        import_to.id(),
+        to_name
+    );
+
+    let mut track_buff = Vec::new();
+    if from_file.exists() {
+        let hash_set_bytes = std::fs::read(&from_file).context(format!(
+            "Read cached playlist import data from {}",
+            from_file.display()
+        ))?;
+        std::fs::remove_file(&from_file)?;
+        let old_from_hash_set: HashSet<TrackData> =
+            serde_json::from_slice(&hash_set_bytes).context("Deserialize playlist import data")?;
+
+        // Only consider new tracks that were not included in the previous import.
+        new_tracks_hash_set = &new_tracks_hash_set - &old_from_hash_set;
+
+        // If `delete` option is specified, delete previously imported tracks that are not in the current `from` playlist
+        let deleted_hash_set = &old_from_hash_set - &from_hash_set;
+        if delete {
+            for t in &deleted_hash_set {
+                track_buff.push(PlayableId::Track(t.id.as_ref()));
+
+                if track_buff.len() == TRACK_BUFFER_CAP {
+                    client
+                        .spotify
+                        .playlist_remove_all_occurrences_of_items(
+                            import_to.as_ref(),
+                            track_buff,
+                            None,
+                        )
+                        .await?;
+                    track_buff = Vec::new();
+                }
+            }
+
+            if !track_buff.is_empty() {
+                client
+                    .spotify
+                    .playlist_remove_all_occurrences_of_items(import_to.as_ref(), track_buff, None)
+                    .await?;
+            }
+            result += &format!("Tracks deleted from {from_name}: \n");
+        } else {
+            result += &format!("Tracks that are no longer in {from_name} since last import: \n");
+        }
+
+        for t in &deleted_hash_set {
+            result += &format!("    {}: {}\n", t.id.id(), t.name);
+        }
+    }
+
+    result += &format!("New tracks imported to {to_name}: \n");
+
+    track_buff = Vec::new();
+    for t in &new_tracks_hash_set {
+        track_buff.push(PlayableId::Track(t.id.as_ref()));
+
+        if track_buff.len() == TRACK_BUFFER_CAP {
+            client
+                .spotify
+                .playlist_add_items(import_to.as_ref(), track_buff, None)
+                .await?;
+            track_buff = Vec::new();
+        }
+
+        result += &format!("    {}: {}\n", t.id.id(), t.name);
+    }
+
+    if !track_buff.is_empty() {
+        client
+            .spotify
+            .playlist_add_items(import_to.as_ref(), track_buff, None)
+            .await?;
+    }
+
+    // Create a new cache file storing the latest import data
+    let mut f = std::fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .open(&from_file)?;
+    let hash_set_bytes =
+        serde_json::to_vec(&from_hash_set).context("Serialize new playlist import data")?;
+    f.write_all(&hash_set_bytes).context(format!(
+        "Save new playlist import data into a cache file {}",
+        from_file.display()
+    ))?;
+
+    Ok(result)
 }

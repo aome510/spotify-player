@@ -55,7 +55,7 @@ pub fn handle_command_for_focused_context_window(
 
     let data = state.data.read();
 
-    match data.caches.context.peek(&context_id.uri()) {
+    match data.caches.context.get(&context_id.uri()) {
         Some(context) => match context {
             Context::Artist {
                 top_tracks,
@@ -162,7 +162,8 @@ pub fn handle_command_for_track_table_window(
             let id = rand::thread_rng().gen_range(0..tracks.len());
 
             client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
-                base_playback.uri_offset(tracks[id].id.uri()),
+                base_playback
+                    .uri_offset(tracks[id].id.uri(), state.app_config.tracks_playback_limit),
             )))?;
         }
         Command::ChooseSelected => {
@@ -172,7 +173,8 @@ pub fn handle_command_for_track_table_window(
                 return Ok(false);
             } 
             client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
-                base_playback.uri_offset(tracks[id].id.uri()),
+                base_playback
+                    .uri_offset(tracks[id].id.uri(), state.app_config.tracks_playback_limit),
             )))?;
         }
         Command::ShowActionsOnSelectedItem => {
@@ -187,6 +189,58 @@ pub fn handle_command_for_track_table_window(
         }
         Command::AddSelectedItemToQueue => {
             client_pub.send(ClientRequest::AddTrackToQueue(tracks[id].id.clone()))?;
+        }
+        Command::MovePlaylistItemUp => {
+            if let PageState::Context {
+                id: Some(ContextId::Playlist(playlist_id)),
+                ..
+            } = ui.current_page()
+            {
+                if id > 0
+                    && data.user_data.playlists.iter().any(|playlist| {
+                        &playlist.id == playlist_id
+                            && Some(&playlist.owner.1)
+                                == data.user_data.user.as_ref().map(|user| &user.id)
+                    })
+                {
+                    let insert_index = id - 1;
+                    client_pub.send(ClientRequest::ReorderPlaylistItems {
+                        playlist_id: playlist_id.clone_static(),
+                        insert_index,
+                        range_start: id,
+                        range_length: None,
+                        snapshot_id: None,
+                    })?;
+                    ui.current_page_mut().select(insert_index);
+                };
+            }
+            ui.popup = None;
+        }
+        Command::MovePlaylistItemDown => {
+            if let PageState::Context {
+                id: Some(ContextId::Playlist(playlist_id)),
+                ..
+            } = ui.current_page()
+            {
+                let insert_index = id + 1;
+                if insert_index < tracks.len()
+                    && data.user_data.playlists.iter().any(|playlist| {
+                        &playlist.id == playlist_id
+                            && Some(&playlist.owner.1)
+                                == data.user_data.user.as_ref().map(|user| &user.id)
+                    })
+                {
+                    client_pub.send(ClientRequest::ReorderPlaylistItems {
+                        playlist_id: playlist_id.clone_static(),
+                        insert_index,
+                        range_start: id,
+                        range_length: None,
+                        snapshot_id: None,
+                    })?;
+                    ui.current_page_mut().select(insert_index);
+                };
+            }
+            ui.popup = None;
         }
         _ => return Ok(false),
     }

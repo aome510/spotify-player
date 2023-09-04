@@ -1,10 +1,11 @@
 theme = "default"
 client_id = "65b708073fc0480ea92a077233ca87bd"
 client_port = 8080
-playack_format = "{track} • {artists}\n{album}\n{metadata}"
+tracks_playback_limit = 50
+playback_format = "{track} • {artists}\n{album}\n{metadata}"
 notify_format = { summary = "{track} • {artists}", body = "{album}" }
 # the default `copy_command` is based on the OS
-copy_command = { command = "pbcopy", args = [] } # macos
+# copy_command = { command = "pbcopy", args = [] } # macos
 # copy_command = { command = "xclip", args = ["-sel", "c"] } # linux
 # copy_command = { command = "clip", args = [] } # windows
 app_refresh_duration_in_ms = 32
@@ -13,7 +14,7 @@ cover_image_refresh_duration_in_ms = 2000
 page_size_in_rows = 20
 track_table_item_max_len = 32
 enable_media_control = false
-enable_streaming = true
+enable_streaming = "Always"
 enable_cover_image_cache = true
 default_device = "spotify-player"
 play_icon = "▶"

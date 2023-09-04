@@ -4,6 +4,8 @@ use serde::Deserialize;
 #[derive(Copy, Clone, Debug, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 /// Application's command
 pub enum Command {
+    None,
+
     NextTrack,
     PreviousTrack,
     ResumePause,
@@ -66,6 +68,9 @@ pub enum Command {
     SortTrackByDuration,
     SortTrackByAddedDate,
     ReverseTrackOrder,
+
+    MovePlaylistItemUp,
+    MovePlaylistItemDown,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -135,6 +140,7 @@ pub fn construct_track_actions(track: &Track, data: &DataReadGuard) -> Vec<Track
 impl Command {
     pub fn desc(&self) -> &'static str {
         match self {
+            Self::None => "do nothing",
             Self::NextTrack => "next track",
             Self::PreviousTrack => "previous track",
             Self::ResumePause => "resume/pause based on the current playback",
@@ -196,6 +202,8 @@ impl Command {
             Self::SortTrackByDuration => "sort the track table (if any) by track's duration",
             Self::SortTrackByAddedDate => "sort the track table (if any) by track's added date",
             Self::ReverseTrackOrder => "reverse the order of the track table (if any)",
+            Self::MovePlaylistItemUp => "move playlist item up one position",
+            Self::MovePlaylistItemDown => "move playlist item down one position",
         }
     }
 }

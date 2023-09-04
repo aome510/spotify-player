@@ -4,6 +4,8 @@
 
 - [General](#general)
   - [Notes](#notes)
+  - [Media control](#media-control)
+  - [Player event hook command](#player-event-hook-command)
   - [Device configurations](#device-configurations)
 - [Themes](#themes)
   - [Use script to add theme](#use-script-to-add-theme)
@@ -23,9 +25,11 @@ All configuration files should be placed inside the application's configuration 
 | ------------------------------------ | ----------------------------------------------------------------------------- | ---------------------------------------------------------- |
 | `client_id`                          | the Spotify client's ID                                                       | `65b708073fc0480ea92a077233ca87bd`                         |
 | `client_port`                        | the port that the application's client is running on to handle CLI commands   | `8080`                                                     |
+| `tracks_playback_limit`              | the limit for the number of tracks played in a **tracks** playback            | `50`                                                       |
 | `playback_format`                    | the format of the text in the playback's window                               | `{track} • {artists}\n{album}\n{metadata}`                 |
 | `notify_format`                      | the format of a notification (`notify` feature only)                          | `{ summary = "{track} • {artists}", body = "{album}" }`    |
 | `copy_command`                       | the command used to execute a copy-to-clipboard action                        | `xclip -sel c` (Linux), `pbcopy` (MacOS), `clip` (Windows) |
+| `player_event_hook_command`          | the hook command executed when there is a new player event                    | `None`                                                     |
 | `ap_port`                            | the application's Spotify session connection port                             | `None`                                                     |
 | `proxy`                              | the application's Spotify session connection proxy                            | `None`                                                     |
 | `theme`                              | the application's theme                                                       | `default`                                                  |
@@ -35,12 +39,12 @@ All configuration files should be placed inside the application's configuration 
 | `page_size_in_rows`                  | a page's size expressed as a number of rows (for page-navigation commands)    | `20`                                                       |
 | `track_table_item_max_len`           | the maximum length of a column in a track table                               | `32`                                                       |
 | `enable_media_control`               | enable application media control support (`media-control` feature only)       | `true` (Linux), `false` (Windows and MacOS)                |
-| `enable_streaming`                   | create a device for streaming (streaming feature only)                        | `true`                                                     |
+| `enable_streaming`                   | create a device for streaming (streaming feature only)                        | `Always`                                                   |
 | `enable_cover_image_cache`           | store album's cover images in the cache folder                                | `true`                                                     |
 | `default_device`                     | the default device to connect to on startup if no playing device found        | `spotify-player`                                           |
-| `play_icon`                          | the icon to indicate playing state of a Spotify item                          | `▶`                                                        |
+| `play_icon`                          | the icon to indicate playing state of a Spotify item                          | `▶`                                                       |
 | `pause_icon`                         | the icon to indicate pause state of a Spotify item                            | `▌▌`                                                       |
-| `liked_icon`                         | the icon to indicate the liked state of a song                                | `♥`                                                        |
+| `liked_icon`                         | the icon to indicate the liked state of a song                                | `♥`                                                       |
 | `border_type`                        | the type of the application's borders                                         | `Plain`                                                    |
 | `progress_bar_type`                  | the type of the playback progress bar                                         | `Rectangle`                                                |
 | `playback_window_position`           | the position of the playback window                                           | `Top`                                                      |
@@ -71,8 +75,9 @@ All configuration files should be placed inside the application's configuration 
 
 - An example of event that triggers a playback update is the one happening when the current track ends.
 - `copy_command` is represented by a struct with two fields `command` and `args`. For example, `copy_command = { command = "xclip", args = ["-sel", "c"] }`. The copy command should read input from **standard input**.
+- `enable_streaming` can be either `Always`, `Never` or `DaemonOnly`. For backwards compatibility, `true` and `false` are still accepted as aliases for `Always` and `Never`.
 - `playback_window_position` can only be either `Top` or `Bottom`.
-- `border_type` can be either `Hidden`, `Plain`, `Rounded`, `Double`, `Thick`.
+- `border_type` can be either `Hidden`, `Plain`, `Rounded`, `Double` or `Thick`.
 - `progress_bar_type` can be either `Rectangle` or `Line`.
 
 #### Media control
@@ -80,6 +85,30 @@ All configuration files should be placed inside the application's configuration 
 Media control support (`enable_media_control` option) is enabled by default on Linux but disabled by default on MacOS and Windows.
 
 MacOS and Windows require **an open window** to listen to OS media event. As a result, `spotify_player` needs to spawn an invisible window on startup, which may steal focus from the running terminal. To interact with `spotify_player`, which is run on the terminal, user will need to re-focus the terminal. Because of this extra re-focus step, the media control support is disabled by default on MacOS and Windows to avoid possible confusion for first-time users.
+
+### Player event hook command
+
+Similar to `copy_command`, if specified, `player_event_hook_command` should be a struct with two fields `command` and `args`. Each time `spotify_player` receives a new player event, `player_event_hook_command` is executed with the event as the **standard input**.
+
+A player event is a `json` string with either of the following values:
+
+- `{ Changed: { old_track_id: String, new_track_id: String } }`
+- `{ Playing: { track_id: String, position_ms: Number, duration_ms: Number } }`
+- `{ Paused: { track_id: String, position_ms: Number, duration_ms: Number } }`
+- `{ EndOfTrack: { track_id: String } }`
+
+Example `player_event_hook_command` script, which reads the event from **stdin**, parses the event as a `json` string, and writes the parsed event into a file:
+
+```python
+#!/usr/bin/python3
+
+import json
+
+player_event = json.loads(input())
+
+with open("/tmp/spotify_player_events.txt", "a") as f:
+    f.write(f"{player_event}\n")
+```
 
 ### Device configurations
 
@@ -181,7 +210,7 @@ selection = { modifiers = ["Bold", "Reversed"] }
 
 ## Keymaps
 
-`spotify_player` uses `keymap.toml` to add or override new key mappings in additional to [the default key mappings](../README.md#commands). To define a new key mapping, simply add a `keymaps` entry. For example,
+`spotify_player` uses `keymap.toml` to add or override new key mappings in additional to [the default key mappings](../README.md#commands). To define a new key mapping, simply add a `keymaps` entry. To remove a key mapping, set its command to `None`. For example,
 
 ```toml
 [[keymaps]]
@@ -196,4 +225,7 @@ key_sequence = "C-c C-x /"
 [[keymaps]]
 command = "ResumePause"
 key_sequence = "M-enter"
+[[keymaps]]
+command = "None"
+key_sequence = "q"
 ```

@@ -25,7 +25,7 @@ fn init_app_cli_arguments() -> Result<clap::ArgMatches> {
     let default_config_folder = config::get_config_folder_path()?;
 
     let cmd = clap::Command::new("spotify_player")
-        .version("0.14.1")
+        .version("0.15.0")
         .about("A command driven spotify player")
         .author("Thang Pham <phamducthang1234@gmail>")
         .subcommand(cli::init_get_subcommand())
@@ -33,6 +33,7 @@ fn init_app_cli_arguments() -> Result<clap::ArgMatches> {
         .subcommand(cli::init_connect_subcommand())
         .subcommand(cli::init_like_command())
         .subcommand(cli::init_authenticate_command())
+        .subcommand(cli::init_playlist_subcommand())
         .arg(
             clap::Arg::new("theme")
                 .short('t')
@@ -77,7 +78,9 @@ async fn init_spotify(
 ) -> Result<()> {
     // if `streaming` feature is enabled, create a new streaming connection
     #[cfg(feature = "streaming")]
-    if state.app_config.enable_streaming {
+    if state.app_config.enable_streaming == config::StreamingType::Always
+        || (state.app_config.enable_streaming == config::StreamingType::DaemonOnly && is_daemon)
+    {
         client.new_streaming_connection(state).await;
     }
 
@@ -281,15 +284,11 @@ fn main() -> Result<()> {
     }
 
     // initialize the application state
-    let state = {
-        let mut state = state::State {
-            cache_folder: cache_folder.clone(),
-            ..state::State::default()
-        };
-        // parse config options from the config files into application's state
-        state.parse_config_files(&config_folder, args.get_one::<String>("theme"))?;
-        std::sync::Arc::new(state)
-    };
+    let state = std::sync::Arc::new(state::State::new(
+        &config_folder,
+        &cache_folder,
+        args.get_one::<String>("theme"),
+    )?);
 
     match args.subcommand() {
         None => {

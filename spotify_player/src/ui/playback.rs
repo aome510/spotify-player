@@ -275,7 +275,7 @@ fn render_playback_cover_image(
     }
 
     let data = state.data.read();
-    if let Some(image) = data.caches.images.peek(&url) {
+    if let Some(image) = data.caches.images.get(&url) {
         ui.last_cover_image_render_info = Some((url, std::time::Instant::now()));
 
         // `viuer` renders image using `sixel` in a different scale compared to other methods.

@@ -109,6 +109,10 @@ Application's prebuilt binaries can be found in the [Releases Page](https://gith
 
 **Note**: to run the application, Linux systems need to install additional dependencies as specified in the [Dependencies section](#linux).
 
+### Homebrew
+
+Run `brew install spotify_player` to install the application.
+
 ### Cargo
 
 Run `cargo install spotify_player` to install the application from [crates.io](https://crates.io/crates/spotify_player).
@@ -116,6 +120,10 @@ Run `cargo install spotify_player` to install the application from [crates.io](h
 ### AUR
 
 Run `yay -S spotify-player` to install the application as an AUR package.
+
+### Void Linux
+
+Run `xbps-install -S spotify-player` to install the application.
 
 ### FreeBSD
 
@@ -305,6 +313,15 @@ You can run the application as a daemon by specifying the `-d` or `--daemon` opt
 
 Under the hood, the application handles a CLI command by sending requests to a `spotify_player` instance's client socket running on the `client_port` port, a general application configuration with a default value `8080`.
 
+Lists of CLI commands:
+
+- `get`: Get Spotify data (playlist/album/artist data, user's data, etc)
+- `playback`: Interact with the playback (start a playback, play-pause, next, etc)
+- `connect`: Connect to a Spotify device
+- `like`: Like currently playing track
+- `authenticate`: Authenticate the application
+- `playlist`: Playlist editing (new, delete, import, fork, etc)
+
 For more details, run `spotify_player -h` or `spotify_player {command} -h`, in which `{command}` is a CLI command.
 
 ## Commands
@@ -364,6 +381,8 @@ List of supported commands:
 | `SortTrackByDuration`          | sort the track table (if any) by track's duration                       | `s d`              |
 | `SortTrackByAddedDate`         | sort the track table (if any) by track's added date                     | `s D`              |
 | `ReverseOrder`                 | reverse the order of the track table (if any)                           | `s r`              |
+| `MovePlaylistItemUp`           | move playlist item up one position                                      | `C-k`              |
+| `MovePlaylistItemDown`         | move playlist item down one position                                    | `C-j`              |
 
 To add new shortcuts or modify the default shortcuts, please refer to the [keymaps section](docs/config.md#keymaps) in the configuration documentation.
 
@@ -388,6 +407,8 @@ To move the focus from the search input to the other windows such as track resul
 ## Configurations
 
 By default, `spotify_player` will look into `$HOME/.config/spotify-player` for application's configuration files. This can be changed by either specifying `-c <FOLDER_PATH>` or `--config-folder <FOLDER_PATH>` option.
+
+If an application configuration file is not found, one will be created with default values.
 
 Please refer to [the configuration documentation](docs/config.md) for more details on the configuration options.
 

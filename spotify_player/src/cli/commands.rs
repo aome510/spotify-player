@@ -17,8 +17,12 @@ pub fn init_get_subcommand() -> Command {
                     .required(true),
             ),
         )
-        .subcommand(add_context_args(
-            Command::new("context").about("Get context data"),
+        .subcommand(add_id_or_name_group(
+            Command::new("item").about("Get a Spotify item's data").arg(
+                Arg::new("item_type")
+                    .value_parser(EnumValueParser::<ItemType>::new())
+                    .required(true),
+            ),
         ))
 }
 
@@ -26,8 +30,14 @@ fn init_playback_start_subcommand() -> Command {
     Command::new("start")
         .about("Start a new playback")
         .subcommand_required(true)
-        .subcommand(add_context_args(
-            Command::new("context").about("Start a context playback"),
+        .subcommand(add_id_or_name_group(
+            Command::new("context")
+                .about("Start a context playback")
+                .arg(
+                    Arg::new("context_type")
+                        .value_parser(EnumValueParser::<ContextType>::new())
+                        .required(true),
+                ),
         ))
         .subcommand(
             Command::new("liked")
@@ -55,16 +65,6 @@ fn init_playback_start_subcommand() -> Command {
                 .about("Start a radio playback")
                 .arg(Arg::new("item_type").value_parser(EnumValueParser::<ItemType>::new())),
         ))
-}
-
-fn add_context_args(cmd: Command) -> Command {
-    add_id_or_name_group(
-        cmd.arg(
-            Arg::new("context_type")
-                .value_parser(EnumValueParser::<ContextType>::new())
-                .required(true),
-        ),
-    )
 }
 
 fn add_id_or_name_group(cmd: Command) -> Command {
@@ -127,4 +127,54 @@ pub fn init_like_command() -> Command {
 
 pub fn init_authenticate_command() -> Command {
     Command::new("authenticate").about("Authenticate the application")
+}
+
+pub fn init_playlist_subcommand() -> Command {
+    Command::new("playlist")
+        .about("Playlist editing")
+        .subcommand_required(true)
+        .subcommand(Command::new("new").about("Create a new playlist")
+            .arg(Arg::new("name")
+                .value_parser(clap::builder::NonEmptyStringValueParser::new()))
+            .arg(Arg::new("description")
+                .value_parser(clap::builder::NonEmptyStringValueParser::new())
+                .required(false))
+            .arg(Arg::new("public")
+                .short('p')
+                .long("public")
+                .action(clap::ArgAction::SetTrue)
+                .help("Sets the playlist to public"))
+            .arg(Arg::new("collab")
+                .short('c')
+                .long("collab")
+                .action(clap::ArgAction::SetTrue)
+                .help("Sets the playlist to collaborative"))
+            )
+        .subcommand(Command::new("delete").about("Delete a playlist")
+            .arg(Arg::new("id")
+                .value_parser(clap::builder::NonEmptyStringValueParser::new())))
+        .subcommand(Command::new("import").about("Imports all songs from a playlist into another playlist.")
+            .arg(Arg::new("from")
+                .value_parser(clap::builder::NonEmptyStringValueParser::new()))
+            .arg(Arg::new("to")
+                .value_parser(clap::builder::NonEmptyStringValueParser::new()))
+            .arg(Arg::new("delete")
+                .short('d')
+                .long("delete")
+                .action(clap::ArgAction::SetTrue)
+                .help("Deletes any previously imported tracks that are no longer in the imported playlist since last import."))
+            .after_help("Import data for each playlist is stored inside the application's cache folder. If imported again, the command only imports new tracks since last import."))
+        .subcommand(Command::new("list").about("Lists all user playlists."))
+        .subcommand(Command::new("fork").about("Creates a copy of a playlist and imports it.")
+            .arg(Arg::new("id")
+                .value_parser(clap::builder::NonEmptyStringValueParser::new())))
+        .subcommand(Command::new("sync").about("Syncs imports for all playlists or a single playlist.")
+            .arg(Arg::new("id")
+                .required(false)
+                .value_parser(clap::builder::NonEmptyStringValueParser::new()))
+            .arg(Arg::new("delete")
+                .short('d')
+                .long("delete")
+                .action(clap::ArgAction::SetTrue)
+                .help("Deletes any previously imported tracks that are no longer in an imported playlist since last import.")))
 }

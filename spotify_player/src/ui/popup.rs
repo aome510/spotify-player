@@ -1,4 +1,5 @@
 use super::{utils::construct_and_render_block, *};
+use crate::utils::format_duration;
 use std::collections::{btree_map::Entry, BTreeMap};
 
 const SHORTCUT_TABLE_N_COLUMNS: usize = 3;
@@ -255,18 +256,23 @@ pub fn render_commands_help_popup(
     let rect = construct_and_render_block("Commands", &ui.theme, state, Borders::ALL, frame, rect);
 
     let mut map = BTreeMap::new();
-    state.keymap_config.keymaps.iter().for_each(|km| {
-        let v = map.entry(km.command);
-        match v {
-            Entry::Vacant(v) => {
-                v.insert(format!("\"{}\"", km.key_sequence));
+    state
+        .keymap_config
+        .keymaps
+        .iter()
+        .filter(|km| km.include_in_help_screen())
+        .for_each(|km| {
+            let v = map.entry(km.command);
+            match v {
+                Entry::Vacant(v) => {
+                    v.insert(format!("\"{}\"", km.key_sequence));
+                }
+                Entry::Occupied(mut v) => {
+                    let desc = format!("{}, \"{}\"", v.get(), km.key_sequence);
+                    *v.get_mut() = desc;
+                }
             }
-            Entry::Occupied(mut v) => {
-                let desc = format!("{}, \"{}\"", v.get(), km.key_sequence);
-                *v.get_mut() = desc;
-            }
-        }
-    });
+        });
 
     let scroll_offset = match ui.popup {
         Some(PopupState::CommandHelp {
@@ -318,6 +324,22 @@ pub fn render_queue_popup(
             PlayableItem::Episode(FullEpisode { ref name, .. }) => name,
         }
     }
+    fn get_playable_artists(item: &PlayableItem) -> String {
+        match item {
+            PlayableItem::Track(FullTrack { ref artists, .. }) => artists
+                .iter()
+                .map(|a| a.name.as_str())
+                .collect::<Vec<_>>()
+                .join(", "),
+            PlayableItem::Episode(FullEpisode { .. }) => String::new(),
+        }
+    }
+    fn get_playable_duration(item: &PlayableItem) -> String {
+        match item {
+            PlayableItem::Track(FullTrack { ref duration, .. }) => format_duration(duration),
+            PlayableItem::Episode(FullEpisode { ref duration, .. }) => format_duration(duration),
+        }
+    }
 
     let rect = construct_and_render_block("Queue", &ui.theme, state, Borders::ALL, frame, rect);
 
@@ -349,12 +371,27 @@ pub fn render_queue_popup(
                     Row::new(vec![
                         Cell::from(format!("{}", i + 1)),
                         Cell::from(get_playable_name(x).to_string()),
+                        Cell::from(get_playable_artists(x).to_string()),
+                        Cell::from(get_playable_duration(x).to_string()),
                     ])
                 })
                 .collect::<Vec<_>>(),
         )
-        .header(Row::new(vec![Cell::from("#"), Cell::from("Title")]).style(ui.theme.table_header()))
-        .widths(&[Constraint::Percentage(10), Constraint::Percentage(90)])
+        .header(
+            Row::new(vec![
+                Cell::from("#"),
+                Cell::from("Title"),
+                Cell::from("Artists"),
+                Cell::from("Duration"),
+            ])
+            .style(ui.theme.table_header()),
+        )
+        .widths(&[
+            Constraint::Percentage(5),
+            Constraint::Percentage(40),
+            Constraint::Percentage(35),
+            Constraint::Percentage(20),
+        ])
     };
 
     frame.render_widget(queue_table, rect);

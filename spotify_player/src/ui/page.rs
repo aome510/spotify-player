@@ -25,7 +25,7 @@ pub fn render_search_page(
         s => anyhow::bail!("expect a search page state, found {s:?}"),
     };
 
-    let search_results = data.caches.search.peek(current_query);
+    let search_results = data.caches.search.get(current_query);
 
     // 2. Construct the page's layout
     let rect = construct_and_render_block("Search", &ui.theme, state, Borders::ALL, frame, rect);
@@ -229,7 +229,7 @@ pub fn render_context_page(
     };
 
     let data = state.data.read();
-    match data.caches.context.peek(&id.uri()) {
+    match data.caches.context.get(&id.uri()) {
         Some(context) => {
             // render context description
             let chunks = Layout::default()
@@ -511,7 +511,7 @@ pub fn render_lyric_page(
         s => anyhow::bail!("expect a lyric page state, found {s:?}"),
     };
 
-    let (desc, lyric) = match data.caches.lyrics.peek(&format!("{track} {artists}")) {
+    let (desc, lyric) = match data.caches.lyrics.get(&format!("{track} {artists}")) {
         None => {
             frame.render_widget(Paragraph::new("Loading..."), rect);
             return Ok(());

@@ -1,8 +1,6 @@
 pub use super::*;
 use once_cell::sync::Lazy;
 
-pub const PLAYBACK_TRACKS_LIMIT: usize = 200;
-
 pub static USER_TOP_TRACKS_ID: Lazy<TracksId> =
     Lazy::new(|| TracksId::new("tracks:user-top-tracks", "Top Tracks"));
 

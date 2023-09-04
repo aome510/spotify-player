@@ -1,4 +1,4 @@
-use std::{borrow::{Cow}, io::Write, sync::Arc};
+use std::{borrow::Cow, io::Write, sync::Arc};
 
 #[cfg(feature = "streaming")]
 use crate::streaming;
@@ -13,7 +13,7 @@ use anyhow::Result;
 #[cfg(feature = "streaming")]
 use librespot_connect::spirc::Spirc;
 use librespot_core::session::Session;
-use rspotify::{prelude::*, model::Market, http::Query};
+use rspotify::{http::Query, model::Market, prelude::*};
 
 mod handlers;
 mod spotify;
@@ -82,6 +82,7 @@ impl Client {
             session,
             state.app_config.device.clone(),
             self.client_pub.clone(),
+            state.app_config.player_event_hook_command.clone(),
         );
 
         let mut stream_conn = self.stream_conn.lock();
@@ -206,12 +207,17 @@ impl Client {
                 let client = lyric_finder::Client::from_http_client(&self.http);
                 let query = format!("{track} {artists}");
 
-                if !state.data.read().caches.lyrics.contains(&query) {
+                if !state.data.read().caches.lyrics.contains_key(&query) {
                     let result = client.get_lyric(&query).await.context(format!(
                         "failed to get lyric for track {track} - artists {artists}"
                     ))?;
 
-                    state.data.write().caches.lyrics.put(query, result);
+                    state
+                        .data
+                        .write()
+                        .caches
+                        .lyrics
+                        .insert(query, result, *CACHE_DURATION);
                 }
             }
             ClientRequest::ConnectDevice(id) => {
@@ -255,44 +261,47 @@ impl Client {
             }
             ClientRequest::GetUserTopTracks => {
                 let uri = &USER_TOP_TRACKS_ID.uri;
-                if !state.data.read().caches.context.contains(uri) {
+                if !state.data.read().caches.context.contains_key(uri) {
                     let tracks = self.current_user_top_tracks().await?;
-                    state.data.write().caches.context.put(
+                    state.data.write().caches.context.insert(
                         uri.to_owned(),
                         Context::Tracks {
                             tracks,
                             desc: "User's top tracks".to_string(),
                         },
+                        *CACHE_DURATION,
                     );
                 }
             }
             ClientRequest::GetUserSavedTracks => {
                 let tracks = self.current_user_saved_tracks().await?;
-                state.data.write().caches.context.put(
+                state.data.write().caches.context.insert(
                     USER_LIKED_TRACKS_ID.uri.to_owned(),
                     Context::Tracks {
                         tracks: tracks.clone(),
                         desc: "User's liked tracks".to_string(),
                     },
+                    *CACHE_DURATION,
                 );
                 state.data.write().user_data.saved_tracks = tracks;
             }
             ClientRequest::GetUserRecentlyPlayedTracks => {
                 let uri = &USER_RECENTLY_PLAYED_TRACKS_ID.uri;
-                if !state.data.read().caches.context.contains(uri) {
+                if !state.data.read().caches.context.contains_key(uri) {
                     let tracks = self.current_user_recently_played_tracks().await?;
-                    state.data.write().caches.context.put(
+                    state.data.write().caches.context.insert(
                         uri.to_owned(),
                         Context::Tracks {
                             tracks,
                             desc: "User's recently played tracks".to_string(),
                         },
+                        *CACHE_DURATION,
                     );
                 }
             }
             ClientRequest::GetContext(context) => {
                 let uri = context.uri();
-                if !state.data.read().caches.context.contains(&uri) {
+                if !state.data.read().caches.context.contains_key(&uri) {
                     let context = match context {
                         ContextId::Playlist(playlist_id) => {
                             self.playlist_context(playlist_id).await?
@@ -306,14 +315,24 @@ impl Client {
                         }
                     };
 
-                    state.data.write().caches.context.put(uri, context);
+                    state
+                        .data
+                        .write()
+                        .caches
+                        .context
+                        .insert(uri, context, *CACHE_DURATION);
                 }
             }
             ClientRequest::Search(query) => {
-                if !state.data.read().caches.search.contains(&query) {
+                if !state.data.read().caches.search.contains_key(&query) {
                     let results = self.search(&query).await?;
 
-                    state.data.write().caches.search.put(query, results);
+                    state
+                        .data
+                        .write()
+                        .caches
+                        .search
+                        .insert(query, results, *CACHE_DURATION);
                 }
             }
             ClientRequest::GetRadioTracks {
@@ -321,15 +340,16 @@ impl Client {
                 seed_name: name,
             } => {
                 let radio_uri = format!("radio:{uri}");
-                if !state.data.read().caches.context.contains(&radio_uri) {
+                if !state.data.read().caches.context.contains_key(&radio_uri) {
                     let tracks = self.radio_tracks(uri).await?;
 
-                    state.data.write().caches.context.put(
+                    state.data.write().caches.context.insert(
                         radio_uri,
                         Context::Tracks {
                             tracks,
                             desc: format!("{name} Radio"),
                         },
+                        *CACHE_DURATION,
                     );
                 }
             }
@@ -355,6 +375,23 @@ impl Client {
                 {
                     state.player.write().queue = Some(queue);
                 }
+            }
+            ClientRequest::ReorderPlaylistItems {
+                playlist_id,
+                insert_index,
+                range_start,
+                range_length,
+                snapshot_id,
+            } => {
+                self.reorder_playlist_items(
+                    state,
+                    playlist_id,
+                    insert_index,
+                    range_start,
+                    range_length,
+                    snapshot_id.as_deref(),
+                )
+                .await?;
             }
         };
 
@@ -587,7 +624,7 @@ impl Client {
     pub async fn current_user_saved_albums(&self) -> Result<Vec<Album>> {
         let first_page = self
             .spotify
-            .current_user_saved_albums_manual(None, Some(50), None)
+            .current_user_saved_albums_manual(Some(Market::FromToken), Some(50), None)
             .await?;
 
         let albums = self.all_paging_items(first_page, &Query::new()).await?;
@@ -715,7 +752,7 @@ impl Client {
         // Retrieve tracks based on IDs
         let tracks = self
             .spotify
-            .tracks(track_ids, None)
+            .tracks(track_ids, Some(Market::FromToken))
             .await?
             .into_iter()
             .filter_map(Track::try_from_full_track)
@@ -779,7 +816,7 @@ impl Client {
     ) -> Result<rspotify_model::SearchResult> {
         Ok(self
             .spotify
-            .search(query, _type, None, None, None, None)
+            .search(query, _type, Some(Market::FromToken), None, None, None)
             .await?)
     }
 
@@ -816,7 +853,7 @@ impl Client {
             .await?;
 
         // After adding a new track to a playlist, remove the cache of that playlist to force refetching new data
-        state.data.write().caches.context.pop(&playlist_id.uri());
+        state.data.write().caches.context.remove(&playlist_id.uri());
 
         Ok(())
     }
@@ -846,6 +883,46 @@ impl Client {
             .get_mut(&playlist_id.uri())
         {
             tracks.retain(|t| t.id != track_id);
+        }
+
+        Ok(())
+    }
+
+    /// reorder items in a playlist
+    pub async fn reorder_playlist_items(
+        &self,
+        state: &SharedState,
+        playlist_id: PlaylistId<'_>,
+        insert_index: usize,
+        range_start: usize,
+        range_length: Option<usize>,
+        snapshot_id: Option<&str>,
+    ) -> Result<()> {
+        let insert_before = match insert_index > range_start {
+            true => insert_index + 1,
+            false => insert_index,
+        };
+
+        self.spotify
+            .playlist_reorder_items(
+                playlist_id.clone(),
+                Some(range_start as i32),
+                Some(insert_before as i32),
+                range_length.map(|range_length| range_length as u32),
+                snapshot_id,
+            )
+            .await?;
+
+        // After making a reorder request, update the playlist in-memory data stored inside the app caches.
+        if let Some(Context::Playlist { tracks, .. }) = state
+            .data
+            .write()
+            .caches
+            .context
+            .get_mut(&playlist_id.uri())
+        {
+            let track = tracks.remove(range_start);
+            tracks.insert(insert_index, track);
         }
 
         Ok(())
@@ -970,13 +1047,26 @@ impl Client {
         Ok(())
     }
 
+    /// gets a track data
+    pub async fn track(&self, track_id: TrackId<'_>) -> Result<Track> {
+        Track::try_from_full_track(
+            self.spotify
+                .track(track_id, Some(Market::FromToken))
+                .await?,
+        )
+        .context("convert rspotify_model::FullTrack into spotify_player::state::Track")
+    }
+
     /// gets a playlist context data
     pub async fn playlist_context(&self, playlist_id: PlaylistId<'_>) -> Result<Context> {
         let playlist_uri = playlist_id.uri();
         tracing::info!("Get playlist context: {}", playlist_uri);
 
         // we use the `market=from_token` query parameter to ensure that the playlist has the is_playable field
-        let playlist = self.spotify.playlist(playlist_id, None, Some(Market::FromToken)).await?;
+        let playlist = self
+            .spotify
+            .playlist(playlist_id, None, Some(Market::FromToken))
+            .await?;
         let mut payload = Query::with_capacity(1);
         payload.insert("market", "from_token");
 
@@ -1004,9 +1094,11 @@ impl Client {
     pub async fn album_context(&self, album_id: AlbumId<'_>) -> Result<Context> {
         let album_uri = album_id.uri();
         tracing::info!("Get album context: {}", album_uri);
-        
-        // BLOCKING: we can't send a payload to the album endpoint due to the respotify not supporting it 
-        let album = self.spotify.album(album_id).await?;
+
+        let album = self
+            .spotify
+            .album(album_id, Some(Market::FromToken))
+            .await?;
         let first_page = album.tracks.clone();
 
         // converts `rspotify_model::FullAlbum` into `state::Album`
@@ -1041,10 +1133,7 @@ impl Client {
 
         let top_tracks = self
             .spotify
-            .artist_top_tracks(
-                artist_id.as_ref(),
-                rspotify_model::enums::misc::Market::FromToken,
-            )
+            .artist_top_tracks(artist_id.as_ref(), Some(Market::FromToken))
             .await?
             .into_iter()
             .filter_map(Track::try_from_full_track)
@@ -1090,7 +1179,11 @@ impl Client {
     }
 
     /// gets all paging items starting from a pagination object of the first page
-    async fn all_paging_items<T>(&self, first_page: rspotify_model::Page<T>, payload: &Query<'_>) -> Result<Vec<T>>
+    async fn all_paging_items<T>(
+        &self,
+        first_page: rspotify_model::Page<T>,
+        payload: &Query<'_>,
+    ) -> Result<Vec<T>>
     where
         T: serde::de::DeserializeOwned,
     {
@@ -1098,7 +1191,9 @@ impl Client {
         let mut maybe_next = first_page.next;
 
         while let Some(url) = maybe_next {
-            let mut next_page = self.internal_call::<rspotify_model::Page<T>>(&url, &payload).await?;
+            let mut next_page = self
+                .internal_call::<rspotify_model::Page<T>>(&url, payload)
+                .await?;
             items.append(&mut next_page.items);
             maybe_next = next_page.next;
         }
@@ -1195,13 +1290,18 @@ impl Client {
         }
 
         #[cfg(feature = "image")]
-        if !state.data.read().caches.images.contains(url) {
+        if !state.data.read().caches.images.contains_key(url) {
             let bytes = self.retrieve_image(url, &path, false).await?;
             // Get the image from a url
             let image =
                 image::load_from_memory(&bytes).context("Failed to load image from memory")?;
 
-            state.data.write().caches.images.put(url.to_owned(), image);
+            state
+                .data
+                .write()
+                .caches
+                .images
+                .insert(url.to_owned(), image, *CACHE_DURATION);
         }
 
         // notify user about the playback's change if any

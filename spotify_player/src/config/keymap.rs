@@ -274,15 +274,29 @@ impl Default for KeymapConfig {
                     key_sequence: "s r".into(),
                     command: Command::ReverseTrackOrder,
                 },
+                Keymap {
+                    key_sequence: "C-k".into(),
+                    command: Command::MovePlaylistItemUp,
+                },
+                Keymap {
+                    key_sequence: "C-j".into(),
+                    command: Command::MovePlaylistItemDown,
+                },
             ],
         }
     }
 }
 
 impl KeymapConfig {
+    pub fn new(path: &std::path::Path) -> Result<Self> {
+        let mut config = Self::default();
+        config.parse_config_file(path)?;
+
+        Ok(config)
+    }
     /// parses a list of keymaps from the keymap config file in `path` folder
     /// and updates the current keymaps accordingly.
-    pub fn parse_config_file(&mut self, path: &std::path::Path) -> Result<()> {
+    fn parse_config_file(&mut self, path: &std::path::Path) -> Result<()> {
         let file_path = path.join(super::KEYMAP_CONFIG_FILE);
         match std::fs::read_to_string(&file_path) {
             Err(err) => {
@@ -324,6 +338,12 @@ impl KeymapConfig {
             .iter()
             .find(|&keymap| keymap.key_sequence == *key_sequence)
             .map(|keymap| keymap.command)
+    }
+}
+
+impl Keymap {
+    pub fn include_in_help_screen(&self) -> bool {
+        !matches!(&self.command, Command::None)
     }
 }
 
