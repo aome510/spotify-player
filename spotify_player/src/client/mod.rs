@@ -82,6 +82,7 @@ impl Client {
             session,
             state.app_config.device.clone(),
             self.client_pub.clone(),
+            state.app_config.player_event_hook_command.clone(),
         );
 
         let mut stream_conn = self.stream_conn.lock();
