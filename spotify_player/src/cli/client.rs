@@ -357,8 +357,22 @@ async fn handle_playback_request(
         }
     };
 
-    client.handle_player_request(state, player_request).await?;
-    client.update_playback(state);
+    tokio::task::spawn({
+        let client = client.clone();
+        let state = state.clone();
+        async move {
+            match client.handle_player_request(&state, player_request).await {
+                Ok(()) => {
+                    client.update_playback(&state);
+                }
+                Err(err) => {
+                    tracing::warn!(
+                        "Failed to handle a player request for playback CLI command: {err:#}"
+                    );
+                }
+            }
+        }
+    });
     Ok(())
 }
 
