@@ -89,7 +89,7 @@ async fn handle_socket_request(
     }
 
     match request {
-        Request::Get(GetRequest::Key(key)) => handle_get_key_request(client, key).await,
+        Request::Get(GetRequest::Key(key)) => handle_get_key_request(client, state, key).await,
         Request::Get(GetRequest::Item(item_type, id_or_name)) => {
             handle_get_item_request(client, item_type, id_or_name).await
         }
@@ -145,13 +145,10 @@ async fn handle_socket_request(
     }
 }
 
-async fn handle_get_key_request(client: &Client, key: Key) -> Result<Vec<u8>> {
+async fn handle_get_key_request(client: &Client, state: &SharedState, key: Key) -> Result<Vec<u8>> {
     Ok(match key {
         Key::Playback => {
-            let playback = client
-                .spotify
-                .current_playback(None, None::<Vec<_>>)
-                .await?;
+            let playback = state.player.read().current_playback();
             serde_json::to_vec(&playback)?
         }
         Key::Devices => {
