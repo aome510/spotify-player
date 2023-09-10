@@ -88,26 +88,36 @@ MacOS and Windows require **an open window** to listen to OS media event. As a r
 
 ### Player event hook command
 
-Similar to `copy_command`, if specified, `player_event_hook_command` should be a struct with two fields `command` and `args`. Each time `spotify_player` receives a new player event, `player_event_hook_command` is executed with the event as the **standard input**.
+Similar to `copy_command`, if specified, `player_event_hook_command` should be a struct with two fields `command` and `args`. Each time `spotify_player` receives a new player event, `player_event_hook_command` is executed with the event's data as the script's arguments.
 
-A player event is a `json` string with either of the following values:
+A player event is represented as a list of arguments with either of the following values:
 
-- `{ Changed: { old_track_id: String, new_track_id: String } }`
-- `{ Playing: { track_id: String, position_ms: Number, duration_ms: Number } }`
-- `{ Paused: { track_id: String, position_ms: Number, duration_ms: Number } }`
-- `{ EndOfTrack: { track_id: String } }`
+- `"Changed" OLD_TRACK_ID NEW_TRACK_ID`
+- `"Playing" TRACK_ID POSITION_MS DURATION_MS`
+- `"Paused" TRACK_ID POSITION_MS DURATION_MS`
+- `"EndOfTrack" TRACK_ID`
 
-Example `player_event_hook_command` script, which reads the event from **stdin**, parses the event as a `json` string, and writes the parsed event into a file:
+**Note**: if `args` is specified, such arguments will be called before the event's arguments.
 
-```python
-#!/usr/bin/python3
+For example, if `player_event_hook_command = { command = "a.sh", args = ["-b", "c", "-d"] }`, upon receiving a `Changed` event with `OLD_TRACK_ID=x`, `NEW_TRACK_ID=y`, the following command will be run
 
-import json
+```shell
+a.sh -b c -d Changed x y
+```
 
-player_event = json.loads(input())
+Example script that reads event's data from arguments and prints them to a file:
 
-with open("/tmp/spotify_player_events.txt", "a") as f:
-    f.write(f"{player_event}\n")
+```sh
+#!/bin/bash
+
+set -euo pipefail
+
+case "$1" in
+    "Changed") echo "command: $1, old_track_id: $2, new_track_id: $3" >> /tmp/log.txt ;;
+    "Playing") echo "command: $1, track_id: $2, position_ms: $3, duration_ms: $4" >> /tmp/log.txt ;;
+    "Paused") echo "command: $1, track_id: $2, position_ms: $3, duration_ms: $4" >> /tmp/log.txt ;;
+    "EndOfTrack") echo "command: $1, track_id: $2" >> /tmp/log.txt ;;
+esac
 ```
 
 ### Device configurations

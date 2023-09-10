@@ -1,7 +1,4 @@
-use std::io::Write;
-
 use crate::{config, event::ClientRequest};
-use anyhow::Context;
 use librespot_connect::spirc::Spirc;
 use librespot_core::{
     config::{ConnectConfig, DeviceType},
@@ -37,6 +34,45 @@ enum PlayerEvent {
     EndOfTrack {
         track_id: TrackId<'static>,
     },
+}
+
+impl PlayerEvent {
+    /// gets the event's arguments
+    pub fn args(&self) -> Vec<String> {
+        match self {
+            PlayerEvent::Changed {
+                old_track_id,
+                new_track_id,
+            } => vec![
+                "Changed".to_string(),
+                old_track_id.to_string(),
+                new_track_id.to_string(),
+            ],
+            PlayerEvent::Playing {
+                track_id,
+                position_ms,
+                duration_ms,
+            } => vec![
+                "Playing".to_string(),
+                track_id.to_string(),
+                position_ms.to_string(),
+                duration_ms.to_string(),
+            ],
+            PlayerEvent::Paused {
+                track_id,
+                position_ms,
+                duration_ms,
+            } => vec![
+                "Paused".to_string(),
+                track_id.to_string(),
+                position_ms.to_string(),
+                duration_ms.to_string(),
+            ],
+            PlayerEvent::EndOfTrack { track_id } => {
+                vec!["EndOfTrack".to_string(), track_id.to_string()]
+            }
+        }
+    }
 }
 
 fn spotify_id_to_track_id(id: spotify_id::SpotifyId) -> anyhow::Result<TrackId<'static>> {
@@ -86,20 +122,19 @@ fn execute_player_event_hook_command(
     cmd: &config::Command,
     event: PlayerEvent,
 ) -> anyhow::Result<()> {
-    let data = serde_json::to_vec(&event).context("serialize player event into json")?;
+    let mut args = cmd.args.clone();
+    args.extend(event.args());
 
-    let mut child = std::process::Command::new(&cmd.command)
-        .args(&cmd.args)
-        .stdin(std::process::Stdio::piped())
-        .stdout(std::process::Stdio::piped())
-        .spawn()?;
+    let output = std::process::Command::new(&cmd.command)
+        .args(&args)
+        .output()?;
 
-    let mut stdin = match child.stdin.take() {
-        Some(stdin) => stdin,
-        None => anyhow::bail!("no stdin found in the child command"),
-    };
+    // running the player hook command failed, report the command's stderr as an error
+    if !output.status.success() {
+        let stderr = std::str::from_utf8(&output.stderr)?.to_string();
+        anyhow::bail!(stderr);
+    }
 
-    stdin.write_all(&data)?;
     Ok(())
 }
 
