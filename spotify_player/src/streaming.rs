@@ -125,8 +125,6 @@ fn execute_player_event_hook_command(
     let mut args = cmd.args.clone();
     args.extend(event.args());
 
-    tracing::info!("{args:?}");
-
     let output = std::process::Command::new(&cmd.command)
         .args(&args)
         .output()?;
