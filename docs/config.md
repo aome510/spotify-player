@@ -99,13 +99,13 @@ A player event is represented as a list of arguments with either of the followin
 
 **Note**: if `args` is specified, such arguments will be called before the event's arguments.
 
-For example, if `player_event_hook_command = { command = "a.sh", args = ["-b", "c", "-d"] }`, upon receiving an event `Changed` event with `OLD_TRACK_ID=x`, `NEW_TRACK_ID=y`, the following command will be run
+For example, if `player_event_hook_command = { command = "a.sh", args = ["-b", "c", "-d"] }`, upon receiving a `Changed` event with `OLD_TRACK_ID=x`, `NEW_TRACK_ID=y`, the following command will be run
 
 ```shell
 a.sh -b c -d Changed x y
 ```
 
-Example script that reads event's data from arguments and print them to a file:
+Example script that reads event's data from arguments and prints them to a file:
 
 ```sh
 #!/bin/bash
