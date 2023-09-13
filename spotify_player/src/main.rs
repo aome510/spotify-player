@@ -163,7 +163,13 @@ async fn start_app(state: state::SharedState, is_daemon: bool) -> Result<()> {
             std::env::set_var("PULSE_PROP_application.icon_name", "spotify");
         }
         if std::env::var("PULSE_PROP_stream.description").is_err() {
-            std::env::set_var("PULSE_PROP_stream.description", "Spotify Connect endpoint");
+            std::env::set_var(
+                "PULSE_PROP_stream.description",
+                format!(
+                    "Spotify Connect endpoint ({})",
+                    state.app_config.device.name
+                ),
+            );
         }
         if std::env::var("PULSE_PROP_media.software").is_err() {
             std::env::set_var("PULSE_PROP_media.software", "Spotify");
