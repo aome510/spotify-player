@@ -153,6 +153,26 @@ async fn start_app(state: state::SharedState, is_daemon: bool) -> Result<()> {
     // client channels
     let (client_pub, client_sub) = flume::unbounded::<event::ClientRequest>();
 
+    #[cfg(feature = "pulseaudio-backend")]
+    {
+        // set environment variables for PulseAudio
+        if std::env::var("PULSE_PROP_application.name").is_err() {
+            std::env::set_var("PULSE_PROP_application.name", "spotify-player");
+        }
+        if std::env::var("PULSE_PROP_application.icon_name").is_err() {
+            std::env::set_var("PULSE_PROP_application.icon_name", "spotify");
+        }
+        if std::env::var("PULSE_PROP_stream.description").is_err() {
+            std::env::set_var("PULSE_PROP_stream.description", "Spotify Connect endpoint");
+        }
+        if std::env::var("PULSE_PROP_media.software").is_err() {
+            std::env::set_var("PULSE_PROP_media.software", "Spotify");
+        }
+        if std::env::var("PULSE_PROP_media.role").is_err() {
+            std::env::set_var("PULSE_PROP_media.role", "music");
+        }
+    }
+
     // create a librespot session
     let auth_config = auth::AuthConfig::new(&state)?;
     let session = auth::new_session(&auth_config, !is_daemon).await?;
