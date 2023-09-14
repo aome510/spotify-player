@@ -236,6 +236,9 @@ fn handle_global_command(
                 }
             }
         }
+        Command::Mute => {
+            client_pub.send(ClientRequest::Player(PlayerRequest::Volume(0)))?;
+        }
         Command::SeekForward => {
             if let Some(progress) = state.player.read().playback_progress() {
                 client_pub.send(ClientRequest::Player(PlayerRequest::SeekTrack(
