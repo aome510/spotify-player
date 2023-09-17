@@ -174,6 +174,11 @@ pub fn new_connection(
             .to_string()
             .parse::<Bitrate>()
             .unwrap_or_default(),
+	normalisation: device
+	    .normalization
+	    .to_string()
+	    .parse::<bool>()
+	    .unwrap_or_default(),
         ..Default::default()
     };
 

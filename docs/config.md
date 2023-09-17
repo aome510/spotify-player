@@ -124,13 +124,14 @@ esac
 
 The configuration options for the [Librespot](https://github.com/librespot-org/librespot) integrated device are specified under the `[device]` section in the `app.toml` file:
 
-| Option        | Description                                                             | Default          |
-| ------------- | ----------------------------------------------------------------------- | ---------------- |
-| `name`        | The librespot device's name                                             | `spotify-player` |
-| `device_type` | The librespot device's type                                             | `speaker`        |
-| `volume`      | Initial volume (in percentage) of the device                            | `50`             |
-| `bitrate`     | Bitrate in kbps (`96`, `160`, or `320`)                                 | `160`            |
-| `audio_cache` | Enable caching audio files (store in `$APP_CACHE_FOLDER/audio/` folder) | `false`          |
+| Option          | Description                                                             | Default          |
+| --------------- | ----------------------------------------------------------------------- | ---------------- |
+| `name`          | The librespot device's name                                             | `spotify-player` |
+| `device_type`   | The librespot device's type                                             | `speaker`        |
+| `volume`        | Initial volume (in percentage) of the device                            | `50`             |
+| `bitrate`       | Bitrate in kbps (`96`, `160`, or `320`)                                 | `160`            |
+| `audio_cache`   | Enable caching audio files (store in `$APP_CACHE_FOLDER/audio/` folder) | `false`          |
+| `normalization` | Enable audio normalization                                              | `true`           |
 
 More details on the above configuration options can be found under the [Librespot wiki page](https://github.com/librespot-org/librespot/wiki/Options).
 
