@@ -31,3 +31,4 @@ device_type = "speaker"
 volume = 50
 bitrate = 160
 audio_cache = false
+normalization = false
