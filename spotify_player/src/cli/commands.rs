@@ -8,7 +8,7 @@ pub fn init_connect_subcommand() -> Command {
 
 pub fn init_get_subcommand() -> Command {
     Command::new("get")
-        .about("Get spotify data")
+        .about("Get Spotify data")
         .subcommand_required(true)
         .subcommand(
             Command::new("key").about("Get data by key").arg(

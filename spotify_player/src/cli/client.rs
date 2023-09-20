@@ -184,7 +184,7 @@ async fn handle_get_key_request(client: &Client, state: &SharedState, key: Key) 
 
 /// Get a Spotify item's ID from its `IdOrName` representation
 async fn get_spotify_id(client: &Client, typ: ItemType, id_or_name: IdOrName) -> Result<ItemId> {
-    // For `IdOrName::Name`, we search for the first item matching the name and return its spotify id.
+    // For `IdOrName::Name`, we search for the first item matching the name and return its Spotify id.
     // The item's id is then used to retrieve the item's data.
 
     let sid = match typ {

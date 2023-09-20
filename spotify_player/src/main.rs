@@ -26,7 +26,7 @@ fn init_app_cli_arguments() -> Result<clap::ArgMatches> {
 
     let cmd = clap::Command::new("spotify_player")
         .version("0.15.0")
-        .about("A command driven spotify player")
+        .about("A Spotify player in the terminal with full feature parity")
         .author("Thang Pham <phamducthang1234@gmail>")
         .subcommand(cli::init_get_subcommand())
         .subcommand(cli::init_playback_subcommand())
@@ -183,7 +183,7 @@ async fn start_app(state: state::SharedState, is_daemon: bool) -> Result<()> {
     let auth_config = auth::AuthConfig::new(&state)?;
     let session = auth::new_session(&auth_config, !is_daemon).await?;
 
-    // create a spotify API client
+    // create a Spotify API client
     let client = client::Client::new(
         session,
         auth_config,
@@ -195,7 +195,7 @@ async fn start_app(state: state::SharedState, is_daemon: bool) -> Result<()> {
     // initialize Spotify-related stuff
     init_spotify(&client_pub, &client, &state, is_daemon)
         .await
-        .context("failed to initialize the spotify data")?;
+        .context("Failed to initialize the Spotify data")?;
 
     // Spawn application's tasks
     let mut tasks = Vec::new();
