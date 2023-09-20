@@ -26,7 +26,7 @@ fn init_app_cli_arguments() -> Result<clap::ArgMatches> {
 
     let cmd = clap::Command::new("spotify_player")
         .version("0.15.0")
-        .about("A command driven Spotify player")
+        .about("A Spotify player in the terminal with full feature parity")
         .author("Thang Pham <phamducthang1234@gmail>")
         .subcommand(cli::init_get_subcommand())
         .subcommand(cli::init_playback_subcommand())
