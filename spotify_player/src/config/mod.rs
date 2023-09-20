@@ -168,7 +168,7 @@ impl Default for AppConfig {
     fn default() -> Self {
         Self {
             theme: "dracula".to_owned(),
-            // official spotify web app's client id
+            // official Spotify web app's client id
             client_id: "65b708073fc0480ea92a077233ca87bd".to_string(),
 
             client_port: 8080,
