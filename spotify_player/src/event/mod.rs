@@ -242,12 +242,9 @@ fn handle_global_command(
                 if let Some(volume) = state.player.read().mute_state {
                     client_pub.send(ClientRequest::Player(PlayerRequest::ToggleMute(0)))?;
                     client_pub.send(ClientRequest::Player(PlayerRequest::Volume(volume as u8)))?;
-                } else {
-                    if let Some(volume) = playback.volume {
-                        client_pub
-                            .send(ClientRequest::Player(PlayerRequest::ToggleMute(volume)))?;
-                        client_pub.send(ClientRequest::Player(PlayerRequest::Volume(0)))?;
-                    }
+                } else if let Some(volume) = playback.volume {
+                    client_pub.send(ClientRequest::Player(PlayerRequest::ToggleMute(volume)))?;
+                    client_pub.send(ClientRequest::Player(PlayerRequest::Volume(0)))?;
                 }
             }
         }

@@ -170,7 +170,7 @@ impl Client {
             }
             PlayerRequest::ToggleMute(volume) => {
                 if volume == 0 {
-                    state.player.write().mute_state = None;    
+                    state.player.write().mute_state = None;
                 } else {
                     state.player.write().mute_state = Some(volume);
                 }
