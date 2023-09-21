@@ -168,6 +168,13 @@ impl Client {
                 playback.volume = Some(volume as u32);
                 state.player.write().buffered_playback = Some(playback);
             }
+            PlayerRequest::ToggleMute(volume) => {
+                if volume == 0 {
+                    state.player.write().mute_state = None;    
+                } else {
+                    state.player.write().mute_state = Some(volume);
+                }
+            }
             PlayerRequest::StartPlayback(p) => {
                 self.start_playback(p, device_id).await?;
                 // for some reasons, when starting a new playback, the integrated `spotify_player`
