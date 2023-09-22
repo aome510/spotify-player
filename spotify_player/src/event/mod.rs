@@ -23,6 +23,7 @@ pub enum PlayerRequest {
     Repeat,
     Shuffle,
     Volume(u8),
+    ToggleMute,
     TransferPlayback(String, bool),
     StartPlayback(Playback),
 }
@@ -235,6 +236,9 @@ fn handle_global_command(
                     client_pub.send(ClientRequest::Player(PlayerRequest::Volume(volume as u8)))?;
                 }
             }
+        }
+        Command::Mute => {
+            client_pub.send(ClientRequest::Player(PlayerRequest::ToggleMute))?;
         }
         Command::SeekForward => {
             if let Some(progress) = state.player.read().playback_progress() {

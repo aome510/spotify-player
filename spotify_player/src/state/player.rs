@@ -12,6 +12,8 @@ pub struct PlayerState {
     pub buffered_playback: Option<SimplifiedPlayback>,
 
     pub queue: Option<rspotify_model::CurrentUserQueue>,
+
+    pub mute_state: Option<u32>,
 }
 
 impl PlayerState {

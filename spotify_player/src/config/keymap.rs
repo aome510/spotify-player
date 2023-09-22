@@ -56,6 +56,10 @@ impl Default for KeymapConfig {
                     command: Command::VolumeDown,
                 },
                 Keymap {
+                    key_sequence: "_".into(),
+                    command: Command::Mute,
+                },
+                Keymap {
                     key_sequence: ">".into(),
                     command: Command::SeekForward,
                 },
