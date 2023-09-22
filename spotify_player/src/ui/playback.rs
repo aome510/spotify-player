@@ -154,10 +154,10 @@ fn render_playback_text(
     let re = regex::Regex::new(r"\{.*?\}|\n").unwrap();
 
     // build the volume string (vol% when unmuted, old_vol% (muted) if currently muted)
-    let mut volume = format!("{}%", playback.volume.unwrap_or_default());
-    if mute_state.is_some() {
-        volume = format!("{}% (muted)", mute_state.unwrap_or_default());
-    }
+    let volume = match mute_state {
+        Some(volume) => format!("{volume}% (muted)"),
+        None => format!("{}%", playback.volume.unwrap_or_default()),
+    };
 
     let mut ptr = 0;
     for m in re.find_iter(format_str) {

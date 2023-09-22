@@ -166,14 +166,24 @@ impl Client {
                 self.spotify.volume(volume, device_id).await?;
 
                 playback.volume = Some(volume as u32);
+                // upon updating volume, also reset the player's mute state
+                state.player.write().mute_state = None;
                 state.player.write().buffered_playback = Some(playback);
             }
-            PlayerRequest::ToggleMute(volume) => {
-                if volume == 0 {
-                    state.player.write().mute_state = None;
-                } else {
-                    state.player.write().mute_state = Some(volume);
-                }
+            PlayerRequest::ToggleMute => {
+                let mute_state = state.player.read().mute_state;
+                let new_mute_state = match mute_state {
+                    None => {
+                        self.spotify.volume(0, device_id).await?;
+                        Some(playback.volume.unwrap_or_default())
+                    }
+                    Some(volume) => {
+                        self.spotify.volume(volume as u8, device_id).await?;
+                        None
+                    }
+                };
+
+                state.player.write().mute_state = new_mute_state;
             }
             PlayerRequest::StartPlayback(p) => {
                 self.start_playback(p, device_id).await?;
@@ -1261,7 +1271,10 @@ impl Client {
                     device_name: p.device.name.clone(),
                     device_id: p.device.id.clone(),
                     is_playing: p.is_playing,
-                    volume: p.device.volume_percent,
+                    volume: match player.mute_state {
+                        Some(volume) => Some(volume),
+                        None => p.device.volume_percent,
+                    },
                     repeat_state: p.repeat_state,
                     shuffle_state: p.shuffle_state,
                 });
