@@ -262,7 +262,7 @@ impl Default for DeviceConfig {
             volume: 50,
             bitrate: 160,
             audio_cache: false,
-	    normalization: true,
+            normalization: true,
         }
     }
 }
