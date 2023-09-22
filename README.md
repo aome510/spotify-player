@@ -340,6 +340,7 @@ List of supported commands:
 | `Shuffle`                      | toggle the shuffle mode                                                 | `C-s`              |
 | `VolumeUp`                     | increase playback volume by 5%                                          | `+`                |
 | `VolumeDown`                   | decrease playback volume by 5%                                          | `-`                |
+| `Mute`                         | toggle playback volume between 0% and previous level                    | `_`                |
 | `SeekForward`                  | seek forward by 5s                                                      | `>`                |
 | `SeekBackward`                 | seek backward by 5s                                                     | `<`                |
 | `Quit`                         | quit the application                                                    | `C-c`, `q`         |
