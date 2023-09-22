@@ -119,6 +119,7 @@ pub struct DeviceConfig {
     pub volume: u8,
     pub bitrate: u16,
     pub audio_cache: bool,
+    pub normalization: bool,
 }
 
 #[derive(Debug, Deserialize, Serialize, ConfigParse, Clone)]
@@ -258,9 +259,10 @@ impl Default for DeviceConfig {
         Self {
             name: "spotify-player".to_string(),
             device_type: "speaker".to_string(),
-            volume: 50,
-            bitrate: 160,
+            volume: 70,
+            bitrate: 320,
             audio_cache: false,
+            normalization: false,
         }
     }
 }

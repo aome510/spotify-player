@@ -28,6 +28,7 @@ playback_window_width = 6
 [device]
 name = "spotify-player"
 device_type = "speaker"
-volume = 50
-bitrate = 160
+volume = 70
+bitrate = 320
 audio_cache = false
+normalization = false
