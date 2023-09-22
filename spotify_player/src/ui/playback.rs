@@ -91,7 +91,15 @@ pub fn render_playback_window(
             };
 
             if let Some(ref playback) = player.buffered_playback {
-                render_playback_text(frame, state, ui, metadata_rect, track, playback);
+                render_playback_text(
+                    frame,
+                    state,
+                    ui,
+                    metadata_rect,
+                    track,
+                    playback,
+                    player.mute_state,
+                );
             }
 
             let progress = std::cmp::min(
@@ -133,6 +141,7 @@ fn render_playback_text(
     rect: Rect,
     track: &rspotify_model::FullTrack,
     playback: &SimplifiedPlayback,
+    mute_state: Option<u32>,
 ) {
     // Construct a "styled" text (`playback_text`) from playback's data
     // based on a user-configurable format string (app_config.playback_format)
@@ -143,6 +152,12 @@ fn render_playback_text(
 
     // this regex is to handle a format argument or a newline
     let re = regex::Regex::new(r"\{.*?\}|\n").unwrap();
+
+    // build the volume string (vol% when unmuted, old_vol% (muted) if currently muted)
+    let mut volume = format!("{}%", playback.volume.unwrap_or_default());
+    if mute_state.is_some() {
+        volume = format!("{}% (muted)", mute_state.unwrap_or_default());
+    }
 
     let mut ptr = 0;
     for m in re.find_iter(format_str) {
@@ -180,10 +195,10 @@ fn render_playback_text(
             "{album}" => (track.album.name.to_owned(), ui.theme.playback_album()),
             "{metadata}" => (
                 format!(
-                    "repeat: {} | shuffle: {} | volume: {}% | device: {}",
+                    "repeat: {} | shuffle: {} | volume: {} | device: {}",
                     <&'static str>::from(playback.repeat_state),
                     playback.shuffle_state,
-                    playback.volume.unwrap_or_default(),
+                    volume,
                     playback.device_name,
                 ),
                 ui.theme.playback_metadata(),
