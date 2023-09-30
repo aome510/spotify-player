@@ -3979,7 +3979,6 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "ttl_cache",
- "unicode-width",
  "viuer",
  "winit",
 ]

@@ -292,15 +292,17 @@ impl Client {
             }
             ClientRequest::GetUserSavedTracks => {
                 let tracks = self.current_user_saved_tracks().await?;
-                state.data.write().caches.context.insert(
+                let mut data = state.data.write();
+                data.user_data.saved_tracks =
+                    tracks.iter().map(|t| (t.id.uri(), t.clone())).collect();
+                data.caches.context.insert(
                     USER_LIKED_TRACKS_ID.uri.to_owned(),
                     Context::Tracks {
-                        tracks: tracks.clone(),
+                        tracks,
                         desc: "User's liked tracks".to_string(),
                     },
                     *CACHE_DURATION,
                 );
-                state.data.write().user_data.saved_tracks = tracks;
             }
             ClientRequest::GetUserRecentlyPlayedTracks => {
                 let uri = &USER_RECENTLY_PLAYED_TRACKS_ID.uri;
@@ -960,7 +962,12 @@ impl Client {
                         .current_user_saved_tracks_add([track.id.as_ref()])
                         .await?;
                     // update the in-memory `user_data`
-                    state.data.write().user_data.saved_tracks.insert(0, track);
+                    state
+                        .data
+                        .write()
+                        .user_data
+                        .saved_tracks
+                        .insert(track.id.uri(), track);
                 }
             }
             Item::Album(album) => {
@@ -1025,13 +1032,9 @@ impl Client {
     pub async fn delete_from_library(&self, state: &SharedState, id: ItemId) -> Result<()> {
         match id {
             ItemId::Track(id) => {
-                state
-                    .data
-                    .write()
-                    .user_data
-                    .saved_tracks
-                    .retain(|t| t.id != id);
+                let uri = id.uri();
                 self.spotify.current_user_saved_tracks_delete([id]).await?;
+                state.data.write().user_data.saved_tracks.remove(&uri);
             }
             ItemId::Album(id) => {
                 state
