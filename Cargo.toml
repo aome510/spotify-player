@@ -1,2 +1,6 @@
 [workspace]
 members = ["spotify_player", "lyric_finder"]
+resolver = "2"
+
+[profile.release]
+debug = 1
