@@ -46,8 +46,6 @@ pub struct AppConfig {
 
     pub page_size_in_rows: usize,
 
-    pub track_table_item_max_len: usize,
-
     // icon configs
     pub play_icon: String,
     pub pause_icon: String,
@@ -210,8 +208,6 @@ impl Default for AppConfig {
             cover_image_refresh_duration_in_ms: 2000,
 
             page_size_in_rows: 20,
-
-            track_table_item_max_len: 32,
 
             pause_icon: "▌▌".to_string(),
             play_icon: "▶".to_string(),

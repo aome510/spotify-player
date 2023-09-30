@@ -747,6 +747,7 @@ pub fn render_track_table_window(
             Constraint::Percentage(30),
             Constraint::Percentage(20),
         ])
+        .column_spacing(2)
         .highlight_style(ui.theme.selection_style(is_active));
 
     match ui.current_page_mut() {

@@ -27,7 +27,6 @@ serde = { version = "1.0.188", features = ["derive"] }
 tokio = { version = "1.32.0", features = ["rt", "rt-multi-thread", "macros", "time"] }
 toml = "0.7.6"
 ratatui = "0.23.0"
-unicode-width = "0.1.10"
 rand = "0.8.5"
 maybe-async = "0.2.7"
 async-trait = "0.1.73"
