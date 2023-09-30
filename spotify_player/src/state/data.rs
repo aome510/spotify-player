@@ -25,7 +25,7 @@ pub struct UserData {
     pub playlists: Vec<Playlist>,
     pub followed_artists: Vec<Artist>,
     pub saved_albums: Vec<Album>,
-    pub saved_tracks: Vec<Track>,
+    pub saved_tracks: HashMap<String, Track>,
 }
 
 /// the application's caches
@@ -85,6 +85,6 @@ impl UserData {
 
     /// checks if a track is a liked track
     pub fn is_liked_track(&self, track: &Track) -> bool {
-        self.saved_tracks.iter().any(|t| t.id == track.id)
+        self.saved_tracks.contains_key(&track.id.uri())
     }
 }
