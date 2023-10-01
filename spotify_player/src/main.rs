@@ -25,7 +25,7 @@ fn init_app_cli_arguments() -> Result<clap::ArgMatches> {
     let default_config_folder = config::get_config_folder_path()?;
 
     let cmd = clap::Command::new("spotify_player")
-        .version("0.15.1")
+        .version("0.15.2")
         .about("A Spotify player in the terminal with full feature parity")
         .author("Thang Pham <phamducthang1234@gmail>")
         .subcommand(cli::init_get_subcommand())
