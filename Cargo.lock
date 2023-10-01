@@ -3980,6 +3980,7 @@ dependencies = [
  "tracing-subscriber",
  "ttl_cache",
  "viuer",
+ "windows 0.44.0",
  "winit",
 ]
 
