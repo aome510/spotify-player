@@ -115,14 +115,15 @@ pub fn start_event_watcher(
         update_control_metadata(&state, &mut controls, &mut track_info)?;
         std::thread::sleep(refresh_duration);
 
-        // this must be run repeatedly by your program to ensure
-        // the Windows event queue is processed by your application
+        // this must be run repeatedly to ensure that
+        // the Windows event queue is processed by the app
         #[cfg(target_os = "windows")]
         windows::pump_event_queue();
     }
 }
 
 // demonstrates how to make a minimal window to allow use of media keys on the command line
+// ref: https://github.com/Sinono3/souvlaki/blob/master/examples/print_events.rs
 #[cfg(target_os = "windows")]
 mod windows {
     use std::io::Error;
@@ -153,7 +154,7 @@ mod windows {
                 let wnd_class = WNDCLASSEXW {
                     cbSize: mem::size_of::<WNDCLASSEXW>() as u32,
                     hInstance: instance,
-                    lpszClassName: PCWSTR::from(class_name),
+                    lpszClassName: class_name,
                     lpfnWndProc: Some(Self::wnd_proc),
                     ..Default::default()
                 };
