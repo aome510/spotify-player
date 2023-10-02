@@ -113,6 +113,10 @@ Application's prebuilt binaries can be found in the [Releases Page](https://gith
 
 Run `brew install spotify_player` to install the application.
 
+### Scoop
+
+Run `scoop install spotify-player` to install the application.
+
 ### Cargo
 
 Run `cargo install spotify_player` to install the application from [crates.io](https://crates.io/crates/spotify_player).
