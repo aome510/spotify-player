@@ -113,6 +113,10 @@ Application's prebuilt binaries can be found in the [Releases Page](https://gith
 
 Run `brew install spotify_player` to install the application.
 
+### Scoop
+
+Run `scoop install spotify-player` to install the application.
+
 ### Cargo
 
 Run `cargo install spotify_player` to install the application from [crates.io](https://crates.io/crates/spotify_player).
@@ -300,8 +304,9 @@ You can run the application as a daemon by specifying the `-d` or `--daemon` opt
 
 **Notes**:
 
+- `daemon` feature is not supported on Windows
 - `daemon` feature requires the `streaming` feature to be enabled and the application to be built with [an audio backend](#audio-backend)
-- because of the OS's restrictions, `daemon` feature doesn't work with the `media-control` feature on Windows and MacOS, which is **enabled by default**. In other words, if you want to use the `daemon` feature on Windows or MacOS, you must install the application with `media-control` feature **disabled**:
+- because of the OS's restrictions, `daemon` feature doesn't work with the `media-control` feature on MacOS, which is **enabled by default**. In other words, if you want to use the `daemon` feature on MacOS, you must install the application with `media-control` feature **disabled**:
 
   ```shell
   cargo install spotify_player --no-default-features --features daemon,rodio-backend
