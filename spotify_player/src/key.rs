@@ -131,7 +131,7 @@ impl std::fmt::Display for Key {
             Key::Ctrl(k) => write!(f, "C-{}", key_code_to_string(k)),
             Key::Alt(k) => write!(f, "M-{}", key_code_to_string(k)),
             Key::None(k) => write!(f, "{}", key_code_to_string(k)),
-            Key::Unknown => write!(f, "unkown key"),
+            Key::Unknown => write!(f, "unknown key"),
         }
     }
 }

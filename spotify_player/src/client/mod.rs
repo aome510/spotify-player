@@ -115,7 +115,7 @@ impl Client {
                 .transfer_playback(&device_id, Some(force_play))
                 .await?;
 
-            tracing::info!("Transfered the playback to device with {} id", device_id);
+            tracing::info!("Transferred the playback to device with {} id", device_id);
             return Ok(());
         }
 
@@ -194,7 +194,7 @@ impl Client {
                     .await?
             }
             PlayerRequest::TransferPlayback(..) => {
-                anyhow::bail!("`TransferPlayback` should be handled ealier")
+                anyhow::bail!("`TransferPlayback` should be handled earlier")
             }
         };
 
@@ -780,7 +780,7 @@ impl Client {
         Ok(tracks)
     }
 
-    /// searchs for items (tracks, artists, albums, playlists) that match a given query string.
+    /// searches for items (tracks, artists, albums, playlists) that match a given query string.
     pub async fn search(&self, query: &str) -> Result<SearchResults> {
         let (track_result, artist_result, album_result, playlist_result) = tokio::try_join!(
             self.search_specific_type(query, rspotify_model::SearchType::Track),

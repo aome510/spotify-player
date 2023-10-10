@@ -194,7 +194,7 @@ impl Command {
             Self::LikedTrackPage => "go to the user liked track page",
             #[cfg(feature = "lyric-finder")]
             Self::LyricPage => "go to the lyric page of the current track",
-            Self::LibraryPage => "go to the user libary page",
+            Self::LibraryPage => "go to the user library page",
             Self::SearchPage => "go to the search page",
             Self::BrowsePage => "go to the browse page",
             Self::PreviousPage => "go to the previous page",
