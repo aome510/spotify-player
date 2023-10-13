@@ -9,7 +9,7 @@ use clap::{ArgMatches, Id};
 use std::net::UdpSocket;
 
 fn receive_response(socket: &UdpSocket) -> Result<Response> {
-    // read response from the server's socket, which can be splitted into
+    // read response from the server's socket, which can be split into
     // smaller chunks of data
     let mut data = Vec::new();
     let mut buf = [0; 4096];

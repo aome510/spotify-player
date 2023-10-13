@@ -51,7 +51,7 @@ impl Client {
         }
     }
 
-    /// Construct a client reusing an exisiting http client
+    /// Construct a client reusing an existing http client
     pub fn from_http_client(http: &reqwest::Client) -> Self {
         Self { http: http.clone() }
     }
