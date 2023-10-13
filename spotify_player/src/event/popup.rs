@@ -553,7 +553,7 @@ fn handle_nth_action(
                 ui.popup = None;
             }
             TrackAction::CopyTrackLink => {
-                let track_url = format!("http://open.spotify.com/track/{}", track.id.id());
+                let track_url = format!("https://open.spotify.com/track/{}", track.id.id());
                 execute_copy_command(&state.app_config.copy_command, track_url)?;
                 ui.popup = None;
             }
@@ -638,7 +638,7 @@ fn handle_nth_action(
                 ));
             }
             AlbumAction::CopyAlbumLink => {
-                let album_url = format!("http://open.spotify.com/album/{}", album.id.id());
+                let album_url = format!("https://open.spotify.com/album/{}", album.id.id());
                 execute_copy_command(&state.app_config.copy_command, album_url)?;
                 ui.popup = None;
             }
@@ -666,7 +666,7 @@ fn handle_nth_action(
                 })?;
             }
             ArtistAction::CopyArtistLink => {
-                let artist_url = format!("http://open.spotify.com/artist/{}", artist.id.id());
+                let artist_url = format!("https://open.spotify.com/artist/{}", artist.id.id());
                 execute_copy_command(&state.app_config.copy_command, artist_url)?;
                 ui.popup = None;
             }
@@ -690,7 +690,8 @@ fn handle_nth_action(
                 })?;
             }
             PlaylistAction::CopyPlaylistLink => {
-                let playlist_url = format!("http://open.spotify.com/playlist/{}", playlist.id.id());
+                let playlist_url =
+                    format!("https://open.spotify.com/playlist/{}", playlist.id.id());
                 execute_copy_command(&state.app_config.copy_command, playlist_url)?;
                 ui.popup = None;
             }
