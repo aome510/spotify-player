@@ -130,6 +130,20 @@ impl Client {
         match request {
             PlayerRequest::NextTrack => self.spotify.next_track(device_id).await?,
             PlayerRequest::PreviousTrack => self.spotify.previous_track(device_id).await?,
+            PlayerRequest::Resume => {
+                if !playback.is_playing {
+                    self.spotify.resume_playback(device_id, None).await?;
+                    playback.is_playing = true;
+                    state.player.write().buffered_playback = Some(playback);
+                }
+            }
+            PlayerRequest::Pause => {
+                if playback.is_playing {
+                    self.spotify.pause_playback(device_id).await?;
+                    playback.is_playing = false;
+                    state.player.write().buffered_playback = Some(playback);
+                }
+            }
             PlayerRequest::ResumePause => {
                 if !playback.is_playing {
                     self.spotify.resume_playback(device_id, None).await?

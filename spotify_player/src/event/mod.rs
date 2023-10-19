@@ -18,6 +18,8 @@ mod window;
 pub enum PlayerRequest {
     NextTrack,
     PreviousTrack,
+    Resume,
+    Pause,
     ResumePause,
     SeekTrack(chrono::Duration),
     Repeat,
