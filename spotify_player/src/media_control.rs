@@ -77,7 +77,17 @@ pub fn start_event_watcher(
     controls.attach(move |e| {
         tracing::info!("Got a media control event: {e:?}");
         match e {
-            MediaControlEvent::Play | MediaControlEvent::Pause | MediaControlEvent::Toggle => {
+            MediaControlEvent::Play => {
+                client_pub
+                    .send(ClientRequest::Player(PlayerRequest::Resume))
+                    .unwrap_or_default();
+            }
+            MediaControlEvent::Pause => {
+                client_pub
+                    .send(ClientRequest::Player(PlayerRequest::Pause))
+                    .unwrap_or_default();
+            }
+            MediaControlEvent::Toggle => {
                 client_pub
                     .send(ClientRequest::Player(PlayerRequest::ResumePause))
                     .unwrap_or_default();
