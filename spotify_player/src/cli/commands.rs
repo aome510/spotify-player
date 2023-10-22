@@ -39,9 +39,9 @@ fn init_playback_start_subcommand() -> Command {
                         .required(true),
                 )
                 .arg(
-                    Arg::new("random")
-                        .short('r')
-                        .long("random")
+                    Arg::new("shuffle")
+                        .short('s')
+                        .long("shuffle")
                         .action(ArgAction::SetTrue)
                         .help("Shuffle tracks within the launched playback"),
                 ),

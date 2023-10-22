@@ -295,7 +295,7 @@ async fn handle_playback_request(
 
             PlayerRequest::StartPlayback(
                 Playback::URIs(tracks.into_iter().map(|t| t.id).collect(), None),
-                false,
+                None,
             )
         }
         Command::StartLikedTracks { limit, random } => {
@@ -314,9 +314,13 @@ async fn handle_playback_request(
             .map(|t| t.id.to_owned())
             .collect();
 
-            PlayerRequest::StartPlayback(Playback::URIs(ids, None), false)
+            PlayerRequest::StartPlayback(Playback::URIs(ids, None), None)
         }
-        Command::StartContext { context_type, id_or_name, random} => {
+        Command::StartContext {
+            context_type,
+            id_or_name,
+            random,
+        } => {
             let sid = get_spotify_id(client, context_type.into(), id_or_name).await?;
             let context_id = match sid {
                 ItemId::Playlist(id) => ContextId::Playlist(id),
@@ -325,7 +329,7 @@ async fn handle_playback_request(
                 _ => unreachable!(),
             };
 
-            PlayerRequest::StartPlayback(Playback::Context(context_id, None), random)
+            PlayerRequest::StartPlayback(Playback::Context(context_id, None), Some(random))
         }
         Command::PlayPause => PlayerRequest::ResumePause,
         Command::Next => PlayerRequest::NextTrack,

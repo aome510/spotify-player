@@ -200,8 +200,10 @@ impl Client {
                 state.player.write().mute_state = new_mute_state;
             }
             PlayerRequest::StartPlayback(p, random) => {
-                println!("random: {} ", random);
-                playback.shuffle_state = random;
+                match random {
+                    Some(random) => playback.shuffle_state = random,
+                    None => ()
+                }
                 self.start_playback(p, device_id).await?;
                 // for some reasons, when starting a new playback, the integrated `spotify_player`
                 // client doesn't respect the initial shuffle state, so we need to manually update the state
