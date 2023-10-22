@@ -319,7 +319,7 @@ async fn handle_playback_request(
         Command::StartContext {
             context_type,
             id_or_name,
-            random,
+            shuffle,
         } => {
             let sid = get_spotify_id(client, context_type.into(), id_or_name).await?;
             let context_id = match sid {
@@ -329,7 +329,7 @@ async fn handle_playback_request(
                 _ => unreachable!(),
             };
 
-            PlayerRequest::StartPlayback(Playback::Context(context_id, None), Some(random))
+            PlayerRequest::StartPlayback(Playback::Context(context_id, None), Some(shuffle))
         }
         Command::PlayPause => PlayerRequest::ResumePause,
         Command::Next => PlayerRequest::NextTrack,

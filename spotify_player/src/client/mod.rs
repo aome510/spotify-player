@@ -202,7 +202,7 @@ impl Client {
             PlayerRequest::StartPlayback(p, random) => {
                 match random {
                     Some(random) => playback.shuffle_state = random,
-                    None => ()
+                    None => (),
                 }
                 self.start_playback(p, device_id).await?;
                 // for some reasons, when starting a new playback, the integrated `spotify_player`

@@ -87,7 +87,7 @@ pub enum Command {
     StartContext {
         context_type: ContextType,
         id_or_name: IdOrName,
-        random: bool,
+        shuffle: bool,
     },
     StartLikedTracks {
         limit: usize,
