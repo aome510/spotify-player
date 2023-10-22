@@ -37,6 +37,13 @@ fn init_playback_start_subcommand() -> Command {
                     Arg::new("context_type")
                         .value_parser(EnumValueParser::<ContextType>::new())
                         .required(true),
+                )
+                .arg(
+                    Arg::new("random")
+                        .short('r')
+                        .long("random")
+                        .action(ArgAction::SetTrue)
+                        .help("Shuffle tracks within the launched playback"),
                 ),
         ))
         .subcommand(

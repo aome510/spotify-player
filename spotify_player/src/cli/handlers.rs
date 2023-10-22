@@ -80,8 +80,10 @@ fn handle_playback_subcommand(args: &ArgMatches, socket: &UdpSocket) -> Result<(
                     .get_one::<ContextType>("context_type")
                     .expect("context_type is required")
                     .to_owned();
+                let random = args.get_flag("random");
+                    
                 let id_or_name = get_id_or_name(args)?;
-                Command::StartContext(context_type, id_or_name)
+                Command::StartContext { context_type, id_or_name, random }
             }
             Some(("liked", args)) => {
                 let limit = *args

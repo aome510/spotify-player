@@ -164,12 +164,14 @@ pub fn handle_command_for_track_table_window(
             client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
                 base_playback
                     .uri_offset(tracks[id].id.uri(), state.app_config.tracks_playback_limit),
+                    false
             )))?;
         }
         Command::ChooseSelected => {
             client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
                 base_playback
                     .uri_offset(tracks[id].id.uri(), state.app_config.tracks_playback_limit),
+                    false
             )))?;
         }
         Command::ShowActionsOnSelectedItem => {
@@ -265,6 +267,7 @@ pub fn handle_command_for_track_list_window(
             // containing all the tracks in the table.
             client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
                 Playback::URIs(vec![tracks[id].id.clone()], None),
+                false
             )))?;
         }
         Command::ShowActionsOnSelectedItem => {

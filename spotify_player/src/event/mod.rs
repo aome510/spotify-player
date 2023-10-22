@@ -27,7 +27,7 @@ pub enum PlayerRequest {
     Volume(u8),
     ToggleMute,
     TransferPlayback(String, bool),
-    StartPlayback(Playback),
+    StartPlayback(Playback, bool),
 }
 
 #[derive(Debug)]
