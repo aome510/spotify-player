@@ -184,7 +184,11 @@ fn render_playback_text(
                     } else {
                         &state.app_config.play_icon
                     },
-                    track.name,
+                    if track.explicit {
+                        format!("{} (E)", track.name)
+                    } else {
+                        track.name.clone()
+                    }
                 ),
                 ui.theme.playback_track(),
             ),

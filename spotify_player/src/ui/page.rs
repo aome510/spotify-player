@@ -86,7 +86,12 @@ pub fn render_search_page(
             .map(|s| {
                 s.tracks
                     .iter()
-                    .map(|a| (format!("{} • {}", a.name, a.artists_info()), false))
+                    .map(|a| {
+                        (
+                            format!("{} • {}", a.display_name(), a.artists_info()),
+                            false,
+                        )
+                    })
                     .collect::<Vec<_>>()
             })
             .unwrap_or_default();
@@ -714,7 +719,7 @@ pub fn render_track_table_window(
                     ""
                 }),
                 Cell::from(id),
-                Cell::from(t.name.clone()),
+                Cell::from(t.display_name()),
                 Cell::from(t.artists_info()),
                 Cell::from(t.album_info()),
                 Cell::from(crate::utils::format_duration(&t.duration)),
