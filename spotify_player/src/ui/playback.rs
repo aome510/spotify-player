@@ -230,8 +230,8 @@ fn render_playback_progress_bar(
 ) {
     // Negative numbers can sometimes appear from progress.num_seconds() so this stops
     // them coming through into the ratios
-    let ratio = (progress.num_seconds() as f64 / track.duration.num_seconds() as f64)
-        .clamp(0.0, 1.0);
+    let ratio =
+        (progress.num_seconds() as f64 / track.duration.num_seconds() as f64).clamp(0.0, 1.0);
 
     match state.app_config.progress_bar_type {
         config::ProgressBarType::Line => frame.render_widget(
