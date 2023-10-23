@@ -185,7 +185,7 @@ fn render_playback_text(
                         &state.app_config.play_icon
                     },
                     if track.explicit {
-                        format!("{} 🅴", track.name)
+                        format!("{} (E)", track.name)
                     } else {
                         track.name.clone()
                     }
