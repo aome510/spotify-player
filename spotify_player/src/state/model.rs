@@ -3,6 +3,7 @@ pub use rspotify::model::{AlbumId, ArtistId, Id, PlaylistId, TrackId, UserId};
 
 use crate::utils::{format_duration, map_join};
 use serde::Serialize;
+use std::borrow::Cow;
 
 #[derive(Serialize, Clone, Debug)]
 #[serde(untagged)]
@@ -118,6 +119,7 @@ pub struct Track {
     pub album: Option<Album>,
     #[serde(serialize_with = "serialize_duration")]
     pub duration: chrono::Duration,
+    pub explicit: bool,
     #[serde(skip)]
     pub added_at: u64,
 }
@@ -240,6 +242,15 @@ impl Track {
             .unwrap_or_default()
     }
 
+    /// gets the track's name, including an explicit label
+    pub fn display_name(&self) -> Cow<'_, str> {
+        if self.explicit {
+            Cow::Owned(format!("{} (Explicit)", self.name))
+        } else {
+            Cow::Borrowed(self.name.as_str())
+        }
+    }
+
     /// tries to convert from a `rspotify_model::SimplifiedTrack` into `Track`
     pub fn try_from_simplified_track(track: rspotify_model::SimplifiedTrack) -> Option<Self> {
         if track.is_playable.unwrap_or(true) {
@@ -249,6 +260,7 @@ impl Track {
                 artists: from_simplified_artists_to_artists(track.artists),
                 album: None,
                 duration: track.duration,
+                explicit: track.explicit,
                 added_at: 0,
             })
         } else {
@@ -265,6 +277,7 @@ impl Track {
                 artists: from_simplified_artists_to_artists(track.artists),
                 album: Album::try_from_simplified_album(track.album),
                 duration: track.duration,
+                explicit: track.explicit,
                 added_at: 0,
             })
         } else {
@@ -278,7 +291,7 @@ impl std::fmt::Display for Track {
         write!(
             f,
             "{} • {} ▎ {}",
-            self.name,
+            self.display_name(),
             self.artists_info(),
             self.album_info(),
         )
