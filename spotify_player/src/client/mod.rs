@@ -199,10 +199,9 @@ impl Client {
 
                 state.player.write().mute_state = new_mute_state;
             }
-            PlayerRequest::StartPlayback(p, random) => {
-                match random {
-                    Some(random) => playback.shuffle_state = random,
-                    None => (),
+            PlayerRequest::StartPlayback(p, shuffle) => {
+                if let Some(shuffle) = shuffle {
+                    playback.shuffle_state = shuffle;
                 }
                 self.start_playback(p, device_id).await?;
                 // for some reasons, when starting a new playback, the integrated `spotify_player`
