@@ -123,8 +123,9 @@ pub fn render_playback_window(
 
         frame.render_widget(
             Paragraph::new(
-                "No playback found. \
-                 Please make sure there is a running Spotify client and try to connect to it using the `SwitchDevice` command."
+                "No playback found.\n \
+                 Please make sure there is a running Spotify device and try to connect to one using the `SwitchDevice` command.\n \
+                 You may also need to set up Spotify Connect to see available devices as in https://github.com/aome510/spotify-player#spotify-connect."
             )
             .wrap(Wrap { trim: true }),
             rect,
