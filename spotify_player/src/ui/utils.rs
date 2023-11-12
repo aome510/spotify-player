@@ -12,7 +12,7 @@ pub fn construct_and_render_block(
     frame: &mut Frame,
     rect: Rect,
 ) -> Rect {
-    let (borders, border_type) = match state.app_config.border_type {
+    let (borders, border_type) = match state.configs.app_config.border_type {
         config::BorderType::Hidden => (borders, BorderType::Plain),
         config::BorderType::Plain => (borders, BorderType::Plain),
         config::BorderType::Rounded => (borders, BorderType::Rounded),
@@ -29,7 +29,7 @@ pub fn construct_and_render_block(
     let inner_rect = block.inner(rect);
 
     // Handle `BorderType::Hidden` after determining the inner rectangle
-    if state.app_config.border_type == config::BorderType::Hidden {
+    if state.configs.app_config.border_type == config::BorderType::Hidden {
         block = block.borders(Borders::NONE);
     }
 

@@ -264,14 +264,10 @@ impl Default for DeviceConfig {
 }
 
 impl AppConfig {
-    pub fn new(path: &Path, theme: Option<&String>) -> Result<Self> {
+    pub fn new(path: &Path) -> Result<Self> {
         let mut config = Self::default();
         if !config.parse_config_file(path)? {
             config.write_config_file(path)?
-        }
-
-        if let Some(theme) = theme {
-            config.theme = theme.to_owned()
         }
 
         Ok(config)

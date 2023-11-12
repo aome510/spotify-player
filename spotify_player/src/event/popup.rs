@@ -40,6 +40,7 @@ pub fn handle_key_sequence_for_popup(
     }
 
     let command = match state
+        .configs
         .keymap_config
         .find_command_from_key_sequence(key_sequence)
     {
@@ -294,6 +295,7 @@ fn handle_key_sequence_for_search_popup(
     }
 
     let command = state
+        .configs
         .keymap_config
         .find_command_from_key_sequence(key_sequence);
     if let Some(Command::ClosePopup) = command {
@@ -438,10 +440,11 @@ fn handle_command_for_command_help_popup(
             }
         }
         Command::PageSelectNextOrScrollDown => {
-            *scroll_offset += state.app_config.page_size_in_rows;
+            *scroll_offset += state.configs.app_config.page_size_in_rows;
         }
         Command::PageSelectPreviousOrScrollUp => {
-            *scroll_offset = scroll_offset.saturating_sub(state.app_config.page_size_in_rows);
+            *scroll_offset =
+                scroll_offset.saturating_sub(state.configs.app_config.page_size_in_rows);
         }
         Command::SelectFirstOrScrollToTop => {
             *scroll_offset = 0;
@@ -482,6 +485,7 @@ fn handle_key_sequence_for_action_list_popup(
     mut ui: UIStateGuard,
 ) -> Result<bool> {
     let command = match state
+        .configs
         .keymap_config
         .find_command_from_key_sequence(key_sequence)
     {
@@ -554,7 +558,7 @@ fn handle_nth_action(
             }
             TrackAction::CopyTrackLink => {
                 let track_url = format!("https://open.spotify.com/track/{}", track.id.id());
-                execute_copy_command(&state.app_config.copy_command, track_url)?;
+                execute_copy_command(&state.configs.app_config.copy_command, track_url)?;
                 ui.popup = None;
             }
             TrackAction::AddToPlaylist => {
@@ -639,7 +643,7 @@ fn handle_nth_action(
             }
             AlbumAction::CopyAlbumLink => {
                 let album_url = format!("https://open.spotify.com/album/{}", album.id.id());
-                execute_copy_command(&state.app_config.copy_command, album_url)?;
+                execute_copy_command(&state.configs.app_config.copy_command, album_url)?;
                 ui.popup = None;
             }
             AlbumAction::AddToLibrary => {
@@ -667,7 +671,7 @@ fn handle_nth_action(
             }
             ArtistAction::CopyArtistLink => {
                 let artist_url = format!("https://open.spotify.com/artist/{}", artist.id.id());
-                execute_copy_command(&state.app_config.copy_command, artist_url)?;
+                execute_copy_command(&state.configs.app_config.copy_command, artist_url)?;
                 ui.popup = None;
             }
             ArtistAction::Unfollow => {
@@ -692,7 +696,7 @@ fn handle_nth_action(
             PlaylistAction::CopyPlaylistLink => {
                 let playlist_url =
                     format!("https://open.spotify.com/playlist/{}", playlist.id.id());
-                execute_copy_command(&state.app_config.copy_command, playlist_url)?;
+                execute_copy_command(&state.configs.app_config.copy_command, playlist_url)?;
                 ui.popup = None;
             }
             PlaylistAction::DeleteFromLibrary => {

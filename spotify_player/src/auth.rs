@@ -8,7 +8,7 @@ use librespot_core::{
     session::{Session, SessionError},
 };
 
-use crate::state::SharedState;
+use crate::state;
 
 #[derive(Clone)]
 pub struct AuthConfig {
@@ -26,15 +26,15 @@ impl Default for AuthConfig {
 }
 
 impl AuthConfig {
-    pub fn new(state: &SharedState) -> Result<AuthConfig> {
-        let audio_cache_folder = if state.app_config.device.audio_cache {
-            Some(state.cache_folder.join("audio"))
+    pub fn new(configs: &state::Configs) -> Result<AuthConfig> {
+        let audio_cache_folder = if configs.app_config.device.audio_cache {
+            Some(configs.cache_folder.join("audio"))
         } else {
             None
         };
 
         let cache = Cache::new(
-            Some(state.cache_folder.clone()),
+            Some(configs.cache_folder.clone()),
             None,
             audio_cache_folder,
             None,
@@ -42,7 +42,7 @@ impl AuthConfig {
 
         Ok(AuthConfig {
             cache,
-            session_config: state.app_config.session_config(),
+            session_config: configs.app_config.session_config(),
         })
     }
 }

@@ -141,6 +141,7 @@ fn handle_key_event(
     let mut key_sequence = state.ui.lock().input_key_sequence.clone();
     key_sequence.keys.push(key.clone());
     if state
+        .configs
         .keymap_config
         .find_matched_prefix_keymaps(&key_sequence)
         .is_empty()
@@ -176,6 +177,7 @@ fn handle_key_event(
     // if the key sequence is not handled, let the global command handler handle it
     let handled = if !handled {
         match state
+            .configs
             .keymap_config
             .find_command_from_key_sequence(&key_sequence)
         {
@@ -379,7 +381,7 @@ fn handle_global_command(
         }
         Command::SwitchTheme => {
             // get the available themes with the current theme moved to the first position
-            let mut themes = state.theme_config.themes.clone();
+            let mut themes = state.configs.theme_config.themes.clone();
             let id = themes.iter().position(|t| t.name == ui.theme.name);
             if let Some(id) = id {
                 let theme = themes.remove(id);

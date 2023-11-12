@@ -80,9 +80,9 @@ impl Client {
         let device_id = session.device_id().to_string();
         let new_conn = streaming::new_connection(
             session,
-            state.app_config.device.clone(),
+            state.configs.app_config.device.clone(),
             self.client_pub.clone(),
-            state.app_config.player_event_hook_command.clone(),
+            state.configs.app_config.player_event_hook_command.clone(),
         );
 
         let mut stream_conn = self.stream_conn.lock();
@@ -547,7 +547,7 @@ impl Client {
         {
             let session = self.spotify.session().await;
             devices.push((
-                state.app_config.device.name.clone(),
+                state.configs.app_config.device.name.clone(),
                 session.device_id().to_string(),
             ));
         }
@@ -559,7 +559,7 @@ impl Client {
         // Prioritize the `default_device` specified in the application's configurations
         let id = if let Some(id) = devices
             .iter()
-            .position(|d| d.0 == state.app_config.default_device)
+            .position(|d| d.0 == state.configs.app_config.default_device)
         {
             // prioritize the default device (specified in the app configs) if available
             id
@@ -1317,7 +1317,7 @@ impl Client {
             None => return Ok(()),
         };
 
-        let path = state.cache_folder.join("image").join(format!(
+        let path = state.configs.cache_folder.join("image").join(format!(
             "{}-{}-cover.jpg",
             track.album.name,
             crate::utils::map_join(&track.album.artists, |a| &a.name, ", ")
@@ -1325,7 +1325,7 @@ impl Client {
 
         // Retrieve and save the new track's cover image into the cache folder.
         // The notify feature still requires the cover images to be stored inside the cache folder.
-        if state.app_config.enable_cover_image_cache || cfg!(feature = "notify") {
+        if state.configs.app_config.enable_cover_image_cache || cfg!(feature = "notify") {
             self.retrieve_image(url, &path, true).await?;
         }
 
@@ -1394,10 +1394,10 @@ impl Client {
         n.appname("spotify_player")
             .icon(path.to_str().unwrap())
             .summary(&get_text_from_format_str(
-                &state.app_config.notify_format.summary,
+                &state.configs.app_config.notify_format.summary,
             ))
             .body(&get_text_from_format_str(
-                &state.app_config.notify_format.body,
+                &state.configs.app_config.notify_format.body,
             ));
 
         n.show()?;

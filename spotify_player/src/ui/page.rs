@@ -695,9 +695,9 @@ pub fn render_track_table_window(
             playing_track_uri = track.id.as_ref().map(|id| id.uri()).unwrap_or_default();
 
             playing_id = if playback.is_playing {
-                &state.app_config.play_icon
+                &state.configs.app_config.play_icon
             } else {
-                &state.app_config.pause_icon
+                &state.configs.app_config.pause_icon
             };
         }
     }
@@ -714,7 +714,7 @@ pub fn render_track_table_window(
             };
             Row::new(vec![
                 Cell::from(if data.user_data.is_liked_track(t) {
-                    &state.app_config.liked_icon
+                    &state.configs.app_config.liked_icon
                 } else {
                     ""
                 }),
