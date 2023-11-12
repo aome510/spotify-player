@@ -25,23 +25,23 @@ fn receive_response(socket: &UdpSocket) -> Result<Response> {
     Ok(serde_json::from_slice(&data)?)
 }
 
-fn get_id_or_name(args: &ArgMatches) -> Result<IdOrName> {
+fn get_id_or_name(args: &ArgMatches) -> IdOrName {
     match args
         .get_one::<Id>("id_or_name")
         .expect("id_or_name group is required")
         .as_str()
     {
-        "name" => Ok(IdOrName::Name(
+        "name" => IdOrName::Name(
             args.get_one::<String>("name")
                 .expect("name should be specified")
                 .to_owned(),
-        )),
-        "id" => Ok(IdOrName::Id(
+        ),
+        "id" => IdOrName::Id(
             args.get_one::<String>("id")
                 .expect("id should be specified")
                 .to_owned(),
-        )),
-        id => anyhow::bail!("unknown id: {id}"),
+        ),
+        id => panic!("unknown id: {id}"),
     }
 }
 
@@ -61,7 +61,7 @@ fn handle_get_subcommand(args: &ArgMatches, socket: &UdpSocket) -> Result<()> {
                 .get_one::<ItemType>("item_type")
                 .expect("context_type is required")
                 .to_owned();
-            let id_or_name = get_id_or_name(args)?;
+            let id_or_name = get_id_or_name(args);
             Request::Get(GetRequest::Item(item_type, id_or_name))
         }
         _ => unreachable!(),
@@ -82,7 +82,7 @@ fn handle_playback_subcommand(args: &ArgMatches, socket: &UdpSocket) -> Result<(
                     .to_owned();
                 let shuffle = args.get_flag("shuffle");
 
-                let id_or_name = get_id_or_name(args)?;
+                let id_or_name = get_id_or_name(args);
                 Command::StartContext {
                     context_type,
                     id_or_name,
@@ -101,7 +101,7 @@ fn handle_playback_subcommand(args: &ArgMatches, socket: &UdpSocket) -> Result<(
                     .get_one::<ItemType>("item_type")
                     .expect("item_type is required")
                     .to_owned();
-                let id_or_name = get_id_or_name(args)?;
+                let id_or_name = get_id_or_name(args);
                 Command::StartRadio(item_type, id_or_name)
             }
             _ => {
@@ -139,7 +139,7 @@ fn handle_playback_subcommand(args: &ArgMatches, socket: &UdpSocket) -> Result<(
 }
 
 fn handle_connect_subcommand(args: &ArgMatches, socket: &UdpSocket) -> Result<()> {
-    let id_or_name = get_id_or_name(args)?;
+    let id_or_name = get_id_or_name(args);
 
     let request = Request::Connect(id_or_name);
     socket.send(&serde_json::to_vec(&request)?)?;
