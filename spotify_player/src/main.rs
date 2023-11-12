@@ -201,7 +201,9 @@ async fn start_app(state: state::SharedState, is_daemon: bool) -> Result<()> {
         let client = client.clone();
         let state = state.clone();
         async move {
-            if let Err(err) = cli::start_socket(client, state).await {
+            if let Err(err) =
+                cli::start_socket(client, state.configs.app_config.client_port, Some(state)).await
+            {
                 tracing::warn!("Failed to run client socket for CLI: {err:#}");
             }
         }
