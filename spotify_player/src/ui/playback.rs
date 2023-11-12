@@ -50,7 +50,9 @@ pub fn render_playback_window(
                                 .direction(Direction::Vertical)
                                 .constraints(
                                     [
-                                        Constraint::Length(state.configs.app_config.cover_img_width as u16), // cover_img_rect
+                                        Constraint::Length(
+                                            state.configs.app_config.cover_img_width as u16,
+                                        ), // cover_img_rect
                                         Constraint::Min(0), // a margin of 1 between the cover image widget and track's metadata widget
                                     ]
                                     .as_ref(),
@@ -67,7 +69,10 @@ pub fn render_playback_window(
                                     url != *last_url
                                         || last_time.elapsed()
                                             > std::time::Duration::from_millis(
-                                                state.configs.app_config.cover_image_refresh_duration_in_ms,
+                                                state
+                                                    .configs
+                                                    .app_config
+                                                    .cover_image_refresh_duration_in_ms,
                                             )
                                 }
                                 None => true,
@@ -333,7 +338,8 @@ pub fn split_rect_for_playback_window(rect: Rect, state: &SharedState) -> (Rect,
     let playback_width = state.configs.app_config.playback_window_width;
     // the playback window's width should not be smaller than the cover image's width + 1
     #[cfg(feature = "image")]
-    let playback_width = std::cmp::max(state.configs.app_config.cover_img_width + 1, playback_width);
+    let playback_width =
+        std::cmp::max(state.configs.app_config.cover_img_width + 1, playback_width);
 
     // +2 for top/bottom borders
     let playback_width = (playback_width + 2) as u16;

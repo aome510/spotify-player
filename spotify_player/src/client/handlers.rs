@@ -101,8 +101,9 @@ pub async fn start_player_event_watchers(
     if state.configs.app_config.playback_refresh_duration_in_ms > 0 {
         tokio::task::spawn({
             let client_pub = client_pub.clone();
-            let playback_refresh_duration =
-                std::time::Duration::from_millis(state.configs.app_config.playback_refresh_duration_in_ms);
+            let playback_refresh_duration = std::time::Duration::from_millis(
+                state.configs.app_config.playback_refresh_duration_in_ms,
+            );
             async move {
                 loop {
                     client_pub

@@ -40,7 +40,8 @@ pub fn handle_key_sequence_for_popup(
     }
 
     let command = match state
-        .configs.keymap_config
+        .configs
+        .keymap_config
         .find_command_from_key_sequence(key_sequence)
     {
         Some(command) => command,
@@ -294,7 +295,8 @@ fn handle_key_sequence_for_search_popup(
     }
 
     let command = state
-        .configs.keymap_config
+        .configs
+        .keymap_config
         .find_command_from_key_sequence(key_sequence);
     if let Some(Command::ClosePopup) = command {
         state.ui.lock().popup = None;
@@ -441,7 +443,8 @@ fn handle_command_for_command_help_popup(
             *scroll_offset += state.configs.app_config.page_size_in_rows;
         }
         Command::PageSelectPreviousOrScrollUp => {
-            *scroll_offset = scroll_offset.saturating_sub(state.configs.app_config.page_size_in_rows);
+            *scroll_offset =
+                scroll_offset.saturating_sub(state.configs.app_config.page_size_in_rows);
         }
         Command::SelectFirstOrScrollToTop => {
             *scroll_offset = 0;
@@ -482,7 +485,8 @@ fn handle_key_sequence_for_action_list_popup(
     mut ui: UIStateGuard,
 ) -> Result<bool> {
     let command = match state
-        .configs.keymap_config
+        .configs
+        .keymap_config
         .find_command_from_key_sequence(key_sequence)
     {
         Some(command) => command,

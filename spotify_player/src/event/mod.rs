@@ -141,7 +141,8 @@ fn handle_key_event(
     let mut key_sequence = state.ui.lock().input_key_sequence.clone();
     key_sequence.keys.push(key.clone());
     if state
-        .configs.keymap_config
+        .configs
+        .keymap_config
         .find_matched_prefix_keymaps(&key_sequence)
         .is_empty()
     {
@@ -176,7 +177,8 @@ fn handle_key_event(
     // if the key sequence is not handled, let the global command handler handle it
     let handled = if !handled {
         match state
-            .configs.keymap_config
+            .configs
+            .keymap_config
             .find_command_from_key_sequence(&key_sequence)
         {
             Some(command) => handle_global_command(command, client_pub, state)?,
