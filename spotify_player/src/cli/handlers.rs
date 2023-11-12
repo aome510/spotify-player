@@ -162,7 +162,7 @@ pub fn handle_cli_subcommand(
     state: &state::SharedState,
 ) -> Result<()> {
     let socket = UdpSocket::bind("127.0.0.1:0")?;
-    socket.connect(("127.0.0.1", state.app_config.client_port))?;
+    socket.connect(("127.0.0.1", state.configs.app_config.client_port))?;
 
     match cmd {
         "get" => handle_get_subcommand(args, &socket)?,

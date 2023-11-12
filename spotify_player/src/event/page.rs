@@ -19,13 +19,13 @@ macro_rules! handle_navigation_commands_for_page {
             }
             Command::PageSelectNextOrScrollDown => {
                 $page.select(std::cmp::min(
-                    $id + $state.app_config.page_size_in_rows,
+                    $id + $state.configs.app_config.page_size_in_rows,
                     $len - 1,
                 ));
                 return Ok(true);
             }
             Command::PageSelectPreviousOrScrollUp => {
-                $page.select($id.saturating_sub($state.app_config.page_size_in_rows));
+                $page.select($id.saturating_sub($state.configs.app_config.page_size_in_rows));
                 return Ok(true);
             }
             Command::SelectLastOrScrollToBottom => {
@@ -47,7 +47,7 @@ pub fn handle_key_sequence_for_library_page(
     state: &SharedState,
 ) -> Result<bool> {
     let command = match state
-        .keymap_config
+        .configs.keymap_config
         .find_command_from_key_sequence(key_sequence)
     {
         Some(command) => command,
@@ -144,7 +144,7 @@ pub fn handle_key_sequence_for_search_page(
     }
 
     let command = match state
-        .keymap_config
+        .configs.keymap_config
         .find_command_from_key_sequence(key_sequence)
     {
         Some(command) => command,
@@ -191,7 +191,7 @@ pub fn handle_key_sequence_for_context_page(
     state: &SharedState,
 ) -> Result<bool> {
     let command = match state
-        .keymap_config
+        .configs.keymap_config
         .find_command_from_key_sequence(key_sequence)
     {
         Some(command) => command,
@@ -220,7 +220,7 @@ pub fn handle_key_sequence_for_browse_page(
     state: &SharedState,
 ) -> Result<bool> {
     let command = match state
-        .keymap_config
+        .configs.keymap_config
         .find_command_from_key_sequence(key_sequence)
     {
         Some(command) => command,
@@ -307,7 +307,7 @@ pub fn handle_key_sequence_for_lyric_page(
     state: &SharedState,
 ) -> Result<bool> {
     let command = match state
-        .keymap_config
+        .configs.keymap_config
         .find_command_from_key_sequence(key_sequence)
     {
         Some(command) => command,
@@ -333,10 +333,10 @@ pub fn handle_key_sequence_for_lyric_page(
             }
         }
         Command::PageSelectNextOrScrollDown => {
-            *scroll_offset += state.app_config.page_size_in_rows;
+            *scroll_offset += state.configs.app_config.page_size_in_rows;
         }
         Command::PageSelectPreviousOrScrollUp => {
-            *scroll_offset = scroll_offset.saturating_sub(state.app_config.page_size_in_rows);
+            *scroll_offset = scroll_offset.saturating_sub(state.configs.app_config.page_size_in_rows);
         }
         Command::SelectFirstOrScrollToTop => {
             *scroll_offset = 0;

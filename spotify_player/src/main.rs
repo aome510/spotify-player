@@ -75,8 +75,9 @@ async fn init_spotify(
 ) -> Result<()> {
     // if `streaming` feature is enabled, create a new streaming connection
     #[cfg(feature = "streaming")]
-    if state.app_config.enable_streaming == config::StreamingType::Always
-        || (state.app_config.enable_streaming == config::StreamingType::DaemonOnly && is_daemon)
+    if state.configs.app_config.enable_streaming == config::StreamingType::Always
+        || (state.configs.app_config.enable_streaming == config::StreamingType::DaemonOnly
+            && is_daemon)
     {
         client.new_streaming_connection(state).await;
     }
@@ -164,7 +165,7 @@ async fn start_app(state: state::SharedState, is_daemon: bool) -> Result<()> {
                 "PULSE_PROP_stream.description",
                 format!(
                     "Spotify Connect endpoint ({})",
-                    state.app_config.device.name
+                    state.configs.app_config.device.name
                 ),
             );
         }
@@ -184,7 +185,7 @@ async fn start_app(state: state::SharedState, is_daemon: bool) -> Result<()> {
     let client = client::Client::new(
         session,
         auth_config,
-        state.app_config.client_id.clone(),
+        state.configs.app_config.client_id.clone(),
         client_pub.clone(),
     );
     client.init_token().await?;
@@ -245,7 +246,7 @@ async fn start_app(state: state::SharedState, is_daemon: bool) -> Result<()> {
     }
 
     #[cfg(feature = "media-control")]
-    if state.app_config.enable_media_control {
+    if state.configs.app_config.enable_media_control {
         // media control task
         tokio::task::spawn_blocking({
             let state = state.clone();
@@ -307,11 +308,12 @@ fn main() -> Result<()> {
     }
 
     // initialize the application state
-    let state = std::sync::Arc::new(state::State::new(
-        &config_folder,
-        &cache_folder,
-        args.get_one::<String>("theme"),
-    )?);
+    let mut configs = state::Configs::new(&config_folder, &cache_folder)?;
+    if let Some(theme) = args.get_one::<String>("theme") {
+        // override the theme config if user specifies a `theme` cli argument
+        configs.app_config.theme = theme.to_owned();
+    }
+    let state = std::sync::Arc::new(state::State::new(configs));
 
     match args.subcommand() {
         None => {
@@ -319,9 +321,7 @@ fn main() -> Result<()> {
             init_logging(&cache_folder).context("failed to initialize application's logging")?;
 
             // log the application's configurations
-            tracing::info!("General configurations: {:?}", state.app_config);
-            tracing::info!("Theme configurations: {:?}", state.theme_config);
-            tracing::info!("Keymap configurations: {:?}", state.keymap_config);
+            tracing::info!("Configurations: {:?}", state.configs);
 
             #[cfg(feature = "daemon")]
             {
@@ -356,7 +356,7 @@ fn main() -> Result<()> {
                 None => Err(err),
                 Some(io_err) => match io_err.kind() {
                     std::io::ErrorKind::ConnectionRefused => {
-                        eprintln!("Error: {err}\nPlease make sure that there is a running `spotify_player` instance with a client socket running on port {}.", state.app_config.client_port);
+                        eprintln!("Error: {err}\nPlease make sure that there is a running `spotify_player` instance with a client socket running on port {}.", state.configs.app_config.client_port);
                         std::process::exit(1)
                     }
                     _ => Err(err),

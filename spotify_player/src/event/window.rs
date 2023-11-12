@@ -163,14 +163,14 @@ pub fn handle_command_for_track_table_window(
 
             client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
                 base_playback
-                    .uri_offset(tracks[id].id.uri(), state.app_config.tracks_playback_limit),
+                    .uri_offset(tracks[id].id.uri(), state.configs.app_config.tracks_playback_limit),
                 None,
             )))?;
         }
         Command::ChooseSelected => {
             client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
                 base_playback
-                    .uri_offset(tracks[id].id.uri(), state.app_config.tracks_playback_limit),
+                    .uri_offset(tracks[id].id.uri(), state.configs.app_config.tracks_playback_limit),
                 None,
             )))?;
         }

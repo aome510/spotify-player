@@ -27,14 +27,14 @@ impl Default for AuthConfig {
 
 impl AuthConfig {
     pub fn new(state: &SharedState) -> Result<AuthConfig> {
-        let audio_cache_folder = if state.app_config.device.audio_cache {
-            Some(state.cache_folder.join("audio"))
+        let audio_cache_folder = if state.configs.app_config.device.audio_cache {
+            Some(state.configs.cache_folder.join("audio"))
         } else {
             None
         };
 
         let cache = Cache::new(
-            Some(state.cache_folder.clone()),
+            Some(state.configs.cache_folder.clone()),
             None,
             audio_cache_folder,
             None,
@@ -42,7 +42,7 @@ impl AuthConfig {
 
         Ok(AuthConfig {
             cache,
-            session_config: state.app_config.session_config(),
+            session_config: state.configs.app_config.session_config(),
         })
     }
 }

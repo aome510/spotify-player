@@ -200,7 +200,7 @@ pub fn render_shortcut_help_popup(
             vec![]
         } else {
             state
-                .keymap_config
+                .configs.keymap_config
                 .find_matched_prefix_keymaps(input)
                 .into_iter()
                 .map(|keymap| {
@@ -257,7 +257,7 @@ pub fn render_commands_help_popup(
 
     let mut map = BTreeMap::new();
     state
-        .keymap_config
+        .configs.keymap_config
         .keymaps
         .iter()
         .filter(|km| km.include_in_help_screen())

@@ -15,7 +15,7 @@ pub fn run(state: SharedState) -> Result<()> {
     let mut terminal = init_ui().context("failed to initialize the application's UI")?;
 
     let ui_refresh_duration =
-        std::time::Duration::from_millis(state.app_config.app_refresh_duration_in_ms);
+        std::time::Duration::from_millis(state.configs.app_config.app_refresh_duration_in_ms);
     loop {
         {
             let mut ui = state.ui.lock();

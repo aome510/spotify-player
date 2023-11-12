@@ -24,7 +24,7 @@ use rspotify::{
 use super::*;
 
 pub async fn start_socket(client: Client, state: SharedState) -> Result<()> {
-    let port = state.app_config.client_port;
+    let port = state.configs.app_config.client_port;
     tracing::info!("Starting a client socket at 127.0.0.1:{port}");
 
     let socket = UdpSocket::bind(("127.0.0.1", port)).await?;
