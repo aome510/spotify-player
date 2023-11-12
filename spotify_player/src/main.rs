@@ -352,19 +352,6 @@ fn main() -> Result<()> {
             #[cfg(not(feature = "daemon"))]
             start_app(state, false)
         }
-        Some((cmd, args)) => match cli::handle_cli_subcommand(cmd, args, &configs) {
-            Err(err) => match err.downcast_ref::<std::io::Error>() {
-                None => Err(err),
-                Some(io_err) => match io_err.kind() {
-                    std::io::ErrorKind::ConnectionRefused => {
-                        eprintln!("Error: {err}\nPlease make sure that there is a running \
-                                   `spotify_player` instance with a client socket running on port {}.", configs.app_config.client_port);
-                        std::process::exit(1)
-                    }
-                    _ => Err(err),
-                },
-            },
-            Ok(()) => Ok(()),
-        },
+        Some((cmd, args)) => cli::handle_cli_subcommand(cmd, args, &configs),
     }
 }

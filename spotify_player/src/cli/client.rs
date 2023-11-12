@@ -8,6 +8,7 @@ use std::{
 use anyhow::{Context as _, Result};
 use rand::seq::SliceRandom;
 use tokio::net::UdpSocket;
+use tracing::Instrument;
 
 use crate::{
     cli::Request,
@@ -30,11 +31,17 @@ pub async fn start_socket(client: Client, state: SharedState) -> Result<()> {
     let socket = UdpSocket::bind(("127.0.0.1", port)).await?;
 
     // initialize the receive buffer to be 4096 bytes
-    let mut buf = [0; 4096];
+    let mut buf = [0; MAX_REQUEST_SIZE];
     loop {
         match socket.recv_from(&mut buf).await {
             Err(err) => tracing::warn!("Failed to receive from the socket: {err:#}"),
             Ok((n_bytes, dest_addr)) => {
+                if n_bytes == 0 {
+                    // received a connection request from the destination address
+                    socket.send_to(&[], dest_addr).await.unwrap_or_default();
+                    continue;
+                }
+
                 let req_buf = &buf[0..n_bytes];
                 let request: Request = match serde_json::from_slice(req_buf) {
                     Ok(v) => v,
@@ -44,18 +51,25 @@ pub async fn start_socket(client: Client, state: SharedState) -> Result<()> {
                     }
                 };
 
-                tracing::info!("Handling socket request: {request:?}...");
-                let response = match handle_socket_request(&client, &state, request).await {
-                    Err(err) => {
-                        tracing::error!("Failed to handle socket request: {err:#}");
-                        let msg = format!("Bad request: {err:#}");
-                        Response::Err(msg.into_bytes())
-                    }
-                    Ok(data) => Response::Ok(data),
-                };
-                send_response(response, &socket, dest_addr)
-                    .await
-                    .unwrap_or_default();
+                let span = tracing::info_span!("socket_request", request = ?request, dest_addr = ?dest_addr);
+
+                async {
+                    let response = match handle_socket_request(&client, &state, request).await {
+                        Err(err) => {
+                            tracing::error!("Failed to handle socket request: {err:#}");
+                            let msg = format!("Bad request: {err:#}");
+                            Response::Err(msg.into_bytes())
+                        }
+                        Ok(data) => Response::Ok(data),
+                    };
+                    send_response(response, &socket, dest_addr)
+                        .await
+                        .unwrap_or_default();
+
+                    tracing::info!("Successfully handled the socket request.",);
+                }
+                .instrument(span)
+                .await;
             }
         }
     }

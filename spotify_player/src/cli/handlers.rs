@@ -160,6 +160,17 @@ pub fn handle_cli_subcommand(cmd: &str, args: &ArgMatches, configs: &state::Conf
     let socket = UdpSocket::bind("127.0.0.1:0")?;
     socket.connect(("127.0.0.1", configs.app_config.client_port))?;
 
+    // Send an empty buffer as a connection request to the client
+    socket.send(&[])?;
+    if let Err(err) = socket.recv(&mut [0; 1]) {
+        if let std::io::ErrorKind::ConnectionRefused = err.kind() {
+            eprintln!("Error: {err}\nPlease make sure that there is a running \
+                                   `spotify_player` instance with a client socket running on port {}.", configs.app_config.client_port);
+            std::process::exit(1)
+        }
+        return Err(err.into());
+    }
+
     match cmd {
         "get" => handle_get_subcommand(args, &socket)?,
         "playback" => handle_playback_subcommand(args, &socket)?,

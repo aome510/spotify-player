@@ -5,6 +5,8 @@ mod handlers;
 use rspotify::model::*;
 use serde::{Deserialize, Serialize};
 
+const MAX_REQUEST_SIZE: usize = 4096;
+
 pub use client::start_socket;
 pub use commands::*;
 pub use handlers::handle_cli_subcommand;
