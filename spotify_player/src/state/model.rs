@@ -254,8 +254,12 @@ impl Track {
     /// tries to convert from a `rspotify_model::SimplifiedTrack` into `Track`
     pub fn try_from_simplified_track(track: rspotify_model::SimplifiedTrack) -> Option<Self> {
         if track.is_playable.unwrap_or(true) {
+            let id = match track.linked_from {
+                Some(d) => d.id,
+                None => track.id?,
+            };
             Some(Self {
-                id: track.id?,
+                id,
                 name: track.name,
                 artists: from_simplified_artists_to_artists(track.artists),
                 album: None,
@@ -271,8 +275,12 @@ impl Track {
     /// tries to convert from a `rspotify_model::FullTrack` into `Track`
     pub fn try_from_full_track(track: rspotify_model::FullTrack) -> Option<Self> {
         if track.is_playable.unwrap_or(true) {
+            let id = match track.linked_from {
+                Some(d) => d.id,
+                None => track.id?,
+            };
             Some(Self {
-                id: track.id?,
+                id,
                 name: track.name,
                 artists: from_simplified_artists_to_artists(track.artists),
                 album: Album::try_from_simplified_album(track.album),
