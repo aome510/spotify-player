@@ -14,9 +14,6 @@ mod token;
 mod ui;
 mod utils;
 
-// as `tui` is not actively maintained, we migrate to use `ratatui`
-extern crate ratatui as tui;
-
 use anyhow::{Context, Result};
 use std::io::Write;
 
@@ -24,10 +21,10 @@ fn init_app_cli_arguments() -> Result<clap::ArgMatches> {
     let default_cache_folder = config::get_cache_folder_path()?;
     let default_config_folder = config::get_config_folder_path()?;
 
-    let cmd = clap::Command::new("spotify_player")
-        .version("0.15.2")
-        .about("A Spotify player in the terminal with full feature parity")
-        .author("Thang Pham <phamducthang1234@gmail>")
+    let cmd = clap::Command::new(env!("CARGO_PKG_NAME"))
+        .version(env!("CARGO_PKG_VERSION"))
+        .about(env!("CARGO_PKG_DESCRIPTION"))
+        .author(env!("CARGO_PKG_AUTHORS"))
         .subcommand(cli::init_get_subcommand())
         .subcommand(cli::init_playback_subcommand())
         .subcommand(cli::init_connect_subcommand())
