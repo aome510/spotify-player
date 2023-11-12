@@ -313,7 +313,8 @@ async fn handle_playback_request(
             )
         }
         Command::StartLikedTracks { limit, random } => {
-            let mut tracks = client.current_user_saved_tracks().await?;
+            let data = state.data.read();
+            let mut tracks = data.user_data.saved_tracks.values().collect::<Vec<_>>();
 
             if random {
                 let mut rng = rand::thread_rng();

@@ -91,13 +91,11 @@ async fn init_spotify(
     }
 
     // request user data
-    if !is_daemon {
-        client_pub.send(event::ClientRequest::GetCurrentUser)?;
-        client_pub.send(event::ClientRequest::GetUserPlaylists)?;
-        client_pub.send(event::ClientRequest::GetUserFollowedArtists)?;
-        client_pub.send(event::ClientRequest::GetUserSavedAlbums)?;
-        client_pub.send(event::ClientRequest::GetUserSavedTracks)?;
-    }
+    client_pub.send(event::ClientRequest::GetCurrentUser)?;
+    client_pub.send(event::ClientRequest::GetUserPlaylists)?;
+    client_pub.send(event::ClientRequest::GetUserFollowedArtists)?;
+    client_pub.send(event::ClientRequest::GetUserSavedAlbums)?;
+    client_pub.send(event::ClientRequest::GetUserSavedTracks)?;
 
     Ok(())
 }
