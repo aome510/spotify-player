@@ -15,7 +15,7 @@ use crate::{
     client::Client,
     config::get_cache_folder_path,
     event::PlayerRequest,
-    state::{Context, ContextId, Playback, SharedState},
+    state::{Context, ContextId, Playback, SharedState, SimplifiedPlayback},
 };
 use rspotify::{
     model::*,
@@ -24,11 +24,7 @@ use rspotify::{
 
 use super::*;
 
-pub async fn start_socket(client: Client, port: u16, state: Option<SharedState>) -> Result<()> {
-    tracing::info!("Starting a client socket at 127.0.0.1:{port}");
-
-    let socket = UdpSocket::bind(("127.0.0.1", port)).await?;
-
+pub async fn start_socket(client: Client, socket: UdpSocket, state: Option<SharedState>) {
     // initialize the receive buffer to be 4096 bytes
     let mut buf = [0; MAX_REQUEST_SIZE];
     loop {
@@ -326,6 +322,17 @@ async fn handle_playback_request(
     state: &Option<SharedState>,
     command: Command,
 ) -> Result<()> {
+    let playback = match state {
+        Some(state) => state.player.read().buffered_playback.clone(),
+        None => {
+            let playback = client
+                .spotify
+                .current_playback(None, None::<Vec<_>>)
+                .await?;
+            playback.as_ref().map(SimplifiedPlayback::from_playback)
+        }
+    };
+
     let player_request = match command {
         Command::StartRadio(item_type, id_or_name) => {
             let sid = get_spotify_id(client, item_type, id_or_name).await?;
@@ -386,13 +393,10 @@ async fn handle_playback_request(
         Command::Shuffle => PlayerRequest::Shuffle,
         Command::Repeat => PlayerRequest::Repeat,
         Command::Volume { percent, is_offset } => {
-            let volume = client
-                .spotify
-                .current_playback(None, None::<Vec<_>>)
-                .await?
+            let volume = playback
+                .as_ref()
                 .context("no active playback found")?
-                .device
-                .volume_percent
+                .volume
                 .context("playback has no volume!")?;
             let percent = if is_offset {
                 std::cmp::max(0, (volume as i8) + percent)
@@ -402,6 +406,9 @@ async fn handle_playback_request(
             PlayerRequest::Volume(percent.try_into()?)
         }
         Command::Seek(position_offset_ms) => {
+            // playback's progress cannot computed trivially without knowing the `playback` variable in
+            // the function scope is from the application's state (cached) or `current_playback` API response.
+            // As a result, making an additional API request to get the playback's progress.
             let progress = client
                 .spotify
                 .current_playback(None, None::<Vec<_>>)
@@ -413,15 +420,17 @@ async fn handle_playback_request(
         }
     };
 
-    // update the application's state if exists
     if let Some(ref state) = state {
+        // A non-null application's state indicates there is a running application instance.
+        // To speedup the runtime of the CLI command, the player request can be handled asynchronously
+        // knowing that the application will outlive the asynchronous task.
         tokio::task::spawn({
             let client = client.clone();
             let state = state.clone();
             async move {
-                let playback = state.player.read().buffered_playback.clone();
                 match client.handle_player_request(player_request, playback).await {
                     Ok(playback) => {
+                        // update application's states
                         state.player.write().buffered_playback = playback;
                         client.update_playback(&state);
                     }
@@ -433,6 +442,10 @@ async fn handle_playback_request(
                 }
             }
         });
+    } else {
+        client
+            .handle_player_request(player_request, playback)
+            .await?;
     }
     Ok(())
 }

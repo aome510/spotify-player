@@ -1,4 +1,5 @@
 pub use rspotify::model as rspotify_model;
+use rspotify::model::CurrentPlaybackContext;
 pub use rspotify::model::{AlbumId, ArtistId, Id, PlaylistId, TrackId, UserId};
 
 use crate::utils::{format_duration, map_join};

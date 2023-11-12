@@ -1,10 +1,10 @@
 use crate::{
-    auth::{new_session_with_new_creds, AuthConfig},
-    state,
+    auth::{new_session, new_session_with_new_creds, AuthConfig},
+    client, event, state,
 };
 
 use super::*;
-use anyhow::Result;
+use anyhow::{Context, Result};
 use clap::{ArgMatches, Id};
 use std::net::UdpSocket;
 
@@ -134,20 +134,53 @@ fn handle_playback_subcommand(args: &ArgMatches) -> Result<Request> {
     Ok(Request::Playback(command))
 }
 
-pub fn handle_cli_subcommand(cmd: &str, args: &ArgMatches, configs: &state::Configs) -> Result<()> {
-    let socket = UdpSocket::bind("127.0.0.1:0")?;
-    socket.connect(("127.0.0.1", configs.app_config.client_port))?;
+/// Tries to connect to a running client, if exists, by sending a connection request
+/// to the client via a UDP socket.
+/// If no running client found, create a new client running in a separate thread to
+/// handle the socket request.
+fn try_connect_to_client(socket: &UdpSocket, configs: &state::Configs) -> Result<()> {
+    let port = configs.app_config.client_port;
+    socket.connect(("127.0.0.1", port))?;
 
     // send an empty buffer as a connection request to the client
     socket.send(&[])?;
     if let Err(err) = socket.recv(&mut [0; 1]) {
         if let std::io::ErrorKind::ConnectionRefused = err.kind() {
-            eprintln!("Error: {err}\nPlease make sure that there is a running \
-                                   `spotify_player` instance with a client socket running on port {}.", configs.app_config.client_port);
-            std::process::exit(1)
+            // no running `spotify_player` instance found,
+            // initialize a new client to handle the current CLI command
+
+            let (client_pub, _) = flume::unbounded::<event::ClientRequest>();
+
+            let auth_config = AuthConfig::new(configs)?;
+            let rt = tokio::runtime::Runtime::new()?;
+            let session = rt.block_on(new_session(&auth_config, false))?;
+
+            // create a Spotify API client
+            let client = client::Client::new(
+                session,
+                auth_config,
+                configs.app_config.client_id.clone(),
+                client_pub,
+            );
+            rt.block_on(client.init_token())?;
+
+            // create a client socket for handling CLI commands
+            let client_socket = rt.block_on(tokio::net::UdpSocket::bind(("127.0.0.1", port)))?;
+
+            // spawn a thread to handle the CLI request
+            std::thread::spawn(move || rt.block_on(start_socket(client, client_socket, None)));
+        } else {
+            return Err(err.into());
         }
-        return Err(err.into());
     }
+
+    Ok(())
+}
+
+pub fn handle_cli_subcommand(cmd: &str, args: &ArgMatches, configs: &state::Configs) -> Result<()> {
+    let socket = UdpSocket::bind("127.0.0.1:0")?;
+
+    try_connect_to_client(&socket, configs).context("try to connect to a client")?;
 
     // construct a socket request based on the CLI command and its arguments
     let request = match cmd {
