@@ -419,8 +419,10 @@ async fn handle_playback_request(
             let client = client.clone();
             let state = state.clone();
             async move {
-                match client.handle_player_request(&state, player_request).await {
-                    Ok(()) => {
+                let playback = state.player.read().buffered_playback.clone();
+                match client.handle_player_request(player_request, playback).await {
+                    Ok(playback) => {
+                        state.player.write().buffered_playback = playback;
                         client.update_playback(&state);
                     }
                     Err(err) => {

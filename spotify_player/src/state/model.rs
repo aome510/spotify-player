@@ -101,6 +101,7 @@ pub struct SimplifiedPlayback {
     pub is_playing: bool,
     pub repeat_state: rspotify_model::RepeatState,
     pub shuffle_state: bool,
+    pub mute_state: Option<u32>,
 }
 
 #[derive(Debug, Clone)]
@@ -464,6 +465,20 @@ impl Playback {
 
                 Playback::URIs(ids, Some(rspotify_model::Offset::Uri(uri)))
             }
+        }
+    }
+}
+
+impl SimplifiedPlayback {
+    pub fn from_playback(p: &CurrentPlaybackContext) -> Self {
+        Self {
+            device_name: p.device.name.clone(),
+            device_id: p.device.id.clone(),
+            is_playing: p.is_playing,
+            volume: p.device.volume_percent,
+            repeat_state: p.repeat_state,
+            shuffle_state: p.shuffle_state,
+            mute_state: None,
         }
     }
 }
