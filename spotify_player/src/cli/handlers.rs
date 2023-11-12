@@ -45,7 +45,7 @@ fn get_id_or_name(args: &ArgMatches) -> IdOrName {
     }
 }
 
-fn handle_get_subcommand(args: &ArgMatches, socket: &UdpSocket) -> Result<()> {
+fn handle_get_subcommand(args: &ArgMatches) -> Result<Request> {
     let (cmd, args) = args.subcommand().expect("playback subcommand is required");
 
     let request = match cmd {
@@ -67,11 +67,10 @@ fn handle_get_subcommand(args: &ArgMatches, socket: &UdpSocket) -> Result<()> {
         _ => unreachable!(),
     };
 
-    socket.send(&serde_json::to_vec(&request)?)?;
-    Ok(())
+    Ok(request)
 }
 
-fn handle_playback_subcommand(args: &ArgMatches, socket: &UdpSocket) -> Result<()> {
+fn handle_playback_subcommand(args: &ArgMatches) -> Result<Request> {
     let (cmd, args) = args.subcommand().expect("playback subcommand is required");
     let command = match cmd {
         "start" => match args.subcommand() {
@@ -132,35 +131,14 @@ fn handle_playback_subcommand(args: &ArgMatches, socket: &UdpSocket) -> Result<(
         _ => unreachable!(),
     };
 
-    let request = Request::Playback(command);
-    socket.send(&serde_json::to_vec(&request)?)?;
-
-    Ok(())
-}
-
-fn handle_connect_subcommand(args: &ArgMatches, socket: &UdpSocket) -> Result<()> {
-    let id_or_name = get_id_or_name(args);
-
-    let request = Request::Connect(id_or_name);
-    socket.send(&serde_json::to_vec(&request)?)?;
-
-    Ok(())
-}
-
-fn handle_like_subcommand(args: &ArgMatches, socket: &UdpSocket) -> Result<()> {
-    let unlike = args.get_flag("unlike");
-
-    let request = Request::Like { unlike };
-    socket.send(&serde_json::to_vec(&request)?)?;
-
-    Ok(())
+    Ok(Request::Playback(command))
 }
 
 pub fn handle_cli_subcommand(cmd: &str, args: &ArgMatches, configs: &state::Configs) -> Result<()> {
     let socket = UdpSocket::bind("127.0.0.1:0")?;
     socket.connect(("127.0.0.1", configs.app_config.client_port))?;
 
-    // Send an empty buffer as a connection request to the client
+    // send an empty buffer as a connection request to the client
     socket.send(&[])?;
     if let Err(err) = socket.recv(&mut [0; 1]) {
         if let std::io::ErrorKind::ConnectionRefused = err.kind() {
@@ -171,12 +149,15 @@ pub fn handle_cli_subcommand(cmd: &str, args: &ArgMatches, configs: &state::Conf
         return Err(err.into());
     }
 
-    match cmd {
-        "get" => handle_get_subcommand(args, &socket)?,
-        "playback" => handle_playback_subcommand(args, &socket)?,
-        "playlist" => handle_playlist_subcommand(args, &socket)?,
-        "connect" => handle_connect_subcommand(args, &socket)?,
-        "like" => handle_like_subcommand(args, &socket)?,
+    // construct a socket request based on the CLI command and its arguments
+    let request = match cmd {
+        "get" => handle_get_subcommand(args)?,
+        "playback" => handle_playback_subcommand(args)?,
+        "playlist" => handle_playlist_subcommand(args)?,
+        "connect" => Request::Connect(get_id_or_name(args)),
+        "like" => Request::Like {
+            unlike: args.get_flag("unlike"),
+        },
         "authenticate" => {
             let auth_config = AuthConfig::new(configs)?;
             let rt = tokio::runtime::Runtime::new()?;
@@ -184,8 +165,14 @@ pub fn handle_cli_subcommand(cmd: &str, args: &ArgMatches, configs: &state::Conf
             std::process::exit(0);
         }
         _ => unreachable!(),
-    }
+    };
 
+    // send the request to the client's socket
+    let request_buf = serde_json::to_vec(&request)?;
+    assert!(request_buf.len() <= MAX_REQUEST_SIZE);
+    socket.send(&request_buf)?;
+
+    // receive and handle a response from the client's socket
     match receive_response(&socket)? {
         Response::Err(err) => {
             eprintln!("{}", String::from_utf8_lossy(&err));
@@ -198,7 +185,7 @@ pub fn handle_cli_subcommand(cmd: &str, args: &ArgMatches, configs: &state::Conf
     }
 }
 
-fn handle_playlist_subcommand(args: &ArgMatches, socket: &UdpSocket) -> Result<()> {
+fn handle_playlist_subcommand(args: &ArgMatches) -> Result<Request> {
     let (cmd, args) = args.subcommand().expect("playlist subcommand is required");
     let command = match cmd {
         "new" => {
@@ -283,8 +270,5 @@ fn handle_playlist_subcommand(args: &ArgMatches, socket: &UdpSocket) -> Result<(
         _ => unreachable!(),
     };
 
-    let request = Request::Playlist(command);
-    socket.send(&serde_json::to_vec(&request)?)?;
-
-    Ok(())
+    Ok(Request::Playlist(command))
 }
