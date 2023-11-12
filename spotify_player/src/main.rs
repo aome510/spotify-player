@@ -178,7 +178,7 @@ async fn start_app(state: state::SharedState, is_daemon: bool) -> Result<()> {
     }
 
     // create a librespot session
-    let auth_config = auth::AuthConfig::new(&state)?;
+    let auth_config = auth::AuthConfig::new(&state.configs)?;
     let session = auth::new_session(&auth_config, !is_daemon).await?;
 
     // create a Spotify API client
@@ -307,13 +307,12 @@ fn main() -> Result<()> {
         std::fs::create_dir_all(&cache_image_folder)?;
     }
 
-    // initialize the application state
+    // initialize the application configs
     let mut configs = state::Configs::new(&config_folder, &cache_folder)?;
     if let Some(theme) = args.get_one::<String>("theme") {
         // override the theme config if user specifies a `theme` cli argument
         configs.app_config.theme = theme.to_owned();
     }
-    let state = std::sync::Arc::new(state::State::new(configs));
 
     match args.subcommand() {
         None => {
@@ -321,7 +320,9 @@ fn main() -> Result<()> {
             init_logging(&cache_folder).context("failed to initialize application's logging")?;
 
             // log the application's configurations
-            tracing::info!("Configurations: {:?}", state.configs);
+            tracing::info!("Configurations: {:?}", configs);
+
+            let state = std::sync::Arc::new(state::State::new(configs));
 
             #[cfg(feature = "daemon")]
             {
@@ -351,12 +352,13 @@ fn main() -> Result<()> {
             #[cfg(not(feature = "daemon"))]
             start_app(state, false)
         }
-        Some((cmd, args)) => match cli::handle_cli_subcommand(cmd, args, &state) {
+        Some((cmd, args)) => match cli::handle_cli_subcommand(cmd, args, &configs) {
             Err(err) => match err.downcast_ref::<std::io::Error>() {
                 None => Err(err),
                 Some(io_err) => match io_err.kind() {
                     std::io::ErrorKind::ConnectionRefused => {
-                        eprintln!("Error: {err}\nPlease make sure that there is a running `spotify_player` instance with a client socket running on port {}.", state.configs.app_config.client_port);
+                        eprintln!("Error: {err}\nPlease make sure that there is a running \
+                                   `spotify_player` instance with a client socket running on port {}.", configs.app_config.client_port);
                         std::process::exit(1)
                     }
                     _ => Err(err),
