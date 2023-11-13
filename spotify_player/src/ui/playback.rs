@@ -96,15 +96,7 @@ pub fn render_playback_window(
             };
 
             if let Some(ref playback) = player.buffered_playback {
-                render_playback_text(
-                    frame,
-                    state,
-                    ui,
-                    metadata_rect,
-                    track,
-                    playback,
-                    player.mute_state,
-                );
+                render_playback_text(frame, state, ui, metadata_rect, track, playback);
             }
 
             let progress = std::cmp::min(
@@ -147,7 +139,6 @@ fn render_playback_text(
     rect: Rect,
     track: &rspotify_model::FullTrack,
     playback: &SimplifiedPlayback,
-    mute_state: Option<u32>,
 ) {
     // Construct a "styled" text (`playback_text`) from playback's data
     // based on a user-configurable format string (app_config.playback_format)
@@ -160,7 +151,7 @@ fn render_playback_text(
     let re = regex::Regex::new(r"\{.*?\}|\n").unwrap();
 
     // build the volume string (vol% when unmuted, old_vol% (muted) if currently muted)
-    let volume = match mute_state {
+    let volume = match playback.mute_state {
         Some(volume) => format!("{volume}% (muted)"),
         None => format!("{}%", playback.volume.unwrap_or_default()),
     };

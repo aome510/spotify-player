@@ -101,12 +101,12 @@ impl Client {
         Ok(())
     }
 
-    /// handles a player request
+    /// handles a player request and returns a new playback on success
     pub async fn handle_player_request(
         &self,
-        state: &SharedState,
         request: PlayerRequest,
-    ) -> Result<()> {
+        playback: Option<SimplifiedPlayback>,
+    ) -> Result<Option<SimplifiedPlayback>> {
         // `TransferPlayback` needs to be handled separately
         // from other play requests because they don't require an active playback
         // transfer the current playback to another device
@@ -116,15 +116,10 @@ impl Client {
                 .await?;
 
             tracing::info!("Transferred the playback to device with {} id", device_id);
-            return Ok(());
+            return Ok(playback);
         }
 
-        let mut playback = match state.player.read().buffered_playback {
-            Some(ref playback) => playback.clone(),
-            None => {
-                anyhow::bail!("failed to handle the player request: no playback found");
-            }
-        };
+        let mut playback = playback.context("no playback found")?;
         let device_id = playback.device_id.as_deref();
 
         match request {
@@ -134,14 +129,12 @@ impl Client {
                 if !playback.is_playing {
                     self.spotify.resume_playback(device_id, None).await?;
                     playback.is_playing = true;
-                    state.player.write().buffered_playback = Some(playback);
                 }
             }
             PlayerRequest::Pause => {
                 if playback.is_playing {
                     self.spotify.pause_playback(device_id).await?;
                     playback.is_playing = false;
-                    state.player.write().buffered_playback = Some(playback);
                 }
             }
             PlayerRequest::ResumePause => {
@@ -151,7 +144,6 @@ impl Client {
                     self.spotify.pause_playback(device_id).await?
                 }
                 playback.is_playing = !playback.is_playing;
-                state.player.write().buffered_playback = Some(playback);
             }
             PlayerRequest::SeekTrack(position_ms) => {
                 self.spotify.seek_track(position_ms, device_id).await?
@@ -166,7 +158,6 @@ impl Client {
                 self.spotify.repeat(next_repeat_state, device_id).await?;
 
                 playback.repeat_state = next_repeat_state;
-                state.player.write().buffered_playback = Some(playback);
             }
             PlayerRequest::Shuffle => {
                 self.spotify
@@ -174,19 +165,15 @@ impl Client {
                     .await?;
 
                 playback.shuffle_state = !playback.shuffle_state;
-                state.player.write().buffered_playback = Some(playback);
             }
             PlayerRequest::Volume(volume) => {
                 self.spotify.volume(volume, device_id).await?;
 
                 playback.volume = Some(volume as u32);
-                // upon updating volume, also reset the player's mute state
-                state.player.write().mute_state = None;
-                state.player.write().buffered_playback = Some(playback);
+                playback.mute_state = None;
             }
             PlayerRequest::ToggleMute => {
-                let mute_state = state.player.read().mute_state;
-                let new_mute_state = match mute_state {
+                let new_mute_state = match playback.mute_state {
                     None => {
                         self.spotify.volume(0, device_id).await?;
                         Some(playback.volume.unwrap_or_default())
@@ -197,7 +184,7 @@ impl Client {
                     }
                 };
 
-                state.player.write().mute_state = new_mute_state;
+                playback.mute_state = new_mute_state;
             }
             PlayerRequest::StartPlayback(p, shuffle) => {
                 if let Some(shuffle) = shuffle {
@@ -215,7 +202,7 @@ impl Client {
             }
         };
 
-        Ok(())
+        Ok(Some(playback))
     }
 
     /// handles a client request
@@ -268,7 +255,9 @@ impl Client {
                 state.data.write().user_data.user = Some(user);
             }
             ClientRequest::Player(request) => {
-                self.handle_player_request(state, request).await?;
+                let playback = state.player.read().buffered_playback.clone();
+                let playback = self.handle_player_request(request, playback).await?;
+                state.player.write().buffered_playback = playback;
                 self.update_playback(state);
             }
             ClientRequest::GetCurrentPlayback => {
@@ -1287,16 +1276,15 @@ impl Client {
 
             if needs_update {
                 // new playback updates, the buffered playback becomes invalid and needs to be updated
-                player.buffered_playback = player.playback.as_ref().map(|p| SimplifiedPlayback {
-                    device_name: p.device.name.clone(),
-                    device_id: p.device.id.clone(),
-                    is_playing: p.is_playing,
-                    volume: match player.mute_state {
-                        Some(volume) => Some(volume),
-                        None => p.device.volume_percent,
-                    },
-                    repeat_state: p.repeat_state,
-                    shuffle_state: p.shuffle_state,
+                player.buffered_playback = player.playback.as_ref().map(|p| {
+                    let mut playback = SimplifiedPlayback::from_playback(p);
+                    // update buffered playback's mute state and volume
+                    let mute_state = player.buffered_playback.as_ref().and_then(|p| p.mute_state);
+                    if let Some(volume) = mute_state {
+                        playback.volume = Some(volume);
+                    }
+                    playback.mute_state = mute_state;
+                    playback
                 });
             }
 

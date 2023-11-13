@@ -91,13 +91,11 @@ async fn init_spotify(
     }
 
     // request user data
-    if !is_daemon {
-        client_pub.send(event::ClientRequest::GetCurrentUser)?;
-        client_pub.send(event::ClientRequest::GetUserPlaylists)?;
-        client_pub.send(event::ClientRequest::GetUserFollowedArtists)?;
-        client_pub.send(event::ClientRequest::GetUserSavedAlbums)?;
-        client_pub.send(event::ClientRequest::GetUserSavedTracks)?;
-    }
+    client_pub.send(event::ClientRequest::GetCurrentUser)?;
+    client_pub.send(event::ClientRequest::GetUserPlaylists)?;
+    client_pub.send(event::ClientRequest::GetUserFollowedArtists)?;
+    client_pub.send(event::ClientRequest::GetUserSavedAlbums)?;
+    client_pub.send(event::ClientRequest::GetUserSavedTracks)?;
 
     Ok(())
 }
@@ -203,8 +201,15 @@ async fn start_app(state: state::SharedState, is_daemon: bool) -> Result<()> {
         let client = client.clone();
         let state = state.clone();
         async move {
-            if let Err(err) = cli::start_socket(client, state).await {
-                tracing::warn!("Failed to run client socket for CLI: {err:#}");
+            let port = state.configs.app_config.client_port;
+            tracing::info!("Starting a client socket at 127.0.0.1:{port}");
+            match tokio::net::UdpSocket::bind(("127.0.0.1", port)).await {
+                Ok(socket) => cli::start_socket(client, socket, Some(state)).await,
+                Err(err) => {
+                    tracing::warn!(
+                        "Failed to create a client socket for handling CLI commands: {err:#}"
+                    )
+                }
             }
         }
     }));

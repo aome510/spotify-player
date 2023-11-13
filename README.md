@@ -314,11 +314,7 @@ You can run the application as a daemon by specifying the `-d` or `--daemon` opt
 
 ### CLI Commands
 
-`spotify_player` offers several CLI commands to interact with **a running `spotify_player` instance**.
-
-Under the hood, the application handles a CLI command by sending requests to a `spotify_player` instance's client socket running on the `client_port` port, a general application configuration with a default value `8080`.
-
-Lists of CLI commands:
+`spotify_player` offers several CLI commands to interact with Spotify:
 
 - `get`: Get Spotify data (playlist/album/artist data, user's data, etc)
 - `playback`: Interact with the playback (start a playback, play-pause, next, etc)
@@ -328,6 +324,11 @@ Lists of CLI commands:
 - `playlist`: Playlist editing (new, delete, import, fork, etc)
 
 For more details, run `spotify_player -h` or `spotify_player {command} -h`, in which `{command}` is a CLI command.
+
+**Notes**
+
+- When using the CLI for the first time, you'll need to run `spotify_player authenticate` to authenticate the application beforehand.
+- Under the hood, CLI command is handled by sending requests to a `spotify_player` client socket running on port `client_port`, [a general application configuration](https://github.com/aome510/spotify-player/blob/master/docs/config.md#general) with a default value of `8080`. If there is no running application's instance, a new client will be created upon handling the CLI commands, which increases the latency of the command.
 
 ## Commands
 

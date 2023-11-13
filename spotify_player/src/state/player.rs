@@ -12,16 +12,14 @@ pub struct PlayerState {
     pub buffered_playback: Option<SimplifiedPlayback>,
 
     pub queue: Option<rspotify_model::CurrentUserQueue>,
-
-    pub mute_state: Option<u32>,
 }
 
 impl PlayerState {
-    /// gets the current playback state
+    /// gets the current playback
     ///
     /// # Note
     /// Because playback data stored inside the player state is buffered and cached,
-    /// this function tries to estimate the current playback based on the available state data.
+    /// the returned playback is estimated based on the available data.
     pub fn current_playback(&self) -> Option<rspotify_model::CurrentPlaybackContext> {
         let mut playback = self.playback.clone()?;
 

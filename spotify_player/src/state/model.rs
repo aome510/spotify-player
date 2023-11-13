@@ -1,4 +1,5 @@
 pub use rspotify::model as rspotify_model;
+use rspotify::model::CurrentPlaybackContext;
 pub use rspotify::model::{AlbumId, ArtistId, Id, PlaylistId, TrackId, UserId};
 
 use crate::utils::{format_duration, map_join};
@@ -101,6 +102,7 @@ pub struct SimplifiedPlayback {
     pub is_playing: bool,
     pub repeat_state: rspotify_model::RepeatState,
     pub shuffle_state: bool,
+    pub mute_state: Option<u32>,
 }
 
 #[derive(Debug, Clone)]
@@ -464,6 +466,20 @@ impl Playback {
 
                 Playback::URIs(ids, Some(rspotify_model::Offset::Uri(uri)))
             }
+        }
+    }
+}
+
+impl SimplifiedPlayback {
+    pub fn from_playback(p: &CurrentPlaybackContext) -> Self {
+        Self {
+            device_name: p.device.name.clone(),
+            device_id: p.device.id.clone(),
+            is_playing: p.is_playing,
+            volume: p.device.volume_percent,
+            repeat_state: p.repeat_state,
+            shuffle_state: p.shuffle_state,
+            mute_state: None,
         }
     }
 }
