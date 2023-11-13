@@ -15,6 +15,37 @@ pub struct PlayerState {
 }
 
 impl PlayerState {
+    /// gets the current playback
+    ///
+    /// # Note
+    /// Because playback data stored inside the player state is buffered and cached,
+    /// the returned playback is estimated based on the available data.
+    pub fn current_playback(&self) -> Option<rspotify_model::CurrentPlaybackContext> {
+        let mut playback = self.playback.clone()?;
+
+        // update the playback's progress based on the `playback_last_updated_time`
+        playback.progress = playback.progress.map(|d| {
+            d + if playback.is_playing {
+                chrono::Duration::from_std(self.playback_last_updated_time.unwrap().elapsed())
+                    .unwrap()
+            } else {
+                chrono::Duration::zero()
+            }
+        });
+
+        // update the playback's metadata based on the `buffered_playback` metadata
+        if let Some(ref p) = self.buffered_playback {
+            playback.device.name = p.device_name.clone();
+            playback.device.id = p.device_id.clone();
+            playback.is_playing = p.is_playing;
+            playback.device.volume_percent = p.volume;
+            playback.repeat_state = p.repeat_state;
+            playback.shuffle_state = p.shuffle_state;
+        }
+
+        Some(playback)
+    }
+
     /// gets the current playing track
     pub fn current_playing_track(&self) -> Option<&rspotify_model::FullTrack> {
         match self.playback {

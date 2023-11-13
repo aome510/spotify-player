@@ -91,8 +91,9 @@ async fn current_playback(
     client: &Client,
     state: &Option<SharedState>,
 ) -> Result<Option<CurrentPlaybackContext>> {
+    // get current playback from the application's state, if exists, or by making an API request
     match state {
-        Some(ref state) => Ok(state.player.read().playback.clone()),
+        Some(ref state) => Ok(state.player.read().current_playback()),
         None => client
             .spotify
             .current_playback(None, None::<Vec<_>>)
@@ -107,8 +108,8 @@ async fn handle_socket_request(
     request: super::Request,
 ) -> Result<Vec<u8>> {
     if client.spotify.session().await.is_invalid() {
-        tracing::info!("Spotify client's session is invalid, re-creating a new session...");
         if let Some(state) = state {
+            tracing::info!("Spotify client's session is invalid, re-creating a new session...");
             client.new_session(state).await?;
         }
     }
@@ -395,7 +396,7 @@ async fn handle_playback_request(
         Command::Volume { percent, is_offset } => {
             let volume = playback
                 .as_ref()
-                .context("no active playback found")?
+                .context("no active playback found!")?
                 .volume
                 .context("playback has no volume!")?;
             let percent = if is_offset {
@@ -406,9 +407,9 @@ async fn handle_playback_request(
             PlayerRequest::Volume(percent.try_into()?)
         }
         Command::Seek(position_offset_ms) => {
-            // playback's progress cannot computed trivially without knowing the `playback` variable in
-            // the function scope is from the application's state (cached) or `current_playback` API response.
-            // As a result, making an additional API request to get the playback's progress.
+            // Playback's progress cannot be computed trivially without knowing the `playback` variable in
+            // the function scope is from the application's state (cached) or the `current_playback` API.
+            // Therefore, we need to make an additional API request to get the playback's progress.
             let progress = client
                 .spotify
                 .current_playback(None, None::<Vec<_>>)
@@ -422,7 +423,7 @@ async fn handle_playback_request(
 
     if let Some(ref state) = state {
         // A non-null application's state indicates there is a running application instance.
-        // To speedup the runtime of the CLI command, the player request can be handled asynchronously
+        // To reduce the latency of the CLI command, the player request is handled asynchronously
         // knowing that the application will outlive the asynchronous task.
         tokio::task::spawn({
             let client = client.clone();
@@ -443,6 +444,7 @@ async fn handle_playback_request(
             }
         });
     } else {
+        // Handles the player request synchronously
         client
             .handle_player_request(player_request, playback)
             .await?;

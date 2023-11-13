@@ -325,7 +325,10 @@ You can run the application as a daemon by specifying the `-d` or `--daemon` opt
 
 For more details, run `spotify_player -h` or `spotify_player {command} -h`, in which `{command}` is a CLI command.
 
-**Note**: when using CLIs for the first time, you'll need to run `spotify_player authenticate` to authenticate the application and store cached credentials beforehand.
+**Notes**
+
+- When using the CLI for the first time, you'll need to run `spotify_player authenticate` to authenticate the application beforehand.
+- Under the hood, CLI command is handled by sending requests to a `spotify_player` client socket running on port `client_port`, [a general application configuration](https://github.com/aome510/spotify-player/blob/master/docs/config.md#general) with a default value of `8080`. If there is no running application's instance, a new client will be created upon handling the CLI commands, which increases the latency of the command.
 
 ## Commands
 
