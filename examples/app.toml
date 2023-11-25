@@ -15,6 +15,7 @@ page_size_in_rows = 20
 enable_media_control = false
 enable_streaming = "Always"
 enable_cover_image_cache = true
+notify_streaming_only = false
 default_device = "spotify-player"
 play_icon = "▶"
 pause_icon = "▌▌"

@@ -1334,7 +1334,15 @@ impl Client {
 
         // notify user about the playback's change if any
         #[cfg(feature = "notify")]
-        Self::notify_new_track(track, &path, state)?;
+        {
+            #[cfg(feature = "streaming")]
+            if !state.configs.app_config.notify_streaming_only || self.stream_conn.lock().is_some()
+            {
+                Self::notify_new_track(track, &path, state)?;
+            }
+            #[cfg(not(feature = "streaming"))]
+            Self::notify_new_track(track, &path, state)?;
+        }
 
         Ok(())
     }

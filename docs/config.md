@@ -38,8 +38,9 @@ All configuration files should be placed inside the application's configuration 
 | `cover_image_refresh_duration_in_ms` | the duration (in ms) between two cover image refreshes (`image` feature only) | `2000`                                                     |
 | `page_size_in_rows`                  | a page's size expressed as a number of rows (for page-navigation commands)    | `20`                                                       |
 | `enable_media_control`               | enable application media control support (`media-control` feature only)       | `true` (Linux), `false` (Windows and MacOS)                |
-| `enable_streaming`                   | create a device for streaming (streaming feature only)                        | `Always`                                                   |
+| `enable_streaming`                   | create a device for streaming (`streaming` feature only)                      | `Always`                                                   |
 | `enable_cover_image_cache`           | store album's cover images in the cache folder                                | `true`                                                     |
+| `notify_streaming_only`              | only notify when client is streaming (`streaming` and `notify` feature only)  | `false`                                                    |
 | `default_device`                     | the default device to connect to on startup if no playing device found        | `spotify-player`                                           |
 | `play_icon`                          | the icon to indicate playing state of a Spotify item                          | `▶`                                                       |
 | `pause_icon`                         | the icon to indicate pause state of a Spotify item                            | `▌▌`                                                       |
