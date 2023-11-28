@@ -77,6 +77,9 @@ pub struct AppConfig {
     pub default_device: String,
 
     pub device: DeviceConfig,
+
+    #[cfg(all(feature = "streaming", feature = "notify"))]
+    pub notify_streaming_only: bool,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -246,6 +249,8 @@ impl Default for AppConfig {
             default_device: "spotify-player".to_string(),
 
             device: DeviceConfig::default(),
+
+            notify_streaming_only: false,
         }
     }
 }
