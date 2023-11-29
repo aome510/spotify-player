@@ -72,6 +72,9 @@ pub struct AppConfig {
     #[cfg(feature = "streaming")]
     pub enable_streaming: StreamingType,
 
+    #[cfg(feature = "notify")]
+    pub enable_notify: bool,
+
     pub enable_cover_image_cache: bool,
 
     pub default_device: String,
@@ -244,12 +247,16 @@ impl Default for AppConfig {
             #[cfg(feature = "streaming")]
             enable_streaming: StreamingType::Always,
 
+            #[cfg(feature = "notify")]
+            enable_notify: true,
+
             enable_cover_image_cache: true,
 
             default_device: "spotify-player".to_string(),
 
             device: DeviceConfig::default(),
 
+            #[cfg(all(feature = "streaming", feature = "notify"))]
             notify_streaming_only: false,
         }
     }
