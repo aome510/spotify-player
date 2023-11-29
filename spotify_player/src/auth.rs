@@ -128,17 +128,10 @@ pub async fn new_session(auth_config: &AuthConfig, reauth: bool) -> Result<Sessi
                 }
                 Err(err) => match err {
                     SessionError::AuthenticationError(err) => {
-                        let msg =
-                            format!("Failed to authenticate using cached credentials: {err:#}");
-                        if reauth {
-                            eprintln!("{msg}");
-                            new_session_with_new_creds(auth_config).await
-                        } else {
-                            anyhow::bail!(msg);
-                        }
+                        anyhow::bail!("Failed to authenticate using cached credentials: {err:#}");
                     }
                     SessionError::IoError(err) => {
-                        anyhow::bail!("{err}\nPlease check your internet connection.");
+                        anyhow::bail!("{err:#}\nPlease check your internet connection.");
                     }
                 },
             }
