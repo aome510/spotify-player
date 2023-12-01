@@ -48,6 +48,7 @@ All configuration files should be placed inside the application's configuration 
 | `liked_icon`                         | the icon to indicate the liked state of a song                                           | `♥`                                                       |
 | `border_type`                        | the type of the application's borders                                                    | `Plain`                                                    |
 | `progress_bar_type`                  | the type of the playback progress bar                                                    | `Rectangle`                                                |
+| `album_format`                  | how the name of the album is formatted in the artist's album list                                                    | `YearName`                                                |
 | `playback_window_position`           | the position of the playback window                                                      | `Top`                                                      |
 | `playback_window_width`              | the width of the playback window                                                         | `6`                                                        |
 | `cover_img_width`                    | the width of the cover image (`image` feature only)                                      | `5`                                                        |
@@ -80,6 +81,7 @@ All configuration files should be placed inside the application's configuration 
 - `playback_window_position` can only be either `Top` or `Bottom`.
 - `border_type` can be either `Hidden`, `Plain`, `Rounded`, `Double` or `Thick`.
 - `progress_bar_type` can be either `Rectangle` or `Line`.
+- `album_format` can be either `Name` or `YearName`.
 - `notify_streaming_only=true` and `enable_streaming=DaemonOnly` can be set to avoid sending multiple notifications when both daemon and UI are running.
 
 #### Media control

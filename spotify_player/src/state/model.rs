@@ -318,6 +318,16 @@ impl Album {
             artists: from_simplified_artists_to_artists(album.artists),
         })
     }
+
+
+    /// gets the track's album information
+    pub fn year(&self) -> String {
+        self.release_date
+            .split('-')
+            .next()
+            .unwrap_or("")
+            .to_string()
+    }
 }
 
 impl From<rspotify_model::FullAlbum> for Album {
@@ -335,9 +345,10 @@ impl std::fmt::Display for Album {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{} • {}",
+            "{} • {} ({})",
             self.name,
-            map_join(&self.artists, |a| &a.name, ", ")
+            map_join(&self.artists, |a| &a.name, ", "),
+            self.year()
         )
     }
 }
