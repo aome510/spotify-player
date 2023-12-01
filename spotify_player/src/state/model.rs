@@ -319,7 +319,6 @@ impl Album {
         })
     }
 
-
     /// gets the track's album information
     pub fn year(&self) -> String {
         self.release_date

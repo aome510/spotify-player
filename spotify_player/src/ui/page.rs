@@ -622,9 +622,8 @@ fn render_artist_context_page_windows(
                 (
                     match state.configs.app_config.album_format {
                         config::AlbumFormat::Name => a.name.clone(),
-                        config::AlbumFormat::YearName => format!("({1}) {0}", a.name, a.year())
-                    }
-                    ,
+                        config::AlbumFormat::YearName => format!("({1}) {0}", a.name, a.year()),
+                    },
                     false,
                 )
             })
