@@ -1,6 +1,7 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, io::Write, path::Path};
 
 use once_cell::sync::Lazy;
+use serde::Serialize;
 
 use super::model::*;
 
@@ -87,4 +88,18 @@ impl UserData {
     pub fn is_liked_track(&self, track: &Track) -> bool {
         self.saved_tracks.contains_key(&track.id.uri())
     }
+}
+
+pub fn store_data_into_cache<T: Serialize>(
+    name: &str,
+    cache_folder: &Path,
+    data: &T,
+) -> std::io::Result<()> {
+    let path = cache_folder.join(name);
+    let mut f = std::fs::File::create(path)?;
+
+    let data = serde_json::to_string(&data)?;
+    f.write_all(data.as_bytes())?;
+
+    Ok(())
 }
