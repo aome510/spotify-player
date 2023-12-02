@@ -327,7 +327,7 @@ fn main() -> Result<()> {
             // log the application's configurations
             tracing::info!("Configurations: {:?}", configs);
 
-            let state = std::sync::Arc::new(state::State::new(configs));
+            let state = std::sync::Arc::new(state::State::new(configs)?);
 
             #[cfg(feature = "daemon")]
             {

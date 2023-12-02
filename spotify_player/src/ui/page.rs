@@ -722,7 +722,11 @@ pub fn render_track_table_window(
                 Cell::from(t.display_name()),
                 Cell::from(t.artists_info()),
                 Cell::from(t.album_info()),
-                Cell::from(crate::utils::format_duration(&t.duration)),
+                Cell::from(format!(
+                    "{}:{:02}",
+                    t.duration.as_secs() / 60,
+                    t.duration.as_secs() % 60,
+                )),
             ])
             .style(style)
         })

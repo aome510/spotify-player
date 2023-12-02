@@ -1,4 +1,4 @@
-use std::{borrow::Cow, io::Write, sync::Arc};
+use std::{borrow::Cow, collections::HashMap, io::Write, sync::Arc};
 
 #[cfg(feature = "streaming")]
 use crate::streaming;
@@ -238,7 +238,7 @@ impl Client {
                         .write()
                         .caches
                         .lyrics
-                        .insert(query, result, *CACHE_DURATION);
+                        .insert(query, result, *TTL_CACHE_DURATION);
                 }
             }
             ClientRequest::ConnectDevice(id) => {
@@ -272,14 +272,32 @@ impl Client {
             }
             ClientRequest::GetUserPlaylists => {
                 let playlists = self.current_user_playlists().await?;
+                store_data_into_file_cache(
+                    FileCacheKey::Playlists,
+                    &state.configs.cache_folder,
+                    &playlists,
+                )
+                .context("store user's playlists into the cache folder")?;
                 state.data.write().user_data.playlists = playlists;
             }
             ClientRequest::GetUserFollowedArtists => {
                 let artists = self.current_user_followed_artists().await?;
+                store_data_into_file_cache(
+                    FileCacheKey::FollowedArtists,
+                    &state.configs.cache_folder,
+                    &artists,
+                )
+                .context("store user's followed artists into the cache folder")?;
                 state.data.write().user_data.followed_artists = artists;
             }
             ClientRequest::GetUserSavedAlbums => {
                 let albums = self.current_user_saved_albums().await?;
+                store_data_into_file_cache(
+                    FileCacheKey::SavedAlbums,
+                    &state.configs.cache_folder,
+                    &albums,
+                )
+                .context("store user's saved albums into the cache folder")?;
                 state.data.write().user_data.saved_albums = albums;
             }
             ClientRequest::GetUserTopTracks => {
@@ -292,22 +310,32 @@ impl Client {
                             tracks,
                             desc: "User's top tracks".to_string(),
                         },
-                        *CACHE_DURATION,
+                        *TTL_CACHE_DURATION,
                     );
                 }
             }
             ClientRequest::GetUserSavedTracks => {
                 let tracks = self.current_user_saved_tracks().await?;
+                let tracks_hm = tracks
+                    .iter()
+                    .map(|t| (t.id.uri(), t.clone()))
+                    .collect::<HashMap<_, _>>();
+                store_data_into_file_cache(
+                    FileCacheKey::SavedTracks,
+                    &state.configs.cache_folder,
+                    &tracks_hm,
+                )
+                .context("store user's saved tracks into the cache folder")?;
+
                 let mut data = state.data.write();
-                data.user_data.saved_tracks =
-                    tracks.iter().map(|t| (t.id.uri(), t.clone())).collect();
+                data.user_data.saved_tracks = tracks_hm;
                 data.caches.context.insert(
                     USER_LIKED_TRACKS_ID.uri.to_owned(),
                     Context::Tracks {
                         tracks,
                         desc: "User's liked tracks".to_string(),
                     },
-                    *CACHE_DURATION,
+                    *TTL_CACHE_DURATION,
                 );
             }
             ClientRequest::GetUserRecentlyPlayedTracks => {
@@ -320,7 +348,7 @@ impl Client {
                             tracks,
                             desc: "User's recently played tracks".to_string(),
                         },
-                        *CACHE_DURATION,
+                        *TTL_CACHE_DURATION,
                     );
                 }
             }
@@ -345,7 +373,7 @@ impl Client {
                         .write()
                         .caches
                         .context
-                        .insert(uri, context, *CACHE_DURATION);
+                        .insert(uri, context, *TTL_CACHE_DURATION);
                 }
             }
             ClientRequest::Search(query) => {
@@ -357,7 +385,7 @@ impl Client {
                         .write()
                         .caches
                         .search
-                        .insert(query, results, *CACHE_DURATION);
+                        .insert(query, results, *TTL_CACHE_DURATION);
                 }
             }
             ClientRequest::GetRadioTracks {
@@ -374,7 +402,7 @@ impl Client {
                             tracks,
                             desc: format!("{name} Radio"),
                         },
-                        *CACHE_DURATION,
+                        *TTL_CACHE_DURATION,
                     );
                 }
             }
@@ -1329,7 +1357,7 @@ impl Client {
                 .write()
                 .caches
                 .images
-                .insert(url.to_owned(), image, *CACHE_DURATION);
+                .insert(url.to_owned(), image, *TTL_CACHE_DURATION);
         }
 
         // notify user about the playback's change if any
