@@ -2,8 +2,8 @@ pub use rspotify::model as rspotify_model;
 use rspotify::model::CurrentPlaybackContext;
 pub use rspotify::model::{AlbumId, ArtistId, Id, PlaylistId, TrackId, UserId};
 
-use crate::utils::{format_duration, map_join};
-use serde::Serialize;
+use crate::utils::map_join;
+use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 
 #[derive(Serialize, Clone, Debug)]
@@ -112,28 +112,20 @@ pub struct Device {
     pub name: String,
 }
 
-#[derive(Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 /// A Spotify track
 pub struct Track {
     pub id: TrackId<'static>,
     pub name: String,
     pub artists: Vec<Artist>,
     pub album: Option<Album>,
-    #[serde(serialize_with = "serialize_duration")]
-    pub duration: chrono::Duration,
+    pub duration: std::time::Duration,
     pub explicit: bool,
     #[serde(skip)]
     pub added_at: u64,
 }
 
-pub fn serialize_duration<S>(dur: &chrono::Duration, s: S) -> Result<S::Ok, S::Error>
-where
-    S: serde::Serializer,
-{
-    s.serialize_str(&format_duration(dur))
-}
-
-#[derive(Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 /// A Spotify album
 pub struct Album {
     pub id: AlbumId<'static>,
@@ -142,14 +134,14 @@ pub struct Album {
     pub artists: Vec<Artist>,
 }
 
-#[derive(Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 /// A Spotify artist
 pub struct Artist {
     pub id: ArtistId<'static>,
     pub name: String,
 }
 
-#[derive(Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 /// A Spotify playlist
 pub struct Playlist {
     pub id: PlaylistId<'static>,
@@ -265,7 +257,7 @@ impl Track {
                 name: track.name,
                 artists: from_simplified_artists_to_artists(track.artists),
                 album: None,
-                duration: track.duration,
+                duration: track.duration.to_std().expect("valid chrono duration"),
                 explicit: track.explicit,
                 added_at: 0,
             })
@@ -286,7 +278,7 @@ impl Track {
                 name: track.name,
                 artists: from_simplified_artists_to_artists(track.artists),
                 album: Album::try_from_simplified_album(track.album),
-                duration: track.duration,
+                duration: track.duration.to_std().expect("valid chrono duration"),
                 explicit: track.explicit,
                 added_at: 0,
             })

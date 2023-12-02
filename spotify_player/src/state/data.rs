@@ -1,7 +1,7 @@
-use std::{collections::HashMap, io::Write, path::Path};
+use std::{collections::HashMap, path::Path};
 
 use once_cell::sync::Lazy;
-use serde::Serialize;
+use serde::{de::DeserializeOwned, Serialize};
 
 use super::model::*;
 
@@ -19,7 +19,6 @@ pub enum FileCacheKey {
 pub static CACHE_DURATION: Lazy<std::time::Duration> =
     Lazy::new(|| std::time::Duration::from_secs(60 * 60 * 3));
 
-#[derive(Default)]
 /// the application's data
 pub struct AppData {
     pub user_data: UserData,
@@ -27,7 +26,7 @@ pub struct AppData {
     pub browse: BrowseData,
 }
 
-#[derive(Default, Debug)]
+#[derive(Debug)]
 /// current user's data
 pub struct UserData {
     pub user: Option<rspotify_model::PrivateUser>,
@@ -53,8 +52,8 @@ pub struct BrowseData {
     pub category_playlists: HashMap<String, Vec<Playlist>>,
 }
 
-impl Default for MemoryCaches {
-    fn default() -> Self {
+impl MemoryCaches {
+    pub fn new() -> Self {
         Self {
             context: ttl_cache::TtlCache::new(64),
             search: ttl_cache::TtlCache::new(64),
@@ -67,6 +66,14 @@ impl Default for MemoryCaches {
 }
 
 impl AppData {
+    pub fn new(cache_folder: &Path) -> Self {
+        Self {
+            user_data: UserData::new_from_file_caches(cache_folder),
+            caches: MemoryCaches::new(),
+            browse: BrowseData::default(),
+        }
+    }
+
     pub fn get_tracks_by_id_mut(&mut self, id: &ContextId) -> Option<&mut Vec<Track>> {
         self.caches.context.get_mut(&id.uri()).map(|c| match c {
             Context::Album { tracks, .. } => tracks,
@@ -80,6 +87,24 @@ impl AppData {
 }
 
 impl UserData {
+    /// constructs a new user data based on file caches
+    pub fn new_from_file_caches(cache_folder: &Path) -> Self {
+        Self {
+            user: None,
+            playlists: load_data_from_file_cache(FileCacheKey::Playlists, cache_folder)
+                .unwrap_or_default(),
+            followed_artists: load_data_from_file_cache(
+                FileCacheKey::FollowedArtists,
+                cache_folder,
+            )
+            .unwrap_or_default(),
+            saved_albums: load_data_from_file_cache(FileCacheKey::SavedAlbums, cache_folder)
+                .unwrap_or_default(),
+            saved_tracks: load_data_from_file_cache(FileCacheKey::SavedTracks, cache_folder)
+                .unwrap_or_default(),
+        }
+    }
+
     /// returns a list of playlists that are **possibly** modifiable by user
     pub fn modifiable_playlists(&self) -> Vec<&Playlist> {
         match self.user {
@@ -104,10 +129,17 @@ pub fn store_data_into_file_cache<T: Serialize>(
     data: &T,
 ) -> std::io::Result<()> {
     let path = cache_folder.join(format!("{key:?}_cache.json"));
-    let mut f = std::fs::File::create(path)?;
-
-    let data = serde_json::to_string(&data)?;
-    f.write_all(data.as_bytes())?;
-
+    let f = std::fs::File::create(path)?;
+    serde_json::to_writer(f, data)?;
     Ok(())
+}
+
+pub fn load_data_from_file_cache<T>(key: FileCacheKey, cache_folder: &Path) -> std::io::Result<T>
+where
+    T: DeserializeOwned,
+{
+    let path = cache_folder.join(format!("{key:?}_cache.json"));
+    let f = std::fs::File::open(path)?;
+    let data = serde_json::from_reader(f)?;
+    Ok(data)
 }

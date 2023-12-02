@@ -60,7 +60,7 @@ impl State {
             configs,
             ui: Mutex::new(ui),
             player: RwLock::new(PlayerState::default()),
-            data: RwLock::new(AppData::default()),
+            data: RwLock::new(AppData::new(&configs.cache_folder)),
         }
     }
 }
