@@ -66,12 +66,12 @@ impl MemoryCaches {
 }
 
 impl AppData {
-    pub fn new(cache_folder: &Path) -> Self {
-        Self {
-            user_data: UserData::new_from_file_caches(cache_folder),
+    pub fn new(cache_folder: &Path) -> anyhow::Result<Self> {
+        Ok(Self {
+            user_data: UserData::new_from_file_caches(cache_folder)?,
             caches: MemoryCaches::new(),
             browse: BrowseData::default(),
-        }
+        })
     }
 
     pub fn get_tracks_by_id_mut(&mut self, id: &ContextId) -> Option<&mut Vec<Track>> {
@@ -88,21 +88,21 @@ impl AppData {
 
 impl UserData {
     /// constructs a new user data based on file caches
-    pub fn new_from_file_caches(cache_folder: &Path) -> Self {
-        Self {
+    pub fn new_from_file_caches(cache_folder: &Path) -> anyhow::Result<Self> {
+        Ok(Self {
             user: None,
-            playlists: load_data_from_file_cache(FileCacheKey::Playlists, cache_folder)
+            playlists: load_data_from_file_cache(FileCacheKey::Playlists, cache_folder)?
                 .unwrap_or_default(),
             followed_artists: load_data_from_file_cache(
                 FileCacheKey::FollowedArtists,
                 cache_folder,
-            )
+            )?
             .unwrap_or_default(),
-            saved_albums: load_data_from_file_cache(FileCacheKey::SavedAlbums, cache_folder)
+            saved_albums: load_data_from_file_cache(FileCacheKey::SavedAlbums, cache_folder)?
                 .unwrap_or_default(),
-            saved_tracks: load_data_from_file_cache(FileCacheKey::SavedTracks, cache_folder)
+            saved_tracks: load_data_from_file_cache(FileCacheKey::SavedTracks, cache_folder)?
                 .unwrap_or_default(),
-        }
+        })
     }
 
     /// returns a list of playlists that are **possibly** modifiable by user
@@ -134,12 +134,21 @@ pub fn store_data_into_file_cache<T: Serialize>(
     Ok(())
 }
 
-pub fn load_data_from_file_cache<T>(key: FileCacheKey, cache_folder: &Path) -> std::io::Result<T>
+pub fn load_data_from_file_cache<T>(
+    key: FileCacheKey,
+    cache_folder: &Path,
+) -> std::io::Result<Option<T>>
 where
     T: DeserializeOwned,
 {
     let path = cache_folder.join(format!("{key:?}_cache.json"));
-    let f = std::fs::File::open(path)?;
-    let data = serde_json::from_reader(f)?;
-    Ok(data)
+    if path.exists() {
+        tracing::info!("Loading {key:?} data from {}...", path.display());
+        let f = std::fs::File::open(path)?;
+        let data = serde_json::from_reader(f)?;
+        tracing::info!("Successfully loaded {key:?} data!");
+        Ok(Some(data))
+    } else {
+        Ok(None)
+    }
 }
