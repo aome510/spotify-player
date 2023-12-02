@@ -272,14 +272,18 @@ impl Client {
             }
             ClientRequest::GetUserPlaylists => {
                 let playlists = self.current_user_playlists().await?;
-                store_data_into_cache("user_playlists", &state.configs.cache_folder, &playlists)
-                    .context("store user's playlists into the cache folder")?;
+                store_data_into_file_cache(
+                    FileCacheKey::Playlists,
+                    &state.configs.cache_folder,
+                    &playlists,
+                )
+                .context("store user's playlists into the cache folder")?;
                 state.data.write().user_data.playlists = playlists;
             }
             ClientRequest::GetUserFollowedArtists => {
                 let artists = self.current_user_followed_artists().await?;
-                store_data_into_cache(
-                    "user_followed_artists",
+                store_data_into_file_cache(
+                    FileCacheKey::FollowedArtists,
                     &state.configs.cache_folder,
                     &artists,
                 )
@@ -288,8 +292,12 @@ impl Client {
             }
             ClientRequest::GetUserSavedAlbums => {
                 let albums = self.current_user_saved_albums().await?;
-                store_data_into_cache("user_saved_albums", &state.configs.cache_folder, &albums)
-                    .context("store user's saved albums into the cache folder")?;
+                store_data_into_file_cache(
+                    FileCacheKey::SavedAlbums,
+                    &state.configs.cache_folder,
+                    &albums,
+                )
+                .context("store user's saved albums into the cache folder")?;
                 state.data.write().user_data.saved_albums = albums;
             }
             ClientRequest::GetUserTopTracks => {
@@ -312,8 +320,12 @@ impl Client {
                     .iter()
                     .map(|t| (t.id.uri(), t.clone()))
                     .collect::<HashMap<_, _>>();
-                store_data_into_cache("user_saved_tracks", &state.configs.cache_folder, &tracks_hm)
-                    .context("store user's saved tracks into the cache folder")?;
+                store_data_into_file_cache(
+                    FileCacheKey::SavedTracks,
+                    &state.configs.cache_folder,
+                    &tracks_hm,
+                )
+                .context("store user's saved tracks into the cache folder")?;
 
                 let mut data = state.data.write();
                 data.user_data.saved_tracks = tracks_hm;

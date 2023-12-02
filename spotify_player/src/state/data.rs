@@ -7,6 +7,14 @@ use super::model::*;
 
 pub type DataReadGuard<'a> = parking_lot::RwLockReadGuard<'a, AppData>;
 
+#[derive(Debug)]
+pub enum FileCacheKey {
+    Playlists,
+    FollowedArtists,
+    SavedAlbums,
+    SavedTracks,
+}
+
 // cache duration, which is default to be 3h
 pub static CACHE_DURATION: Lazy<std::time::Duration> =
     Lazy::new(|| std::time::Duration::from_secs(60 * 60 * 3));
@@ -15,7 +23,7 @@ pub static CACHE_DURATION: Lazy<std::time::Duration> =
 /// the application's data
 pub struct AppData {
     pub user_data: UserData,
-    pub caches: Caches,
+    pub caches: MemoryCaches,
     pub browse: BrowseData,
 }
 
@@ -29,8 +37,8 @@ pub struct UserData {
     pub saved_tracks: HashMap<String, Track>,
 }
 
-/// the application's caches
-pub struct Caches {
+/// the application's in-memory caches
+pub struct MemoryCaches {
     pub context: ttl_cache::TtlCache<String, Context>,
     pub search: ttl_cache::TtlCache<String, SearchResults>,
     #[cfg(feature = "lyric-finder")]
@@ -45,7 +53,7 @@ pub struct BrowseData {
     pub category_playlists: HashMap<String, Vec<Playlist>>,
 }
 
-impl Default for Caches {
+impl Default for MemoryCaches {
     fn default() -> Self {
         Self {
             context: ttl_cache::TtlCache::new(64),
@@ -90,12 +98,12 @@ impl UserData {
     }
 }
 
-pub fn store_data_into_cache<T: Serialize>(
-    name: &str,
+pub fn store_data_into_file_cache<T: Serialize>(
+    key: FileCacheKey,
     cache_folder: &Path,
     data: &T,
 ) -> std::io::Result<()> {
-    let path = cache_folder.join(name);
+    let path = cache_folder.join(format!("{key:?}_cache.json"));
     let mut f = std::fs::File::create(path)?;
 
     let data = serde_json::to_string(&data)?;
