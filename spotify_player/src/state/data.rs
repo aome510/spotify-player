@@ -15,8 +15,8 @@ pub enum FileCacheKey {
     SavedTracks,
 }
 
-// cache duration, which is default to be 3h
-pub static CACHE_DURATION: Lazy<std::time::Duration> =
+/// default time-to-live cache duration
+pub static TTL_CACHE_DURATION: Lazy<std::time::Duration> =
     Lazy::new(|| std::time::Duration::from_secs(60 * 60 * 3));
 
 /// the application's data
@@ -47,6 +47,7 @@ pub struct MemoryCaches {
 }
 
 #[derive(Default, Debug)]
+/// Spotify browse data
 pub struct BrowseData {
     pub categories: Vec<Category>,
     pub category_playlists: HashMap<String, Vec<Playlist>>,
