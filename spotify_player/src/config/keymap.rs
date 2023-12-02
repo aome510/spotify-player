@@ -183,6 +183,10 @@ impl Default for KeymapConfig {
                     command: Command::PreviousPage,
                 },
                 Keymap {
+                    key_sequence: "O".into(),
+                    command: Command::OpenSpotifyLinkFromClipboard,
+                },
+                Keymap {
                     key_sequence: "?".into(),
                     command: Command::OpenCommandHelp,
                 },

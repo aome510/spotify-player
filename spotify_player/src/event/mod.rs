@@ -359,6 +359,9 @@ fn handle_global_command(
                 ui.popup = None;
             }
         }
+        Command::OpenSpotifyLinkFromClipboard => {
+            todo!()
+        }
         #[cfg(feature = "lyric-finder")]
         Command::LyricPage => {
             if let Some(track) = state.player.read().current_playing_track() {

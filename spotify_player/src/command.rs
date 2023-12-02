@@ -62,6 +62,7 @@ pub enum Command {
     SearchPage,
     BrowsePage,
     PreviousPage,
+    OpenSpotifyLinkFromClipboard,
 
     SortTrackByTitle,
     SortTrackByArtists,
@@ -198,6 +199,7 @@ impl Command {
             Self::SearchPage => "go to the search page",
             Self::BrowsePage => "go to the browse page",
             Self::PreviousPage => "go to the previous page",
+            Self::OpenSpotifyLinkFromClipboard => "open a Spotify link from clipboard",
             Self::SortTrackByTitle => "sort the track table (if any) by track's title",
             Self::SortTrackByArtists => "sort the track table (if any) by track's artists",
             Self::SortTrackByAlbum => "sort the track table (if any) by track's album",
