@@ -22,19 +22,19 @@ jobs:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             container: rust
-            dependencies: "libssl-dev libasound2-dev libdbus-1-dev"
+            dependencies: "libssl-dev libasound2-dev libdbus-1-dev libxcb-shape0-dev libxcb-xfixes0-dev"
           - os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
             container: rustembedded/cross:aarch64-unknown-linux-gnu
             cross_arch: "arm64"
             pkg_config_path: "/usr/lib/aarch64-linux-gnu/pkgconfig/"
-            dependencies: "libssl-dev:arm64 libasound2-dev:arm64 libdbus-1-dev:arm64"
+            dependencies: "libssl-dev:arm64 libasound2-dev:arm64 libdbus-1-dev:arm64 libxcb-shape0-dev:arm64 libxcb-xfixes0-dev:arm64"
           - os: ubuntu-latest
             target: armv7-unknown-linux-gnueabihf
             cross_arch: "armhf"
             pkg_config_path: "/usr/lib/arm-linux-gnueabihf/pkgconfig/"
             container: rustembedded/cross:armv7-unknown-linux-gnueabihf
-            dependencies: "libssl-dev:armhf libasound2-dev:armhf libdbus-1-dev:armhf"
+            dependencies: "libssl-dev:armhf libasound2-dev:armhf libdbus-1-dev:armhf libxcb-shape0-dev:armhf libxcb-xfixes0-dev:armhf"
           - os: windows-latest
             target: x86_64-pc-windows-msvc
 

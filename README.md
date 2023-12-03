@@ -93,14 +93,10 @@ A Spotify Premium account is **required**.
 ##### Linux
 
 - [Rust and cargo](https://www.rust-lang.org/tools/install) as the build dependencies
-- `openssl`, `alsa-lib` (`streaming` feature), `libdbus` (`media-control` feature) system libraries.
-  - On Debian based systems, run the below command to install application's dependencies:
+- install `openssl`, `alsa-lib` (`streaming` feature), `libdbus` (`media-control` feature), `libxcb` system libraries.
+  - For example, on Debian based systems, run the below command to install application's dependencies:
     ```shell
-    sudo apt install libssl-dev libasound2-dev libdbus-1-dev
-    ```
-  - On Fedora based systems, run the below command to install application's dependencies:
-    ```shell
-    sudo yum install openssl-devel alsa-lib-devel dbus-devel
+    sudo apt install libssl-dev libasound2-dev libdbus-1-dev libxcb-shape0-dev libxcb-xfixes0-dev
     ```
 
 ### Binaries
@@ -382,11 +378,12 @@ List of supported commands:
 | `SearchPage`                   | go to the search page                                                   | `g s`              |
 | `BrowsePage`                   | go to the browse page                                                   | `g b`              |
 | `PreviousPage`                 | go to the previous page                                                 | `backspace`, `C-q` |
+| `OpenSpotifyLinkFromClipboard` | open a Spotify link from clipboard                                      | `O`                |
 | `SortTrackByTitle`             | sort the track table (if any) by track's title                          | `s t`              |
 | `SortTrackByArtists`           | sort the track table (if any) by track's artists                        | `s a`              |
 | `SortTrackByAlbum`             | sort the track table (if any) by track's album                          | `s A`              |
-| `SortTrackByDuration`          | sort the track table (if any) by track's duration                       | `s d`              |
 | `SortTrackByAddedDate`         | sort the track table (if any) by track's added date                     | `s D`              |
+| `SortTrackByDuration`          | sort the track table (if any) by track's duration                       | `s d`              |
 | `ReverseOrder`                 | reverse the order of the track table (if any)                           | `s r`              |
 | `MovePlaylistItemUp`           | move playlist item up one position                                      | `C-k`              |
 | `MovePlaylistItemDown`         | move playlist item down one position                                    | `C-j`              |
