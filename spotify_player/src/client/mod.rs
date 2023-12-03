@@ -58,6 +58,9 @@ impl Client {
         }
     }
 
+    // unused variables:
+    // - `state` when the `streaming` feature is not enabled
+    #[allow(unused_variables)]
     pub async fn new_session(&self, state: &SharedState) -> Result<()> {
         let session = crate::auth::new_session(&self.spotify.auth_config, false).await?;
         *self.spotify.session.lock().await = Some(session);
@@ -126,12 +129,15 @@ impl Client {
         match request {
             PlayerRequest::NextTrack => self.spotify.next_track(device_id).await?,
             PlayerRequest::PreviousTrack => self.spotify.previous_track(device_id).await?,
+            #[cfg(feature = "media-control")]
             PlayerRequest::Resume => {
                 if !playback.is_playing {
                     self.spotify.resume_playback(device_id, None).await?;
                     playback.is_playing = true;
                 }
             }
+
+            #[cfg(feature = "media-control")]
             PlayerRequest::Pause => {
                 if playback.is_playing {
                     self.spotify.pause_playback(device_id).await?;

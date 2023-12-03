@@ -67,6 +67,9 @@ fn init_app_cli_arguments() -> Result<clap::ArgMatches> {
     Ok(cmd.get_matches())
 }
 
+// unused variables:
+// - `is_daemon` when the `streaming` feature is not enabled
+#[allow(unused_variables)]
 async fn init_spotify(
     client_pub: &flume::Sender<event::ClientRequest>,
     client: &client::Client,

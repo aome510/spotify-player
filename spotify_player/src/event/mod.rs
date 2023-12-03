@@ -7,7 +7,9 @@ use crate::{
 
 #[cfg(feature = "lyric-finder")]
 use crate::utils::map_join;
-use anyhow::{Context as _, Result};
+#[cfg(feature = "clipboard")]
+use anyhow::Context as _;
+use anyhow::Result;
 #[cfg(feature = "clipboard")]
 use copypasta::{ClipboardContext, ClipboardProvider};
 
@@ -20,7 +22,9 @@ mod window;
 pub enum PlayerRequest {
     NextTrack,
     PreviousTrack,
+    #[cfg(feature = "media-control")]
     Resume,
+    #[cfg(feature = "media-control")]
     Pause,
     ResumePause,
     SeekTrack(chrono::Duration),
