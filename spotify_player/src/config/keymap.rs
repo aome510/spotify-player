@@ -182,6 +182,7 @@ impl Default for KeymapConfig {
                     key_sequence: "C-q".into(),
                     command: Command::PreviousPage,
                 },
+                #[cfg(feature = "clipboard")]
                 Keymap {
                     key_sequence: "O".into(),
                     command: Command::OpenSpotifyLinkFromClipboard,

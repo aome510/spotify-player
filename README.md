@@ -10,6 +10,7 @@
   - [Spotify Connect](#spotify-connect)
   - [Streaming](#streaming)
   - [Lyric](#lyric)
+  - [Clipboard](#clipboard)
   - [Media Control](#media-control)
   - [Image](#image)
   - [Notify](#notify)
@@ -229,6 +230,10 @@ User can view lyric of the currently playing track by calling the `LyricPage` co
 
 Under the hood, `spotify_player` retrieves the song's lyric using [Genius.com](https://genius.com).
 
+### Clipboard
+
+To enable clipboard support, `spotify_player` needs to be built/installed with `clipboard` feature (**enabled** by default).
+
 ### Media Control
 
 To enable media control support, `spotify_player` needs to be built/installed with `media-control` feature (**enabled** by default) and set the `enable_media_control` config option to `true` in the [general configuration file](docs/config.md#media-control).
@@ -378,7 +383,7 @@ List of supported commands:
 | `SearchPage`                   | go to the search page                                                   | `g s`              |
 | `BrowsePage`                   | go to the browse page                                                   | `g b`              |
 | `PreviousPage`                 | go to the previous page                                                 | `backspace`, `C-q` |
-| `OpenSpotifyLinkFromClipboard` | open a Spotify link from clipboard                                      | `O`                |
+| `OpenSpotifyLinkFromClipboard` | open a Spotify link from clipboard (`clipboard` feature only)           | `O`                |
 | `SortTrackByTitle`             | sort the track table (if any) by track's title                          | `s t`              |
 | `SortTrackByArtists`           | sort the track table (if any) by track's artists                        | `s a`              |
 | `SortTrackByAlbum`             | sort the track table (if any) by track's album                          | `s A`              |
