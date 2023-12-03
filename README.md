@@ -10,6 +10,7 @@
   - [Spotify Connect](#spotify-connect)
   - [Streaming](#streaming)
   - [Lyric](#lyric)
+  - [Clipboard](#clipboard)
   - [Media Control](#media-control)
   - [Image](#image)
   - [Notify](#notify)
@@ -93,7 +94,7 @@ A Spotify Premium account is **required**.
 ##### Linux
 
 - [Rust and cargo](https://www.rust-lang.org/tools/install) as the build dependencies
-- install `openssl`, `alsa-lib` (`streaming` feature), `libdbus` (`media-control` feature), `libxcb` system libraries.
+- install `openssl`, `alsa-lib` (`streaming` feature), `libdbus` (`media-control` feature), `libxcb` (`clipboard` feature) system libraries.
   - For example, on Debian based systems, run the below command to install application's dependencies:
     ```shell
     sudo apt install libssl-dev libasound2-dev libdbus-1-dev libxcb-shape0-dev libxcb-xfixes0-dev
@@ -228,6 +229,10 @@ cargo install spotify_player --features lyric-finder
 User can view lyric of the currently playing track by calling the `LyricPage` command to go the lyric page. To do this, `spotify_player` needs to be built with a `lyric-finder` feature.
 
 Under the hood, `spotify_player` retrieves the song's lyric using [Genius.com](https://genius.com).
+
+### Clipboard
+
+To enable clipboard support, `spotify_player` needs to be built/installed with `clipboard` feature (**enabled** by default).
 
 ### Media Control
 
@@ -378,7 +383,7 @@ List of supported commands:
 | `SearchPage`                   | go to the search page                                                   | `g s`              |
 | `BrowsePage`                   | go to the browse page                                                   | `g b`              |
 | `PreviousPage`                 | go to the previous page                                                 | `backspace`, `C-q` |
-| `OpenSpotifyLinkFromClipboard` | open a Spotify link from clipboard                                      | `O`                |
+| `OpenSpotifyLinkFromClipboard` | open a Spotify link from clipboard (`clipboard` feature only)           | `O`                |
 | `SortTrackByTitle`             | sort the track table (if any) by track's title                          | `s t`              |
 | `SortTrackByArtists`           | sort the track table (if any) by track's artists                        | `s a`              |
 | `SortTrackByAlbum`             | sort the track table (if any) by track's album                          | `s A`              |

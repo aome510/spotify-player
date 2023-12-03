@@ -8,7 +8,8 @@ use crate::{
 #[cfg(feature = "lyric-finder")]
 use crate::utils::map_join;
 use anyhow::{Context as _, Result};
-use clipboard::{ClipboardContext, ClipboardProvider};
+#[cfg(feature = "clipboard")]
+use copypasta::{ClipboardContext, ClipboardProvider};
 
 mod page;
 mod popup;
@@ -360,6 +361,7 @@ fn handle_global_command(
                 ui.popup = None;
             }
         }
+        #[cfg(feature = "clipboard")]
         Command::OpenSpotifyLinkFromClipboard => {
             let content = get_clipboard_content().context("get clipboard's content")?;
             let re = regex::Regex::new(
@@ -462,8 +464,9 @@ fn handle_global_command(
     Ok(true)
 }
 
+#[cfg(feature = "clipboard")]
 fn get_clipboard_content() -> Result<String> {
-    let mut clipboard_ctx: ClipboardContext = match ClipboardProvider::new() {
+    let mut clipboard_ctx = match ClipboardContext::new() {
         Ok(ctx) => ctx,
         Err(err) => anyhow::bail!("{err:#}"),
     };
