@@ -23,7 +23,7 @@ jobs:
 
     steps:
       - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install libssl-dev libasound2-dev libdbus-1-dev
+        run: sudo apt-get update && sudo apt-get install libssl-dev libasound2-dev libdbus-1-dev libxcb-shape0-dev libxcb-xfixes0-dev
         if: ${{ runner.os == 'Linux' }}
 
       - name: Checkout source
