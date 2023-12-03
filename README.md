@@ -382,6 +382,7 @@ List of supported commands:
 | `SearchPage`                   | go to the search page                                                   | `g s`              |
 | `BrowsePage`                   | go to the browse page                                                   | `g b`              |
 | `PreviousPage`                 | go to the previous page                                                 | `backspace`, `C-q` |
+| `OpenSpotifyLinkFromClipboard` | open a Spotify link from clipboard                                      | `O`                |
 | `SortTrackByTitle`             | sort the track table (if any) by track's title                          | `s t`              |
 | `SortTrackByArtists`           | sort the track table (if any) by track's artists                        | `s a`              |
 | `SortTrackByAlbum`             | sort the track table (if any) by track's album                          | `s A`              |
