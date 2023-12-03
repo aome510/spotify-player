@@ -9,7 +9,7 @@ use crate::{
 use crate::utils::map_join;
 use anyhow::{Context as _, Result};
 #[cfg(feature = "clipboard")]
-use clipboard::{ClipboardContext, ClipboardProvider};
+use copypasta::{ClipboardContext, ClipboardProvider};
 
 mod page;
 mod popup;
@@ -466,7 +466,7 @@ fn handle_global_command(
 
 #[cfg(feature = "clipboard")]
 fn get_clipboard_content() -> Result<String> {
-    let mut clipboard_ctx: ClipboardContext = match ClipboardProvider::new() {
+    let mut clipboard_ctx = match ClipboardContext::new() {
         Ok(ctx) => ctx,
         Err(err) => anyhow::bail!("{err:#}"),
     };
