@@ -272,10 +272,8 @@ async fn start_app(state: state::SharedState, is_daemon: bool) -> Result<()> {
             // MacOS and Windows require an open window to be able to listen to media
             // control events. The below code will create an invisible window on startup
             // to listen to such events.
-            let event_loop = winit::event_loop::EventLoop::new();
-            event_loop.run(move |_, _, control_flow| {
-                *control_flow = winit::event_loop::ControlFlow::Wait;
-            });
+            let event_loop = winit::event_loop::EventLoop::new()?;
+            event_loop.run(move |_, _| {})?;
         }
     }
 

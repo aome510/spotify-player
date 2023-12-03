@@ -67,6 +67,7 @@ impl Client {
         #[cfg(feature = "streaming")]
         {
             self.new_streaming_connection(state).await;
+            // handle `ConnectDevice` separately as we don't want to block here
             self.client_pub.send(ClientRequest::ConnectDevice(None))?;
         }
 

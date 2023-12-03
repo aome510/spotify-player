@@ -1,9 +1,8 @@
 use crate::{config, state::*};
 use anyhow::{Context as AnyhowContext, Result};
-use tui::{layout::*, style::*, text::*, widgets::*};
+use tui::{layout::*, style::*, text::*, widgets::*, Frame};
 
 type Terminal = tui::Terminal<tui::backend::CrosstermBackend<std::io::Stdout>>;
-type Frame<'a> = tui::Frame<'a, tui::backend::CrosstermBackend<std::io::Stdout>>;
 
 mod page;
 mod playback;
