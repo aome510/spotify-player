@@ -57,8 +57,14 @@ jobs:
           command: fmt
           args: --all -- --check
 
-      - name: Cargo clippy
+      - name: Cargo clippy with all features
         uses: actions-rs/cargo@v1
         with:
           command: clippy
           args: --no-default-features --features ${{ env.RUST_FEATURES }} -- -D warnings
+
+      - name: Cargo clippy without features
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: --no-default-features -- -D warnings
