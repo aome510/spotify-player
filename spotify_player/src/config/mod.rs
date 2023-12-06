@@ -54,7 +54,6 @@ pub struct AppConfig {
     // layout configs
     pub border_type: BorderType,
     pub progress_bar_type: ProgressBarType,
-    pub album_format: AlbumFormat,
 
     pub playback_window_position: Position,
 
@@ -109,13 +108,6 @@ pub enum ProgressBarType {
     Rectangle,
 }
 config_parser_impl!(ProgressBarType);
-
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub enum AlbumFormat {
-    Name,
-    YearName,
-}
-config_parser_impl!(AlbumFormat);
 
 #[derive(Debug, Deserialize, Serialize, ConfigParse, Clone)]
 pub struct Command {
@@ -229,7 +221,6 @@ impl Default for AppConfig {
 
             border_type: BorderType::Plain,
             progress_bar_type: ProgressBarType::Rectangle,
-            album_format: AlbumFormat::YearName,
 
             playback_window_position: Position::Top,
 
