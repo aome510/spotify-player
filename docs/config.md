@@ -80,7 +80,6 @@ All configuration files should be placed inside the application's configuration 
 - `playback_window_position` can only be either `Top` or `Bottom`.
 - `border_type` can be either `Hidden`, `Plain`, `Rounded`, `Double` or `Thick`.
 - `progress_bar_type` can be either `Rectangle` or `Line`.
-- `album_format` can be either `Name` or `YearName`.
 - `notify_streaming_only=true` and `enable_streaming=DaemonOnly` can be set to avoid sending multiple notifications when both daemon and UI are running.
 
 #### Media control
