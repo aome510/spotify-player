@@ -180,6 +180,14 @@ fn try_connect_to_client(socket: &UdpSocket, configs: &state::Configs) -> Result
 pub fn handle_cli_subcommand(cmd: &str, args: &ArgMatches, configs: &state::Configs) -> Result<()> {
     let socket = UdpSocket::bind("127.0.0.1:0")?;
 
+    // handle `authenticate` command separately as `authenticate` doesn't require a client
+    if cmd == "authenticate" {
+        let auth_config = AuthConfig::new(configs)?;
+        let rt = tokio::runtime::Runtime::new()?;
+        rt.block_on(new_session_with_new_creds(&auth_config))?;
+        std::process::exit(0);
+    }
+
     try_connect_to_client(&socket, configs).context("try to connect to a client")?;
 
     // construct a socket request based on the CLI command and its arguments
@@ -191,12 +199,6 @@ pub fn handle_cli_subcommand(cmd: &str, args: &ArgMatches, configs: &state::Conf
         "like" => Request::Like {
             unlike: args.get_flag("unlike"),
         },
-        "authenticate" => {
-            let auth_config = AuthConfig::new(configs)?;
-            let rt = tokio::runtime::Runtime::new()?;
-            rt.block_on(new_session_with_new_creds(&auth_config))?;
-            std::process::exit(0);
-        }
         _ => unreachable!(),
     };
 
