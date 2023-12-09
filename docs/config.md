@@ -186,7 +186,7 @@ A theme's palette consists of the following fields:
 
 If a field is not specified, a default value based on the terminal's corresponding color will be used.
 
-A field can be set to be either a hex representation of a RGB color (e.g, `background = "#1e1f29"`) or a string representation of the color (e.g `red`, `bright_blue`, etc).
+A field's value can be set to be either a hex representation of a RGB color (e.g, `background = "#1e1f29"`) or a string representation of the color (e.g `red`, `bright_blue`, etc).
 
 More details about the palette's field naming can be found in the table in the [3-bit and 4-bit section](https://en.wikipedia.org/wiki/ANSI_escape_code#3-bit_and_4-bit).
 
@@ -206,7 +206,7 @@ To define application's component styles, the user can specify any of the below 
 - `table_header`
 - `selection`
 
-A field in the component styles is a `Style` struct which has three optional fields: `fg` (foreground), `bg` (background) and `modifiers` (terminal effects):
+A field in `component_style` is a struct with three **optional** fields: `fg` (foreground), `bg` (background) and `modifiers` (terminal effects):
 
 - `fg` and `bg` can be either a palette's color in a pascal case (e.g, `BrightBlack`, `Blue`, etc) or a hex representation of a RGB color (e.g, `"#1e1f29"`). The default values for `fg` and `bg` are the `palette`'s `foreground` and `background`.
 - `modifiers` can only consist of either `Italic`, `Bold` or `Reversed`. The default value for `modifiers` is `[]`.
