@@ -389,6 +389,8 @@ async fn handle_playback_request(
             PlayerRequest::StartPlayback(Playback::Context(context_id, None), Some(shuffle))
         }
         Command::PlayPause => PlayerRequest::ResumePause,
+        Command::Play => PlayerRequest::Resume,
+        Command::Pause => PlayerRequest::Pause,
         Command::Next => PlayerRequest::NextTrack,
         Command::Previous => PlayerRequest::PreviousTrack,
         Command::Shuffle => PlayerRequest::Shuffle,

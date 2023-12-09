@@ -97,6 +97,8 @@ pub enum Command {
     },
     StartRadio(ItemType, IdOrName),
     PlayPause,
+    Play,
+    Pause,
     Next,
     Previous,
     Shuffle,

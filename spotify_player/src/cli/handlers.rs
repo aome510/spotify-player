@@ -108,6 +108,8 @@ fn handle_playback_subcommand(args: &ArgMatches) -> Result<Request> {
             }
         },
         "play-pause" => Command::PlayPause,
+        "play" => Command::Play,
+        "pause" => Command::Pause,
         "next" => Command::Next,
         "previous" => Command::Previous,
         "shuffle" => Command::Shuffle,

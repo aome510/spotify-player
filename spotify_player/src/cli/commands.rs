@@ -90,6 +90,8 @@ pub fn init_playback_subcommand() -> Command {
         .subcommand_required(true)
         .subcommand(init_playback_start_subcommand())
         .subcommand(Command::new("play-pause").about("Toggle between play and pause"))
+        .subcommand(Command::new("play").about("Resume the current playback if stopped"))
+        .subcommand(Command::new("pause").about("Pause the current playback if playing"))
         .subcommand(Command::new("next").about("Skip to the next track"))
         .subcommand(Command::new("previous").about("Skip to the previous track"))
         .subcommand(Command::new("shuffle").about("Toggle the shuffle mode"))
