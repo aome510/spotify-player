@@ -1340,11 +1340,13 @@ impl Client {
             None => return Ok(()),
         };
 
-        let path = state.configs.cache_folder.join("image").join(format!(
+        let path = (format!(
             "{}-{}-cover.jpg",
             track.album.name,
             crate::utils::map_join(&track.album.artists, |a| &a.name, ", ")
-        ));
+        ))
+        .replace('/', ""); // don't want '/' character in the file's name
+        let path = state.configs.cache_folder.join("image").join(path);
 
         // Retrieve and save the new track's cover image into the cache folder.
         // The notify feature still requires the cover images to be stored inside the cache folder.
