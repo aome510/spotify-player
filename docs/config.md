@@ -139,19 +139,19 @@ More details on the above configuration options can be found under the [Librespo
 
 ## Themes
 
-`spotify_player` uses `theme.toml` to look for user-defined themes.
+`spotify_player` uses the `theme.toml` config file to look for user-defined themes.
 
 **An example of user-defined themes can be found in the example [`theme.toml`](../examples/theme.toml) file.**
 
-The application's theme can be modified by setting the `theme` option in `app.toml` or by specifying the `-t <THEME>` (`--theme <THEME>`) option when running the player.
+The application's theme can be modified by setting the `theme` config option in `app.toml` or by specifying the `-t <THEME>` (`--theme <THEME>`) CLI option when running the player.
 
-A theme has three main components: `name` (the theme's name), `palette` (the theme's color palette), `component_style` (a list of pre-defined styles for application's components).
+A theme has three main components: `name` (the theme's name), `palette` (the theme's color palette), `component_style` (styles for specific application's components).
 
-`name` is required when defining a new theme. If `palette` is not set, a palette based on the terminal's colorscheme will be used. If `component_style` is not specified, a default value will be used.
+`name` is required when defining a new theme. If `palette` is not set, a palette based on the terminal's colors will be used. If `component_style` is not set, a set of predefined component styles will be used.
 
 ### Use script to add theme
 
-[a `theme_parse` python script](../scripts/theme_parse) (require `pyaml` and `requests` libraries) can be used to parse [Iterm2 alacritty's color schemes](https://github.com/mbadolato/iTerm2-Color-Schemes/tree/master/alacritty) into `spotify_player` compatible theme configurations.
+[a `theme_parse` python script](../scripts/theme_parse) (require `pyaml` and `requests` libraries) can be used to parse [Iterm2 alacritty's color schemes](https://github.com/mbadolato/iTerm2-Color-Schemes/tree/master/alacritty) into a `spotify_player` compatible theme format.
 
 For example, you can run
 
@@ -184,8 +184,11 @@ A theme's palette consists of the following fields:
 - `bright_white`
 - `bright_yellow`
 
-If a field is not specified, its default value will be based on the terminal's corresponding color.
-If specified, a field's value must be set to be a hex representation of a RGB color. For example, `background = "#1e1f29"`.
+If a field is not specified, a default value based on the terminal's corresponding color will be used.
+
+A field can be set to be either a hex representation of a RGB color (e.g, `background = "#1e1f29"`) or a string representation of the color (e.g `red`, `bright_blue`, etc).
+
+More details about the palette's field naming can be found in the table in the [3-bit and 4-bit section](https://en.wikipedia.org/wiki/ANSI_escape_code#3-bit_and_4-bit).
 
 ### Component Styles
 
@@ -203,7 +206,10 @@ To define application's component styles, the user can specify any of the below 
 - `table_header`
 - `selection`
 
-A field in the component styles is a `Style` struct which has three optional fields: `fg`, `bg` and `modifiers`. `fg` and `bg` can be either a palette's color (string in pascal case) or a custom RGB color using the following format: `fg = { Rgb { r = ..., g = ..., b = ... } }`. The default values for `fg` and `bg` are the `palette`'s `fg` and `bg`. `modifiers` can only be `Italic`, `Bold` or `Reversed`.
+A field in the component styles is a `Style` struct which has three optional fields: `fg` (foreground), `bg` (background) and `modifiers` (terminal effects):
+
+- `fg` and `bg` can be either a palette's color in a pascal case (e.g, `BrightBlack`, `Blue`, etc) or a hex representation of a RGB color (e.g, `"#1e1f29"`). The default values for `fg` and `bg` are the `palette`'s `foreground` and `background`.
+- `modifiers` can only consist of either `Italic`, `Bold` or `Reversed`. The default value for `modifiers` is `[]`.
 
 Default value for application's component styles:
 

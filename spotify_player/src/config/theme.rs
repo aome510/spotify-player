@@ -83,7 +83,7 @@ pub struct Style {
     pub modifiers: Vec<StyleModifier>,
 }
 
-#[derive(Copy, Clone, Debug, Deserialize)]
+#[derive(Copy, Clone, Debug)]
 pub enum StyleColor {
     Black,
     Blue,
@@ -316,6 +316,49 @@ impl Style {
     pub fn modifiers(mut self, modifiers: Vec<StyleModifier>) -> Self {
         self.modifiers = modifiers;
         self
+    }
+}
+
+impl<'de> serde::de::Deserialize<'de> for StyleColor {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        fn rgb_from_hex(s: &str) -> Option<(u8, u8, u8)> {
+            if !s.starts_with('#') || s.len() != 7 {
+                None
+            } else {
+                Some((
+                    u8::from_str_radix(&s[1..3], 16).ok()?,
+                    u8::from_str_radix(&s[3..5], 16).ok()?,
+                    u8::from_str_radix(&s[5..7], 16).ok()?,
+                ))
+            }
+        }
+
+        let str = String::deserialize(deserializer)?;
+        Ok(match str.as_str() {
+            "Black" => StyleColor::Black,
+            "Blue" => StyleColor::Blue,
+            "Cyan" => StyleColor::Cyan,
+            "Green" => StyleColor::Green,
+            "Magenta" => StyleColor::Magenta,
+            "Red" => StyleColor::Red,
+            "White" => StyleColor::White,
+            "Yellow" => StyleColor::Yellow,
+            "BrightBlack" => StyleColor::BrightBlack,
+            "BrightWhite" => StyleColor::BrightWhite,
+            "BrightRed" => StyleColor::BrightRed,
+            "BrightMagenta" => StyleColor::BrightMagenta,
+            "BrightGreen" => StyleColor::BrightGreen,
+            "BrightCyan" => StyleColor::BrightCyan,
+            "BrightBlue" => StyleColor::BrightBlue,
+            "BrightYellow" => StyleColor::BrightYellow,
+            s => match rgb_from_hex(s) {
+                Some((r, g, b)) => StyleColor::Rgb { r, g, b },
+                None => return Err(serde::de::Error::custom(format!("invalid hex color: {s}"))),
+            },
+        })
     }
 }
 
