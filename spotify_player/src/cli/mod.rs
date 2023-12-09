@@ -2,13 +2,13 @@ mod client;
 mod commands;
 mod handlers;
 
+use crate::config;
 use rspotify::model::*;
 use serde::{Deserialize, Serialize};
 
 const MAX_REQUEST_SIZE: usize = 4096;
 
 pub use client::start_socket;
-pub use commands::*;
 pub use handlers::handle_cli_subcommand;
 
 #[derive(Debug, Serialize, Deserialize, clap::ValueEnum, Clone)]
@@ -97,6 +97,8 @@ pub enum Command {
     },
     StartRadio(ItemType, IdOrName),
     PlayPause,
+    Play,
+    Pause,
     Next,
     Previous,
     Shuffle,
@@ -142,4 +144,55 @@ impl ItemId {
             ItemId::Track(id) => id.uri(),
         }
     }
+}
+
+pub fn init_cli() -> anyhow::Result<clap::Command> {
+    let default_cache_folder = config::get_cache_folder_path()?;
+    let default_config_folder = config::get_config_folder_path()?;
+
+    let cmd = clap::Command::new(env!("CARGO_PKG_NAME"))
+        .version(env!("CARGO_PKG_VERSION"))
+        .about(env!("CARGO_PKG_DESCRIPTION"))
+        .author(env!("CARGO_PKG_AUTHORS"))
+        .subcommand(commands::init_get_subcommand())
+        .subcommand(commands::init_playback_subcommand())
+        .subcommand(commands::init_connect_subcommand())
+        .subcommand(commands::init_like_command())
+        .subcommand(commands::init_authenticate_command())
+        .subcommand(commands::init_playlist_subcommand())
+        .subcommand(commands::init_generate_command())
+        .arg(
+            clap::Arg::new("theme")
+                .short('t')
+                .long("theme")
+                .value_name("THEME")
+                .help("Application theme"),
+        )
+        .arg(
+            clap::Arg::new("config-folder")
+                .short('c')
+                .long("config-folder")
+                .value_name("FOLDER")
+                .default_value(default_config_folder.into_os_string())
+                .help("Path to the application's config folder"),
+        )
+        .arg(
+            clap::Arg::new("cache-folder")
+                .short('C')
+                .long("cache-folder")
+                .value_name("FOLDER")
+                .default_value(default_cache_folder.into_os_string())
+                .help("Path to the application's cache folder"),
+        );
+
+    #[cfg(feature = "daemon")]
+    let cmd = cmd.arg(
+        clap::Arg::new("daemon")
+            .short('d')
+            .long("daemon")
+            .action(clap::ArgAction::SetTrue)
+            .help("Running the application as a daemon"),
+    );
+
+    Ok(cmd)
 }

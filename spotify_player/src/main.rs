@@ -17,56 +17,6 @@ mod utils;
 use anyhow::{Context, Result};
 use std::io::Write;
 
-fn init_app_cli_arguments() -> Result<clap::ArgMatches> {
-    let default_cache_folder = config::get_cache_folder_path()?;
-    let default_config_folder = config::get_config_folder_path()?;
-
-    let cmd = clap::Command::new(env!("CARGO_PKG_NAME"))
-        .version(env!("CARGO_PKG_VERSION"))
-        .about(env!("CARGO_PKG_DESCRIPTION"))
-        .author(env!("CARGO_PKG_AUTHORS"))
-        .subcommand(cli::init_get_subcommand())
-        .subcommand(cli::init_playback_subcommand())
-        .subcommand(cli::init_connect_subcommand())
-        .subcommand(cli::init_like_command())
-        .subcommand(cli::init_authenticate_command())
-        .subcommand(cli::init_playlist_subcommand())
-        .arg(
-            clap::Arg::new("theme")
-                .short('t')
-                .long("theme")
-                .value_name("THEME")
-                .help("Application theme"),
-        )
-        .arg(
-            clap::Arg::new("config-folder")
-                .short('c')
-                .long("config-folder")
-                .value_name("FOLDER")
-                .default_value(default_config_folder.into_os_string())
-                .help("Path to the application's config folder"),
-        )
-        .arg(
-            clap::Arg::new("cache-folder")
-                .short('C')
-                .long("cache-folder")
-                .value_name("FOLDER")
-                .default_value(default_cache_folder.into_os_string())
-                .help("Path to the application's cache folder"),
-        );
-
-    #[cfg(feature = "daemon")]
-    let cmd = cmd.arg(
-        clap::Arg::new("daemon")
-            .short('d')
-            .long("daemon")
-            .action(clap::ArgAction::SetTrue)
-            .help("Running the application as a daemon"),
-    );
-
-    Ok(cmd.get_matches())
-}
-
 // unused variables:
 // - `is_daemon` when the `streaming` feature is not enabled
 #[allow(unused_variables)]
@@ -289,7 +239,7 @@ async fn start_app(state: state::SharedState, is_daemon: bool) -> Result<()> {
 
 fn main() -> Result<()> {
     // parse command line arguments
-    let args = init_app_cli_arguments()?;
+    let args = cli::init_cli()?.get_matches();
 
     // initialize the application's cache and config folders
     let config_folder: std::path::PathBuf = args

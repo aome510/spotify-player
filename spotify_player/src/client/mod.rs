@@ -129,7 +129,6 @@ impl Client {
         match request {
             PlayerRequest::NextTrack => self.spotify.next_track(device_id).await?,
             PlayerRequest::PreviousTrack => self.spotify.previous_track(device_id).await?,
-            #[cfg(feature = "media-control")]
             PlayerRequest::Resume => {
                 if !playback.is_playing {
                     self.spotify.resume_playback(device_id, None).await?;
@@ -137,7 +136,6 @@ impl Client {
                 }
             }
 
-            #[cfg(feature = "media-control")]
             PlayerRequest::Pause => {
                 if playback.is_playing {
                     self.spotify.pause_playback(device_id).await?;
@@ -1340,11 +1338,13 @@ impl Client {
             None => return Ok(()),
         };
 
-        let path = state.configs.cache_folder.join("image").join(format!(
+        let path = (format!(
             "{}-{}-cover.jpg",
             track.album.name,
             crate::utils::map_join(&track.album.artists, |a| &a.name, ", ")
-        ));
+        ))
+        .replace('/', ""); // don't want '/' character in the file's name
+        let path = state.configs.cache_folder.join("image").join(path);
 
         // Retrieve and save the new track's cover image into the cache folder.
         // The notify feature still requires the cover images to be stored inside the cache folder.

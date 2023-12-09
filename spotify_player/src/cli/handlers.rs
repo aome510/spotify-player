@@ -6,6 +6,7 @@ use crate::{
 use super::*;
 use anyhow::{Context, Result};
 use clap::{ArgMatches, Id};
+use clap_complete::{generate, Shell};
 use std::net::UdpSocket;
 
 fn receive_response(socket: &UdpSocket) -> Result<Response> {
@@ -108,6 +109,8 @@ fn handle_playback_subcommand(args: &ArgMatches) -> Result<Request> {
             }
         },
         "play-pause" => Command::PlayPause,
+        "play" => Command::Play,
+        "pause" => Command::Pause,
         "next" => Command::Next,
         "previous" => Command::Previous,
         "shuffle" => Command::Shuffle,
@@ -180,12 +183,24 @@ fn try_connect_to_client(socket: &UdpSocket, configs: &state::Configs) -> Result
 pub fn handle_cli_subcommand(cmd: &str, args: &ArgMatches, configs: &state::Configs) -> Result<()> {
     let socket = UdpSocket::bind("127.0.0.1:0")?;
 
-    // handle `authenticate` command separately as `authenticate` doesn't require a client
-    if cmd == "authenticate" {
-        let auth_config = AuthConfig::new(configs)?;
-        let rt = tokio::runtime::Runtime::new()?;
-        rt.block_on(new_session_with_new_creds(&auth_config))?;
-        std::process::exit(0);
+    // handle commands that don't require a client separately
+    match cmd {
+        "authenticate" => {
+            let auth_config = AuthConfig::new(configs)?;
+            let rt = tokio::runtime::Runtime::new()?;
+            rt.block_on(new_session_with_new_creds(&auth_config))?;
+            std::process::exit(0);
+        }
+        "generate" => {
+            let gen = *args
+                .get_one::<Shell>("shell")
+                .expect("shell argument is required");
+            let mut cmd = init_cli()?;
+            let name = cmd.get_name().to_string();
+            generate(gen, &mut cmd, name, &mut std::io::stdout());
+            std::process::exit(0);
+        }
+        _ => {}
     }
 
     try_connect_to_client(&socket, configs).context("try to connect to a client")?;
