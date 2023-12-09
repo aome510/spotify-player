@@ -1,3 +1,38 @@
+# a theme based on the application's `default` theme
+[[themes]]
+name = "default2"
+[themes.palette]
+# default theme doesn't have `foreground` and `background` specified
+black = "black"
+red = "red"
+green = "green"
+yellow = "yellow"
+blue = "blue"
+magenta = "magenta"
+cyan = "cyan"
+white = "white"
+bright_black = "bright_black"
+bright_red = "bright_red"
+bright_green = "bright_green"
+bright_yellow = "bright_yellow"
+bright_blue = "bright_blue"
+bright_magenta = "bright_magenta"
+bright_cyan = "bright_cyan"
+bright_white = "bright_white"
+[themes.component_style]
+block_title = { fg = "Magenta"  }
+border = {}
+playback_track = { fg = "Cyan", modifiers = ["Bold"] }
+playback_artists = { fg = "Cyan", modifiers = ["Bold"] }
+playback_album = { fg = "Yellow" }
+playback_metadata = { fg = "BrightBlack" }
+playback_progress_bar = { bg = "BrightBlack", fg = "Green" }
+current_playing = { fg = "Green", modifiers = ["Bold"] }
+page_desc = { fg = "Cyan", modifiers = ["Bold"] }
+table_header = { fg = "Blue" }
+selection = { modifiers = ["Bold", "Reversed"] }
+
+
 [[themes]]
 name = "dracula"
 [themes.palette]
@@ -19,18 +54,6 @@ bright_blue = "#bd93f9"
 bright_magenta = "#ff79c6"
 bright_cyan = "#8be9fd"
 bright_white = "#ffffff"
-[themes.component_style]
-block_title = { fg = "Magenta"  }
-border = {}
-playback_track = { fg = "Cyan", modifiers = ["Bold"] }
-playback_artists = { fg = "Cyan", modifiers = ["Bold"] }
-playback_album = { fg = "Yellow" }
-playback_metadata = { fg = "BrightBlack" }
-playback_progress_bar = { bg = "BrightBlack", fg = "Green" }
-current_playing = { fg = "Green", modifiers = ["Bold"] }
-page_desc = { fg = "Cyan", modifiers = ["Bold"] }
-table_header = { fg = "Blue" }
-selection = { modifiers = ["Bold", "Reversed"] }
 
 [[themes]]
 name = "gruvbox_dark"
@@ -53,19 +76,6 @@ bright_blue = "#83a598"
 bright_magenta = "#d3869b"
 bright_cyan = "#8ec07c"
 bright_white = "#ebdbb2"
-[themes.component_style]
-block_title = { fg = "Magenta"  }
-border = {}
-playback_track = { fg = "Cyan", modifiers = ["Bold"] }
-playback_artists = { fg = "Cyan", modifiers = ["Bold"] }
-playback_album = { fg = "Yellow" }
-playback_metadata = { fg = "BrightBlack" }
-playback_progress_bar = { bg = "BrightBlack", fg = "Green" }
-current_playing = { fg = "Green", modifiers = ["Bold"] }
-page_desc = { fg = "Cyan", modifiers = ["Bold"] }
-table_header = { fg = "Blue" }
-selection = { modifiers = ["Bold", "Reversed"] }
-
 [[themes]]
 name = "gruvbox_light"
 [themes.palette]
@@ -87,19 +97,6 @@ bright_blue = "#458588"
 bright_magenta = "#b16186"
 bright_cyan = "#689d69"
 bright_white = "#7c6f64"
-[themes.component_style]
-block_title = { fg = "Magenta"  }
-border = {}
-playback_track = { fg = "Cyan", modifiers = ["Bold"] }
-playback_artists = { fg = "Cyan", modifiers = ["Bold"] }
-playback_album = { fg = "Yellow" }
-playback_metadata = { fg = "BrightBlack" }
-playback_progress_bar = { bg = "BrightBlack", fg = "Green" }
-current_playing = { fg = "Green", modifiers = ["Bold"] }
-page_desc = { fg = "Cyan", modifiers = ["Bold"] }
-table_header = { fg = "Blue" }
-selection = { modifiers = ["Bold", "Reversed"] }
-
 
 [[themes]]
 name = "solarized_dark"
@@ -122,18 +119,6 @@ bright_blue = "#839496"
 bright_magenta = "#6c71c4"
 bright_cyan = "#93a1a1"
 bright_white = "#fdf6e3"
-[themes.component_style]
-block_title = { fg = "Magenta"  }
-border = {}
-playback_track = { fg = "Cyan", modifiers = ["Bold"] }
-playback_artists = { fg = "Cyan", modifiers = ["Bold"] }
-playback_album = { fg = "Yellow" }
-playback_metadata = { fg = "White" }
-playback_progress_bar = { bg = "BrightBlack", fg = "Green" }
-current_playing = { fg = "Green", modifiers = ["Bold"] }
-page_desc = { fg = "Cyan", modifiers = ["Bold"] }
-table_header = { fg = "Blue" }
-selection = { modifiers = ["Bold", "Reversed"] }
 
 [[themes]]
 name = "solarized_light"
@@ -156,18 +141,6 @@ bright_blue = "#839496"
 bright_magenta = "#6c71c4"
 bright_cyan = "#93a1a1"
 bright_white = "#fdf6e3"
-[themes.component_style]
-block_title = { fg = "Magenta"  }
-border = {}
-playback_track = { fg = "Cyan", modifiers = ["Bold"] }
-playback_artists = { fg = "Cyan", modifiers = ["Bold"] }
-playback_album = { fg = "Yellow" }
-playback_metadata = { fg = "BrightBlack" }
-playback_progress_bar = { bg = "BrightBlack", fg = "Green" }
-current_playing = { fg = "Green", modifiers = ["Bold"] }
-page_desc = { fg = "Cyan", modifiers = ["Bold"] }
-table_header = { fg = "Blue" }
-selection = { modifiers = ["Bold", "Reversed"] }
 
 [[themes]]
 name = "tokyonight"
@@ -190,15 +163,3 @@ bright_blue = "#839496"
 bright_magenta = "#ff007c"
 bright_cyan = "#93a1a1"
 bright_white = "#fdf6e3"
-[themes.component_style]
-block_title = { fg = "Magenta"  }
-border = {}
-playback_track = { fg = "Cyan", modifiers = ["Bold"] }
-playback_artists = { fg = "Cyan", modifiers = ["Bold"] }
-playback_album = { fg = "Yellow" }
-playback_metadata = { fg = "White" }
-playback_progress_bar = { bg = "BrightBlack", fg = "Green" }
-current_playing = { fg = "Green", modifiers = ["Bold"] }
-page_desc = { fg = "Cyan", modifiers = ["Bold"] }
-table_header = { fg = "Blue" }
-selection = { modifiers = ["Bold", "Reversed"] }

@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use anyhow::Result;
 use serde::Deserialize;
 use tui::style;
@@ -81,7 +83,7 @@ pub struct Style {
     pub modifiers: Vec<StyleModifier>,
 }
 
-#[derive(Copy, Clone, Debug, Deserialize)]
+#[derive(Copy, Clone, Debug)]
 pub enum StyleColor {
     Black,
     Blue,
@@ -317,6 +319,49 @@ impl Style {
     }
 }
 
+impl<'de> serde::de::Deserialize<'de> for StyleColor {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        fn rgb_from_hex(s: &str) -> Option<(u8, u8, u8)> {
+            if !s.starts_with('#') || s.len() != 7 {
+                None
+            } else {
+                Some((
+                    u8::from_str_radix(&s[1..3], 16).ok()?,
+                    u8::from_str_radix(&s[3..5], 16).ok()?,
+                    u8::from_str_radix(&s[5..7], 16).ok()?,
+                ))
+            }
+        }
+
+        let str = String::deserialize(deserializer)?;
+        Ok(match str.as_str() {
+            "Black" => StyleColor::Black,
+            "Blue" => StyleColor::Blue,
+            "Cyan" => StyleColor::Cyan,
+            "Green" => StyleColor::Green,
+            "Magenta" => StyleColor::Magenta,
+            "Red" => StyleColor::Red,
+            "White" => StyleColor::White,
+            "Yellow" => StyleColor::Yellow,
+            "BrightBlack" => StyleColor::BrightBlack,
+            "BrightWhite" => StyleColor::BrightWhite,
+            "BrightRed" => StyleColor::BrightRed,
+            "BrightMagenta" => StyleColor::BrightMagenta,
+            "BrightGreen" => StyleColor::BrightGreen,
+            "BrightCyan" => StyleColor::BrightCyan,
+            "BrightBlue" => StyleColor::BrightBlue,
+            "BrightYellow" => StyleColor::BrightYellow,
+            s => match rgb_from_hex(s) {
+                Some((r, g, b)) => StyleColor::Rgb { r, g, b },
+                None => return Err(serde::de::Error::custom(format!("invalid hex color: {s}"))),
+            },
+        })
+    }
+}
+
 impl StyleColor {
     pub fn color(&self, palette: &Palette) -> style::Color {
         match *self {
@@ -351,71 +396,42 @@ impl From<StyleModifier> for style::Modifier {
     }
 }
 
-fn to_hex_digit(c: char) -> u8 {
-    c.to_digit(16).unwrap() as u8
-}
-
 impl<'de> serde::de::Deserialize<'de> for Color {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let hex = String::deserialize(deserializer)?;
-        match Self::from_hex(&hex) {
-            None => Err(serde::de::Error::custom(format!("invalid color {hex}"))),
-            Some(c) => Ok(c),
+        let str = String::deserialize(deserializer)?;
+        match style::Color::from_str(&str) {
+            Err(err) => Err(serde::de::Error::custom(format!(
+                "invalid color {str}: {err:#}"
+            ))),
+            Ok(color) => Ok(Color { color }),
         }
     }
 }
 
 impl Color {
-    fn from_hex(hex: &str) -> Option<Self> {
-        let mut chars = hex
-            .chars()
-            .map(|c| c.to_ascii_lowercase())
-            .collect::<Vec<_>>();
-        if chars.len() != 7 {
-            return None;
-        }
-        if chars.remove(0) != '#' {
-            return None;
-        }
-        if chars.iter().any(|c| !c.is_ascii_hexdigit()) {
-            return None;
-        }
-        let r = to_hex_digit(chars[0]) * 16 + to_hex_digit(chars[1]);
-        let g = to_hex_digit(chars[2]) * 16 + to_hex_digit(chars[3]);
-        let b = to_hex_digit(chars[4]) * 16 + to_hex_digit(chars[5]);
-        Some(Self {
-            color: style::Color::Rgb(r, g, b),
-        })
-    }
-
-    // Terminal's ANSI colors construction functions.
-    // Reference: https://en.wikipedia.org/wiki/ANSI_escape_code#3-bit_and_4-bit
-    // The conversion from `style::Color` can be a bit counter-intuitive
-    // as the `tui-rs` library doesn't follow the ANSI naming standard.
-
     pub fn black() -> Self {
         style::Color::Black.into()
     }
     pub fn red() -> Self {
-        style::Color::LightRed.into()
+        style::Color::Red.into()
     }
     pub fn green() -> Self {
-        style::Color::LightGreen.into()
+        style::Color::Green.into()
     }
     pub fn yellow() -> Self {
-        style::Color::LightYellow.into()
+        style::Color::Yellow.into()
     }
     pub fn blue() -> Self {
-        style::Color::LightBlue.into()
+        style::Color::Blue.into()
     }
     pub fn magenta() -> Self {
-        style::Color::LightMagenta.into()
+        style::Color::Magenta.into()
     }
     pub fn cyan() -> Self {
-        style::Color::LightCyan.into()
+        style::Color::Cyan.into()
     }
     pub fn white() -> Self {
         style::Color::Gray.into()
@@ -424,22 +440,22 @@ impl Color {
         style::Color::DarkGray.into()
     }
     pub fn bright_red() -> Self {
-        style::Color::Red.into()
+        style::Color::LightRed.into()
     }
     pub fn bright_green() -> Self {
-        style::Color::Green.into()
+        style::Color::LightGreen.into()
     }
     pub fn bright_yellow() -> Self {
-        style::Color::Yellow.into()
+        style::Color::LightYellow.into()
     }
     pub fn bright_blue() -> Self {
-        style::Color::Blue.into()
+        style::Color::LightBlue.into()
     }
     pub fn bright_magenta() -> Self {
-        style::Color::Magenta.into()
+        style::Color::LightMagenta.into()
     }
     pub fn bright_cyan() -> Self {
-        style::Color::Cyan.into()
+        style::Color::LightCyan.into()
     }
     pub fn bright_white() -> Self {
         style::Color::White.into()
@@ -448,7 +464,9 @@ impl Color {
 
 impl From<&str> for Color {
     fn from(s: &str) -> Self {
-        Self::from_hex(s).unwrap()
+        Color {
+            color: style::Color::from_str(s).expect("valid color"),
+        }
     }
 }
 
