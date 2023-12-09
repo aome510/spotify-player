@@ -22,9 +22,7 @@ mod window;
 pub enum PlayerRequest {
     NextTrack,
     PreviousTrack,
-    #[cfg(feature = "media-control")]
     Resume,
-    #[cfg(feature = "media-control")]
     Pause,
     ResumePause,
     SeekTrack(chrono::Duration),
