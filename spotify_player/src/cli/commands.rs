@@ -1,4 +1,5 @@
 use clap::{builder::EnumValueParser, value_parser, Arg, ArgAction, ArgGroup, Command};
+use clap_complete::Shell;
 
 use super::{ContextType, ItemType, Key};
 
@@ -136,6 +137,17 @@ pub fn init_like_command() -> Command {
 
 pub fn init_authenticate_command() -> Command {
     Command::new("authenticate").about("Authenticate the application")
+}
+
+pub fn init_generate_command() -> Command {
+    Command::new("generate")
+        .about("Generate shell completion for the application CLI")
+        .arg(
+            Arg::new("shell")
+                .action(ArgAction::Set)
+                .value_parser(value_parser!(Shell))
+                .required(true),
+        )
 }
 
 pub fn init_playlist_subcommand() -> Command {
