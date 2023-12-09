@@ -618,7 +618,7 @@ fn render_artist_context_page_windows(
     let (album_list, n_albums) = {
         let album_items = albums
             .into_iter()
-            .map(|a| (a.name.clone(), false))
+            .map(|a| (format!("{1} • {0}", a.name, a.year()), false))
             .collect::<Vec<_>>();
 
         utils::construct_list_widget(
