@@ -25,7 +25,7 @@ pub struct UIState {
     pub playback_progress_bar_rect: tui::layout::Rect,
 
     #[cfg(feature = "image")]
-    pub last_cover_image_render_info: Option<(String, std::time::Instant)>,
+    pub last_cover_image_render_info: Option<(String, tui::layout::Rect)>,
 }
 
 impl UIState {

@@ -65,21 +65,12 @@ pub fn render_playback_window(
                         let url = crate::utils::get_track_album_image_url(track).map(String::from);
                         if let Some(url) = url {
                             let needs_render = match &ui.last_cover_image_render_info {
-                                Some((last_url, last_time)) => {
-                                    url != *last_url
-                                        || last_time.elapsed()
-                                            > std::time::Duration::from_millis(
-                                                state
-                                                    .configs
-                                                    .app_config
-                                                    .cover_image_refresh_duration_in_ms,
-                                            )
-                                }
+                                Some((last_url, _)) => *last_url != url,
                                 None => true,
                             };
-
                             if needs_render {
-                                render_playback_cover_image(state, ui, cover_img_rect, url);
+                                render_playback_cover_image(state, ui, cover_img_rect, url)
+                                    .context("render playback's cover image")?;
                             }
                         }
 
@@ -275,7 +266,7 @@ fn render_playback_cover_image(
     ui: &mut UIStateGuard,
     rect: Rect,
     url: String,
-) {
+) -> Result<()> {
     fn remove_temp_files() -> Result<()> {
         // Clean up temp files created by `viuer`'s kitty printer to avoid
         // possible freeze because of too many temp files in the temp folder.
@@ -291,14 +282,10 @@ fn render_playback_cover_image(
         Ok(())
     }
 
-    if let Err(err) = remove_temp_files() {
-        tracing::error!("Failed to remove temp files: {err:#}");
-    }
+    remove_temp_files().context("remove temp files")?;
 
     let data = state.data.read();
     if let Some(image) = data.caches.images.get(&url) {
-        ui.last_cover_image_render_info = Some((url, std::time::Instant::now()));
-
         // `viuer` renders image using `sixel` in a different scale compared to other methods.
         // Scale the image to make the rendered image more fit if needed.
         // This scaling factor is user configurable as the scale works differently
@@ -308,19 +295,23 @@ fn render_playback_cover_image(
         let width = (rect.width as f32 * scale).round() as u32;
         let height = (rect.height as f32 * scale).round() as u32;
 
-        if let Err(err) = viuer::print(
+        viuer::print(
             image,
             &viuer::Config {
                 x: rect.x,
                 y: rect.y as i16,
                 width: Some(width),
                 height: Some(height),
+                restore_cursor: true,
                 ..Default::default()
             },
-        ) {
-            tracing::error!("Failed to render the image: {err:#}",);
-        }
+        )
+        .context("print image to the terminal")?;
+
+        ui.last_cover_image_render_info = Some((url, rect));
     }
+
+    Ok(())
 }
 
 /// Splits the application rectangle into two rectangles, one for the playback window
