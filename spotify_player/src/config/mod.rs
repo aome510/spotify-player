@@ -41,8 +41,6 @@ pub struct AppConfig {
     // duration configs
     pub app_refresh_duration_in_ms: u64,
     pub playback_refresh_duration_in_ms: u64,
-    #[cfg(feature = "image")]
-    pub cover_image_refresh_duration_in_ms: u64,
 
     pub page_size_in_rows: usize,
 
@@ -209,9 +207,6 @@ impl Default for AppConfig {
             ap_port: None,
             app_refresh_duration_in_ms: 32,
             playback_refresh_duration_in_ms: 0,
-
-            #[cfg(feature = "image")]
-            cover_image_refresh_duration_in_ms: 2000,
 
             page_size_in_rows: 20,
 
