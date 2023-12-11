@@ -101,12 +101,25 @@ pub fn render_playback_window(
             tracing::warn!("Got a non-track playable item: {:?}", playback.item);
         }
     } else {
-        // Previously rendered image can result in weird rendering text,
-        // clear the widget area before rendering the text.
+        // Previously rendered image can result in a weird rendering text,
+        // clear the previous widget's area before rendering the text.
         #[cfg(feature = "image")]
-        if ui.last_cover_image_render_info.is_some() {
-            frame.render_widget(Clear, rect);
-            ui.last_cover_image_render_info = None;
+        {
+            if ui.last_cover_image_render_info.is_some() {
+                frame.render_widget(Clear, rect);
+                ui.last_cover_image_render_info = None;
+            }
+
+            // reset the `skip` state of cells in cover image area
+            // to render the "No playback found" message
+            for x in 1..state.configs.app_config.cover_img_length + 1 {
+                for y in 1..state.configs.app_config.cover_img_width + 1 {
+                    frame
+                        .buffer_mut()
+                        .get_mut(x as u16, y as u16)
+                        .set_skip(false);
+                }
+            }
         }
 
         frame.render_widget(
