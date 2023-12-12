@@ -200,7 +200,10 @@ impl Client {
                 // client doesn't respect the initial shuffle state, so we need to manually update the state
                 self.spotify
                     .shuffle(playback.shuffle_state, device_id)
-                    .await?
+                    .await?;
+
+                // after handling `StartPlayback` request, reset the buffered playback
+                return Ok(None);
             }
             PlayerRequest::TransferPlayback(..) => {
                 anyhow::bail!("`TransferPlayback` should be handled earlier")
