@@ -4,7 +4,6 @@
 
 - [Introduction](#introduction)
 - [Examples](#examples)
-  - [Demo](#demo)
 - [Installation](#installation)
 - [Features](#features)
   - [Spotify Connect](#spotify-connect)
@@ -43,11 +42,7 @@
 
 ## Examples
 
-### Demo
-
 A demo of `spotify_player` `v0.5.0-pre-release` on [youtube](https://www.youtube.com/shorts/Jbfe9GLNWbA) or on [asciicast](https://asciinema.org/a/446913):
-
-[![asciicast](https://asciinema.org/a/446913.svg)](https://asciinema.org/a/446913)
 
 Checkout [examples/README.md](./examples/README.md) for more examples.
 

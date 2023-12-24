@@ -1,5 +1,9 @@
 # Examples
 
+## Demo
+
+[![asciicast](https://asciinema.org/a/446913.svg)](https://asciinema.org/a/446913)
+
 ## Playlist page
 
 ![Playlist page example](https://user-images.githubusercontent.com/40011582/140253591-706d15d4-08c9-4527-997a-79fac73dee20.png)
