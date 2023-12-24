@@ -4,7 +4,6 @@
 
 - [Introduction](#introduction)
 - [Examples](#examples)
-  - [Demo](#demo)
 - [Installation](#installation)
 - [Features](#features)
   - [Spotify Connect](#spotify-connect)
@@ -43,39 +42,9 @@
 
 ## Examples
 
-### Demo
-
 A demo of `spotify_player` `v0.5.0-pre-release` on [youtube](https://www.youtube.com/shorts/Jbfe9GLNWbA) or on [asciicast](https://asciinema.org/a/446913):
 
-[![asciicast](https://asciinema.org/a/446913.svg)](https://asciinema.org/a/446913)
-
-### Playlist page
-
-![Playlist page example](https://user-images.githubusercontent.com/40011582/140253591-706d15d4-08c9-4527-997a-79fac73dee20.png)
-
-### Artist page
-
-![Artist page example](https://user-images.githubusercontent.com/40011582/140253630-d958c5ea-23bc-4528-b40b-aa6fa68b5735.png)
-
-### Album page
-
-![Album page example](https://user-images.githubusercontent.com/40011582/140253687-fd036da9-3b71-443b-a7f9-dad7721f01bf.png)
-
-### Search page
-
-![Search page example](https://user-images.githubusercontent.com/40011582/140253653-5b156a8f-538b-4e68-9d52-0a379477574f.png)
-
-### Lyric page
-
-![Lyric page example](https://user-images.githubusercontent.com/40011582/169437044-420cf0e2-5d75-4022-bd9f-34540f1fe230.png)
-
-### Command help popup
-
-![Command help popup example](https://user-images.githubusercontent.com/40011582/169437229-f5f1a3a5-d89e-4395-a416-6d45018f8971.png)
-
-### Recommendation page
-
-![Recommendation page example](https://user-images.githubusercontent.com/40011582/169440280-2f075ab1-04c3-419a-8614-0cad9c004d4f.gif)
+Checkout [examples/README.md](./examples/README.md) for more examples.
 
 ## Installation
 
@@ -177,10 +146,6 @@ To enable a full [Spotify connect](https://www.spotify.com/us/connect/) support,
 More details about registering a Spotify application can be found in the [official Spotify documentation](https://developer.spotify.com/documentation/general/guides/authorization/app-settings/).
 
 When `spotify_player` runs with your own `client_id`, press **D** (default shortcut for `SwitchDevice` command) to get the list of available devices, then press **enter** (default shortcut for `ChooseSelected` command) to connect to the selected device.
-
-An example of using Spotify connect to interact with the Spotify's official application:
-
-![Spotify Connect Example](https://user-images.githubusercontent.com/40011582/140323795-8a7ed2bb-7bda-4db2-9672-6036eac6e771.gif)
 
 ### Streaming
 
