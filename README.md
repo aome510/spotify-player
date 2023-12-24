@@ -152,10 +152,6 @@ More details about registering a Spotify application can be found in the [offici
 
 When `spotify_player` runs with your own `client_id`, press **D** (default shortcut for `SwitchDevice` command) to get the list of available devices, then press **enter** (default shortcut for `ChooseSelected` command) to connect to the selected device.
 
-An example of using Spotify connect to interact with the Spotify's official application:
-
-![Spotify Connect Example](https://user-images.githubusercontent.com/40011582/140323795-8a7ed2bb-7bda-4db2-9672-6036eac6e771.gif)
-
 ### Streaming
 
 `spotify_player` supports streaming, which needs to be built/installed with `streaming` feature (**enabled** by default) **and** with an audio backend (`rodio-backend` by default). The streaming feature allows to `spotify_player` to play music directly from terminal.

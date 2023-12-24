@@ -27,3 +27,9 @@
 ## Recommendation page
 
 ![Recommendation page example](https://user-images.githubusercontent.com/40011582/169440280-2f075ab1-04c3-419a-8614-0cad9c004d4f.gif)
+
+## Spotify Connect
+
+An example of using Spotify connect to interact with the Spotify's official application:
+
+![Spotify Connect Example](https://user-images.githubusercontent.com/40011582/140323795-8a7ed2bb-7bda-4db2-9672-6036eac6e771.gif)
