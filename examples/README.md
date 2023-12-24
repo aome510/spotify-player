@@ -34,6 +34,6 @@
 
 ## Spotify Connect
 
-An example of using Spotify connect to interact with the Spotify's official application:
+An example of using [Spotify connect](https://connect.spotify.com) to interact with the Spotify's official application from `spotify_player`:
 
 ![Spotify Connect Example](https://user-images.githubusercontent.com/40011582/140323795-8a7ed2bb-7bda-4db2-9672-6036eac6e771.gif)
