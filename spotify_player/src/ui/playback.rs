@@ -62,8 +62,8 @@ pub fn render_playback_window(
                             (hor_chunks[2], ver_chunks[0])
                         };
 
-                        // set the `skip` state of cells in cover image area
-                        // to prevent buffer from overwriting image's cells
+                        // set the `skip` state of cells in the cover image area
+                        // to prevent buffer from overwriting image cells
                         for x in cover_img_rect.left()..cover_img_rect.right() {
                             for y in cover_img_rect.top()..cover_img_rect.bottom() {
                                 frame
@@ -118,8 +118,8 @@ pub fn render_playback_window(
         {
             if let Some((_, rect)) = ui.last_cover_image_render_info {
                 frame.render_widget(Clear, rect);
-                // reset the `skip` state of cells in cover image area
-                // to render the "No playback found" message
+                // reset the `skip` state of cells in the cover image area
+                // in order to render the "No playback found" message
                 for x in rect.left()..rect.right() {
                     for y in rect.top()..rect.bottom() {
                         frame
