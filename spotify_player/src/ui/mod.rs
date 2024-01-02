@@ -36,18 +36,6 @@ pub fn run(state: SharedState) -> Result<()> {
             }
 
             if let Err(err) = terminal.draw(|frame| {
-                #[cfg(feature = "image")]
-                {
-                    for x in 1..state.configs.app_config.cover_img_length + 1 {
-                        for y in 1..state.configs.app_config.cover_img_width + 1 {
-                            frame
-                                .buffer_mut()
-                                .get_mut(x as u16, y as u16)
-                                .set_skip(true);
-                        }
-                    }
-                }
-
                 // set the background and foreground colors for the application
                 let rect = frame.size();
                 let block = Block::default().style(ui.theme.app_style());
