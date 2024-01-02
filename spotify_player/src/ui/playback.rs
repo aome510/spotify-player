@@ -66,10 +66,7 @@ pub fn render_playback_window(
                         // to prevent buffer from overwriting image cells
                         for x in cover_img_rect.left()..cover_img_rect.right() {
                             for y in cover_img_rect.top()..cover_img_rect.bottom() {
-                                frame
-                                    .buffer_mut()
-                                    .get_mut(x as u16, y as u16)
-                                    .set_skip(true);
+                                frame.buffer_mut().get_mut(x, y).set_skip(true);
                             }
                         }
 
@@ -122,10 +119,7 @@ pub fn render_playback_window(
                 // in order to render the "No playback found" message
                 for x in rect.left()..rect.right() {
                     for y in rect.top()..rect.bottom() {
-                        frame
-                            .buffer_mut()
-                            .get_mut(x as u16, y as u16)
-                            .set_skip(false);
+                        frame.buffer_mut().get_mut(x, y).set_skip(false);
                     }
                 }
                 ui.last_cover_image_render_info = None;
