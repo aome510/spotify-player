@@ -62,6 +62,14 @@ pub fn render_playback_window(
                             (hor_chunks[2], ver_chunks[0])
                         };
 
+                        // set the `skip` state of cells in the cover image area
+                        // to prevent buffer from overwriting image cells
+                        for x in cover_img_rect.left()..cover_img_rect.right() {
+                            for y in cover_img_rect.top()..cover_img_rect.bottom() {
+                                frame.buffer_mut().get_mut(x, y).set_skip(true);
+                            }
+                        }
+
                         let url = crate::utils::get_track_album_image_url(track).map(String::from);
                         if let Some(url) = url {
                             let needs_render = match &ui.last_cover_image_render_info {
@@ -105,20 +113,16 @@ pub fn render_playback_window(
         // clear the previous widget's area before rendering the text.
         #[cfg(feature = "image")]
         {
-            if ui.last_cover_image_render_info.is_some() {
+            if let Some((_, rect)) = ui.last_cover_image_render_info {
                 frame.render_widget(Clear, rect);
-                ui.last_cover_image_render_info = None;
-            }
-
-            // reset the `skip` state of cells in cover image area
-            // to render the "No playback found" message
-            for x in 1..state.configs.app_config.cover_img_length + 1 {
-                for y in 1..state.configs.app_config.cover_img_width + 1 {
-                    frame
-                        .buffer_mut()
-                        .get_mut(x as u16, y as u16)
-                        .set_skip(false);
+                // reset the `skip` state of cells in the cover image area
+                // in order to render the "No playback found" message
+                for x in rect.left()..rect.right() {
+                    for y in rect.top()..rect.bottom() {
+                        frame.buffer_mut().get_mut(x, y).set_skip(false);
+                    }
                 }
+                ui.last_cover_image_render_info = None;
             }
         }
 
