@@ -92,16 +92,16 @@ impl UserData {
     pub fn new_from_file_caches(cache_folder: &Path) -> anyhow::Result<Self> {
         Ok(Self {
             user: None,
-            playlists: load_data_from_file_cache(FileCacheKey::Playlists, cache_folder)?
+            playlists: load_data_from_file_cache(FileCacheKey::Playlists, cache_folder)
                 .unwrap_or_default(),
             followed_artists: load_data_from_file_cache(
                 FileCacheKey::FollowedArtists,
                 cache_folder,
-            )?
+            )
             .unwrap_or_default(),
-            saved_albums: load_data_from_file_cache(FileCacheKey::SavedAlbums, cache_folder)?
+            saved_albums: load_data_from_file_cache(FileCacheKey::SavedAlbums, cache_folder)
                 .unwrap_or_default(),
-            saved_tracks: load_data_from_file_cache(FileCacheKey::SavedTracks, cache_folder)?
+            saved_tracks: load_data_from_file_cache(FileCacheKey::SavedTracks, cache_folder)
                 .unwrap_or_default(),
         })
     }
@@ -135,21 +135,25 @@ pub fn store_data_into_file_cache<T: Serialize>(
     Ok(())
 }
 
-pub fn load_data_from_file_cache<T>(
-    key: FileCacheKey,
-    cache_folder: &Path,
-) -> std::io::Result<Option<T>>
+pub fn load_data_from_file_cache<T>(key: FileCacheKey, cache_folder: &Path) -> Option<T>
 where
     T: DeserializeOwned,
 {
     let path = cache_folder.join(format!("{key:?}_cache.json"));
     if path.exists() {
         tracing::info!("Loading {key:?} data from {}...", path.display());
-        let f = std::fs::File::open(path)?;
-        let data = serde_json::from_reader(f)?;
-        tracing::info!("Successfully loaded {key:?} data!");
-        Ok(Some(data))
+        let f = std::fs::File::open(path).expect("path exists");
+        match serde_json::from_reader(f) {
+            Ok(data) => {
+                tracing::info!("Successfully loaded {key:?} data!");
+                Some(data)
+            }
+            Err(err) => {
+                tracing::error!("Failed to load {key:?} data: {err:#}");
+                None
+            }
+        }
     } else {
-        Ok(None)
+        None
     }
 }

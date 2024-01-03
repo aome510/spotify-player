@@ -732,28 +732,30 @@ pub fn render_track_table_window(
         })
         .collect::<Vec<_>>();
 
-    let track_table = Table::new(rows)
-        .header(
-            Row::new(vec![
-                Cell::from(""),
-                Cell::from("#"),
-                Cell::from("Title"),
-                Cell::from("Artists"),
-                Cell::from("Album"),
-                Cell::from("Duration"),
-            ])
-            .style(ui.theme.table_header()),
-        )
-        .widths(&[
+    let track_table = Table::new(
+        rows,
+        [
             Constraint::Length(2),
             Constraint::Length(5),
             Constraint::Percentage(25),
             Constraint::Percentage(25),
             Constraint::Percentage(30),
             Constraint::Percentage(20),
+        ],
+    )
+    .header(
+        Row::new(vec![
+            Cell::from(""),
+            Cell::from("#"),
+            Cell::from("Title"),
+            Cell::from("Artists"),
+            Cell::from("Album"),
+            Cell::from("Duration"),
         ])
-        .column_spacing(2)
-        .highlight_style(ui.theme.selection_style(is_active));
+        .style(ui.theme.table_header()),
+    )
+    .column_spacing(2)
+    .highlight_style(ui.theme.selection_style(is_active));
 
     match ui.current_page_mut() {
         PageState::Context {

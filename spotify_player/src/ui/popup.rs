@@ -239,8 +239,8 @@ pub fn render_shortcut_help_popup(
                 .chunks(SHORTCUT_TABLE_N_COLUMNS)
                 .map(|c| Row::new(c.iter().map(|i| Cell::from(i.to_owned()))))
                 .collect::<Vec<_>>(),
-        )
-        .widths(&SHORTCUT_TABLE_CONSTRAINS);
+            SHORTCUT_TABLE_CONSTRAINS,
+        );
 
         frame.render_widget(help_table, rect);
         chunks[0]
@@ -298,6 +298,7 @@ pub fn render_commands_help_popup(
                 ])
             })
             .collect::<Vec<_>>(),
+        COMMAND_TABLE_CONSTRAINTS,
     )
     .header(
         Row::new(vec![
@@ -306,8 +307,7 @@ pub fn render_commands_help_popup(
             Cell::from("Description"),
         ])
         .style(ui.theme.table_header()),
-    )
-    .widths(&COMMAND_TABLE_CONSTRAINTS);
+    );
 
     frame.render_widget(help_table, rect);
 }
@@ -379,6 +379,12 @@ pub fn render_queue_popup(
                     ])
                 })
                 .collect::<Vec<_>>(),
+            [
+                Constraint::Percentage(5),
+                Constraint::Percentage(40),
+                Constraint::Percentage(35),
+                Constraint::Percentage(20),
+            ],
         )
         .header(
             Row::new(vec![
@@ -389,12 +395,6 @@ pub fn render_queue_popup(
             ])
             .style(ui.theme.table_header()),
         )
-        .widths(&[
-            Constraint::Percentage(5),
-            Constraint::Percentage(40),
-            Constraint::Percentage(35),
-            Constraint::Percentage(20),
-        ])
     };
 
     frame.render_widget(queue_table, rect);
