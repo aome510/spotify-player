@@ -2,6 +2,7 @@ use crate::{
     command::{self, Command},
     key::{Key, KeySequence},
     state::*,
+    ui::single_line_input::LineInput,
     utils::new_list_state,
 };
 
@@ -344,7 +345,7 @@ fn handle_global_command(
         }
         Command::SearchPage => {
             ui.create_new_page(PageState::Search {
-                input: String::new(),
+                line_input: LineInput::default(),
                 current_query: String::new(),
                 state: SearchPageUIState::new(),
             });

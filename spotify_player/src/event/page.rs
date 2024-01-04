@@ -106,42 +106,31 @@ pub fn handle_key_sequence_for_search_page(
 ) -> Result<bool> {
     let mut ui = state.ui.lock();
 
-    let (focus_state, input, current_query) = match ui.current_page_mut() {
+    let (focus_state, current_query, line_input) = match ui.current_page_mut() {
         PageState::Search {
             state,
-            input,
+            line_input,
             current_query,
-        } => (state.focus, input, current_query),
+        } => (state.focus, current_query, line_input),
         _ => anyhow::bail!("expect a search page"),
     };
 
     // handle user's input
     if let SearchFocusState::Input = focus_state {
         if key_sequence.keys.len() == 1 {
-            if let Key::None(c) = key_sequence.keys[0] {
-                match c {
-                    crossterm::event::KeyCode::Char(c) => {
-                        input.push(c);
-                        return Ok(true);
-                    }
-                    crossterm::event::KeyCode::Backspace => {
-                        if !input.is_empty() {
-                            input.pop().unwrap();
-                        }
-                        return Ok(true);
-                    }
-                    crossterm::event::KeyCode::Enter => {
-                        if !input.is_empty() {
-                            *current_query = input.clone();
-                            client_pub.send(ClientRequest::Search(input.clone()))?;
-                        }
-                        return Ok(true);
-                    }
-                    _ => {}
+            if let Key::None(crossterm::event::KeyCode::Enter) = key_sequence.keys[0] {
+                if !line_input.is_empty() {
+                    *current_query = line_input.get_text();
+                    client_pub.send(ClientRequest::Search(line_input.get_text()))?;
                 }
+                return Ok(true);
             }
         }
-        return Ok(false);
+
+        return match line_input.input(key_sequence) {
+            None => Ok(false),
+            _ => Ok(true),
+        };
     }
 
     let command = match state

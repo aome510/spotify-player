@@ -16,12 +16,12 @@ pub fn render_search_page(
     // 1. Get the data
     let data = state.data.read();
 
-    let (focus_state, current_query, input) = match ui.current_page() {
+    let (focus_state, current_query, line_input) = match ui.current_page() {
         PageState::Search {
             state,
             current_query,
-            input,
-        } => (state.focus, current_query, input),
+            line_input,
+        } => (state.focus, current_query, line_input),
         s => anyhow::bail!("expect a search page state, found {s:?}"),
     };
 
@@ -149,10 +149,7 @@ pub fn render_search_page(
     // 4. Render the page's widgets
     // Render the query input box
     frame.render_widget(
-        Paragraph::new(input.clone()).style(
-            ui.theme
-                .selection_style(is_active && focus_state == SearchFocusState::Input),
-        ),
+        line_input.widget(is_active && focus_state == SearchFocusState::Input),
         search_input_rect,
     );
 

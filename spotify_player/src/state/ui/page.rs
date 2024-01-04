@@ -1,4 +1,4 @@
-use crate::{state::model::*, utils};
+use crate::{state::model::*, ui::single_line_input::LineInput, utils};
 use tui::widgets::{ListState, TableState};
 
 #[derive(Clone, Debug)]
@@ -12,7 +12,7 @@ pub enum PageState {
         state: Option<ContextPageUIState>,
     },
     Search {
-        input: String,
+        line_input: LineInput,
         current_query: String,
         state: SearchPageUIState,
     },
