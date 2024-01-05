@@ -10,8 +10,6 @@ pub struct LineInput {
     // cursor. Otherwise, you have to shuffle back and forth between String and String::chars().
     line: Vec<char>,
     cursor: u16,
-    style: Style,
-    cursor_line_style: Style,
 }
 
 pub enum InputEffect {
@@ -33,8 +31,6 @@ impl LineInput {
         Self {
             line: str,
             cursor: 0,
-            style: Style::default(),
-            cursor_line_style: Style::default().add_modifier(Modifier::UNDERLINED),
         }
     }
 
