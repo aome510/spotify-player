@@ -18,6 +18,10 @@ jobs:
     strategy:
       matrix:
         os: [macOS-latest, windows-latest, ubuntu-latest]
+        toolchain: [stable]
+        include:
+          - os: ubuntu-latest
+            toolchain: beta
 
     runs-on: ${{ matrix.os }}
 
@@ -27,44 +31,32 @@ jobs:
         if: ${{ runner.os == 'Linux' }}
 
       - name: Checkout source
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Cache cargo deps
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
-            ~/.cargo/registry
-            ~/.cargo/git
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: stable
-          override: true
-          profile: minimal
+          toolchain: ${{ matrix.toolchain }}
           components: clippy, rustfmt
 
-      - name: Cargo test
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --no-default-features --features ${{ env.RUST_FEATURES }}
-
       - name: Cargo format
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
+        run: cargo fmt --all -- --check
+
+      - name: Cargo test
+        run: cargo test --no-default-features --features ${{ env.RUST_FEATURES }}
 
       - name: Cargo clippy with all features
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --no-default-features --features ${{ env.RUST_FEATURES }} -- -D warnings
+        run: cargo clippy --no-default-features --features ${{ env.RUST_FEATURES }} -- -D warnings
 
       - name: Cargo clippy without features
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --no-default-features -- -D warnings
+        run: cargo clippy --no-default-features -- -D warnings
+
