@@ -9,7 +9,7 @@ pub struct LineInput {
     // This is less space-efficient than String, but it's easier to work with text manipulation at the
     // cursor. Otherwise, you have to shuffle back and forth between String and String::chars().
     line: Vec<char>,
-    cursor: u16,
+    cursor: usize,
 }
 
 pub enum InputEffect {
@@ -35,24 +35,24 @@ impl LineInput {
     }
 
     pub fn input(&mut self, key_sequence: &KeySequence) -> Option<InputEffect> {
-        return match key_sequence.keys[0] {
+        match key_sequence.keys[0] {
             Key::None(c) => match c {
                 KeyCode::Char(c) => {
-                    if self.cursor as usize == self.line.len() {
+                    if self.cursor == self.line.len() {
                         self.line.push(c);
                     } else {
-                        self.line.insert(self.cursor.into(), c);
+                        self.line.insert(self.cursor, c);
                     }
                     self.cursor += 1;
                     Some(InputEffect::TextChanged)
                 }
                 KeyCode::Backspace => {
-                    if self.line.len() == 0 || self.cursor == 0 {
+                    if self.line.is_empty() || self.cursor == 0 {
                         Some(InputEffect::Ack)
                     } else {
                         // Perform the decrement first.
                         self.cursor -= 1;
-                        self.line.remove(self.cursor.into());
+                        self.line.remove(self.cursor);
                         Some(InputEffect::TextChanged)
                     }
                 }
@@ -65,7 +65,7 @@ impl LineInput {
                     }
                 }
                 KeyCode::Right => {
-                    if self.cursor as usize == self.line.len() {
+                    if self.cursor == self.line.len() {
                         Some(InputEffect::Ack)
                     } else {
                         self.cursor += 1;
@@ -75,7 +75,7 @@ impl LineInput {
                 _ => None,
             },
             _ => None,
-        };
+        }
     }
 
     pub fn widget(&self, is_active: bool) -> impl Widget {
@@ -84,19 +84,18 @@ impl LineInput {
             return Paragraph::new(converted_str);
         }
 
-        let mut before_cursor = String::new();
-        // Default cursor to be an empty space. This ensures it's displayed even if the cursor is
-        // at the end of the string.
-        let mut cursor = " ".to_string();
-        let mut after_cursor = String::new();
-        for (idx, chr) in self.line.iter().enumerate() {
-            let chr = *chr;
-            match idx.cmp(&(self.cursor as usize)) {
-                std::cmp::Ordering::Less => before_cursor.push(chr),
-                std::cmp::Ordering::Equal => cursor = chr.to_string(),
-                std::cmp::Ordering::Greater => after_cursor.push(chr),
-            }
-        }
+        let before_cursor: String = self.line[0..self.cursor].iter().collect();
+        let after_cursor: String = if self.cursor == self.line.len() {
+            "".to_string()
+        } else {
+            self.line[self.cursor + 1..].iter().collect()
+        };
+        let cursor = if self.cursor == self.line.len() {
+            " ".to_string()
+        } else {
+            self.line[self.cursor].to_string()
+        };
+
         let text_style = Style::default();
         let cursor_style = Style::default().add_modifier(Modifier::REVERSED);
         let formatted_line = Line::from(vec![
