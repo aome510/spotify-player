@@ -48,7 +48,7 @@ pub struct State {
 }
 
 impl State {
-    pub fn new(configs: Configs) -> Result<Self> {
+    pub fn new(configs: Configs) -> Self {
         let mut ui = UIState::default();
 
         if let Some(theme) = configs.theme_config.find_theme(&configs.app_config.theme) {
@@ -56,13 +56,13 @@ impl State {
             ui.theme = theme;
         }
 
-        let app_data = AppData::new(&configs.cache_folder)?;
+        let app_data = AppData::new(&configs.cache_folder);
 
-        Ok(Self {
+        Self {
             configs,
             ui: Mutex::new(ui),
             player: RwLock::new(PlayerState::default()),
             data: RwLock::new(app_data),
-        })
+        }
     }
 }

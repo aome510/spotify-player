@@ -7,6 +7,7 @@ type Terminal = tui::Terminal<tui::backend::CrosstermBackend<std::io::Stdout>>;
 mod page;
 mod playback;
 mod popup;
+pub mod single_line_input;
 mod utils;
 
 /// run the application UI
