@@ -67,12 +67,12 @@ impl MemoryCaches {
 }
 
 impl AppData {
-    pub fn new(cache_folder: &Path) -> anyhow::Result<Self> {
-        Ok(Self {
-            user_data: UserData::new_from_file_caches(cache_folder)?,
+    pub fn new(cache_folder: &Path) -> Self {
+        Self {
+            user_data: UserData::new_from_file_caches(cache_folder),
             caches: MemoryCaches::new(),
             browse: BrowseData::default(),
-        })
+        }
     }
 
     pub fn get_tracks_by_id_mut(&mut self, id: &ContextId) -> Option<&mut Vec<Track>> {
@@ -89,8 +89,8 @@ impl AppData {
 
 impl UserData {
     /// constructs a new user data based on file caches
-    pub fn new_from_file_caches(cache_folder: &Path) -> anyhow::Result<Self> {
-        Ok(Self {
+    pub fn new_from_file_caches(cache_folder: &Path) -> Self {
+        Self {
             user: None,
             playlists: load_data_from_file_cache(FileCacheKey::Playlists, cache_folder)
                 .unwrap_or_default(),
@@ -103,7 +103,7 @@ impl UserData {
                 .unwrap_or_default(),
             saved_tracks: load_data_from_file_cache(FileCacheKey::SavedTracks, cache_folder)
                 .unwrap_or_default(),
-        })
+        }
     }
 
     /// returns a list of playlists that are **possibly** modifiable by user
