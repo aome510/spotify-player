@@ -1305,7 +1305,13 @@ impl Client {
             let new_track = prev_track_name != curr_track_name && !curr_track_name.is_empty();
             // check if we need to update the buffered playback
             let needs_update = match (&player.buffered_playback, &player.playback) {
-                (Some(bp), Some(p)) => bp.device_id != p.device.id || new_track,
+                (Some(bp), Some(p)) => {
+                    bp.device_id != p.device.id
+                        || bp.volume != p.device.volume_percent
+                        || bp.shuffle_state != p.shuffle_state
+                        || bp.repeat_state != p.repeat_state
+                        || new_track
+                }
                 (None, None) => false,
                 _ => true,
             };
