@@ -36,7 +36,7 @@ async fn init_spotify(
     }
 
     // initialize the playback state
-    client.update_current_playback_state(state).await?;
+    client.update_current_playback_state(state, false).await?;
 
     if state.player.read().playback.is_none() {
         tracing::info!("No playback found on startup, trying to connect to an available device...");

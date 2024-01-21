@@ -269,7 +269,7 @@ impl Client {
                 self.update_playback(state);
             }
             ClientRequest::GetCurrentPlayback => {
-                self.update_current_playback_state(state).await?;
+                self.update_current_playback_state(state, true).await?;
             }
             ClientRequest::GetDevices => {
                 let devices = self.spotify.device().await?;
@@ -521,7 +521,7 @@ impl Client {
             let delay = std::time::Duration::from_secs(1);
             for _ in 0..5 {
                 tokio::time::sleep(delay).await;
-                if let Err(err) = client.update_current_playback_state(&state).await {
+                if let Err(err) = client.update_current_playback_state(&state, false).await {
                     tracing::error!(
                         "Encountered an error when updating the playback state: {err:#}"
                     );
@@ -1283,7 +1283,11 @@ impl Client {
     }
 
     /// updates the current playback state
-    pub async fn update_current_playback_state(&self, state: &SharedState) -> Result<()> {
+    pub async fn update_current_playback_state(
+        &self,
+        state: &SharedState,
+        reset_buffered_playback: bool,
+    ) -> Result<()> {
         // update the playback state
         let new_track = {
             let playback = self.spotify.current_playback(None, None::<Vec<_>>).await?;
@@ -1310,7 +1314,7 @@ impl Client {
                 _ => true,
             };
 
-            if needs_update {
+            if reset_buffered_playback || needs_update {
                 // new playback updates, the buffered playback becomes invalid and needs to be updated
                 player.buffered_playback = player.playback.as_ref().map(|p| {
                     let mut playback = SimplifiedPlayback::from_playback(p);
