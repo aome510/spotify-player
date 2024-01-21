@@ -271,8 +271,6 @@ fn handle_global_command(
         }
         Command::RefreshPlayback => {
             client_pub.send(ClientRequest::GetCurrentPlayback)?;
-            // this will also reset the buffered playback
-            state.player.write().buffered_playback = None;
         }
         Command::ShowActionsOnCurrentTrack => {
             if let Some(track) = state.player.read().current_playing_track() {
