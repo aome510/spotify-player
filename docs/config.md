@@ -238,7 +238,7 @@ key_sequence = "g n"
 command = "PreviousTrack"
 key_sequence = "g p"
 [[keymaps]]
-command = "SearchContext"
+command = "Search"
 key_sequence = "C-c C-x /"
 [[keymaps]]
 command = "ResumePause"
