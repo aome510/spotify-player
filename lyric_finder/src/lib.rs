@@ -1,6 +1,6 @@
 //! # lyric_finder
 //!
-//! This crate provides a [`Client`](Client) struct for retrieving a song's lyric.
+//! This crate provides a [`Client`] struct for retrieving a song's lyric.
 //!
 //! It ultilizes the [Genius](https://genius.com) website and its APIs to get lyric data.
 //!
