@@ -467,10 +467,10 @@ fn execute_copy_command(cmd: &config::Command, text: String) -> Result<()> {
         .spawn()?;
 
     let result = match child.stdin.take() {
-        Some(mut stdin) => {
-            stdin.write_all(text.as_bytes()).map_err(anyhow::Error::from)
-        }
-        None => Err(anyhow::anyhow!("no stdin found in the child command"))
+        Some(mut stdin) => stdin
+            .write_all(text.as_bytes())
+            .map_err(anyhow::Error::from),
+        None => Err(anyhow::anyhow!("no stdin found in the child command")),
     };
 
     child.wait()?;
