@@ -4106,8 +4106,9 @@ dependencies = [
 
 [[package]]
 name = "souvlaki"
-version = "0.6.0"
-source = "git+https://github.com/Sinono3/souvlaki?branch=volume#0f8e6740b262958408ddc901220c4613b3f517ca"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aa4c47caa3c7f792d038db6bddb29a1a322800941926d4d8bf36002309065005"
 dependencies = [
  "block",
  "cocoa",
@@ -4116,6 +4117,7 @@ dependencies = [
  "dbus-crossroads",
  "dispatch",
  "objc",
+ "thiserror",
  "windows 0.44.0",
 ]
 
