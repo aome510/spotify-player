@@ -109,6 +109,11 @@ pub fn start_event_watcher(
                     .send(ClientRequest::Player(PlayerRequest::PreviousTrack))
                     .unwrap_or_default();
             }
+            MediaControlEvent::SetVolume(volume) => client_pub
+                .send(ClientRequest::Player(PlayerRequest::Volume(
+                    (volume * 100.0) as u8,
+                )))
+                .unwrap_or_default(),
             _ => {}
         }
     })?;
