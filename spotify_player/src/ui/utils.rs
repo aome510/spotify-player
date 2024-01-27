@@ -12,6 +12,8 @@ pub fn construct_and_render_block(
     frame: &mut Frame,
     rect: Rect,
 ) -> Rect {
+    let mut title = title.to_string();
+
     let (borders, border_type) = match state.configs.app_config.border_type {
         config::BorderType::Hidden => (borders, BorderType::Plain),
         config::BorderType::Plain => (borders, BorderType::Plain),
@@ -21,7 +23,6 @@ pub fn construct_and_render_block(
     };
 
     let mut block = Block::default()
-        .title(theme.block_title_with_style(title))
         .borders(borders)
         .border_style(theme.border())
         .border_type(border_type);
@@ -29,9 +30,17 @@ pub fn construct_and_render_block(
     let inner_rect = block.inner(rect);
 
     // Handle `BorderType::Hidden` after determining the inner rectangle
+    // `Hidden` border can be done by setting the borders to be `NONE`.
+    // NOTE: we want to handle the border after the inner rectangle computation,
+    // so that paddings between windows are properly determined.
     if state.configs.app_config.border_type == config::BorderType::Hidden {
         block = block.borders(Borders::NONE);
+        // add padding to the title to ensure the inner text is aligned with the title
+        title = format!(" {title}");
     }
+
+    // Set `title` for the block
+    block = block.title(theme.block_title_with_style(title));
 
     frame.render_widget(block, rect);
     inner_rect
