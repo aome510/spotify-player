@@ -1,7 +1,9 @@
 use super::page::handle_navigation_commands_for_page;
 use super::*;
 use crate::{
-    command::{AlbumAction, ArtistAction, PlaylistAction, TrackAction},
+    command::{
+        construct_album_actions, construct_artist_actions, construct_playlist_actions, TrackAction,
+    },
     state::UIStateGuard,
 };
 use rand::Rng;
@@ -312,17 +314,7 @@ pub fn handle_command_for_artist_list_window(
             });
         }
         Command::ShowActionsOnSelectedItem => {
-            let mut actions = vec![ArtistAction::GoToArtistRadio, ArtistAction::CopyArtistLink];
-            if data
-                .user_data
-                .followed_artists
-                .iter()
-                .any(|a| a.id == artists[id].id)
-            {
-                actions.push(ArtistAction::Unfollow);
-            } else {
-                actions.push(ArtistAction::Follow);
-            }
+            let actions = construct_artist_actions(artists[id], data);
             ui.popup = Some(PopupState::ActionList(
                 ActionListItem::Artist(artists[id].clone(), actions),
                 new_list_state(),
@@ -356,22 +348,7 @@ pub fn handle_command_for_album_list_window(
             });
         }
         Command::ShowActionsOnSelectedItem => {
-            let mut actions = vec![
-                AlbumAction::GoToArtist,
-                AlbumAction::GoToAlbumRadio,
-                AlbumAction::GoToArtistRadio,
-                AlbumAction::CopyAlbumLink,
-            ];
-            if data
-                .user_data
-                .saved_albums
-                .iter()
-                .any(|a| a.id == albums[id].id)
-            {
-                actions.push(AlbumAction::DeleteFromLibrary);
-            } else {
-                actions.push(AlbumAction::AddToLibrary);
-            }
+            let actions = construct_album_actions(albums[id], data);
             ui.popup = Some(PopupState::ActionList(
                 ActionListItem::Album(albums[id].clone(), actions),
                 new_list_state(),
@@ -411,20 +388,7 @@ pub fn handle_command_for_playlist_list_window(
             });
         }
         Command::ShowActionsOnSelectedItem => {
-            let mut actions = vec![
-                PlaylistAction::GoToPlaylistRadio,
-                PlaylistAction::CopyPlaylistLink,
-            ];
-            if data
-                .user_data
-                .playlists
-                .iter()
-                .any(|a| a.id == playlists[id].id)
-            {
-                actions.push(PlaylistAction::DeleteFromLibrary);
-            } else {
-                actions.push(PlaylistAction::AddToLibrary);
-            }
+            let actions = construct_playlist_actions(playlists[id], data);
             ui.popup = Some(PopupState::ActionList(
                 ActionListItem::Playlist(playlists[id].clone(), actions),
                 new_list_state(),

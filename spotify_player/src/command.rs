@@ -1,4 +1,4 @@
-use crate::state::{DataReadGuard, Track};
+use crate::state::{Album, Artist, DataReadGuard, Playlist, Track};
 use serde::Deserialize;
 
 #[derive(Copy, Clone, Debug, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
@@ -81,8 +81,8 @@ pub enum TrackAction {
     GoToArtist,
     GoToAlbum,
     GoToTrackRadio,
-    GoToArtistRadio,
-    GoToAlbumRadio,
+    ShowActionsOnAlbum,
+    ShowActionsOnArtist,
     AddToQueue,
     AddToPlaylist,
     DeleteFromCurrentPlaylist,
@@ -94,8 +94,8 @@ pub enum TrackAction {
 #[derive(Debug, Copy, Clone)]
 pub enum AlbumAction {
     GoToArtist,
-    GoToArtistRadio,
     GoToAlbumRadio,
+    ShowActionsOnArtist,
     AddToLibrary,
     DeleteFromLibrary,
     CopyAlbumLink,
@@ -117,14 +117,14 @@ pub enum PlaylistAction {
     CopyPlaylistLink,
 }
 
-/// constructs a default list of actions on a track
+/// constructs a list of actions on a track
 pub fn construct_track_actions(track: &Track, data: &DataReadGuard) -> Vec<TrackAction> {
     let mut actions = vec![
         TrackAction::GoToArtist,
         TrackAction::GoToAlbum,
         TrackAction::GoToTrackRadio,
-        TrackAction::GoToArtistRadio,
-        TrackAction::GoToAlbumRadio,
+        TrackAction::ShowActionsOnAlbum,
+        TrackAction::ShowActionsOnArtist,
         TrackAction::CopyTrackLink,
         TrackAction::AddToPlaylist,
         TrackAction::AddToQueue,
@@ -137,6 +137,55 @@ pub fn construct_track_actions(track: &Track, data: &DataReadGuard) -> Vec<Track
         actions.push(TrackAction::AddToLikedTracks);
     }
 
+    actions
+}
+
+/// constructs a list of actions on an album
+pub fn construct_album_actions(album: &Album, data: &DataReadGuard) -> Vec<AlbumAction> {
+    let mut actions = vec![
+        AlbumAction::GoToArtist,
+        AlbumAction::GoToAlbumRadio,
+        AlbumAction::ShowActionsOnArtist,
+        AlbumAction::CopyAlbumLink,
+    ];
+    if data.user_data.saved_albums.iter().any(|a| a.id == album.id) {
+        actions.push(AlbumAction::DeleteFromLibrary);
+    } else {
+        actions.push(AlbumAction::AddToLibrary);
+    }
+    actions
+}
+
+/// constructs a list of actions on an artist
+pub fn construct_artist_actions(artist: &Artist, data: &DataReadGuard) -> Vec<ArtistAction> {
+    let mut actions = vec![ArtistAction::GoToArtistRadio, ArtistAction::CopyArtistLink];
+    if data
+        .user_data
+        .followed_artists
+        .iter()
+        .any(|a| a.id == artist.id)
+    {
+        actions.push(ArtistAction::Unfollow);
+    } else {
+        actions.push(ArtistAction::Follow);
+    }
+    actions
+}
+
+/// constructs a list of actions on an playlist
+pub fn construct_playlist_actions(
+    playlist: &Playlist,
+    data: &DataReadGuard,
+) -> Vec<PlaylistAction> {
+    let mut actions = vec![
+        PlaylistAction::GoToPlaylistRadio,
+        PlaylistAction::CopyPlaylistLink,
+    ];
+    if data.user_data.playlists.iter().any(|a| a.id == playlist.id) {
+        actions.push(PlaylistAction::DeleteFromLibrary);
+    } else {
+        actions.push(PlaylistAction::AddToLibrary);
+    }
     actions
 }
 
