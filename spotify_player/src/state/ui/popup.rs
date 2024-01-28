@@ -34,7 +34,7 @@ pub enum PlaylistPopupAction {
 #[derive(Copy, Clone, Debug)]
 pub enum ArtistPopupAction {
     Browse,
-    GoToRadio,
+    ShowActions,
 }
 
 impl PopupState {

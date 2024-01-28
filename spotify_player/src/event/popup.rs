@@ -2,7 +2,10 @@ use std::io::Write;
 
 use super::*;
 use crate::{
-    command::{AlbumAction, ArtistAction, PlaylistAction, TrackAction},
+    command::{
+        construct_album_actions, construct_artist_actions, AlbumAction, ArtistAction,
+        PlaylistAction, TrackAction,
+    },
     config,
 };
 use anyhow::Context;
@@ -76,14 +79,15 @@ pub fn handle_key_sequence_for_popup(
                                 state: None,
                             });
                         }
-                        ArtistPopupAction::GoToRadio => {
-                            let uri = artists[id].id.uri();
-                            let name = artists[id].name.to_owned();
-                            ui.create_new_radio_page(&uri);
-                            client_pub.send(ClientRequest::GetRadioTracks {
-                                seed_uri: uri,
-                                seed_name: name,
-                            })?;
+                        ArtistPopupAction::ShowActions => {
+                            let actions = {
+                                let data = state.data.read();
+                                construct_artist_actions(&artists[id], &data)
+                            };
+                            ui.popup = Some(PopupState::ActionList(
+                                ActionListItem::Artist(artists[id].clone(), actions),
+                                new_list_state(),
+                            ));
                         }
                     }
 
@@ -583,22 +587,23 @@ fn handle_nth_action(
                     seed_name: name,
                 })?;
             }
-            TrackAction::GoToArtistRadio => {
+            TrackAction::ShowActionsOnArtist => {
                 ui.popup = Some(PopupState::ArtistList(
-                    ArtistPopupAction::GoToRadio,
+                    ArtistPopupAction::ShowActions,
                     track.artists,
                     new_list_state(),
                 ));
             }
-            TrackAction::GoToAlbumRadio => {
+            TrackAction::ShowActionsOnAlbum => {
                 if let Some(album) = track.album {
-                    let uri = album.id.uri();
-                    let name = album.name;
-                    ui.create_new_radio_page(&uri);
-                    client_pub.send(ClientRequest::GetRadioTracks {
-                        seed_uri: uri,
-                        seed_name: name,
-                    })?;
+                    let actions = {
+                        let data = state.data.read();
+                        construct_album_actions(&album, &data)
+                    };
+                    ui.popup = Some(PopupState::ActionList(
+                        ActionListItem::Album(album, actions),
+                        new_list_state(),
+                    ));
                 }
             }
             TrackAction::DeleteFromLikedTracks => {
@@ -636,9 +641,9 @@ fn handle_nth_action(
                     seed_name: name,
                 })?;
             }
-            AlbumAction::GoToArtistRadio => {
+            AlbumAction::ShowActionsOnArtist => {
                 ui.popup = Some(PopupState::ArtistList(
-                    ArtistPopupAction::GoToRadio,
+                    ArtistPopupAction::ShowActions,
                     album.artists,
                     new_list_state(),
                 ));
