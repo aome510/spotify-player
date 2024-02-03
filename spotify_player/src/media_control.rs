@@ -144,8 +144,8 @@ mod windows {
     use std::io::Error;
     use std::mem;
 
+    use windows::core::w;
     use windows::core::PCWSTR;
-    use windows::w;
     use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
     use windows::Win32::System::LibraryLoader::GetModuleHandleW;
     use windows::Win32::UI::WindowsAndMessaging::{
@@ -168,7 +168,7 @@ mod windows {
 
                 let wnd_class = WNDCLASSEXW {
                     cbSize: mem::size_of::<WNDCLASSEXW>() as u32,
-                    hInstance: instance,
+                    hInstance: instance.into(),
                     lpszClassName: class_name,
                     lpfnWndProc: Some(Self::wnd_proc),
                     ..Default::default()
@@ -221,7 +221,7 @@ mod windows {
     impl Drop for DummyWindow {
         fn drop(&mut self) {
             unsafe {
-                DestroyWindow(self.handle);
+                DestroyWindow(self.handle).unwrap();
             }
         }
     }

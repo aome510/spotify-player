@@ -1,6 +1,6 @@
 [package]
 name = "lyric_finder"
-version = "0.1.4"
+version = "0.1.5"
 edition = "2021"
 license = "MIT"
 description = "A lyric finder library"
@@ -9,16 +9,16 @@ repository = "https://github.com/aome510/spotify-player/tree/master/lyric_finder
 keywords = ["lyric", "song", "track"]
 
 [dependencies]
-anyhow = "1.0.71"
-reqwest = { version = "0.11.18", features = ["json"] }
-serde = { version = "1.0.163", features = ["derive"] }
+anyhow = "1.0.79"
+reqwest = { version = "0.11.24", features = ["json"] }
+serde = { version = "1.0.196", features = ["derive"] }
 html5ever = "0.26.0"
 markup5ever_rcdom = "0.2.0"
-log = "0.4.18"
+log = "0.4.20"
 
 [dev-dependencies]
-tokio = { version = "1.28.2", features = ["rt", "rt-multi-thread", "macros"] }
-env_logger = "0.10.0"
+tokio = { version = "1.36.0", features = ["rt", "rt-multi-thread", "macros"] }
+env_logger = { version = "0.11.1", default-features = false }
 
 [[example]]
 name = "lyric-finder"

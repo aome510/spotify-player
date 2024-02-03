@@ -152,7 +152,7 @@ fn render_playback_text(
     // based on a user-configurable format string (app_config.playback_format)
     let format_str = &state.configs.app_config.playback_format;
 
-    let mut playback_text = Text { lines: vec![] };
+    let mut playback_text = Text::default();
     let mut spans = vec![];
 
     // this regex is to handle a format argument or a newline
