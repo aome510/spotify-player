@@ -36,11 +36,11 @@ pub fn render_search_page(
     let rect = chunks[1];
 
     // track/album/artist/playlist search results layout (2x2 table)
-    let chunks = Layout::vertical([Constraint::Percentage(50), Constraint::Percentage(50)])
+    let chunks = Layout::vertical([Constraint::Ratio(1, 2); 2])
         .split(rect)
         .iter()
         .flat_map(|rect| {
-            Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)])
+            Layout::horizontal([Constraint::Ratio(1, 2); 2])
                 .split(*rect)
                 .to_vec()
         })
@@ -565,8 +565,7 @@ fn render_artist_context_page_windows(
     let top_tracks_rect = chunks[0];
 
     // albums and related artitsts windows
-    let chunks = Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)])
-        .split(chunks[1]);
+    let chunks = Layout::horizontal([Constraint::Ratio(1, 2); 2]).split(chunks[1]);
     let albums_rect = construct_and_render_block(
         "Albums",
         &ui.theme,
@@ -708,10 +707,10 @@ fn render_track_table(
         [
             Constraint::Length(1),
             Constraint::Length(4),
-            Constraint::Percentage(30),
-            Constraint::Percentage(25),
-            Constraint::Percentage(35),
-            Constraint::Percentage(10),
+            Constraint::Fill(4),
+            Constraint::Fill(3),
+            Constraint::Fill(5),
+            Constraint::Fill(1),
         ],
     )
     .header(

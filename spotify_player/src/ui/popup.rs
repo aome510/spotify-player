@@ -3,11 +3,8 @@ use crate::utils::format_duration;
 use std::collections::{btree_map::Entry, BTreeMap};
 
 const SHORTCUT_TABLE_N_COLUMNS: usize = 3;
-const SHORTCUT_TABLE_CONSTRAINS: [Constraint; SHORTCUT_TABLE_N_COLUMNS] = [
-    Constraint::Percentage(33),
-    Constraint::Percentage(33),
-    Constraint::Percentage(33),
-];
+const SHORTCUT_TABLE_CONSTRAINS: [Constraint; SHORTCUT_TABLE_N_COLUMNS] =
+    [Constraint::Ratio(1, 3); 3];
 const COMMAND_TABLE_CONSTRAINTS: [Constraint; 3] = [
     Constraint::Percentage(25),
     Constraint::Percentage(25),
