@@ -39,7 +39,7 @@ pub fn run(state: SharedState) -> Result<()> {
             if let Err(err) = terminal.draw(|frame| {
                 // set the background and foreground colors for the application
                 let rect = frame.size();
-                let block = Block::default().style(ui.theme.app_style());
+                let block = Block::default().style(ui.theme.app());
                 frame.render_widget(block, rect);
 
                 if let Err(err) = render_application(frame, &state, &mut ui, rect) {
@@ -88,13 +88,14 @@ fn render_application(
     ui: &mut UIStateGuard,
     rect: Rect,
 ) -> Result<()> {
-    // playback window is the window that is always displayed on the screen,
-    // hence it's rendered first
-    let (playback_rect, rect) = playback::split_rect_for_playback_window(rect, state);
-    playback::render_playback_window(frame, state, ui, playback_rect)?;
+    // rendering order: help popup -> other popups -> playback window -> main layout
 
     let rect = popup::render_shortcut_help_popup(frame, state, ui, rect);
+
     let (rect, is_active) = popup::render_popup(frame, state, ui, rect);
+
+    let (playback_rect, rect) = playback::split_rect_for_playback_window(rect, state);
+    playback::render_playback_window(frame, state, ui, playback_rect)?;
 
     render_main_layout(is_active, frame, state, ui, rect)?;
     Ok(())

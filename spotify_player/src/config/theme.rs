@@ -156,7 +156,7 @@ impl ThemeConfig {
 }
 
 impl Theme {
-    pub fn app_style(&self) -> style::Style {
+    pub fn app(&self) -> style::Style {
         let mut style = style::Style::default();
         if let Some(ref c) = self.palette.background {
             style = style.bg(c.color);
@@ -167,7 +167,7 @@ impl Theme {
         style
     }
 
-    pub fn selection_style(&self, is_active: bool) -> style::Style {
+    pub fn selection(&self, is_active: bool) -> style::Style {
         if is_active {
             match &self.component_style.selection {
                 None => style::Style::default()
@@ -178,24 +178,6 @@ impl Theme {
         } else {
             style::Style::default()
         }
-    }
-
-    pub fn _text_with_style<'a, S>(
-        &self,
-        content: S,
-        style: tui::style::Style,
-    ) -> tui::text::Span<'a>
-    where
-        S: Into<String>,
-    {
-        tui::text::Span::styled(content.into(), style)
-    }
-
-    pub fn block_title_with_style<'a, S>(&self, content: S) -> tui::text::Span<'a>
-    where
-        S: Into<String>,
-    {
-        tui::text::Span::styled(content.into(), self.block_title())
     }
 
     pub fn block_title(&self) -> tui::style::Style {

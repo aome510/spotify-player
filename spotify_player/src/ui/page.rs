@@ -31,23 +31,16 @@ pub fn render_search_page(
     let rect = construct_and_render_block("Search", &ui.theme, state, Borders::ALL, frame, rect);
 
     // search input's layout
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Length(1), Constraint::Min(0)].as_ref())
-        .split(rect);
+    let chunks = Layout::vertical([Constraint::Length(1), Constraint::Fill(0)]).split(rect);
     let search_input_rect = chunks[0];
     let rect = chunks[1];
 
     // track/album/artist/playlist search results layout (2x2 table)
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
+    let chunks = Layout::vertical([Constraint::Ratio(1, 2); 2])
         .split(rect)
         .iter()
         .flat_map(|rect| {
-            Layout::default()
-                .direction(Direction::Horizontal)
-                .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
+            Layout::horizontal([Constraint::Ratio(1, 2); 2])
                 .split(*rect)
                 .to_vec()
         })
@@ -234,12 +227,9 @@ pub fn render_context_page(
     match data.caches.context.get(&id.uri()) {
         Some(context) => {
             // render context description
-            let chunks = Layout::default()
-                .direction(Direction::Vertical)
-                .constraints([Constraint::Length(1), Constraint::Min(0)].as_ref())
-                .split(rect);
+            let chunks = Layout::vertical([Constraint::Length(1), Constraint::Fill(0)]).split(rect);
             frame.render_widget(
-                Paragraph::new(Text::styled(context.description(), ui.theme.page_desc())),
+                Paragraph::new(context.description()).style(ui.theme.page_desc()),
                 chunks[0],
             );
 
@@ -261,7 +251,7 @@ pub fn render_context_page(
                     )?;
                 }
                 Context::Playlist { tracks, .. } => {
-                    render_track_table_window(
+                    render_track_table(
                         frame,
                         chunks[1],
                         is_active,
@@ -272,7 +262,7 @@ pub fn render_context_page(
                     )?;
                 }
                 Context::Album { tracks, .. } => {
-                    render_track_table_window(
+                    render_track_table(
                         frame,
                         chunks[1],
                         is_active,
@@ -283,7 +273,7 @@ pub fn render_context_page(
                     )?;
                 }
                 Context::Tracks { tracks, .. } => {
-                    render_track_table_window(
+                    render_track_table(
                         frame,
                         chunks[1],
                         is_active,
@@ -324,17 +314,12 @@ pub fn render_library_page(
     // - a playlists window
     // - a saved albums window
     // - a followed artists window
-    let chunks = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints(
-            [
-                Constraint::Percentage(40),
-                Constraint::Percentage(40),
-                Constraint::Percentage(20),
-            ]
-            .as_ref(),
-        )
-        .split(rect);
+    let chunks = Layout::horizontal([
+        Constraint::Percentage(40),
+        Constraint::Percentage(40),
+        Constraint::Percentage(20),
+    ])
+    .split(rect);
     let playlist_rect = construct_and_render_block(
         "Playlists",
         &ui.theme,
@@ -498,10 +483,7 @@ pub fn render_lyric_page(
 
     // 2. Construct the app's layout
     let rect = construct_and_render_block("Lyric", &ui.theme, state, Borders::ALL, frame, rect);
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Length(1), Constraint::Min(0)].as_ref())
-        .split(rect);
+    let chunks = Layout::vertical([Constraint::Length(1), Constraint::Fill(0)]).split(rect);
 
     // 3. Construct the app's widgets
     let (track, artists, scroll_offset) = match ui.current_page_mut() {
@@ -538,10 +520,7 @@ pub fn render_lyric_page(
 
     // 4. Render the app's widgets
     // render lyric page description text
-    frame.render_widget(
-        Paragraph::new(Text::styled(desc, ui.theme.page_desc())),
-        chunks[0],
-    );
+    frame.render_widget(Paragraph::new(desc).style(ui.theme.page_desc()), chunks[0]);
 
     // render lyric text
     frame.render_widget(
@@ -582,17 +561,11 @@ fn render_artist_context_page_windows(
 
     // 2. Construct the app's layout
     // top tracks window
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Length(12), Constraint::Min(1)].as_ref())
-        .split(rect);
+    let chunks = Layout::vertical([Constraint::Length(12), Constraint::Fill(0)]).split(rect);
     let top_tracks_rect = chunks[0];
 
     // albums and related artitsts windows
-    let chunks = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
-        .split(chunks[1]);
+    let chunks = Layout::horizontal([Constraint::Ratio(1, 2); 2]).split(chunks[1]);
     let albums_rect = construct_and_render_block(
         "Albums",
         &ui.theme,
@@ -640,7 +613,7 @@ fn render_artist_context_page_windows(
     };
 
     // 4. Render the widgets
-    render_track_table_window(
+    render_track_table(
         frame,
         top_tracks_rect,
         is_active && focus_state == ArtistFocusState::TopTracks,
@@ -675,7 +648,7 @@ fn render_artist_context_page_windows(
     Ok(())
 }
 
-pub fn render_track_table_window(
+fn render_track_table(
     frame: &mut Frame,
     rect: Rect,
     is_active: bool,
@@ -732,12 +705,12 @@ pub fn render_track_table_window(
     let track_table = Table::new(
         rows,
         [
-            Constraint::Length(2),
-            Constraint::Length(5),
-            Constraint::Percentage(25),
-            Constraint::Percentage(25),
-            Constraint::Percentage(30),
-            Constraint::Percentage(20),
+            Constraint::Length(1),
+            Constraint::Length(4),
+            Constraint::Fill(4),
+            Constraint::Fill(3),
+            Constraint::Fill(5),
+            Constraint::Fill(1),
         ],
     )
     .header(
@@ -752,7 +725,7 @@ pub fn render_track_table_window(
         .style(ui.theme.table_header()),
     )
     .column_spacing(2)
-    .highlight_style(ui.theme.selection_style(is_active));
+    .highlight_style(ui.theme.selection(is_active));
 
     match ui.current_page_mut() {
         PageState::Context {

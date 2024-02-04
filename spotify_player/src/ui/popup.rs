@@ -3,11 +3,8 @@ use crate::utils::format_duration;
 use std::collections::{btree_map::Entry, BTreeMap};
 
 const SHORTCUT_TABLE_N_COLUMNS: usize = 3;
-const SHORTCUT_TABLE_CONSTRAINS: [Constraint; SHORTCUT_TABLE_N_COLUMNS] = [
-    Constraint::Percentage(33),
-    Constraint::Percentage(33),
-    Constraint::Percentage(33),
-];
+const SHORTCUT_TABLE_CONSTRAINS: [Constraint; SHORTCUT_TABLE_N_COLUMNS] =
+    [Constraint::Ratio(1, 3); 3];
 const COMMAND_TABLE_CONSTRAINTS: [Constraint; 3] = [
     Constraint::Percentage(25),
     Constraint::Percentage(25),
@@ -29,10 +26,8 @@ pub fn render_popup(
         None => (rect, true),
         Some(ref popup) => match popup {
             PopupState::Search { query } => {
-                let chunks = Layout::default()
-                    .direction(Direction::Vertical)
-                    .constraints([Constraint::Min(0), Constraint::Length(3)].as_ref())
-                    .split(rect);
+                let chunks =
+                    Layout::vertical([Constraint::Fill(0), Constraint::Length(3)]).split(rect);
 
                 let rect = construct_and_render_block(
                     "Search",
@@ -48,20 +43,16 @@ pub fn render_popup(
             }
             PopupState::CommandHelp { .. } => {
                 // the command help popup will cover the entire main layout
-                let chunks = Layout::default()
-                    .direction(Direction::Vertical)
-                    .constraints([Constraint::Min(0), Constraint::Length(0)].as_ref())
-                    .split(rect);
+                let chunks =
+                    Layout::vertical([Constraint::Fill(0), Constraint::Length(0)]).split(rect);
 
                 render_commands_help_popup(frame, state, ui, chunks[0]);
                 (chunks[1], false)
             }
             PopupState::Queue { .. } => {
                 // the queue popup will cover the entire main layout
-                let chunks = Layout::default()
-                    .direction(Direction::Vertical)
-                    .constraints([Constraint::Min(0), Constraint::Length(0)].as_ref())
-                    .split(rect);
+                let chunks =
+                    Layout::vertical([Constraint::Fill(0), Constraint::Length(0)]).split(rect);
 
                 render_queue_popup(frame, state, ui, chunks[0]);
                 (chunks[1], false)
@@ -165,10 +156,7 @@ fn render_list_popup(
     state: &SharedState,
     ui: &mut UIStateGuard,
 ) -> Rect {
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Min(0), Constraint::Length(length)].as_ref())
-        .split(rect);
+    let chunks = Layout::vertical([Constraint::Fill(0), Constraint::Length(length)]).split(rect);
 
     let rect = construct_and_render_block(title, &ui.theme, state, Borders::ALL, frame, chunks[1]);
     let (list, len) = utils::construct_list_widget(&ui.theme, items, true);
@@ -217,10 +205,7 @@ pub fn render_shortcut_help_popup(
     if matches.is_empty() {
         rect
     } else {
-        let chunks = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([Constraint::Min(0), Constraint::Length(7)].as_ref())
-            .split(rect);
+        let chunks = Layout::vertical([Constraint::Fill(0), Constraint::Length(7)]).split(rect);
 
         let rect = construct_and_render_block(
             "Shortcuts",
