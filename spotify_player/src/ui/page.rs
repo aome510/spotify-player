@@ -251,7 +251,7 @@ pub fn render_context_page(
                     )?;
                 }
                 Context::Playlist { tracks, .. } => {
-                    render_track_table_window(
+                    render_track_table(
                         frame,
                         chunks[1],
                         is_active,
@@ -262,7 +262,7 @@ pub fn render_context_page(
                     )?;
                 }
                 Context::Album { tracks, .. } => {
-                    render_track_table_window(
+                    render_track_table(
                         frame,
                         chunks[1],
                         is_active,
@@ -273,7 +273,7 @@ pub fn render_context_page(
                     )?;
                 }
                 Context::Tracks { tracks, .. } => {
-                    render_track_table_window(
+                    render_track_table(
                         frame,
                         chunks[1],
                         is_active,
@@ -614,7 +614,7 @@ fn render_artist_context_page_windows(
     };
 
     // 4. Render the widgets
-    render_track_table_window(
+    render_track_table(
         frame,
         top_tracks_rect,
         is_active && focus_state == ArtistFocusState::TopTracks,
@@ -649,7 +649,7 @@ fn render_artist_context_page_windows(
     Ok(())
 }
 
-pub fn render_track_table_window(
+fn render_track_table(
     frame: &mut Frame,
     rect: Rect,
     is_active: bool,
