@@ -31,7 +31,7 @@ pub fn render_search_page(
     let rect = construct_and_render_block("Search", &ui.theme, state, Borders::ALL, frame, rect);
 
     // search input's layout
-    let chunks = Layout::vertical([Constraint::Length(1), Constraint::Min(0)]).split(rect);
+    let chunks = Layout::vertical([Constraint::Length(1), Constraint::Fill(0)]).split(rect);
     let search_input_rect = chunks[0];
     let rect = chunks[1];
 
@@ -227,7 +227,7 @@ pub fn render_context_page(
     match data.caches.context.get(&id.uri()) {
         Some(context) => {
             // render context description
-            let chunks = Layout::vertical([Constraint::Length(1), Constraint::Min(0)]).split(rect);
+            let chunks = Layout::vertical([Constraint::Length(1), Constraint::Fill(0)]).split(rect);
             frame.render_widget(
                 Paragraph::new(context.description()).style(ui.theme.page_desc()),
                 chunks[0],
@@ -483,7 +483,7 @@ pub fn render_lyric_page(
 
     // 2. Construct the app's layout
     let rect = construct_and_render_block("Lyric", &ui.theme, state, Borders::ALL, frame, rect);
-    let chunks = Layout::vertical([Constraint::Length(1), Constraint::Min(0)]).split(rect);
+    let chunks = Layout::vertical([Constraint::Length(1), Constraint::Fill(0)]).split(rect);
 
     // 3. Construct the app's widgets
     let (track, artists, scroll_offset) = match ui.current_page_mut() {
@@ -561,7 +561,7 @@ fn render_artist_context_page_windows(
 
     // 2. Construct the app's layout
     // top tracks window
-    let chunks = Layout::vertical([Constraint::Length(12), Constraint::Min(1)]).split(rect);
+    let chunks = Layout::vertical([Constraint::Length(12), Constraint::Fill(0)]).split(rect);
     let top_tracks_rect = chunks[0];
 
     // albums and related artitsts windows

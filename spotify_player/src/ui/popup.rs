@@ -30,7 +30,7 @@ pub fn render_popup(
         Some(ref popup) => match popup {
             PopupState::Search { query } => {
                 let chunks =
-                    Layout::vertical([Constraint::Min(0), Constraint::Length(3)]).split(rect);
+                    Layout::vertical([Constraint::Fill(0), Constraint::Length(3)]).split(rect);
 
                 let rect = construct_and_render_block(
                     "Search",
@@ -47,7 +47,7 @@ pub fn render_popup(
             PopupState::CommandHelp { .. } => {
                 // the command help popup will cover the entire main layout
                 let chunks =
-                    Layout::vertical([Constraint::Min(0), Constraint::Length(0)]).split(rect);
+                    Layout::vertical([Constraint::Fill(0), Constraint::Length(0)]).split(rect);
 
                 render_commands_help_popup(frame, state, ui, chunks[0]);
                 (chunks[1], false)
@@ -55,7 +55,7 @@ pub fn render_popup(
             PopupState::Queue { .. } => {
                 // the queue popup will cover the entire main layout
                 let chunks =
-                    Layout::vertical([Constraint::Min(0), Constraint::Length(0)]).split(rect);
+                    Layout::vertical([Constraint::Fill(0), Constraint::Length(0)]).split(rect);
 
                 render_queue_popup(frame, state, ui, chunks[0]);
                 (chunks[1], false)
@@ -159,7 +159,7 @@ fn render_list_popup(
     state: &SharedState,
     ui: &mut UIStateGuard,
 ) -> Rect {
-    let chunks = Layout::vertical([Constraint::Min(0), Constraint::Length(length)]).split(rect);
+    let chunks = Layout::vertical([Constraint::Fill(0), Constraint::Length(length)]).split(rect);
 
     let rect = construct_and_render_block(title, &ui.theme, state, Borders::ALL, frame, chunks[1]);
     let (list, len) = utils::construct_list_widget(&ui.theme, items, true);
@@ -208,7 +208,7 @@ pub fn render_shortcut_help_popup(
     if matches.is_empty() {
         rect
     } else {
-        let chunks = Layout::vertical([Constraint::Min(0), Constraint::Length(7)]).split(rect);
+        let chunks = Layout::vertical([Constraint::Fill(0), Constraint::Length(7)]).split(rect);
 
         let rect = construct_and_render_block(
             "Shortcuts",

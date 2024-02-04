@@ -20,7 +20,7 @@ pub fn render_playback_window(
                 // allocate the progress bar rect
                 let (rect, progress_bar_rect) = {
                     let chunks =
-                        Layout::vertical([Constraint::Min(0), Constraint::Length(1)]).split(rect);
+                        Layout::vertical([Constraint::Fill(0), Constraint::Length(1)]).split(rect);
 
                     (chunks[0], chunks[1])
                 };
@@ -35,13 +35,13 @@ pub fn render_playback_window(
                                 Constraint::Length(
                                     state.configs.app_config.cover_img_length as u16,
                                 ),
-                                Constraint::Min(0), // metadata_rect
+                                Constraint::Fill(0), // metadata_rect
                             ])
                             .spacing(1)
                             .split(rect);
                             let ver_chunks = Layout::vertical([
                                 Constraint::Length(state.configs.app_config.cover_img_width as u16), // cover_img_rect
-                                Constraint::Min(0),
+                                Constraint::Fill(0), // empty space
                             ])
                             .split(hor_chunks[0]);
 
@@ -331,14 +331,16 @@ pub fn split_rect_for_playback_window(rect: Rect, state: &SharedState) -> (Rect,
 
     match state.configs.app_config.playback_window_position {
         config::Position::Top => {
-            let chunks = Layout::vertical([Constraint::Length(playback_width), Constraint::Min(0)])
-                .split(rect);
+            let chunks =
+                Layout::vertical([Constraint::Length(playback_width), Constraint::Fill(0)])
+                    .split(rect);
 
             (chunks[0], chunks[1])
         }
         config::Position::Bottom => {
-            let chunks = Layout::vertical([Constraint::Min(0), Constraint::Length(playback_width)])
-                .split(rect);
+            let chunks =
+                Layout::vertical([Constraint::Fill(0), Constraint::Length(playback_width)])
+                    .split(rect);
 
             (chunks[1], chunks[0])
         }
