@@ -19,10 +19,8 @@ pub fn render_playback_window(
             let (metadata_rect, progress_bar_rect) = {
                 // allocate the progress bar rect
                 let (rect, progress_bar_rect) = {
-                    let chunks = Layout::default()
-                        .direction(Direction::Vertical)
-                        .constraints([Constraint::Min(0), Constraint::Length(1)].as_ref())
-                        .split(rect);
+                    let chunks =
+                        Layout::vertical([Constraint::Min(0), Constraint::Length(1)]).split(rect);
 
                     (chunks[0], chunks[1])
                 };
@@ -33,33 +31,21 @@ pub fn render_playback_window(
                     {
                         // Split the allocated rectangle into `metadata_rect` and `cover_img_rect`
                         let (metadata_rect, cover_img_rect) = {
-                            let hor_chunks = Layout::default()
-                                .direction(Direction::Horizontal)
-                                .constraints(
-                                    [
-                                        Constraint::Length(
-                                            state.configs.app_config.cover_img_length as u16,
-                                        ),
-                                        Constraint::Length(1), // a margin of 1 between the cover image widget and track's metadata widget
-                                        Constraint::Min(0),    // metadata_rect
-                                    ]
-                                    .as_ref(),
-                                )
-                                .split(rect);
-                            let ver_chunks = Layout::default()
-                                .direction(Direction::Vertical)
-                                .constraints(
-                                    [
-                                        Constraint::Length(
-                                            state.configs.app_config.cover_img_width as u16,
-                                        ), // cover_img_rect
-                                        Constraint::Min(0), // a margin of 1 between the cover image widget and track's metadata widget
-                                    ]
-                                    .as_ref(),
-                                )
-                                .split(hor_chunks[0]);
+                            let hor_chunks = Layout::horizontal([
+                                Constraint::Length(
+                                    state.configs.app_config.cover_img_length as u16,
+                                ),
+                                Constraint::Min(0), // metadata_rect
+                            ])
+                            .spacing(1)
+                            .split(rect);
+                            let ver_chunks = Layout::vertical([
+                                Constraint::Length(state.configs.app_config.cover_img_width as u16), // cover_img_rect
+                                Constraint::Min(0),
+                            ])
+                            .split(hor_chunks[0]);
 
-                            (hor_chunks[2], ver_chunks[0])
+                            (hor_chunks[1], ver_chunks[0])
                         };
 
                         // set the `skip` state of cells in the cover image area
@@ -345,17 +331,13 @@ pub fn split_rect_for_playback_window(rect: Rect, state: &SharedState) -> (Rect,
 
     match state.configs.app_config.playback_window_position {
         config::Position::Top => {
-            let chunks = Layout::default()
-                .direction(Direction::Vertical)
-                .constraints([Constraint::Length(playback_width), Constraint::Min(0)].as_ref())
+            let chunks = Layout::vertical([Constraint::Length(playback_width), Constraint::Min(0)])
                 .split(rect);
 
             (chunks[0], chunks[1])
         }
         config::Position::Bottom => {
-            let chunks = Layout::default()
-                .direction(Direction::Vertical)
-                .constraints([Constraint::Min(0), Constraint::Length(playback_width)].as_ref())
+            let chunks = Layout::vertical([Constraint::Min(0), Constraint::Length(playback_width)])
                 .split(rect);
 
             (chunks[1], chunks[0])

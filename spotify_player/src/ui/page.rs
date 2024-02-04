@@ -31,23 +31,16 @@ pub fn render_search_page(
     let rect = construct_and_render_block("Search", &ui.theme, state, Borders::ALL, frame, rect);
 
     // search input's layout
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Length(1), Constraint::Min(0)].as_ref())
-        .split(rect);
+    let chunks = Layout::vertical([Constraint::Length(1), Constraint::Min(0)]).split(rect);
     let search_input_rect = chunks[0];
     let rect = chunks[1];
 
     // track/album/artist/playlist search results layout (2x2 table)
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
+    let chunks = Layout::vertical([Constraint::Percentage(50), Constraint::Percentage(50)])
         .split(rect)
         .iter()
         .flat_map(|rect| {
-            Layout::default()
-                .direction(Direction::Horizontal)
-                .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
+            Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)])
                 .split(*rect)
                 .to_vec()
         })
@@ -234,10 +227,7 @@ pub fn render_context_page(
     match data.caches.context.get(&id.uri()) {
         Some(context) => {
             // render context description
-            let chunks = Layout::default()
-                .direction(Direction::Vertical)
-                .constraints([Constraint::Length(1), Constraint::Min(0)].as_ref())
-                .split(rect);
+            let chunks = Layout::vertical([Constraint::Length(1), Constraint::Min(0)]).split(rect);
             frame.render_widget(
                 Paragraph::new(context.description()).style(ui.theme.page_desc()),
                 chunks[0],
@@ -324,17 +314,12 @@ pub fn render_library_page(
     // - a playlists window
     // - a saved albums window
     // - a followed artists window
-    let chunks = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints(
-            [
-                Constraint::Percentage(40),
-                Constraint::Percentage(40),
-                Constraint::Percentage(20),
-            ]
-            .as_ref(),
-        )
-        .split(rect);
+    let chunks = Layout::horizontal([
+        Constraint::Percentage(40),
+        Constraint::Percentage(40),
+        Constraint::Percentage(20),
+    ])
+    .split(rect);
     let playlist_rect = construct_and_render_block(
         "Playlists",
         &ui.theme,
@@ -498,10 +483,7 @@ pub fn render_lyric_page(
 
     // 2. Construct the app's layout
     let rect = construct_and_render_block("Lyric", &ui.theme, state, Borders::ALL, frame, rect);
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Length(1), Constraint::Min(0)].as_ref())
-        .split(rect);
+    let chunks = Layout::vertical([Constraint::Length(1), Constraint::Min(0)]).split(rect);
 
     // 3. Construct the app's widgets
     let (track, artists, scroll_offset) = match ui.current_page_mut() {
@@ -579,16 +561,11 @@ fn render_artist_context_page_windows(
 
     // 2. Construct the app's layout
     // top tracks window
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Length(12), Constraint::Min(1)].as_ref())
-        .split(rect);
+    let chunks = Layout::vertical([Constraint::Length(12), Constraint::Min(1)]).split(rect);
     let top_tracks_rect = chunks[0];
 
     // albums and related artitsts windows
-    let chunks = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
+    let chunks = Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)])
         .split(chunks[1]);
     let albums_rect = construct_and_render_block(
         "Albums",
@@ -729,12 +706,12 @@ pub fn render_track_table_window(
     let track_table = Table::new(
         rows,
         [
-            Constraint::Length(2),
-            Constraint::Length(5),
-            Constraint::Percentage(25),
-            Constraint::Percentage(25),
+            Constraint::Length(1),
+            Constraint::Length(4),
             Constraint::Percentage(30),
-            Constraint::Percentage(20),
+            Constraint::Percentage(25),
+            Constraint::Percentage(35),
+            Constraint::Percentage(10),
         ],
     )
     .header(
