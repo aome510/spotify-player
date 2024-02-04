@@ -88,13 +88,14 @@ fn render_application(
     ui: &mut UIStateGuard,
     rect: Rect,
 ) -> Result<()> {
-    // playback window is the window that is always displayed on the screen,
-    // hence it's rendered first
-    let (playback_rect, rect) = playback::split_rect_for_playback_window(rect, state);
-    playback::render_playback_window(frame, state, ui, playback_rect)?;
+    // rendering order: help popup -> other popups -> playback window -> main layout
 
     let rect = popup::render_shortcut_help_popup(frame, state, ui, rect);
+
     let (rect, is_active) = popup::render_popup(frame, state, ui, rect);
+
+    let (playback_rect, rect) = playback::split_rect_for_playback_window(rect, state);
+    playback::render_playback_window(frame, state, ui, playback_rect)?;
 
     render_main_layout(is_active, frame, state, ui, rect)?;
     Ok(())
