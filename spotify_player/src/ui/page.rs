@@ -752,7 +752,7 @@ pub fn render_track_table_window(
         .style(ui.theme.table_header()),
     )
     .column_spacing(2)
-    .highlight_style(ui.theme.selection_style(is_active));
+    .highlight_style(ui.theme.selection(is_active));
 
     match ui.current_page_mut() {
         PageState::Context {

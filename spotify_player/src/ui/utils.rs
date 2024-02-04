@@ -40,7 +40,7 @@ pub fn construct_and_render_block(
     }
 
     // Set `title` for the block
-    block = block.title(theme.block_title_with_style(title));
+    block = block.title(Span::styled(title, theme.block_title()));
 
     frame.render_widget(block, rect);
     inner_rect
@@ -67,7 +67,7 @@ pub fn construct_list_widget<'a>(
                 })
                 .collect::<Vec<_>>(),
         )
-        .highlight_style(theme.selection_style(is_active)),
+        .highlight_style(theme.selection(is_active)),
         n_items,
     )
 }

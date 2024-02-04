@@ -39,7 +39,7 @@ pub fn run(state: SharedState) -> Result<()> {
             if let Err(err) = terminal.draw(|frame| {
                 // set the background and foreground colors for the application
                 let rect = frame.size();
-                let block = Block::default().style(ui.theme.app_style());
+                let block = Block::default().style(ui.theme.app());
                 frame.render_widget(block, rect);
 
                 if let Err(err) = render_application(frame, &state, &mut ui, rect) {
