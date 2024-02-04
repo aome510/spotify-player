@@ -239,7 +239,7 @@ pub fn render_context_page(
                 .constraints([Constraint::Length(1), Constraint::Min(0)].as_ref())
                 .split(rect);
             frame.render_widget(
-                Paragraph::new(Text::styled(context.description(), ui.theme.page_desc())),
+                Paragraph::new(context.description()).style(ui.theme.page_desc()),
                 chunks[0],
             );
 
@@ -538,10 +538,7 @@ pub fn render_lyric_page(
 
     // 4. Render the app's widgets
     // render lyric page description text
-    frame.render_widget(
-        Paragraph::new(Text::styled(desc, ui.theme.page_desc())),
-        chunks[0],
-    );
+    frame.render_widget(Paragraph::new(desc).style(ui.theme.page_desc()), chunks[0]);
 
     // render lyric text
     frame.render_widget(
