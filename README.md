@@ -381,7 +381,7 @@ To move the focus from the search input to the other windows such as track resul
 
 ## Configurations
 
-By default, `spotify_player` will look into `$HOME/.config/spotify-player` for application's configuration files. This can be changed by either specifying `-c <FOLDER_PATH>` or `--config-folder <FOLDER_PATH>` option.
+By default, `spotify_player` will look into the `$HOME/.config/spotify-player` and the `$XDG_CONFIG_HOME/spotify-player` directories for application's configuration files, with that preference. This can be changed by either specifying `-c <FOLDER_PATH>` or `--config-folder <FOLDER_PATH>` option.
 
 If an application configuration file is not found, one will be created with default values.
 
@@ -389,7 +389,7 @@ Please refer to [the configuration documentation](docs/config.md) for more detai
 
 ## Caches
 
-By default, `spotify_player` will look into `$HOME/.cache/spotify-player` for application's cache files, which include log files, Spotify's authorization credentials, audio cache files, etc. This can be changed by either specifying `-C <FOLDER_PATH>` or `--cache-folder <FOLDER_PATH>` option.
+By default, `spotify_player` will look into `$XDG_CACHE_HOME/spotify-player` for application's cache files, which include log files, Spotify's authorization credentials, audio cache files, etc, falling back on `$HOME/.cache/spotify-player`. This can be changed by either specifying `-C <FOLDER_PATH>` or `--cache-folder <FOLDER_PATH>` option.
 
 ### Logging
 
