@@ -261,8 +261,7 @@ impl Command {
             Self::ReverseTrackOrder => "reverse the order of the track table (if any)",
             Self::MovePlaylistItemUp => "move playlist item up one position",
             Self::MovePlaylistItemDown => "move playlist item down one position",
-
-            Self::CreatePlaylist => "create new playlist",
+            Self::CreatePlaylist => "create a new playlist",
         }
     }
 }

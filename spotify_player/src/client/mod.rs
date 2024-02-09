@@ -459,16 +459,15 @@ impl Client {
                 desc,
             } => {
                 let user_id = state.data.read().user_data.user.to_owned().unwrap().id;
-                let _ = self
-                    .create_new_playlist(
-                        state,
-                        user_id.clone(),
-                        playlist_name.as_str(),
-                        public,
-                        collab,
-                        desc.as_str(),
-                    )
-                    .await?;
+                self.create_new_playlist(
+                    state,
+                    user_id,
+                    playlist_name.as_str(),
+                    public,
+                    collab,
+                    desc.as_str(),
+                )
+                .await?;
             }
         };
 
@@ -1424,15 +1423,13 @@ impl Client {
                 Some(desc),
             )
             .await?;
-        state.data.write().user_data.playlists.insert(
-            0,
-            Playlist {
-                id: resp.id.to_owned(),
-                collaborative: collab,
-                name: playlist_name.to_string(),
-                owner: ("".into(), user_id),
-            },
-        );
+        state
+            .data
+            .write()
+            .user_data
+            .playlists
+            .insert(0, resp.clone().into());
+        tracing::info!("new playlist with {} id was successfully created", resp.id);
         Ok(resp.id)
     }
 

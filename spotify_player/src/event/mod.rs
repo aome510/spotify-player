@@ -466,6 +466,13 @@ fn handle_global_command(
             ui.popup = Some(PopupState::Queue { scroll_offset: 0 });
             client_pub.send(ClientRequest::GetCurrentUserQueue)?;
         }
+        Command::CreatePlaylist => {
+            ui.popup = Some(PopupState::PlaylistCreate {
+                name: "".into(),
+                desc: "".into(),
+                current_field: PlaylistCreateCurrentField::Name,
+            });
+        }
         _ => return Ok(false),
     }
     Ok(true)

@@ -41,7 +41,7 @@ pub fn render_popup(
                     .split(chunks[1]);
 
                 let name_input = construct_and_render_block(
-                    "Enter Name for New Playlist:",
+                    "Enter Name for New Playlist",
                     &ui.theme,
                     state,
                     Borders::ALL,

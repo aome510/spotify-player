@@ -304,19 +304,15 @@ fn handle_key_sequence_for_create_playlist_popup(
                     crossterm::event::KeyCode::Backspace => {
                         match &current_field {
                             PlaylistCreateCurrentField::Name => {
-                                if !name.is_empty() {
-                                    name.pop().unwrap();
-                                }
+                                name.pop();
                             }
                             PlaylistCreateCurrentField::Desc => {
-                                if !desc.is_empty() {
-                                    desc.pop().unwrap();
-                                }
+                                desc.pop();
                             }
                         }
                         return Ok(true);
                     }
-                    crossterm::event::KeyCode::Tab => {
+                    crossterm::event::KeyCode::Tab | crossterm::event::KeyCode::BackTab => {
                         *current_field = match &current_field {
                             PlaylistCreateCurrentField::Name => PlaylistCreateCurrentField::Desc,
                             PlaylistCreateCurrentField::Desc => PlaylistCreateCurrentField::Name,
@@ -340,6 +336,7 @@ fn handle_key_sequence_for_create_playlist_popup(
     }
 
     let command = state
+        .configs
         .keymap_config
         .find_command_from_key_sequence(key_sequence);
     if let Some(Command::ClosePopup) = command {
@@ -347,23 +344,7 @@ fn handle_key_sequence_for_create_playlist_popup(
         return Ok(true);
     }
 
-    let page_type = state.ui.lock().current_page().page_type();
-    match page_type {
-        PageType::Library => page::handle_key_sequence_for_library_page(key_sequence, state),
-        PageType::Search => {
-            page::handle_key_sequence_for_search_page(key_sequence, client_pub, state)
-        }
-        PageType::Context => {
-            page::handle_key_sequence_for_context_page(key_sequence, client_pub, state)
-        }
-        PageType::Browse => {
-            page::handle_key_sequence_for_browse_page(key_sequence, client_pub, state)
-        }
-        #[cfg(feature = "lyric-finder")]
-        PageType::Lyric => {
-            page::handle_key_sequence_for_lyric_page(key_sequence, client_pub, state)
-        }
-    }
+    Ok(false)
 }
 
 /// handles a key sequence for a context search popup

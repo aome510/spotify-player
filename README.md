@@ -357,6 +357,7 @@ List of supported commands:
 | `ReverseOrder`                 | reverse the order of the track table (if any)                           | `s r`              |
 | `MovePlaylistItemUp`           | move playlist item up one position                                      | `C-k`              |
 | `MovePlaylistItemDown`         | move playlist item down one position                                    | `C-j`              |
+| `CreatePlaylist`               | create a new playlist                                                   | `N`                |
 
 To add new shortcuts or modify the default shortcuts, please refer to the [keymaps section](docs/config.md#keymaps) in the configuration documentation.
 
