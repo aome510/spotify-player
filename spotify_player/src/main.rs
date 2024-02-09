@@ -17,20 +17,16 @@ mod utils;
 use anyhow::{Context, Result};
 use std::io::Write;
 
-// unused variables:
-// - `is_daemon` when the `streaming` feature is not enabled
-#[allow(unused_variables)]
 async fn init_spotify(
     client_pub: &flume::Sender<event::ClientRequest>,
     client: &client::Client,
     state: &state::SharedState,
-    is_daemon: bool,
 ) -> Result<()> {
     // if `streaming` feature is enabled, create a new streaming connection
     #[cfg(feature = "streaming")]
     if state.configs.app_config.enable_streaming == config::StreamingType::Always
         || (state.configs.app_config.enable_streaming == config::StreamingType::DaemonOnly
-            && is_daemon)
+            && state.is_daemon)
     {
         client.new_streaming_connection(state).await;
     }
@@ -87,8 +83,8 @@ fn init_logging(cache_folder: &std::path::Path) -> Result<()> {
 }
 
 #[tokio::main]
-async fn start_app(state: state::SharedState, is_daemon: bool) -> Result<()> {
-    if !is_daemon {
+async fn start_app(state: &state::SharedState) -> Result<()> {
+    if !state.is_daemon {
         #[cfg(feature = "image")]
         {
             // initialize `viuer` supports for kitty, iterm2, and sixel
@@ -130,7 +126,7 @@ async fn start_app(state: state::SharedState, is_daemon: bool) -> Result<()> {
 
     // create a librespot session
     let auth_config = auth::AuthConfig::new(&state.configs)?;
-    let session = auth::new_session(&auth_config, !is_daemon).await?;
+    let session = auth::new_session(&auth_config, !state.is_daemon).await?;
 
     // create a Spotify API client
     let client = client::Client::new(
@@ -142,7 +138,7 @@ async fn start_app(state: state::SharedState, is_daemon: bool) -> Result<()> {
     client.init_token().await?;
 
     // initialize Spotify-related stuff
-    init_spotify(&client_pub, &client, &state, is_daemon)
+    init_spotify(&client_pub, &client, &state)
         .await
         .context("Failed to initialize the Spotify data")?;
 
@@ -184,7 +180,7 @@ async fn start_app(state: state::SharedState, is_daemon: bool) -> Result<()> {
         }
     }));
 
-    if !is_daemon {
+    if !state.is_daemon {
         // spawn tasks needed for running the application UI
 
         // terminal event handler task
@@ -278,11 +274,11 @@ fn main() -> Result<()> {
             // log the application's configurations
             tracing::info!("Configurations: {:?}", configs);
 
-            let state = std::sync::Arc::new(state::State::new(configs));
+            let is_daemon;
 
             #[cfg(feature = "daemon")]
             {
-                let is_daemon = args.get_flag("daemon");
+                is_daemon = args.get_flag("daemon");
                 if is_daemon {
                     if cfg!(any(target_os = "macos", target_os = "windows"))
                         && cfg!(feature = "media-control")
@@ -299,14 +295,15 @@ fn main() -> Result<()> {
                     let daemonize = daemonize::Daemonize::new();
                     daemonize.start()?;
                 }
-                if let Err(err) = start_app(state, is_daemon) {
-                    tracing::error!("Encountered an error when running the application: {err:#}");
-                }
-                Ok(())
             }
 
             #[cfg(not(feature = "daemon"))]
-            start_app(state, false)
+            {
+                is_daemon = false;
+            }
+
+            let state = std::sync::Arc::new(state::State::new(configs, is_daemon));
+            start_app(&state)
         }
         Some((cmd, args)) => cli::handle_cli_subcommand(cmd, args, &configs),
     }
