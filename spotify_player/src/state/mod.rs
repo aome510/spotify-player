@@ -67,4 +67,11 @@ impl State {
             is_daemon,
         }
     }
+
+    #[cfg(feature = "streaming")]
+    pub fn is_streaming_enabled(&self) -> bool {
+        self.configs.app_config.enable_streaming == config::StreamingType::Always
+            || (self.configs.app_config.enable_streaming == config::StreamingType::DaemonOnly
+                && self.is_daemon)
+    }
 }
