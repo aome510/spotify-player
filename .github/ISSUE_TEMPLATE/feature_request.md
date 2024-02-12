@@ -6,6 +6,9 @@ labels: enhancement
 assignees: ""
 ---
 
+**Is your feature already implemented in the latest `master`?**
+Please go through the [Features REAMDE page](https://github.com/aome510/spotify-player?tab=readme-ov-file#features) to make sure your request feature hasn't been implemented.
+
 **Is your feature request related to a problem? Please describe.**
 A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
 
