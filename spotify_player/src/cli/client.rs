@@ -735,6 +735,7 @@ async fn playlist_import(
     let mut f = std::fs::OpenOptions::new()
         .write(true)
         .create(true)
+        .truncate(true)
         .open(&from_file)?;
     let hash_set_bytes =
         serde_json::to_vec(&from_hash_set).context("Serialize new playlist import data")?;
