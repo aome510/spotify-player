@@ -76,7 +76,7 @@ pub enum ClientRequest {
         artists: String,
     },
     #[cfg(feature = "streaming")]
-    NewStreamingConnection,
+    RestartIntegratedClient,
 }
 
 /// starts a terminal event handler (key pressed, mouse clicked, etc)
@@ -444,7 +444,7 @@ fn handle_global_command(
         }
         #[cfg(feature = "streaming")]
         Command::RestartIntegratedClient => {
-            client_pub.send(ClientRequest::NewStreamingConnection)?;
+            client_pub.send(ClientRequest::RestartIntegratedClient)?;
         }
         Command::FocusNextWindow => {
             if !ui.has_focused_popup() {

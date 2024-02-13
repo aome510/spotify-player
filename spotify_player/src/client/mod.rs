@@ -253,10 +253,8 @@ impl Client {
                 self.connect_device(state, id).await;
             }
             #[cfg(feature = "streaming")]
-            ClientRequest::NewStreamingConnection => {
-                let device_id = self.new_streaming_connection(state).await;
-                // upon creating a new streaming connection, connect to it
-                self.connect_device(state, Some(device_id)).await;
+            ClientRequest::RestartIntegratedClient => {
+                self.new_session(state).await?;
             }
             ClientRequest::GetCurrentUser => {
                 let user = self.spotify.current_user().await?;
