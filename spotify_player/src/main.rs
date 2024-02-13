@@ -135,7 +135,7 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
     client.init_token().await?;
 
     // initialize Spotify-related stuff
-    init_spotify(&client_pub, &client, &state)
+    init_spotify(&client_pub, &client, state)
         .await
         .context("Failed to initialize the Spotify data")?;
 
