@@ -68,7 +68,7 @@ impl Client {
 
         // upon creating a new session, also create a new streaming connection
         #[cfg(feature = "streaming")]
-        {
+        if state.is_streaming_enabled() {
             self.new_streaming_connection(state).await;
             // handle `ConnectDevice` separately as we don't want to block here
             self.client_pub.send(ClientRequest::ConnectDevice(None))?;

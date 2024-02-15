@@ -45,10 +45,11 @@ pub struct State {
     pub ui: Mutex<UIState>,
     pub player: RwLock<PlayerState>,
     pub data: RwLock<AppData>,
+    pub is_daemon: bool,
 }
 
 impl State {
-    pub fn new(configs: Configs) -> Self {
+    pub fn new(configs: Configs, is_daemon: bool) -> Self {
         let mut ui = UIState::default();
 
         if let Some(theme) = configs.theme_config.find_theme(&configs.app_config.theme) {
@@ -63,6 +64,14 @@ impl State {
             ui: Mutex::new(ui),
             player: RwLock::new(PlayerState::default()),
             data: RwLock::new(app_data),
+            is_daemon,
         }
+    }
+
+    #[cfg(feature = "streaming")]
+    pub fn is_streaming_enabled(&self) -> bool {
+        self.configs.app_config.enable_streaming == config::StreamingType::Always
+            || (self.configs.app_config.enable_streaming == config::StreamingType::DaemonOnly
+                && self.is_daemon)
     }
 }
