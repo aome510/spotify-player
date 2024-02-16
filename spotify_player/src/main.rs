@@ -283,10 +283,6 @@ fn main() -> Result<()> {
                         eprintln!("Running the application as a daemon on windows/macos with `media-control` feature enabled is not supported!");
                         std::process::exit(1);
                     }
-                    if cfg!(not(feature = "streaming")) {
-                        eprintln!("`streaming` feature must be enabled to run the application as a daemon!");
-                        std::process::exit(1);
-                    }
 
                     tracing::info!("Starting the application as a daemon...");
                     let daemonize = daemonize::Daemonize::new();
