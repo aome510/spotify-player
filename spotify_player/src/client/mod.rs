@@ -452,6 +452,30 @@ impl Client {
                 )
                 .await?;
             }
+            ClientRequest::CreatePlaylist {
+                playlist_name,
+                public,
+                collab,
+                desc,
+            } => {
+                let user_id = state
+                    .data
+                    .read()
+                    .user_data
+                    .user
+                    .as_ref()
+                    .map(|u| u.id.to_owned())
+                    .unwrap();
+                self.create_new_playlist(
+                    state,
+                    user_id,
+                    playlist_name.as_str(),
+                    public,
+                    collab,
+                    desc.as_str(),
+                )
+                .await?;
+            }
         };
 
         tracing::info!(
@@ -1384,6 +1408,35 @@ impl Client {
             Self::notify_new_track(track, &path, state)?;
         }
 
+        Ok(())
+    }
+
+    pub async fn create_new_playlist(
+        &self,
+        state: &SharedState,
+        user_id: UserId<'static>,
+        playlist_name: &str,
+        public: bool,
+        collab: bool,
+        desc: &str,
+    ) -> Result<()> {
+        let playlist: Playlist = self
+            .spotify
+            .user_playlist_create(
+                user_id,
+                playlist_name,
+                Some(public),
+                Some(collab),
+                Some(desc),
+            )
+            .await?
+            .into();
+        tracing::info!(
+            "new playlist (name={},id={}) was successfully created",
+            playlist.name,
+            playlist.id
+        );
+        state.data.write().user_data.playlists.insert(0, playlist);
         Ok(())
     }
 

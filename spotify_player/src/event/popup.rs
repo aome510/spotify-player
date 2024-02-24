@@ -25,10 +25,15 @@ pub fn handle_key_sequence_for_popup(
     // handle popups that need reading the raw key sequence instead of the matched command
     match popup {
         PopupState::Search { .. } => {
-            // NOTE: the `drop(ui)` is important as the handle function for search
+            // NOTE: the `drop(ui)` is important as the handle function for the popup
             // re-acquire the UI lock, so we need to drop the current UI lock to avoid a deadlock.
             drop(ui);
             return handle_key_sequence_for_search_popup(key_sequence, client_pub, state);
+        }
+        PopupState::PlaylistCreate { .. } => {
+            // NOTE: same here.
+            drop(ui);
+            return handle_key_sequence_for_create_playlist_popup(key_sequence, client_pub, state);
         }
         PopupState::ActionList(item, ..) => {
             return handle_key_sequence_for_action_list_popup(
@@ -53,6 +58,9 @@ pub fn handle_key_sequence_for_popup(
 
     match popup {
         PopupState::Search { .. } => anyhow::bail!("search popup should be handled before"),
+        PopupState::PlaylistCreate { .. } => {
+            anyhow::bail!("create playlist popup should be handled before")
+        }
         PopupState::ActionList(..) => {
             anyhow::bail!("action list popup should be handled before")
         }
@@ -262,6 +270,66 @@ fn handle_command_for_queue_popup(
         _ => return Ok(false),
     }
     Ok(true)
+}
+
+fn handle_key_sequence_for_create_playlist_popup(
+    key_sequence: &KeySequence,
+    client_pub: &flume::Sender<ClientRequest>,
+    state: &SharedState,
+) -> Result<bool> {
+    {
+        let mut ui = state.ui.lock();
+        let (name, desc, current_field) = match ui.popup {
+            Some(PopupState::PlaylistCreate {
+                ref mut name,
+                ref mut desc,
+                ref mut current_field,
+            }) => (name, desc, current_field),
+            _ => return Ok(false),
+        };
+        if key_sequence.keys.len() == 1 {
+            match &key_sequence.keys[0] {
+                Key::None(crossterm::event::KeyCode::Enter) => {
+                    client_pub.send(ClientRequest::CreatePlaylist {
+                        playlist_name: name.get_text(),
+                        public: false,
+                        collab: false,
+                        desc: desc.get_text(),
+                    })?;
+                    ui.popup = None;
+                    return Ok(true);
+                }
+                Key::None(crossterm::event::KeyCode::Tab)
+                | Key::None(crossterm::event::KeyCode::BackTab) => {
+                    *current_field = match &current_field {
+                        PlaylistCreateCurrentField::Name => PlaylistCreateCurrentField::Desc,
+                        PlaylistCreateCurrentField::Desc => PlaylistCreateCurrentField::Name,
+                    };
+                    return Ok(true);
+                }
+                k => {
+                    let line_input = match current_field {
+                        PlaylistCreateCurrentField::Name => name,
+                        PlaylistCreateCurrentField::Desc => desc,
+                    };
+                    if line_input.input(k).is_some() {
+                        return Ok(true);
+                    }
+                }
+            }
+        }
+    }
+
+    let command = state
+        .configs
+        .keymap_config
+        .find_command_from_key_sequence(key_sequence);
+    if let Some(Command::ClosePopup) = command {
+        state.ui.lock().popup = None;
+        return Ok(true);
+    }
+
+    Ok(false)
 }
 
 /// handles a key sequence for a context search popup

@@ -25,6 +25,46 @@ pub fn render_popup(
     match ui.popup {
         None => (rect, true),
         Some(ref popup) => match popup {
+            PopupState::PlaylistCreate {
+                name,
+                desc,
+                current_field,
+            } => {
+                let chunks =
+                    Layout::vertical([Constraint::Min(0), Constraint::Length(3)]).split(rect);
+
+                let popup_chunks =
+                    Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)])
+                        .split(chunks[1]);
+
+                let name_input = construct_and_render_block(
+                    "Enter Name for New Playlist:",
+                    &ui.theme,
+                    state,
+                    Borders::ALL,
+                    frame,
+                    popup_chunks[0],
+                );
+
+                let desc_input = construct_and_render_block(
+                    "Enter Description for New Playlist:",
+                    &ui.theme,
+                    state,
+                    Borders::ALL,
+                    frame,
+                    popup_chunks[1],
+                );
+
+                frame.render_widget(
+                    name.widget(PlaylistCreateCurrentField::Name == *current_field),
+                    name_input,
+                );
+                frame.render_widget(
+                    desc.widget(PlaylistCreateCurrentField::Desc == *current_field),
+                    desc_input,
+                );
+                (chunks[0], true)
+            }
             PopupState::Search { query } => {
                 let chunks =
                     Layout::vertical([Constraint::Fill(0), Constraint::Length(3)]).split(rect);

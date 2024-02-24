@@ -118,19 +118,20 @@ pub fn handle_key_sequence_for_search_page(
     // handle user's input
     if let SearchFocusState::Input = focus_state {
         if key_sequence.keys.len() == 1 {
-            if let Key::None(crossterm::event::KeyCode::Enter) = key_sequence.keys[0] {
-                if !line_input.is_empty() {
-                    *current_query = line_input.get_text();
-                    client_pub.send(ClientRequest::Search(line_input.get_text()))?;
+            return match &key_sequence.keys[0] {
+                Key::None(crossterm::event::KeyCode::Enter) => {
+                    if !line_input.is_empty() {
+                        *current_query = line_input.get_text();
+                        client_pub.send(ClientRequest::Search(line_input.get_text()))?;
+                    }
+                    Ok(true)
                 }
-                return Ok(true);
-            }
+                k => match line_input.input(k) {
+                    None => Ok(false),
+                    _ => Ok(true),
+                },
+            };
         }
-
-        return match line_input.input(key_sequence) {
-            None => Ok(false),
-            _ => Ok(true),
-        };
     }
 
     let command = match state

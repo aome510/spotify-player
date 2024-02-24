@@ -1,10 +1,20 @@
-use crate::{command, state::model::*};
+use crate::{command, state::model::*, ui::single_line_input::LineInput};
 use tui::widgets::ListState;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PlaylistCreateCurrentField {
+    Name,
+    Desc,
+}
 
 #[derive(Debug)]
 pub enum PopupState {
-    CommandHelp { scroll_offset: usize },
-    Search { query: String },
+    CommandHelp {
+        scroll_offset: usize,
+    },
+    Search {
+        query: String,
+    },
     UserPlaylistList(PlaylistPopupAction, ListState),
     UserFollowedArtistList(ListState),
     UserSavedAlbumList(ListState),
@@ -12,7 +22,14 @@ pub enum PopupState {
     ArtistList(ArtistPopupAction, Vec<Artist>, ListState),
     ThemeList(Vec<crate::config::Theme>, ListState),
     ActionList(ActionListItem, ListState),
-    Queue { scroll_offset: usize },
+    Queue {
+        scroll_offset: usize,
+    },
+    PlaylistCreate {
+        name: LineInput,
+        desc: LineInput,
+        current_field: PlaylistCreateCurrentField,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -48,7 +65,10 @@ impl PopupState {
             Self::ArtistList(.., list_state) => Some(list_state),
             Self::ThemeList(.., list_state) => Some(list_state),
             Self::ActionList(.., list_state) => Some(list_state),
-            Self::CommandHelp { .. } | Self::Search { .. } | Self::Queue { .. } => None,
+            Self::CommandHelp { .. }
+            | Self::Search { .. }
+            | Self::Queue { .. }
+            | Self::PlaylistCreate { .. } => None,
         }
     }
 
@@ -62,7 +82,10 @@ impl PopupState {
             Self::ArtistList(.., list_state) => Some(list_state),
             Self::ThemeList(.., list_state) => Some(list_state),
             Self::ActionList(.., list_state) => Some(list_state),
-            Self::CommandHelp { .. } | Self::Search { .. } | Self::Queue { .. } => None,
+            Self::CommandHelp { .. }
+            | Self::Search { .. }
+            | Self::Queue { .. }
+            | Self::PlaylistCreate { .. } => None,
         }
     }
 

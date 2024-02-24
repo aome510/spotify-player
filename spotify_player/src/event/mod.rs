@@ -77,6 +77,12 @@ pub enum ClientRequest {
     },
     #[cfg(feature = "streaming")]
     RestartIntegratedClient,
+    CreatePlaylist {
+        playlist_name: String,
+        public: bool,
+        collab: bool,
+        desc: String,
+    },
 }
 
 /// starts a terminal event handler (key pressed, mouse clicked, etc)
@@ -144,7 +150,7 @@ fn handle_key_event(
 
     // parse the key sequence from user's previous inputs
     let mut key_sequence = state.ui.lock().input_key_sequence.clone();
-    key_sequence.keys.push(key.clone());
+    key_sequence.keys.push(key);
     if state
         .configs
         .keymap_config
@@ -459,6 +465,13 @@ fn handle_global_command(
         Command::Queue => {
             ui.popup = Some(PopupState::Queue { scroll_offset: 0 });
             client_pub.send(ClientRequest::GetCurrentUserQueue)?;
+        }
+        Command::CreatePlaylist => {
+            ui.popup = Some(PopupState::PlaylistCreate {
+                name: LineInput::default(),
+                desc: LineInput::default(),
+                current_field: PlaylistCreateCurrentField::Name,
+            });
         }
         _ => return Ok(false),
     }
