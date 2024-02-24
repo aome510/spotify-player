@@ -25,23 +25,16 @@ pub fn render_popup(
     match ui.popup {
         None => (rect, true),
         Some(ref popup) => match popup {
-            PopupState::PlaylistCreate {
-                name,
-                desc,
-                current_field: _,
-            } => {
-                let chunks = Layout::default()
-                    .direction(Direction::Vertical)
-                    .constraints([Constraint::Min(0), Constraint::Length(3)].as_ref())
-                    .split(rect);
+            PopupState::PlaylistCreate { name, desc, .. } => {
+                let chunks =
+                    Layout::vertical([Constraint::Min(0), Constraint::Length(3)]).split(rect);
 
-                let popup_chunks = Layout::default()
-                    .direction(Direction::Horizontal)
-                    .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
-                    .split(chunks[1]);
+                let popup_chunks =
+                    Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)])
+                        .split(chunks[1]);
 
                 let name_input = construct_and_render_block(
-                    "Enter Name for New Playlist",
+                    "Enter Name for New Playlist:",
                     &ui.theme,
                     state,
                     Borders::ALL,
@@ -50,7 +43,7 @@ pub fn render_popup(
                 );
 
                 let desc_input = construct_and_render_block(
-                    "Enter Description for New Playlist",
+                    "Enter Description for New Playlist:",
                     &ui.theme,
                     state,
                     Borders::ALL,

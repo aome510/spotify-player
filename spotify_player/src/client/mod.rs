@@ -458,7 +458,14 @@ impl Client {
                 collab,
                 desc,
             } => {
-                let user_id = state.data.read().user_data.user.to_owned().unwrap().id;
+                let user_id = state
+                    .data
+                    .read()
+                    .user_data
+                    .user
+                    .as_ref()
+                    .map(|u| u.id.to_owned())
+                    .unwrap();
                 self.create_new_playlist(
                     state,
                     user_id,
@@ -1412,25 +1419,25 @@ impl Client {
         public: bool,
         collab: bool,
         desc: &str,
-    ) -> Result<PlaylistId> {
-        let resp = self
+    ) -> Result<()> {
+        let playlist: Playlist = self
             .spotify
             .user_playlist_create(
-                user_id.to_owned(),
+                user_id,
                 playlist_name,
                 Some(public),
                 Some(collab),
                 Some(desc),
             )
-            .await?;
-        state
-            .data
-            .write()
-            .user_data
-            .playlists
-            .insert(0, resp.clone().into());
-        tracing::info!("new playlist with {} id was successfully created", resp.id);
-        Ok(resp.id)
+            .await?
+            .into();
+        tracing::info!(
+            "new playlist (name={},id={}) was successfully created",
+            playlist.name,
+            playlist.id
+        );
+        state.data.write().user_data.playlists.insert(0, playlist);
+        Ok(())
     }
 
     #[cfg(feature = "notify")]
