@@ -15,6 +15,28 @@ use librespot_playback::{
 use rspotify::model::TrackId;
 use serde::Serialize;
 
+#[cfg(not(any(
+    feature = "rodio-backend",
+    feature = "alsa-backend",
+    feature = "pulseaudio-backend",
+    feature = "portaudio-backend",
+    feature = "jackaudio-backend",
+    feature = "rodiojack-backend",
+    feature = "sdl-backend",
+    feature = "gstreamer-backend"
+)))]
+compile_error!("Streaming feature is enabled but no audio backend has been selected. Consider adding one of the following features:
+    rodio-backend,
+    alsa-backend,
+    pulseaudio-backend,
+    portaudio-backend,
+    jackaudio-backend,
+    rodiojack-backend,
+    sdl-backend,
+    gstreamer-backend
+For more information, visit https://github.com/aome510/spotify-player?tab=readme-ov-file#streaming
+");
+
 #[derive(Debug, Serialize)]
 enum PlayerEvent {
     Changed {
