@@ -81,3 +81,7 @@ clipboard = ["copypasta"]
 daemon = ["daemonize"]
 
 default = ["rodio-backend", "media-control", "clipboard"]
+
+[package.metadata.binstall]
+pkg-url = "{ repo }/releases/download/v{ version }/{ name }_{ target }{ archive-suffix }"
+
