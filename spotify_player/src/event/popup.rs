@@ -288,48 +288,33 @@ fn handle_key_sequence_for_create_playlist_popup(
             _ => return Ok(false),
         };
         if key_sequence.keys.len() == 1 {
-            if let Key::None(c) = key_sequence.keys[0] {
-                match c {
-                    crossterm::event::KeyCode::Char(c) => {
-                        match &current_field {
-                            PlaylistCreateCurrentField::Name => {
-                                name.push(c);
-                            }
-                            PlaylistCreateCurrentField::Desc => {
-                                desc.push(c);
-                            }
-                        }
+            match &key_sequence.keys[0] {
+                Key::None(crossterm::event::KeyCode::Enter) => {
+                    client_pub.send(ClientRequest::CreatePlaylist {
+                        playlist_name: name.get_text(),
+                        public: false,
+                        collab: false,
+                        desc: desc.get_text(),
+                    })?;
+                    ui.popup = None;
+                    return Ok(true);
+                }
+                Key::None(crossterm::event::KeyCode::Tab)
+                | Key::None(crossterm::event::KeyCode::BackTab) => {
+                    *current_field = match &current_field {
+                        PlaylistCreateCurrentField::Name => PlaylistCreateCurrentField::Desc,
+                        PlaylistCreateCurrentField::Desc => PlaylistCreateCurrentField::Name,
+                    };
+                    return Ok(true);
+                }
+                k => {
+                    let line_input = match current_field {
+                        PlaylistCreateCurrentField::Name => name,
+                        PlaylistCreateCurrentField::Desc => desc,
+                    };
+                    if line_input.input(k).is_some() {
                         return Ok(true);
                     }
-                    crossterm::event::KeyCode::Backspace => {
-                        match &current_field {
-                            PlaylistCreateCurrentField::Name => {
-                                name.pop();
-                            }
-                            PlaylistCreateCurrentField::Desc => {
-                                desc.pop();
-                            }
-                        }
-                        return Ok(true);
-                    }
-                    crossterm::event::KeyCode::Tab | crossterm::event::KeyCode::BackTab => {
-                        *current_field = match &current_field {
-                            PlaylistCreateCurrentField::Name => PlaylistCreateCurrentField::Desc,
-                            PlaylistCreateCurrentField::Desc => PlaylistCreateCurrentField::Name,
-                        };
-                        return Ok(true);
-                    }
-                    crossterm::event::KeyCode::Enter => {
-                        client_pub.send(ClientRequest::CreatePlaylist {
-                            playlist_name: name.to_owned(),
-                            public: false,
-                            collab: false,
-                            desc: desc.to_owned(),
-                        })?;
-                        ui.popup = None;
-                        return Ok(true);
-                    }
-                    _ => {}
                 }
             }
         }

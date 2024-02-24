@@ -1,7 +1,7 @@
-use crate::{command, state::model::*};
+use crate::{command, state::model::*, ui::single_line_input::LineInput};
 use tui::widgets::ListState;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PlaylistCreateCurrentField {
     Name,
     Desc,
@@ -26,8 +26,8 @@ pub enum PopupState {
         scroll_offset: usize,
     },
     PlaylistCreate {
-        name: String,
-        desc: String,
+        name: LineInput,
+        desc: LineInput,
         current_field: PlaylistCreateCurrentField,
     },
 }

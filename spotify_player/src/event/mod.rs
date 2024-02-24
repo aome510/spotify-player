@@ -468,8 +468,8 @@ fn handle_global_command(
         }
         Command::CreatePlaylist => {
             ui.popup = Some(PopupState::PlaylistCreate {
-                name: "".into(),
-                desc: "".into(),
+                name: LineInput::default(),
+                desc: LineInput::default(),
                 current_field: PlaylistCreateCurrentField::Name,
             });
         }

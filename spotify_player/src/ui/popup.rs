@@ -25,7 +25,11 @@ pub fn render_popup(
     match ui.popup {
         None => (rect, true),
         Some(ref popup) => match popup {
-            PopupState::PlaylistCreate { name, desc, .. } => {
+            PopupState::PlaylistCreate {
+                name,
+                desc,
+                current_field,
+            } => {
                 let chunks =
                     Layout::vertical([Constraint::Min(0), Constraint::Length(3)]).split(rect);
 
@@ -51,8 +55,14 @@ pub fn render_popup(
                     popup_chunks[1],
                 );
 
-                frame.render_widget(Paragraph::new(name.to_string()), name_input);
-                frame.render_widget(Paragraph::new(desc.to_string()), desc_input);
+                frame.render_widget(
+                    name.widget(PlaylistCreateCurrentField::Name == *current_field),
+                    name_input,
+                );
+                frame.render_widget(
+                    desc.widget(PlaylistCreateCurrentField::Desc == *current_field),
+                    desc_input,
+                );
                 (chunks[0], true)
             }
             PopupState::Search { query } => {

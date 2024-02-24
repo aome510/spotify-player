@@ -2,7 +2,7 @@ use crossterm::event::KeyCode;
 use tui::widgets::Widget;
 
 use super::*;
-use crate::key::{Key, KeySequence};
+use crate::key::Key;
 
 #[derive(Debug, Clone)]
 pub struct LineInput {
@@ -34,14 +34,14 @@ impl LineInput {
         }
     }
 
-    pub fn input(&mut self, key_sequence: &KeySequence) -> Option<InputEffect> {
-        match key_sequence.keys[0] {
+    pub fn input(&mut self, key: &Key) -> Option<InputEffect> {
+        match key {
             Key::None(c) => match c {
                 KeyCode::Char(c) => {
                     if self.cursor == self.line.len() {
-                        self.line.push(c);
+                        self.line.push(*c);
                     } else {
-                        self.line.insert(self.cursor, c);
+                        self.line.insert(self.cursor, *c);
                     }
                     self.cursor += 1;
                     Some(InputEffect::TextChanged)
