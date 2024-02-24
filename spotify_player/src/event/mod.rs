@@ -150,7 +150,7 @@ fn handle_key_event(
 
     // parse the key sequence from user's previous inputs
     let mut key_sequence = state.ui.lock().input_key_sequence.clone();
-    key_sequence.keys.push(key.clone());
+    key_sequence.keys.push(key);
     if state
         .configs
         .keymap_config
