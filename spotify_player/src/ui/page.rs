@@ -705,7 +705,7 @@ fn render_track_table(
     let track_table = Table::new(
         rows,
         [
-            Constraint::Length(1),
+            Constraint::Length(state.configs.app_config.liked_icon.chars().count() as u16),
             Constraint::Length(4),
             Constraint::Fill(4),
             Constraint::Fill(3),
