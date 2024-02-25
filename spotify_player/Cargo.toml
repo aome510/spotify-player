@@ -78,7 +78,7 @@ image = ["viuer", "dep:image"]
 sixel = ["image", "viuer/sixel"]
 notify = ["notify-rust"]
 clipboard = ["copypasta"]
-daemon = ["daemonize"]
+daemon = ["daemonize", "streaming"]
 
 default = ["rodio-backend", "media-control", "clipboard"]
 
