@@ -48,6 +48,11 @@ jobs:
         include:
           - os: ubuntu-latest
             toolchain: beta
+            OS_SPECIFIC_FEATURES: ",daemon, sixel"
+          - os: ubuntu-latest
+            OS_SPECIFIC_FEATURES: ",daemon, sixel"
+          - os: macOS-latest
+            OS_SPECIFIC_FEATURES: ",sixel"
 
     runs-on: ${{ matrix.os }}
 
@@ -75,8 +80,8 @@ jobs:
         run: cargo clippy --no-default-features --profile ci -- -D warnings
 
       - name: Cargo clippy with all features
-        run: cargo clippy --no-default-features --profile ci --features ${{ env.RUST_FEATURES }} -- -D warnings
+        run: cargo clippy --no-default-features --profile ci --features "${{ env.RUST_FEATURES }} ${{ matrix.OS_SPECIFIC_FEATURES }}" -- -D warnings
 
       - name: Cargo test
-        run: cargo test --no-default-features --profile ci --features ${{ env.RUST_FEATURES }}
+        run: cargo test --no-default-features --profile ci --features "${{ env.RUST_FEATURES }} ${{ matrix.OS_SPECIFIC_FEATURES }}"
 
