@@ -3,6 +3,7 @@ name = "spotify_player"
 version = "0.16.3"
 authors = ["Thang Pham <phamducthang1234@gmail.com>"]
 edition = "2021"
+rust-version.workspace = true
 license = "MIT"
 description = "A Spotify player in the terminal with full feature parity"
 repository = "https://github.com/aome510/spotify-player"
@@ -71,14 +72,17 @@ jackaudio-backend = ["streaming", "librespot-playback/jackaudio-backend"]
 rodiojack-backend = ["streaming", "librespot-playback/rodiojack-backend"]
 sdl-backend = ["streaming", "librespot-playback/sdl-backend"]
 gstreamer-backend = ["streaming", "librespot-playback/gstreamer-backend"]
+
 streaming = ["librespot-playback", "librespot-connect"]
-lyric-finder = ["lyric_finder"]
 media-control = ["souvlaki", "winit", "windows"]
+
 image = ["viuer", "dep:image"]
 sixel = ["image", "viuer/sixel"]
+daemon = ["daemonize", "streaming"]
+
+lyric-finder = ["lyric_finder"]
 notify = ["notify-rust"]
 clipboard = ["copypasta"]
-daemon = ["daemonize", "streaming"]
 
 default = ["rodio-backend", "media-control", "clipboard"]
 

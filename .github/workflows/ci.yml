@@ -40,25 +40,17 @@ jobs:
           toolchain: ${{ matrix.toolchain }}
           components: clippy, rustfmt
 
-      - name: Cache cargo deps
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-          key: ${{ runner.os }}-rustc-${{ steps.install_toolchain.outputs.cachekey }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-rustc-${{ steps.install_toolchain.outputs.cachekey }}
+      - uses: Swatinem/rust-cache@v2
 
       - name: Cargo format
         run: cargo fmt --all -- --check
 
-      - name: Cargo test
-        run: cargo test --no-default-features --features ${{ env.RUST_FEATURES }}
+      - name: Cargo clippy without features
+        run: cargo clippy --no-default-features --profile ci -- -D warnings
 
       - name: Cargo clippy with all features
-        run: cargo clippy --no-default-features --features ${{ env.RUST_FEATURES }} -- -D warnings
+        run: cargo clippy --no-default-features --profile ci --features ${{ env.RUST_FEATURES }} -- -D warnings
 
-      - name: Cargo clippy without features
-        run: cargo clippy --no-default-features -- -D warnings
+      - name: Cargo test
+        run: cargo test --no-default-features --profile ci --features ${{ env.RUST_FEATURES }}
 
