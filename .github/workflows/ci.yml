@@ -12,7 +12,33 @@ env:
   RUST_FEATURES: "rodio-backend,lyric-finder,media-control,image,notify,clipboard"
 
 jobs:
-  rust-ci:
+   msrv:
+    if: github.event.pull_request.draft != true
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macOS-latest, windows-latest, ubuntu-latest]
+        include:
+          - os: ubuntu-latest
+            OS_SPECIFIC_FEATURES: ",daemon, sixel"
+          - os: macOS-latest
+            OS_SPECIFIC_FEATURES: ",sixel"
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - run: sudo apt-get update && sudo apt-get install libssl-dev libasound2-dev libdbus-1-dev libxcb-shape0-dev libxcb-xfixes0-dev
+        if: ${{ runner.os == 'Linux'}}
+      - uses: actions/checkout@v4
+      
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-hack
+
+      - uses: Swatinem/rust-cache@v2
+
+      - run: cargo hack check --rust-version --package spotify_player --all-targets --profile ci --features "${{ env.RUST_FEATURES }} ${{ matrix.OS_SPECIFIC_FEATURES }}"
+
+   rust-ci:
     if: github.event.pull_request.draft != true
 
     strategy:
