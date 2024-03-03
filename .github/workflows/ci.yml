@@ -48,11 +48,11 @@ jobs:
         include:
           - os: ubuntu-latest
             toolchain: beta
-            OS_SPECIFIC_FEATURES: ",daemon, sixel"
+            OS_SPECIFIC_FEATURES: "daemon sixel"
           - os: ubuntu-latest
-            OS_SPECIFIC_FEATURES: ",daemon, sixel"
+            OS_SPECIFIC_FEATURES: "daemon sixel"
           - os: macOS-latest
-            OS_SPECIFIC_FEATURES: ",sixel"
+            OS_SPECIFIC_FEATURES: "sixel"
 
     runs-on: ${{ matrix.os }}
 
