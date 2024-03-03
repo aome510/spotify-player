@@ -15,7 +15,7 @@ use librespot_connect::spirc::Spirc;
 use librespot_core::session::Session;
 use rspotify::{
     http::Query,
-    model::{FullArtist, FullArtists, FullTracks, Market},
+    model::{FullArtist, FullArtists, FullPlaylist, FullTracks, Market},
     prelude::*,
 };
 
@@ -1169,9 +1169,17 @@ impl Client {
         let playlist_uri = playlist_id.uri();
         tracing::info!("Get playlist context: {}", playlist_uri);
 
+        // TODO: this should use `rspotify::playlist` API instead of `internal_call`
+        // See: https://github.com/ramsayleung/rspotify/issues/459
+        // let playlist = self
+        //     .spotify
+        //     .playlist(playlist_id, None, Some(Market::FromToken))
+        //     .await?;
         let playlist = self
-            .spotify
-            .playlist(playlist_id, None, Some(Market::FromToken))
+            .internal_call::<FullPlaylist>(
+                &format!("{SPOTIFY_API_ENDPOINT}/playlists/{}", playlist_id.id()),
+                &market_query(),
+            )
             .await?;
 
         // get the playlist's tracks
@@ -1310,7 +1318,9 @@ impl Client {
             // See: https://github.com/ramsayleung/rspotify/issues/452
             let float_re = regex::Regex::new(r"[0-9]\.[0-9]*[Ee][0-9]").unwrap();
             let text = float_re.replace_all(&text, "0");
-            text.replace(".0", "")
+            let text = text.replace(".0", "");
+            // See: https://github.com/ramsayleung/rspotify/issues/459
+            text.replace("\"images\":null", "\"images\":[]")
         }
 
         let access_token = self.spotify.access_token().await?;
