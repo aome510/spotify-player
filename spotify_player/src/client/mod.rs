@@ -13,7 +13,11 @@ use anyhow::Result;
 #[cfg(feature = "streaming")]
 use librespot_connect::spirc::Spirc;
 use librespot_core::session::Session;
-use rspotify::{http::Query, model::Market, prelude::*};
+use rspotify::{
+    http::Query,
+    model::{FullArtist, FullArtists, FullPlaylist, FullTracks, Market},
+    prelude::*,
+};
 
 mod handlers;
 mod spotify;
@@ -39,6 +43,14 @@ struct RadioStationResponse {
 #[derive(Debug, Deserialize)]
 struct TrackData {
     original_gid: String,
+}
+
+const SPOTIFY_API_ENDPOINT: &str = "https://api.spotify.com/v1";
+
+fn market_query() -> Query<'static> {
+    let mut payload = Query::with_capacity(1);
+    payload.insert("market", "from_token");
+    payload
 }
 
 impl Client {
@@ -624,9 +636,7 @@ impl Client {
             .spotify
             .current_user_saved_tracks_manual(Some(Market::FromToken), Some(50), None)
             .await?;
-        let mut payload = Query::with_capacity(1);
-        payload.insert("market", "from_token");
-        let tracks = self.all_paging_items(first_page, &payload).await?;
+        let tracks = self.all_paging_items(first_page, &market_query()).await?;
         Ok(tracks
             .into_iter()
             .filter_map(|t| Track::try_from_full_track(t.track))
@@ -718,8 +728,7 @@ impl Client {
 
     /// gets all albums of an artist
     pub async fn artist_albums(&self, artist_id: ArtistId<'_>) -> Result<Vec<Album>> {
-        let mut payload = Query::with_capacity(1);
-        payload.insert("market", "from_token");
+        let payload = market_query();
 
         let mut singles = {
             let first_page = self
@@ -833,10 +842,24 @@ impl Client {
             .filter_map(|t| TrackId::from_id(t.original_gid).ok());
 
         // Retrieve tracks based on IDs
+        // TODO: this should use `rspotify::tracks` API instead of `internal_call`
+        // See: https://github.com/aome510/spotify-player/issues/383
+        // let tracks = self
+        //     .spotify
+        //     .tracks(track_ids, Some(Market::FromToken))
+        //     .await?;
+        let ids = track_ids.collect::<Vec<_>>();
         let tracks = self
-            .spotify
-            .tracks(track_ids, Some(Market::FromToken))
-            .await?
+            .internal_call::<FullTracks>(
+                &format!(
+                    "{SPOTIFY_API_ENDPOINT}/tracks?ids={}",
+                    ids.iter().map(Id::id).collect::<Vec<_>>().join(",")
+                ),
+                &market_query(),
+            )
+            .await?;
+        let tracks = tracks
+            .tracks
             .into_iter()
             .filter_map(Track::try_from_full_track)
             .collect();
@@ -1146,18 +1169,23 @@ impl Client {
         let playlist_uri = playlist_id.uri();
         tracing::info!("Get playlist context: {}", playlist_uri);
 
-        // we use the `market=from_token` query parameter to ensure that the playlist has the is_playable field
+        // TODO: this should use `rspotify::playlist` API instead of `internal_call`
+        // See: https://github.com/ramsayleung/rspotify/issues/459
+        // let playlist = self
+        //     .spotify
+        //     .playlist(playlist_id, None, Some(Market::FromToken))
+        //     .await?;
         let playlist = self
-            .spotify
-            .playlist(playlist_id, None, Some(Market::FromToken))
+            .internal_call::<FullPlaylist>(
+                &format!("{SPOTIFY_API_ENDPOINT}/playlists/{}", playlist_id.id()),
+                &market_query(),
+            )
             .await?;
-        let mut payload = Query::with_capacity(1);
-        payload.insert("market", "from_token");
 
         // get the playlist's tracks
         let first_page = playlist.tracks.clone();
         let tracks = self
-            .all_paging_items(first_page, &payload)
+            .all_paging_items(first_page, &market_query())
             .await?
             .into_iter()
             .filter_map(|item| match item.track {
@@ -1212,21 +1240,56 @@ impl Client {
         let artist_uri = artist_id.uri();
         tracing::info!("Get artist context: {}", artist_uri);
 
-        // get the artist's information, top tracks, related artists and albums
-        let artist = self.spotify.artist(artist_id.as_ref()).await?.into();
+        // get the artist's information, including top tracks, related artists, and albums
 
-        let top_tracks = self
-            .spotify
-            .artist_top_tracks(artist_id.as_ref(), Some(Market::FromToken))
+        // TODO: this should use `rspotify::artist` API instead of `internal_call`
+        // See:
+        // - https://github.com/ramsayleung/rspotify/issues/452
+        // - https://github.com/aome510/spotify-player/issues/330
+        // let artist = self.spotify.artist(artist_id.as_ref()).await?.into();
+        let artist = self
+            .internal_call::<FullArtist>(
+                &format!("{SPOTIFY_API_ENDPOINT}/artists/{}", artist_id.id()),
+                &Query::new(),
+            )
             .await?
+            .into();
+
+        // TODO: this should use `rspotify::artist_top_tracks` API instead of `internal_call`
+        // let top_tracks = self
+        //     .spotify
+        //     .artist_top_tracks(artist_id.as_ref(), Some(Market::FromToken));
+        let top_tracks = self
+            .internal_call::<FullTracks>(
+                &format!(
+                    "{SPOTIFY_API_ENDPOINT}/artists/{}/top-tracks",
+                    artist_id.id()
+                ),
+                &market_query(),
+            )
+            .await?;
+        let top_tracks = top_tracks
+            .tracks
             .into_iter()
             .filter_map(Track::try_from_full_track)
             .collect::<Vec<_>>();
 
+        // TODO: this should use `rspotify::artist_related_artists` API instead of `internal_call`
+        // let related_artists = self
+        //     .spotify
+        //     .artist_related_artists(artist_id.as_ref())
+        //     .await?;
         let related_artists = self
-            .spotify
-            .artist_related_artists(artist_id.as_ref())
+            .internal_call::<FullArtists>(
+                &format!(
+                    "{SPOTIFY_API_ENDPOINT}/artists/{}/related-artists",
+                    artist_id.id()
+                ),
+                &Query::new(),
+            )
             .await?
+            .artists;
+        let related_artists = related_artists
             .into_iter()
             .map(|a| a.into())
             .collect::<Vec<_>>();
@@ -1247,8 +1310,24 @@ impl Client {
     where
         T: serde::de::DeserializeOwned,
     {
+        /// a helper function to process an API response from Spotify server
+        ///
+        /// This function is mainly used to patch upstream bugs , resulting in
+        /// a type error when a third-party library like `rspotify` parses the response
+        fn process_spotify_api_response(text: String) -> String {
+            // See: https://github.com/ramsayleung/rspotify/issues/452
+            let float_re = regex::Regex::new(r"[0-9]\.[0-9]*[Ee][0-9]").unwrap();
+            let text = float_re.replace_all(&text, "0");
+            let text = text.replace(".0", "");
+            // See: https://github.com/ramsayleung/rspotify/issues/459
+            text.replace("\"images\":null", "\"images\":[]")
+        }
+
         let access_token = self.spotify.access_token().await?;
-        Ok(self
+
+        tracing::debug!("{access_token} {url}");
+
+        let response = self
             .http
             .get(url)
             .query(payload)
@@ -1257,9 +1336,12 @@ impl Client {
                 format!("Bearer {access_token}"),
             )
             .send()
-            .await?
-            .json::<T>()
-            .await?)
+            .await?;
+
+        let text = process_spotify_api_response(response.text().await?);
+        tracing::debug!("{text}");
+
+        Ok(serde_json::from_str(&text)?)
     }
 
     /// gets all paging items starting from a pagination object of the first page
