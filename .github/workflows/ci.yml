@@ -10,6 +10,7 @@ env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
   RUST_FEATURES: "rodio-backend,lyric-finder,media-control,image,notify,clipboard"
+  LINUX_PACKAGES: "libssl-dev libasound2-dev libdbus-1-dev libxcb-shape0-dev libxcb-xfixes0-dev"
 
 jobs:
    msrv:
@@ -26,7 +27,7 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     steps:
-      - run: sudo apt-get update && sudo apt-get install libssl-dev libasound2-dev libdbus-1-dev libxcb-shape0-dev libxcb-xfixes0-dev
+      - run: sudo apt-get update && sudo apt-get install ${{ env.LINUX_PACKAGES }}
         if: ${{ runner.os == 'Linux'}}
       - uses: actions/checkout@v4
       
@@ -58,7 +59,7 @@ jobs:
 
     steps:
       - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install libssl-dev libasound2-dev libdbus-1-dev libxcb-shape0-dev libxcb-xfixes0-dev
+        run: sudo apt-get update && sudo apt-get install ${{ env.LINUX_PACKAGES }}
         if: ${{ runner.os == 'Linux' }}
 
       - name: Checkout source
