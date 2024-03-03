@@ -842,7 +842,7 @@ impl Client {
             .filter_map(|t| TrackId::from_id(t.original_gid).ok());
 
         // Retrieve tracks based on IDs
-        // TODO: this should use `rspotify::artist` API instead of `internal_call`
+        // TODO: this should use `rspotify::tracks` API instead of `internal_call`
         // See: https://github.com/aome510/spotify-player/issues/383
         // let tracks = self
         //     .spotify
@@ -1310,10 +1310,10 @@ impl Client {
     where
         T: serde::de::DeserializeOwned,
     {
-        /// helper function to process an API response from Spotify server
+        /// a helper function to process an API response from Spotify server
         ///
-        /// This function is mainly used to patch bugs from upstream, resulting in
-        /// type errors when a third-party library like `rspotify` parses the response text
+        /// This function is mainly used to patch upstream bugs , resulting in
+        /// a type error when a third-party library like `rspotify` parses the response
         fn process_spotify_api_response(text: String) -> String {
             // See: https://github.com/ramsayleung/rspotify/issues/452
             let float_re = regex::Regex::new(r"[0-9]\.[0-9]*[Ee][0-9]").unwrap();
