@@ -184,7 +184,8 @@ pub async fn start_player_event_watchers(
 
                 // request new context's data if not found in memory
                 if let Some(id) = id {
-                    if !state.data.read().caches.context.contains_key(&id.uri())
+                    if !matches!(id, ContextId::Tracks(_))
+                        && !state.data.read().caches.context.contains_key(&id.uri())
                         && last_request_timer.elapsed() >= std::time::Duration::from_secs(1)
                     {
                         last_request_timer = std::time::Instant::now();
