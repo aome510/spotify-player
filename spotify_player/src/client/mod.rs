@@ -842,10 +842,24 @@ impl Client {
             .filter_map(|t| TrackId::from_id(t.original_gid).ok());
 
         // Retrieve tracks based on IDs
+        // TODO: this should use `rspotify::artist` API instead of `internal_call`
+        // See: https://github.com/aome510/spotify-player/issues/383
+        // let tracks = self
+        //     .spotify
+        //     .tracks(track_ids, Some(Market::FromToken))
+        //     .await?;
+        let ids = track_ids.collect::<Vec<_>>();
         let tracks = self
-            .spotify
-            .tracks(track_ids, Some(Market::FromToken))
-            .await?
+            .internal_call::<FullTracks>(
+                &format!(
+                    "{SPOTIFY_API_ENDPOINT}/tracks?ids={}",
+                    ids.iter().map(Id::id).collect::<Vec<_>>().join(",")
+                ),
+                &market_query(),
+            )
+            .await?;
+        let tracks = tracks
+            .tracks
             .into_iter()
             .filter_map(Track::try_from_full_track)
             .collect();
@@ -1218,11 +1232,12 @@ impl Client {
         let artist_uri = artist_id.uri();
         tracing::info!("Get artist context: {}", artist_uri);
 
+        // get the artist's information, including top tracks, related artists, and albums
+
         // TODO: this should use `rspotify::artist` API instead of `internal_call`
         // See:
         // - https://github.com/ramsayleung/rspotify/issues/452
         // - https://github.com/aome510/spotify-player/issues/330
-        // get the artist's information, top tracks, related artists and albums
         // let artist = self.spotify.artist(artist_id.as_ref()).await?.into();
         let artist = self
             .internal_call::<FullArtist>(
