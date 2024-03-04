@@ -130,7 +130,6 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
         session,
         auth_config,
         state.configs.app_config.client_id.clone(),
-        client_pub.clone(),
     );
     client.init_token().await?;
 

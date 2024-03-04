@@ -1,4 +1,4 @@
-use crate::{config, event::ClientRequest};
+use crate::config;
 use librespot_connect::spirc::Spirc;
 use librespot_core::{
     config::{ConnectConfig, DeviceType},
@@ -164,7 +164,6 @@ fn execute_player_event_hook_command(
 pub fn new_connection(
     session: Session,
     device: config::DeviceConfig,
-    client_pub: flume::Sender<ClientRequest>,
     player_event_hook_command: Option<config::Command>,
 ) -> Spirc {
     // `librespot` volume is a u16 number ranging from 0 to 65535,
@@ -230,12 +229,6 @@ pub fn new_connection(
                                 );
                             }
                         }
-
-                        // notify the application about the new player event by making playback update request
-                        client_pub
-                            .send_async(ClientRequest::GetCurrentPlayback)
-                            .await
-                            .unwrap_or_default();
                     }
                     Ok(None) => {}
                 }
