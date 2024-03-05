@@ -1,6 +1,6 @@
 use crate::{
     auth::{new_session, new_session_with_new_creds, AuthConfig},
-    client, event, state,
+    client, state,
 };
 
 use super::*;
@@ -152,19 +152,13 @@ fn try_connect_to_client(socket: &UdpSocket, configs: &state::Configs) -> Result
             // no running `spotify_player` instance found,
             // initialize a new client to handle the current CLI command
 
-            let (client_pub, _) = flume::unbounded::<event::ClientRequest>();
-
             let auth_config = AuthConfig::new(configs)?;
             let rt = tokio::runtime::Runtime::new()?;
             let session = rt.block_on(new_session(&auth_config, false))?;
 
             // create a Spotify API client
-            let client = client::Client::new(
-                session,
-                auth_config,
-                configs.app_config.client_id.clone(),
-                client_pub,
-            );
+            let client =
+                client::Client::new(session, auth_config, configs.app_config.client_id.clone());
             rt.block_on(client.init_token())?;
 
             // create a client socket for handling CLI commands

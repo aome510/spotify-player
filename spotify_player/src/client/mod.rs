@@ -30,7 +30,6 @@ use serde::Deserialize;
 pub struct Client {
     http: reqwest::Client,
     pub spotify: Arc<spotify::Spotify>,
-    pub client_pub: flume::Sender<ClientRequest>,
     #[cfg(feature = "streaming")]
     stream_conn: Arc<Mutex<Option<Spirc>>>,
 }
@@ -55,18 +54,12 @@ fn market_query() -> Query<'static> {
 
 impl Client {
     /// creates a new client
-    pub fn new(
-        session: Session,
-        auth_config: AuthConfig,
-        client_id: String,
-        client_pub: flume::Sender<ClientRequest>,
-    ) -> Self {
+    pub fn new(session: Session, auth_config: AuthConfig, client_id: String) -> Self {
         Self {
             spotify: Arc::new(spotify::Spotify::new(session, auth_config, client_id)),
             http: reqwest::Client::new(),
             #[cfg(feature = "streaming")]
             stream_conn: Arc::new(Mutex::new(None)),
-            client_pub,
         }
     }
 
@@ -82,8 +75,14 @@ impl Client {
         #[cfg(feature = "streaming")]
         if state.is_streaming_enabled() {
             self.new_streaming_connection(state).await;
-            // handle `ConnectDevice` separately as we don't want to block here
-            self.client_pub.send(ClientRequest::ConnectDevice(None))?;
+            // handle `connect_device` task separately as we don't want to block here
+            tokio::task::spawn({
+                let client = self.clone();
+                let state = state.clone();
+                async move {
+                    client.connect_device(&state, None).await;
+                }
+            });
         }
 
         Ok(())
@@ -97,7 +96,6 @@ impl Client {
         let new_conn = streaming::new_connection(
             session,
             state.configs.app_config.device.clone(),
-            self.client_pub.clone(),
             state.configs.app_config.player_event_hook_command.clone(),
         );
 
