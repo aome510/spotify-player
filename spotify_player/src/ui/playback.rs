@@ -59,7 +59,9 @@ pub fn render_playback_window(
                         let url = crate::utils::get_track_album_image_url(track).map(String::from);
                         if let Some(url) = url {
                             let needs_render = match &ui.last_cover_image_render_info {
-                                Some((last_url, _)) => *last_url != url,
+                                Some((last_url, last_rect)) => {
+                                    *last_url != url || *last_rect != cover_img_rect
+                                }
                                 None => true,
                             };
                             if needs_render {
