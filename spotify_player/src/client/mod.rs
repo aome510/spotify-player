@@ -15,7 +15,7 @@ use librespot_connect::spirc::Spirc;
 use librespot_core::session::Session;
 use rspotify::{
     http::Query,
-    model::{FullArtist, FullArtists, FullPlaylist, FullTracks, Market},
+    model::{FullPlaylist, Market},
     prelude::*,
 };
 
@@ -840,24 +840,11 @@ impl Client {
             .filter_map(|t| TrackId::from_id(t.original_gid).ok());
 
         // Retrieve tracks based on IDs
-        // TODO: this should use `rspotify::tracks` API instead of `internal_call`
-        // See: https://github.com/aome510/spotify-player/issues/383
-        // let tracks = self
-        //     .spotify
-        //     .tracks(track_ids, Some(Market::FromToken))
-        //     .await?;
-        let ids = track_ids.collect::<Vec<_>>();
         let tracks = self
-            .internal_call::<FullTracks>(
-                &format!(
-                    "{SPOTIFY_API_ENDPOINT}/tracks?ids={}",
-                    ids.iter().map(Id::id).collect::<Vec<_>>().join(",")
-                ),
-                &market_query(),
-            )
+            .spotify
+            .tracks(track_ids, Some(Market::FromToken))
             .await?;
         let tracks = tracks
-            .tracks
             .into_iter()
             .filter_map(Track::try_from_full_track)
             .collect();
@@ -1240,53 +1227,21 @@ impl Client {
 
         // get the artist's information, including top tracks, related artists, and albums
 
-        // TODO: this should use `rspotify::artist` API instead of `internal_call`
-        // See:
-        // - https://github.com/ramsayleung/rspotify/issues/452
-        // - https://github.com/aome510/spotify-player/issues/330
-        // let artist = self.spotify.artist(artist_id.as_ref()).await?.into();
-        let artist = self
-            .internal_call::<FullArtist>(
-                &format!("{SPOTIFY_API_ENDPOINT}/artists/{}", artist_id.id()),
-                &Query::new(),
-            )
-            .await?
-            .into();
+        let artist = self.spotify.artist(artist_id.as_ref()).await?.into();
 
-        // TODO: this should use `rspotify::artist_top_tracks` API instead of `internal_call`
-        // let top_tracks = self
-        //     .spotify
-        //     .artist_top_tracks(artist_id.as_ref(), Some(Market::FromToken));
         let top_tracks = self
-            .internal_call::<FullTracks>(
-                &format!(
-                    "{SPOTIFY_API_ENDPOINT}/artists/{}/top-tracks",
-                    artist_id.id()
-                ),
-                &market_query(),
-            )
+            .spotify
+            .artist_top_tracks(artist_id.as_ref(), Some(Market::FromToken))
             .await?;
         let top_tracks = top_tracks
-            .tracks
             .into_iter()
             .filter_map(Track::try_from_full_track)
             .collect::<Vec<_>>();
 
-        // TODO: this should use `rspotify::artist_related_artists` API instead of `internal_call`
-        // let related_artists = self
-        //     .spotify
-        //     .artist_related_artists(artist_id.as_ref())
-        //     .await?;
         let related_artists = self
-            .internal_call::<FullArtists>(
-                &format!(
-                    "{SPOTIFY_API_ENDPOINT}/artists/{}/related-artists",
-                    artist_id.id()
-                ),
-                &Query::new(),
-            )
-            .await?
-            .artists;
+            .spotify
+            .artist_related_artists(artist_id.as_ref())
+            .await?;
         let related_artists = related_artists
             .into_iter()
             .map(|a| a.into())
@@ -1310,13 +1265,9 @@ impl Client {
     {
         /// a helper function to process an API response from Spotify server
         ///
-        /// This function is mainly used to patch upstream bugs , resulting in
+        /// This function is mainly used to patch upstream API bugs , resulting in
         /// a type error when a third-party library like `rspotify` parses the response
         fn process_spotify_api_response(text: String) -> String {
-            // See: https://github.com/ramsayleung/rspotify/issues/452
-            let float_re = regex::Regex::new(r"[0-9]\.[0-9]*[Ee][0-9]").unwrap();
-            let text = float_re.replace_all(&text, "0");
-            let text = text.replace(".0", "");
             // See: https://github.com/ramsayleung/rspotify/issues/459
             text.replace("\"images\":null", "\"images\":[]")
         }
