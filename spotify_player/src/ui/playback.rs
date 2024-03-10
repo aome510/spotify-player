@@ -48,14 +48,6 @@ pub fn render_playback_window(
                             (hor_chunks[1], ver_chunks[0])
                         };
 
-                        // set the `skip` state of cells in the cover image area
-                        // to prevent buffer from overwriting image cells
-                        for x in cover_img_rect.left()..cover_img_rect.right() {
-                            for y in cover_img_rect.top()..cover_img_rect.bottom() {
-                                frame.buffer_mut().get_mut(x, y).set_skip(true);
-                            }
-                        }
-
                         let url = crate::utils::get_track_album_image_url(track).map(String::from);
                         if let Some(url) = url {
                             let needs_render = match &ui.last_cover_image_render_info {
@@ -65,8 +57,16 @@ pub fn render_playback_window(
                                 None => true,
                             };
                             if needs_render {
-                                render_playback_cover_image(state, ui, cover_img_rect, url)
+                                render_playback_cover_image(frame, state, ui, cover_img_rect, url)
                                     .context("render playback's cover image")?;
+                            }
+                        }
+
+                        // set the `skip` state of cells in the cover image area
+                        // to prevent buffer from overwriting image cells
+                        for x in cover_img_rect.left()..cover_img_rect.right() {
+                            for y in cover_img_rect.top()..cover_img_rect.bottom() {
+                                frame.buffer_mut().get_mut(x, y).set_skip(true);
                             }
                         }
 
@@ -267,6 +267,7 @@ fn render_playback_progress_bar(
 
 #[cfg(feature = "image")]
 fn render_playback_cover_image(
+    frame: &mut Frame,
     state: &SharedState,
     ui: &mut UIStateGuard,
     rect: Rect,
@@ -299,6 +300,8 @@ fn render_playback_cover_image(
         let scale = state.configs.app_config.cover_img_scale;
         let width = (rect.width as f32 * scale).round() as u32;
         let height = (rect.height as f32 * scale).round() as u32;
+
+        frame.render_widget(Clear, rect);
 
         viuer::print(
             image,
