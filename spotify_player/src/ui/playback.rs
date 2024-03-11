@@ -50,18 +50,33 @@ pub fn render_playback_window(
 
                         let url = crate::utils::get_track_album_image_url(track).map(String::from);
                         if let Some(url) = url {
-                            let needs_render = match &ui.last_cover_image_render_info {
-                                Some((last_url, last_rect)) => {
-                                    *last_url != url || *last_rect != cover_img_rect
-                                }
-                                None => true,
-                            };
-                            if needs_render {
-                                render_playback_cover_image(frame, state, ui, cover_img_rect, url)
-                                    .context("render playback's cover image")?;
+                            let needs_clear = if ui.last_cover_image_render_info.url != url
+                                || ui.last_cover_image_render_info.render_area != cover_img_rect
+                            {
+                                ui.last_cover_image_render_info = ImageRenderInfo {
+                                    url,
+                                    render_area: cover_img_rect,
+                                    rendered: false,
+                                };
+                                true
                             } else {
+                                false
+                            };
+
+                            if needs_clear {
+                                // clear the image's area to ensure no remaining artifacts before rendering the image
+                                // See: https://github.com/aome510/spotify-player/issues/389
+                                frame.render_widget(Clear, cover_img_rect);
+                            } else {
+                                if !ui.last_cover_image_render_info.rendered {
+                                    render_playback_cover_image(state, ui)
+                                        .context("render playback's cover image")?;
+                                }
+
                                 // set the `skip` state of cells in the cover image area
                                 // to prevent buffer from overwriting the image's rendered area
+                                // NOTE: `skip` should not be set when clearing the render area.
+                                // Otherwise, nothing will be clear as the buffer doesn't handle cells with `skip=true`.
                                 for x in cover_img_rect.left()..cover_img_rect.right() {
                                     for y in cover_img_rect.top()..cover_img_rect.bottom() {
                                         frame.buffer_mut().get_mut(x, y).set_skip(true);
@@ -101,8 +116,8 @@ pub fn render_playback_window(
         // clear the previous widget's area before rendering the text.
         #[cfg(feature = "image")]
         {
-            if let Some((_, rect)) = ui.last_cover_image_render_info {
-                frame.render_widget(Clear, rect);
+            if ui.last_cover_image_render_info.rendered {
+                let rect = ui.last_cover_image_render_info.render_area;
                 // reset the `skip` state of cells in the cover image area
                 // in order to render the "No playback found" message
                 for x in rect.left()..rect.right() {
@@ -110,7 +125,7 @@ pub fn render_playback_window(
                         frame.buffer_mut().get_mut(x, y).set_skip(false);
                     }
                 }
-                ui.last_cover_image_render_info = None;
+                ui.last_cover_image_render_info = Default::default();
             }
         }
 
@@ -266,13 +281,7 @@ fn render_playback_progress_bar(
 }
 
 #[cfg(feature = "image")]
-fn render_playback_cover_image(
-    frame: &mut Frame,
-    state: &SharedState,
-    ui: &mut UIStateGuard,
-    rect: Rect,
-    url: String,
-) -> Result<()> {
+fn render_playback_cover_image(state: &SharedState, ui: &mut UIStateGuard) -> Result<()> {
     fn remove_temp_files() -> Result<()> {
         // Clean up temp files created by `viuer`'s kitty printer to avoid
         // possible freeze because of too many temp files in the temp folder.
@@ -291,7 +300,9 @@ fn render_playback_cover_image(
     remove_temp_files().context("remove temp files")?;
 
     let data = state.data.read();
-    if let Some(image) = data.caches.images.get(&url) {
+    if let Some(image) = data.caches.images.get(&ui.last_cover_image_render_info.url) {
+        let rect = ui.last_cover_image_render_info.render_area;
+
         // `viuer` renders image using `sixel` in a different scale compared to other methods.
         // Scale the image to make the rendered image more fit if needed.
         // This scaling factor is user configurable as the scale works differently
@@ -300,10 +311,6 @@ fn render_playback_cover_image(
         let scale = state.configs.app_config.cover_img_scale;
         let width = (rect.width as f32 * scale).round() as u32;
         let height = (rect.height as f32 * scale).round() as u32;
-
-        // clear the image's area to ensure no remaining artifacts when rendering the image
-        // See: https://github.com/aome510/spotify-player/issues/389
-        frame.render_widget(Block::new(), rect);
 
         viuer::print(
             image,
@@ -318,7 +325,7 @@ fn render_playback_cover_image(
         )
         .context("print image to the terminal")?;
 
-        ui.last_cover_image_render_info = Some((url, rect));
+        ui.last_cover_image_render_info.rendered = true;
     }
 
     Ok(())

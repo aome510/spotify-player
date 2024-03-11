@@ -32,7 +32,7 @@ pub fn run(state: SharedState) -> Result<()> {
                 #[cfg(feature = "image")]
                 {
                     // redraw the cover image when the terminal's size changes
-                    ui.last_cover_image_render_info = None;
+                    ui.last_cover_image_render_info = Default::default();
                 }
             }
 
