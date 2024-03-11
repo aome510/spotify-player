@@ -59,14 +59,14 @@ pub fn render_playback_window(
                             if needs_render {
                                 render_playback_cover_image(frame, state, ui, cover_img_rect, url)
                                     .context("render playback's cover image")?;
-                            }
-                        }
-
-                        // set the `skip` state of cells in the cover image area
-                        // to prevent buffer from overwriting image cells
-                        for x in cover_img_rect.left()..cover_img_rect.right() {
-                            for y in cover_img_rect.top()..cover_img_rect.bottom() {
-                                frame.buffer_mut().get_mut(x, y).set_skip(true);
+                            } else {
+                                // set the `skip` state of cells in the cover image area
+                                // to prevent buffer from overwriting the image's rendered area
+                                for x in cover_img_rect.left()..cover_img_rect.right() {
+                                    for y in cover_img_rect.top()..cover_img_rect.bottom() {
+                                        frame.buffer_mut().get_mut(x, y).set_skip(true);
+                                    }
+                                }
                             }
                         }
 
@@ -301,7 +301,9 @@ fn render_playback_cover_image(
         let width = (rect.width as f32 * scale).round() as u32;
         let height = (rect.height as f32 * scale).round() as u32;
 
-        frame.render_widget(Clear, rect);
+        // clear the image's area to ensure no remaining artifacts when rendering the image
+        // See: https://github.com/aome510/spotify-player/issues/389
+        frame.render_widget(Block::new(), rect);
 
         viuer::print(
             image,
