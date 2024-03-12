@@ -419,7 +419,9 @@ async fn handle_playback_request(
                 .context("no active playback found!")?
                 .progress
                 .context("playback has no progress!")?;
-            PlayerRequest::SeekTrack(progress + chrono::Duration::milliseconds(position_offset_ms))
+            PlayerRequest::SeekTrack(
+                progress + chrono::Duration::try_milliseconds(position_offset_ms).unwrap(),
+            )
         }
     };
 
