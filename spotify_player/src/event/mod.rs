@@ -132,7 +132,7 @@ fn handle_mouse_event(
                 let position_ms =
                     (duration.num_milliseconds()) * (event.column as i64) / (rect.width as i64);
                 client_pub.send(ClientRequest::Player(PlayerRequest::SeekTrack(
-                    chrono::Duration::milliseconds(position_ms),
+                    chrono::Duration::try_milliseconds(position_ms).unwrap(),
                 )))?;
             }
         }
@@ -258,7 +258,7 @@ fn handle_global_command(
         Command::SeekForward => {
             if let Some(progress) = state.player.read().playback_progress() {
                 client_pub.send(ClientRequest::Player(PlayerRequest::SeekTrack(
-                    progress + chrono::Duration::seconds(5),
+                    progress + chrono::Duration::try_seconds(5).unwrap(),
                 )))?;
             }
         }
@@ -267,7 +267,7 @@ fn handle_global_command(
                 client_pub.send(ClientRequest::Player(PlayerRequest::SeekTrack(
                     std::cmp::max(
                         chrono::Duration::zero(),
-                        progress - chrono::Duration::seconds(5),
+                        progress - chrono::Duration::try_seconds(5).unwrap(),
                     ),
                 )))?;
             }
