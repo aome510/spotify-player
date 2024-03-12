@@ -10,6 +10,14 @@ use super::*;
 pub use page::*;
 pub use popup::*;
 
+#[derive(Default, Debug)]
+pub struct ImageRenderInfo {
+    pub url: String,
+    pub render_area: tui::layout::Rect,
+    /// indicates if the image is rendered
+    pub rendered: bool,
+}
+
 /// Application's UI state
 #[derive(Debug)]
 pub struct UIState {
@@ -25,7 +33,7 @@ pub struct UIState {
     pub playback_progress_bar_rect: tui::layout::Rect,
 
     #[cfg(feature = "image")]
-    pub last_cover_image_render_info: Option<(String, tui::layout::Rect)>,
+    pub last_cover_image_render_info: ImageRenderInfo,
 }
 
 impl UIState {
@@ -86,7 +94,7 @@ impl Default for UIState {
     fn default() -> Self {
         Self {
             is_running: true,
-            theme: config::Theme::default(),
+            theme: Default::default(),
             input_key_sequence: key::KeySequence { keys: vec![] },
 
             history: vec![PageState::Library {
@@ -94,10 +102,10 @@ impl Default for UIState {
             }],
             popup: None,
 
-            playback_progress_bar_rect: tui::layout::Rect::default(),
+            playback_progress_bar_rect: Default::default(),
 
             #[cfg(feature = "image")]
-            last_cover_image_render_info: None,
+            last_cover_image_render_info: Default::default(),
         }
     }
 }
