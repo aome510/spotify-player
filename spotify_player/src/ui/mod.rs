@@ -88,14 +88,18 @@ fn render_application(
     ui: &mut UIStateGuard,
     rect: Rect,
 ) -> Result<()> {
-    // rendering order: help popup -> other popups -> playback window -> main layout
+    // rendering order: playback window -> help popup -> other popups -> main layout
+    //
+    // Playback window is rendered first to make sure the window's position is fixed
+    // which avoids any rendering issues with the cover image area.
+    // See: https://github.com/aome510/spotify-player/issues/389
+
+    let (playback_rect, rect) = playback::split_rect_for_playback_window(rect, state);
+    playback::render_playback_window(frame, state, ui, playback_rect)?;
 
     let rect = popup::render_shortcut_help_popup(frame, state, ui, rect);
 
     let (rect, is_active) = popup::render_popup(frame, state, ui, rect);
-
-    let (playback_rect, rect) = playback::split_rect_for_playback_window(rect, state);
-    playback::render_playback_window(frame, state, ui, playback_rect)?;
 
     render_main_layout(is_active, frame, state, ui, rect)?;
     Ok(())
