@@ -10,9 +10,36 @@ env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
   RUST_FEATURES: "rodio-backend,lyric-finder,media-control,image,notify,clipboard"
+  LINUX_PACKAGES: "libssl-dev libasound2-dev libdbus-1-dev libxcb-shape0-dev libxcb-xfixes0-dev"
 
 jobs:
-  rust-ci:
+   msrv:
+    if: github.event.pull_request.draft != true
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macOS-latest, windows-latest, ubuntu-latest]
+        include:
+          - os: ubuntu-latest
+            OS_SPECIFIC_FEATURES: ",daemon, sixel"
+          - os: macOS-latest
+            OS_SPECIFIC_FEATURES: ",sixel"
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - run: sudo apt-get update && sudo apt-get install ${{ env.LINUX_PACKAGES }}
+        if: ${{ runner.os == 'Linux'}}
+      - uses: actions/checkout@v4
+      
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-hack
+
+      - uses: Swatinem/rust-cache@v2
+
+      - run: cargo hack check --rust-version --package spotify_player --all-targets --profile ci --features "${{ env.RUST_FEATURES }} ${{ matrix.OS_SPECIFIC_FEATURES }}"
+
+   rust-ci:
     if: github.event.pull_request.draft != true
 
     strategy:
@@ -22,12 +49,17 @@ jobs:
         include:
           - os: ubuntu-latest
             toolchain: beta
+            OS_SPECIFIC_FEATURES: "daemon sixel"
+          - os: ubuntu-latest
+            OS_SPECIFIC_FEATURES: "daemon sixel"
+          - os: macOS-latest
+            OS_SPECIFIC_FEATURES: "sixel"
 
     runs-on: ${{ matrix.os }}
 
     steps:
       - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install libssl-dev libasound2-dev libdbus-1-dev libxcb-shape0-dev libxcb-xfixes0-dev
+        run: sudo apt-get update && sudo apt-get install ${{ env.LINUX_PACKAGES }}
         if: ${{ runner.os == 'Linux' }}
 
       - name: Checkout source
@@ -40,25 +72,17 @@ jobs:
           toolchain: ${{ matrix.toolchain }}
           components: clippy, rustfmt
 
-      - name: Cache cargo deps
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-          key: ${{ runner.os }}-rustc-${{ steps.install_toolchain.outputs.cachekey }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-rustc-${{ steps.install_toolchain.outputs.cachekey }}
+      - uses: Swatinem/rust-cache@v2
 
       - name: Cargo format
         run: cargo fmt --all -- --check
 
-      - name: Cargo test
-        run: cargo test --no-default-features --features ${{ env.RUST_FEATURES }}
+      - name: Cargo clippy without features
+        run: cargo clippy --no-default-features --profile ci -- -D warnings
 
       - name: Cargo clippy with all features
-        run: cargo clippy --no-default-features --features ${{ env.RUST_FEATURES }} -- -D warnings
+        run: cargo clippy --no-default-features --profile ci --features "${{ env.RUST_FEATURES }} ${{ matrix.OS_SPECIFIC_FEATURES }}" -- -D warnings
 
-      - name: Cargo clippy without features
-        run: cargo clippy --no-default-features -- -D warnings
+      - name: Cargo test
+        run: cargo test --no-default-features --profile ci --features "${{ env.RUST_FEATURES }} ${{ matrix.OS_SPECIFIC_FEATURES }}"
 

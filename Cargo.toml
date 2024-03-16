@@ -2,5 +2,14 @@
 members = ["spotify_player", "lyric_finder"]
 resolver = "2"
 
+[workspace.package]
+rust-version = "1.74"
+
+[profile.ci]
+inherits = "dev"
+debug = 0
+strip = true
+incremental = false
+
 [profile.release]
 debug = 1
