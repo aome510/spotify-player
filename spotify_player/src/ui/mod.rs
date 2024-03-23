@@ -88,14 +88,16 @@ fn render_application(
     ui: &mut UIStateGuard,
     rect: Rect,
 ) -> Result<()> {
-    // rendering order: help popup -> other popups -> playback window -> main layout
+    // rendering order: shortcut help popup -> playback window -> other popups -> main layout
 
     let rect = popup::render_shortcut_help_popup(frame, state, ui, rect);
 
-    let (rect, is_active) = popup::render_popup(frame, state, ui, rect);
-
+    // render playback window before other popups to ensure no popup is rendered on top
+    // of the playback window
     let (playback_rect, rect) = playback::split_rect_for_playback_window(rect, state);
     playback::render_playback_window(frame, state, ui, playback_rect)?;
+
+    let (rect, is_active) = popup::render_popup(frame, state, ui, rect);
 
     render_main_layout(is_active, frame, state, ui, rect)?;
     Ok(())

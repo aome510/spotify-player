@@ -82,20 +82,12 @@ pub fn render_popup(
                 (chunks[0], true)
             }
             PopupState::CommandHelp { .. } => {
-                // the command help popup will cover the entire main layout
-                let chunks =
-                    Layout::vertical([Constraint::Fill(0), Constraint::Length(0)]).split(rect);
-
-                render_commands_help_popup(frame, state, ui, chunks[0]);
-                (chunks[1], false)
+                render_commands_help_popup(frame, state, ui, rect);
+                (Rect::default(), false)
             }
             PopupState::Queue { .. } => {
-                // the queue popup will cover the entire main layout
-                let chunks =
-                    Layout::vertical([Constraint::Fill(0), Constraint::Length(0)]).split(rect);
-
-                render_queue_popup(frame, state, ui, chunks[0]);
-                (chunks[1], false)
+                render_queue_popup(frame, state, ui, rect);
+                (Rect::default(), false)
             }
             PopupState::ActionList(item, _) => {
                 let rect = render_list_popup(
