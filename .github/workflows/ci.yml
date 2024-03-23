@@ -19,9 +19,6 @@ jobs:
       matrix:
         os: [macOS-latest, windows-latest, ubuntu-latest]
         toolchain: [stable]
-        include:
-          - os: ubuntu-latest
-            toolchain: beta
 
     runs-on: ${{ matrix.os }}
 
@@ -61,4 +58,3 @@ jobs:
 
       - name: Cargo clippy without features
         run: cargo clippy --no-default-features -- -D warnings
-
