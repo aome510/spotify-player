@@ -1,6 +1,7 @@
 mod keymap;
 mod theme;
 
+const APP_NAME: &str = "spotify-player";
 const DEFAULT_CONFIG_FOLDER: &str = ".config/spotify-player";
 const DEFAULT_CACHE_FOLDER: &str = ".cache/spotify-player";
 const APP_CONFIG_FILE: &str = "app.toml";
@@ -323,14 +324,26 @@ impl AppConfig {
 
 /// gets the application's configuration folder path
 pub fn get_config_folder_path() -> Result<PathBuf> {
-    match dirs_next::home_dir() {
-        Some(home) => Ok(home.join(DEFAULT_CONFIG_FOLDER)),
-        None => Err(anyhow!("cannot find the $HOME folder")),
-    }
+    if let Some(home) = dirs_next::home_dir() {
+        let default_config_path = home.join(DEFAULT_CONFIG_FOLDER);
+        if default_config_path.exists() {
+            return Ok(default_config_path);
+        }
+
+        return match std::env::var("XDG_CONFIG_HOME") {
+            Ok(config_home) => Ok(PathBuf::from(config_home).join(APP_NAME)),
+            Err(_) => Ok(default_config_path),
+        };
+    };
+
+    Err(anyhow!("cannot find the $HOME folder"))
 }
 
 /// gets the application's cache folder path
 pub fn get_cache_folder_path() -> Result<PathBuf> {
+    if let Ok(cache_home) = std::env::var("XDG_CACHE_HOME") {
+        return Ok(PathBuf::from(cache_home).join(APP_NAME));
+    }
     match dirs_next::home_dir() {
         Some(home) => Ok(home.join(DEFAULT_CACHE_FOLDER)),
         None => Err(anyhow!("cannot find the $HOME folder")),
