@@ -15,7 +15,7 @@ use librespot_connect::spirc::Spirc;
 use librespot_core::session::Session;
 use rspotify::{
     http::Query,
-    model::{FullPlaylist, Market},
+    model::{FullPlaylist, Market, Page, SimplifiedPlaylist},
     prelude::*,
 };
 
@@ -47,9 +47,7 @@ struct TrackData {
 const SPOTIFY_API_ENDPOINT: &str = "https://api.spotify.com/v1";
 
 fn market_query() -> Query<'static> {
-    let mut payload = Query::with_capacity(1);
-    payload.insert("market", "from_token");
-    payload
+    Query::from([("market", "from_token")])
 }
 
 impl Client {
@@ -678,10 +676,18 @@ impl Client {
 
     /// gets all playlists of the current user
     pub async fn current_user_playlists(&self) -> Result<Vec<Playlist>> {
+        // TODO: this should use `rspotify::current_user_playlists_manual` API instead of `internal_call`
+        // See: https://github.com/ramsayleung/rspotify/issues/459
         let first_page = self
-            .spotify
-            .current_user_playlists_manual(Some(50), None)
+            .internal_call::<Page<SimplifiedPlaylist>>(
+                &format!("{SPOTIFY_API_ENDPOINT}/me/playlists"),
+                &Query::from([("limit", "50")]),
+            )
             .await?;
+        // let first_page = self
+        //     .spotify
+        //     .current_user_playlists_manual(Some(50), None)
+        //     .await?;
 
         let playlists = self.all_paging_items(first_page, &Query::new()).await?;
         Ok(playlists.into_iter().map(|p| p.into()).collect())
