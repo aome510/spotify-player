@@ -1,4 +1,5 @@
-use rspotify::model::PlayableItem;
+use anyhow::Context;
+use rspotify::model::{PlayableItem, RepeatState};
 use tracing::Instrument;
 
 use crate::{event::ClientRequest, state::*};
@@ -36,56 +37,137 @@ pub async fn start_client_handler(
     }
 }
 
-async fn handle_track_end_event(
+fn handle_playback_change_event(
     state: &SharedState,
     client_pub: &flume::Sender<ClientRequest>,
 ) -> anyhow::Result<()> {
-    let mut needs_update = false;
-    {
-        let player = state.player.read();
-        if let (Some(playback), Some(track)) =
-            (player.playback.as_ref(), player.current_playing_track())
-        {
-            if let Some(progress) = player.playback_progress() {
-                needs_update = progress >= track.duration && playback.is_playing;
-            }
+    let player = state.player.read();
+    let (playback, track) = match (
+        player.buffered_playback.as_ref(),
+        player.current_playing_track(),
+    ) {
+        (Some(playback), Some(track)) => (playback, track),
+        _ => return Ok(()),
+    };
+
+    if let Some(progress) = player.playback_progress() {
+        // update the playback when the current track ends
+        if progress >= track.duration && playback.is_playing {
+            client_pub.send(ClientRequest::GetCurrentPlayback)?;
         }
     }
-    if needs_update {
-        client_pub
-            .send_async(ClientRequest::GetCurrentPlayback)
-            .await?;
+
+    if let Some(queue) = player.queue.as_ref() {
+        // if the currently playing track in queue is different from the actual
+        // currently playing track stored inside player's playback, update the queue
+        if let Some(PlayableItem::Track(queue_track)) = queue.currently_playing.as_ref() {
+            if queue_track.id != track.id {
+                client_pub.send(ClientRequest::GetCurrentUserQueue)?;
+            }
+        }
+
+        // handle fake track repeat
+        if playback.repeat_state == RepeatState::Track
+            && state.configs.app_config.enable_fake_track_repeat
+        {
+            if let Some(PlayableItem::Track(t)) = queue.queue.first() {
+                tracing::info!("{:?} {:?}", t.id, track.id);
+                if t.id != track.id {
+                    tracing::info!(
+                        "fake track repeat mode is enabled, re-queue the current track {}",
+                        track.name
+                    );
+
+                    client_pub.send(ClientRequest::AddTrackToQueue(track.id.clone().unwrap()))?;
+                }
+            }
+        }
+    } else {
+        client_pub.send(ClientRequest::GetCurrentUserQueue)?;
     }
 
     Ok(())
 }
 
-async fn handle_queue_change_event(
+fn handle_page_change_event(
     state: &SharedState,
     client_pub: &flume::Sender<ClientRequest>,
 ) -> anyhow::Result<()> {
-    let mut needs_update = false;
-    {
-        let player = state.player.read();
-        if let (Some(track), Some(queue)) = (player.current_playing_track(), player.queue.as_ref())
-        {
-            if let Some(PlayableItem::Track(queue_track)) = queue.currently_playing.as_ref() {
-                // if the currently playing track in queue is different from the actual
-                // currently playing track stored inside player's playback, update the queue
-                needs_update = queue_track.id != track.id;
+    match state.ui.lock().current_page_mut() {
+        PageState::Context {
+            id,
+            context_page_type,
+            state: page_state,
+        } => {
+            let expected_id = match context_page_type {
+                ContextPageType::Browsing(context_id) => Some(context_id.clone()),
+                ContextPageType::CurrentPlaying => state.player.read().playing_context_id(),
+            };
+
+            // update the context state and request new data when moving to a new context page
+            if *id != expected_id {
+                tracing::info!("Current context ID ({:?}) is different from the expected ID ({:?}), update the context state", id, expected_id);
+
+                *id = expected_id;
+
+                // update the UI page state based on the context's type
+                match id {
+                    Some(id) => {
+                        *page_state = Some(match id {
+                            ContextId::Album(_) => ContextPageUIState::new_album(),
+                            ContextId::Artist(_) => ContextPageUIState::new_artist(),
+                            ContextId::Playlist(_) => ContextPageUIState::new_playlist(),
+                            ContextId::Tracks(_) => ContextPageUIState::new_tracks(),
+                        });
+                    }
+                    None => {
+                        *page_state = None;
+                    }
+                }
+            }
+
+            // request new context's data if not found in memory
+            if let Some(id) = id {
+                if !matches!(id, ContextId::Tracks(_))
+                    && !state.data.read().caches.context.contains_key(&id.uri())
+                {
+                    client_pub.send(ClientRequest::GetContext(id.clone()))?;
+                }
             }
         }
+
+        #[cfg(feature = "lyric-finder")]
+        PageState::Lyric {
+            track,
+            artists,
+            scroll_offset,
+        } => {
+            if let Some(current_track) = state.player.read().current_playing_track() {
+                if current_track.name != *track {
+                    tracing::info!("Current playing track \"{}\" is different from the track \"{track}\" shown up in the lyric page. Updating the track and fetching its lyric...", current_track.name);
+                    *track = current_track.name.clone();
+                    *artists = map_join(&current_track.artists, |a| &a.name, ", ");
+                    *scroll_offset = 0;
+
+                    client_pub.send(ClientRequest::GetLyric {
+                        track: track.clone(),
+                        artists: artists.clone(),
+                    })?;
+                }
+            }
+        }
+        _ => {}
     }
-    if needs_update {
-        // In addition to `GetCurrentUserQueue` request, also update the current playback
-        // as there can be a mismatch between the current playback and the current queue.
-        client_pub
-            .send_async(ClientRequest::GetCurrentPlayback)
-            .await?;
-        client_pub
-            .send_async(ClientRequest::GetCurrentUserQueue)
-            .await?;
-    }
+
+    Ok(())
+}
+
+fn handle_player_event(
+    state: &SharedState,
+    client_pub: &flume::Sender<ClientRequest>,
+) -> anyhow::Result<()> {
+    handle_page_change_event(state, client_pub).context("handle page change event")?;
+    handle_playback_change_event(state, client_pub).context("handle playback change event")?;
 
     Ok(())
 }
@@ -116,109 +198,13 @@ pub async fn start_player_event_watchers(
         });
     }
 
-    // Start the first task for handling "low-frequency" events.
-    // An event can be categorized as "low-frequency" when
-    // - we don't need to handle it "immediately"
-    // - we want to avoid handling it more than once within a period of time
-    tokio::task::spawn({
-        let client_pub = client_pub.clone();
-        let state = state.clone();
-        async move {
-            let refresh_duration = std::time::Duration::from_millis(1000); // frequency = 1Hz
-            loop {
-                tokio::time::sleep(refresh_duration).await;
-
-                if let Err(err) = handle_track_end_event(&state, &client_pub).await {
-                    tracing::error!("Encountered error when handling track end event: {err:#}");
-                }
-                if let Err(err) = handle_queue_change_event(&state, &client_pub).await {
-                    tracing::error!("Encountered error when handling queue change event: {err:#}");
-                }
-            }
-        }
-    });
-
-    // Start the second task (main blocking task) for handling "high-frequency" events.
-    // An event is categorized as "high-frequency" when
-    // - we want to handle it "immediately" to prevent users from experiencing a noticeable delay
-    let refresh_duration = std::time::Duration::from_millis(200); // frequency = 5Hz
-
-    // This timer is used to avoid making multiple `GetContext` requests in a short period of time.
-    let mut last_request_timer = std::time::Instant::now();
+    let refresh_duration = std::time::Duration::from_secs(1);
 
     loop {
         tokio::time::sleep(refresh_duration).await;
 
-        match state.ui.lock().current_page_mut() {
-            PageState::Context {
-                id,
-                context_page_type,
-                state: page_state,
-            } => {
-                let expected_id = match context_page_type {
-                    ContextPageType::Browsing(context_id) => Some(context_id.clone()),
-                    ContextPageType::CurrentPlaying => state.player.read().playing_context_id(),
-                };
-
-                // update the context state and request new data when moving to a new context page
-                if *id != expected_id {
-                    tracing::info!("Current context ID ({:?}) is different from the expected ID ({:?}), update the context state", id, expected_id);
-
-                    *id = expected_id;
-
-                    // update the UI page state based on the context's type
-                    match id {
-                        Some(id) => {
-                            *page_state = Some(match id {
-                                ContextId::Album(_) => ContextPageUIState::new_album(),
-                                ContextId::Artist(_) => ContextPageUIState::new_artist(),
-                                ContextId::Playlist(_) => ContextPageUIState::new_playlist(),
-                                ContextId::Tracks(_) => ContextPageUIState::new_tracks(),
-                            });
-                        }
-                        None => {
-                            *page_state = None;
-                        }
-                    }
-                }
-
-                // request new context's data if not found in memory
-                if let Some(id) = id {
-                    if !matches!(id, ContextId::Tracks(_))
-                        && !state.data.read().caches.context.contains_key(&id.uri())
-                        && last_request_timer.elapsed() >= std::time::Duration::from_secs(1)
-                    {
-                        last_request_timer = std::time::Instant::now();
-                        client_pub
-                            .send(ClientRequest::GetContext(id.clone()))
-                            .unwrap_or_default();
-                    }
-                }
-            }
-
-            #[cfg(feature = "lyric-finder")]
-            PageState::Lyric {
-                track,
-                artists,
-                scroll_offset,
-            } => {
-                if let Some(current_track) = state.player.read().current_playing_track() {
-                    if current_track.name != *track {
-                        tracing::info!("Current playing track \"{}\" is different from the track \"{track}\" shown up in the lyric page. Updating the track and fetching its lyric...", current_track.name);
-                        *track = current_track.name.clone();
-                        *artists = map_join(&current_track.artists, |a| &a.name, ", ");
-                        *scroll_offset = 0;
-
-                        client_pub
-                            .send(ClientRequest::GetLyric {
-                                track: track.clone(),
-                                artists: artists.clone(),
-                            })
-                            .unwrap_or_default();
-                    }
-                }
-            }
-            _ => {}
+        if let Err(err) = handle_player_event(&state, &client_pub) {
+            tracing::error!("Encounter error when handling player event: {err:#}");
         }
     }
 }

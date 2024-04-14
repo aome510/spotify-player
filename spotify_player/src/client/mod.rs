@@ -422,6 +422,10 @@ impl Client {
             }
             ClientRequest::AddTrackToQueue(track_id) => {
                 self.add_track_to_queue(track_id).await?;
+                let queue = self.spotify.current_user_queue().await?;
+                {
+                    state.player.write().queue = Some(queue);
+                }
             }
             ClientRequest::AddTrackToPlaylist(playlist_id, track_id) => {
                 self.add_track_to_playlist(state, playlist_id, track_id)
