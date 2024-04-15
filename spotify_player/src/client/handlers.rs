@@ -1,11 +1,15 @@
 use anyhow::Context;
-use rspotify::model::{PlayableItem, RepeatState};
+use rspotify::model::PlayableItem;
 use tracing::Instrument;
 
 use crate::{event::ClientRequest, state::*};
 
 #[cfg(feature = "lyric-finder")]
 use crate::utils::map_join;
+
+struct PlayerEventHandlerState {
+    add_track_to_queue_req_timer: std::time::Instant,
+}
 
 /// starts the client's request handler
 pub async fn start_client_handler(
@@ -40,6 +44,7 @@ pub async fn start_client_handler(
 fn handle_playback_change_event(
     state: &SharedState,
     client_pub: &flume::Sender<ClientRequest>,
+    handler_state: &mut PlayerEventHandlerState,
 ) -> anyhow::Result<()> {
     let player = state.player.read();
     let (playback, track) = match (
@@ -65,25 +70,28 @@ fn handle_playback_change_event(
                 client_pub.send(ClientRequest::GetCurrentUserQueue)?;
             }
         }
-
-        // handle fake track repeat
-        if playback.repeat_state == RepeatState::Track
-            && state.configs.app_config.enable_fake_track_repeat
-        {
-            if let Some(PlayableItem::Track(t)) = queue.queue.first() {
-                tracing::info!("{:?} {:?}", t.id, track.id);
-                if t.id != track.id {
-                    tracing::info!(
-                        "fake track repeat mode is enabled, re-queue the current track {}",
-                        track.name
-                    );
-
-                    client_pub.send(ClientRequest::AddTrackToQueue(track.id.clone().unwrap()))?;
-                }
-            }
-        }
     } else {
         client_pub.send(ClientRequest::GetCurrentUserQueue)?;
+    }
+
+    // handle fake track repeat
+    if state.configs.app_config.enable_fake_track_repeat {
+        if let Some(progress) = player.playback_progress() {
+            // re-queue the current track if it's about to end
+            // also ensure that only one `AddTrackToQueue` request is made
+            if progress + chrono::TimeDelta::seconds(5) >= track.duration
+                && playback.is_playing
+                && handler_state.add_track_to_queue_req_timer.elapsed()
+                    > std::time::Duration::from_secs(10)
+            {
+                tracing::info!(
+                    "fake track repeat mode is enabled, add the current track ({}) to queue",
+                    track.name
+                );
+                client_pub.send(ClientRequest::AddTrackToQueue(track.id.clone().unwrap()))?;
+                handler_state.add_track_to_queue_req_timer = std::time::Instant::now();
+            }
+        }
     }
 
     Ok(())
@@ -165,9 +173,11 @@ fn handle_page_change_event(
 fn handle_player_event(
     state: &SharedState,
     client_pub: &flume::Sender<ClientRequest>,
+    handler_state: &mut PlayerEventHandlerState,
 ) -> anyhow::Result<()> {
     handle_page_change_event(state, client_pub).context("handle page change event")?;
-    handle_playback_change_event(state, client_pub).context("handle playback change event")?;
+    handle_playback_change_event(state, client_pub, handler_state)
+        .context("handle playback change event")?;
 
     Ok(())
 }
@@ -199,11 +209,13 @@ pub async fn start_player_event_watchers(
     }
 
     let refresh_duration = std::time::Duration::from_secs(1);
+    let mut handler_state = PlayerEventHandlerState {
+        add_track_to_queue_req_timer: std::time::Instant::now(),
+    };
 
     loop {
         tokio::time::sleep(refresh_duration).await;
-
-        if let Err(err) = handle_player_event(&state, &client_pub) {
+        if let Err(err) = handle_player_event(&state, &client_pub, &mut handler_state) {
             tracing::error!("Encounter error when handling player event: {err:#}");
         }
     }
