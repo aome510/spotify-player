@@ -209,9 +209,6 @@ impl Client {
                 self.spotify
                     .shuffle(playback.shuffle_state, device_id)
                     .await?;
-
-                // after handling `StartPlayback` request, reset the buffered playback
-                return Ok(None);
             }
             PlayerRequest::TransferPlayback(..) => {
                 anyhow::bail!("`TransferPlayback` should be handled earlier")
@@ -422,22 +419,6 @@ impl Client {
             }
             ClientRequest::AddTrackToQueue(track_id) => {
                 self.add_track_to_queue(track_id).await?;
-
-                // Similar to `update_playback`, because it takes for Spotify API server to reflect
-                // changes, make additional requests to ensure that the queue data is up-to-date.
-                let client = self.clone();
-                let state = state.clone();
-                tokio::task::spawn(async move {
-                    let delay = std::time::Duration::from_secs(1);
-                    for _ in 0..5 {
-                        tokio::time::sleep(delay).await;
-                        if let Err(err) = client.update_current_queue_state(&state).await {
-                            tracing::error!(
-                                "Encountered an error when updating the queue state: {err:#}"
-                            );
-                        }
-                    }
-                });
             }
             ClientRequest::AddTrackToPlaylist(playlist_id, track_id) => {
                 self.add_track_to_playlist(state, playlist_id, track_id)
@@ -454,7 +435,8 @@ impl Client {
                 self.delete_from_library(state, id).await?;
             }
             ClientRequest::GetCurrentUserQueue => {
-                self.update_current_queue_state(state).await?;
+                let queue = self.spotify.current_user_queue().await?;
+                state.player.write().queue = Some(queue);
             }
             ClientRequest::ReorderPlaylistItems {
                 playlist_id,
@@ -1353,13 +1335,6 @@ impl Client {
             maybe_next = next_page.next;
         }
         Ok(items)
-    }
-
-    /// updates the current queue state
-    async fn update_current_queue_state(&self, state: &SharedState) -> Result<()> {
-        let queue = self.spotify.current_user_queue().await?;
-        state.player.write().queue = Some(queue);
-        Ok(())
     }
 
     /// updates the current playback state
