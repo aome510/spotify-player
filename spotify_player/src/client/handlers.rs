@@ -74,8 +74,9 @@ fn handle_playback_change_event(
         client_pub.send(ClientRequest::GetCurrentUserQueue)?;
     }
 
-    // handle fake track repeat
-    if state.configs.app_config.enable_fake_track_repeat {
+    // handle fake track repeat mode
+    // https://github.com/aome510/spotify-player/issues/247
+    if playback.fake_track_repeat_state {
         if let Some(progress) = player.playback_progress() {
             // re-queue the current track if it's about to end
             // also ensure that only one `AddTrackToQueue` request is made
