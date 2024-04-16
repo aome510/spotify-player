@@ -536,18 +536,22 @@ fn execute_copy_command(cmd: &config::Command, text: String) -> Result<()> {
         .args(&cmd.args)
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
         .spawn()?;
 
-    let result = match child.stdin.take() {
-        Some(mut stdin) => stdin
-            .write_all(text.as_bytes())
-            .map_err(anyhow::Error::from),
-        None => Err(anyhow::anyhow!("no stdin found in the child command")),
-    };
+    let mut stdin = child
+        .stdin
+        .take()
+        .context("no stdin found in the child command")?;
+    stdin.write_all(text.as_bytes())?;
 
-    child.wait()?;
+    let output = child.wait_with_output()?;
 
-    result
+    if output.status.success() {
+        Ok(())
+    } else {
+        anyhow::bail!(String::from_utf8(output.stderr)?);
+    }
 }
 
 /// handles a key sequence for an action list popup
