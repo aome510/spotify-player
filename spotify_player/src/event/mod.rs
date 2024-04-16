@@ -1,5 +1,6 @@
 use crate::{
     command::{self, Command},
+    config,
     key::{Key, KeySequence},
     state::*,
     ui::single_line_input::LineInput,
@@ -8,11 +9,7 @@ use crate::{
 
 #[cfg(feature = "lyric-finder")]
 use crate::utils::map_join;
-#[cfg(feature = "clipboard")]
-use anyhow::Context as _;
-use anyhow::Result;
-#[cfg(feature = "clipboard")]
-use copypasta::{ClipboardContext, ClipboardProvider};
+use anyhow::{Context as _, Result};
 
 mod page;
 mod popup;
@@ -374,9 +371,9 @@ fn handle_global_command(
                 ui.popup = None;
             }
         }
-        #[cfg(feature = "clipboard")]
         Command::OpenSpotifyLinkFromClipboard => {
-            let content = get_clipboard_content().context("get clipboard's content")?;
+            let content = get_clipboard_content(&state.configs.app_config.paste_command)
+                .context("get clipboard's content")?;
             let re = regex::Regex::new(
                 r"https://open.spotify.com/(?P<type>.*?)/(?P<id>[[:alnum:]]*).*",
             )?;
@@ -484,15 +481,9 @@ fn handle_global_command(
     Ok(true)
 }
 
-#[cfg(feature = "clipboard")]
-fn get_clipboard_content() -> Result<String> {
-    let mut clipboard_ctx = match ClipboardContext::new() {
-        Ok(ctx) => ctx,
-        Err(err) => anyhow::bail!("{err:#}"),
-    };
-    let content = match clipboard_ctx.get_contents() {
-        Ok(content) => content,
-        Err(err) => anyhow::bail!("{err:#}"),
-    };
-    Ok(content)
+fn get_clipboard_content(cmd: &config::Command) -> Result<String> {
+    let output = std::process::Command::new(&cmd.command)
+        .args(&cmd.args)
+        .output()?;
+    Ok(String::from_utf8(output.stdout)?)
 }

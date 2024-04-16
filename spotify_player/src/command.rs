@@ -63,7 +63,6 @@ pub enum Command {
     SearchPage,
     BrowsePage,
     PreviousPage,
-    #[cfg(feature = "clipboard")]
     OpenSpotifyLinkFromClipboard,
 
     SortTrackByTitle,
@@ -253,7 +252,6 @@ impl Command {
             Self::SearchPage => "go to the search page",
             Self::BrowsePage => "go to the browse page",
             Self::PreviousPage => "go to the previous page",
-            #[cfg(feature = "clipboard")]
             Self::OpenSpotifyLinkFromClipboard => "open a Spotify link from clipboard",
             Self::SortTrackByTitle => "sort the track table (if any) by track's title",
             Self::SortTrackByArtists => "sort the track table (if any) by track's artists",
