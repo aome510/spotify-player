@@ -209,9 +209,6 @@ impl Client {
                 self.spotify
                     .shuffle(playback.shuffle_state, device_id)
                     .await?;
-
-                // after handling `StartPlayback` request, reset the buffered playback
-                return Ok(None);
             }
             PlayerRequest::TransferPlayback(..) => {
                 anyhow::bail!("`TransferPlayback` should be handled earlier")
@@ -439,9 +436,7 @@ impl Client {
             }
             ClientRequest::GetCurrentUserQueue => {
                 let queue = self.spotify.current_user_queue().await?;
-                {
-                    state.player.write().queue = Some(queue);
-                }
+                state.player.write().queue = Some(queue);
             }
             ClientRequest::ReorderPlaylistItems {
                 playlist_id,
@@ -541,7 +536,8 @@ impl Client {
         // After handling a request that updates the player's playback,
         // update the playback state by making additional refresh requests.
         //
-        // # Why needs more than one request to update the playback?
+        // Why needs more than one request to update the playback?
+        //
         // It may take a while for Spotify to update the new change,
         // making additional requests can help ensure that
         // the playback state is always in sync with the latest change.
@@ -1374,15 +1370,18 @@ impl Client {
             };
 
             if reset_buffered_playback || needs_update {
-                // new playback updates, the buffered playback becomes invalid and needs to be updated
                 player.buffered_playback = player.playback.as_ref().map(|p| {
                     let mut playback = SimplifiedPlayback::from_playback(p);
-                    // update buffered playback's mute state and volume
-                    let mute_state = player.buffered_playback.as_ref().and_then(|p| p.mute_state);
-                    if let Some(volume) = mute_state {
-                        playback.volume = Some(volume);
+
+                    // handle additional data from the previous buffered state
+                    // that is not available in a standard Spotify playback's state
+                    if let Some(bp) = &player.buffered_playback {
+                        if let Some(volume) = bp.mute_state {
+                            playback.volume = Some(volume);
+                        }
+                        playback.mute_state = bp.mute_state;
+                        playback.fake_track_repeat_state = bp.fake_track_repeat_state;
                     }
-                    playback.mute_state = mute_state;
                     playback
                 });
             }

@@ -233,6 +233,12 @@ fn handle_global_command(
         Command::Repeat => {
             client_pub.send(ClientRequest::Player(PlayerRequest::Repeat))?;
         }
+        Command::ToggleFakeTrackRepeatMode => {
+            let mut player = state.player.write();
+            if let Some(playback) = &mut player.buffered_playback {
+                playback.fake_track_repeat_state = !playback.fake_track_repeat_state;
+            }
+        }
         Command::Shuffle => {
             client_pub.send(ClientRequest::Player(PlayerRequest::Shuffle))?;
         }

@@ -161,12 +161,6 @@ fn render_playback_text(
     // this regex is to handle a format argument or a newline
     let re = regex::Regex::new(r"\{.*?\}|\n").unwrap();
 
-    // build the volume string (vol% when unmuted, old_vol% (muted) if currently muted)
-    let volume = match playback.mute_state {
-        Some(volume) => format!("{volume}% (muted)"),
-        None => format!("{}%", playback.volume.unwrap_or_default()),
-    };
-
     let mut ptr = 0;
     for m in re.find_iter(format_str) {
         let s = m.start();
@@ -208,9 +202,16 @@ fn render_playback_text(
             "{metadata}" => (
                 format!(
                     "repeat: {} | shuffle: {} | volume: {} | device: {}",
-                    <&'static str>::from(playback.repeat_state),
+                    if playback.fake_track_repeat_state {
+                        "track (fake)"
+                    } else {
+                        <&'static str>::from(playback.repeat_state)
+                    },
                     playback.shuffle_state,
-                    volume,
+                    match playback.mute_state {
+                        Some(volume) => format!("{volume}% (muted)"),
+                        None => format!("{}%", playback.volume.unwrap_or_default()),
+                    },
                     playback.device_name,
                 ),
                 ui.theme.playback_metadata(),
