@@ -547,7 +547,7 @@ fn execute_copy_command(cmd: &config::Command, text: String) -> Result<()> {
     if output.status.success() {
         Ok(())
     } else {
-        anyhow::bail!(String::from_utf8(output.stderr)?);
+        anyhow::bail!("copy command failed: {}", String::from_utf8(output.stderr)?);
     }
 }
 

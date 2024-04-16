@@ -214,6 +214,7 @@ impl Default for AppConfig {
                 command: "xclip".to_string(),
                 args: vec!["-o".to_string(), "-sel".to_string(), "c".to_string()],
             },
+            // based on https://stackoverflow.com/a/54910545
             #[cfg(target_os = "windows")]
             paste_command: Command {
                 command: "powershell".to_string(),
