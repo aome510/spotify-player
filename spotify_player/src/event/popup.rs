@@ -539,14 +539,11 @@ fn execute_copy_command(cmd: &config::Command, text: String) -> Result<()> {
         .stderr(std::process::Stdio::piped())
         .spawn()?;
 
-    let mut stdin = child
-        .stdin
-        .take()
-        .context("no stdin found in the child command")?;
-    stdin.write_all(text.as_bytes())?;
+    if let Some(mut stdin) = child.stdin.take() {
+        stdin.write_all(text.as_bytes())?;
+    }
 
     let output = child.wait_with_output()?;
-
     if output.status.success() {
         Ok(())
     } else {
