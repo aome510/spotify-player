@@ -103,7 +103,7 @@ pub struct SimplifiedPlayback {
     pub repeat_state: rspotify_model::RepeatState,
     pub shuffle_state: bool,
     pub mute_state: Option<u32>,
-    /// Indicate if fake track repeat mode is enable.
+    /// Indicate if fake track repeat mode is enabled.
     /// This mode is a workaround for a librespot's [limitation] that doesn't support `track` repeat.
     ///
     /// [limitation]: https://github.com/librespot-org/librespot/issues/19

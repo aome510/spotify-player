@@ -63,8 +63,7 @@ fn handle_playback_change_event(
     }
 
     if let Some(queue) = player.queue.as_ref() {
-        // if the currently playing track in queue is different from the actual
-        // currently playing track stored inside player's playback, update the queue
+        // queue needs to be updated if its playing track is different from actual playback's playing track
         if let Some(PlayableItem::Track(queue_track)) = queue.currently_playing.as_ref() {
             if queue_track.id != track.id {
                 client_pub.send(ClientRequest::GetCurrentUserQueue)?;
@@ -75,11 +74,10 @@ fn handle_playback_change_event(
     }
 
     // handle fake track repeat mode
-    // https://github.com/aome510/spotify-player/issues/247
     if playback.fake_track_repeat_state {
         if let Some(progress) = player.playback_progress() {
-            // re-queue the current track if it's about to end
-            // also ensure that only one `AddTrackToQueue` request is made
+            // re-queue the current track if it's about to end while
+            // ensuring that only one `AddTrackToQueue` request is made
             if progress + chrono::TimeDelta::seconds(5) >= track.duration
                 && playback.is_playing
                 && handler_state.add_track_to_queue_req_timer.elapsed()

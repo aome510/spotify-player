@@ -309,6 +309,7 @@ List of supported commands:
 | `ResumePause`                  | resume/pause based on the current playback                              | `space`            |
 | `PlayRandom`                   | play a random track in the current context                              | `.`                |
 | `Repeat`                       | cycle the repeat mode                                                   | `C-r`              |
+| `ToggleFakeTrackRepeatMode`    | toggle fake track repeat mode                                           | `M-r`              |
 | `Shuffle`                      | toggle the shuffle mode                                                 | `C-s`              |
 | `VolumeUp`                     | increase playback volume by 5%                                          | `+`                |
 | `VolumeDown`                   | decrease playback volume by 5%                                          | `-`                |

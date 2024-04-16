@@ -1370,11 +1370,11 @@ impl Client {
             };
 
             if reset_buffered_playback || needs_update {
-                // new playback updates, the buffered playback becomes invalid and needs to be updated
                 player.buffered_playback = player.playback.as_ref().map(|p| {
                     let mut playback = SimplifiedPlayback::from_playback(p);
-                    // ensure that the new buffered playback still has previous data that is not available
-                    // in `rspotify::CurrentPlaybackContext`
+
+                    // handle additional data from the previous buffered state
+                    // that is not available in a standard Spotify playback's state
                     if let Some(bp) = &player.buffered_playback {
                         if let Some(volume) = bp.mute_state {
                             playback.volume = Some(volume);

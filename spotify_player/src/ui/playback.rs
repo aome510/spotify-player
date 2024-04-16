@@ -203,7 +203,7 @@ fn render_playback_text(
                 format!(
                     "repeat: {} | shuffle: {} | volume: {} | device: {}",
                     if playback.fake_track_repeat_state {
-                        "track-fake"
+                        "track (fake)"
                     } else {
                         <&'static str>::from(playback.repeat_state)
                     },
