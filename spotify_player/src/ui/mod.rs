@@ -42,11 +42,9 @@ pub fn run(state: SharedState) -> Result<()> {
                 let block = Block::default().style(ui.theme.app());
                 frame.render_widget(block, rect);
 
-                if let Err(err) = render_application(frame, &state, &mut ui, rect) {
-                    tracing::error!("Failed to render the application: {err:#}");
-                }
+                render_application(frame, &state, &mut ui, rect);
             }) {
-                tracing::error!("Failed to draw the application: {err:#}");
+                tracing::error!("Failed to render the application: {err:#}");
             }
         }
 
@@ -82,12 +80,7 @@ fn clean_up(mut terminal: Terminal) -> Result<()> {
 }
 
 /// renders the application
-fn render_application(
-    frame: &mut Frame,
-    state: &SharedState,
-    ui: &mut UIStateGuard,
-    rect: Rect,
-) -> Result<()> {
+fn render_application(frame: &mut Frame, state: &SharedState, ui: &mut UIStateGuard, rect: Rect) {
     // rendering order: shortcut help popup -> playback window -> other popups -> main layout
 
     let rect = popup::render_shortcut_help_popup(frame, state, ui, rect);
@@ -95,12 +88,11 @@ fn render_application(
     // render playback window before other popups to ensure no popup is rendered on top
     // of the playback window
     let (playback_rect, rect) = playback::split_rect_for_playback_window(rect, state);
-    playback::render_playback_window(frame, state, ui, playback_rect)?;
+    playback::render_playback_window(frame, state, ui, playback_rect);
 
     let (rect, is_active) = popup::render_popup(frame, state, ui, rect);
 
-    render_main_layout(is_active, frame, state, ui, rect)?;
-    Ok(())
+    render_main_layout(is_active, frame, state, ui, rect);
 }
 
 /// renders the application's main layout
@@ -110,7 +102,7 @@ fn render_main_layout(
     state: &SharedState,
     ui: &mut UIStateGuard,
     rect: Rect,
-) -> Result<()> {
+) {
     let page_type = ui.current_page().page_type();
     match page_type {
         PageType::Library => page::render_library_page(is_active, frame, state, ui, rect),
@@ -119,5 +111,7 @@ fn render_main_layout(
         PageType::Browse => page::render_browse_page(is_active, frame, state, ui, rect),
         #[cfg(feature = "lyric-finder")]
         PageType::Lyric => page::render_lyric_page(is_active, frame, state, ui, rect),
+        PageType::Queue => page::render_queue_page(frame, state, ui, rect),
+        PageType::CommandHelp => page::render_commands_help_page(frame, state, ui, rect),
     }
 }

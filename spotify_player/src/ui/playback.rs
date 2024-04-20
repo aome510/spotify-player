@@ -10,7 +10,7 @@ pub fn render_playback_window(
     state: &SharedState,
     ui: &mut UIStateGuard,
     rect: Rect,
-) -> Result<()> {
+) {
     let rect = construct_and_render_block("Playback", &ui.theme, state, Borders::ALL, frame, rect);
 
     let player = state.player.read();
@@ -69,8 +69,11 @@ pub fn render_playback_window(
                                 frame.render_widget(Clear, cover_img_rect);
                             } else {
                                 if !ui.last_cover_image_render_info.rendered {
-                                    render_playback_cover_image(state, ui)
-                                        .context("render playback's cover image")?;
+                                    if let Err(err) = render_playback_cover_image(state, ui) {
+                                        tracing::error!(
+                                            "Failed to render playback's cover image: {err:#}"
+                                        );
+                                    }
                                 }
 
                                 // set the `skip` state of cells in the cover image area
@@ -102,9 +105,7 @@ pub fn render_playback_window(
             }
 
             let progress = std::cmp::min(
-                player
-                    .playback_progress()
-                    .context("playback should exist")?,
+                player.playback_progress().expect("non-empty playback"),
                 track.duration,
             );
             render_playback_progress_bar(frame, state, ui, progress, track, progress_bar_rect);
@@ -139,8 +140,6 @@ pub fn render_playback_window(
             rect,
         );
     };
-
-    Ok(())
 }
 
 fn render_playback_text(

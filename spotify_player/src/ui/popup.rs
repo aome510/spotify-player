@@ -1,15 +1,8 @@
 use super::{utils::construct_and_render_block, *};
-use crate::utils::format_duration;
-use std::collections::{btree_map::Entry, BTreeMap};
 
 const SHORTCUT_TABLE_N_COLUMNS: usize = 3;
 const SHORTCUT_TABLE_CONSTRAINS: [Constraint; SHORTCUT_TABLE_N_COLUMNS] =
     [Constraint::Ratio(1, 3); 3];
-const COMMAND_TABLE_CONSTRAINTS: [Constraint; 3] = [
-    Constraint::Percentage(25),
-    Constraint::Percentage(25),
-    Constraint::Percentage(50),
-];
 
 /// renders a popup (if any) to handle a command or show additional information
 /// depending on the current popup state.
@@ -80,14 +73,6 @@ pub fn render_popup(
 
                 frame.render_widget(Paragraph::new(format!("/{query}")), rect);
                 (chunks[0], true)
-            }
-            PopupState::CommandHelp { .. } => {
-                render_commands_help_popup(frame, state, ui, rect);
-                (Rect::default(), false)
-            }
-            PopupState::Queue { .. } => {
-                render_queue_popup(frame, state, ui, rect);
-                (Rect::default(), false)
             }
             PopupState::ActionList(item, _) => {
                 let rect = render_list_popup(
@@ -262,157 +247,4 @@ pub fn render_shortcut_help_popup(
         frame.render_widget(help_table, rect);
         chunks[0]
     }
-}
-
-/// renders a command help popup listing all key shortcuts and corresponding descriptions
-pub fn render_commands_help_popup(
-    frame: &mut Frame,
-    state: &SharedState,
-    ui: &mut UIStateGuard,
-    rect: Rect,
-) {
-    let rect = construct_and_render_block("Commands", &ui.theme, state, Borders::ALL, frame, rect);
-
-    let mut map = BTreeMap::new();
-    state
-        .configs
-        .keymap_config
-        .keymaps
-        .iter()
-        .filter(|km| km.include_in_help_screen())
-        .for_each(|km| {
-            let v = map.entry(km.command);
-            match v {
-                Entry::Vacant(v) => {
-                    v.insert(format!("\"{}\"", km.key_sequence));
-                }
-                Entry::Occupied(mut v) => {
-                    let desc = format!("{}, \"{}\"", v.get(), km.key_sequence);
-                    *v.get_mut() = desc;
-                }
-            }
-        });
-
-    let scroll_offset = match ui.popup {
-        Some(PopupState::CommandHelp {
-            ref mut scroll_offset,
-        }) => scroll_offset,
-        _ => return,
-    };
-    // offset should not be greater than or equal the number of available commands
-    if *scroll_offset >= map.len() {
-        *scroll_offset = map.len() - 1
-    }
-
-    let help_table = Table::new(
-        map.into_iter()
-            .skip(*scroll_offset)
-            .map(|(c, k)| {
-                Row::new(vec![
-                    Cell::from(format!("{c:?}")),
-                    Cell::from(format!("[{k}]")),
-                    Cell::from(c.desc()),
-                ])
-            })
-            .collect::<Vec<_>>(),
-        COMMAND_TABLE_CONSTRAINTS,
-    )
-    .header(
-        Row::new(vec![
-            Cell::from("Command"),
-            Cell::from("Shortcuts"),
-            Cell::from("Description"),
-        ])
-        .style(ui.theme.table_header()),
-    );
-
-    frame.render_widget(help_table, rect);
-}
-
-/// renders a queue popup listing everything in the queue
-pub fn render_queue_popup(
-    frame: &mut Frame,
-    state: &SharedState,
-    ui: &mut UIStateGuard,
-    rect: Rect,
-) {
-    use rspotify::model::{FullEpisode, FullTrack, PlayableItem};
-    fn get_playable_name(item: &PlayableItem) -> String {
-        match item {
-            PlayableItem::Track(FullTrack { ref name, .. }) => name,
-            PlayableItem::Episode(FullEpisode { ref name, .. }) => name,
-        }
-        .to_string()
-    }
-    fn get_playable_artists(item: &PlayableItem) -> String {
-        match item {
-            PlayableItem::Track(FullTrack { ref artists, .. }) => artists
-                .iter()
-                .map(|a| a.name.as_str())
-                .collect::<Vec<_>>()
-                .join(", "),
-            PlayableItem::Episode(FullEpisode { .. }) => String::new(),
-        }
-    }
-    fn get_playable_duration(item: &PlayableItem) -> String {
-        match item {
-            PlayableItem::Track(FullTrack { ref duration, .. }) => format_duration(duration),
-            PlayableItem::Episode(FullEpisode { ref duration, .. }) => format_duration(duration),
-        }
-    }
-
-    let rect = construct_and_render_block("Queue", &ui.theme, state, Borders::ALL, frame, rect);
-
-    let scroll_offset = match ui.popup {
-        Some(PopupState::Queue {
-            ref mut scroll_offset,
-        }) => scroll_offset,
-        _ => return,
-    };
-
-    // Minimize the time we have a lock on the player state
-    let queue_table = {
-        let player_state = state.player.read();
-        let queue = match player_state.queue {
-            Some(ref q) => &q.queue,
-            None => return,
-        };
-
-        // offset should not be greater than or equal the number of items in queue
-        if !queue.is_empty() && *scroll_offset >= queue.len() {
-            *scroll_offset = queue.len() - 1
-        }
-        Table::new(
-            queue
-                .iter()
-                .enumerate()
-                .skip(*scroll_offset)
-                .map(|(i, x)| {
-                    Row::new(vec![
-                        Cell::from(format!("{}", i + 1)),
-                        Cell::from(get_playable_name(x)),
-                        Cell::from(get_playable_artists(x)),
-                        Cell::from(get_playable_duration(x)),
-                    ])
-                })
-                .collect::<Vec<_>>(),
-            [
-                Constraint::Percentage(5),
-                Constraint::Percentage(40),
-                Constraint::Percentage(35),
-                Constraint::Percentage(20),
-            ],
-        )
-        .header(
-            Row::new(vec![
-                Cell::from("#"),
-                Cell::from("Title"),
-                Cell::from("Artists"),
-                Cell::from("Duration"),
-            ])
-            .style(ui.theme.table_header()),
-        )
-    };
-
-    frame.render_widget(queue_table, rect);
 }
