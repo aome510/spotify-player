@@ -25,8 +25,15 @@ pub enum PageState {
     Browse {
         state: BrowsePageUIState,
     },
+    Queue {
+        scroll_offset: usize,
+    },
+    CommandHelp {
+        scroll_offset: usize,
+    },
 }
 
+#[derive(PartialEq, Eq, Clone, Copy)]
 pub enum PageType {
     Library,
     Context,
@@ -34,6 +41,8 @@ pub enum PageType {
     Browse,
     #[cfg(feature = "lyric-finder")]
     Lyric,
+    Queue,
+    CommandHelp,
 }
 
 #[derive(Clone, Debug)]
@@ -127,6 +136,8 @@ impl PageState {
             PageState::Browse { .. } => PageType::Browse,
             #[cfg(feature = "lyric-finder")]
             PageState::Lyric { .. } => PageType::Lyric,
+            PageState::Queue { .. } => PageType::Queue,
+            PageState::CommandHelp { .. } => PageType::CommandHelp,
         }
     }
 
@@ -207,6 +218,7 @@ impl PageState {
             },
             #[cfg(feature = "lyric-finder")]
             Self::Lyric { .. } => None,
+            Self::CommandHelp { .. } | Self::Queue { .. } => None,
         }
     }
 }

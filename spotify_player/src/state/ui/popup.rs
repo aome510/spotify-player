@@ -9,9 +9,6 @@ pub enum PlaylistCreateCurrentField {
 
 #[derive(Debug)]
 pub enum PopupState {
-    CommandHelp {
-        scroll_offset: usize,
-    },
     Search {
         query: String,
     },
@@ -22,9 +19,6 @@ pub enum PopupState {
     ArtistList(ArtistPopupAction, Vec<Artist>, ListState),
     ThemeList(Vec<crate::config::Theme>, ListState),
     ActionList(ActionListItem, ListState),
-    Queue {
-        scroll_offset: usize,
-    },
     PlaylistCreate {
         name: LineInput,
         desc: LineInput,
@@ -65,10 +59,7 @@ impl PopupState {
             Self::ArtistList(.., list_state) => Some(list_state),
             Self::ThemeList(.., list_state) => Some(list_state),
             Self::ActionList(.., list_state) => Some(list_state),
-            Self::CommandHelp { .. }
-            | Self::Search { .. }
-            | Self::Queue { .. }
-            | Self::PlaylistCreate { .. } => None,
+            Self::Search { .. } | Self::PlaylistCreate { .. } => None,
         }
     }
 
@@ -82,10 +73,7 @@ impl PopupState {
             Self::ArtistList(.., list_state) => Some(list_state),
             Self::ThemeList(.., list_state) => Some(list_state),
             Self::ActionList(.., list_state) => Some(list_state),
-            Self::CommandHelp { .. }
-            | Self::Search { .. }
-            | Self::Queue { .. }
-            | Self::PlaylistCreate { .. } => None,
+            Self::Search { .. } | Self::PlaylistCreate { .. } => None,
         }
     }
 
