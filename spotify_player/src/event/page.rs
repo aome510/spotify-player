@@ -49,7 +49,7 @@ pub fn handle_key_sequence_for_page(
 ) -> Result<bool> {
     let page_type = state.ui.lock().current_page().page_type();
     if page_type == PageType::Search {
-        return handle_key_sequence_for_search_page(&key_sequence, client_pub, state);
+        return handle_key_sequence_for_search_page(key_sequence, client_pub, state);
     }
 
     let command = match state
@@ -213,7 +213,7 @@ fn handle_command_for_context_page(
             ui.popup = Some(PopupState::Search {
                 query: "".to_owned(),
             });
-            return Ok(true);
+            Ok(true)
         }
         _ => window::handle_command_for_focused_context_window(command, client_pub, ui, state),
     }

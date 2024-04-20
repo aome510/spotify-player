@@ -15,7 +15,7 @@ use rand::Rng;
 pub fn handle_command_for_focused_context_window(
     command: Command,
     client_pub: &flume::Sender<ClientRequest>,
-    mut ui: UIStateGuard,
+    ui: UIStateGuard,
     state: &SharedState,
 ) -> Result<bool> {
     let context_id = match ui.current_page() {

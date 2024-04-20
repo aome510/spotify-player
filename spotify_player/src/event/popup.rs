@@ -327,11 +327,6 @@ fn handle_key_sequence_for_search_popup(
         }
     }
 
-    let command = state
-        .configs
-        .keymap_config
-        .find_command_from_key_sequence(key_sequence);
-
     // key sequence not handle by the popup should be moved to the current page's event handler
     page::handle_key_sequence_for_page(key_sequence, client_pub, state)
 }
