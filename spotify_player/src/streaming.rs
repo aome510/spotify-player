@@ -37,8 +37,8 @@ compile_error!("Streaming feature is enabled but no audio backend has been selec
 For more information, visit https://github.com/aome510/spotify-player?tab=readme-ov-file#streaming
 ");
 
-#[derive(Clone, Debug, Serialize)]
-pub enum PlayerEvent {
+#[derive(Debug, Serialize)]
+enum PlayerEvent {
     Changed {
         old_track_id: TrackId<'static>,
         new_track_id: TrackId<'static>,

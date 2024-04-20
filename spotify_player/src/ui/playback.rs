@@ -149,7 +149,7 @@ fn render_playback_text(
     ui: &UIStateGuard,
     rect: Rect,
     track: &rspotify_model::FullTrack,
-    playback: &SimplifiedPlayback,
+    playback: &PlaybackMetadata,
 ) {
     // Construct a "styled" text (`playback_text`) from playback's data
     // based on a user-configurable format string (app_config.playback_format)

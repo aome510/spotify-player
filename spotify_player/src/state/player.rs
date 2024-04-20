@@ -7,18 +7,18 @@ pub struct PlayerState {
 
     pub playback: Option<rspotify_model::CurrentPlaybackContext>,
     pub playback_last_updated_time: Option<std::time::Instant>,
-    /// a buffered state to speedup the feedback of playback metadata update to user
+    /// A buffered state to speedup the feedback of playback metadata update to user
     // Related issue: https://github.com/aome510/spotify-player/issues/109
-    pub buffered_playback: Option<SimplifiedPlayback>,
+    pub buffered_playback: Option<PlaybackMetadata>,
 
     pub queue: Option<rspotify_model::CurrentUserQueue>,
 }
 
 impl PlayerState {
-    /// gets the current playback
+    /// Get the current playback
     ///
     /// # Note
-    /// Because playback data stored inside the player state is buffered and cached,
+    /// Because playback metadata stored inside the player state is buffered,
     /// the returned playback is estimated based on the available data.
     pub fn current_playback(&self) -> Option<rspotify_model::CurrentPlaybackContext> {
         let mut playback = self.playback.clone()?;
@@ -46,7 +46,6 @@ impl PlayerState {
         Some(playback)
     }
 
-    /// gets the current playing track
     pub fn current_playing_track(&self) -> Option<&rspotify_model::FullTrack> {
         match self.playback {
             None => None,
@@ -57,7 +56,6 @@ impl PlayerState {
         }
     }
 
-    /// gets the current playback progress
     pub fn playback_progress(&self) -> Option<chrono::Duration> {
         match self.playback {
             None => None,
@@ -76,7 +74,6 @@ impl PlayerState {
         }
     }
 
-    /// gets the current playing context's ID
     pub fn playing_context_id(&self) -> Option<ContextId> {
         match self.playback {
             Some(ref playback) => match playback.context {

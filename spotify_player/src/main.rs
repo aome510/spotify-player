@@ -15,6 +15,7 @@ mod ui;
 mod utils;
 
 use anyhow::{Context, Result};
+use rspotify::clients::BaseClient;
 use std::io::Write;
 
 async fn init_spotify(
@@ -29,7 +30,7 @@ async fn init_spotify(
     }
 
     // initialize the playback state
-    client.update_current_playback_state(state, false).await?;
+    client.retrieve_current_playback(state, false).await?;
 
     if state.player.read().playback.is_none() {
         tracing::info!("No playback found on startup, trying to connect to an available device...");
@@ -131,7 +132,7 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
         auth_config,
         state.configs.app_config.client_id.clone(),
     );
-    client.init_token().await?;
+    client.refresh_token().await?;
 
     // initialize Spotify-related stuff
     init_spotify(&client_pub, &client, state)

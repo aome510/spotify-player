@@ -93,9 +93,8 @@ pub enum ItemId {
     Playlist(PlaylistId<'static>),
 }
 
-/// A simplified version of `rspotify::CurrentPlaybackContext`
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SimplifiedPlayback {
+pub struct PlaybackMetadata {
     pub device_name: String,
     pub device_id: Option<String>,
     pub volume: Option<u32>,
@@ -477,7 +476,7 @@ impl Playback {
     }
 }
 
-impl SimplifiedPlayback {
+impl PlaybackMetadata {
     pub fn from_playback(p: &CurrentPlaybackContext) -> Self {
         Self {
             device_name: p.device.name.clone(),

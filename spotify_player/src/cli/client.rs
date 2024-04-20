@@ -14,7 +14,7 @@ use crate::{
     cli::Request,
     client::{Client, PlayerRequest},
     config::get_cache_folder_path,
-    state::{Context, ContextId, Playback, SharedState, SimplifiedPlayback},
+    state::{Context, ContextId, Playback, PlaybackMetadata, SharedState},
 };
 use rspotify::{
     model::*,
@@ -24,8 +24,8 @@ use rspotify::{
 use super::*;
 
 pub async fn start_socket(client: Client, socket: UdpSocket, state: Option<SharedState>) {
-    // initialize the receive buffer to be 4096 bytes
     let mut buf = [0; MAX_REQUEST_SIZE];
+
     loop {
         match socket.recv_from(&mut buf).await {
             Err(err) => tracing::warn!("Failed to receive from the socket: {err:#}"),
@@ -105,11 +105,8 @@ async fn handle_socket_request(
     state: &Option<SharedState>,
     request: super::Request,
 ) -> Result<Vec<u8>> {
-    if client.session().await.is_invalid() {
-        if let Some(state) = state {
-            tracing::info!("Spotify client's session is invalid, re-creating a new session...");
-            client.new_session(state).await?;
-        }
+    if let Some(state) = state {
+        client.check_valid_session(state).await?;
     }
 
     match request {
@@ -322,7 +319,7 @@ async fn handle_playback_request(
         Some(state) => state.player.read().buffered_playback.clone(),
         None => {
             let playback = client.current_playback(None, None::<Vec<_>>).await?;
-            playback.as_ref().map(SimplifiedPlayback::from_playback)
+            playback.as_ref().map(PlaybackMetadata::from_playback)
         }
     };
 
