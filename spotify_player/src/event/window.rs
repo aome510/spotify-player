@@ -1,4 +1,4 @@
-use super::page::handle_navigation_commands_for_page;
+use super::page::handle_navigation_command;
 use super::*;
 use crate::{
     command::{
@@ -15,9 +15,9 @@ use rand::Rng;
 pub fn handle_command_for_focused_context_window(
     command: Command,
     client_pub: &flume::Sender<ClientRequest>,
+    mut ui: UIStateGuard,
     state: &SharedState,
 ) -> Result<bool> {
-    let ui = state.ui.lock();
     let context_id = match ui.current_page() {
         PageState::Context { id, .. } => match id {
             None => return Ok(false),
@@ -158,7 +158,7 @@ pub fn handle_command_for_track_table_window(
         return Ok(false);
     }
 
-    handle_navigation_commands_for_page!(state, command, tracks.len(), ui.current_page_mut(), id);
+    handle_navigation_command!(state, command, tracks.len(), ui.current_page_mut(), id);
     match command {
         Command::PlayRandom => {
             let id = rand::thread_rng().gen_range(0..tracks.len());
@@ -263,7 +263,7 @@ pub fn handle_command_for_track_list_window(
         return Ok(false);
     }
 
-    handle_navigation_commands_for_page!(state, command, tracks.len(), ui.current_page_mut(), id);
+    handle_navigation_command!(state, command, tracks.len(), ui.current_page_mut(), id);
     match command {
         Command::ChooseSelected => {
             // for the track list, `ChooseSelected` on a track
@@ -303,7 +303,7 @@ pub fn handle_command_for_artist_list_window(
         return Ok(false);
     }
 
-    handle_navigation_commands_for_page!(state, command, artists.len(), ui.current_page_mut(), id);
+    handle_navigation_command!(state, command, artists.len(), ui.current_page_mut(), id);
     match command {
         Command::ChooseSelected => {
             let context_id = ContextId::Artist(artists[id].id.clone());
@@ -337,7 +337,7 @@ pub fn handle_command_for_album_list_window(
         return Ok(false);
     }
 
-    handle_navigation_commands_for_page!(state, command, albums.len(), ui.current_page_mut(), id);
+    handle_navigation_command!(state, command, albums.len(), ui.current_page_mut(), id);
     match command {
         Command::ChooseSelected => {
             let context_id = ContextId::Album(albums[id].id.clone());
@@ -371,13 +371,7 @@ pub fn handle_command_for_playlist_list_window(
         return Ok(false);
     }
 
-    handle_navigation_commands_for_page!(
-        state,
-        command,
-        playlists.len(),
-        ui.current_page_mut(),
-        id
-    );
+    handle_navigation_command!(state, command, playlists.len(), ui.current_page_mut(), id);
     match command {
         Command::ChooseSelected => {
             let context_id = ContextId::Playlist(playlists[id].id.clone());

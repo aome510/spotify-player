@@ -2,7 +2,7 @@ use anyhow::Context as _;
 
 use super::*;
 
-macro_rules! handle_navigation_commands_for_page {
+macro_rules! handle_navigation_command {
     ($state:ident, $command:ident, $len:expr, $page:expr, $id:expr) => {
         match $command {
             Command::SelectNextOrScrollDown => {
@@ -40,12 +40,18 @@ macro_rules! handle_navigation_commands_for_page {
         }
     };
 }
-pub(super) use handle_navigation_commands_for_page;
+pub(super) use handle_navigation_command;
 
-pub fn handle_key_sequence_for_library_page(
+pub fn handle_key_sequence_for_page(
     key_sequence: &KeySequence,
+    client_pub: &flume::Sender<ClientRequest>,
     state: &SharedState,
 ) -> Result<bool> {
+    let page_type = state.ui.lock().current_page().page_type();
+    if page_type == PageType::Search {
+        return handle_key_sequence_for_search_page(&key_sequence, client_pub, state);
+    }
+
     let command = match state
         .configs
         .keymap_config
@@ -55,7 +61,25 @@ pub fn handle_key_sequence_for_library_page(
         None => return Ok(false),
     };
 
-    let mut ui = state.ui.lock();
+    let ui = state.ui.lock();
+
+    match page_type {
+        PageType::Search => anyhow::bail!("page search type should already be handled!"),
+        PageType::Library => handle_command_for_library_page(command, ui, state),
+        PageType::Context => handle_command_for_context_page(command, client_pub, ui, state),
+        PageType::Browse => handle_command_for_browse_page(command, client_pub, ui, state),
+        #[cfg(feature = "lyric-finder")]
+        PageType::Lyric => handle_command_for_lyric_page(command, ui, state),
+        PageType::Queue => handle_command_for_queue_page(command, ui, state),
+        PageType::CommandHelp => handle_command_for_command_help_page(command, ui, state),
+    }
+}
+
+fn handle_command_for_library_page(
+    command: Command,
+    mut ui: UIStateGuard,
+    state: &SharedState,
+) -> Result<bool> {
     match command {
         Command::Search => {
             ui.current_page_mut().select(0);
@@ -99,7 +123,7 @@ pub fn handle_key_sequence_for_library_page(
     }
 }
 
-pub fn handle_key_sequence_for_search_page(
+fn handle_key_sequence_for_search_page(
     key_sequence: &KeySequence,
     client_pub: &flume::Sender<ClientRequest>,
     state: &SharedState,
@@ -177,51 +201,30 @@ pub fn handle_key_sequence_for_search_page(
     }
 }
 
-pub fn handle_key_sequence_for_context_page(
-    key_sequence: &KeySequence,
+fn handle_command_for_context_page(
+    command: Command,
     client_pub: &flume::Sender<ClientRequest>,
+    mut ui: UIStateGuard,
     state: &SharedState,
 ) -> Result<bool> {
-    let command = match state
-        .configs
-        .keymap_config
-        .find_command_from_key_sequence(key_sequence)
-    {
-        Some(command) => command,
-        None => return Ok(false),
-    };
-
     match command {
         Command::Search => {
-            let mut ui = state.ui.lock();
             ui.current_page_mut().select(0);
             ui.popup = Some(PopupState::Search {
                 query: "".to_owned(),
             });
+            return Ok(true);
         }
-        _ => {
-            // the command hasn't been handled, assign the job to the focused window's handler
-            return window::handle_command_for_focused_context_window(command, client_pub, state);
-        }
+        _ => window::handle_command_for_focused_context_window(command, client_pub, ui, state),
     }
-    Ok(true)
 }
 
-pub fn handle_key_sequence_for_browse_page(
-    key_sequence: &KeySequence,
+fn handle_command_for_browse_page(
+    command: Command,
     client_pub: &flume::Sender<ClientRequest>,
+    mut ui: UIStateGuard,
     state: &SharedState,
 ) -> Result<bool> {
-    let command = match state
-        .configs
-        .keymap_config
-        .find_command_from_key_sequence(key_sequence)
-    {
-        Some(command) => command,
-        None => return Ok(false),
-    };
-
-    let mut ui = state.ui.lock();
     let data = state.data.read();
 
     let len = match ui.current_page() {
@@ -245,7 +248,7 @@ pub fn handle_key_sequence_for_browse_page(
         return Ok(false);
     }
 
-    handle_navigation_commands_for_page!(state, command, len, page_state, selected);
+    handle_navigation_command!(state, command, len, page_state, selected);
     match command {
         Command::ChooseSelected => {
             match page_state {
@@ -295,29 +298,50 @@ pub fn handle_key_sequence_for_browse_page(
 }
 
 #[cfg(feature = "lyric-finder")]
-pub fn handle_key_sequence_for_lyric_page(
-    key_sequence: &KeySequence,
-    _client_pub: &flume::Sender<ClientRequest>,
+fn handle_command_for_lyric_page(
+    command: Command,
+    mut ui: UIStateGuard,
     state: &SharedState,
 ) -> Result<bool> {
-    let command = match state
-        .configs
-        .keymap_config
-        .find_command_from_key_sequence(key_sequence)
-    {
-        Some(command) => command,
-        None => return Ok(false),
-    };
-
-    let mut ui = state.ui.lock();
     let scroll_offset = match ui.current_page_mut() {
         PageState::Lyric {
             ref mut scroll_offset,
             ..
         } => scroll_offset,
-        _ => anyhow::bail!("expect a lyric page"),
+        _ => return Ok(false),
     };
+    Ok(handle_scroll_command(command, state, scroll_offset))
+}
 
+fn handle_command_for_queue_page(
+    command: Command,
+    mut ui: UIStateGuard,
+    state: &SharedState,
+) -> Result<bool, anyhow::Error> {
+    let scroll_offset = match ui.current_page_mut() {
+        PageState::Queue {
+            ref mut scroll_offset,
+        } => scroll_offset,
+        _ => return Ok(false),
+    };
+    Ok(handle_scroll_command(command, state, scroll_offset))
+}
+
+fn handle_command_for_command_help_page(
+    command: Command,
+    mut ui: UIStateGuard,
+    state: &SharedState,
+) -> Result<bool> {
+    let scroll_offset = match ui.current_page_mut() {
+        PageState::CommandHelp {
+            ref mut scroll_offset,
+        } => scroll_offset,
+        _ => return Ok(false),
+    };
+    Ok(handle_scroll_command(command, state, scroll_offset))
+}
+
+fn handle_scroll_command(command: Command, state: &SharedState, scroll_offset: &mut usize) -> bool {
     match command {
         Command::SelectNextOrScrollDown => {
             *scroll_offset += 1;
@@ -337,12 +361,12 @@ pub fn handle_key_sequence_for_lyric_page(
         Command::SelectFirstOrScrollToTop => {
             *scroll_offset = 0;
         }
-        // Don't know the number of rows of a lyric displayed in the page, so just use a "big" number.
-        // The `scroll_offset` will be adjust accordingly in the page rendering function.
+        // Don't know the size of the page, use a "big" number as the `scroll_offset` should be adjusted
+        // accordingly in the page rendering function.
         Command::SelectLastOrScrollToBottom => {
-            *scroll_offset = 1024;
+            *scroll_offset = 10000;
         }
-        _ => return Ok(false),
+        _ => return false,
     }
-    Ok(true)
+    true
 }

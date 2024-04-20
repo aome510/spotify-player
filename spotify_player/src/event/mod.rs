@@ -94,24 +94,7 @@ fn handle_key_event(
     tracing::debug!("Handling key event: {event:?}, current key sequence: {key_sequence:?}");
 
     let handled = if state.ui.lock().popup.is_none() {
-        // no popup
-        let page_type = state.ui.lock().current_page().page_type();
-        match page_type {
-            PageType::Library => page::handle_key_sequence_for_library_page(&key_sequence, state)?,
-            PageType::Search => {
-                page::handle_key_sequence_for_search_page(&key_sequence, client_pub, state)?
-            }
-            PageType::Context => {
-                page::handle_key_sequence_for_context_page(&key_sequence, client_pub, state)?
-            }
-            PageType::Browse => {
-                page::handle_key_sequence_for_browse_page(&key_sequence, client_pub, state)?
-            }
-            #[cfg(feature = "lyric-finder")]
-            PageType::Lyric => {
-                page::handle_key_sequence_for_lyric_page(&key_sequence, client_pub, state)?
-            }
-        }
+        page::handle_key_sequence_for_page(&key_sequence, client_pub, state)?
     } else {
         popup::handle_key_sequence_for_popup(&key_sequence, client_pub, state)?
     };
@@ -210,7 +193,7 @@ fn handle_global_command(
             }
         }
         Command::OpenCommandHelp => {
-            ui.popup = Some(PopupState::CommandHelp { scroll_offset: 0 });
+            ui.create_new_page(PageState::CommandHelp { scroll_offset: 0 });
         }
         Command::RefreshPlayback => {
             client_pub.send(ClientRequest::GetCurrentPlayback)?;
@@ -400,7 +383,7 @@ fn handle_global_command(
             }
         }
         Command::Queue => {
-            ui.popup = Some(PopupState::Queue { scroll_offset: 0 });
+            ui.create_new_page(PageState::Queue { scroll_offset: 0 });
             client_pub.send(ClientRequest::GetCurrentUserQueue)?;
         }
         Command::CreatePlaylist => {
@@ -409,6 +392,9 @@ fn handle_global_command(
                 desc: LineInput::default(),
                 current_field: PlaylistCreateCurrentField::Name,
             });
+        }
+        Command::ClosePopup => {
+            ui.popup = None;
         }
         _ => return Ok(false),
     }

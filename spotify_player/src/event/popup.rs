@@ -240,36 +240,7 @@ pub fn handle_key_sequence_for_popup(
                 },
             )
         }
-        PopupState::CommandHelp { .. } => handle_command_for_command_help_popup(command, ui, state),
-        PopupState::Queue { .. } => handle_command_for_queue_popup(command, ui),
     }
-}
-
-fn handle_command_for_queue_popup(
-    command: Command,
-    mut ui: UIStateGuard,
-) -> Result<bool, anyhow::Error> {
-    let scroll_offset = match ui.popup {
-        Some(PopupState::Queue {
-            ref mut scroll_offset,
-        }) => scroll_offset,
-        _ => return Ok(false),
-    };
-    match command {
-        Command::ClosePopup => {
-            ui.popup = None;
-        }
-        Command::SelectNextOrScrollDown => {
-            *scroll_offset += 1;
-        }
-        Command::SelectPreviousOrScrollUp => {
-            if *scroll_offset > 0 {
-                *scroll_offset -= 1;
-            }
-        }
-        _ => return Ok(false),
-    }
-    Ok(true)
 }
 
 fn handle_key_sequence_for_create_playlist_popup(
@@ -319,16 +290,6 @@ fn handle_key_sequence_for_create_playlist_popup(
             }
         }
     }
-
-    let command = state
-        .configs
-        .keymap_config
-        .find_command_from_key_sequence(key_sequence);
-    if let Some(Command::ClosePopup) = command {
-        state.ui.lock().popup = None;
-        return Ok(true);
-    }
-
     Ok(false)
 }
 
@@ -370,30 +331,9 @@ fn handle_key_sequence_for_search_popup(
         .configs
         .keymap_config
         .find_command_from_key_sequence(key_sequence);
-    if let Some(Command::ClosePopup) = command {
-        state.ui.lock().popup = None;
-        return Ok(true);
-    }
 
-    // there is no focus placed on the search popup, so commands not handle by
-    // the popup should be moved to the current page's event handler
-    let page_type = state.ui.lock().current_page().page_type();
-    match page_type {
-        PageType::Library => page::handle_key_sequence_for_library_page(key_sequence, state),
-        PageType::Search => {
-            page::handle_key_sequence_for_search_page(key_sequence, client_pub, state)
-        }
-        PageType::Context => {
-            page::handle_key_sequence_for_context_page(key_sequence, client_pub, state)
-        }
-        PageType::Browse => {
-            page::handle_key_sequence_for_browse_page(key_sequence, client_pub, state)
-        }
-        #[cfg(feature = "lyric-finder")]
-        PageType::Lyric => {
-            page::handle_key_sequence_for_lyric_page(key_sequence, client_pub, state)
-        }
-    }
+    // key sequence not handle by the popup should be moved to the current page's event handler
+    page::handle_key_sequence_for_page(key_sequence, client_pub, state)
 }
 
 /// Handles a command for a context list popup in which each item represents a context
@@ -484,50 +424,6 @@ fn handle_command_for_list_popup(
         }
         _ => return Ok(false),
     };
-    Ok(true)
-}
-
-/// handles a command for a command shortcut help popup
-fn handle_command_for_command_help_popup(
-    command: Command,
-    mut ui: UIStateGuard,
-    state: &SharedState,
-) -> Result<bool> {
-    let scroll_offset = match ui.popup {
-        Some(PopupState::CommandHelp {
-            ref mut scroll_offset,
-        }) => scroll_offset,
-        _ => return Ok(false),
-    };
-    match command {
-        Command::ClosePopup => {
-            ui.popup = None;
-        }
-        Command::SelectNextOrScrollDown => {
-            *scroll_offset += 1;
-        }
-        Command::SelectPreviousOrScrollUp => {
-            if *scroll_offset > 0 {
-                *scroll_offset -= 1;
-            }
-        }
-        Command::PageSelectNextOrScrollDown => {
-            *scroll_offset += state.configs.app_config.page_size_in_rows;
-        }
-        Command::PageSelectPreviousOrScrollUp => {
-            *scroll_offset =
-                scroll_offset.saturating_sub(state.configs.app_config.page_size_in_rows);
-        }
-        Command::SelectFirstOrScrollToTop => {
-            *scroll_offset = 0;
-        }
-        // Don't know the number of commands displayed in the page, so just use a "big" number.
-        // The `scroll_offset` will be adjust accordingly in the popup rendering function.
-        Command::SelectLastOrScrollToBottom => {
-            *scroll_offset = 1024;
-        }
-        _ => return Ok(false),
-    }
     Ok(true)
 }
 
