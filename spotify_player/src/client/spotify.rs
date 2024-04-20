@@ -20,9 +20,8 @@ pub struct Spotify {
     token: Arc<Mutex<Option<Token>>>,
     client_id: String,
     http: HttpClient,
-    // session should be always non-empty, but `Option` is required
-    // for the struct to implement `Default`, which is required to
-    // implement `rspotify::BaseClient`
+    // session should always be non-empty, but `Option` is used to implement `Default`,
+    // which is required to implement `rspotify::BaseClient` trait
     pub(crate) session: Arc<tokio::sync::Mutex<Option<Session>>>,
 }
 

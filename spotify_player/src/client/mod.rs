@@ -654,7 +654,6 @@ impl Client {
             )
             .await?;
         // let first_page = self
-        //
         //     .current_user_playlists_manual(Some(50), None)
         //     .await?;
 
@@ -770,7 +769,7 @@ impl Client {
         Ok(())
     }
 
-    /// Get recommended (radio) tracks based on a seed
+    /// Get recommendation (radio) tracks based on a seed
     pub async fn radio_tracks(&self, seed_uri: String) -> Result<Vec<Track>> {
         let session = self.session().await;
 
@@ -874,7 +873,7 @@ impl Client {
         })
     }
 
-    /// Search for items of a specific type
+    /// Search for items of a specific type matching a given query
     pub async fn search_specific_type(
         &self,
         query: &str,
@@ -1107,7 +1106,6 @@ impl Client {
         // TODO: this should use `rspotify::playlist` API instead of `internal_call`
         // See: https://github.com/ramsayleung/rspotify/issues/459
         // let playlist = self
-        //
         //     .playlist(playlist_id, None, Some(Market::FromToken))
         //     .await?;
         let playlist = self
@@ -1200,7 +1198,7 @@ impl Client {
         })
     }
 
-    /// Call a GET HTTP request to the Spotify server
+    /// Make a GET HTTP request to the Spotify server
     async fn http_get<T>(&self, url: &str, payload: &Query<'_>) -> Result<T>
     where
         T: serde::de::DeserializeOwned,

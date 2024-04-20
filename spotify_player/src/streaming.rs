@@ -1,4 +1,4 @@
-use crate::{config, state::SharedState};
+use crate::{client::Client, config, state::SharedState};
 use librespot_connect::spirc::Spirc;
 use librespot_core::{
     config::{ConnectConfig, DeviceType},
@@ -160,7 +160,7 @@ fn execute_player_event_hook_command(
 }
 
 /// Create a new streaming connection
-pub async fn new_connection(client: crate::client::Client, state: SharedState) -> Spirc {
+pub async fn new_connection(client: Client, state: SharedState) -> Spirc {
     let session = client.session().await;
     let device = &state.configs.app_config.device;
 
