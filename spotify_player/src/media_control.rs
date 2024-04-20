@@ -4,7 +4,7 @@ use souvlaki::{MediaControlEvent, MediaControls, MediaMetadata, MediaPlayback, P
 
 use crate::utils;
 use crate::{
-    event::{ClientRequest, PlayerRequest},
+    client::{ClientRequest, PlayerRequest},
     state::SharedState,
     utils::map_join,
 };

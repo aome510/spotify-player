@@ -1,8 +1,7 @@
-use crate::config;
+use crate::{client::Client, config, state::SharedState};
 use librespot_connect::spirc::Spirc;
 use librespot_core::{
     config::{ConnectConfig, DeviceType},
-    session::Session,
     spotify_id,
 };
 use librespot_playback::mixer::MixerConfig;
@@ -161,18 +160,17 @@ fn execute_player_event_hook_command(
 }
 
 /// Create a new streaming connection
-pub fn new_connection(
-    session: Session,
-    device: config::DeviceConfig,
-    player_event_hook_command: Option<config::Command>,
-) -> Spirc {
+pub async fn new_connection(client: Client, state: SharedState) -> Spirc {
+    let session = client.session().await;
+    let device = &state.configs.app_config.device;
+
     // `librespot` volume is a u16 number ranging from 0 to 65535,
     // while a percentage volume value (from 0 to 100) is used for the device configuration.
     // So we need to convert from one format to another
     let volume = (std::cmp::min(device.volume, 100_u8) as f64 / 100.0 * 65535.0).round() as u16;
 
     let connect_config = ConnectConfig {
-        name: device.name,
+        name: device.name.clone(),
         device_type: device.device_type.parse::<DeviceType>().unwrap_or_default(),
         initial_volume: Some(volume),
 
@@ -220,9 +218,10 @@ pub fn new_connection(
                     }
                     Ok(Some(event)) => {
                         tracing::info!("Got a new player event: {event:?}");
+                        client.update_playback(&state);
 
                         // execute a player event hook command
-                        if let Some(ref cmd) = player_event_hook_command {
+                        if let Some(ref cmd) = state.configs.app_config.player_event_hook_command {
                             if let Err(err) = execute_player_event_hook_command(cmd, event) {
                                 tracing::warn!(
                                     "Failed to execute player event hook command: {err:#}"

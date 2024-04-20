@@ -2,10 +2,12 @@ use anyhow::Context;
 use rspotify::model::PlayableItem;
 use tracing::Instrument;
 
-use crate::{event::ClientRequest, state::*};
+use crate::state::*;
 
 #[cfg(feature = "lyric-finder")]
 use crate::utils::map_join;
+
+use super::ClientRequest;
 
 struct PlayerEventHandlerState {
     add_track_to_queue_req_timer: std::time::Instant,
@@ -18,12 +20,9 @@ pub async fn start_client_handler(
     client_sub: flume::Receiver<ClientRequest>,
 ) {
     while let Ok(request) = client_sub.recv_async().await {
-        if client.spotify.session().await.is_invalid() {
-            tracing::info!("Spotify client's session is invalid, re-creating a new session...");
-            if let Err(err) = client.new_session(&state).await {
-                tracing::error!("Failed to create a new session: {err:#}");
-                continue;
-            }
+        if let Err(err) = client.check_valid_session(&state).await {
+            tracing::error!("{err:#}");
+            continue;
         }
 
         let state = state.clone();

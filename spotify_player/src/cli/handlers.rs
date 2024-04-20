@@ -7,6 +7,7 @@ use super::*;
 use anyhow::{Context, Result};
 use clap::{ArgMatches, Id};
 use clap_complete::{generate, Shell};
+use rspotify::clients::BaseClient;
 use std::net::UdpSocket;
 
 fn receive_response(socket: &UdpSocket) -> Result<Response> {
@@ -159,7 +160,7 @@ fn try_connect_to_client(socket: &UdpSocket, configs: &state::Configs) -> Result
             // create a Spotify API client
             let client =
                 client::Client::new(session, auth_config, configs.app_config.client_id.clone());
-            rt.block_on(client.init_token())?;
+            rt.block_on(client.refresh_token())?;
 
             // create a client socket for handling CLI commands
             let client_socket = rt.block_on(tokio::net::UdpSocket::bind(("127.0.0.1", port)))?;

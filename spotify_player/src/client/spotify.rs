@@ -9,19 +9,20 @@ use rspotify::{
 };
 use std::{fmt, sync::Arc};
 
-use crate::{auth::AuthConfig, token};
+use crate::token;
 
 #[derive(Clone, Default)]
 /// A Spotify client to interact with Spotify API server
 pub struct Spotify {
-    pub auth_config: AuthConfig,
-    pub creds: Credentials,
-    pub oauth: OAuth,
-    pub config: Config,
-    pub token: Arc<Mutex<Option<Token>>>,
-    pub client_id: String,
-    pub http: HttpClient,
-    pub session: Arc<tokio::sync::Mutex<Option<Session>>>,
+    creds: Credentials,
+    oauth: OAuth,
+    config: Config,
+    token: Arc<Mutex<Option<Token>>>,
+    client_id: String,
+    http: HttpClient,
+    // session should always be non-empty, but `Option` is used to implement `Default`,
+    // which is required to implement `rspotify::BaseClient` trait
+    pub(crate) session: Arc<tokio::sync::Mutex<Option<Session>>>,
 }
 
 impl fmt::Debug for Spotify {
@@ -38,7 +39,7 @@ impl fmt::Debug for Spotify {
 
 impl Spotify {
     /// creates a new Spotify client
-    pub fn new(session: Session, auth_config: AuthConfig, client_id: String) -> Spotify {
+    pub fn new(session: Session, client_id: String) -> Spotify {
         Self {
             creds: Credentials::default(),
             oauth: OAuth::default(),
@@ -49,7 +50,6 @@ impl Spotify {
             token: Arc::new(Mutex::new(None)),
             http: HttpClient::default(),
             session: Arc::new(tokio::sync::Mutex::new(Some(session))),
-            auth_config,
             client_id,
         }
     }
@@ -59,7 +59,7 @@ impl Spotify {
             .lock()
             .await
             .clone()
-            .expect("Spotify client's session should not be empty")
+            .expect("non-empty Spotify session")
     }
 
     /// gets a Spotify access token.
