@@ -218,6 +218,21 @@ pub async fn new_connection(client: Client, state: SharedState) -> Spirc {
                     }
                     Ok(Some(event)) => {
                         tracing::info!("Got a new player event: {event:?}");
+                        match event {
+                            PlayerEvent::Playing { .. } => {
+                                let mut player = state.player.write();
+                                if let Some(playback) = player.buffered_playback.as_mut() {
+                                    playback.is_playing = true;
+                                }
+                            }
+                            PlayerEvent::Paused { .. } => {
+                                let mut player = state.player.write();
+                                if let Some(playback) = player.buffered_playback.as_mut() {
+                                    playback.is_playing = false;
+                                }
+                            }
+                            _ => {}
+                        }
                         client.update_playback(&state);
 
                         // execute a player event hook command
