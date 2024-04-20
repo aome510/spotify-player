@@ -1,5 +1,5 @@
 use std::ops::Deref;
-use std::{borrow::Cow, collections::HashMap, io::Write, sync::Arc};
+use std::{borrow::Cow, collections::HashMap, sync::Arc};
 
 use crate::{auth::AuthConfig, state::*};
 
@@ -27,6 +27,7 @@ const SPOTIFY_API_ENDPOINT: &str = "https://api.com/v1";
 pub struct Client {
     http: reqwest::Client,
     spotify: Arc<spotify::Spotify>,
+    auth_config: AuthConfig,
     #[cfg(feature = "streaming")]
     stream_conn: Arc<Mutex<Option<librespot_connect::spirc::Spirc>>>,
 }
@@ -46,8 +47,9 @@ impl Client {
     /// Construct a new client
     pub fn new(session: Session, auth_config: AuthConfig, client_id: String) -> Self {
         Self {
-            spotify: Arc::new(spotify::Spotify::new(session, auth_config, client_id)),
+            spotify: Arc::new(spotify::Spotify::new(session, client_id)),
             http: reqwest::Client::new(),
+            auth_config,
 
             #[cfg(feature = "streaming")]
             stream_conn: Arc::new(Mutex::new(None)),
@@ -73,7 +75,7 @@ impl Client {
                 let client = self.clone();
                 let state = state.clone();
                 async move {
-                    client.connect_device(&state, None).await;
+                    client.connect_device(&state).await;
                 }
             });
         }
@@ -94,14 +96,8 @@ impl Client {
 
     /// Create a new streaming connection
     #[cfg(feature = "streaming")]
-    pub async fn new_streaming_connection(&self, state: &SharedState) -> String {
-        let session = self.session().await;
-        let device_id = session.device_id().to_string();
-        let new_conn = crate::streaming::new_connection(
-            session,
-            state.configs.app_config.device.clone(),
-            state.configs.app_config.player_event_hook_command.clone(),
-        );
+    pub async fn new_streaming_connection(&self, state: &SharedState) {
+        let new_conn = crate::streaming::new_connection(self.clone(), state.clone()).await;
 
         let mut stream_conn = self.stream_conn.lock();
         // shutdown old streaming connection and replace it with a new connection
@@ -109,8 +105,6 @@ impl Client {
             conn.shutdown();
         }
         *stream_conn = Some(new_conn);
-
-        device_id
     }
 
     /// Handle a player request, return a new playback metadata on success
@@ -250,8 +244,8 @@ impl Client {
                         .insert(query, result, *TTL_CACHE_DURATION);
                 }
             }
-            ClientRequest::ConnectDevice(id) => {
-                self.connect_device(state, id).await;
+            ClientRequest::ConnectDevice => {
+                self.connect_device(state).await;
             }
             #[cfg(feature = "streaming")]
             ClientRequest::RestartIntegratedClient => {
@@ -487,9 +481,7 @@ impl Client {
     }
 
     /// Connect to a Spotify device
-    ///
-    /// If no device id is specified, connect to the first available device.
-    async fn connect_device(&self, state: &SharedState, id: Option<String>) {
+    async fn connect_device(&self, state: &SharedState) {
         // Device connection can fail when the specified device hasn't shown up
         // in the Spotify's server, resulting in a failed `TransferPlayback` API request.
         // This is why a retry mechanism is needed to ensure a successful connection.
@@ -498,16 +490,13 @@ impl Client {
         for _ in 0..10 {
             tokio::time::sleep(delay).await;
 
-            let id = match &id {
-                Some(id) => Some(Cow::Borrowed(id)),
-                None => match self.find_available_device(state).await {
-                    Ok(Some(id)) => Some(Cow::Owned(id)),
-                    Ok(None) => None,
-                    Err(err) => {
-                        tracing::error!("Failed to find an available device: {err:#}");
-                        None
-                    }
-                },
+            let id = match self.find_available_device(state).await {
+                Ok(Some(id)) => Some(Cow::Owned(id)),
+                Ok(None) => None,
+                Err(err) => {
+                    tracing::error!("Failed to find an available device: {err:#}");
+                    None
+                }
             };
 
             if let Some(id) = id {
@@ -1343,8 +1332,15 @@ impl Client {
         if !new_track {
             return Ok(());
         }
+        #[cfg(any(feature = "image", feature = "notify"))]
+        self.handle_new_track_event(state).await?;
 
-        // handle new track event
+        Ok(())
+    }
+
+    // Handle new track event
+    #[cfg(any(feature = "image", feature = "notify"))]
+    async fn handle_new_track_event(&self, state: &SharedState) -> Result<()> {
         let track = match state.player.read().current_playing_track() {
             None => return Ok(()),
             Some(track) => track.clone(),
@@ -1490,12 +1486,15 @@ impl Client {
 
     /// Retrieve an image from a `url` or a cached `path`.
     /// If `saved` is specified, the retrieved image is saved to the cached `path`.
+    #[cfg(any(feature = "image", feature = "notify"))]
     async fn retrieve_image(
         &self,
         url: &str,
         path: &std::path::Path,
         saved: bool,
     ) -> Result<Vec<u8>> {
+        use std::io::Write;
+
         if path.exists() {
             tracing::info!("Retrieving image from file: {}", path.display());
             return Ok(std::fs::read(path)?);

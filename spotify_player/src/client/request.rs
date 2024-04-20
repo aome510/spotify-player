@@ -49,7 +49,7 @@ pub enum ClientRequest {
     },
     AddToLibrary(Item),
     DeleteFromLibrary(ItemId),
-    ConnectDevice(Option<String>),
+    ConnectDevice,
     Player(PlayerRequest),
     GetCurrentUserQueue,
     #[cfg(feature = "lyric-finder")]
