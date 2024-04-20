@@ -37,8 +37,8 @@ compile_error!("Streaming feature is enabled but no audio backend has been selec
 For more information, visit https://github.com/aome510/spotify-player?tab=readme-ov-file#streaming
 ");
 
-#[derive(Debug, Serialize)]
-enum PlayerEvent {
+#[derive(Clone, Debug, Serialize)]
+pub enum PlayerEvent {
     Changed {
         old_track_id: TrackId<'static>,
         new_track_id: TrackId<'static>,
@@ -219,8 +219,6 @@ pub fn new_connection(
                         tracing::warn!("Failed to convert a `librespot` player event into `spotify_player` player event: {err:#}");
                     }
                     Ok(Some(event)) => {
-                        tracing::info!("Got a new player event: {event:?}");
-
                         // execute a player event hook command
                         if let Some(ref cmd) = player_event_hook_command {
                             if let Err(err) = execute_player_event_hook_command(cmd, event) {

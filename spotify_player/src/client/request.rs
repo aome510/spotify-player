@@ -65,4 +65,6 @@ pub enum ClientRequest {
         collab: bool,
         desc: String,
     },
+    #[cfg(feature = "streaming")]
+    HandleStreamingEvent(crate::streaming::PlayerEvent),
 }
