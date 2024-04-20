@@ -1525,6 +1525,12 @@ impl Client {
                 &state.configs.app_config.notify_format.body,
             ));
 
+        if state.configs.app_config.notify_timeout_in_secs > 0 {
+            n.timeout(std::time::Duration::from_secs(
+                state.configs.app_config.notify_timeout_in_secs,
+            ));
+        }
+
         n.show()?;
 
         Ok(())

@@ -33,6 +33,8 @@ pub struct AppConfig {
     pub playback_format: String,
     #[cfg(feature = "notify")]
     pub notify_format: NotifyFormat,
+    #[cfg(feature = "notify")]
+    pub notify_timeout_in_secs: u64,
 
     pub tracks_playback_limit: usize,
 
@@ -187,6 +189,8 @@ impl Default for AppConfig {
                 summary: String::from("{track} • {artists}"),
                 body: String::from("{album}"),
             },
+            #[cfg(feature = "notify")]
+            notify_timeout_in_secs: 0,
 
             #[cfg(target_os = "macos")]
             copy_command: Command {
