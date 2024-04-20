@@ -228,7 +228,7 @@ fn render_playback_text(
         playback_text.lines.push(Line::from(spans));
     }
 
-    let playback_desc = Paragraph::new(playback_text).wrap(Wrap { trim: true });
+    let playback_desc = Paragraph::new(playback_text).wrap(Wrap { trim: false });
 
     frame.render_widget(playback_desc, rect);
 }
