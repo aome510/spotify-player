@@ -18,7 +18,7 @@ use anyhow::{Context, Result};
 use std::io::Write;
 
 async fn init_spotify(
-    client_pub: &flume::Sender<event::ClientRequest>,
+    client_pub: &flume::Sender<client::ClientRequest>,
     client: &client::Client,
     state: &state::SharedState,
 ) -> Result<()> {
@@ -33,15 +33,15 @@ async fn init_spotify(
 
     if state.player.read().playback.is_none() {
         tracing::info!("No playback found on startup, trying to connect to an available device...");
-        client_pub.send(event::ClientRequest::ConnectDevice(None))?;
+        client_pub.send(client::ClientRequest::ConnectDevice(None))?;
     }
 
     // request user data
-    client_pub.send(event::ClientRequest::GetCurrentUser)?;
-    client_pub.send(event::ClientRequest::GetUserPlaylists)?;
-    client_pub.send(event::ClientRequest::GetUserFollowedArtists)?;
-    client_pub.send(event::ClientRequest::GetUserSavedAlbums)?;
-    client_pub.send(event::ClientRequest::GetUserSavedTracks)?;
+    client_pub.send(client::ClientRequest::GetCurrentUser)?;
+    client_pub.send(client::ClientRequest::GetUserPlaylists)?;
+    client_pub.send(client::ClientRequest::GetUserFollowedArtists)?;
+    client_pub.send(client::ClientRequest::GetUserSavedAlbums)?;
+    client_pub.send(client::ClientRequest::GetUserSavedTracks)?;
 
     Ok(())
 }
@@ -93,7 +93,7 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
     }
 
     // client channels
-    let (client_pub, client_sub) = flume::unbounded::<event::ClientRequest>();
+    let (client_pub, client_sub) = flume::unbounded::<client::ClientRequest>();
 
     #[cfg(feature = "pulseaudio-backend")]
     {

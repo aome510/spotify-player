@@ -12,9 +12,8 @@ use tracing::Instrument;
 
 use crate::{
     cli::Request,
-    client::Client,
+    client::{Client, PlayerRequest},
     config::get_cache_folder_path,
-    event::PlayerRequest,
     state::{Context, ContextId, Playback, SharedState, SimplifiedPlayback},
 };
 use rspotify::{

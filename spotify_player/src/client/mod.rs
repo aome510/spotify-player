@@ -2,11 +2,7 @@ use std::{borrow::Cow, collections::HashMap, io::Write, sync::Arc};
 
 #[cfg(feature = "streaming")]
 use crate::streaming;
-use crate::{
-    auth::AuthConfig,
-    event::{ClientRequest, PlayerRequest},
-    state::*,
-};
+use crate::{auth::AuthConfig, state::*};
 
 use anyhow::Context as _;
 use anyhow::Result;
@@ -20,9 +16,11 @@ use rspotify::{
 };
 
 mod handlers;
+mod request;
 mod spotify;
 
 pub use handlers::*;
+pub use request::*;
 use serde::Deserialize;
 
 /// The application's client

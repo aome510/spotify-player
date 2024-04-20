@@ -2,10 +2,12 @@ use anyhow::Context;
 use rspotify::model::PlayableItem;
 use tracing::Instrument;
 
-use crate::{event::ClientRequest, state::*};
+use crate::state::*;
 
 #[cfg(feature = "lyric-finder")]
 use crate::utils::map_join;
+
+use super::ClientRequest;
 
 struct PlayerEventHandlerState {
     add_track_to_queue_req_timer: std::time::Instant,
