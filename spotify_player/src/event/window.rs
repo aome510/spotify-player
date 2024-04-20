@@ -8,14 +8,14 @@ use crate::{
 };
 use rand::Rng;
 
-/// Handles a command for the currently focused context window
+/// Handle a command for the currently focused context window
 ///
 /// The function will need to determine the focused window then
-/// assign the handling job to such window's command handler
+/// assign the handling job to the window's command handler
 pub fn handle_command_for_focused_context_window(
     command: Command,
     client_pub: &flume::Sender<ClientRequest>,
-    ui: UIStateGuard,
+    ui: &mut UIStateGuard,
     state: &SharedState,
 ) -> Result<bool> {
     let context_id = match ui.current_page() {
@@ -142,7 +142,6 @@ pub fn handle_command_for_focused_context_window(
 }
 
 #[allow(clippy::too_many_arguments)]
-/// handles a command for the track table subwindow
 pub fn handle_command_for_track_table_window(
     command: Command,
     client_pub: &flume::Sender<ClientRequest>,
@@ -150,7 +149,7 @@ pub fn handle_command_for_track_table_window(
     base_playback: Playback,
     tracks: Vec<&Track>,
     data: &DataReadGuard,
-    mut ui: UIStateGuard,
+    ui: &mut UIStateGuard,
     state: &SharedState,
 ) -> Result<bool> {
     let id = ui.current_page_mut().selected().unwrap_or_default();
@@ -255,7 +254,7 @@ pub fn handle_command_for_track_list_window(
     client_pub: &flume::Sender<ClientRequest>,
     tracks: Vec<&Track>,
     data: &DataReadGuard,
-    mut ui: UIStateGuard,
+    ui: &mut UIStateGuard,
     state: &SharedState,
 ) -> Result<bool> {
     let id = ui.current_page_mut().selected().unwrap_or_default();
@@ -295,7 +294,7 @@ pub fn handle_command_for_artist_list_window(
     command: Command,
     artists: Vec<&Artist>,
     data: &DataReadGuard,
-    mut ui: UIStateGuard,
+    ui: &mut UIStateGuard,
     state: &SharedState,
 ) -> Result<bool> {
     let id = ui.current_page_mut().selected().unwrap_or_default();
@@ -329,7 +328,7 @@ pub fn handle_command_for_album_list_window(
     command: Command,
     albums: Vec<&Album>,
     data: &DataReadGuard,
-    mut ui: UIStateGuard,
+    ui: &mut UIStateGuard,
     state: &SharedState,
 ) -> Result<bool> {
     let id = ui.current_page_mut().selected().unwrap_or_default();
@@ -363,7 +362,7 @@ pub fn handle_command_for_playlist_list_window(
     command: Command,
     playlists: Vec<&Playlist>,
     data: &DataReadGuard,
-    mut ui: UIStateGuard,
+    ui: &mut UIStateGuard,
     state: &SharedState,
 ) -> Result<bool> {
     let id = ui.current_page_mut().selected().unwrap_or_default();

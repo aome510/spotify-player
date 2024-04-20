@@ -46,10 +46,11 @@ pub fn handle_key_sequence_for_page(
     key_sequence: &KeySequence,
     client_pub: &flume::Sender<ClientRequest>,
     state: &SharedState,
+    ui: &mut UIStateGuard,
 ) -> Result<bool> {
-    let page_type = state.ui.lock().current_page().page_type();
+    let page_type = ui.current_page().page_type();
     if page_type == PageType::Search {
-        return handle_key_sequence_for_search_page(key_sequence, client_pub, state);
+        return handle_key_sequence_for_search_page(key_sequence, client_pub, state, ui);
     }
 
     let command = match state
@@ -60,8 +61,6 @@ pub fn handle_key_sequence_for_page(
         Some(command) => command,
         None => return Ok(false),
     };
-
-    let ui = state.ui.lock();
 
     match page_type {
         PageType::Search => anyhow::bail!("page search type should already be handled!"),
@@ -77,7 +76,7 @@ pub fn handle_key_sequence_for_page(
 
 fn handle_command_for_library_page(
     command: Command,
-    mut ui: UIStateGuard,
+    ui: &mut UIStateGuard,
     state: &SharedState,
 ) -> Result<bool> {
     match command {
@@ -127,9 +126,8 @@ fn handle_key_sequence_for_search_page(
     key_sequence: &KeySequence,
     client_pub: &flume::Sender<ClientRequest>,
     state: &SharedState,
+    ui: &mut UIStateGuard,
 ) -> Result<bool> {
-    let mut ui = state.ui.lock();
-
     let (focus_state, current_query, line_input) = match ui.current_page_mut() {
         PageState::Search {
             state,
@@ -204,7 +202,7 @@ fn handle_key_sequence_for_search_page(
 fn handle_command_for_context_page(
     command: Command,
     client_pub: &flume::Sender<ClientRequest>,
-    mut ui: UIStateGuard,
+    ui: &mut UIStateGuard,
     state: &SharedState,
 ) -> Result<bool> {
     match command {
@@ -222,7 +220,7 @@ fn handle_command_for_context_page(
 fn handle_command_for_browse_page(
     command: Command,
     client_pub: &flume::Sender<ClientRequest>,
-    mut ui: UIStateGuard,
+    ui: &mut UIStateGuard,
     state: &SharedState,
 ) -> Result<bool> {
     let data = state.data.read();
@@ -300,7 +298,7 @@ fn handle_command_for_browse_page(
 #[cfg(feature = "lyric-finder")]
 fn handle_command_for_lyric_page(
     command: Command,
-    mut ui: UIStateGuard,
+    ui: &mut UIStateGuard,
     state: &SharedState,
 ) -> Result<bool> {
     let scroll_offset = match ui.current_page_mut() {
@@ -315,7 +313,7 @@ fn handle_command_for_lyric_page(
 
 fn handle_command_for_queue_page(
     command: Command,
-    mut ui: UIStateGuard,
+    ui: &mut UIStateGuard,
     state: &SharedState,
 ) -> Result<bool, anyhow::Error> {
     let scroll_offset = match ui.current_page_mut() {
@@ -329,7 +327,7 @@ fn handle_command_for_queue_page(
 
 fn handle_command_for_command_help_page(
     command: Command,
-    mut ui: UIStateGuard,
+    ui: &mut UIStateGuard,
     state: &SharedState,
 ) -> Result<bool> {
     let scroll_offset = match ui.current_page_mut() {
