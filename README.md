@@ -293,7 +293,7 @@ For more details, run `spotify_player -h` or `spotify_player {command} -h`, in w
 
 ## Commands
 
-To open a shortcut help popup, press `?` or `C-h` (default shortcuts for `OpenCommandHelp` command).
+To go to the shortcut help page, press `?` or `C-h` (default shortcuts for `OpenCommandHelp` command).
 
 List of supported commands:
 
@@ -312,7 +312,6 @@ List of supported commands:
 | `SeekForward`                  | seek forward by 5s                                                      | `>`                |
 | `SeekBackward`                 | seek backward by 5s                                                     | `<`                |
 | `Quit`                         | quit the application                                                    | `C-c`, `q`         |
-| `OpenCommandHelp`              | open a command help popup                                               | `?`, `C-h`         |
 | `ClosePopup`                   | close a popup                                                           | `esc`              |
 | `SelectNextOrScrollDown`       | select the next item in a list/table or scroll down                     | `j`, `C-n`, `down` |
 | `SelectPreviousOrScrollUp`     | select the previous item in a list/table or scroll up                   | `k`, `C-p`, `up`   |
@@ -331,7 +330,6 @@ List of supported commands:
 | `SwitchTheme`                  | open a popup for switching theme                                        | `T`                |
 | `SwitchDevice`                 | open a popup for switching device                                       | `D`                |
 | `Search`                       | open a popup for searching in the current page                          | `/`                |
-| `Queue`                        | open a popup for showing the current queue                              | `z`                |
 | `BrowseUserPlaylists`          | open a popup for browsing user's playlists                              | `u p`              |
 | `BrowseUserFollowedArtists`    | open a popup for browsing user's followed artists                       | `u a`              |
 | `BrowseUserSavedAlbums`        | open a popup for browsing user's saved albums                           | `u A`              |
@@ -343,6 +341,8 @@ List of supported commands:
 | `LibraryPage`                  | go to the user library page                                             | `g l`              |
 | `SearchPage`                   | go to the search page                                                   | `g s`              |
 | `BrowsePage`                   | go to the browse page                                                   | `g b`              |
+| `Queue`                        | go to the queue page                                                    | `z`                |
+| `OpenCommandHelp`              | go to the command help page                                             | `?`, `C-h`         |
 | `PreviousPage`                 | go to the previous page                                                 | `backspace`, `C-q` |
 | `OpenSpotifyLinkFromClipboard` | open a Spotify link from clipboard                                      | `O`                |
 | `SortTrackByTitle`             | sort the track table (if any) by track's title                          | `s t`              |
