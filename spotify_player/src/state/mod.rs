@@ -10,7 +10,7 @@ pub use model::*;
 pub use player::*;
 pub use ui::*;
 
-use crate::config::{self, get_config};
+use crate::config;
 
 pub use parking_lot::{Mutex, RwLock};
 
@@ -22,13 +22,14 @@ pub struct State {
     pub ui: Mutex<UIState>,
     pub player: RwLock<PlayerState>,
     pub data: RwLock<AppData>,
+
     pub is_daemon: bool,
 }
 
 impl State {
     pub fn new(is_daemon: bool) -> Self {
         let mut ui = UIState::default();
-        let configs = get_config();
+        let configs = config::get_config();
 
         if let Some(theme) = configs.theme_config.find_theme(&configs.app_config.theme) {
             // update the UI's theme based on the `theme` config option
