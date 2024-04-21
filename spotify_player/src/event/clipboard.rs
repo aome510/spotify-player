@@ -18,6 +18,9 @@ struct CommandProvider {
 
 struct NopProvider {}
 
+#[cfg(target_os = "windows")]
+struct WindowsProvider {}
+
 impl ClipboardProvider for CommandProvider {
     fn get_contents(&self) -> Result<String> {
         let output = std::process::Command::new(&self.paste_command.command)
@@ -56,6 +59,18 @@ impl ClipboardProvider for NopProvider {
     }
 }
 
+#[cfg(target_os = "windows")]
+impl ClipboardProvider for WindowsProvider {
+    fn get_contents(&self) -> Result<String> {
+        let contents = clipboard_win::get_clipboard(clipboard_win::formats::Unicode)?;
+        Ok(contents)
+    }
+    fn set_contents(&self, _contents: String) -> Result<()> {
+        clipboard_win::set_clipboard(clipboard_win::formats::Unicode, contents)?;
+        Ok(())
+    }
+}
+
 /// Get a clipboard provider based on user's environment
 // The function's implementation is inspired by helix
 // (https://github.com/blaggacao/helix/blob/master/helix-view/src/clipboard.rs)
@@ -84,9 +99,14 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
             copy_command: Command::new("xsel", &["--nodetach", "-i", "-b"]),
         })
     } else {
-        tracing::warn!("No clipboard provider found! Fallback to a NOP clipboard provider.");
+        #[cfg(target_os = "windows")]
+        return Box::new(WindowsProvider {});
+
         #[cfg(not(target_os = "windows"))]
-        Box::new(NopProvider {})
+        {
+            tracing::warn!("No clipboard provider found! Fallback to a NOP clipboard provider.");
+            return Box::new(NopProvider {});
+        }
     }
 }
 

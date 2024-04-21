@@ -177,7 +177,7 @@ impl Command {
     {
         Self {
             command: command.to_string(),
-            args: args.into_iter().map(|a| a.to_string()).collect(),
+            args: args.iter().map(|a| a.to_string()).collect(),
         }
     }
 }
