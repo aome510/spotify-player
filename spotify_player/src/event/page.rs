@@ -2,48 +2,6 @@ use anyhow::Context as _;
 
 use super::*;
 
-macro_rules! handle_navigation_command {
-    ($state:ident, $command:ident, $len:expr, $page:expr, $id:expr) => {
-        match $command {
-            Command::SelectNextOrScrollDown => {
-                if $id + 1 < $len {
-                    $page.select($id + 1);
-                }
-                return Ok(true);
-            }
-            Command::SelectPreviousOrScrollUp => {
-                if $id > 0 {
-                    $page.select($id - 1);
-                }
-                return Ok(true);
-            }
-            Command::PageSelectNextOrScrollDown => {
-                $page.select(std::cmp::min(
-                    $id + $state.configs.app_config.page_size_in_rows,
-                    $len - 1,
-                ));
-                return Ok(true);
-            }
-            Command::PageSelectPreviousOrScrollUp => {
-                $page.select($id.saturating_sub($state.configs.app_config.page_size_in_rows));
-                return Ok(true);
-            }
-            Command::SelectLastOrScrollToBottom => {
-                if $len > 0 {
-                    $page.select($len - 1);
-                }
-                return Ok(true);
-            }
-            Command::SelectFirstOrScrollToTop => {
-                $page.select(0);
-                return Ok(true);
-            }
-            _ => {}
-        }
-    };
-}
-pub(super) use handle_navigation_command;
-
 pub fn handle_key_sequence_for_page(
     key_sequence: &KeySequence,
     client_pub: &flume::Sender<ClientRequest>,
@@ -244,7 +202,9 @@ fn handle_command_for_browse_page(
         return Ok(false);
     }
 
-    handle_navigation_command!(state, command, len, page_state, selected);
+    if handle_navigation_command(command, page_state, state, selected, len) {
+        return Ok(true);
+    }
     match command {
         Command::ChooseSelected => {
             match page_state {
@@ -300,8 +260,13 @@ fn handle_command_for_lyric_page(
         PageState::Lyric { scroll_offset, .. } => *scroll_offset,
         _ => return Ok(false),
     };
-    handle_navigation_command!(state, command, 10000, ui.current_page_mut(), scroll_offset);
-    Ok(false)
+    Ok(handle_navigation_command(
+        command,
+        ui.current_page_mut(),
+        state,
+        scroll_offset,
+        10000,
+    ))
 }
 
 fn handle_command_for_queue_page(
@@ -313,8 +278,13 @@ fn handle_command_for_queue_page(
         PageState::Queue { scroll_offset } => *scroll_offset,
         _ => return Ok(false),
     };
-    handle_navigation_command!(state, command, 10000, ui.current_page_mut(), scroll_offset);
-    Ok(false)
+    Ok(handle_navigation_command(
+        command,
+        ui.current_page_mut(),
+        state,
+        scroll_offset,
+        10000,
+    ))
 }
 
 fn handle_command_for_command_help_page(
@@ -330,6 +300,56 @@ fn handle_command_for_command_help_page(
         ui.new_search_popup();
         return Ok(true);
     }
-    handle_navigation_command!(state, command, 10000, ui.current_page_mut(), scroll_offset);
-    Ok(false)
+    Ok(handle_navigation_command(
+        command,
+        ui.current_page_mut(),
+        state,
+        scroll_offset,
+        10000,
+    ))
+}
+
+pub fn handle_navigation_command(
+    command: Command,
+    page: &mut PageState,
+    state: &SharedState,
+    id: usize,
+    len: usize,
+) -> bool {
+    match command {
+        Command::SelectNextOrScrollDown => {
+            if id + 1 < len {
+                page.select(id + 1);
+            }
+            true
+        }
+        Command::SelectPreviousOrScrollUp => {
+            if id > 0 {
+                page.select(id - 1);
+            }
+            true
+        }
+        Command::PageSelectNextOrScrollDown => {
+            page.select(std::cmp::min(
+                id + state.configs.app_config.page_size_in_rows,
+                len - 1,
+            ));
+            true
+        }
+        Command::PageSelectPreviousOrScrollUp => {
+            page.select(id.saturating_sub(state.configs.app_config.page_size_in_rows));
+            true
+        }
+        Command::SelectLastOrScrollToBottom => {
+            if len > 0 {
+                page.select(len - 1);
+            }
+            true
+        }
+        Command::SelectFirstOrScrollToTop => {
+            page.select(0);
+            true
+        }
+        _ => false,
+    }
 }

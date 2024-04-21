@@ -207,13 +207,15 @@ fn handle_command_for_track_table_window(
         }
     }
 
-    handle_navigation_command!(
-        state,
+    if handle_navigation_command(
         command,
-        filtered_tracks.len(),
         ui.current_page_mut(),
-        id
-    );
+        state,
+        id,
+        filtered_tracks.len(),
+    ) {
+        return Ok(true);
+    }
 
     match command {
         Command::PlayRandom | Command::ChooseSelected => {
@@ -267,7 +269,9 @@ pub fn handle_command_for_track_list_window(
         return Ok(false);
     }
 
-    handle_navigation_command!(state, command, tracks.len(), ui.current_page_mut(), id);
+    if handle_navigation_command(command, ui.current_page_mut(), state, id, tracks.len()) {
+        return Ok(true);
+    }
     match command {
         Command::ChooseSelected => {
             // for a track list, `ChooseSelected` on a track
@@ -307,7 +311,9 @@ pub fn handle_command_for_artist_list_window(
         return Ok(false);
     }
 
-    handle_navigation_command!(state, command, artists.len(), ui.current_page_mut(), id);
+    if handle_navigation_command(command, ui.current_page_mut(), state, id, artists.len()) {
+        return Ok(true);
+    }
     match command {
         Command::ChooseSelected => {
             let context_id = ContextId::Artist(artists[id].id.clone());
@@ -341,7 +347,9 @@ pub fn handle_command_for_album_list_window(
         return Ok(false);
     }
 
-    handle_navigation_command!(state, command, albums.len(), ui.current_page_mut(), id);
+    if handle_navigation_command(command, ui.current_page_mut(), state, id, albums.len()) {
+        return Ok(true);
+    }
     match command {
         Command::ChooseSelected => {
             let context_id = ContextId::Album(albums[id].id.clone());
@@ -375,7 +383,9 @@ pub fn handle_command_for_playlist_list_window(
         return Ok(false);
     }
 
-    handle_navigation_command!(state, command, playlists.len(), ui.current_page_mut(), id);
+    if handle_navigation_command(command, ui.current_page_mut(), state, id, playlists.len()) {
+        return Ok(true);
+    }
     match command {
         Command::ChooseSelected => {
             let context_id = ContextId::Playlist(playlists[id].id.clone());
