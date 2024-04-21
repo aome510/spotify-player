@@ -62,11 +62,13 @@ impl ClipboardProvider for NopProvider {
 #[cfg(target_os = "windows")]
 impl ClipboardProvider for WindowsProvider {
     fn get_contents(&self) -> Result<String> {
-        let contents = clipboard_win::get_clipboard(clipboard_win::formats::Unicode)?;
+        let contents = clipboard_win::get_clipboard(clipboard_win::formats::Unicode)
+            .map_err(|_| anyhow::anyhow!("failed to get windows clipboard"))?;
         Ok(contents)
     }
-    fn set_contents(&self, _contents: String) -> Result<()> {
-        clipboard_win::set_clipboard(clipboard_win::formats::Unicode, contents)?;
+    fn set_contents(&self, contents: String) -> Result<()> {
+        clipboard_win::set_clipboard(clipboard_win::formats::Unicode, contents)
+            .map_err(|_| anyhow::anyhow!("failed to set windows clipboard"))?;
         Ok(())
     }
 }
