@@ -1,12 +1,14 @@
-use std::io::Write;
+use std::{io::Write, sync::OnceLock};
 
 use anyhow::Result;
 
 use crate::config::Command;
 
-pub trait ClipboardProvider {
+pub static CLIPBOARD_PROVIDER: OnceLock<Box<dyn ClipboardProvider>> = OnceLock::new();
+
+pub trait ClipboardProvider: Send + Sync {
     fn get_contents(&self) -> Result<String>;
-    fn set_contents(&mut self, contents: String) -> Result<()>;
+    fn set_contents(&self, contents: String) -> Result<()>;
 }
 
 struct CommandProvider {
@@ -19,12 +21,12 @@ struct NopProvider {}
 impl ClipboardProvider for CommandProvider {
     fn get_contents(&self) -> Result<String> {
         let output = std::process::Command::new(&self.paste_command.command)
-            .args(self.paste_command.args)
+            .args(&self.paste_command.args)
             .output()?;
         Ok(String::from_utf8(output.stdout)?)
     }
 
-    fn set_contents(&mut self, contents: String) -> Result<()> {
+    fn set_contents(&self, contents: String) -> Result<()> {
         let mut child = std::process::Command::new(&self.copy_command.command)
             .args(&self.copy_command.args)
             .stdin(std::process::Stdio::piped())
@@ -49,7 +51,7 @@ impl ClipboardProvider for NopProvider {
     fn get_contents(&self) -> Result<String> {
         anyhow::bail!("no clipboard provider found!")
     }
-    fn set_contents(&mut self, contents: String) -> Result<()> {
+    fn set_contents(&self, _contents: String) -> Result<()> {
         anyhow::bail!("no clipboard provider found!")
     }
 }

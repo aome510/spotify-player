@@ -1,12 +1,7 @@
-use std::io::Write;
-
 use super::*;
-use crate::{
-    command::{
-        construct_album_actions, construct_artist_actions, AlbumAction, ArtistAction,
-        PlaylistAction, TrackAction,
-    },
-    config,
+use crate::command::{
+    construct_album_actions, construct_artist_actions, AlbumAction, ArtistAction, PlaylistAction,
+    TrackAction,
 };
 use anyhow::Context;
 
@@ -409,24 +404,10 @@ fn handle_command_for_list_popup(
     Ok(true)
 }
 
-fn execute_copy_command(cmd: &config::Command, text: String) -> Result<()> {
-    let mut child = std::process::Command::new(&cmd.command)
-        .args(&cmd.args)
-        .stdin(std::process::Stdio::piped())
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped())
-        .spawn()?;
-
-    if let Some(mut stdin) = child.stdin.take() {
-        stdin.write_all(text.as_bytes())?;
-    }
-
-    let output = child.wait_with_output()?;
-    if output.status.success() {
-        Ok(())
-    } else {
-        anyhow::bail!("copy command failed: {}", String::from_utf8(output.stderr)?);
-    }
+fn execute_copy_command(text: String) -> Result<()> {
+    CLIPBOARD_PROVIDER
+        .get_or_init(|| get_clipboard_provider())
+        .set_contents(text)
 }
 
 fn handle_key_sequence_for_action_list_popup(
@@ -511,7 +492,7 @@ fn handle_item_action(
             }
             TrackAction::CopyTrackLink => {
                 let track_url = format!("https://open.spotify.com/track/{}", track.id.id());
-                execute_copy_command(&state.configs.app_config.copy_command, track_url)?;
+                execute_copy_command(track_url)?;
                 ui.popup = None;
             }
             TrackAction::AddToPlaylist => {
@@ -597,7 +578,7 @@ fn handle_item_action(
             }
             AlbumAction::CopyAlbumLink => {
                 let album_url = format!("https://open.spotify.com/album/{}", album.id.id());
-                execute_copy_command(&state.configs.app_config.copy_command, album_url)?;
+                execute_copy_command(album_url)?;
                 ui.popup = None;
             }
             AlbumAction::AddToLibrary => {
@@ -625,7 +606,7 @@ fn handle_item_action(
             }
             ArtistAction::CopyArtistLink => {
                 let artist_url = format!("https://open.spotify.com/artist/{}", artist.id.id());
-                execute_copy_command(&state.configs.app_config.copy_command, artist_url)?;
+                execute_copy_command(artist_url)?;
                 ui.popup = None;
             }
             ArtistAction::Unfollow => {
@@ -650,7 +631,7 @@ fn handle_item_action(
             PlaylistAction::CopyPlaylistLink => {
                 let playlist_url =
                     format!("https://open.spotify.com/playlist/{}", playlist.id.id());
-                execute_copy_command(&state.configs.app_config.copy_command, playlist_url)?;
+                execute_copy_command(playlist_url)?;
                 ui.popup = None;
             }
             PlaylistAction::DeleteFromLibrary => {
