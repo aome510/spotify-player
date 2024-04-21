@@ -12,6 +12,7 @@ use crate::{
 use crate::utils::map_join;
 use anyhow::{Context as _, Result};
 
+mod clipboard;
 mod page;
 mod popup;
 mod window;

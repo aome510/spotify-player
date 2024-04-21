@@ -169,6 +169,19 @@ impl From<StreamingTypeOrBool> for StreamingType {
     }
 }
 
+impl Command {
+    pub fn new<C, A>(command: C, args: &[A]) -> Self
+    where
+        C: std::fmt::Display,
+        A: std::fmt::Display,
+    {
+        Self {
+            command: command.to_string(),
+            args: args.into_iter().map(|a| a.to_string()).collect(),
+        }
+    }
+}
+
 impl Default for AppConfig {
     fn default() -> Self {
         Self {
