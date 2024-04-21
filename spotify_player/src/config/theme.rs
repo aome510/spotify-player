@@ -107,8 +107,13 @@ pub enum StyleColor {
 #[derive(Copy, Clone, Debug, Deserialize)]
 pub enum StyleModifier {
     Bold,
+    Dim,
     Italic,
+    Underlined,
+    RapidBlink,
     Reversed,
+    Hidden,
+    CrossedOut,
 }
 
 #[derive(Clone, Debug)]
@@ -373,7 +378,12 @@ impl From<StyleModifier> for style::Modifier {
         match m {
             StyleModifier::Bold => style::Modifier::BOLD,
             StyleModifier::Italic => style::Modifier::ITALIC,
+            StyleModifier::Dim => style::Modifier::DIM,
             StyleModifier::Reversed => style::Modifier::REVERSED,
+            StyleModifier::Underlined => style::Modifier::UNDERLINED,
+            StyleModifier::RapidBlink => style::Modifier::RAPID_BLINK,
+            StyleModifier::Hidden => style::Modifier::HIDDEN,
+            StyleModifier::CrossedOut => style::Modifier::CROSSED_OUT,
         }
     }
 }
