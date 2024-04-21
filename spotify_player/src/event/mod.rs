@@ -1,7 +1,6 @@
 use crate::{
     client::{ClientRequest, PlayerRequest},
     command::{self, Command},
-    config,
     key::{Key, KeySequence},
     state::*,
     ui::single_line_input::LineInput,
@@ -12,6 +11,9 @@ use crate::{
 use crate::utils::map_join;
 use anyhow::{Context as _, Result};
 
+use self::clipboard::{get_clipboard_provider, CLIPBOARD_PROVIDER};
+
+mod clipboard;
 mod page;
 mod popup;
 mod window;
@@ -292,8 +294,7 @@ fn handle_global_command(
             }
         }
         Command::OpenSpotifyLinkFromClipboard => {
-            let content = get_clipboard_content(&state.configs.app_config.paste_command)
-                .context("get clipboard's content")?;
+            let content = get_clipboard_content().context("get clipboard's content")?;
             let re = regex::Regex::new(
                 r"https://open.spotify.com/(?P<type>.*?)/(?P<id>[[:alnum:]]*).*",
             )?;
@@ -404,9 +405,8 @@ fn handle_global_command(
     Ok(true)
 }
 
-fn get_clipboard_content(cmd: &config::Command) -> Result<String> {
-    let output = std::process::Command::new(&cmd.command)
-        .args(&cmd.args)
-        .output()?;
-    Ok(String::from_utf8(output.stdout)?)
+fn get_clipboard_content() -> Result<String> {
+    CLIPBOARD_PROVIDER
+        .get_or_init(|| get_clipboard_provider())
+        .get_contents()
 }
