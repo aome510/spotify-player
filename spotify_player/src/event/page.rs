@@ -333,12 +333,3 @@ fn handle_command_for_command_help_page(
     handle_navigation_command!(state, command, 10000, ui.current_page_mut(), scroll_offset);
     Ok(false)
 }
-
-
-
-
-
-
-
-
-
