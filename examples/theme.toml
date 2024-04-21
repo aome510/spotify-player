@@ -19,19 +19,6 @@ bright_blue = "bright_blue"
 bright_magenta = "bright_magenta"
 bright_cyan = "bright_cyan"
 bright_white = "bright_white"
-[themes.component_style]
-block_title = { fg = "Magenta"  }
-border = {}
-playback_track = { fg = "Cyan", modifiers = ["Bold"] }
-playback_artists = { fg = "Cyan", modifiers = ["Bold"] }
-playback_album = { fg = "Yellow" }
-playback_metadata = { fg = "BrightBlack" }
-playback_progress_bar = { bg = "BrightBlack", fg = "Green" }
-current_playing = { fg = "Green", modifiers = ["Bold"] }
-page_desc = { fg = "Cyan", modifiers = ["Bold"] }
-table_header = { fg = "Blue" }
-selection = { modifiers = ["Bold", "Reversed"] }
-
 
 [[themes]]
 name = "dracula"
