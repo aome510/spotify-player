@@ -14,8 +14,29 @@ use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
-pub use keymap::*;
-pub use theme::*;
+use keymap::*;
+use theme::*;
+
+pub use theme::Theme;
+
+#[derive(Debug)]
+pub struct Configs {
+    pub app_config: AppConfig,
+    pub keymap_config: KeymapConfig,
+    pub theme_config: ThemeConfig,
+    pub cache_folder: std::path::PathBuf,
+}
+
+impl Configs {
+    pub fn new(config_folder: &std::path::Path, cache_folder: &std::path::Path) -> Result<Self> {
+        Ok(Self {
+            app_config: AppConfig::new(config_folder)?,
+            keymap_config: KeymapConfig::new(config_folder)?,
+            theme_config: ThemeConfig::new(config_folder)?,
+            cache_folder: cache_folder.to_path_buf(),
+        })
+    }
+}
 
 #[derive(Debug, Deserialize, Serialize, ConfigParse)]
 /// Application configurations

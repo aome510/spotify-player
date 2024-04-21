@@ -11,37 +11,15 @@ pub use player::*;
 pub use ui::*;
 
 use crate::config;
-use anyhow::Result;
 
 pub use parking_lot::{Mutex, RwLock};
 
 /// Application's shared state (wrapped inside an std::sync::Arc)
 pub type SharedState = std::sync::Arc<State>;
 
-#[derive(Debug)]
-pub struct Configs {
-    pub app_config: config::AppConfig,
-    pub keymap_config: config::KeymapConfig,
-    pub theme_config: config::ThemeConfig,
-    pub cache_folder: std::path::PathBuf,
-    pub config_folder: std::path::PathBuf,
-}
-
-impl Configs {
-    pub fn new(config_folder: &std::path::Path, cache_folder: &std::path::Path) -> Result<Self> {
-        Ok(Self {
-            app_config: config::AppConfig::new(config_folder)?,
-            keymap_config: config::KeymapConfig::new(config_folder)?,
-            theme_config: config::ThemeConfig::new(config_folder)?,
-            cache_folder: cache_folder.to_path_buf(),
-            config_folder: config_folder.to_path_buf(),
-        })
-    }
-}
-
 /// Application's state
 pub struct State {
-    pub configs: Configs,
+    pub configs: config::Configs,
     pub ui: Mutex<UIState>,
     pub player: RwLock<PlayerState>,
     pub data: RwLock<AppData>,
@@ -49,7 +27,7 @@ pub struct State {
 }
 
 impl State {
-    pub fn new(configs: Configs, is_daemon: bool) -> Self {
+    pub fn new(configs: config::Configs, is_daemon: bool) -> Self {
         let mut ui = UIState::default();
 
         if let Some(theme) = configs.theme_config.find_theme(&configs.app_config.theme) {

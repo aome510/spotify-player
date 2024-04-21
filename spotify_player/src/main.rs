@@ -257,7 +257,7 @@ fn main() -> Result<()> {
     }
 
     // initialize the application configs
-    let mut configs = state::Configs::new(&config_folder, &cache_folder)?;
+    let mut configs = config::Configs::new(&config_folder, &cache_folder)?;
     if let Some(theme) = args.get_one::<String>("theme") {
         // override the theme config if user specifies a `theme` cli argument
         configs.app_config.theme = theme.to_owned();
