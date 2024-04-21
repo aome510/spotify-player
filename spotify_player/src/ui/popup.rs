@@ -33,7 +33,6 @@ pub fn render_popup(
                 let name_input = construct_and_render_block(
                     "Enter Name for New Playlist:",
                     &ui.theme,
-                    state,
                     Borders::ALL,
                     frame,
                     popup_chunks[0],
@@ -42,7 +41,6 @@ pub fn render_popup(
                 let desc_input = construct_and_render_block(
                     "Enter Description for New Playlist:",
                     &ui.theme,
-                    state,
                     Borders::ALL,
                     frame,
                     popup_chunks[1],
@@ -62,14 +60,8 @@ pub fn render_popup(
                 let chunks =
                     Layout::vertical([Constraint::Fill(0), Constraint::Length(3)]).split(rect);
 
-                let rect = construct_and_render_block(
-                    "Search",
-                    &ui.theme,
-                    state,
-                    Borders::ALL,
-                    frame,
-                    chunks[1],
-                );
+                let rect =
+                    construct_and_render_block("Search", &ui.theme, Borders::ALL, frame, chunks[1]);
 
                 frame.render_widget(Paragraph::new(format!("/{query}")), rect);
                 (chunks[0], true)
@@ -85,7 +77,6 @@ pub fn render_popup(
                         .map(|(id, d)| (format!("[{id}] {d}"), false))
                         .collect(),
                     item.n_actions() as u16 + 2, // 2 for top/bot paddings
-                    state,
                     ui,
                 );
                 (rect, false)
@@ -103,13 +94,13 @@ pub fn render_popup(
                     .map(|d| (format!("{} | {}", d.name, d.id), current_device_id == d.id))
                     .collect();
 
-                let rect = render_list_popup(frame, rect, "Devices", items, 5, state, ui);
+                let rect = render_list_popup(frame, rect, "Devices", items, 5, ui);
                 (rect, false)
             }
             PopupState::ThemeList(themes, ..) => {
                 let items = themes.iter().map(|t| (t.name.clone(), false)).collect();
 
-                let rect = render_list_popup(frame, rect, "Themes", items, 7, state, ui);
+                let rect = render_list_popup(frame, rect, "Themes", items, 7, ui);
                 (rect, false)
             }
             PopupState::UserPlaylistList(action, _) => {
@@ -123,7 +114,7 @@ pub fn render_popup(
                     .map(|p| (p.to_string(), false))
                     .collect();
 
-                let rect = render_list_popup(frame, rect, "User Playlists", items, 10, state, ui);
+                let rect = render_list_popup(frame, rect, "User Playlists", items, 10, ui);
                 (rect, false)
             }
             PopupState::UserFollowedArtistList { .. } => {
@@ -136,8 +127,7 @@ pub fn render_popup(
                     .map(|a| (a.to_string(), false))
                     .collect();
 
-                let rect =
-                    render_list_popup(frame, rect, "User Followed Artists", items, 7, state, ui);
+                let rect = render_list_popup(frame, rect, "User Followed Artists", items, 7, ui);
                 (rect, false)
             }
             PopupState::UserSavedAlbumList { .. } => {
@@ -150,13 +140,13 @@ pub fn render_popup(
                     .map(|a| (a.to_string(), false))
                     .collect();
 
-                let rect = render_list_popup(frame, rect, "User Saved Albums", items, 7, state, ui);
+                let rect = render_list_popup(frame, rect, "User Saved Albums", items, 7, ui);
                 (rect, false)
             }
             PopupState::ArtistList(_, artists, ..) => {
                 let items = artists.iter().map(|a| (a.to_string(), false)).collect();
 
-                let rect = render_list_popup(frame, rect, "Artists", items, 5, state, ui);
+                let rect = render_list_popup(frame, rect, "Artists", items, 5, ui);
                 (rect, false)
             }
         },
@@ -170,12 +160,11 @@ fn render_list_popup(
     title: &str,
     items: Vec<(String, bool)>,
     length: u16,
-    state: &SharedState,
     ui: &mut UIStateGuard,
 ) -> Rect {
     let chunks = Layout::vertical([Constraint::Fill(0), Constraint::Length(length)]).split(rect);
 
-    let rect = construct_and_render_block(title, &ui.theme, state, Borders::ALL, frame, chunks[1]);
+    let rect = construct_and_render_block(title, &ui.theme, Borders::ALL, frame, chunks[1]);
     let (list, len) = utils::construct_list_widget(&ui.theme, items, true);
 
     utils::render_list_window(
@@ -190,12 +179,7 @@ fn render_list_popup(
 }
 
 /// Render a shortcut help popup to show the available shortcuts based on user's inputs
-pub fn render_shortcut_help_popup(
-    frame: &mut Frame,
-    state: &SharedState,
-    ui: &mut UIStateGuard,
-    rect: Rect,
-) -> Rect {
+pub fn render_shortcut_help_popup(frame: &mut Frame, ui: &mut UIStateGuard, rect: Rect) -> Rect {
     let input = &ui.input_key_sequence;
 
     // get the matches (keymaps) from the current key sequence input,
@@ -223,14 +207,8 @@ pub fn render_shortcut_help_popup(
     } else {
         let chunks = Layout::vertical([Constraint::Fill(0), Constraint::Length(7)]).split(rect);
 
-        let rect = construct_and_render_block(
-            "Shortcuts",
-            &ui.theme,
-            state,
-            Borders::ALL,
-            frame,
-            chunks[1],
-        );
+        let rect =
+            construct_and_render_block("Shortcuts", &ui.theme, Borders::ALL, frame, chunks[1]);
 
         let help_table = Table::new(
             matches

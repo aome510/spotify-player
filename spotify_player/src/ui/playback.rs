@@ -12,7 +12,7 @@ pub fn render_playback_window(
     rect: Rect,
 ) -> Rect {
     let (rect, other_rect) = split_rect_for_playback_window(rect);
-    let rect = construct_and_render_block("Playback", &ui.theme, state, Borders::ALL, frame, rect);
+    let rect = construct_and_render_block("Playback", &ui.theme, Borders::ALL, frame, rect);
 
     let player = state.player.read();
     if let Some(ref playback) = player.playback {
@@ -101,7 +101,7 @@ pub fn render_playback_window(
             };
 
             if let Some(ref playback) = player.buffered_playback {
-                let playback_text = construct_playback_text(state, ui, track, playback);
+                let playback_text = construct_playback_text(ui, track, playback);
                 let playback_desc = Paragraph::new(playback_text).wrap(Wrap { trim: false });
                 frame.render_widget(playback_desc, metadata_rect);
             }
@@ -110,7 +110,7 @@ pub fn render_playback_window(
                 player.playback_progress().expect("non-empty playback"),
                 track.duration,
             );
-            render_playback_progress_bar(frame, state, ui, progress, track, progress_bar_rect);
+            render_playback_progress_bar(frame, ui, progress, track, progress_bar_rect);
         }
     } else {
         // Previously rendered image can result in a weird rendering text,
@@ -145,7 +145,6 @@ pub fn render_playback_window(
 }
 
 fn construct_playback_text(
-    state: &SharedState,
     ui: &UIStateGuard,
     track: &rspotify_model::FullTrack,
     playback: &PlaybackMetadata,
@@ -233,7 +232,6 @@ fn construct_playback_text(
 
 fn render_playback_progress_bar(
     frame: &mut Frame,
-    state: &SharedState,
     ui: &mut UIStateGuard,
     progress: chrono::Duration,
     track: &rspotify_model::FullTrack,

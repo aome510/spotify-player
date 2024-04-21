@@ -79,17 +79,15 @@ pub fn handle_command_for_focused_context_window(
                         ui.search_filtered_items(albums),
                         &data,
                         ui,
-                        state,
                     ),
                     ArtistFocusState::RelatedArtists => handle_command_for_artist_list_window(
                         command,
                         ui.search_filtered_items(related_artists),
                         &data,
                         ui,
-                        state,
                     ),
                     ArtistFocusState::TopTracks => handle_command_for_track_table_window(
-                        command, client_pub, None, top_tracks, &data, ui, state,
+                        command, client_pub, None, top_tracks, &data, ui,
                     ),
                 }
             }
@@ -100,7 +98,6 @@ pub fn handle_command_for_focused_context_window(
                 tracks,
                 &data,
                 ui,
-                state,
             ),
             Context::Playlist { tracks, .. } => handle_command_for_track_table_window(
                 command,
@@ -109,11 +106,10 @@ pub fn handle_command_for_focused_context_window(
                 tracks,
                 &data,
                 ui,
-                state,
             ),
-            Context::Tracks { tracks, .. } => handle_command_for_track_table_window(
-                command, client_pub, None, tracks, &data, ui, state,
-            ),
+            Context::Tracks { tracks, .. } => {
+                handle_command_for_track_table_window(command, client_pub, None, tracks, &data, ui)
+            }
         },
         None => Ok(false),
     }
@@ -178,7 +174,6 @@ fn handle_command_for_track_table_window(
     tracks: &[Track],
     data: &DataReadGuard,
     ui: &mut UIStateGuard,
-    state: &SharedState,
 ) -> Result<bool> {
     let id = ui.current_page_mut().selected().unwrap_or_default();
     let filtered_tracks = ui.search_filtered_items(tracks);
@@ -207,13 +202,7 @@ fn handle_command_for_track_table_window(
         }
     }
 
-    if handle_navigation_command(
-        command,
-        ui.current_page_mut(),
-        state,
-        id,
-        filtered_tracks.len(),
-    ) {
+    if handle_navigation_command(command, ui.current_page_mut(), id, filtered_tracks.len()) {
         return Ok(true);
     }
 
@@ -262,14 +251,13 @@ pub fn handle_command_for_track_list_window(
     tracks: Vec<&Track>,
     data: &DataReadGuard,
     ui: &mut UIStateGuard,
-    state: &SharedState,
 ) -> Result<bool> {
     let id = ui.current_page_mut().selected().unwrap_or_default();
     if id >= tracks.len() {
         return Ok(false);
     }
 
-    if handle_navigation_command(command, ui.current_page_mut(), state, id, tracks.len()) {
+    if handle_navigation_command(command, ui.current_page_mut(), id, tracks.len()) {
         return Ok(true);
     }
     match command {
@@ -304,14 +292,13 @@ pub fn handle_command_for_artist_list_window(
     artists: Vec<&Artist>,
     data: &DataReadGuard,
     ui: &mut UIStateGuard,
-    state: &SharedState,
 ) -> Result<bool> {
     let id = ui.current_page_mut().selected().unwrap_or_default();
     if id >= artists.len() {
         return Ok(false);
     }
 
-    if handle_navigation_command(command, ui.current_page_mut(), state, id, artists.len()) {
+    if handle_navigation_command(command, ui.current_page_mut(), id, artists.len()) {
         return Ok(true);
     }
     match command {
@@ -340,14 +327,13 @@ pub fn handle_command_for_album_list_window(
     albums: Vec<&Album>,
     data: &DataReadGuard,
     ui: &mut UIStateGuard,
-    state: &SharedState,
 ) -> Result<bool> {
     let id = ui.current_page_mut().selected().unwrap_or_default();
     if id >= albums.len() {
         return Ok(false);
     }
 
-    if handle_navigation_command(command, ui.current_page_mut(), state, id, albums.len()) {
+    if handle_navigation_command(command, ui.current_page_mut(), id, albums.len()) {
         return Ok(true);
     }
     match command {
@@ -376,14 +362,13 @@ pub fn handle_command_for_playlist_list_window(
     playlists: Vec<&Playlist>,
     data: &DataReadGuard,
     ui: &mut UIStateGuard,
-    state: &SharedState,
 ) -> Result<bool> {
     let id = ui.current_page_mut().selected().unwrap_or_default();
     if id >= playlists.len() {
         return Ok(false);
     }
 
-    if handle_navigation_command(command, ui.current_page_mut(), state, id, playlists.len()) {
+    if handle_navigation_command(command, ui.current_page_mut(), id, playlists.len()) {
         return Ok(true);
     }
     match command {

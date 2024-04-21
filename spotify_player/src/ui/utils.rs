@@ -7,7 +7,6 @@ use super::*;
 pub fn construct_and_render_block(
     title: &str,
     theme: &config::Theme,
-    state: &SharedState,
     borders: Borders,
     frame: &mut Frame,
     rect: Rect,
