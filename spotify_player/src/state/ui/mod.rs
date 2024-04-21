@@ -38,20 +38,27 @@ pub struct UIState {
 
 impl UIState {
     pub fn current_page(&self) -> &PageState {
-        self.history.last().expect("History must not be empty")
+        self.history.last().expect("non-empty history")
     }
 
     pub fn current_page_mut(&mut self) -> &mut PageState {
-        self.history.last_mut().expect("History must not be empty")
+        self.history.last_mut().expect("non-empty history")
     }
 
-    pub fn create_new_page(&mut self, page: PageState) {
+    pub fn new_search_popup(&mut self) {
+        self.current_page_mut().select(0);
+        self.popup = Some(PopupState::Search {
+            query: "".to_owned(),
+        });
+    }
+
+    pub fn new_page(&mut self, page: PageState) {
         self.history.push(page);
         self.popup = None;
     }
 
-    pub fn create_new_radio_page(&mut self, uri: &str) {
-        self.create_new_page(PageState::Context {
+    pub fn new_radio_page(&mut self, uri: &str) {
+        self.new_page(PageState::Context {
             id: None,
             context_page_type: ContextPageType::Browsing(super::ContextId::Tracks(TracksId::new(
                 format!("radio:{uri}"),
@@ -61,7 +68,7 @@ impl UIState {
         });
     }
 
-    /// Returns whether there exists a focused popup.
+    /// Return whether there exists a focused popup.
     ///
     /// Currently, only search popup is not focused when it's opened.
     pub fn has_focused_popup(&self) -> bool {
@@ -71,20 +78,25 @@ impl UIState {
         }
     }
 
-    /// Gets a list of items possibly filtered by a search query if exists a search popup
+    /// Get a list of items possibly filtered by a search query if exists a search popup
     pub fn search_filtered_items<'a, T: std::fmt::Display>(&self, items: &'a [T]) -> Vec<&'a T> {
         match self.popup {
-            Some(PopupState::Search { ref query }) => items
-                .iter()
-                .filter(|t| Self::is_match(&t.to_string().to_lowercase(), &query.to_lowercase()))
-                .collect::<Vec<_>>(),
+            Some(PopupState::Search { ref query }) => {
+                let query = query.to_lowercase();
+                items
+                    .iter()
+                    .filter(|t| {
+                        if query.is_empty() {
+                            true
+                        } else {
+                            let t = t.to_string().to_lowercase();
+                            query.split(' ').any(|q| !q.is_empty() && t.contains(q))
+                        }
+                    })
+                    .collect::<Vec<_>>()
+            }
             _ => items.iter().collect::<Vec<_>>(),
         }
-    }
-
-    /// checks if a string matches a given query
-    fn is_match(s: &str, query: &str) -> bool {
-        query.split(' ').any(|q| s.contains(q))
     }
 }
 

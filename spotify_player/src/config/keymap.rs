@@ -367,6 +367,18 @@ impl Keymap {
     }
 }
 
+impl std::fmt::Display for Keymap {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{} -> {:?}: {}",
+            self.key_sequence,
+            self.command,
+            self.command.desc()
+        )
+    }
+}
+
 impl From<&str> for Key {
     /// converts a string into a `Key`.
     /// # Panics

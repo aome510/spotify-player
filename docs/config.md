@@ -215,7 +215,16 @@ To define application's component styles, the user can specify any of the below 
 A field in `component_style` is a struct with three **optional** fields: `fg` (foreground), `bg` (background) and `modifiers` (terminal effects):
 
 - `fg` and `bg` can be either a palette's color in a pascal case (e.g, `BrightBlack`, `Blue`, etc) or a hex representation of a RGB color (e.g, `"#1e1f29"`). The default values for `fg` and `bg` are the `palette`'s `foreground` and `background`.
-- `modifiers` can only consist of either `Italic`, `Bold` or `Reversed`. The default value for `modifiers` is `[]`.
+- The default value for `modifiers` is `[]`. `modifiers` can consist of
+  - `Bold`
+  - `Dim`
+  - `Italic`
+  - `Underlined`
+  - `SlowBlink`
+  - `Reversed`
+  - `RapidBlink`
+  - `Hidden`
+  - `CrossedOut`
 
 Default value for application's component styles:
 
@@ -229,6 +238,7 @@ playback_metadata = { fg = "BrightBlack" }
 playback_progress_bar = { bg = "BrightBlack", fg = "Green" }
 current_playing = { fg = "Green", modifiers = ["Bold"] }
 page_desc = { fg = "Cyan", modifiers = ["Bold"] }
+playlist_desc = { fg = "BrightBlack", modifiers = ["Dim"] }
 table_header = { fg = "Blue" }
 selection = { modifiers = ["Bold", "Reversed"] }
 ```

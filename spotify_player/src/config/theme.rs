@@ -71,6 +71,7 @@ pub struct ComponentStyle {
     pub playback_progress_bar: Option<Style>,
     pub current_playing: Option<Style>,
     pub page_desc: Option<Style>,
+    pub playlist_desc: Option<Style>,
     pub table_header: Option<Style>,
     pub selection: Option<Style>,
 }
@@ -107,8 +108,13 @@ pub enum StyleColor {
 #[derive(Copy, Clone, Debug, Deserialize)]
 pub enum StyleModifier {
     Bold,
+    Dim,
     Italic,
+    Underlined,
+    RapidBlink,
     Reversed,
+    Hidden,
+    CrossedOut,
 }
 
 #[derive(Clone, Debug)]
@@ -262,6 +268,16 @@ impl Theme {
         }
     }
 
+    pub fn playlist_desc(&self) -> tui::style::Style {
+        match &self.component_style.playlist_desc {
+            None => Style::default()
+                .fg(StyleColor::BrightBlack)
+                .modifiers(vec![StyleModifier::Dim])
+                .style(&self.palette),
+            Some(s) => s.style(&self.palette),
+        }
+    }
+
     pub fn table_header(&self) -> tui::style::Style {
         match &self.component_style.table_header {
             None => Style::default().fg(StyleColor::Blue).style(&self.palette),
@@ -373,7 +389,12 @@ impl From<StyleModifier> for style::Modifier {
         match m {
             StyleModifier::Bold => style::Modifier::BOLD,
             StyleModifier::Italic => style::Modifier::ITALIC,
+            StyleModifier::Dim => style::Modifier::DIM,
             StyleModifier::Reversed => style::Modifier::REVERSED,
+            StyleModifier::Underlined => style::Modifier::UNDERLINED,
+            StyleModifier::RapidBlink => style::Modifier::RAPID_BLINK,
+            StyleModifier::Hidden => style::Modifier::HIDDEN,
+            StyleModifier::CrossedOut => style::Modifier::CROSSED_OUT,
         }
     }
 }

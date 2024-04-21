@@ -295,6 +295,12 @@ For more details, run `spotify_player -h` or `spotify_player {command} -h`, in w
 
 To go to the shortcut help page, press `?` or `C-h` (default shortcuts for `OpenCommandHelp` command).
 
+**Tips**:
+
+- you can search in the shortcut help page (and some other pages) using `Search` command
+- `RefreshPlayback` can be used to manually update the playback status.
+- `RestartIntegratedClient` is useful when user wants to switch to another audio device (headphone, earphone, etc) without restarting the application, as the integrated client will be re-initialized with the new device.
+
 List of supported commands:
 
 | Command                        | Description                                                             | Default shortcuts  |
@@ -356,11 +362,6 @@ List of supported commands:
 | `CreatePlaylist`               | create a new playlist                                                   | `N`                |
 
 To add new shortcuts or modify the default shortcuts, please refer to the [keymaps section](docs/config.md#keymaps) in the configuration documentation.
-
-**Tips**:
-
-- `RefreshPlayback` can be used to manually update the playback status.
-- `RestartIntegratedClient` is useful when user wants to switch to another audio device (headphone, earphone, etc) without restarting the application, as the integrated client will be re-initialized with the new device.
 
 ### Actions
 

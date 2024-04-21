@@ -2,46 +2,6 @@ use anyhow::Context as _;
 
 use super::*;
 
-macro_rules! handle_navigation_command {
-    ($state:ident, $command:ident, $len:expr, $page:expr, $id:expr) => {
-        match $command {
-            Command::SelectNextOrScrollDown => {
-                if $id + 1 < $len {
-                    $page.select($id + 1);
-                }
-                return Ok(true);
-            }
-            Command::SelectPreviousOrScrollUp => {
-                if $id > 0 {
-                    $page.select($id - 1);
-                }
-                return Ok(true);
-            }
-            Command::PageSelectNextOrScrollDown => {
-                $page.select(std::cmp::min(
-                    $id + $state.configs.app_config.page_size_in_rows,
-                    $len - 1,
-                ));
-                return Ok(true);
-            }
-            Command::PageSelectPreviousOrScrollUp => {
-                $page.select($id.saturating_sub($state.configs.app_config.page_size_in_rows));
-                return Ok(true);
-            }
-            Command::SelectLastOrScrollToBottom => {
-                if $len > 0 {
-                    $page.select($len - 1);
-                }
-            }
-            Command::SelectFirstOrScrollToTop => {
-                $page.select(0);
-            }
-            _ => {}
-        }
-    };
-}
-pub(super) use handle_navigation_command;
-
 pub fn handle_key_sequence_for_page(
     key_sequence: &KeySequence,
     client_pub: &flume::Sender<ClientRequest>,
@@ -83,10 +43,7 @@ fn handle_command_for_library_page(
 ) -> Result<bool> {
     match command {
         Command::Search => {
-            ui.current_page_mut().select(0);
-            ui.popup = Some(PopupState::Search {
-                query: "".to_owned(),
-            });
+            ui.new_search_popup();
             Ok(true)
         }
         _ => {
@@ -209,10 +166,7 @@ fn handle_command_for_context_page(
 ) -> Result<bool> {
     match command {
         Command::Search => {
-            ui.current_page_mut().select(0);
-            ui.popup = Some(PopupState::Search {
-                query: "".to_owned(),
-            });
+            ui.new_search_popup();
             Ok(true)
         }
         _ => window::handle_command_for_focused_context_window(command, client_pub, ui, state),
@@ -248,7 +202,9 @@ fn handle_command_for_browse_page(
         return Ok(false);
     }
 
-    handle_navigation_command!(state, command, len, page_state, selected);
+    if handle_navigation_command(command, page_state, state, selected, len) {
+        return Ok(true);
+    }
     match command {
         Command::ChooseSelected => {
             match page_state {
@@ -258,7 +214,7 @@ fn handle_command_for_browse_page(
                         client_pub.send(ClientRequest::GetBrowseCategoryPlaylists(
                             categories[selected].clone(),
                         ))?;
-                        ui.create_new_page(PageState::Browse {
+                        ui.new_page(PageState::Browse {
                             state: BrowsePageUIState::CategoryPlaylistList {
                                 category: categories[selected].clone(),
                                 state: new_list_state(),
@@ -276,7 +232,7 @@ fn handle_command_for_browse_page(
                         let context_id = ContextId::Playlist(
                             ui.search_filtered_items(playlists)[selected].id.clone(),
                         );
-                        ui.create_new_page(PageState::Context {
+                        ui.new_page(PageState::Context {
                             id: None,
                             context_page_type: ContextPageType::Browsing(context_id),
                             state: None,
@@ -287,10 +243,7 @@ fn handle_command_for_browse_page(
             };
         }
         Command::Search => {
-            page_state.select(0);
-            ui.popup = Some(PopupState::Search {
-                query: "".to_owned(),
-            });
+            ui.new_search_popup();
         }
         _ => return Ok(false),
     }
@@ -303,14 +256,17 @@ fn handle_command_for_lyric_page(
     ui: &mut UIStateGuard,
     state: &SharedState,
 ) -> Result<bool> {
-    let scroll_offset = match ui.current_page_mut() {
-        PageState::Lyric {
-            ref mut scroll_offset,
-            ..
-        } => scroll_offset,
+    let scroll_offset = match ui.current_page() {
+        PageState::Lyric { scroll_offset, .. } => *scroll_offset,
         _ => return Ok(false),
     };
-    Ok(handle_scroll_command(command, state, scroll_offset))
+    Ok(handle_navigation_command(
+        command,
+        ui.current_page_mut(),
+        state,
+        scroll_offset,
+        10000,
+    ))
 }
 
 fn handle_command_for_queue_page(
@@ -318,13 +274,17 @@ fn handle_command_for_queue_page(
     ui: &mut UIStateGuard,
     state: &SharedState,
 ) -> Result<bool, anyhow::Error> {
-    let scroll_offset = match ui.current_page_mut() {
-        PageState::Queue {
-            ref mut scroll_offset,
-        } => scroll_offset,
+    let scroll_offset = match ui.current_page() {
+        PageState::Queue { scroll_offset } => *scroll_offset,
         _ => return Ok(false),
     };
-    Ok(handle_scroll_command(command, state, scroll_offset))
+    Ok(handle_navigation_command(
+        command,
+        ui.current_page_mut(),
+        state,
+        scroll_offset,
+        10000,
+    ))
 }
 
 fn handle_command_for_command_help_page(
@@ -332,41 +292,66 @@ fn handle_command_for_command_help_page(
     ui: &mut UIStateGuard,
     state: &SharedState,
 ) -> Result<bool> {
-    let scroll_offset = match ui.current_page_mut() {
-        PageState::CommandHelp {
-            ref mut scroll_offset,
-        } => scroll_offset,
+    let scroll_offset = match ui.current_page() {
+        PageState::CommandHelp { scroll_offset } => *scroll_offset,
         _ => return Ok(false),
     };
-    Ok(handle_scroll_command(command, state, scroll_offset))
+    if command == Command::Search {
+        ui.new_search_popup();
+        return Ok(true);
+    }
+    Ok(handle_navigation_command(
+        command,
+        ui.current_page_mut(),
+        state,
+        scroll_offset,
+        10000,
+    ))
 }
 
-fn handle_scroll_command(command: Command, state: &SharedState, scroll_offset: &mut usize) -> bool {
+pub fn handle_navigation_command(
+    command: Command,
+    page: &mut PageState,
+    state: &SharedState,
+    id: usize,
+    len: usize,
+) -> bool {
+    if len == 0 {
+        return false;
+    }
+
     match command {
         Command::SelectNextOrScrollDown => {
-            *scroll_offset += 1;
+            if id + 1 < len {
+                page.select(id + 1);
+            }
+            true
         }
         Command::SelectPreviousOrScrollUp => {
-            if *scroll_offset > 0 {
-                *scroll_offset -= 1;
+            if id > 0 {
+                page.select(id - 1);
             }
+            true
         }
         Command::PageSelectNextOrScrollDown => {
-            *scroll_offset += state.configs.app_config.page_size_in_rows;
+            page.select(std::cmp::min(
+                id + state.configs.app_config.page_size_in_rows,
+                len - 1,
+            ));
+            true
         }
         Command::PageSelectPreviousOrScrollUp => {
-            *scroll_offset =
-                scroll_offset.saturating_sub(state.configs.app_config.page_size_in_rows);
+            page.select(id.saturating_sub(state.configs.app_config.page_size_in_rows));
+            true
+        }
+        Command::SelectLastOrScrollToBottom => {
+            page.select(len - 1);
+            true
         }
         Command::SelectFirstOrScrollToTop => {
-            *scroll_offset = 0;
+            page.select(0);
+            true
         }
-        // Don't know the size of the page, use a "big" number as the `scroll_offset` should be adjusted
-        // accordingly in the page rendering function.
-        Command::SelectLastOrScrollToBottom => {
-            *scroll_offset = 10000;
-        }
-        _ => return false,
+        _ => false,
     }
-    true
 }

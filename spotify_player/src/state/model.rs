@@ -152,6 +152,7 @@ pub struct Playlist {
     pub collaborative: bool,
     pub name: String,
     pub owner: (String, UserId<'static>),
+    pub desc: String,
 }
 
 #[derive(Clone, Debug)]
@@ -394,12 +395,19 @@ impl From<rspotify_model::SimplifiedPlaylist> for Playlist {
                 playlist.owner.display_name.unwrap_or_default(),
                 playlist.owner.id,
             ),
+            desc: String::new(),
         }
     }
 }
 
 impl From<rspotify_model::FullPlaylist> for Playlist {
     fn from(playlist: rspotify_model::FullPlaylist) -> Self {
+        // remove HTML tags from the description
+        // TODO: may also need to do HTML escaping here
+        let re = regex::Regex::new("(<.*?>|</.*?>)").expect("valid regex");
+        let desc = playlist.description.unwrap_or_default();
+        let desc = re.replace_all(&desc, "").to_string();
+
         Self {
             id: playlist.id,
             name: playlist.name,
@@ -408,6 +416,7 @@ impl From<rspotify_model::FullPlaylist> for Playlist {
                 playlist.owner.display_name.unwrap_or_default(),
                 playlist.owner.id,
             ),
+            desc,
         }
     }
 }
