@@ -84,9 +84,7 @@ impl UIState {
 
     /// checks if a string matches a given query
     fn is_match(s: &str, query: &str) -> bool {
-        query
-            .split(' ')
-            .fold(true, |acc, cur| acc & s.contains(cur))
+        query.split(' ').any(|q| s.contains(q))
     }
 }
 
