@@ -5,13 +5,6 @@ tracks_playback_limit = 50
 playback_format = "{track} • {artists}\n{album}\n{metadata}"
 notify_format = { summary = "{track} • {artists}", body = "{album}" }
 notify_timeout_in_secs = 0
-# the default `copy_command` is based on the OS
-# copy_command = { command = "pbcopy" } # macos
-# copy_command = { command = "xclip", args = ["-sel", "c"] } # linux
-# copy_command = { command = "clip", args = [] } # windows
-# paste_command = { command = "pbpaste" } # macos
-# paste_command = { command = "xclip", args = ["-o", "-sel", "c"] } # linux
-# paste_command = { command = "powershell", args = ["-command", "Get-Clipboard"] } # windows
 app_refresh_duration_in_ms = 32
 playback_refresh_duration_in_ms = 0
 page_size_in_rows = 20

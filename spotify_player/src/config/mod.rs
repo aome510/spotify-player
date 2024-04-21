@@ -25,9 +25,6 @@ pub struct AppConfig {
 
     pub client_port: u16,
 
-    pub copy_command: Command,
-    pub paste_command: Command,
-
     pub player_event_hook_command: Option<Command>,
 
     pub playback_format: String,
@@ -191,39 +188,6 @@ impl Default for AppConfig {
             },
             #[cfg(feature = "notify")]
             notify_timeout_in_secs: 0,
-
-            #[cfg(target_os = "macos")]
-            copy_command: Command {
-                command: "pbcopy".to_string(),
-                args: vec![],
-            },
-            #[cfg(all(unix, not(target_os = "macos")))]
-            copy_command: Command {
-                command: "xclip".to_string(),
-                args: vec!["-sel".to_string(), "c".to_string()],
-            },
-            #[cfg(target_os = "windows")]
-            copy_command: Command {
-                command: "clip".to_string(),
-                args: vec![],
-            },
-
-            #[cfg(target_os = "macos")]
-            paste_command: Command {
-                command: "pbpaste".to_string(),
-                args: vec![],
-            },
-            #[cfg(all(unix, not(target_os = "macos")))]
-            paste_command: Command {
-                command: "xclip".to_string(),
-                args: vec!["-o".to_string(), "-sel".to_string(), "c".to_string()],
-            },
-            // based on https://stackoverflow.com/a/54910545
-            #[cfg(target_os = "windows")]
-            paste_command: Command {
-                command: "powershell".to_string(),
-                args: vec!["-command".to_string(), "Get-Clipboard".to_string()],
-            },
 
             player_event_hook_command: None,
 
