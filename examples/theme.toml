@@ -63,6 +63,7 @@ bright_blue = "#83a598"
 bright_magenta = "#d3869b"
 bright_cyan = "#8ec07c"
 bright_white = "#ebdbb2"
+
 [[themes]]
 name = "gruvbox_light"
 [themes.palette]

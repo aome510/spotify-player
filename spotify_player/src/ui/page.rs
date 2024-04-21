@@ -241,6 +241,7 @@ pub fn render_context_page(
                 Paragraph::new(context.description()).style(ui.theme.page_desc()),
                 chunks[0],
             );
+            let rect = chunks[1];
 
             match context {
                 Context::Artist {
@@ -255,14 +256,27 @@ pub fn render_context_page(
                         state,
                         ui,
                         &data,
-                        chunks[1],
+                        rect,
                         (top_tracks, albums, related_artists),
                     );
                 }
-                Context::Playlist { tracks, .. } => {
+                Context::Playlist { tracks, playlist } => {
+                    let rect = if playlist.desc.is_empty() {
+                        rect
+                    } else {
+                        let chunks = Layout::vertical([Constraint::Length(1), Constraint::Fill(0)])
+                            .split(rect);
+                        frame.render_widget(
+                            Paragraph::new(playlist.desc.to_string())
+                                .style(ui.theme.playlist_desc()),
+                            chunks[0],
+                        );
+                        chunks[1]
+                    };
+
                     render_track_table(
                         frame,
-                        chunks[1],
+                        rect,
                         is_active,
                         state,
                         ui.search_filtered_items(tracks),
@@ -273,7 +287,7 @@ pub fn render_context_page(
                 Context::Album { tracks, .. } => {
                     render_track_table(
                         frame,
-                        chunks[1],
+                        rect,
                         is_active,
                         state,
                         ui.search_filtered_items(tracks),
@@ -284,7 +298,7 @@ pub fn render_context_page(
                 Context::Tracks { tracks, .. } => {
                     render_track_table(
                         frame,
-                        chunks[1],
+                        rect,
                         is_active,
                         state,
                         ui.search_filtered_items(tracks),

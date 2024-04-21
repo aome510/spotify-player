@@ -71,6 +71,7 @@ pub struct ComponentStyle {
     pub playback_progress_bar: Option<Style>,
     pub current_playing: Option<Style>,
     pub page_desc: Option<Style>,
+    pub playlist_desc: Option<Style>,
     pub table_header: Option<Style>,
     pub selection: Option<Style>,
 }
@@ -262,6 +263,16 @@ impl Theme {
             None => Style::default()
                 .fg(StyleColor::Cyan)
                 .modifiers(vec![StyleModifier::Bold])
+                .style(&self.palette),
+            Some(s) => s.style(&self.palette),
+        }
+    }
+
+    pub fn playlist_desc(&self) -> tui::style::Style {
+        match &self.component_style.playlist_desc {
+            None => Style::default()
+                .fg(StyleColor::BrightBlack)
+                .modifiers(vec![StyleModifier::Dim])
                 .style(&self.palette),
             Some(s) => s.style(&self.palette),
         }

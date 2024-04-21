@@ -238,6 +238,7 @@ playback_metadata = { fg = "BrightBlack" }
 playback_progress_bar = { bg = "BrightBlack", fg = "Green" }
 current_playing = { fg = "Green", modifiers = ["Bold"] }
 page_desc = { fg = "Cyan", modifiers = ["Bold"] }
+playlist_desc = { fg = "BrightBlack", modifiers = ["Dim"] }
 table_header = { fg = "Blue" }
 selection = { modifiers = ["Bold", "Reversed"] }
 ```
