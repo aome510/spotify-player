@@ -72,7 +72,7 @@ pub fn handle_key_sequence_for_popup(
                     match action {
                         ArtistPopupAction::Browse => {
                             let context_id = ContextId::Artist(artists[id].id.clone());
-                            ui.create_new_page(PageState::Context {
+                            ui.new_page(PageState::Context {
                                 id: None,
                                 context_page_type: ContextPageType::Browsing(context_id),
                                 state: None,
@@ -351,7 +351,7 @@ fn handle_command_for_context_browsing_list_popup(
                 }
             };
 
-            ui.create_new_page(PageState::Context {
+            ui.new_page(PageState::Context {
                 id: None,
                 context_page_type: ContextPageType::Browsing(context_id),
                 state: None,
@@ -491,7 +491,7 @@ fn handle_item_action(
                     let context_id = ContextId::Album(
                         AlbumId::from_uri(&crate::utils::parse_uri(&uri))?.into_static(),
                     );
-                    ui.create_new_page(PageState::Context {
+                    ui.new_page(PageState::Context {
                         id: None,
                         context_page_type: ContextPageType::Browsing(context_id),
                         state: None,
@@ -528,7 +528,7 @@ fn handle_item_action(
             TrackAction::GoToTrackRadio => {
                 let uri = track.id.uri();
                 let name = track.name;
-                ui.create_new_radio_page(&uri);
+                ui.new_radio_page(&uri);
                 client_pub.send(ClientRequest::GetRadioTracks {
                     seed_uri: uri,
                     seed_name: name,
@@ -582,7 +582,7 @@ fn handle_item_action(
             AlbumAction::GoToAlbumRadio => {
                 let uri = album.id.uri();
                 let name = album.name;
-                ui.create_new_radio_page(&uri);
+                ui.new_radio_page(&uri);
                 client_pub.send(ClientRequest::GetRadioTracks {
                     seed_uri: uri,
                     seed_name: name,
@@ -617,7 +617,7 @@ fn handle_item_action(
             ArtistAction::GoToArtistRadio => {
                 let uri = artist.id.uri();
                 let name = artist.name;
-                ui.create_new_radio_page(&uri);
+                ui.new_radio_page(&uri);
                 client_pub.send(ClientRequest::GetRadioTracks {
                     seed_uri: uri,
                     seed_name: name,
@@ -641,7 +641,7 @@ fn handle_item_action(
             PlaylistAction::GoToPlaylistRadio => {
                 let uri = playlist.id.uri();
                 let name = playlist.name;
-                ui.create_new_radio_page(&uri);
+                ui.new_radio_page(&uri);
                 client_pub.send(ClientRequest::GetRadioTracks {
                     seed_uri: uri,
                     seed_name: name,

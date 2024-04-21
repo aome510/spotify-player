@@ -258,7 +258,7 @@ fn handle_command_for_browse_page(
                         client_pub.send(ClientRequest::GetBrowseCategoryPlaylists(
                             categories[selected].clone(),
                         ))?;
-                        ui.create_new_page(PageState::Browse {
+                        ui.new_page(PageState::Browse {
                             state: BrowsePageUIState::CategoryPlaylistList {
                                 category: categories[selected].clone(),
                                 state: new_list_state(),
@@ -276,7 +276,7 @@ fn handle_command_for_browse_page(
                         let context_id = ContextId::Playlist(
                             ui.search_filtered_items(playlists)[selected].id.clone(),
                         );
-                        ui.create_new_page(PageState::Context {
+                        ui.new_page(PageState::Context {
                             id: None,
                             context_page_type: ContextPageType::Browsing(context_id),
                             state: None,

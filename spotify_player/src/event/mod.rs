@@ -196,7 +196,7 @@ fn handle_global_command(
             }
         }
         Command::OpenCommandHelp => {
-            ui.create_new_page(PageState::CommandHelp { scroll_offset: 0 });
+            ui.new_page(PageState::CommandHelp { scroll_offset: 0 });
         }
         Command::RefreshPlayback => {
             client_pub.send(ClientRequest::GetCurrentPlayback)?;
@@ -214,7 +214,7 @@ fn handle_global_command(
             }
         }
         Command::CurrentlyPlayingContextPage => {
-            ui.create_new_page(PageState::Context {
+            ui.new_page(PageState::Context {
                 id: None,
                 context_page_type: ContextPageType::CurrentPlaying,
                 state: None,
@@ -236,7 +236,7 @@ fn handle_global_command(
             ui.popup = Some(PopupState::UserSavedAlbumList(new_list_state()));
         }
         Command::TopTrackPage => {
-            ui.create_new_page(PageState::Context {
+            ui.new_page(PageState::Context {
                 id: None,
                 context_page_type: ContextPageType::Browsing(ContextId::Tracks(
                     USER_TOP_TRACKS_ID.to_owned(),
@@ -246,7 +246,7 @@ fn handle_global_command(
             client_pub.send(ClientRequest::GetUserTopTracks)?;
         }
         Command::RecentlyPlayedTrackPage => {
-            ui.create_new_page(PageState::Context {
+            ui.new_page(PageState::Context {
                 id: None,
                 context_page_type: ContextPageType::Browsing(ContextId::Tracks(
                     USER_RECENTLY_PLAYED_TRACKS_ID.to_owned(),
@@ -256,7 +256,7 @@ fn handle_global_command(
             client_pub.send(ClientRequest::GetUserRecentlyPlayedTracks)?;
         }
         Command::LikedTrackPage => {
-            ui.create_new_page(PageState::Context {
+            ui.new_page(PageState::Context {
                 id: None,
                 context_page_type: ContextPageType::Browsing(ContextId::Tracks(
                     USER_LIKED_TRACKS_ID.to_owned(),
@@ -266,19 +266,19 @@ fn handle_global_command(
             client_pub.send(ClientRequest::GetUserSavedTracks)?;
         }
         Command::LibraryPage => {
-            ui.create_new_page(PageState::Library {
+            ui.new_page(PageState::Library {
                 state: LibraryPageUIState::new(),
             });
         }
         Command::SearchPage => {
-            ui.create_new_page(PageState::Search {
+            ui.new_page(PageState::Search {
                 line_input: LineInput::default(),
                 current_query: String::new(),
                 state: SearchPageUIState::new(),
             });
         }
         Command::BrowsePage => {
-            ui.create_new_page(PageState::Browse {
+            ui.new_page(PageState::Browse {
                 state: BrowsePageUIState::CategoryList {
                     state: new_list_state(),
                 },
@@ -312,7 +312,7 @@ fn handle_global_command(
                     // for playlist/artist/album link, go to the corresponding context page
                     "playlist" => {
                         let id = PlaylistId::from_id(id)?.into_static();
-                        ui.create_new_page(PageState::Context {
+                        ui.new_page(PageState::Context {
                             id: None,
                             context_page_type: ContextPageType::Browsing(ContextId::Playlist(id)),
                             state: None,
@@ -320,7 +320,7 @@ fn handle_global_command(
                     }
                     "artist" => {
                         let id = ArtistId::from_id(id)?.into_static();
-                        ui.create_new_page(PageState::Context {
+                        ui.new_page(PageState::Context {
                             id: None,
                             context_page_type: ContextPageType::Browsing(ContextId::Artist(id)),
                             state: None,
@@ -328,7 +328,7 @@ fn handle_global_command(
                     }
                     "album" => {
                         let id = AlbumId::from_id(id)?.into_static();
-                        ui.create_new_page(PageState::Context {
+                        ui.new_page(PageState::Context {
                             id: None,
                             context_page_type: ContextPageType::Browsing(ContextId::Album(id)),
                             state: None,
@@ -344,7 +344,7 @@ fn handle_global_command(
         Command::LyricPage => {
             if let Some(track) = state.player.read().current_playing_track() {
                 let artists = map_join(&track.artists, |a| &a.name, ", ");
-                ui.create_new_page(PageState::Lyric {
+                ui.new_page(PageState::Lyric {
                     track: track.name.clone(),
                     artists: artists.clone(),
                     scroll_offset: 0,
@@ -386,7 +386,7 @@ fn handle_global_command(
             }
         }
         Command::Queue => {
-            ui.create_new_page(PageState::Queue { scroll_offset: 0 });
+            ui.new_page(PageState::Queue { scroll_offset: 0 });
             client_pub.send(ClientRequest::GetCurrentUserQueue)?;
         }
         Command::CreatePlaylist => {

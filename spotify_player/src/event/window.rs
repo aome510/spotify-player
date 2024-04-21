@@ -311,7 +311,7 @@ pub fn handle_command_for_artist_list_window(
     match command {
         Command::ChooseSelected => {
             let context_id = ContextId::Artist(artists[id].id.clone());
-            ui.create_new_page(PageState::Context {
+            ui.new_page(PageState::Context {
                 id: None,
                 context_page_type: ContextPageType::Browsing(context_id),
                 state: None,
@@ -345,7 +345,7 @@ pub fn handle_command_for_album_list_window(
     match command {
         Command::ChooseSelected => {
             let context_id = ContextId::Album(albums[id].id.clone());
-            ui.create_new_page(PageState::Context {
+            ui.new_page(PageState::Context {
                 id: None,
                 context_page_type: ContextPageType::Browsing(context_id),
                 state: None,
@@ -379,7 +379,7 @@ pub fn handle_command_for_playlist_list_window(
     match command {
         Command::ChooseSelected => {
             let context_id = ContextId::Playlist(playlists[id].id.clone());
-            ui.create_new_page(PageState::Context {
+            ui.new_page(PageState::Context {
                 id: None,
                 context_page_type: ContextPageType::Browsing(context_id),
                 state: None,
