@@ -7,14 +7,15 @@ use super::*;
 pub fn construct_and_render_block(
     title: &str,
     theme: &config::Theme,
-    state: &SharedState,
     borders: Borders,
     frame: &mut Frame,
     rect: Rect,
 ) -> Rect {
     let mut title = title.to_string();
 
-    let (borders, border_type) = match state.configs.app_config.border_type {
+    let configs = config::get_config();
+
+    let (borders, border_type) = match configs.app_config.border_type {
         config::BorderType::Hidden => (borders, BorderType::Plain),
         config::BorderType::Plain => (borders, BorderType::Plain),
         config::BorderType::Rounded => (borders, BorderType::Rounded),
@@ -33,7 +34,7 @@ pub fn construct_and_render_block(
     // `Hidden` border can be done by setting the borders to be `NONE`.
     // NOTE: we want to handle the border after the inner rectangle computation,
     // so that paddings between windows are properly determined.
-    if state.configs.app_config.border_type == config::BorderType::Hidden {
+    if configs.app_config.border_type == config::BorderType::Hidden {
         block = block.borders(Borders::NONE);
         // add padding to the title to ensure the inner text is aligned with the title
         title = format!(" {title}");

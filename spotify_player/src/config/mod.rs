@@ -12,10 +12,36 @@ use config_parser2::*;
 use librespot_core::config::SessionConfig;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    sync::OnceLock,
+};
 
-pub use keymap::*;
-pub use theme::*;
+use keymap::*;
+use theme::*;
+
+pub use theme::Theme;
+
+static CONFIGS: OnceLock<Configs> = OnceLock::new();
+
+#[derive(Debug)]
+pub struct Configs {
+    pub app_config: AppConfig,
+    pub keymap_config: KeymapConfig,
+    pub theme_config: ThemeConfig,
+    pub cache_folder: std::path::PathBuf,
+}
+
+impl Configs {
+    pub fn new(config_folder: &std::path::Path, cache_folder: &std::path::Path) -> Result<Self> {
+        Ok(Self {
+            app_config: AppConfig::new(config_folder)?,
+            keymap_config: KeymapConfig::new(config_folder)?,
+            theme_config: ThemeConfig::new(config_folder)?,
+            cache_folder: cache_folder.to_path_buf(),
+        })
+    }
+}
 
 #[derive(Debug, Deserialize, Serialize, ConfigParse)]
 /// Application configurations
@@ -336,4 +362,14 @@ pub fn get_cache_folder_path() -> Result<PathBuf> {
         Some(home) => Ok(home.join(DEFAULT_CACHE_FOLDER)),
         None => Err(anyhow!("cannot find the $HOME folder")),
     }
+}
+
+#[inline(always)]
+pub fn get_config() -> &'static Configs {
+    CONFIGS.get().expect("configs is already initialized")
+}
+pub fn set_config(configs: Configs) {
+    CONFIGS
+        .set(configs)
+        .expect("configs should be initialized only once")
 }

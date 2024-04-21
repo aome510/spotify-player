@@ -39,7 +39,7 @@ pub fn render_search_page(
     let search_results = data.caches.search.get(current_query);
 
     // 2. Construct the page's layout
-    let rect = construct_and_render_block("Search", &ui.theme, state, Borders::ALL, frame, rect);
+    let rect = construct_and_render_block("Search", &ui.theme, Borders::ALL, frame, rect);
 
     // search input's layout
     let chunks = Layout::vertical([Constraint::Length(1), Constraint::Fill(0)]).split(rect);
@@ -60,29 +60,21 @@ pub fn render_search_page(
     let track_rect = construct_and_render_block(
         "Tracks",
         &ui.theme,
-        state,
         Borders::TOP | Borders::RIGHT,
         frame,
         chunks[0],
     );
     let album_rect =
-        construct_and_render_block("Albums", &ui.theme, state, Borders::TOP, frame, chunks[1]);
+        construct_and_render_block("Albums", &ui.theme, Borders::TOP, frame, chunks[1]);
     let artist_rect = construct_and_render_block(
         "Artists",
         &ui.theme,
-        state,
         Borders::TOP | Borders::RIGHT,
         frame,
         chunks[2],
     );
-    let playlist_rect = construct_and_render_block(
-        "Playlists",
-        &ui.theme,
-        state,
-        Borders::TOP,
-        frame,
-        chunks[3],
-    );
+    let playlist_rect =
+        construct_and_render_block("Playlists", &ui.theme, Borders::TOP, frame, chunks[3]);
 
     // 3. Construct the page's widgets
     let (track_list, n_tracks) = {
@@ -214,7 +206,6 @@ pub fn render_context_page(
     let rect = construct_and_render_block(
         &context_page_type.title(),
         &ui.theme,
-        state,
         Borders::ALL,
         frame,
         rect,
@@ -344,7 +335,6 @@ pub fn render_library_page(
     let playlist_rect = construct_and_render_block(
         "Playlists",
         &ui.theme,
-        state,
         Borders::TOP | Borders::LEFT | Borders::BOTTOM,
         frame,
         chunks[0],
@@ -352,13 +342,12 @@ pub fn render_library_page(
     let album_rect = construct_and_render_block(
         "Albums",
         &ui.theme,
-        state,
         Borders::TOP | Borders::LEFT | Borders::BOTTOM,
         frame,
         chunks[1],
     );
     let artist_rect =
-        construct_and_render_block("Artists", &ui.theme, state, Borders::ALL, frame, chunks[2]);
+        construct_and_render_block("Artists", &ui.theme, Borders::ALL, frame, chunks[2]);
 
     // 3. Construct the page's widgets
     // Construct the playlist window
@@ -434,14 +423,8 @@ pub fn render_browse_page(
     let (list, len) = match ui.current_page() {
         PageState::Browse { state: ui_state } => match ui_state {
             BrowsePageUIState::CategoryList { .. } => {
-                rect = construct_and_render_block(
-                    "Categories",
-                    &ui.theme,
-                    state,
-                    Borders::ALL,
-                    frame,
-                    rect,
-                );
+                rect =
+                    construct_and_render_block("Categories", &ui.theme, Borders::ALL, frame, rect);
 
                 utils::construct_list_widget(
                     &ui.theme,
@@ -454,8 +437,7 @@ pub fn render_browse_page(
             }
             BrowsePageUIState::CategoryPlaylistList { category, .. } => {
                 let title = format!("{} Playlists", category.name);
-                rect =
-                    construct_and_render_block(&title, &ui.theme, state, Borders::ALL, frame, rect);
+                rect = construct_and_render_block(&title, &ui.theme, Borders::ALL, frame, rect);
 
                 let playlists = match data.browse.category_playlists.get(&category.id) {
                     Some(playlists) => playlists,
@@ -498,7 +480,7 @@ pub fn render_lyric_page(
     let data = state.data.read();
 
     // 2. Construct the page's layout
-    let rect = construct_and_render_block("Lyric", &ui.theme, state, Borders::ALL, frame, rect);
+    let rect = construct_and_render_block("Lyric", &ui.theme, Borders::ALL, frame, rect);
     let chunks = Layout::vertical([Constraint::Length(1), Constraint::Fill(0)]).split(rect);
 
     // 3. Construct the page's widgets
@@ -545,15 +527,11 @@ pub fn render_lyric_page(
     );
 }
 
-pub fn render_commands_help_page(
-    frame: &mut Frame,
-    state: &SharedState,
-    ui: &mut UIStateGuard,
-    rect: Rect,
-) {
+pub fn render_commands_help_page(frame: &mut Frame, ui: &mut UIStateGuard, rect: Rect) {
     // 1. Get data
+    let configs = config::get_config();
     let mut map = BTreeMap::new();
-    let keymaps = ui.search_filtered_items(&state.configs.keymap_config.keymaps);
+    let keymaps = ui.search_filtered_items(&configs.keymap_config.keymaps);
     keymaps
         .into_iter()
         .filter(|km| km.include_in_help_screen())
@@ -583,7 +561,7 @@ pub fn render_commands_help_page(
     };
 
     // 2. Construct the page's layout
-    let rect = construct_and_render_block("Commands", &ui.theme, state, Borders::ALL, frame, rect);
+    let rect = construct_and_render_block("Commands", &ui.theme, Borders::ALL, frame, rect);
 
     // 3. Construct the page's widget
     let help_table = Table::new(
@@ -662,7 +640,7 @@ pub fn render_queue_page(
     };
 
     // 2. Construct the page's layout
-    let rect = construct_and_render_block("Queue", &ui.theme, state, Borders::ALL, frame, rect);
+    let rect = construct_and_render_block("Queue", &ui.theme, Borders::ALL, frame, rect);
 
     // 3. Construct the page's widget
     let queue_table = Table::new(
@@ -738,19 +716,12 @@ fn render_artist_context_page_windows(
     let albums_rect = construct_and_render_block(
         "Albums",
         &ui.theme,
-        state,
         Borders::TOP | Borders::RIGHT,
         frame,
         chunks[0],
     );
-    let related_artists_rect = construct_and_render_block(
-        "Related Artists",
-        &ui.theme,
-        state,
-        Borders::TOP,
-        frame,
-        chunks[1],
-    );
+    let related_artists_rect =
+        construct_and_render_block("Related Artists", &ui.theme, Borders::TOP, frame, chunks[1]);
 
     // 3. Construct the page's widgets
     // album list widget
@@ -824,6 +795,7 @@ fn render_track_table(
     ui: &mut UIStateGuard,
     data: &DataReadGuard,
 ) {
+    let configs = config::get_config();
     // get the current playing track's URI to decorate such track (if exists) in the track table
     let mut playing_track_uri = "".to_string();
     let mut playing_id = "";
@@ -832,9 +804,9 @@ fn render_track_table(
             playing_track_uri = track.id.as_ref().map(|id| id.uri()).unwrap_or_default();
 
             playing_id = if playback.is_playing {
-                &state.configs.app_config.play_icon
+                &configs.app_config.play_icon
             } else {
-                &state.configs.app_config.pause_icon
+                &configs.app_config.pause_icon
             };
         }
     }
@@ -851,7 +823,7 @@ fn render_track_table(
             };
             Row::new(vec![
                 Cell::from(if data.user_data.is_liked_track(t) {
-                    &state.configs.app_config.liked_icon
+                    &configs.app_config.liked_icon
                 } else {
                     ""
                 }),
@@ -872,7 +844,7 @@ fn render_track_table(
     let track_table = Table::new(
         rows,
         [
-            Constraint::Length(state.configs.app_config.liked_icon.chars().count() as u16),
+            Constraint::Length(configs.app_config.liked_icon.chars().count() as u16),
             Constraint::Length(4),
             Constraint::Fill(4),
             Constraint::Fill(3),

@@ -14,8 +14,9 @@ mod utils;
 pub fn run(state: SharedState) -> Result<()> {
     let mut terminal = init_ui().context("failed to initialize the application's UI")?;
 
-    let ui_refresh_duration =
-        std::time::Duration::from_millis(state.configs.app_config.app_refresh_duration_in_ms);
+    let ui_refresh_duration = std::time::Duration::from_millis(
+        config::get_config().app_config.app_refresh_duration_in_ms,
+    );
     let mut last_terminal_size = None;
 
     loop {
@@ -83,7 +84,7 @@ fn clean_up(mut terminal: Terminal) -> Result<()> {
 fn render_application(frame: &mut Frame, state: &SharedState, ui: &mut UIStateGuard, rect: Rect) {
     // rendering order: shortcut help popup -> playback window -> other popups -> main layout
 
-    let rect = popup::render_shortcut_help_popup(frame, state, ui, rect);
+    let rect = popup::render_shortcut_help_popup(frame, ui, rect);
 
     // render playback window before other popups to ensure no popup is rendered on top
     // of the playback window
@@ -111,6 +112,6 @@ fn render_main_layout(
         #[cfg(feature = "lyric-finder")]
         PageType::Lyric => page::render_lyric_page(is_active, frame, state, ui, rect),
         PageType::Queue => page::render_queue_page(frame, state, ui, rect),
-        PageType::CommandHelp => page::render_commands_help_page(frame, state, ui, rect),
+        PageType::CommandHelp => page::render_commands_help_page(frame, ui, rect),
     }
 }

@@ -1,6 +1,6 @@
 use crate::{
     auth::{new_session, new_session_with_new_creds, AuthConfig},
-    client, state,
+    client,
 };
 
 use super::*;
@@ -142,7 +142,7 @@ fn handle_playback_subcommand(args: &ArgMatches) -> Result<Request> {
 /// to the client via a UDP socket.
 /// If no running client found, create a new client running in a separate thread to
 /// handle the socket request.
-fn try_connect_to_client(socket: &UdpSocket, configs: &state::Configs) -> Result<()> {
+fn try_connect_to_client(socket: &UdpSocket, configs: &config::Configs) -> Result<()> {
     let port = configs.app_config.client_port;
     socket.connect(("127.0.0.1", port))?;
 
@@ -175,8 +175,9 @@ fn try_connect_to_client(socket: &UdpSocket, configs: &state::Configs) -> Result
     Ok(())
 }
 
-pub fn handle_cli_subcommand(cmd: &str, args: &ArgMatches, configs: &state::Configs) -> Result<()> {
+pub fn handle_cli_subcommand(cmd: &str, args: &ArgMatches) -> Result<()> {
     let socket = UdpSocket::bind("127.0.0.1:0")?;
+    let configs = config::get_config();
 
     // handle commands that don't require a client separately
     match cmd {

@@ -1,6 +1,7 @@
 use crate::{
     client::{ClientRequest, PlayerRequest},
     command::{self, Command},
+    config,
     key::{Key, KeySequence},
     state::*,
     ui::single_line_input::LineInput,
@@ -87,9 +88,8 @@ fn handle_key_event(
 
     // check if the current key sequence matches any keymap's prefix
     // if not, reset the key sequence
-    if state
-        .configs
-        .keymap_config
+    let keymap_config = &config::get_config().keymap_config;
+    if keymap_config
         .find_matched_prefix_keymaps(&key_sequence)
         .is_empty()
     {
@@ -107,11 +107,7 @@ fn handle_key_event(
 
     // if the key sequence is not handled, let the global command handler handle it
     let handled = if !handled {
-        match state
-            .configs
-            .keymap_config
-            .find_command_from_key_sequence(&key_sequence)
-        {
+        match keymap_config.find_command_from_key_sequence(&key_sequence) {
             Some(command) => handle_global_command(command, client_pub, state, &mut ui)?,
             None => false,
         }
@@ -363,7 +359,7 @@ fn handle_global_command(
         }
         Command::SwitchTheme => {
             // get the available themes with the current theme moved to the first position
-            let mut themes = state.configs.theme_config.themes.clone();
+            let mut themes = config::get_config().theme_config.themes.clone();
             let id = themes.iter().position(|t| t.name == ui.theme.name);
             if let Some(id) = id {
                 let theme = themes.remove(id);

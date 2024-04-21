@@ -11,8 +11,8 @@ pub fn render_playback_window(
     ui: &mut UIStateGuard,
     rect: Rect,
 ) -> Rect {
-    let (rect, other_rect) = split_rect_for_playback_window(rect, state);
-    let rect = construct_and_render_block("Playback", &ui.theme, state, Borders::ALL, frame, rect);
+    let (rect, other_rect) = split_rect_for_playback_window(rect);
+    let rect = construct_and_render_block("Playback", &ui.theme, Borders::ALL, frame, rect);
 
     let player = state.player.read();
     if let Some(ref playback) = player.playback {
@@ -30,18 +30,17 @@ pub fn render_playback_window(
                     // Render the track's cover image if `image` feature is enabled
                     #[cfg(feature = "image")]
                     {
+                        let configs = config::get_config();
                         // Split the allocated rectangle into `metadata_rect` and `cover_img_rect`
                         let (metadata_rect, cover_img_rect) = {
                             let hor_chunks = Layout::horizontal([
-                                Constraint::Length(
-                                    state.configs.app_config.cover_img_length as u16,
-                                ),
+                                Constraint::Length(configs.app_config.cover_img_length as u16),
                                 Constraint::Fill(0), // metadata_rect
                             ])
                             .spacing(1)
                             .split(rect);
                             let ver_chunks = Layout::vertical([
-                                Constraint::Length(state.configs.app_config.cover_img_width as u16), // cover_img_rect
+                                Constraint::Length(configs.app_config.cover_img_width as u16), // cover_img_rect
                                 Constraint::Fill(0), // empty space
                             ])
                             .split(hor_chunks[0]);
@@ -102,7 +101,7 @@ pub fn render_playback_window(
             };
 
             if let Some(ref playback) = player.buffered_playback {
-                let playback_text = construct_playback_text(state, ui, track, playback);
+                let playback_text = construct_playback_text(ui, track, playback);
                 let playback_desc = Paragraph::new(playback_text).wrap(Wrap { trim: false });
                 frame.render_widget(playback_desc, metadata_rect);
             }
@@ -111,7 +110,7 @@ pub fn render_playback_window(
                 player.playback_progress().expect("non-empty playback"),
                 track.duration,
             );
-            render_playback_progress_bar(frame, state, ui, progress, track, progress_bar_rect);
+            render_playback_progress_bar(frame, ui, progress, track, progress_bar_rect);
         }
     } else {
         // Previously rendered image can result in a weird rendering text,
@@ -146,14 +145,14 @@ pub fn render_playback_window(
 }
 
 fn construct_playback_text(
-    state: &SharedState,
     ui: &UIStateGuard,
     track: &rspotify_model::FullTrack,
     playback: &PlaybackMetadata,
 ) -> Text<'static> {
     // Construct a "styled" text (`playback_text`) from playback's data
     // based on a user-configurable format string (app_config.playback_format)
-    let format_str = &state.configs.app_config.playback_format;
+    let configs = config::get_config();
+    let format_str = &configs.app_config.playback_format;
 
     let mut playback_text = Text::default();
     let mut spans = vec![];
@@ -182,9 +181,9 @@ fn construct_playback_text(
                 format!(
                     "{} {}",
                     if !playback.is_playing {
-                        &state.configs.app_config.pause_icon
+                        &configs.app_config.pause_icon
                     } else {
-                        &state.configs.app_config.play_icon
+                        &configs.app_config.play_icon
                     },
                     if track.explicit {
                         format!("{} (E)", track.name)
@@ -233,7 +232,6 @@ fn construct_playback_text(
 
 fn render_playback_progress_bar(
     frame: &mut Frame,
-    state: &SharedState,
     ui: &mut UIStateGuard,
     progress: chrono::Duration,
     track: &rspotify_model::FullTrack,
@@ -244,7 +242,7 @@ fn render_playback_progress_bar(
     let ratio =
         (progress.num_seconds() as f64 / track.duration.num_seconds() as f64).clamp(0.0, 1.0);
 
-    match state.configs.app_config.progress_bar_type {
+    match config::get_config().app_config.progress_bar_type {
         config::ProgressBarType::Line => frame.render_widget(
             LineGauge::default()
                 .gauge_style(ui.theme.playback_progress_bar())
@@ -307,7 +305,7 @@ fn render_playback_cover_image(state: &SharedState, ui: &mut UIStateGuard) -> Re
         // This scaling factor is user configurable as the scale works differently
         // with different fonts and terminals.
         // For more context, see https://github.com/aome510/spotify-player/issues/122.
-        let scale = state.configs.app_config.cover_img_scale;
+        let scale = config::get_config().app_config.cover_img_scale;
         let width = (rect.width as f32 * scale).round() as u32;
         let height = (rect.height as f32 * scale).round() as u32;
 
@@ -332,17 +330,17 @@ fn render_playback_cover_image(state: &SharedState, ui: &mut UIStateGuard) -> Re
 
 /// Split the given area into two, the first one for the playback window
 /// and the second one for the main application's layout (popup, page, etc).
-fn split_rect_for_playback_window(rect: Rect, state: &SharedState) -> (Rect, Rect) {
-    let playback_width = state.configs.app_config.playback_window_width;
+fn split_rect_for_playback_window(rect: Rect) -> (Rect, Rect) {
+    let configs = config::get_config();
+    let playback_width = configs.app_config.playback_window_width;
     // the playback window's width should not be smaller than the cover image's width + 1
     #[cfg(feature = "image")]
-    let playback_width =
-        std::cmp::max(state.configs.app_config.cover_img_width + 1, playback_width);
+    let playback_width = std::cmp::max(configs.app_config.cover_img_width + 1, playback_width);
 
     // +2 for top/bottom borders
     let playback_width = (playback_width + 2) as u16;
 
-    match state.configs.app_config.playback_window_position {
+    match configs.app_config.playback_window_position {
         config::Position::Top => {
             let chunks =
                 Layout::vertical([Constraint::Length(playback_width), Constraint::Fill(0)])

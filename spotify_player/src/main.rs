@@ -82,6 +82,8 @@ fn init_logging(cache_folder: &std::path::Path) -> Result<()> {
 
 #[tokio::main]
 async fn start_app(state: &state::SharedState) -> Result<()> {
+    let configs = config::get_config();
+
     if !state.is_daemon {
         #[cfg(feature = "image")]
         {
@@ -110,7 +112,7 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
                 "PULSE_PROP_stream.description",
                 format!(
                     "Spotify Connect endpoint ({})",
-                    state.configs.app_config.device.name
+                    configs.app_config.device.name
                 ),
             );
         }
@@ -123,15 +125,11 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
     }
 
     // create a librespot session
-    let auth_config = auth::AuthConfig::new(&state.configs)?;
+    let auth_config = auth::AuthConfig::new(configs)?;
     let session = auth::new_session(&auth_config, !state.is_daemon).await?;
 
     // create a Spotify API client
-    let client = client::Client::new(
-        session,
-        auth_config,
-        state.configs.app_config.client_id.clone(),
-    );
+    let client = client::Client::new(session, auth_config, configs.app_config.client_id.clone());
     client.refresh_token().await?;
 
     // initialize Spotify-related stuff
@@ -147,7 +145,7 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
         let client = client.clone();
         let state = state.clone();
         async move {
-            let port = state.configs.app_config.client_port;
+            let port = configs.app_config.client_port;
             tracing::info!("Starting a client socket at 127.0.0.1:{port}");
             match tokio::net::UdpSocket::bind(("127.0.0.1", port)).await {
                 Ok(socket) => cli::start_socket(client, socket, Some(state)).await,
@@ -197,7 +195,7 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
     }
 
     #[cfg(feature = "media-control")]
-    if state.configs.app_config.enable_media_control {
+    if configs.app_config.enable_media_control {
         // media control task
         tokio::task::spawn_blocking({
             let state = state.clone();
@@ -257,10 +255,13 @@ fn main() -> Result<()> {
     }
 
     // initialize the application configs
-    let mut configs = state::Configs::new(&config_folder, &cache_folder)?;
-    if let Some(theme) = args.get_one::<String>("theme") {
-        // override the theme config if user specifies a `theme` cli argument
-        configs.app_config.theme = theme.to_owned();
+    {
+        let mut configs = config::Configs::new(&config_folder, &cache_folder)?;
+        if let Some(theme) = args.get_one::<String>("theme") {
+            // override the theme config if user specifies a `theme` cli argument
+            configs.app_config.theme = theme.to_owned();
+        }
+        config::set_config(configs);
     }
 
     match args.subcommand() {
@@ -269,7 +270,7 @@ fn main() -> Result<()> {
             init_logging(&cache_folder).context("failed to initialize application's logging")?;
 
             // log the application's configurations
-            tracing::info!("Configurations: {:?}", configs);
+            tracing::info!("Configurations: {:?}", config::get_config());
 
             let is_daemon;
 
@@ -295,9 +296,9 @@ fn main() -> Result<()> {
                 is_daemon = false;
             }
 
-            let state = std::sync::Arc::new(state::State::new(configs, is_daemon));
+            let state = std::sync::Arc::new(state::State::new(is_daemon));
             start_app(&state)
         }
-        Some((cmd, args)) => cli::handle_cli_subcommand(cmd, args, &configs),
+        Some((cmd, args)) => cli::handle_cli_subcommand(cmd, args),
     }
 }

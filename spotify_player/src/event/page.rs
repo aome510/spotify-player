@@ -15,8 +15,7 @@ pub fn handle_key_sequence_for_page(
         return handle_key_sequence_for_search_page(key_sequence, client_pub, state, ui);
     }
 
-    let command = match state
-        .configs
+    let command = match config::get_config()
         .keymap_config
         .find_command_from_key_sequence(key_sequence)
     {
@@ -30,9 +29,9 @@ pub fn handle_key_sequence_for_page(
         PageType::Context => handle_command_for_context_page(command, client_pub, ui, state),
         PageType::Browse => handle_command_for_browse_page(command, client_pub, ui, state),
         #[cfg(feature = "lyric-finder")]
-        PageType::Lyric => handle_command_for_lyric_page(command, ui, state),
-        PageType::Queue => handle_command_for_queue_page(command, ui, state),
-        PageType::CommandHelp => handle_command_for_command_help_page(command, ui, state),
+        PageType::Lyric => handle_command_for_lyric_page(command, ui),
+        PageType::Queue => handle_command_for_queue_page(command, ui),
+        PageType::CommandHelp => handle_command_for_command_help_page(command, ui),
     }
 }
 
@@ -58,14 +57,12 @@ fn handle_command_for_library_page(
                     ui.search_filtered_items(&data.user_data.playlists),
                     &data,
                     ui,
-                    state,
                 ),
                 LibraryFocusState::SavedAlbums => window::handle_command_for_album_list_window(
                     command,
                     ui.search_filtered_items(&data.user_data.saved_albums),
                     &data,
                     ui,
-                    state,
                 ),
                 LibraryFocusState::FollowedArtists => {
                     window::handle_command_for_artist_list_window(
@@ -73,7 +70,6 @@ fn handle_command_for_library_page(
                         ui.search_filtered_items(&data.user_data.followed_artists),
                         &data,
                         ui,
-                        state,
                     )
                 }
             }
@@ -115,8 +111,7 @@ fn handle_key_sequence_for_search_page(
         }
     }
 
-    let command = match state
-        .configs
+    let command = match config::get_config()
         .keymap_config
         .find_command_from_key_sequence(key_sequence)
     {
@@ -133,27 +128,25 @@ fn handle_key_sequence_for_search_page(
             let tracks = search_results
                 .map(|s| s.tracks.iter().collect())
                 .unwrap_or_default();
-            window::handle_command_for_track_list_window(
-                command, client_pub, tracks, &data, ui, state,
-            )
+            window::handle_command_for_track_list_window(command, client_pub, tracks, &data, ui)
         }
         SearchFocusState::Artists => {
             let artists = search_results
                 .map(|s| s.artists.iter().collect())
                 .unwrap_or_default();
-            window::handle_command_for_artist_list_window(command, artists, &data, ui, state)
+            window::handle_command_for_artist_list_window(command, artists, &data, ui)
         }
         SearchFocusState::Albums => {
             let albums = search_results
                 .map(|s| s.albums.iter().collect())
                 .unwrap_or_default();
-            window::handle_command_for_album_list_window(command, albums, &data, ui, state)
+            window::handle_command_for_album_list_window(command, albums, &data, ui)
         }
         SearchFocusState::Playlists => {
             let playlists = search_results
                 .map(|s| s.playlists.iter().collect())
                 .unwrap_or_default();
-            window::handle_command_for_playlist_list_window(command, playlists, &data, ui, state)
+            window::handle_command_for_playlist_list_window(command, playlists, &data, ui)
         }
     }
 }
@@ -202,7 +195,7 @@ fn handle_command_for_browse_page(
         return Ok(false);
     }
 
-    if handle_navigation_command(command, page_state, state, selected, len) {
+    if handle_navigation_command(command, page_state, selected, len) {
         return Ok(true);
     }
     match command {
@@ -251,11 +244,7 @@ fn handle_command_for_browse_page(
 }
 
 #[cfg(feature = "lyric-finder")]
-fn handle_command_for_lyric_page(
-    command: Command,
-    ui: &mut UIStateGuard,
-    state: &SharedState,
-) -> Result<bool> {
+fn handle_command_for_lyric_page(command: Command, ui: &mut UIStateGuard) -> Result<bool> {
     let scroll_offset = match ui.current_page() {
         PageState::Lyric { scroll_offset, .. } => *scroll_offset,
         _ => return Ok(false),
@@ -263,7 +252,6 @@ fn handle_command_for_lyric_page(
     Ok(handle_navigation_command(
         command,
         ui.current_page_mut(),
-        state,
         scroll_offset,
         10000,
     ))
@@ -272,7 +260,6 @@ fn handle_command_for_lyric_page(
 fn handle_command_for_queue_page(
     command: Command,
     ui: &mut UIStateGuard,
-    state: &SharedState,
 ) -> Result<bool, anyhow::Error> {
     let scroll_offset = match ui.current_page() {
         PageState::Queue { scroll_offset } => *scroll_offset,
@@ -281,17 +268,12 @@ fn handle_command_for_queue_page(
     Ok(handle_navigation_command(
         command,
         ui.current_page_mut(),
-        state,
         scroll_offset,
         10000,
     ))
 }
 
-fn handle_command_for_command_help_page(
-    command: Command,
-    ui: &mut UIStateGuard,
-    state: &SharedState,
-) -> Result<bool> {
+fn handle_command_for_command_help_page(command: Command, ui: &mut UIStateGuard) -> Result<bool> {
     let scroll_offset = match ui.current_page() {
         PageState::CommandHelp { scroll_offset } => *scroll_offset,
         _ => return Ok(false),
@@ -303,7 +285,6 @@ fn handle_command_for_command_help_page(
     Ok(handle_navigation_command(
         command,
         ui.current_page_mut(),
-        state,
         scroll_offset,
         10000,
     ))
@@ -312,7 +293,6 @@ fn handle_command_for_command_help_page(
 pub fn handle_navigation_command(
     command: Command,
     page: &mut PageState,
-    state: &SharedState,
     id: usize,
     len: usize,
 ) -> bool {
@@ -320,6 +300,7 @@ pub fn handle_navigation_command(
         return false;
     }
 
+    let configs = config::get_config();
     match command {
         Command::SelectNextOrScrollDown => {
             if id + 1 < len {
@@ -335,13 +316,13 @@ pub fn handle_navigation_command(
         }
         Command::PageSelectNextOrScrollDown => {
             page.select(std::cmp::min(
-                id + state.configs.app_config.page_size_in_rows,
+                id + configs.app_config.page_size_in_rows,
                 len - 1,
             ));
             true
         }
         Command::PageSelectPreviousOrScrollUp => {
-            page.select(id.saturating_sub(state.configs.app_config.page_size_in_rows));
+            page.select(id.saturating_sub(configs.app_config.page_size_in_rows));
             true
         }
         Command::SelectLastOrScrollToBottom => {

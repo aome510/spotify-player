@@ -162,7 +162,8 @@ fn execute_player_event_hook_command(
 /// Create a new streaming connection
 pub async fn new_connection(client: Client, state: SharedState) -> Spirc {
     let session = client.session().await;
-    let device = &state.configs.app_config.device;
+    let configs = config::get_config();
+    let device = &configs.app_config.device;
 
     // `librespot` volume is a u16 number ranging from 0 to 65535,
     // while a percentage volume value (from 0 to 100) is used for the device configuration.
@@ -236,7 +237,7 @@ pub async fn new_connection(client: Client, state: SharedState) -> Spirc {
                         client.update_playback(&state);
 
                         // execute a player event hook command
-                        if let Some(ref cmd) = state.configs.app_config.player_event_hook_command {
+                        if let Some(ref cmd) = configs.app_config.player_event_hook_command {
                             if let Err(err) = execute_player_event_hook_command(cmd, event) {
                                 tracing::warn!(
                                     "Failed to execute player event hook command: {err:#}"
