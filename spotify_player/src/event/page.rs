@@ -316,6 +316,10 @@ pub fn handle_navigation_command(
     id: usize,
     len: usize,
 ) -> bool {
+    if len == 0 {
+        return false;
+    }
+
     match command {
         Command::SelectNextOrScrollDown => {
             if id + 1 < len {
@@ -341,9 +345,7 @@ pub fn handle_navigation_command(
             true
         }
         Command::SelectLastOrScrollToBottom => {
-            if len > 0 {
-                page.select(len - 1);
-            }
+            page.select(len - 1);
             true
         }
         Command::SelectFirstOrScrollToTop => {

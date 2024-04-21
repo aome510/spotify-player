@@ -402,6 +402,8 @@ impl From<rspotify_model::SimplifiedPlaylist> for Playlist {
 
 impl From<rspotify_model::FullPlaylist> for Playlist {
     fn from(playlist: rspotify_model::FullPlaylist) -> Self {
+        // remove HTML tags from the description
+        // TODO: may also need to do HTML escaping here
         let re = regex::Regex::new("(<.*?>|</.*?>)").expect("valid regex");
         let desc = playlist.description.unwrap_or_default();
         let desc = re.replace_all(&desc, "").to_string();
