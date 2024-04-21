@@ -10,7 +10,7 @@ mod popup;
 pub mod single_line_input;
 mod utils;
 
-/// run the application UI
+/// Run the application UI
 pub fn run(state: SharedState) -> Result<()> {
     let mut terminal = init_ui().context("failed to initialize the application's UI")?;
 
@@ -22,7 +22,7 @@ pub fn run(state: SharedState) -> Result<()> {
         {
             let mut ui = state.ui.lock();
             if !ui.is_running {
-                clean_up(terminal).context("failed to clean up the application's UI resources")?;
+                clean_up(terminal).context("clean up UI resources")?;
                 std::process::exit(0);
             }
 
@@ -67,7 +67,7 @@ fn init_ui() -> Result<Terminal> {
     Ok(terminal)
 }
 
-/// cleans up the resources before quitting the application
+/// Clean up UI resources before quitting the application
 fn clean_up(mut terminal: Terminal) -> Result<()> {
     crossterm::terminal::disable_raw_mode()?;
     crossterm::execute!(
@@ -79,7 +79,7 @@ fn clean_up(mut terminal: Terminal) -> Result<()> {
     Ok(())
 }
 
-/// renders the application
+/// Render the application
 fn render_application(frame: &mut Frame, state: &SharedState, ui: &mut UIStateGuard, rect: Rect) {
     // rendering order: shortcut help popup -> playback window -> other popups -> main layout
 
@@ -87,15 +87,14 @@ fn render_application(frame: &mut Frame, state: &SharedState, ui: &mut UIStateGu
 
     // render playback window before other popups to ensure no popup is rendered on top
     // of the playback window
-    let (playback_rect, rect) = playback::split_rect_for_playback_window(rect, state);
-    playback::render_playback_window(frame, state, ui, playback_rect);
+    let rect = playback::render_playback_window(frame, state, ui, rect);
 
     let (rect, is_active) = popup::render_popup(frame, state, ui, rect);
 
     render_main_layout(is_active, frame, state, ui, rect);
 }
 
-/// renders the application's main layout
+/// Render the application's main layout
 fn render_main_layout(
     is_active: bool,
     frame: &mut Frame,

@@ -4,7 +4,7 @@ const SHORTCUT_TABLE_N_COLUMNS: usize = 3;
 const SHORTCUT_TABLE_CONSTRAINS: [Constraint; SHORTCUT_TABLE_N_COLUMNS] =
     [Constraint::Ratio(1, 3); 3];
 
-/// renders a popup (if any) to handle a command or show additional information
+/// Render a popup (if any) to handle a command or show additional information
 /// depending on the current popup state.
 ///
 /// The function returns a rectangle area to render the main layout and
@@ -163,7 +163,7 @@ pub fn render_popup(
     }
 }
 
-/// a helper function to render a list popup
+/// A helper function to render a list popup
 fn render_list_popup(
     frame: &mut Frame,
     rect: Rect,
@@ -189,7 +189,7 @@ fn render_list_popup(
     chunks[0]
 }
 
-/// renders a shortcut help popup to show the available shortcuts based on user's inputs
+/// Render a shortcut help popup to show the available shortcuts based on user's inputs
 pub fn render_shortcut_help_popup(
     frame: &mut Frame,
     state: &SharedState,

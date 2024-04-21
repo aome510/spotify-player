@@ -1,6 +1,6 @@
 use super::{utils::construct_and_render_block, *};
 
-/// Renders a playback window showing information about the current playback, which includes
+/// Render a playback window showing information about the current playback, which includes
 /// - track title, artists, album
 /// - playback metadata (playing state, repeat state, shuffle state, volume, device, etc)
 /// - cover image (if `image` feature is enabled)
@@ -10,7 +10,8 @@ pub fn render_playback_window(
     state: &SharedState,
     ui: &mut UIStateGuard,
     rect: Rect,
-) {
+) -> Rect {
+    let (rect, other_rect) = split_rect_for_playback_window(rect, state);
     let rect = construct_and_render_block("Playback", &ui.theme, state, Borders::ALL, frame, rect);
 
     let player = state.player.read();
@@ -101,7 +102,9 @@ pub fn render_playback_window(
             };
 
             if let Some(ref playback) = player.buffered_playback {
-                render_playback_text(frame, state, ui, metadata_rect, track, playback);
+                let playback_text = construct_playback_text(state, ui, track, playback);
+                let playback_desc = Paragraph::new(playback_text).wrap(Wrap { trim: false });
+                frame.render_widget(playback_desc, metadata_rect);
             }
 
             let progress = std::cmp::min(
@@ -109,8 +112,6 @@ pub fn render_playback_window(
                 track.duration,
             );
             render_playback_progress_bar(frame, state, ui, progress, track, progress_bar_rect);
-        } else {
-            tracing::warn!("Got a non-track playable item: {:?}", playback.item);
         }
     } else {
         // Previously rendered image can result in a weird rendering text,
@@ -140,16 +141,16 @@ pub fn render_playback_window(
             rect,
         );
     };
+
+    other_rect
 }
 
-fn render_playback_text(
-    frame: &mut Frame,
+fn construct_playback_text(
     state: &SharedState,
     ui: &UIStateGuard,
-    rect: Rect,
     track: &rspotify_model::FullTrack,
     playback: &PlaybackMetadata,
-) {
+) -> Text<'static> {
     // Construct a "styled" text (`playback_text`) from playback's data
     // based on a user-configurable format string (app_config.playback_format)
     let format_str = &state.configs.app_config.playback_format;
@@ -227,9 +228,7 @@ fn render_playback_text(
         playback_text.lines.push(Line::from(spans));
     }
 
-    let playback_desc = Paragraph::new(playback_text).wrap(Wrap { trim: false });
-
-    frame.render_widget(playback_desc, rect);
+    playback_text
 }
 
 fn render_playback_progress_bar(
@@ -331,9 +330,9 @@ fn render_playback_cover_image(state: &SharedState, ui: &mut UIStateGuard) -> Re
     Ok(())
 }
 
-/// Splits the application rectangle into two rectangles, one for the playback window
-/// and another for the main application's layout (popup, page, etc).
-pub fn split_rect_for_playback_window(rect: Rect, state: &SharedState) -> (Rect, Rect) {
+/// Split the given area into two, the first one for the playback window
+/// and the second one for the main application's layout (popup, page, etc).
+fn split_rect_for_playback_window(rect: Rect, state: &SharedState) -> (Rect, Rect) {
     let playback_width = state.configs.app_config.playback_window_width;
     // the playback window's width should not be smaller than the cover image's width + 1
     #[cfg(feature = "image")]

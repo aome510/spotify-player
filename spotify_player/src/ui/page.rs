@@ -440,16 +440,16 @@ pub fn render_browse_page(
             }
             BrowsePageUIState::CategoryPlaylistList { category, .. } => {
                 let title = format!("{} Playlists", category.name);
+                rect =
+                    construct_and_render_block(&title, &ui.theme, state, Borders::ALL, frame, rect);
+
                 let playlists = match data.browse.category_playlists.get(&category.id) {
                     Some(playlists) => playlists,
                     None => {
-                        utils::render_loading_window(state, &ui.theme, frame, rect, &title);
+                        frame.render_widget(Paragraph::new("Loading..."), rect);
                         return;
                     }
                 };
-
-                rect =
-                    construct_and_render_block(&title, &ui.theme, state, Borders::ALL, frame, rect);
 
                 utils::construct_list_widget(
                     &ui.theme,
@@ -716,7 +716,7 @@ fn render_artist_context_page_windows(
         _ => return,
     };
 
-    // 2. Construct the app's layout
+    // 2. Construct the page's layout
     // top tracks window
     let chunks = Layout::vertical([Constraint::Length(12), Constraint::Fill(0)]).split(rect);
     let top_tracks_rect = chunks[0];
@@ -883,8 +883,9 @@ fn render_track_table(
     .highlight_style(ui.theme.selection(is_active));
 
     if let PageState::Context {
-                state: Some(state), ..
-            } = ui.current_page_mut() {
+        state: Some(state), ..
+    } = ui.current_page_mut()
+    {
         let track_table_state = match state {
             ContextPageUIState::Artist {
                 top_track_table, ..
