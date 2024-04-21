@@ -10,7 +10,7 @@ pub use model::*;
 pub use player::*;
 pub use ui::*;
 
-use crate::config;
+use crate::config::{self, get_config};
 
 pub use parking_lot::{Mutex, RwLock};
 
@@ -19,7 +19,6 @@ pub type SharedState = std::sync::Arc<State>;
 
 /// Application's state
 pub struct State {
-    pub configs: config::Configs,
     pub ui: Mutex<UIState>,
     pub player: RwLock<PlayerState>,
     pub data: RwLock<AppData>,
@@ -27,8 +26,9 @@ pub struct State {
 }
 
 impl State {
-    pub fn new(configs: config::Configs, is_daemon: bool) -> Self {
+    pub fn new(is_daemon: bool) -> Self {
         let mut ui = UIState::default();
+        let configs = get_config();
 
         if let Some(theme) = configs.theme_config.find_theme(&configs.app_config.theme) {
             // update the UI's theme based on the `theme` config option
@@ -38,7 +38,6 @@ impl State {
         let app_data = AppData::new(&configs.cache_folder);
 
         Self {
-            configs,
             ui: Mutex::new(ui),
             player: RwLock::new(PlayerState::default()),
             data: RwLock::new(app_data),
@@ -48,8 +47,9 @@ impl State {
 
     #[cfg(feature = "streaming")]
     pub fn is_streaming_enabled(&self) -> bool {
-        self.configs.app_config.enable_streaming == config::StreamingType::Always
-            || (self.configs.app_config.enable_streaming == config::StreamingType::DaemonOnly
+        let configs = config::get_config();
+        configs.app_config.enable_streaming == config::StreamingType::Always
+            || (configs.app_config.enable_streaming == config::StreamingType::DaemonOnly
                 && self.is_daemon)
     }
 }

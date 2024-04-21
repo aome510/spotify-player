@@ -14,8 +14,9 @@ mod utils;
 pub fn run(state: SharedState) -> Result<()> {
     let mut terminal = init_ui().context("failed to initialize the application's UI")?;
 
-    let ui_refresh_duration =
-        std::time::Duration::from_millis(state.configs.app_config.app_refresh_duration_in_ms);
+    let ui_refresh_duration = std::time::Duration::from_millis(
+        config::get_config().app_config.app_refresh_duration_in_ms,
+    );
     let mut last_terminal_size = None;
 
     loop {

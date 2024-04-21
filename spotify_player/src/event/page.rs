@@ -15,8 +15,7 @@ pub fn handle_key_sequence_for_page(
         return handle_key_sequence_for_search_page(key_sequence, client_pub, state, ui);
     }
 
-    let command = match state
-        .configs
+    let command = match config::get_config()
         .keymap_config
         .find_command_from_key_sequence(key_sequence)
     {
@@ -115,8 +114,7 @@ fn handle_key_sequence_for_search_page(
         }
     }
 
-    let command = match state
-        .configs
+    let command = match config::get_config()
         .keymap_config
         .find_command_from_key_sequence(key_sequence)
     {
@@ -320,6 +318,7 @@ pub fn handle_navigation_command(
         return false;
     }
 
+    let configs = config::get_config();
     match command {
         Command::SelectNextOrScrollDown => {
             if id + 1 < len {
@@ -335,13 +334,13 @@ pub fn handle_navigation_command(
         }
         Command::PageSelectNextOrScrollDown => {
             page.select(std::cmp::min(
-                id + state.configs.app_config.page_size_in_rows,
+                id + configs.app_config.page_size_in_rows,
                 len - 1,
             ));
             true
         }
         Command::PageSelectPreviousOrScrollUp => {
-            page.select(id.saturating_sub(state.configs.app_config.page_size_in_rows));
+            page.select(id.saturating_sub(configs.app_config.page_size_in_rows));
             true
         }
         Command::SelectLastOrScrollToBottom => {

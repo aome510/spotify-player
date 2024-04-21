@@ -234,7 +234,7 @@ fn handle_command_for_track_table_window(
             client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
                 base_playback.uri_offset(
                     tracks[id].id.uri(),
-                    state.configs.app_config.tracks_playback_limit,
+                    config::get_config().app_config.tracks_playback_limit,
                 ),
                 None,
             )))?;

@@ -1,6 +1,7 @@
 use std::ops::Deref;
 use std::{borrow::Cow, collections::HashMap, sync::Arc};
 
+use crate::config;
 use crate::{auth::AuthConfig, state::*};
 
 use anyhow::Context as _;
@@ -275,7 +276,7 @@ impl Client {
                 let playlists = self.current_user_playlists().await?;
                 store_data_into_file_cache(
                     FileCacheKey::Playlists,
-                    &state.configs.cache_folder,
+                    &config::get_config().cache_folder,
                     &playlists,
                 )
                 .context("store user's playlists into the cache folder")?;
@@ -285,7 +286,7 @@ impl Client {
                 let artists = self.current_user_followed_artists().await?;
                 store_data_into_file_cache(
                     FileCacheKey::FollowedArtists,
-                    &state.configs.cache_folder,
+                    &config::get_config().cache_folder,
                     &artists,
                 )
                 .context("store user's followed artists into the cache folder")?;
@@ -295,7 +296,7 @@ impl Client {
                 let albums = self.current_user_saved_albums().await?;
                 store_data_into_file_cache(
                     FileCacheKey::SavedAlbums,
-                    &state.configs.cache_folder,
+                    &config::get_config().cache_folder,
                     &albums,
                 )
                 .context("store user's saved albums into the cache folder")?;
@@ -323,7 +324,7 @@ impl Client {
                     .collect::<HashMap<_, _>>();
                 store_data_into_file_cache(
                     FileCacheKey::SavedTracks,
-                    &state.configs.cache_folder,
+                    &config::get_config().cache_folder,
                     &tracks_hm,
                 )
                 .context("store user's saved tracks into the cache folder")?;
@@ -490,7 +491,7 @@ impl Client {
         for _ in 0..10 {
             tokio::time::sleep(delay).await;
 
-            let id = match self.find_available_device(state).await {
+            let id = match self.find_available_device().await {
                 Ok(Some(id)) => Some(Cow::Owned(id)),
                 Ok(None) => None,
                 Err(err) => {
@@ -555,7 +556,7 @@ impl Client {
     }
 
     /// Find an available device. If found, return the device's ID.
-    async fn find_available_device(&self, state: &SharedState) -> Result<Option<String>> {
+    async fn find_available_device(&self) -> Result<Option<String>> {
         let devices = self.device().await?.into_iter().collect::<Vec<_>>();
         if devices.is_empty() {
             tracing::warn!("No device found. Please make sure you already setup Spotify Connect \
@@ -570,6 +571,8 @@ impl Client {
             .filter_map(|d| d.id.map(|id| (d.name, id)))
             .collect::<Vec<_>>();
 
+        let configs = config::get_config();
+
         // Manually append the integrated device to the device list if `streaming` feature is enabled.
         // The integrated device may not show up in the device list returned by the Spotify API because
         // 1. The device is just initialized and hasn't been registered in Spotify server.
@@ -581,7 +584,7 @@ impl Client {
         {
             let session = self.session().await;
             devices.push((
-                state.configs.app_config.device.name.clone(),
+                configs.app_config.device.name.clone(),
                 session.device_id().to_string(),
             ));
         }
@@ -594,7 +597,7 @@ impl Client {
         // otherwise, use the first available device.
         let id = devices
             .iter()
-            .position(|d| d.0 == state.configs.app_config.default_device)
+            .position(|d| d.0 == configs.app_config.default_device)
             .unwrap_or_default();
 
         Ok(Some(devices.remove(id).1))
@@ -1339,6 +1342,8 @@ impl Client {
     // Handle new track event
     #[cfg(any(feature = "image", feature = "notify"))]
     async fn handle_new_track_event(&self, state: &SharedState) -> Result<()> {
+        let configs = config::get_config();
+
         let track = match state.player.read().current_playing_track() {
             None => return Ok(()),
             Some(track) => track.clone(),
@@ -1355,16 +1360,12 @@ impl Client {
             crate::utils::map_join(&track.album.artists, |a| &a.name, ", ")
         ))
         .replace('/', ""); // remove invalid characters from the file's name
-        let path = state.configs.cache_folder.join("image").join(path);
+        let path = configs.cache_folder.join("image").join(path);
 
         #[cfg(feature = "image")]
         if !state.data.read().caches.images.contains_key(url) {
             let bytes = self
-                .retrieve_image(
-                    url,
-                    &path,
-                    state.configs.app_config.enable_cover_image_cache,
-                )
+                .retrieve_image(url, &path, configs.app_config.enable_cover_image_cache)
                 .await?;
             let image =
                 image::load_from_memory(&bytes).context("Failed to load image from memory")?;
@@ -1378,14 +1379,13 @@ impl Client {
 
         // notify user about the playback's change if any
         #[cfg(feature = "notify")]
-        if state.configs.app_config.enable_notify {
+        if configs.app_config.enable_notify {
             // for Linux, ensure that the cached cover image is available to render the notification's thumbnail
             #[cfg(all(unix, not(target_os = "macos")))]
             self.retrieve_image(url, &path, true).await?;
 
-            if !state.configs.app_config.notify_streaming_only || self.stream_conn.lock().is_some()
-            {
-                Self::notify_new_track(track, &path, state)?;
+            if !configs.app_config.notify_streaming_only || self.stream_conn.lock().is_some() {
+                Self::notify_new_track(track, &path)?;
             }
             #[cfg(not(feature = "streaming"))]
             Self::notify_new_track(track, &path, state)?;
@@ -1428,7 +1428,6 @@ impl Client {
     fn notify_new_track(
         track: rspotify_model::FullTrack,
         cover_img_path: &std::path::Path,
-        state: &SharedState,
     ) -> Result<()> {
         let mut n = notify_rust::Notification::new();
 
@@ -1464,17 +1463,19 @@ impl Client {
             text
         };
 
+        let configs = config::get_config();
+
         n.appname("spotify_player")
             .icon(cover_img_path.to_str().unwrap())
             .summary(&get_text_from_format_str(
-                &state.configs.app_config.notify_format.summary,
+                &configs.app_config.notify_format.summary,
             ))
             .body(&get_text_from_format_str(
-                &state.configs.app_config.notify_format.body,
+                &configs.app_config.notify_format.body,
             ));
-        if state.configs.app_config.notify_timeout_in_secs > 0 {
+        if configs.app_config.notify_timeout_in_secs > 0 {
             n.timeout(std::time::Duration::from_secs(
-                state.configs.app_config.notify_timeout_in_secs,
+                configs.app_config.notify_timeout_in_secs,
             ));
         }
         n.show()?;

@@ -552,8 +552,9 @@ pub fn render_commands_help_page(
     rect: Rect,
 ) {
     // 1. Get data
+    let configs = config::get_config();
     let mut map = BTreeMap::new();
-    let keymaps = ui.search_filtered_items(&state.configs.keymap_config.keymaps);
+    let keymaps = ui.search_filtered_items(&configs.keymap_config.keymaps);
     keymaps
         .into_iter()
         .filter(|km| km.include_in_help_screen())
@@ -824,6 +825,7 @@ fn render_track_table(
     ui: &mut UIStateGuard,
     data: &DataReadGuard,
 ) {
+    let configs = config::get_config();
     // get the current playing track's URI to decorate such track (if exists) in the track table
     let mut playing_track_uri = "".to_string();
     let mut playing_id = "";
@@ -832,9 +834,9 @@ fn render_track_table(
             playing_track_uri = track.id.as_ref().map(|id| id.uri()).unwrap_or_default();
 
             playing_id = if playback.is_playing {
-                &state.configs.app_config.play_icon
+                &configs.app_config.play_icon
             } else {
-                &state.configs.app_config.pause_icon
+                &configs.app_config.pause_icon
             };
         }
     }
@@ -851,7 +853,7 @@ fn render_track_table(
             };
             Row::new(vec![
                 Cell::from(if data.user_data.is_liked_track(t) {
-                    &state.configs.app_config.liked_icon
+                    &configs.app_config.liked_icon
                 } else {
                     ""
                 }),
@@ -872,7 +874,7 @@ fn render_track_table(
     let track_table = Table::new(
         rows,
         [
-            Constraint::Length(state.configs.app_config.liked_icon.chars().count() as u16),
+            Constraint::Length(configs.app_config.liked_icon.chars().count() as u16),
             Constraint::Length(4),
             Constraint::Fill(4),
             Constraint::Fill(3),

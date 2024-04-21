@@ -204,8 +204,7 @@ pub fn render_shortcut_help_popup(
         if input.keys.is_empty() {
             vec![]
         } else {
-            state
-                .configs
+            config::get_config()
                 .keymap_config
                 .find_matched_prefix_keymaps(input)
                 .into_iter()

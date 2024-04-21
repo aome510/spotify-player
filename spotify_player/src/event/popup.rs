@@ -33,8 +33,7 @@ pub fn handle_key_sequence_for_popup(
         _ => {}
     }
 
-    let command = match state
-        .configs
+    let command = match config::get_config()
         .keymap_config
         .find_command_from_key_sequence(key_sequence)
     {
@@ -417,8 +416,7 @@ fn handle_key_sequence_for_action_list_popup(
     state: &SharedState,
     ui: &mut UIStateGuard,
 ) -> Result<bool> {
-    let command = match state
-        .configs
+    let command = match config::get_config()
         .keymap_config
         .find_command_from_key_sequence(key_sequence)
     {

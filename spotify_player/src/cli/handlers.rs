@@ -1,6 +1,7 @@
 use crate::{
     auth::{new_session, new_session_with_new_creds, AuthConfig},
     client,
+    config::get_config,
 };
 
 use super::*;
@@ -175,12 +176,9 @@ fn try_connect_to_client(socket: &UdpSocket, configs: &config::Configs) -> Resul
     Ok(())
 }
 
-pub fn handle_cli_subcommand(
-    cmd: &str,
-    args: &ArgMatches,
-    configs: &config::Configs,
-) -> Result<()> {
+pub fn handle_cli_subcommand(cmd: &str, args: &ArgMatches) -> Result<()> {
     let socket = UdpSocket::bind("127.0.0.1:0")?;
+    let configs = get_config();
 
     // handle commands that don't require a client separately
     match cmd {
