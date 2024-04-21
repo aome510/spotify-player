@@ -20,7 +20,7 @@ pub use handlers::*;
 pub use request::*;
 use serde::Deserialize;
 
-const SPOTIFY_API_ENDPOINT: &str = "https://api.com/v1";
+const SPOTIFY_API_ENDPOINT: &str = "https://api.spotify.com/v1";
 
 /// The application's Spotify client
 #[derive(Clone)]
