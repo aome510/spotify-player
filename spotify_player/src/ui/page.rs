@@ -1,10 +1,21 @@
-/// UI codes to render a page.
-/// A `render_*_page` function should follow (not strictly) the below steps
-/// 1. get the data from the application's states
-/// 2. construct the page's layout
-/// 3. construct the page's widgets
-/// 4. render the widgets
+use std::collections::{btree_map::Entry, BTreeMap};
+
+use crate::utils::format_duration;
+
 use super::{utils::construct_and_render_block, *};
+
+const COMMAND_TABLE_CONSTRAINTS: [Constraint; 3] = [
+    Constraint::Percentage(25),
+    Constraint::Percentage(25),
+    Constraint::Percentage(50),
+];
+
+// UI codes to render a page.
+// A `render_*_page` function should follow (not strictly) the below steps
+// 1. get data from the application's states
+// 2. construct the page's layout
+// 3. construct the page's widgets
+// 4. render the widgets
 
 pub fn render_search_page(
     is_active: bool,
@@ -12,8 +23,8 @@ pub fn render_search_page(
     state: &SharedState,
     ui: &mut UIStateGuard,
     rect: Rect,
-) -> Result<()> {
-    // 1. Get the data
+) {
+    // 1. Get data
     let data = state.data.read();
 
     let (focus_state, current_query, line_input) = match ui.current_page() {
@@ -22,7 +33,7 @@ pub fn render_search_page(
             current_query,
             line_input,
         } => (state.focus, current_query, line_input),
-        s => anyhow::bail!("expect a search page state, found {s:?}"),
+        _ => return,
     };
 
     let search_results = data.caches.search.get(current_query);
@@ -150,7 +161,7 @@ pub fn render_search_page(
     // Need mutable access to the list/table states stored inside the page state for rendering.
     let page_state = match ui.current_page_mut() {
         PageState::Search { state, .. } => state,
-        s => anyhow::bail!("expect a search page state, found {s:?}"),
+        _ => return,
     };
     utils::render_list_window(
         frame,
@@ -180,8 +191,6 @@ pub fn render_search_page(
         n_playlists,
         &mut page_state.playlist_list,
     );
-
-    Ok(())
 }
 
 pub fn render_context_page(
@@ -190,15 +199,15 @@ pub fn render_context_page(
     state: &SharedState,
     ui: &mut UIStateGuard,
     rect: Rect,
-) -> Result<()> {
-    // 1. Get the data
+) {
+    // 1. Get data
     let (id, context_page_type) = match ui.current_page() {
         PageState::Context {
             id,
             context_page_type,
             ..
         } => (id, context_page_type),
-        s => anyhow::bail!("expect a context page state, found {s:?}"),
+        _ => return,
     };
 
     // 2. Construct the page's layout
@@ -218,7 +227,7 @@ pub fn render_context_page(
                 Paragraph::new("Cannot determine the current page's context"),
                 rect,
             );
-            return Ok(());
+            return;
         }
         Some(id) => id,
     };
@@ -248,7 +257,7 @@ pub fn render_context_page(
                         &data,
                         chunks[1],
                         (top_tracks, albums, related_artists),
-                    )?;
+                    );
                 }
                 Context::Playlist { tracks, .. } => {
                     render_track_table(
@@ -259,7 +268,7 @@ pub fn render_context_page(
                         ui.search_filtered_items(tracks),
                         ui,
                         &data,
-                    )?;
+                    );
                 }
                 Context::Album { tracks, .. } => {
                     render_track_table(
@@ -270,7 +279,7 @@ pub fn render_context_page(
                         ui.search_filtered_items(tracks),
                         ui,
                         &data,
-                    )?;
+                    );
                 }
                 Context::Tracks { tracks, .. } => {
                     render_track_table(
@@ -281,7 +290,7 @@ pub fn render_context_page(
                         ui.search_filtered_items(tracks),
                         ui,
                         &data,
-                    )?;
+                    );
                 }
             }
         }
@@ -289,8 +298,6 @@ pub fn render_context_page(
             frame.render_widget(Paragraph::new("Loading..."), rect);
         }
     }
-
-    Ok(())
 }
 
 pub fn render_library_page(
@@ -299,14 +306,14 @@ pub fn render_library_page(
     state: &SharedState,
     ui: &mut UIStateGuard,
     rect: Rect,
-) -> Result<()> {
-    // 1. Get the data
+) {
+    // 1. Get data
     let curr_context_uri = state.player.read().playing_context_id().map(|c| c.uri());
     let data = state.data.read();
 
     let focus_state = match ui.current_page() {
         PageState::Library { state } => state.focus,
-        s => anyhow::bail!("expect a library page state, found {s:?}"),
+        _ => return,
     };
 
     // 2. Construct the page's layout
@@ -373,7 +380,7 @@ pub fn render_library_page(
     // Will need mutable access to the list/table states stored inside the page state for rendering.
     let page_state = match ui.current_page_mut() {
         PageState::Library { state } => state,
-        s => anyhow::bail!("expect a library page state, found {s:?}"),
+        _ => return,
     };
 
     utils::render_list_window(
@@ -397,8 +404,6 @@ pub fn render_library_page(
         n_artists,
         &mut page_state.followed_artist_list,
     );
-
-    Ok(())
 }
 
 pub fn render_browse_page(
@@ -407,8 +412,8 @@ pub fn render_browse_page(
     state: &SharedState,
     ui: &mut UIStateGuard,
     mut rect: Rect,
-) -> Result<()> {
-    // 1. Get the data
+) {
+    // 1. Get data
     let data = state.data.read();
 
     // 2+3. Construct the page's layout and widgets
@@ -435,16 +440,16 @@ pub fn render_browse_page(
             }
             BrowsePageUIState::CategoryPlaylistList { category, .. } => {
                 let title = format!("{} Playlists", category.name);
+                rect =
+                    construct_and_render_block(&title, &ui.theme, state, Borders::ALL, frame, rect);
+
                 let playlists = match data.browse.category_playlists.get(&category.id) {
                     Some(playlists) => playlists,
                     None => {
-                        utils::render_loading_window(state, &ui.theme, frame, rect, &title);
-                        return Ok(());
+                        frame.render_widget(Paragraph::new("Loading..."), rect);
+                        return;
                     }
                 };
-
-                rect =
-                    construct_and_render_block(&title, &ui.theme, state, Borders::ALL, frame, rect);
 
                 utils::construct_list_widget(
                     &ui.theme,
@@ -456,18 +461,15 @@ pub fn render_browse_page(
                 )
             }
         },
-        s => anyhow::bail!("expect a browse page state, found {s:?}"),
+        _ => return,
     };
 
-    // 4. Render the page's widgets
+    // 4. Render the page's widget
     let list_state = match ui.current_page_mut().focus_window_state_mut() {
         Some(MutableWindowState::List(list_state)) => list_state,
-        _ => anyhow::bail!("expect a list for the focused window"),
+        _ => return,
     };
-
     utils::render_list_window(frame, list, rect, len, list_state);
-
-    Ok(())
 }
 
 #[cfg(feature = "lyric-finder")]
@@ -477,32 +479,32 @@ pub fn render_lyric_page(
     state: &SharedState,
     ui: &mut UIStateGuard,
     rect: Rect,
-) -> Result<()> {
-    // 1. Get the data
+) {
+    // 1. Get data
     let data = state.data.read();
 
-    // 2. Construct the app's layout
+    // 2. Construct the page's layout
     let rect = construct_and_render_block("Lyric", &ui.theme, state, Borders::ALL, frame, rect);
     let chunks = Layout::vertical([Constraint::Length(1), Constraint::Fill(0)]).split(rect);
 
-    // 3. Construct the app's widgets
+    // 3. Construct the page's widgets
     let (track, artists, scroll_offset) = match ui.current_page_mut() {
         PageState::Lyric {
             track,
             artists,
             scroll_offset,
         } => (track, artists, scroll_offset),
-        s => anyhow::bail!("expect a lyric page state, found {s:?}"),
+        _ => return,
     };
 
     let (desc, lyric) = match data.caches.lyrics.get(&format!("{track} {artists}")) {
         None => {
             frame.render_widget(Paragraph::new("Loading..."), rect);
-            return Ok(());
+            return;
         }
         Some(lyric_finder::LyricResult::None) => {
             frame.render_widget(Paragraph::new("Lyric not found"), rect);
-            return Ok(());
+            return;
         }
         Some(lyric_finder::LyricResult::Some {
             track,
@@ -518,7 +520,7 @@ pub fn render_lyric_page(
     }
     let scroll_offset = *scroll_offset;
 
-    // 4. Render the app's widgets
+    // 4. Render the page's widgets
     // render lyric page description text
     frame.render_widget(Paragraph::new(desc).style(ui.theme.page_desc()), chunks[0]);
 
@@ -527,11 +529,166 @@ pub fn render_lyric_page(
         Paragraph::new(lyric).scroll((scroll_offset as u16, 0)),
         chunks[1],
     );
-
-    Ok(())
 }
 
-/// Renders windows for an artist context page, which includes
+pub fn render_commands_help_page(
+    frame: &mut Frame,
+    state: &SharedState,
+    ui: &mut UIStateGuard,
+    rect: Rect,
+) {
+    // 1. Get data
+    let mut map = BTreeMap::new();
+    state
+        .configs
+        .keymap_config
+        .keymaps
+        .iter()
+        .filter(|km| km.include_in_help_screen())
+        .for_each(|km| {
+            let v = map.entry(km.command);
+            match v {
+                Entry::Vacant(v) => {
+                    v.insert(format!("\"{}\"", km.key_sequence));
+                }
+                Entry::Occupied(mut v) => {
+                    let desc = format!("{}, \"{}\"", v.get(), km.key_sequence);
+                    *v.get_mut() = desc;
+                }
+            }
+        });
+
+    let scroll_offset = match ui.current_page_mut() {
+        PageState::CommandHelp {
+            ref mut scroll_offset,
+        } => {
+            if *scroll_offset >= map.len() {
+                *scroll_offset = map.len() - 1
+            }
+            *scroll_offset
+        }
+        _ => return,
+    };
+
+    // 2. Construct the page's layout
+    let rect = construct_and_render_block("Commands", &ui.theme, state, Borders::ALL, frame, rect);
+
+    // 3. Construct the page's widget
+    let help_table = Table::new(
+        map.into_iter()
+            .skip(scroll_offset)
+            .map(|(c, k)| {
+                Row::new(vec![
+                    Cell::from(format!("{c:?}")),
+                    Cell::from(format!("[{k}]")),
+                    Cell::from(c.desc()),
+                ])
+            })
+            .collect::<Vec<_>>(),
+        COMMAND_TABLE_CONSTRAINTS,
+    )
+    .header(
+        Row::new(vec![
+            Cell::from("Command"),
+            Cell::from("Shortcuts"),
+            Cell::from("Description"),
+        ])
+        .style(ui.theme.table_header()),
+    );
+
+    // 4. Render the page's widget
+    frame.render_widget(help_table, rect);
+}
+
+pub fn render_queue_page(
+    frame: &mut Frame,
+    state: &SharedState,
+    ui: &mut UIStateGuard,
+    rect: Rect,
+) {
+    use rspotify::model::{FullEpisode, FullTrack, PlayableItem};
+    fn get_playable_name(item: &PlayableItem) -> String {
+        match item {
+            PlayableItem::Track(FullTrack { ref name, .. }) => name,
+            PlayableItem::Episode(FullEpisode { ref name, .. }) => name,
+        }
+        .to_string()
+    }
+    fn get_playable_artists(item: &PlayableItem) -> String {
+        match item {
+            PlayableItem::Track(FullTrack { ref artists, .. }) => artists
+                .iter()
+                .map(|a| a.name.as_str())
+                .collect::<Vec<_>>()
+                .join(", "),
+            PlayableItem::Episode(FullEpisode { .. }) => String::new(),
+        }
+    }
+    fn get_playable_duration(item: &PlayableItem) -> String {
+        match item {
+            PlayableItem::Track(FullTrack { ref duration, .. }) => format_duration(duration),
+            PlayableItem::Episode(FullEpisode { ref duration, .. }) => format_duration(duration),
+        }
+    }
+
+    // 1. Get data
+    let player = state.player.read();
+    let queue = match player.queue {
+        Some(ref q) => &q.queue,
+        None => return,
+    };
+    let scroll_offset = match ui.current_page_mut() {
+        PageState::Queue {
+            ref mut scroll_offset,
+        } => {
+            if !queue.is_empty() && *scroll_offset >= queue.len() {
+                *scroll_offset = queue.len() - 1
+            }
+            *scroll_offset
+        }
+        _ => return,
+    };
+
+    // 2. Construct the page's layout
+    let rect = construct_and_render_block("Queue", &ui.theme, state, Borders::ALL, frame, rect);
+
+    // 3. Construct the page's widget
+    let queue_table = Table::new(
+        queue
+            .iter()
+            .enumerate()
+            .skip(scroll_offset)
+            .map(|(i, x)| {
+                Row::new(vec![
+                    Cell::from(format!("{}", i + 1)),
+                    Cell::from(get_playable_name(x)),
+                    Cell::from(get_playable_artists(x)),
+                    Cell::from(get_playable_duration(x)),
+                ])
+            })
+            .collect::<Vec<_>>(),
+        [
+            Constraint::Percentage(5),
+            Constraint::Percentage(40),
+            Constraint::Percentage(35),
+            Constraint::Percentage(20),
+        ],
+    )
+    .header(
+        Row::new(vec![
+            Cell::from("#"),
+            Cell::from("Title"),
+            Cell::from("Artists"),
+            Cell::from("Duration"),
+        ])
+        .style(ui.theme.table_header()),
+    );
+
+    // 4. Render page's widget
+    frame.render_widget(queue_table, rect);
+}
+
+/// Render windows for an artist context page, which includes
 /// - A top track table
 /// - An album list
 /// - A related artist list
@@ -543,8 +700,8 @@ fn render_artist_context_page_windows(
     data: &DataReadGuard,
     rect: Rect,
     artist_data: (&[Track], &[Album], &[Artist]),
-) -> Result<()> {
-    // 1. Get the data
+) {
+    // 1. Get data
     let (tracks, albums, artists) = (
         ui.search_filtered_items(artist_data.0),
         ui.search_filtered_items(artist_data.1),
@@ -556,10 +713,10 @@ fn render_artist_context_page_windows(
             state: Some(ContextPageUIState::Artist { focus, .. }),
             ..
         } => *focus,
-        s => anyhow::bail!("expect an artist context page state, found {s:?}"),
+        _ => return,
     };
 
-    // 2. Construct the app's layout
+    // 2. Construct the page's layout
     // top tracks window
     let chunks = Layout::vertical([Constraint::Length(12), Constraint::Fill(0)]).split(rect);
     let top_tracks_rect = chunks[0];
@@ -583,7 +740,7 @@ fn render_artist_context_page_windows(
         chunks[1],
     );
 
-    // 3. Construct the widgets
+    // 3. Construct the page's widgets
     // album list widget
     let (album_list, n_albums) = {
         let album_items = albums
@@ -612,7 +769,7 @@ fn render_artist_context_page_windows(
         )
     };
 
-    // 4. Render the widgets
+    // 4. Render the page's widgets
     render_track_table(
         frame,
         top_tracks_rect,
@@ -621,7 +778,7 @@ fn render_artist_context_page_windows(
         tracks,
         ui,
         data,
-    )?;
+    );
 
     let (album_list_state, artist_list_state) = match ui.current_page_mut() {
         PageState::Context {
@@ -633,7 +790,7 @@ fn render_artist_context_page_windows(
                 }),
             ..
         } => (album_list, related_artist_list),
-        s => anyhow::bail!("expect an artist context page state, found {s:?}"),
+        _ => return,
     };
 
     utils::render_list_window(frame, album_list, albums_rect, n_albums, album_list_state);
@@ -644,8 +801,6 @@ fn render_artist_context_page_windows(
         n_artists,
         artist_list_state,
     );
-
-    Ok(())
 }
 
 fn render_track_table(
@@ -656,7 +811,7 @@ fn render_track_table(
     tracks: Vec<&Track>,
     ui: &mut UIStateGuard,
     data: &DataReadGuard,
-) -> Result<()> {
+) {
     // get the current playing track's URI to decorate such track (if exists) in the track table
     let mut playing_track_uri = "".to_string();
     let mut playing_id = "";
@@ -727,22 +882,18 @@ fn render_track_table(
     .column_spacing(2)
     .highlight_style(ui.theme.selection(is_active));
 
-    match ui.current_page_mut() {
-        PageState::Context {
-            state: Some(state), ..
-        } => {
-            let track_table_state = match state {
-                ContextPageUIState::Artist {
-                    top_track_table, ..
-                } => top_track_table,
-                ContextPageUIState::Playlist { track_table } => track_table,
-                ContextPageUIState::Album { track_table } => track_table,
-                ContextPageUIState::Tracks { track_table } => track_table,
-            };
-            utils::render_table_window(frame, track_table, rect, n_tracks, track_table_state);
-        }
-        s => anyhow::bail!("reach unsupported page state {s:?} when rendering track table"),
+    if let PageState::Context {
+        state: Some(state), ..
+    } = ui.current_page_mut()
+    {
+        let track_table_state = match state {
+            ContextPageUIState::Artist {
+                top_track_table, ..
+            } => top_track_table,
+            ContextPageUIState::Playlist { track_table } => track_table,
+            ContextPageUIState::Album { track_table } => track_table,
+            ContextPageUIState::Tracks { track_table } => track_table,
+        };
+        utils::render_table_window(frame, track_table, rect, n_tracks, track_table_state);
     }
-
-    Ok(())
 }

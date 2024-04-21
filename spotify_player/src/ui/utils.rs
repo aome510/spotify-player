@@ -46,7 +46,7 @@ pub fn construct_and_render_block(
     inner_rect
 }
 
-/// constructs a generic list widget
+/// Construct a generic list widget
 pub fn construct_list_widget<'a>(
     theme: &config::Theme,
     items: Vec<(String, bool)>,
@@ -72,7 +72,7 @@ pub fn construct_list_widget<'a>(
     )
 }
 
-// adjust the `selected` position of a `ListState` if that position is out of index
+// Adjust the `selected` position of a `ListState` if that position is out of index
 fn adjust_list_state(state: &mut ListState, len: usize) {
     if let Some(p) = state.selected() {
         if p >= len {
@@ -92,7 +92,7 @@ pub fn render_list_window(
     frame.render_stateful_widget(widget, rect, state);
 }
 
-// adjust the `selected` position of a `TableState` if that position is out of index
+// Adjust the `selected` position of a `TableState` if that position is out of index
 fn adjust_table_state(state: &mut TableState, len: usize) {
     if let Some(p) = state.selected() {
         if p >= len {
@@ -110,15 +110,4 @@ pub fn render_table_window(
 ) {
     adjust_table_state(state, len);
     frame.render_stateful_widget(widget, rect, state);
-}
-
-pub fn render_loading_window(
-    state: &SharedState,
-    theme: &config::Theme,
-    frame: &mut Frame,
-    rect: Rect,
-    title: &str,
-) {
-    let rect = construct_and_render_block(title, theme, state, Borders::ALL, frame, rect);
-    frame.render_widget(Paragraph::new("Loading..."), rect);
 }

@@ -1,4 +1,4 @@
-use super::page::handle_navigation_commands_for_page;
+use super::page::handle_navigation_command;
 use super::*;
 use crate::{
     command::{
@@ -8,16 +8,16 @@ use crate::{
 };
 use rand::Rng;
 
-/// Handles a command for the currently focused context window
+/// Handle a command for the currently focused context window
 ///
 /// The function will need to determine the focused window then
-/// assign the handling job to such window's command handler
+/// assign the handling job to the window's command handler
 pub fn handle_command_for_focused_context_window(
     command: Command,
     client_pub: &flume::Sender<ClientRequest>,
+    ui: &mut UIStateGuard,
     state: &SharedState,
 ) -> Result<bool> {
-    let ui = state.ui.lock();
     let context_id = match ui.current_page() {
         PageState::Context { id, .. } => match id {
             None => return Ok(false),
@@ -40,7 +40,7 @@ pub fn handle_command_for_focused_context_window(
         // sort ordering commands
         if let Some(order) = order {
             let mut data = state.data.write();
-            if let Some(tracks) = data.get_tracks_by_id_mut(context_id) {
+            if let Some(tracks) = data.context_tracks(context_id) {
                 tracks.sort_by(|x, y| order.compare(x, y));
             }
             return Ok(true);
@@ -48,7 +48,7 @@ pub fn handle_command_for_focused_context_window(
         // reverse ordering command
         if command == Command::ReverseTrackOrder {
             let mut data = state.data.write();
-            if let Some(tracks) = data.get_tracks_by_id_mut(context_id) {
+            if let Some(tracks) = data.context_tracks(context_id) {
                 tracks.reverse();
             }
             return Ok(true);
@@ -63,7 +63,7 @@ pub fn handle_command_for_focused_context_window(
                 top_tracks,
                 albums,
                 related_artists,
-                artist,
+                ..
             } => {
                 let focus_state = match ui.current_page() {
                     PageState::Context {
@@ -89,29 +89,15 @@ pub fn handle_command_for_focused_context_window(
                         state,
                     ),
                     ArtistFocusState::TopTracks => handle_command_for_track_table_window(
-                        command,
-                        client_pub,
-                        ContextId::Tracks(TracksId::new(
-                            format!("artist-{}-top-tracks", artist.name),
-                            "Artist Top Tracks",
-                        )),
-                        Playback::URIs(
-                            top_tracks.iter().map(|t| t.id.clone_static()).collect(),
-                            None,
-                        ),
-                        ui.search_filtered_items(top_tracks),
-                        &data,
-                        ui,
-                        state,
+                        command, client_pub, None, top_tracks, &data, ui, state,
                     ),
                 }
             }
             Context::Album { tracks, .. } => handle_command_for_track_table_window(
                 command,
                 client_pub,
-                context_id.clone(),
-                Playback::Context(context_id.clone(), None),
-                ui.search_filtered_items(tracks),
+                Some(context_id.clone()),
+                tracks,
                 &data,
                 ui,
                 state,
@@ -119,59 +105,130 @@ pub fn handle_command_for_focused_context_window(
             Context::Playlist { tracks, .. } => handle_command_for_track_table_window(
                 command,
                 client_pub,
-                context_id.clone(),
-                Playback::Context(context_id.clone(), None),
-                ui.search_filtered_items(tracks),
+                Some(context_id.clone()),
+                tracks,
                 &data,
                 ui,
                 state,
             ),
             Context::Tracks { tracks, .. } => handle_command_for_track_table_window(
-                command,
-                client_pub,
-                context_id.clone(),
-                Playback::URIs(tracks.iter().map(|t| t.id.clone_static()).collect(), None),
-                ui.search_filtered_items(tracks),
-                &data,
-                ui,
-                state,
+                command, client_pub, None, tracks, &data, ui, state,
             ),
         },
         None => Ok(false),
     }
 }
 
-#[allow(clippy::too_many_arguments)]
-/// handles a command for the track table subwindow
-pub fn handle_command_for_track_table_window(
+/// Handle commands that may modify a playlist
+fn handle_playlist_modify_command(
+    id: usize,
+    playlist_id: &PlaylistId<'static>,
     command: Command,
     client_pub: &flume::Sender<ClientRequest>,
-    context_id: ContextId,
-    base_playback: Playback,
-    tracks: Vec<&Track>,
+    tracks: &[&Track],
     data: &DataReadGuard,
-    mut ui: UIStateGuard,
+    ui: &mut UIStateGuard,
+) -> Result<bool> {
+    match command {
+        Command::MovePlaylistItemUp => {
+            if id > 0 {
+                client_pub.send(ClientRequest::ReorderPlaylistItems {
+                    playlist_id: playlist_id.clone_static(),
+                    insert_index: id - 1,
+                    range_start: id,
+                    range_length: None,
+                    snapshot_id: None,
+                })?;
+                ui.current_page_mut().select(id - 1);
+            }
+            return Ok(true);
+        }
+        Command::MovePlaylistItemDown => {
+            if id + 1 < tracks.len() {
+                client_pub.send(ClientRequest::ReorderPlaylistItems {
+                    playlist_id: playlist_id.clone_static(),
+                    insert_index: id + 1,
+                    range_start: id,
+                    range_length: None,
+                    snapshot_id: None,
+                })?;
+                ui.current_page_mut().select(id + 1);
+            };
+            return Ok(true);
+        }
+        Command::ShowActionsOnSelectedItem => {
+            let mut actions = command::construct_track_actions(tracks[id], data);
+            actions.push(TrackAction::DeleteFromCurrentPlaylist);
+            ui.popup = Some(PopupState::ActionList(
+                ActionListItem::Track(tracks[id].clone(), actions),
+                new_list_state(),
+            ));
+            return Ok(true);
+        }
+        _ => {}
+    }
+
+    Ok(false)
+}
+
+fn handle_command_for_track_table_window(
+    command: Command,
+    client_pub: &flume::Sender<ClientRequest>,
+    context_id: Option<ContextId>,
+    tracks: &[Track],
+    data: &DataReadGuard,
+    ui: &mut UIStateGuard,
     state: &SharedState,
 ) -> Result<bool> {
     let id = ui.current_page_mut().selected().unwrap_or_default();
-    if id >= tracks.len() {
+    let filtered_tracks = ui.search_filtered_items(tracks);
+    if id >= filtered_tracks.len() {
         return Ok(false);
     }
 
-    handle_navigation_commands_for_page!(state, command, tracks.len(), ui.current_page_mut(), id);
-    match command {
-        Command::PlayRandom => {
-            let id = rand::thread_rng().gen_range(0..tracks.len());
-
-            client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
-                base_playback.uri_offset(
-                    tracks[id].id.uri(),
-                    state.configs.app_config.tracks_playback_limit,
-                ),
-                None,
-            )))?;
+    if let Some(ContextId::Playlist(ref playlist_id)) = context_id {
+        let modifiable = data
+            .user_data
+            .modifiable_playlists()
+            .iter()
+            .any(|p| p.id.eq(playlist_id));
+        if modifiable
+            && handle_playlist_modify_command(
+                id,
+                playlist_id,
+                command,
+                client_pub,
+                &filtered_tracks,
+                data,
+                ui,
+            )?
+        {
+            return Ok(true);
         }
-        Command::ChooseSelected => {
+    }
+
+    handle_navigation_command!(
+        state,
+        command,
+        filtered_tracks.len(),
+        ui.current_page_mut(),
+        id
+    );
+
+    match command {
+        Command::PlayRandom | Command::ChooseSelected => {
+            let id = if command == Command::PlayRandom {
+                rand::thread_rng().gen_range(0..tracks.len())
+            } else {
+                id
+            };
+
+            let base_playback = if let Some(context_id) = context_id {
+                Playback::Context(context_id, None)
+            } else {
+                Playback::URIs(tracks.iter().map(|t| t.id.clone_static()).collect(), None)
+            };
+
             client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
                 base_playback.uri_offset(
                     tracks[id].id.uri(),
@@ -181,69 +238,16 @@ pub fn handle_command_for_track_table_window(
             )))?;
         }
         Command::ShowActionsOnSelectedItem => {
-            let mut actions = command::construct_track_actions(tracks[id], data);
-            if let ContextId::Playlist(_) = context_id {
-                actions.push(TrackAction::DeleteFromCurrentPlaylist);
-            }
+            let actions = command::construct_track_actions(filtered_tracks[id], data);
             ui.popup = Some(PopupState::ActionList(
                 ActionListItem::Track(tracks[id].clone(), actions),
                 new_list_state(),
             ));
         }
         Command::AddSelectedItemToQueue => {
-            client_pub.send(ClientRequest::AddTrackToQueue(tracks[id].id.clone()))?;
-        }
-        Command::MovePlaylistItemUp => {
-            if let PageState::Context {
-                id: Some(ContextId::Playlist(playlist_id)),
-                ..
-            } = ui.current_page()
-            {
-                if id > 0
-                    && data.user_data.playlists.iter().any(|playlist| {
-                        &playlist.id == playlist_id
-                            && Some(&playlist.owner.1)
-                                == data.user_data.user.as_ref().map(|user| &user.id)
-                    })
-                {
-                    let insert_index = id - 1;
-                    client_pub.send(ClientRequest::ReorderPlaylistItems {
-                        playlist_id: playlist_id.clone_static(),
-                        insert_index,
-                        range_start: id,
-                        range_length: None,
-                        snapshot_id: None,
-                    })?;
-                    ui.current_page_mut().select(insert_index);
-                };
-            }
-            ui.popup = None;
-        }
-        Command::MovePlaylistItemDown => {
-            if let PageState::Context {
-                id: Some(ContextId::Playlist(playlist_id)),
-                ..
-            } = ui.current_page()
-            {
-                let insert_index = id + 1;
-                if insert_index < tracks.len()
-                    && data.user_data.playlists.iter().any(|playlist| {
-                        &playlist.id == playlist_id
-                            && Some(&playlist.owner.1)
-                                == data.user_data.user.as_ref().map(|user| &user.id)
-                    })
-                {
-                    client_pub.send(ClientRequest::ReorderPlaylistItems {
-                        playlist_id: playlist_id.clone_static(),
-                        insert_index,
-                        range_start: id,
-                        range_length: None,
-                        snapshot_id: None,
-                    })?;
-                    ui.current_page_mut().select(insert_index);
-                };
-            }
-            ui.popup = None;
+            client_pub.send(ClientRequest::AddTrackToQueue(
+                filtered_tracks[id].id.clone(),
+            ))?;
         }
         _ => return Ok(false),
     }
@@ -255,7 +259,7 @@ pub fn handle_command_for_track_list_window(
     client_pub: &flume::Sender<ClientRequest>,
     tracks: Vec<&Track>,
     data: &DataReadGuard,
-    mut ui: UIStateGuard,
+    ui: &mut UIStateGuard,
     state: &SharedState,
 ) -> Result<bool> {
     let id = ui.current_page_mut().selected().unwrap_or_default();
@@ -263,13 +267,13 @@ pub fn handle_command_for_track_list_window(
         return Ok(false);
     }
 
-    handle_navigation_commands_for_page!(state, command, tracks.len(), ui.current_page_mut(), id);
+    handle_navigation_command!(state, command, tracks.len(), ui.current_page_mut(), id);
     match command {
         Command::ChooseSelected => {
-            // for the track list, `ChooseSelected` on a track
+            // for a track list, `ChooseSelected` on a track
             // will start a `URIs` playback containing only that track.
-            // It's different for the track table, in which
-            // `ChooseSelected` on a track will start a `URIs` playback
+            // This is different from the track table, which handles
+            // `ChooseSelected` by starting a `URIs` playback
             // containing all the tracks in the table.
             client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
                 Playback::URIs(vec![tracks[id].id.clone()], None),
@@ -295,7 +299,7 @@ pub fn handle_command_for_artist_list_window(
     command: Command,
     artists: Vec<&Artist>,
     data: &DataReadGuard,
-    mut ui: UIStateGuard,
+    ui: &mut UIStateGuard,
     state: &SharedState,
 ) -> Result<bool> {
     let id = ui.current_page_mut().selected().unwrap_or_default();
@@ -303,7 +307,7 @@ pub fn handle_command_for_artist_list_window(
         return Ok(false);
     }
 
-    handle_navigation_commands_for_page!(state, command, artists.len(), ui.current_page_mut(), id);
+    handle_navigation_command!(state, command, artists.len(), ui.current_page_mut(), id);
     match command {
         Command::ChooseSelected => {
             let context_id = ContextId::Artist(artists[id].id.clone());
@@ -329,7 +333,7 @@ pub fn handle_command_for_album_list_window(
     command: Command,
     albums: Vec<&Album>,
     data: &DataReadGuard,
-    mut ui: UIStateGuard,
+    ui: &mut UIStateGuard,
     state: &SharedState,
 ) -> Result<bool> {
     let id = ui.current_page_mut().selected().unwrap_or_default();
@@ -337,7 +341,7 @@ pub fn handle_command_for_album_list_window(
         return Ok(false);
     }
 
-    handle_navigation_commands_for_page!(state, command, albums.len(), ui.current_page_mut(), id);
+    handle_navigation_command!(state, command, albums.len(), ui.current_page_mut(), id);
     match command {
         Command::ChooseSelected => {
             let context_id = ContextId::Album(albums[id].id.clone());
@@ -363,7 +367,7 @@ pub fn handle_command_for_playlist_list_window(
     command: Command,
     playlists: Vec<&Playlist>,
     data: &DataReadGuard,
-    mut ui: UIStateGuard,
+    ui: &mut UIStateGuard,
     state: &SharedState,
 ) -> Result<bool> {
     let id = ui.current_page_mut().selected().unwrap_or_default();
@@ -371,13 +375,7 @@ pub fn handle_command_for_playlist_list_window(
         return Ok(false);
     }
 
-    handle_navigation_commands_for_page!(
-        state,
-        command,
-        playlists.len(),
-        ui.current_page_mut(),
-        id
-    );
+    handle_navigation_command!(state, command, playlists.len(), ui.current_page_mut(), id);
     match command {
         Command::ChooseSelected => {
             let context_id = ContextId::Playlist(playlists[id].id.clone());

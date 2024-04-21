@@ -16,7 +16,7 @@ mod page;
 mod popup;
 mod window;
 
-/// starts a terminal event handler (key pressed, mouse clicked, etc)
+/// Start a terminal event handler (key pressed, mouse clicked, etc)
 pub fn start_event_handler(state: SharedState, client_pub: flume::Sender<ClientRequest>) {
     while let Ok(event) = crossterm::event::read() {
         let _enter = tracing::info_span!("terminal_event", event = ?event).entered();
@@ -40,7 +40,7 @@ pub fn start_event_handler(state: SharedState, client_pub: flume::Sender<ClientR
     }
 }
 
-// handles a terminal mouse event
+// Handle a terminal mouse event
 fn handle_mouse_event(
     event: crossterm::event::MouseEvent,
     client_pub: &flume::Sender<ClientRequest>,
@@ -71,17 +71,20 @@ fn handle_mouse_event(
     Ok(())
 }
 
-// handle a terminal key pressed event
+// Handle a terminal key pressed event
 fn handle_key_event(
     event: crossterm::event::KeyEvent,
     client_pub: &flume::Sender<ClientRequest>,
     state: &SharedState,
 ) -> Result<()> {
     let key: Key = event.into();
+    let mut ui = state.ui.lock();
 
-    // parse the key sequence from user's previous inputs
-    let mut key_sequence = state.ui.lock().input_key_sequence.clone();
+    let mut key_sequence = ui.input_key_sequence.clone();
     key_sequence.keys.push(key);
+
+    // check if the current key sequence matches any keymap's prefix
+    // if not, reset the key sequence
     if state
         .configs
         .keymap_config
@@ -92,28 +95,12 @@ fn handle_key_event(
     }
 
     tracing::debug!("Handling key event: {event:?}, current key sequence: {key_sequence:?}");
-
-    let handled = if state.ui.lock().popup.is_none() {
-        // no popup
-        let page_type = state.ui.lock().current_page().page_type();
-        match page_type {
-            PageType::Library => page::handle_key_sequence_for_library_page(&key_sequence, state)?,
-            PageType::Search => {
-                page::handle_key_sequence_for_search_page(&key_sequence, client_pub, state)?
-            }
-            PageType::Context => {
-                page::handle_key_sequence_for_context_page(&key_sequence, client_pub, state)?
-            }
-            PageType::Browse => {
-                page::handle_key_sequence_for_browse_page(&key_sequence, client_pub, state)?
-            }
-            #[cfg(feature = "lyric-finder")]
-            PageType::Lyric => {
-                page::handle_key_sequence_for_lyric_page(&key_sequence, client_pub, state)?
-            }
+    let handled = {
+        if ui.popup.is_none() {
+            page::handle_key_sequence_for_page(&key_sequence, client_pub, state, &mut ui)?
+        } else {
+            popup::handle_key_sequence_for_popup(&key_sequence, client_pub, state, &mut ui)?
         }
-    } else {
-        popup::handle_key_sequence_for_popup(&key_sequence, client_pub, state)?
     };
 
     // if the key sequence is not handled, let the global command handler handle it
@@ -123,31 +110,30 @@ fn handle_key_event(
             .keymap_config
             .find_command_from_key_sequence(&key_sequence)
         {
-            Some(command) => handle_global_command(command, client_pub, state)?,
+            Some(command) => handle_global_command(command, client_pub, state, &mut ui)?,
             None => false,
         }
     } else {
         true
     };
 
-    // if successfully handled the key sequence, clear the key sequence.
-    // else, the current key sequence is probably a prefix of a command's shortcut
+    // if handled, clear the key sequence
+    // otherwise, the current key sequence can be a prefix of a command's shortcut
     if handled {
-        state.ui.lock().input_key_sequence.keys = vec![];
+        ui.input_key_sequence.keys = vec![];
     } else {
-        state.ui.lock().input_key_sequence = key_sequence;
+        ui.input_key_sequence = key_sequence;
     }
     Ok(())
 }
 
-/// handles a global command
+/// Handle a global command that is not specific to any page/popup
 fn handle_global_command(
     command: Command,
     client_pub: &flume::Sender<ClientRequest>,
     state: &SharedState,
+    ui: &mut UIStateGuard,
 ) -> Result<bool> {
-    let mut ui = state.ui.lock();
-
     match command {
         Command::Quit => {
             ui.is_running = false;
@@ -210,7 +196,7 @@ fn handle_global_command(
             }
         }
         Command::OpenCommandHelp => {
-            ui.popup = Some(PopupState::CommandHelp { scroll_offset: 0 });
+            ui.create_new_page(PageState::CommandHelp { scroll_offset: 0 });
         }
         Command::RefreshPlayback => {
             client_pub.send(ClientRequest::GetCurrentPlayback)?;
@@ -400,7 +386,7 @@ fn handle_global_command(
             }
         }
         Command::Queue => {
-            ui.popup = Some(PopupState::Queue { scroll_offset: 0 });
+            ui.create_new_page(PageState::Queue { scroll_offset: 0 });
             client_pub.send(ClientRequest::GetCurrentUserQueue)?;
         }
         Command::CreatePlaylist => {
@@ -409,6 +395,9 @@ fn handle_global_command(
                 desc: LineInput::default(),
                 current_field: PlaylistCreateCurrentField::Name,
             });
+        }
+        Command::ClosePopup => {
+            ui.popup = None;
         }
         _ => return Ok(false),
     }
