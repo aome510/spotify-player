@@ -539,11 +539,9 @@ pub fn render_commands_help_page(
 ) {
     // 1. Get data
     let mut map = BTreeMap::new();
-    state
-        .configs
-        .keymap_config
-        .keymaps
-        .iter()
+    let keymaps = ui.search_filtered_items(&state.configs.keymap_config.keymaps);
+    keymaps
+        .into_iter()
         .filter(|km| km.include_in_help_screen())
         .for_each(|km| {
             let v = map.entry(km.command);
@@ -552,8 +550,8 @@ pub fn render_commands_help_page(
                     v.insert(format!("\"{}\"", km.key_sequence));
                 }
                 Entry::Occupied(mut v) => {
-                    let desc = format!("{}, \"{}\"", v.get(), km.key_sequence);
-                    *v.get_mut() = desc;
+                    let keys = format!("{}, \"{}\"", v.get(), km.key_sequence);
+                    *v.get_mut() = keys;
                 }
             }
         });
@@ -562,7 +560,7 @@ pub fn render_commands_help_page(
         PageState::CommandHelp {
             ref mut scroll_offset,
         } => {
-            if *scroll_offset >= map.len() {
+            if !map.is_empty() && *scroll_offset >= map.len() {
                 *scroll_offset = map.len() - 1
             }
             *scroll_offset
@@ -577,11 +575,11 @@ pub fn render_commands_help_page(
     let help_table = Table::new(
         map.into_iter()
             .skip(scroll_offset)
-            .map(|(c, k)| {
+            .map(|(command, keys)| {
                 Row::new(vec![
-                    Cell::from(format!("{c:?}")),
-                    Cell::from(format!("[{k}]")),
-                    Cell::from(c.desc()),
+                    Cell::from(format!("{command:?}")),
+                    Cell::from(format!("[{keys}]")),
+                    Cell::from(command.desc()),
                 ])
             })
             .collect::<Vec<_>>(),

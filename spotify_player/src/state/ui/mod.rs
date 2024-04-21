@@ -81,17 +81,22 @@ impl UIState {
     /// Get a list of items possibly filtered by a search query if exists a search popup
     pub fn search_filtered_items<'a, T: std::fmt::Display>(&self, items: &'a [T]) -> Vec<&'a T> {
         match self.popup {
-            Some(PopupState::Search { ref query }) => items
-                .iter()
-                .filter(|t| Self::is_match(&t.to_string().to_lowercase(), &query.to_lowercase()))
-                .collect::<Vec<_>>(),
+            Some(PopupState::Search { ref query }) => {
+                let query = query.to_lowercase();
+                items
+                    .iter()
+                    .filter(|t| {
+                        if query.is_empty() {
+                            true
+                        } else {
+                            let t = t.to_string().to_lowercase();
+                            query.split(' ').any(|q| !q.is_empty() && t.contains(q))
+                        }
+                    })
+                    .collect::<Vec<_>>()
+            }
             _ => items.iter().collect::<Vec<_>>(),
         }
-    }
-
-    /// Check if a string matches a given query
-    fn is_match(s: &str, query: &str) -> bool {
-        query.split(' ').any(|q| s.contains(q))
     }
 }
 
