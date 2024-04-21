@@ -40,7 +40,7 @@ pub fn handle_command_for_focused_context_window(
         // sort ordering commands
         if let Some(order) = order {
             let mut data = state.data.write();
-            if let Some(tracks) = data.get_tracks_by_id_mut(context_id) {
+            if let Some(tracks) = data.context_tracks(context_id) {
                 tracks.sort_by(|x, y| order.compare(x, y));
             }
             return Ok(true);
@@ -48,7 +48,7 @@ pub fn handle_command_for_focused_context_window(
         // reverse ordering command
         if command == Command::ReverseTrackOrder {
             let mut data = state.data.write();
-            if let Some(tracks) = data.get_tracks_by_id_mut(context_id) {
+            if let Some(tracks) = data.context_tracks(context_id) {
                 tracks.reverse();
             }
             return Ok(true);
@@ -63,7 +63,7 @@ pub fn handle_command_for_focused_context_window(
                 top_tracks,
                 albums,
                 related_artists,
-                artist,
+                ..
             } => {
                 let focus_state = match ui.current_page() {
                     PageState::Context {
@@ -91,10 +91,6 @@ pub fn handle_command_for_focused_context_window(
                     ArtistFocusState::TopTracks => handle_command_for_track_table_window(
                         command,
                         client_pub,
-                        ContextId::Tracks(TracksId::new(
-                            format!("artist-{}-top-tracks", artist.name),
-                            "Artist Top Tracks",
-                        )),
                         Playback::URIs(
                             top_tracks.iter().map(|t| t.id.clone_static()).collect(),
                             None,
@@ -109,17 +105,16 @@ pub fn handle_command_for_focused_context_window(
             Context::Album { tracks, .. } => handle_command_for_track_table_window(
                 command,
                 client_pub,
-                context_id.clone(),
                 Playback::Context(context_id.clone(), None),
                 ui.search_filtered_items(tracks),
                 &data,
                 ui,
                 state,
             ),
-            Context::Playlist { tracks, .. } => handle_command_for_track_table_window(
+            Context::Playlist { tracks, playlist } => handle_command_for_playlist_track_table(
+                &playlist.id,
                 command,
                 client_pub,
-                context_id.clone(),
                 Playback::Context(context_id.clone(), None),
                 ui.search_filtered_items(tracks),
                 &data,
@@ -129,7 +124,6 @@ pub fn handle_command_for_focused_context_window(
             Context::Tracks { tracks, .. } => handle_command_for_track_table_window(
                 command,
                 client_pub,
-                context_id.clone(),
                 Playback::URIs(tracks.iter().map(|t| t.id.clone_static()).collect(), None),
                 ui.search_filtered_items(tracks),
                 &data,
@@ -142,10 +136,83 @@ pub fn handle_command_for_focused_context_window(
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn handle_command_for_track_table_window(
+fn handle_command_for_playlist_track_table(
+    playlist_id: &PlaylistId<'static>,
     command: Command,
     client_pub: &flume::Sender<ClientRequest>,
-    context_id: ContextId,
+    base_playback: Playback,
+    tracks: Vec<&Track>,
+    data: &DataReadGuard,
+    ui: &mut UIStateGuard,
+    state: &SharedState,
+) -> Result<bool> {
+    let id = ui.current_page_mut().selected().unwrap_or_default();
+    if id >= tracks.len() {
+        return Ok(false);
+    }
+
+    let modifiable = data
+        .user_data
+        .modifiable_playlists()
+        .iter()
+        .any(|p| p.id.eq(playlist_id));
+
+    // handle commands that may modify a playlist
+    if modifiable {
+        match command {
+            Command::MovePlaylistItemUp => {
+                if id > 0 {
+                    client_pub.send(ClientRequest::ReorderPlaylistItems {
+                        playlist_id: playlist_id.clone_static(),
+                        insert_index: id - 1,
+                        range_start: id,
+                        range_length: None,
+                        snapshot_id: None,
+                    })?;
+                    ui.current_page_mut().select(id - 1);
+                }
+                return Ok(true);
+            }
+            Command::MovePlaylistItemDown => {
+                if id + 1 < tracks.len() {
+                    client_pub.send(ClientRequest::ReorderPlaylistItems {
+                        playlist_id: playlist_id.clone_static(),
+                        insert_index: id + 1,
+                        range_start: id,
+                        range_length: None,
+                        snapshot_id: None,
+                    })?;
+                    ui.current_page_mut().select(id + 1);
+                };
+                return Ok(true);
+            }
+            Command::ShowActionsOnSelectedItem => {
+                let mut actions = command::construct_track_actions(tracks[id], data);
+                actions.push(TrackAction::DeleteFromCurrentPlaylist);
+                ui.popup = Some(PopupState::ActionList(
+                    ActionListItem::Track(tracks[id].clone(), actions),
+                    new_list_state(),
+                ));
+                return Ok(true);
+            }
+            _ => {}
+        }
+    }
+
+    handle_command_for_track_table_window(
+        command,
+        client_pub,
+        base_playback,
+        tracks,
+        data,
+        ui,
+        state,
+    )
+}
+
+fn handle_command_for_track_table_window(
+    command: Command,
+    client_pub: &flume::Sender<ClientRequest>,
     base_playback: Playback,
     tracks: Vec<&Track>,
     data: &DataReadGuard,
@@ -180,10 +247,7 @@ pub fn handle_command_for_track_table_window(
             )))?;
         }
         Command::ShowActionsOnSelectedItem => {
-            let mut actions = command::construct_track_actions(tracks[id], data);
-            if let ContextId::Playlist(_) = context_id {
-                actions.push(TrackAction::DeleteFromCurrentPlaylist);
-            }
+            let actions = command::construct_track_actions(tracks[id], data);
             ui.popup = Some(PopupState::ActionList(
                 ActionListItem::Track(tracks[id].clone(), actions),
                 new_list_state(),
@@ -191,58 +255,6 @@ pub fn handle_command_for_track_table_window(
         }
         Command::AddSelectedItemToQueue => {
             client_pub.send(ClientRequest::AddTrackToQueue(tracks[id].id.clone()))?;
-        }
-        Command::MovePlaylistItemUp => {
-            if let PageState::Context {
-                id: Some(ContextId::Playlist(playlist_id)),
-                ..
-            } = ui.current_page()
-            {
-                if id > 0
-                    && data.user_data.playlists.iter().any(|playlist| {
-                        &playlist.id == playlist_id
-                            && Some(&playlist.owner.1)
-                                == data.user_data.user.as_ref().map(|user| &user.id)
-                    })
-                {
-                    let insert_index = id - 1;
-                    client_pub.send(ClientRequest::ReorderPlaylistItems {
-                        playlist_id: playlist_id.clone_static(),
-                        insert_index,
-                        range_start: id,
-                        range_length: None,
-                        snapshot_id: None,
-                    })?;
-                    ui.current_page_mut().select(insert_index);
-                };
-            }
-            ui.popup = None;
-        }
-        Command::MovePlaylistItemDown => {
-            if let PageState::Context {
-                id: Some(ContextId::Playlist(playlist_id)),
-                ..
-            } = ui.current_page()
-            {
-                let insert_index = id + 1;
-                if insert_index < tracks.len()
-                    && data.user_data.playlists.iter().any(|playlist| {
-                        &playlist.id == playlist_id
-                            && Some(&playlist.owner.1)
-                                == data.user_data.user.as_ref().map(|user| &user.id)
-                    })
-                {
-                    client_pub.send(ClientRequest::ReorderPlaylistItems {
-                        playlist_id: playlist_id.clone_static(),
-                        insert_index,
-                        range_start: id,
-                        range_length: None,
-                        snapshot_id: None,
-                    })?;
-                    ui.current_page_mut().select(insert_index);
-                };
-            }
-            ui.popup = None;
         }
         _ => return Ok(false),
     }

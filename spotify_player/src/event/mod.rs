@@ -127,7 +127,7 @@ fn handle_key_event(
     Ok(())
 }
 
-/// Handle a global command that is not specified to any page/popup
+/// Handle a global command that is not specific to any page/popup
 fn handle_global_command(
     command: Command,
     client_pub: &flume::Sender<ClientRequest>,

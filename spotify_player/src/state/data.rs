@@ -75,7 +75,8 @@ impl AppData {
         }
     }
 
-    pub fn get_tracks_by_id_mut(&mut self, id: &ContextId) -> Option<&mut Vec<Track>> {
+    /// Get a list of tracks inside a given context
+    pub fn context_tracks(&mut self, id: &ContextId) -> Option<&mut Vec<Track>> {
         self.caches.context.get_mut(&id.uri()).map(|c| match c {
             Context::Album { tracks, .. } => tracks,
             Context::Playlist { tracks, .. } => tracks,
@@ -88,7 +89,7 @@ impl AppData {
 }
 
 impl UserData {
-    /// constructs a new user data based on file caches
+    /// Construct a new user data based on file caches
     pub fn new_from_file_caches(cache_folder: &Path) -> Self {
         Self {
             user: None,
@@ -106,7 +107,7 @@ impl UserData {
         }
     }
 
-    /// returns a list of playlists that are **possibly** modifiable by user
+    /// Get a list of playlists that are **possibly** modifiable by user
     pub fn modifiable_playlists(&self) -> Vec<&Playlist> {
         match self.user {
             None => vec![],
@@ -118,7 +119,7 @@ impl UserData {
         }
     }
 
-    /// checks if a track is a liked track
+    /// Check if a track is a liked track
     pub fn is_liked_track(&self, track: &Track) -> bool {
         self.saved_tracks.contains_key(&track.id.uri())
     }

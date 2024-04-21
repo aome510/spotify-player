@@ -49,6 +49,8 @@ pub fn handle_key_sequence_for_page(
     ui: &mut UIStateGuard,
 ) -> Result<bool> {
     let page_type = ui.current_page().page_type();
+    // handle search page separately as it needs access to the raw key sequence
+    // as opposed to the matched command
     if page_type == PageType::Search {
         return handle_key_sequence_for_search_page(key_sequence, client_pub, state, ui);
     }
