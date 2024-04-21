@@ -45,7 +45,13 @@ impl UIState {
         self.history.last_mut().expect("non-empty history")
     }
 
-    pub fn create_new_page(&mut self, page: PageState) {
+    pub fn new_search_popup(&mut self) {
+        self.current_page_mut().select(0);
+        self.popup = Some(PopupState::Search {
+            query: "".to_owned(),
+        });
+    }
+
     pub fn new_page(&mut self, page: PageState) {
         self.history.push(page);
         self.popup = None;

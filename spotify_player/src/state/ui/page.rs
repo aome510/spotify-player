@@ -124,6 +124,7 @@ pub enum BrowsePageUIState {
 pub enum MutableWindowState<'a> {
     Table(&'a mut TableState),
     List(&'a mut ListState),
+    Scroll(&'a mut usize),
 }
 
 impl PageState {
@@ -217,8 +218,10 @@ impl PageState {
                 }
             },
             #[cfg(feature = "lyric-finder")]
-            Self::Lyric { .. } => None,
-            Self::CommandHelp { .. } | Self::Queue { .. } => None,
+            Self::Lyric { scroll_offset, .. } => Some(MutableWindowState::Scroll(scroll_offset)),
+            Self::CommandHelp { scroll_offset } | Self::Queue { scroll_offset } => {
+                Some(MutableWindowState::Scroll(scroll_offset))
+            }
         }
     }
 }
@@ -294,6 +297,9 @@ impl<'a> MutableWindowState<'a> {
         match self {
             Self::List(state) => state.select(Some(id)),
             Self::Table(state) => state.select(Some(id)),
+            Self::Scroll(scroll_offset) => {
+                **scroll_offset = id;
+            }
         }
     }
 
@@ -301,6 +307,7 @@ impl<'a> MutableWindowState<'a> {
         match self {
             Self::List(state) => state.selected(),
             Self::Table(state) => state.selected(),
+            Self::Scroll(scroll_offset) => Some(**scroll_offset),
         }
     }
 }

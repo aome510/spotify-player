@@ -32,9 +32,11 @@ macro_rules! handle_navigation_command {
                 if $len > 0 {
                     $page.select($len - 1);
                 }
+                return Ok(true);
             }
             Command::SelectFirstOrScrollToTop => {
                 $page.select(0);
+                return Ok(true);
             }
             _ => {}
         }
@@ -83,10 +85,7 @@ fn handle_command_for_library_page(
 ) -> Result<bool> {
     match command {
         Command::Search => {
-            ui.current_page_mut().select(0);
-            ui.popup = Some(PopupState::Search {
-                query: "".to_owned(),
-            });
+            ui.new_search_popup();
             Ok(true)
         }
         _ => {
@@ -209,10 +208,7 @@ fn handle_command_for_context_page(
 ) -> Result<bool> {
     match command {
         Command::Search => {
-            ui.current_page_mut().select(0);
-            ui.popup = Some(PopupState::Search {
-                query: "".to_owned(),
-            });
+            ui.new_search_popup();
             Ok(true)
         }
         _ => window::handle_command_for_focused_context_window(command, client_pub, ui, state),
@@ -287,10 +283,7 @@ fn handle_command_for_browse_page(
             };
         }
         Command::Search => {
-            page_state.select(0);
-            ui.popup = Some(PopupState::Search {
-                query: "".to_owned(),
-            });
+            ui.new_search_popup();
         }
         _ => return Ok(false),
     }
@@ -303,14 +296,12 @@ fn handle_command_for_lyric_page(
     ui: &mut UIStateGuard,
     state: &SharedState,
 ) -> Result<bool> {
-    let scroll_offset = match ui.current_page_mut() {
-        PageState::Lyric {
-            ref mut scroll_offset,
-            ..
-        } => scroll_offset,
+    let scroll_offset = match ui.current_page() {
+        PageState::Lyric { scroll_offset, .. } => *scroll_offset,
         _ => return Ok(false),
     };
-    Ok(handle_scroll_command(command, state, scroll_offset))
+    handle_navigation_command!(state, command, 10000, ui.current_page_mut(), scroll_offset);
+    Ok(false)
 }
 
 fn handle_command_for_queue_page(
@@ -318,13 +309,12 @@ fn handle_command_for_queue_page(
     ui: &mut UIStateGuard,
     state: &SharedState,
 ) -> Result<bool, anyhow::Error> {
-    let scroll_offset = match ui.current_page_mut() {
-        PageState::Queue {
-            ref mut scroll_offset,
-        } => scroll_offset,
+    let scroll_offset = match ui.current_page() {
+        PageState::Queue { scroll_offset } => *scroll_offset,
         _ => return Ok(false),
     };
-    Ok(handle_scroll_command(command, state, scroll_offset))
+    handle_navigation_command!(state, command, 10000, ui.current_page_mut(), scroll_offset);
+    Ok(false)
 }
 
 fn handle_command_for_command_help_page(
@@ -332,41 +322,23 @@ fn handle_command_for_command_help_page(
     ui: &mut UIStateGuard,
     state: &SharedState,
 ) -> Result<bool> {
-    let scroll_offset = match ui.current_page_mut() {
-        PageState::CommandHelp {
-            ref mut scroll_offset,
-        } => scroll_offset,
+    let scroll_offset = match ui.current_page() {
+        PageState::CommandHelp { scroll_offset } => *scroll_offset,
         _ => return Ok(false),
     };
-    Ok(handle_scroll_command(command, state, scroll_offset))
+    if command == Command::Search {
+        ui.new_search_popup();
+        return Ok(true);
+    }
+    handle_navigation_command!(state, command, 10000, ui.current_page_mut(), scroll_offset);
+    Ok(false)
 }
 
-fn handle_scroll_command(command: Command, state: &SharedState, scroll_offset: &mut usize) -> bool {
-    match command {
-        Command::SelectNextOrScrollDown => {
-            *scroll_offset += 1;
-        }
-        Command::SelectPreviousOrScrollUp => {
-            if *scroll_offset > 0 {
-                *scroll_offset -= 1;
-            }
-        }
-        Command::PageSelectNextOrScrollDown => {
-            *scroll_offset += state.configs.app_config.page_size_in_rows;
-        }
-        Command::PageSelectPreviousOrScrollUp => {
-            *scroll_offset =
-                scroll_offset.saturating_sub(state.configs.app_config.page_size_in_rows);
-        }
-        Command::SelectFirstOrScrollToTop => {
-            *scroll_offset = 0;
-        }
-        // Don't know the size of the page, use a "big" number as the `scroll_offset` should be adjusted
-        // accordingly in the page rendering function.
-        Command::SelectLastOrScrollToBottom => {
-            *scroll_offset = 10000;
-        }
-        _ => return false,
-    }
-    true
-}
+
+
+
+
+
+
+
+
