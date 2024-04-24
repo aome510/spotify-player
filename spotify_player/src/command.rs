@@ -101,6 +101,7 @@ pub enum AlbumAction {
     AddToLibrary,
     DeleteFromLibrary,
     CopyAlbumLink,
+    AddToQueue,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -149,6 +150,7 @@ pub fn construct_album_actions(album: &Album, data: &DataReadGuard) -> Vec<Album
         AlbumAction::GoToAlbumRadio,
         AlbumAction::ShowActionsOnArtist,
         AlbumAction::CopyAlbumLink,
+        AlbumAction::AddToQueue,
     ];
     if data.user_data.saved_albums.iter().any(|a| a.id == album.id) {
         actions.push(AlbumAction::DeleteFromLibrary);

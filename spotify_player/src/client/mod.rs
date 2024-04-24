@@ -416,6 +416,16 @@ impl Client {
                 self.add_track_to_playlist(state, playlist_id, track_id)
                     .await?;
             }
+            ClientRequest::AddAlbumToQueue(album_id) => {
+                let album_context = self.album_context(album_id).await?;
+
+                if let Context::Album { album: _, tracks } = album_context {
+                    for track in tracks {
+                        self.add_item_to_queue(PlayableId::Track(track.id), None)
+                            .await?;
+                    }
+                }
+            }
             ClientRequest::DeleteTrackFromPlaylist(playlist_id, track_id) => {
                 self.delete_track_from_playlist(state, playlist_id, track_id)
                     .await?;
