@@ -63,6 +63,7 @@ fn handle_command_for_library_page(
                     ui.search_filtered_items(&data.user_data.saved_albums),
                     &data,
                     ui,
+                    client_pub,
                 ),
                 LibraryFocusState::FollowedArtists => {
                     window::handle_command_for_artist_list_window(
@@ -140,7 +141,7 @@ fn handle_key_sequence_for_search_page(
             let albums = search_results
                 .map(|s| s.albums.iter().collect())
                 .unwrap_or_default();
-            window::handle_command_for_album_list_window(command, albums, &data, ui)
+            window::handle_command_for_album_list_window(command, albums, &data, ui, client_pub)
         }
         SearchFocusState::Playlists => {
             let playlists = search_results

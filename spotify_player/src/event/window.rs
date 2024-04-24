@@ -79,6 +79,7 @@ pub fn handle_command_for_focused_context_window(
                         ui.search_filtered_items(albums),
                         &data,
                         ui,
+                        client_pub,
                     ),
                     ArtistFocusState::RelatedArtists => handle_command_for_artist_list_window(
                         command,
@@ -327,6 +328,7 @@ pub fn handle_command_for_album_list_window(
     albums: Vec<&Album>,
     data: &DataReadGuard,
     ui: &mut UIStateGuard,
+    client_pub: &flume::Sender<ClientRequest>,
 ) -> Result<bool> {
     let id = ui.current_page_mut().selected().unwrap_or_default();
     if id >= albums.len() {
@@ -351,6 +353,9 @@ pub fn handle_command_for_album_list_window(
                 ActionListItem::Album(albums[id].clone(), actions),
                 new_list_state(),
             ));
+        }
+        Command::AddSelectedItemToQueue => {
+            client_pub.send(ClientRequest::AddAlbumToQueue(albums[id].id.clone()))?;
         }
         _ => return Ok(false),
     }
