@@ -210,6 +210,7 @@ pub fn handle_cli_subcommand(cmd: &str, args: &ArgMatches) -> Result<()> {
         "like" => Request::Like {
             unlike: args.get_flag("unlike"),
         },
+        // TODO: handle search
         _ => unreachable!(),
     };
 

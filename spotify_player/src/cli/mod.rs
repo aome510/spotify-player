@@ -161,6 +161,7 @@ pub fn init_cli() -> anyhow::Result<clap::Command> {
         .subcommand(commands::init_authenticate_command())
         .subcommand(commands::init_playlist_subcommand())
         .subcommand(commands::init_generate_command())
+        .subcommand(commands::init_search_command())
         .arg(
             clap::Arg::new("theme")
                 .short('t')

@@ -310,6 +310,39 @@ async fn handle_get_item_request(
     })
 }
 
+async fn handle_search_request(client: &Client, query: String) -> Result<Vec<u8>> {
+    let search_result = client.search(&query).await?;
+
+    let mut results = vec![];
+
+    if let SearchResult::Tracks(tracks) = search_result.tracks {
+        let tracks_json = serde_json::to_string(&tracks)?;
+        results.push(tracks_json.into_bytes());
+    }
+
+    if let SearchResult::Artists(artists) = search_result.artists {
+        let artists_json = serde_json::to_string(&artists)?;
+        results.push(artists_json.into_bytes());
+    }
+
+    if let SearchResult::Albums(albums) = search_result.albums {
+        let albums_json = serde_json::to_string(&albums)?;
+        results.push(albums_json.into_bytes());
+    }
+
+    if let SearchResult::Playlists(playlists) = search_result.playlists {
+        let playlists_json = serde_json::to_string(&playlists)?;
+        results.push(playlists_json.into_bytes());
+    }
+
+    let mut combined_results = vec![];
+    for result in results {
+        combined_results.extend(result);
+    }
+
+    Ok(combined_results)
+}
+
 async fn handle_playback_request(
     client: &Client,
     state: &Option<SharedState>,
