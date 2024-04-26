@@ -587,6 +587,10 @@ fn handle_item_action(
                 client_pub.send(ClientRequest::DeleteFromLibrary(ItemId::Album(album.id)))?;
                 ui.popup = None;
             }
+            AlbumAction::AddToQueue => {
+                client_pub.send(ClientRequest::AddAlbumToQueue(album.id))?;
+                ui.popup = None;
+            }
         },
         ActionListItem::Artist(artist, actions) => match actions[n] {
             ArtistAction::Follow => {
