@@ -25,7 +25,7 @@ pub fn handle_key_sequence_for_page(
 
     match page_type {
         PageType::Search => anyhow::bail!("page search type should already be handled!"),
-        PageType::Library => handle_command_for_library_page(command, ui, state),
+        PageType::Library => handle_command_for_library_page(command, client_pub, ui, state),
         PageType::Context => handle_command_for_context_page(command, client_pub, ui, state),
         PageType::Browse => handle_command_for_browse_page(command, client_pub, ui, state),
         #[cfg(feature = "lyric-finder")]
@@ -37,6 +37,7 @@ pub fn handle_key_sequence_for_page(
 
 fn handle_command_for_library_page(
     command: Command,
+    client_pub: &flume::Sender<ClientRequest>,
     ui: &mut UIStateGuard,
     state: &SharedState,
 ) -> Result<bool> {
