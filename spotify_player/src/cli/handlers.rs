@@ -210,7 +210,12 @@ pub fn handle_cli_subcommand(cmd: &str, args: &ArgMatches) -> Result<()> {
         "like" => Request::Like {
             unlike: args.get_flag("unlike"),
         },
-        // TODO: handle search
+        "search" => Request::Search {
+            query: args
+                .get_one::<String>("query")
+                .expect("query is required")
+                .to_owned(),
+        },
         _ => unreachable!(),
     };
 

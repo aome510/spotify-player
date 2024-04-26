@@ -117,6 +117,7 @@ pub enum Request {
     Connect(IdOrName),
     Like { unlike: bool },
     Playlist(PlaylistCommand),
+    Search { query: String },
 }
 
 #[derive(Debug, Serialize, Deserialize)]
