@@ -126,10 +126,9 @@ pub fn init_playback_subcommand() -> Command {
 pub fn init_search_command() -> Command {
     Command::new("search").about("Search spotify").arg(
         Arg::new("query")
-            .long("query")
-            .short('q')
             .help("Search query")
-            .required(true),
+            .required(true)
+            .index(1),
     )
 }
 

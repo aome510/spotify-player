@@ -165,7 +165,7 @@ async fn handle_socket_request(
             let resp = handle_playlist_request(client, command).await?;
             Ok(resp.into_bytes())
         }
-        Request::Search(query) => {
+        Request::Search { query } => {
             let resp = handle_search_request(client, query).await?;
             Ok(resp)
         }
