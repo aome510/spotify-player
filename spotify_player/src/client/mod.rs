@@ -829,7 +829,7 @@ impl Client {
     }
 
     /// Search for items (tracks, artists, albums, playlists) matching a given query
-    async fn search(&self, query: &str) -> Result<SearchResults> {
+    pub async fn search(&self, query: &str) -> Result<SearchResults> {
         let (track_result, artist_result, album_result, playlist_result) = tokio::try_join!(
             self.search_specific_type(query, rspotify_model::SearchType::Track),
             self.search_specific_type(query, rspotify_model::SearchType::Artist),

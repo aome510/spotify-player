@@ -165,6 +165,10 @@ async fn handle_socket_request(
             let resp = handle_playlist_request(client, command).await?;
             Ok(resp.into_bytes())
         }
+        Request::Search { query } => {
+            let resp = handle_search_request(client, query).await?;
+            Ok(resp)
+        }
     }
 }
 
@@ -308,6 +312,12 @@ async fn handle_get_item_request(
         ItemId::Artist(id) => serde_json::to_vec(&client.artist_context(id).await?)?,
         ItemId::Track(id) => serde_json::to_vec(&client.track(id).await?)?,
     })
+}
+
+async fn handle_search_request(client: &Client, query: String) -> Result<Vec<u8>> {
+    let search_result = client.search(&query).await?;
+
+    Ok(serde_json::to_vec(&search_result)?)
 }
 
 async fn handle_playback_request(

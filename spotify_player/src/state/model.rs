@@ -57,7 +57,7 @@ pub enum Playback {
     URIs(Vec<TrackId<'static>>, Option<rspotify_model::Offset>),
 }
 
-#[derive(Default, Clone, Debug)]
+#[derive(Default, Clone, Debug, Deserialize, Serialize)]
 /// Data returned when searching a query using Spotify APIs.
 pub struct SearchResults {
     pub tracks: Vec<Track>,
