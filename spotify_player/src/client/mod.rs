@@ -112,14 +112,32 @@ impl Client {
     pub async fn handle_player_request(
         &self,
         request: PlayerRequest,
-        playback: Option<PlaybackMetadata>,
+        mut playback: Option<PlaybackMetadata>,
     ) -> Result<Option<PlaybackMetadata>> {
-        // `TransferPlayback` needs to be handled separately from other player requests
-        // because `TransferPlayback` doesn't require an active playback
-        if let PlayerRequest::TransferPlayback(device_id, force_play) = request {
-            self.transfer_playback(&device_id, Some(force_play)).await?;
-            tracing::info!("Transferred playback to device with id={}", device_id);
-            return Ok(playback);
+        // handle requests that don't require an active playback
+        match request {
+            PlayerRequest::TransferPlayback(device_id, force_play) => {
+                // `TransferPlayback` needs to be handled separately from other player requests
+                // because `TransferPlayback` doesn't require an active playback
+                self.transfer_playback(&device_id, Some(force_play)).await?;
+                tracing::info!("Transferred playback to device with id={}", device_id);
+                return Ok(playback);
+            }
+            PlayerRequest::StartPlayback(p, shuffle) => {
+                // Set the playback's shuffle state if specified in the request
+                if let (Some(shuffle), Some(playback)) = (shuffle, playback.as_mut()) {
+                    playback.shuffle_state = shuffle;
+                }
+                let device_id = playback.as_ref().and_then(|p| p.device_id.as_deref());
+                self.start_playback(p, device_id).await?;
+                // For some reasons, when starting a new playback, the integrated `spotify_player`
+                // client doesn't respect the initial shuffle state, so we need to manually update the state
+                if let Some(ref playback) = playback {
+                    self.shuffle(playback.shuffle_state, device_id).await?;
+                }
+                return Ok(playback);
+            }
+            _ => {}
         }
 
         let mut playback = playback.context("no playback found")?;
@@ -188,14 +206,8 @@ impl Client {
 
                 playback.mute_state = new_mute_state;
             }
-            PlayerRequest::StartPlayback(p, shuffle) => {
-                if let Some(shuffle) = shuffle {
-                    playback.shuffle_state = shuffle;
-                }
-                self.start_playback(p, device_id).await?;
-                // for some reasons, when starting a new playback, the integrated `spotify_player`
-                // client doesn't respect the initial shuffle state, so we need to manually update the state
-                self.shuffle(playback.shuffle_state, device_id).await?;
+            PlayerRequest::StartPlayback(..) => {
+                anyhow::bail!("`StartPlayback` should be handled earlier")
             }
             PlayerRequest::TransferPlayback(..) => {
                 anyhow::bail!("`TransferPlayback` should be handled earlier")

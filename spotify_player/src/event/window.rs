@@ -209,10 +209,12 @@ fn handle_command_for_track_table_window(
 
     match command {
         Command::PlayRandom | Command::ChooseSelected => {
-            let id = if command == Command::PlayRandom {
-                rand::thread_rng().gen_range(0..tracks.len())
+            let uri = if command == Command::PlayRandom {
+                tracks[rand::thread_rng().gen_range(0..tracks.len())]
+                    .id
+                    .uri()
             } else {
-                id
+                filtered_tracks[id].id.uri()
             };
 
             let base_playback = if let Some(context_id) = context_id {
@@ -222,10 +224,8 @@ fn handle_command_for_track_table_window(
             };
 
             client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
-                base_playback.uri_offset(
-                    tracks[id].id.uri(),
-                    config::get_config().app_config.tracks_playback_limit,
-                ),
+                base_playback
+                    .uri_offset(uri, config::get_config().app_config.tracks_playback_limit),
                 None,
             )))?;
         }
