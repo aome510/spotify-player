@@ -232,8 +232,8 @@ mod windows {
             let mut has_message = PeekMessageW(&mut msg, None, 0, 0, PM_REMOVE).as_bool();
             while msg.message != WM_QUIT && has_message {
                 if !IsDialogMessageW(GetAncestor(msg.hwnd, GA_ROOT), &msg).as_bool() {
-                    TranslateMessage(&msg);
-                    DispatchMessageW(&msg);
+                    let _ = TranslateMessage(&msg);
+                    let _ = DispatchMessageW(&msg);
                 }
 
                 has_message = PeekMessageW(&mut msg, None, 0, 0, PM_REMOVE).as_bool();

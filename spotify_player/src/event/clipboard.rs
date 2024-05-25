@@ -16,6 +16,7 @@ struct CommandProvider {
     paste_command: Command,
 }
 
+#[cfg(not(target_os = "windows"))]
 struct NopProvider {}
 
 #[cfg(target_os = "windows")]
@@ -50,6 +51,7 @@ impl ClipboardProvider for CommandProvider {
     }
 }
 
+#[cfg(not(target_os = "windows"))]
 impl ClipboardProvider for NopProvider {
     fn get_contents(&self) -> Result<String> {
         anyhow::bail!("no clipboard provider found!")

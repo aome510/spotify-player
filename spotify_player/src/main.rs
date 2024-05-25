@@ -217,6 +217,7 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
             // control events. The below code will create an invisible window on startup
             // to listen to such events.
             let event_loop = winit::event_loop::EventLoop::new()?;
+            #[allow(deprecated)]
             event_loop.run(move |_, _| {})?;
         }
     }
@@ -259,7 +260,7 @@ fn main() -> Result<()> {
         let mut configs = config::Configs::new(&config_folder, &cache_folder)?;
         if let Some(theme) = args.get_one::<String>("theme") {
             // override the theme config if user specifies a `theme` cli argument
-            configs.app_config.theme = theme.to_owned();
+            theme.clone_into(&mut configs.app_config.theme);
         }
         config::set_config(configs);
     }
