@@ -108,6 +108,8 @@ pub struct AppConfig {
 
     #[cfg(all(feature = "streaming", feature = "notify"))]
     pub notify_streaming_only: bool,
+
+    pub autoplay: bool
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -280,6 +282,8 @@ impl Default for AppConfig {
 
             #[cfg(all(feature = "streaming", feature = "notify"))]
             notify_streaming_only: false,
+
+            autoplay: false
         }
     }
 }

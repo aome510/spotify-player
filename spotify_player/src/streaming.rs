@@ -178,7 +178,7 @@ pub async fn new_connection(client: Client, state: SharedState) -> Spirc {
         // non-configurable fields, use default values.
         // We may allow users to configure these fields in a future release
         has_volume_ctrl: true,
-        autoplay: false,
+        autoplay: configs.app_config.autoplay,
     };
 
     tracing::info!("Application's connect configurations: {:?}", connect_config);
