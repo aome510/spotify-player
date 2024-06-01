@@ -37,7 +37,7 @@ lyric_finder = { version = "0.1.6", path = "../lyric_finder" , optional = true }
 backtrace = "0.3.71"
 souvlaki = { version = "0.7.3", optional = true }
 viuer = { version = "0.7.1", optional = true }
-image = { version = "0.24.9", optional = true }
+image = { version = "0.24.9" }
 notify-rust = { version = "4.10.0", optional = true, default-features = false, features = ["d"] }
 flume = "0.11.0"
 serde_json = "1.0.117"
@@ -77,7 +77,7 @@ gstreamer-backend = ["streaming", "librespot-playback/gstreamer-backend"]
 streaming = ["librespot-playback", "librespot-connect"]
 lyric-finder = ["lyric_finder"]
 media-control = ["souvlaki", "winit", "windows"]
-image = ["viuer", "dep:image"]
+image = ["viuer"]
 sixel = ["image", "viuer/sixel"]
 notify = ["notify-rust"]
 daemon = ["daemonize", "streaming"]

@@ -1355,14 +1355,12 @@ impl Client {
         if !new_track {
             return Ok(());
         }
-        #[cfg(any(feature = "image", feature = "notify"))]
         self.handle_new_track_event(state).await?;
 
         Ok(())
     }
 
     // Handle new track event
-    #[cfg(any(feature = "image", feature = "notify"))]
     async fn handle_new_track_event(&self, state: &SharedState) -> Result<()> {
         let configs = config::get_config();
 
@@ -1383,22 +1381,23 @@ impl Client {
         ))
         .replace('/', ""); // remove invalid characters from the file's name
         let path = configs.cache_folder.join("image").join(path);
-
-        #[cfg(feature = "image")]
-        if !state.data.read().caches.images.contains_key(url) {
-            let bytes = self
-                .retrieve_image(url, &path, configs.app_config.enable_cover_image_cache)
-                .await?;
-            let image =
-                image::load_from_memory(&bytes).context("Failed to load image from memory")?;
-            state
-                .data
-                .write()
-                .caches
-                .images
-                .insert(url.to_owned(), image, *TTL_CACHE_DURATION);
+        if configs.app_config.enable_cover_image_cache{
+            if !state.data.read().caches.images.contains_key(url) {
+                let bytes = self
+                    .retrieve_image(url, &path, configs.app_config.enable_cover_image_cache)
+                    .await?;
+                let image =
+                    image::load_from_memory(&bytes).context("Failed to load image from memory")?;
+                state
+                    .data
+                    .write()
+                    .caches
+                    .images
+                    .insert(url.to_owned(), image, *TTL_CACHE_DURATION);
+            }
         }
-
+        
+        #[cfg(any(feature = "image", feature = "notify"))]
         // notify user about the playback's change if any
         #[cfg(feature = "notify")]
         if configs.app_config.enable_notify {
@@ -1507,7 +1506,6 @@ impl Client {
 
     /// Retrieve an image from a `url` or a cached `path`.
     /// If `saved` is specified, the retrieved image is saved to the cached `path`.
-    #[cfg(any(feature = "image", feature = "notify"))]
     async fn retrieve_image(
         &self,
         url: &str,

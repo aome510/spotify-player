@@ -42,7 +42,6 @@ pub struct MemoryCaches {
     pub search: ttl_cache::TtlCache<String, SearchResults>,
     #[cfg(feature = "lyric-finder")]
     pub lyrics: ttl_cache::TtlCache<String, lyric_finder::LyricResult>,
-    #[cfg(feature = "image")]
     pub images: ttl_cache::TtlCache<String, image::DynamicImage>,
 }
 
@@ -60,7 +59,6 @@ impl MemoryCaches {
             search: ttl_cache::TtlCache::new(64),
             #[cfg(feature = "lyric-finder")]
             lyrics: ttl_cache::TtlCache::new(64),
-            #[cfg(feature = "image")]
             images: ttl_cache::TtlCache::new(64),
         }
     }
