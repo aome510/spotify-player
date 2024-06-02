@@ -1381,23 +1381,28 @@ impl Client {
         ))
         .replace('/', ""); // remove invalid characters from the file's name
         let path = configs.cache_folder.join("image").join(path);
+
         if configs.app_config.enable_cover_image_cache{
-            if !state.data.read().caches.images.contains_key(url) {
-                let bytes = self
-                    .retrieve_image(url, &path, configs.app_config.enable_cover_image_cache)
-                    .await?;
-                let image =
-                    image::load_from_memory(&bytes).context("Failed to load image from memory")?;
-                state
-                    .data
-                    .write()
-                    .caches
-                    .images
-                    .insert(url.to_owned(), image, *TTL_CACHE_DURATION);
-            }
+            self
+                .retrieve_image(url, &path, true)
+                .await?;
         }
-        
-        #[cfg(any(feature = "image", feature = "notify"))]
+
+        #[cfg(feature = "image")]
+        if !state.data.read().caches.images.contains_key(url) {
+            let bytes = self
+                .retrieve_image(url, &path, false)
+                .await?;
+            let image =
+                image::load_from_memory(&bytes).context("Failed to load image from memory")?;
+            state
+                .data
+                .write()
+                .caches
+                .images
+                .insert(url.to_owned(), image, *TTL_CACHE_DURATION);
+        }
+
         // notify user about the playback's change if any
         #[cfg(feature = "notify")]
         if configs.app_config.enable_notify {
