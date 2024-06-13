@@ -567,12 +567,19 @@ pub fn render_commands_help_page(frame: &mut Frame, ui: &mut UIStateGuard, rect:
     let help_table = Table::new(
         map.into_iter()
             .skip(scroll_offset)
-            .map(|(command, keys)| {
+            .enumerate()
+            .map(|(i, (command, keys))| {
                 Row::new(vec![
                     Cell::from(format!("{command:?}")),
                     Cell::from(format!("[{keys}]")),
                     Cell::from(command.desc()),
                 ])
+                    // adding alternating row colors
+                    .style(if (i + scroll_offset) % 2 == 0 {
+                        ui.theme.app().bg(Color::DarkGray)
+                    } else {
+                        ui.theme.app()
+                    })
             })
             .collect::<Vec<_>>(),
         COMMAND_TABLE_CONSTRAINTS,
