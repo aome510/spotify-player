@@ -14,6 +14,7 @@
   - [Notify](#notify)
   - [Mouse support](#mouse-support)
   - [Daemon](#daemon)
+  - [Fuzzy search](#fuzzy-search)
   - [CLI commands](#cli-commands)
 - [Commands](#commands)
 - [Configurations](#configurations)
@@ -274,6 +275,10 @@ You can run the application as a daemon by specifying the `-d` or `--daemon` opt
   ```shell
   cargo install spotify_player --no-default-features --features daemon,rodio-backend
   ```
+
+### Fuzzy search
+
+To enable [fuzzy search](https://en.wikipedia.org/wiki/Approximate_string_matching) support, `spotify_player` needs to be built/installed with `fzf` feature (**disabled** by default).
 
 ### CLI Commands
 
