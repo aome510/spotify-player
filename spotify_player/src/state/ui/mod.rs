@@ -121,9 +121,7 @@ fn fuzzy_search_items<'a, T: std::fmt::Display>(items: &'a [T], query: &str) -> 
         .collect::<Vec<_>>();
 
     result.sort_by(|(_, a), (_, b)| b.cmp(a));
-    let result = result.into_iter().map(|(t, _)| t).collect::<Vec<_>>();
-
-    result
+    result.into_iter().map(|(t, _)| t).collect::<Vec<_>>()
 }
 
 impl Default for UIState {
