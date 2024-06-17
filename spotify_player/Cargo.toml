@@ -48,6 +48,7 @@ ttl_cache = "0.5.1"
 clap_complete = "4.5.1"
 which = "6.0.1"
 fuzzy-matcher = { version = "0.3.7", optional = true }
+html-escape = "0.2.13"
 
 [target.'cfg(any(target_os = "windows", target_os = "macos"))'.dependencies.winit]
 version = "0.30.0"
