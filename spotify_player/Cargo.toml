@@ -47,6 +47,7 @@ daemonize = { version = "0.5.0", optional = true }
 ttl_cache = "0.5.1"
 clap_complete = "4.5.1"
 which = "6.0.1"
+fuzzy-matcher = { version = "0.3.7", optional = true }
 
 [target.'cfg(any(target_os = "windows", target_os = "macos"))'.dependencies.winit]
 version = "0.30.0"
@@ -81,6 +82,7 @@ image = ["viuer", "dep:image"]
 sixel = ["image", "viuer/sixel"]
 notify = ["notify-rust"]
 daemon = ["daemonize", "streaming"]
+fzf = ["fuzzy-matcher"]
 
 default = ["rodio-backend", "media-control"]
 

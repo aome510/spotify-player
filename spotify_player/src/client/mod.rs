@@ -4,6 +4,8 @@ use std::{borrow::Cow, collections::HashMap, sync::Arc};
 use crate::config;
 use crate::{auth::AuthConfig, state::*};
 
+use std::io::Write;
+
 use anyhow::Context as _;
 use anyhow::Result;
 use librespot_core::session::Session;
@@ -1355,14 +1357,12 @@ impl Client {
         if !new_track {
             return Ok(());
         }
-        #[cfg(any(feature = "image", feature = "notify"))]
         self.handle_new_track_event(state).await?;
 
         Ok(())
     }
 
     // Handle new track event
-    #[cfg(any(feature = "image", feature = "notify"))]
     async fn handle_new_track_event(&self, state: &SharedState) -> Result<()> {
         let configs = config::get_config();
 
@@ -1384,11 +1384,13 @@ impl Client {
         .replace('/', ""); // remove invalid characters from the file's name
         let path = configs.cache_folder.join("image").join(path);
 
+        if configs.app_config.enable_cover_image_cache {
+            self.retrieve_image(url, &path, true).await?;
+        }
+
         #[cfg(feature = "image")]
         if !state.data.read().caches.images.contains_key(url) {
-            let bytes = self
-                .retrieve_image(url, &path, configs.app_config.enable_cover_image_cache)
-                .await?;
+            let bytes = self.retrieve_image(url, &path, false).await?;
             let image =
                 image::load_from_memory(&bytes).context("Failed to load image from memory")?;
             state
@@ -1401,16 +1403,10 @@ impl Client {
 
         // notify user about the playback's change if any
         #[cfg(feature = "notify")]
-        if configs.app_config.enable_notify {
-            // for Linux, ensure that the cached cover image is available to render the notification's thumbnail
-            #[cfg(all(unix, not(target_os = "macos")))]
-            self.retrieve_image(url, &path, true).await?;
-
-            if !configs.app_config.notify_streaming_only || self.stream_conn.lock().is_some() {
-                Self::notify_new_track(track, &path)?;
-            }
-            #[cfg(not(feature = "streaming"))]
-            Self::notify_new_track(track, &path, state)?;
+        if configs.app_config.enable_notify
+            && (!configs.app_config.notify_streaming_only || self.stream_conn.lock().is_some())
+        {
+            Self::notify_new_track(track, &path)?;
         }
 
         Ok(())
@@ -1488,13 +1484,15 @@ impl Client {
         let configs = config::get_config();
 
         n.appname("spotify_player")
-            .icon(cover_img_path.to_str().unwrap())
             .summary(&get_text_from_format_str(
                 &configs.app_config.notify_format.summary,
             ))
             .body(&get_text_from_format_str(
                 &configs.app_config.notify_format.body,
             ));
+        if cover_img_path.exists() {
+            n.icon(cover_img_path.to_str().context("valid cover_img_path")?);
+        }
         if configs.app_config.notify_timeout_in_secs > 0 {
             n.timeout(std::time::Duration::from_secs(
                 configs.app_config.notify_timeout_in_secs,
@@ -1507,17 +1505,14 @@ impl Client {
 
     /// Retrieve an image from a `url` or a cached `path`.
     /// If `saved` is specified, the retrieved image is saved to the cached `path`.
-    #[cfg(any(feature = "image", feature = "notify"))]
     async fn retrieve_image(
         &self,
         url: &str,
         path: &std::path::Path,
         saved: bool,
     ) -> Result<Vec<u8>> {
-        use std::io::Write;
-
         if path.exists() {
-            tracing::info!("Retrieving image from file: {}", path.display());
+            tracing::debug!("Retrieving image from file: {}", path.display());
             return Ok(std::fs::read(path)?);
         }
 
