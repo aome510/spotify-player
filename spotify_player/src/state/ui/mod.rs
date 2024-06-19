@@ -11,6 +11,7 @@ pub use page::*;
 pub use popup::*;
 
 #[derive(Default, Debug)]
+#[cfg(feature = "image")]
 pub struct ImageRenderInfo {
     pub url: String,
     pub render_area: tui::layout::Rect,
