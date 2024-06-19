@@ -150,6 +150,7 @@ pub struct DeviceConfig {
     pub bitrate: u16,
     pub audio_cache: bool,
     pub normalization: bool,
+    pub autoplay: bool,
 }
 
 #[derive(Debug, Deserialize, Serialize, ConfigParse, Clone)]
@@ -293,6 +294,7 @@ impl Default for DeviceConfig {
             bitrate: 320,
             audio_cache: false,
             normalization: false,
+            autoplay: false,
         }
     }
 }

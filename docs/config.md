@@ -132,6 +132,7 @@ The configuration options for the [Librespot](https://github.com/librespot-org/l
 | `bitrate`       | Bitrate in kbps (`96`, `160`, or `320`)                                 | `320`            |
 | `audio_cache`   | Enable caching audio files (store in `$APP_CACHE_FOLDER/audio/` folder) | `false`          |
 | `normalization` | Enable audio normalization                                              | `false`          |
+| `autoplay`      | Enable autoplay similar songs                                           | `false`          |
 
 More details on the above configuration options can be found under the [Librespot wiki page](https://github.com/librespot-org/librespot/wiki/Options).
 
