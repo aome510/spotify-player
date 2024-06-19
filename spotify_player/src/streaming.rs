@@ -173,12 +173,12 @@ pub async fn new_connection(client: Client, state: SharedState) -> Spirc {
     let connect_config = ConnectConfig {
         name: device.name.clone(),
         device_type: device.device_type.parse::<DeviceType>().unwrap_or_default(),
+        autoplay: device.autoplay,
         initial_volume: Some(volume),
 
         // non-configurable fields, use default values.
         // We may allow users to configure these fields in a future release
         has_volume_ctrl: true,
-        autoplay: configs.app_config.autoplay,
     };
 
     tracing::info!("Application's connect configurations: {:?}", connect_config);

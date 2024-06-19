@@ -52,7 +52,6 @@ All configuration files should be placed inside the application's configuration 
 | `cover_img_width`                 | the width of the cover image (`image` feature only)                                      | `5`                                                     |
 | `cover_img_length`                | the length of the cover image (`image` feature only)                                     | `9`                                                     |
 | `cover_img_scale`                 | the scale of the cover image (`image` feature only)                                      | `1.0`                                                   |
-| `autoplay`                        | enable spotify autoplay                                                                  | `false`                                                   |
 
 ### Notes
 
@@ -133,6 +132,7 @@ The configuration options for the [Librespot](https://github.com/librespot-org/l
 | `bitrate`       | Bitrate in kbps (`96`, `160`, or `320`)                                 | `320`            |
 | `audio_cache`   | Enable caching audio files (store in `$APP_CACHE_FOLDER/audio/` folder) | `false`          |
 | `normalization` | Enable audio normalization                                              | `false`          |
+| `autoplay`      | Enable autoplay similar songs                                           | `false`          |
 
 More details on the above configuration options can be found under the [Librespot wiki page](https://github.com/librespot-org/librespot/wiki/Options).
 

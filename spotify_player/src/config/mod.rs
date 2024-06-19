@@ -108,8 +108,6 @@ pub struct AppConfig {
 
     #[cfg(all(feature = "streaming", feature = "notify"))]
     pub notify_streaming_only: bool,
-
-    pub autoplay: bool
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -152,6 +150,7 @@ pub struct DeviceConfig {
     pub bitrate: u16,
     pub audio_cache: bool,
     pub normalization: bool,
+    pub autoplay: bool,
 }
 
 #[derive(Debug, Deserialize, Serialize, ConfigParse, Clone)]
@@ -282,8 +281,6 @@ impl Default for AppConfig {
 
             #[cfg(all(feature = "streaming", feature = "notify"))]
             notify_streaming_only: false,
-
-            autoplay: false
         }
     }
 }
@@ -297,6 +294,7 @@ impl Default for DeviceConfig {
             bitrate: 320,
             audio_cache: false,
             normalization: false,
+            autoplay: false,
         }
     }
 }
