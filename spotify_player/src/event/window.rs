@@ -155,7 +155,7 @@ fn handle_playlist_modify_command(
         }
         Command::ShowActionsOnSelectedItem => {
             let mut actions = command::construct_track_actions(tracks[id], data);
-            actions.push(TrackAction::DeleteFromCurrentPlaylist);
+            actions.push(Action::DeleteFromPlaylist);
             ui.popup = Some(PopupState::ActionList(
                 ActionListItem::Track(tracks[id].clone(), actions),
                 new_list_state(),
