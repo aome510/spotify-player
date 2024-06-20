@@ -11,6 +11,7 @@ use crate::{
 #[cfg(feature = "lyric-finder")]
 use crate::utils::map_join;
 use anyhow::{Context as _, Result};
+use window::get_action_context;
 
 use self::clipboard::{get_clipboard_provider, CLIPBOARD_PROVIDER};
 
@@ -89,10 +90,7 @@ fn handle_key_event(
     // check if the current key sequence matches any keymap's prefix
     // if not, reset the key sequence
     let keymap_config = &config::get_config().keymap_config;
-    if keymap_config
-        .find_matched_prefix_keymaps(&key_sequence)
-        .is_empty()
-    {
+    if !keymap_config.has_matched_prefix(&key_sequence) {
         key_sequence = KeySequence { keys: vec![key] };
     }
 
@@ -104,6 +102,13 @@ fn handle_key_event(
             popup::handle_key_sequence_for_popup(&key_sequence, client_pub, state, &mut ui)?
         }
     };
+
+    // Handle any contextual action bound to the key sequence
+    if let Some(action) = keymap_config.find_action_from_key_sequence(&key_sequence) {
+        if let Ok(context) = get_action_context(&mut ui, state) {
+            handle_action_in_context(action, context, client_pub, state, &mut ui)?
+        }
+    }
 
     // if the key sequence is not handled, let the global command handler handle it
     let handled = if !handled {

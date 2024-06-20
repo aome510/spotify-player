@@ -1,5 +1,5 @@
 use crate::{
-    command::Command,
+    command::{Action, Command},
     key::{Key, KeySequence},
 };
 use anyhow::Result;
@@ -10,6 +10,8 @@ use serde::Deserialize;
 pub struct KeymapConfig {
     #[serde(default)]
     pub keymaps: Vec<Keymap>,
+    #[serde(default)]
+    pub actions: Vec<ActionMap>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -19,9 +21,17 @@ pub struct Keymap {
     pub command: Command,
 }
 
+#[derive(Clone, Debug, Deserialize)]
+/// A keymap that triggers an `Action` when a `Key` is pressed
+pub struct ActionMap {
+    pub key_sequence: KeySequence,
+    pub action: Action,
+}
+
 impl Default for KeymapConfig {
     fn default() -> Self {
         KeymapConfig {
+            actions: vec![],
             keymaps: vec![
                 Keymap {
                     key_sequence: "n".into(),
@@ -325,18 +335,29 @@ impl KeymapConfig {
                 );
             }
             Ok(content) => {
-                let mut keymaps = toml::from_str::<Self>(&content)?.keymaps;
-                std::mem::swap(&mut self.keymaps, &mut keymaps);
+                let mut parsed = toml::from_str::<Self>(&content)?;
+                std::mem::swap(&mut self.keymaps, &mut parsed.keymaps);
+                std::mem::swap(&mut self.actions, &mut parsed.actions);
+
                 // a dumb approach (with quadratic complexity) to merge two different keymap arrays
                 // while keeping the invariant:
                 // - each `KeySequence` is mapped to only one `Command`.
-                keymaps.into_iter().for_each(|keymap| {
+                parsed.keymaps.into_iter().for_each(|keymap| {
                     if !self
                         .keymaps
                         .iter()
                         .any(|k| k.key_sequence == keymap.key_sequence)
                     {
                         self.keymaps.push(keymap);
+                    }
+                });
+                parsed.actions.into_iter().for_each(|action| {
+                    if !self
+                        .actions
+                        .iter()
+                        .any(|k| k.key_sequence == action.key_sequence)
+                    {
+                        self.actions.push(action);
                     }
                 });
             }
@@ -348,8 +369,26 @@ impl KeymapConfig {
     pub fn find_matched_prefix_keymaps(&self, prefix: &KeySequence) -> Vec<&Keymap> {
         self.keymaps
             .iter()
-            .filter(|&keymap| prefix.is_prefix(&keymap.key_sequence))
+            .filter(|&keymap| {
+                prefix.is_prefix(&keymap.key_sequence) || prefix.is_prefix(&keymap.key_sequence)
+            })
             .collect()
+    }
+
+    /// finds all actions whose mapped key sequence has a given `prefix` key sequence as its prefix
+    pub fn find_matched_prefix_actions(&self, prefix: &KeySequence) -> Vec<&ActionMap> {
+        self.actions
+            .iter()
+            .filter(|&action| {
+                prefix.is_prefix(&action.key_sequence) || prefix.is_prefix(&action.key_sequence)
+            })
+            .collect()
+    }
+
+    pub fn has_matched_prefix(&self, prefix: &KeySequence) -> bool {
+        let keymaps = self.find_matched_prefix_keymaps(prefix);
+        let actions = self.find_matched_prefix_actions(prefix);
+        !keymaps.is_empty() || !actions.is_empty()
     }
 
     /// finds a command from a mapped key sequence
@@ -358,6 +397,13 @@ impl KeymapConfig {
             .iter()
             .find(|&keymap| keymap.key_sequence == *key_sequence)
             .map(|keymap| keymap.command)
+    }
+
+    pub fn find_action_from_key_sequence(&self, key_sequence: &KeySequence) -> Option<Action> {
+        self.actions
+            .iter()
+            .find(|&action| action.key_sequence == *key_sequence)
+            .map(|action| action.action)
     }
 }
 
