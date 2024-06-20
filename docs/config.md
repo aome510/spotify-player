@@ -257,3 +257,17 @@ key_sequence = "M-enter"
 command = "None"
 key_sequence = "q"
 ```
+
+## Actions
+
+Actions are located in the same `keymap.toml` file as keymaps. An action is a command that can be triggered by a key sequence. An action can be triggered by a key sequence that is not bound to any command. For example,
+a list of actions can be found [here](../README.md#actions).
+
+```toml
+[[keymaps]]
+command = "NextTrack"
+key_sequence = "g n"
+[[actions]]
+action="ToggleLiked"
+key_sequence="C-l"
+```

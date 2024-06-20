@@ -65,6 +65,7 @@ A Spotify Premium account is **required**.
 - [Rust and cargo](https://www.rust-lang.org/tools/install) as the build dependencies
 - install `openssl`, `alsa-lib` (`streaming` feature), `libdbus` (`media-control` feature).
   - For example, on Debian based systems, run the below command to install application's dependencies:
+
     ```shell
     sudo apt install libssl-dev libasound2-dev libdbus-1-dev
     ```
@@ -372,10 +373,28 @@ To add new shortcuts or modify the default shortcuts, please refer to the [keyma
 
 ### Actions
 
-A list of actions is available for each type of Spotify item (track, album, artist, or playlist).
-For example, the list of available actions on a track is `[GoToAlbum, GoToArtist, GoToTrackRadio, GoToArtistRadio, GoToAlbumRadio, AddToPlaylist, DeleteFromCurrentPlaylist, AddToLikedTracks, DeleteFromLikedTracks]`.
+A general list of actions is available; however, not all Spotify items (track, album, artist, or playlist) implement each action. To get the list of available actions on an item, call the ShowActionsOnCurrentTrack command or the ShowActionsOnSelectedItem command, then press enter (default binding for the ChooseSelected command) to initiate the selected action. Some actions may not appear in the popup but can be bound to a shortcut.
 
-To get the list of actions on an item, call the `ShowActionsOnCurrentTrack` command or `ShowActionsOnSelectedItem` command, then press enter (default binding for `ChooseSelected` command) to initiate the selected action.
+List of available actions:
+
+- `GoToArtist`
+- `GoToAlbum`
+- `GoToRadio`
+- `AddToLibrary`
+- `AddToPlaylist`
+- `AddToQueue`
+- `AddToLiked`
+- `DeleteFromLiked`
+- `DeleteFromLibrary`
+- `DeleteFromPlaylist`
+- `ShowActionsOnAlbum`
+- `ShowActionsOnArtist`
+- `ToggleLiked`
+- `CopyLink`
+- `Follow`
+- `Unfollow`
+
+These actions can also be bound to a shortcut. To add new shortcuts, please refer to the [actions section](docs/config.md#actions) in the configuration documentation.
 
 ### Search Page
 
