@@ -1,12 +1,201 @@
 use super::page::handle_navigation_command;
 use super::*;
 use crate::{
-    command::{
-        construct_album_actions, construct_artist_actions, construct_playlist_actions, TrackAction,
-    },
+    command::{construct_album_actions, construct_artist_actions, construct_playlist_actions},
     state::UIStateGuard,
 };
+use command::Action;
 use rand::Rng;
+
+pub fn get_action_context(
+    ui: &mut UIStateGuard,
+    state: &SharedState,
+) -> anyhow::Result<ActionContext> {
+    let mut data = state.data.write();
+
+    let action_context: anyhow::Result<ActionContext> = match ui.current_page() {
+        PageState::Context {
+            state: page_state, ..
+        } => {
+            let context_id = match ui.current_page() {
+                PageState::Context { id, .. } => match id {
+                    Some(id) => id,
+                    None => anyhow::bail!("expect a context id"),
+                },
+                _ => anyhow::bail!("expect a context page"),
+            };
+            match page_state {
+                Some(ContextPageUIState::Playlist { track_table }) => {
+                    let tracks = data.context_tracks(context_id).unwrap();
+                    let selected_index = track_table.selected().unwrap_or_default();
+                    if selected_index >= tracks.len() {
+                        anyhow::bail!("invalid selected index");
+                    }
+                    Ok(ActionContext::Track(tracks[selected_index].clone()))
+                }
+                Some(ContextPageUIState::Album { track_table }) => {
+                    let tracks = data.context_tracks(context_id).unwrap();
+                    let selected_index = track_table.selected().unwrap_or_default();
+                    if selected_index >= tracks.len() {
+                        anyhow::bail!("invalid selected index");
+                    }
+                    Ok(ActionContext::Track(tracks[selected_index].clone()))
+                }
+                Some(ContextPageUIState::Artist {
+                    focus,
+                    album_list,
+                    top_track_table,
+                    related_artist_list,
+                }) => match focus {
+                    ArtistFocusState::Albums => {
+                        let albums =
+                            data.caches
+                                .context
+                                .get(&context_id.uri())
+                                .and_then(|c| match c {
+                                    Context::Artist { albums, .. } => Some(albums.clone()),
+                                    _ => None,
+                                });
+
+                        let selected_index = album_list.selected().unwrap_or_default();
+                        let selected_album = albums
+                            .as_ref()
+                            .and_then(|albums| albums.get(selected_index));
+
+                        match selected_album {
+                            Some(album) => Ok(ActionContext::Album(album.clone())),
+                            None => anyhow::bail!("no selected album"),
+                        }
+                    }
+                    ArtistFocusState::RelatedArtists => {
+                        let artists =
+                            data.caches
+                                .context
+                                .get(&context_id.uri())
+                                .and_then(|c| match c {
+                                    Context::Artist {
+                                        related_artists, ..
+                                    } => Some(related_artists.clone()),
+                                    _ => None,
+                                });
+
+                        let selected_index = related_artist_list.selected().unwrap_or_default();
+                        let selected_artist = artists
+                            .as_ref()
+                            .and_then(|artists| artists.get(selected_index));
+
+                        match selected_artist {
+                            Some(artist) => Ok(ActionContext::Artist(artist.clone())),
+                            None => anyhow::bail!("no selected artist"),
+                        }
+                    }
+                    ArtistFocusState::TopTracks => {
+                        let tracks =
+                            data.caches
+                                .context
+                                .get(&context_id.uri())
+                                .and_then(|c| match c {
+                                    Context::Artist { top_tracks, .. } => Some(top_tracks.clone()),
+                                    _ => None,
+                                });
+
+                        let selected_index = top_track_table.selected().unwrap_or_default();
+                        let selected_track = tracks
+                            .as_ref()
+                            .and_then(|tracks| tracks.get(selected_index));
+
+                        match selected_track {
+                            Some(track) => Ok(ActionContext::Track(track.clone())),
+                            None => anyhow::bail!("no selected track"),
+                        }
+                    }
+                },
+                Some(ContextPageUIState::Tracks { track_table }) => {
+                    let tracks = data.context_tracks(context_id).unwrap();
+                    let selected_index = track_table.selected().unwrap_or_default();
+                    if selected_index >= tracks.len() {
+                        anyhow::bail!("invalid selected index");
+                    }
+                    Ok(ActionContext::Track(tracks[selected_index].clone()))
+                }
+                None => anyhow::bail!("no context page state"),
+            }
+        }
+        PageState::Library { state } => match state.focus {
+            LibraryFocusState::Playlists => {
+                let playlists = data.user_data.playlists.iter().collect::<Vec<_>>();
+                let selected_index = state.playlist_list.selected().unwrap_or_default();
+                if selected_index >= playlists.len() {
+                    anyhow::bail!("invalid selected index");
+                }
+                Ok(ActionContext::Playlist(playlists[selected_index].clone()))
+            }
+            LibraryFocusState::SavedAlbums => {
+                let albums = data.user_data.saved_albums.iter().collect::<Vec<_>>();
+                let selected_index = state.saved_album_list.selected().unwrap_or_default();
+                if selected_index >= albums.len() {
+                    anyhow::bail!("invalid selected index");
+                }
+                Ok(ActionContext::Album(albums[selected_index].clone()))
+            }
+            LibraryFocusState::FollowedArtists => {
+                let artists = data.user_data.followed_artists.iter().collect::<Vec<_>>();
+                let selected_index = state.followed_artist_list.selected().unwrap_or_default();
+                if selected_index >= artists.len() {
+                    anyhow::bail!("invalid selected index");
+                }
+                Ok(ActionContext::Artist(artists[selected_index].clone()))
+            }
+        },
+
+        PageState::Search {
+            current_query,
+            state,
+            ..
+        } => match state.focus {
+            SearchFocusState::Input => anyhow::bail!("no action context for input focus"),
+            SearchFocusState::Tracks => {
+                let tracks = data.caches.search.get(current_query.as_str()).unwrap();
+                let selected_index = state.track_list.selected().unwrap_or_default();
+                if selected_index >= tracks.tracks.len() {
+                    anyhow::bail!("invalid selected index");
+                }
+                Ok(ActionContext::Track(tracks.tracks[selected_index].clone()))
+            }
+            SearchFocusState::Albums => {
+                let albums = data.caches.search.get(current_query.as_str()).unwrap();
+                let selected_index = state.album_list.selected().unwrap_or_default();
+                if selected_index >= albums.albums.len() {
+                    anyhow::bail!("invalid selected index");
+                }
+                Ok(ActionContext::Album(albums.albums[selected_index].clone()))
+            }
+            SearchFocusState::Artists => {
+                let artists = data.caches.search.get(current_query.as_str()).unwrap();
+                let selected_index = state.artist_list.selected().unwrap_or_default();
+                if selected_index >= artists.artists.len() {
+                    anyhow::bail!("invalid selected index");
+                }
+                Ok(ActionContext::Artist(
+                    artists.artists[selected_index].clone(),
+                ))
+            }
+            SearchFocusState::Playlists => {
+                let playlists = data.caches.search.get(current_query.as_str()).unwrap();
+                let selected_index = state.playlist_list.selected().unwrap_or_default();
+                if selected_index >= playlists.playlists.len() {
+                    anyhow::bail!("invalid selected index");
+                }
+                Ok(ActionContext::Playlist(
+                    playlists.playlists[selected_index].clone(),
+                ))
+            }
+        },
+        _ => anyhow::bail!("no action context for current page"),
+    };
+
+    action_context
+}
 
 /// Handle a command for the currently focused context window
 ///
