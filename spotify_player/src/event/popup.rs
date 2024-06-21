@@ -453,33 +453,35 @@ pub fn handle_item_action(
         _ => return Ok(()),
     };
 
+    let data = state.data.read();
+
     match item {
         ActionListItem::Track(track, actions) => handle_action_in_context(
             actions[n],
             ActionContext::Track(track),
             client_pub,
-            state,
+            &data,
             ui,
         ),
         ActionListItem::Album(album, actions) => handle_action_in_context(
             actions[n],
             ActionContext::Album(album),
             client_pub,
-            state,
+            &data,
             ui,
         ),
         ActionListItem::Artist(artist, actions) => handle_action_in_context(
             actions[n],
             ActionContext::Artist(artist),
             client_pub,
-            state,
+            &data,
             ui,
         ),
         ActionListItem::Playlist(playlist, actions) => handle_action_in_context(
             actions[n],
             ActionContext::Playlist(playlist),
             client_pub,
-            state,
+            &data,
             ui,
         ),
     }

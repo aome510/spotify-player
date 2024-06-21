@@ -7,194 +7,64 @@ use crate::{
 use command::Action;
 use rand::Rng;
 
-pub fn get_action_context(
+pub fn handle_action_for_focused_context_page(
+    action: Action,
+    client_pub: &flume::Sender<ClientRequest>,
     ui: &mut UIStateGuard,
     state: &SharedState,
-) -> anyhow::Result<ActionContext> {
-    let mut data = state.data.write();
-
-    let action_context: anyhow::Result<ActionContext> = match ui.current_page() {
-        PageState::Context {
-            state: page_state, ..
-        } => {
-            let context_id = match ui.current_page() {
-                PageState::Context { id, .. } => match id {
-                    Some(id) => id,
-                    None => anyhow::bail!("expect a context id"),
-                },
-                _ => anyhow::bail!("expect a context page"),
-            };
-            match page_state {
-                Some(ContextPageUIState::Playlist { track_table }) => {
-                    let tracks = data.context_tracks(context_id).unwrap();
-                    let selected_index = track_table.selected().unwrap_or_default();
-                    if selected_index >= tracks.len() {
-                        anyhow::bail!("invalid selected index");
-                    }
-                    Ok(ActionContext::Track(tracks[selected_index].clone()))
-                }
-                Some(ContextPageUIState::Album { track_table }) => {
-                    let tracks = data.context_tracks(context_id).unwrap();
-                    let selected_index = track_table.selected().unwrap_or_default();
-                    if selected_index >= tracks.len() {
-                        anyhow::bail!("invalid selected index");
-                    }
-                    Ok(ActionContext::Track(tracks[selected_index].clone()))
-                }
-                Some(ContextPageUIState::Artist {
-                    focus,
-                    album_list,
-                    top_track_table,
-                    related_artist_list,
-                }) => match focus {
-                    ArtistFocusState::Albums => {
-                        let albums =
-                            data.caches
-                                .context
-                                .get(&context_id.uri())
-                                .and_then(|c| match c {
-                                    Context::Artist { albums, .. } => Some(albums.clone()),
-                                    _ => None,
-                                });
-
-                        let selected_index = album_list.selected().unwrap_or_default();
-                        let selected_album = albums
-                            .as_ref()
-                            .and_then(|albums| albums.get(selected_index));
-
-                        match selected_album {
-                            Some(album) => Ok(ActionContext::Album(album.clone())),
-                            None => anyhow::bail!("no selected album"),
-                        }
-                    }
-                    ArtistFocusState::RelatedArtists => {
-                        let artists =
-                            data.caches
-                                .context
-                                .get(&context_id.uri())
-                                .and_then(|c| match c {
-                                    Context::Artist {
-                                        related_artists, ..
-                                    } => Some(related_artists.clone()),
-                                    _ => None,
-                                });
-
-                        let selected_index = related_artist_list.selected().unwrap_or_default();
-                        let selected_artist = artists
-                            .as_ref()
-                            .and_then(|artists| artists.get(selected_index));
-
-                        match selected_artist {
-                            Some(artist) => Ok(ActionContext::Artist(artist.clone())),
-                            None => anyhow::bail!("no selected artist"),
-                        }
-                    }
-                    ArtistFocusState::TopTracks => {
-                        let tracks =
-                            data.caches
-                                .context
-                                .get(&context_id.uri())
-                                .and_then(|c| match c {
-                                    Context::Artist { top_tracks, .. } => Some(top_tracks.clone()),
-                                    _ => None,
-                                });
-
-                        let selected_index = top_track_table.selected().unwrap_or_default();
-                        let selected_track = tracks
-                            .as_ref()
-                            .and_then(|tracks| tracks.get(selected_index));
-
-                        match selected_track {
-                            Some(track) => Ok(ActionContext::Track(track.clone())),
-                            None => anyhow::bail!("no selected track"),
-                        }
-                    }
-                },
-                Some(ContextPageUIState::Tracks { track_table }) => {
-                    let tracks = data.context_tracks(context_id).unwrap();
-                    let selected_index = track_table.selected().unwrap_or_default();
-                    if selected_index >= tracks.len() {
-                        anyhow::bail!("invalid selected index");
-                    }
-                    Ok(ActionContext::Track(tracks[selected_index].clone()))
-                }
-                None => anyhow::bail!("no context page state"),
-            }
-        }
-        PageState::Library { state } => match state.focus {
-            LibraryFocusState::Playlists => {
-                let playlists = data.user_data.playlists.iter().collect::<Vec<_>>();
-                let selected_index = state.playlist_list.selected().unwrap_or_default();
-                if selected_index >= playlists.len() {
-                    anyhow::bail!("invalid selected index");
-                }
-                Ok(ActionContext::Playlist(playlists[selected_index].clone()))
-            }
-            LibraryFocusState::SavedAlbums => {
-                let albums = data.user_data.saved_albums.iter().collect::<Vec<_>>();
-                let selected_index = state.saved_album_list.selected().unwrap_or_default();
-                if selected_index >= albums.len() {
-                    anyhow::bail!("invalid selected index");
-                }
-                Ok(ActionContext::Album(albums[selected_index].clone()))
-            }
-            LibraryFocusState::FollowedArtists => {
-                let artists = data.user_data.followed_artists.iter().collect::<Vec<_>>();
-                let selected_index = state.followed_artist_list.selected().unwrap_or_default();
-                if selected_index >= artists.len() {
-                    anyhow::bail!("invalid selected index");
-                }
-                Ok(ActionContext::Artist(artists[selected_index].clone()))
-            }
-        },
-
-        PageState::Search {
-            current_query,
-            state,
-            ..
-        } => match state.focus {
-            SearchFocusState::Input => anyhow::bail!("no action context for input focus"),
-            SearchFocusState::Tracks => {
-                let tracks = data.caches.search.get(current_query.as_str()).unwrap();
-                let selected_index = state.track_list.selected().unwrap_or_default();
-                if selected_index >= tracks.tracks.len() {
-                    anyhow::bail!("invalid selected index");
-                }
-                Ok(ActionContext::Track(tracks.tracks[selected_index].clone()))
-            }
-            SearchFocusState::Albums => {
-                let albums = data.caches.search.get(current_query.as_str()).unwrap();
-                let selected_index = state.album_list.selected().unwrap_or_default();
-                if selected_index >= albums.albums.len() {
-                    anyhow::bail!("invalid selected index");
-                }
-                Ok(ActionContext::Album(albums.albums[selected_index].clone()))
-            }
-            SearchFocusState::Artists => {
-                let artists = data.caches.search.get(current_query.as_str()).unwrap();
-                let selected_index = state.artist_list.selected().unwrap_or_default();
-                if selected_index >= artists.artists.len() {
-                    anyhow::bail!("invalid selected index");
-                }
-                Ok(ActionContext::Artist(
-                    artists.artists[selected_index].clone(),
-                ))
-            }
-            SearchFocusState::Playlists => {
-                let playlists = data.caches.search.get(current_query.as_str()).unwrap();
-                let selected_index = state.playlist_list.selected().unwrap_or_default();
-                if selected_index >= playlists.playlists.len() {
-                    anyhow::bail!("invalid selected index");
-                }
-                Ok(ActionContext::Playlist(
-                    playlists.playlists[selected_index].clone(),
-                ))
-            }
-        },
-        _ => anyhow::bail!("no action context for current page"),
+) -> Result<bool> {
+    let context_id = match ui.current_page() {
+        PageState::Context { id: Some(id), .. } => id,
+        _ => return Ok(false),
     };
 
-    action_context
+    let data = state.data.read();
+    match data.caches.context.get(&context_id.uri()) {
+        Some(Context::Artist {
+            top_tracks,
+            albums,
+            related_artists,
+            ..
+        }) => {
+            let focus_state = match ui.current_page() {
+                PageState::Context {
+                    state: Some(ContextPageUIState::Artist { focus, .. }),
+                    ..
+                } => focus,
+                _ => return Ok(false),
+            };
+
+            match focus_state {
+                ArtistFocusState::Albums => handle_action_for_album_window(
+                    action,
+                    ui.search_filtered_items(albums),
+                    &data,
+                    ui,
+                    client_pub,
+                ),
+                ArtistFocusState::RelatedArtists => handle_action_for_artist_window(
+                    action,
+                    ui.search_filtered_items(related_artists),
+                    &data,
+                    ui,
+                    client_pub,
+                ),
+                ArtistFocusState::TopTracks => {
+                    handle_action_for_track_window(action, client_pub, top_tracks, &data, ui)
+                }
+            }
+        }
+        Some(Context::Album { tracks, .. }) => {
+            handle_action_for_track_window(action, client_pub, tracks, &data, ui)
+        }
+        Some(Context::Tracks { tracks, .. }) => {
+            handle_action_for_track_window(action, client_pub, tracks, &data, ui)
+        }
+        Some(Context::Playlist { tracks, .. }) => {
+            handle_action_for_track_window(action, client_pub, tracks, &data, ui)
+        }
+        None => Ok(false),
+    }
 }
 
 /// Handle a command for the currently focused context window
@@ -357,6 +227,30 @@ fn handle_playlist_modify_command(
     Ok(false)
 }
 
+pub fn handle_action_for_track_window(
+    action: Action,
+    client_pub: &flume::Sender<ClientRequest>,
+    tracks: &[Track],
+    data: &DataReadGuard,
+    ui: &mut UIStateGuard,
+) -> Result<bool> {
+    let id = ui.current_page_mut().selected().unwrap_or_default();
+    let filtered_tracks = ui.search_filtered_items(tracks);
+    if id >= filtered_tracks.len() {
+        return Ok(false);
+    }
+
+    handle_action_in_context(
+        action,
+        ActionContext::Track(filtered_tracks[id].clone()),
+        client_pub,
+        data,
+        ui,
+    )?;
+
+    Ok(true)
+}
+
 fn handle_command_for_track_table_window(
     command: Command,
     client_pub: &flume::Sender<ClientRequest>,
@@ -477,6 +371,29 @@ pub fn handle_command_for_track_list_window(
     Ok(true)
 }
 
+pub fn handle_action_for_artist_window(
+    action: Action,
+    artists: Vec<&Artist>,
+    data: &DataReadGuard,
+    ui: &mut UIStateGuard,
+    client_pub: &flume::Sender<ClientRequest>,
+) -> Result<bool> {
+    let id = ui.current_page_mut().selected().unwrap_or_default();
+    if id >= artists.len() {
+        return Ok(false);
+    }
+
+    handle_action_in_context(
+        action,
+        ActionContext::Artist(artists[id].clone()),
+        client_pub,
+        data,
+        ui,
+    )?;
+
+    Ok(true)
+}
+
 pub fn handle_command_for_artist_list_window(
     command: Command,
     artists: Vec<&Artist>,
@@ -509,6 +426,29 @@ pub fn handle_command_for_artist_list_window(
         }
         _ => return Ok(false),
     }
+    Ok(true)
+}
+
+pub fn handle_action_for_album_window(
+    action: Action,
+    albums: Vec<&Album>,
+    data: &DataReadGuard,
+    ui: &mut UIStateGuard,
+    client_pub: &flume::Sender<ClientRequest>,
+) -> Result<bool> {
+    let id = ui.current_page_mut().selected().unwrap_or_default();
+    if id >= albums.len() {
+        return Ok(false);
+    }
+
+    handle_action_in_context(
+        action,
+        ActionContext::Album(albums[id].clone()),
+        client_pub,
+        data,
+        ui,
+    )?;
+
     Ok(true)
 }
 
@@ -548,6 +488,29 @@ pub fn handle_command_for_album_list_window(
         }
         _ => return Ok(false),
     }
+    Ok(true)
+}
+
+pub fn handle_action_for_playlist_window(
+    action: Action,
+    playlists: Vec<&Playlist>,
+    data: &DataReadGuard,
+    ui: &mut UIStateGuard,
+    client_pub: &flume::Sender<ClientRequest>,
+) -> Result<bool> {
+    let id = ui.current_page_mut().selected().unwrap_or_default();
+    if id >= playlists.len() {
+        return Ok(false);
+    }
+
+    handle_action_in_context(
+        action,
+        ActionContext::Playlist(playlists[id].clone()),
+        client_pub,
+        data,
+        ui,
+    )?;
+
     Ok(true)
 }
 

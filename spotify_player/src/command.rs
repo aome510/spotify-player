@@ -106,6 +106,11 @@ pub enum ActionContext {
     Playlist(Playlist),
 }
 
+pub enum CommandOrAction {
+    Command(Command),
+    Action(Action),
+}
+
 impl ActionContext {
     pub fn get_available_actions(&self, data: &DataReadGuard) -> Vec<Action> {
         match self {

@@ -1,5 +1,5 @@
 use crate::{
-    command::{Action, Command},
+    command::{Action, Command, CommandOrAction},
     key::{Key, KeySequence},
 };
 use anyhow::Result;
@@ -404,6 +404,19 @@ impl KeymapConfig {
             .iter()
             .find(|&action| action.key_sequence == *key_sequence)
             .map(|action| action.action)
+    }
+
+    pub fn find_command_or_action_from_key_sequence(
+        &self,
+        key_sequence: &KeySequence,
+    ) -> Option<CommandOrAction> {
+        if let Some(command) = self.find_command_from_key_sequence(key_sequence) {
+            return Some(CommandOrAction::Command(command));
+        }
+        if let Some(action) = self.find_action_from_key_sequence(key_sequence) {
+            return Some(CommandOrAction::Action(action));
+        }
+        None
     }
 }
 

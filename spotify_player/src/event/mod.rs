@@ -11,7 +11,6 @@ use crate::{
 #[cfg(feature = "lyric-finder")]
 use crate::utils::map_join;
 use anyhow::{Context as _, Result};
-use window::get_action_context;
 
 use self::clipboard::{get_clipboard_provider, CLIPBOARD_PROVIDER};
 
@@ -103,13 +102,6 @@ fn handle_key_event(
         }
     };
 
-    // Handle any contextual action bound to the key sequence
-    if let Some(action) = keymap_config.find_action_from_key_sequence(&key_sequence) {
-        if let Ok(context) = get_action_context(&mut ui, state) {
-            handle_action_in_context(action, context, client_pub, state, &mut ui)?
-        }
-    }
-
     // if the key sequence is not handled, let the global command handler handle it
     let handled = if !handled {
         match keymap_config.find_command_from_key_sequence(&key_sequence) {
@@ -134,10 +126,9 @@ pub fn handle_action_in_context(
     action: Action,
     context: ActionContext,
     client_pub: &flume::Sender<ClientRequest>,
-    state: &SharedState,
+    data: &DataReadGuard,
     ui: &mut UIStateGuard,
 ) -> Result<()> {
-    let data = state.data.read();
     match context {
         ActionContext::Track(track) => match action {
             Action::GoToAlbum => {
@@ -211,7 +202,7 @@ pub fn handle_action_in_context(
                 if let Some(album) = track.album {
                     let context = ActionContext::Album(album.clone());
                     ui.popup = Some(PopupState::ActionList(
-                        ActionListItem::Album(album, context.get_available_actions(&data)),
+                        ActionListItem::Album(album, context.get_available_actions(data)),
                         new_list_state(),
                     ));
                 }
