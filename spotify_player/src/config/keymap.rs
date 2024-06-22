@@ -381,6 +381,7 @@ impl KeymapConfig {
             .collect()
     }
 
+    /// checks if there is any command or action that has a given `prefix` key sequence as its prefix
     pub fn has_matched_prefix(&self, prefix: &KeySequence) -> bool {
         let keymaps = self.find_matched_prefix_keymaps(prefix);
         let actions = self.find_matched_prefix_actions(prefix);
@@ -395,6 +396,7 @@ impl KeymapConfig {
             .map(|keymap| keymap.command)
     }
 
+    /// finds an action from a mapped key sequence
     pub fn find_action_from_key_sequence(&self, key_sequence: &KeySequence) -> Option<Action> {
         self.actions
             .iter()
@@ -402,6 +404,7 @@ impl KeymapConfig {
             .map(|action| action.action)
     }
 
+    /// finds a command or action from a mapped key sequence
     pub fn find_command_or_action_from_key_sequence(
         &self,
         key_sequence: &KeySequence,
