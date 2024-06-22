@@ -172,20 +172,16 @@ fn handle_key_sequence_for_search_page(
         SearchFocusState::Input => anyhow::bail!("user's search input should be handled before"),
         SearchFocusState::Tracks => {
             let tracks = match search_results {
-                Some(s) => s.tracks.clone(),
+                Some(s) => s.tracks.iter().collect(),
                 None => Vec::new(),
             };
 
             match found_keymap {
                 CommandOrAction::Command(command) => window::handle_command_for_track_list_window(
-                    command,
-                    client_pub,
-                    tracks.iter().collect(),
-                    &data,
-                    ui,
+                    command, client_pub, tracks, &data, ui,
                 ),
                 CommandOrAction::Action(action) => {
-                    window::handle_action_for_track_window(action, client_pub, &tracks, &data, ui)
+                    window::handle_action_for_track_window(action, client_pub, tracks, &data, ui)
                 }
             }
         }

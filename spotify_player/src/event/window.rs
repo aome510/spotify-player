@@ -49,20 +49,36 @@ pub fn handle_action_for_focused_context_page(
                     ui,
                     client_pub,
                 ),
-                ArtistFocusState::TopTracks => {
-                    handle_action_for_track_window(action, client_pub, top_tracks, &data, ui)
-                }
+                ArtistFocusState::TopTracks => handle_action_for_track_window(
+                    action,
+                    client_pub,
+                    ui.search_filtered_items(top_tracks),
+                    &data,
+                    ui,
+                ),
             }
         }
-        Some(Context::Album { tracks, .. }) => {
-            handle_action_for_track_window(action, client_pub, tracks, &data, ui)
-        }
-        Some(Context::Tracks { tracks, .. }) => {
-            handle_action_for_track_window(action, client_pub, tracks, &data, ui)
-        }
-        Some(Context::Playlist { tracks, .. }) => {
-            handle_action_for_track_window(action, client_pub, tracks, &data, ui)
-        }
+        Some(Context::Album { tracks, .. }) => handle_action_for_track_window(
+            action,
+            client_pub,
+            ui.search_filtered_items(tracks),
+            &data,
+            ui,
+        ),
+        Some(Context::Tracks { tracks, .. }) => handle_action_for_track_window(
+            action,
+            client_pub,
+            ui.search_filtered_items(tracks),
+            &data,
+            ui,
+        ),
+        Some(Context::Playlist { tracks, .. }) => handle_action_for_track_window(
+            action,
+            client_pub,
+            ui.search_filtered_items(tracks),
+            &data,
+            ui,
+        ),
         None => Ok(false),
     }
 }
@@ -230,19 +246,18 @@ fn handle_playlist_modify_command(
 pub fn handle_action_for_track_window(
     action: Action,
     client_pub: &flume::Sender<ClientRequest>,
-    tracks: &[Track],
+    tracks: Vec<&Track>,
     data: &DataReadGuard,
     ui: &mut UIStateGuard,
 ) -> Result<bool> {
     let id = ui.current_page_mut().selected().unwrap_or_default();
-    let filtered_tracks = ui.search_filtered_items(tracks);
-    if id >= filtered_tracks.len() {
+    if id >= tracks.len() {
         return Ok(false);
     }
 
     handle_action_in_context(
         action,
-        ActionContext::Track(filtered_tracks[id].clone()),
+        ActionContext::Track(tracks[id].clone()),
         client_pub,
         data,
         ui,
