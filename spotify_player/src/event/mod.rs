@@ -122,7 +122,7 @@ fn handle_key_event(
     Ok(())
 }
 
-pub fn handle_action_in_context(
+fn handle_action_in_context(
     action: Action,
     context: ActionContext,
     client_pub: &flume::Sender<ClientRequest>,
