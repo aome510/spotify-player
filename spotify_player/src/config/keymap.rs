@@ -22,7 +22,7 @@ pub struct Keymap {
 }
 
 #[derive(Clone, Debug, Deserialize)]
-/// A keymap that triggers an `Action` when a `Key` is pressed
+/// A keymap that triggers an `Action` when a key sequence is pressed
 pub struct ActionMap {
     pub key_sequence: KeySequence,
     pub action: Action,
