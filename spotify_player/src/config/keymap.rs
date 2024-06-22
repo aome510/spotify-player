@@ -369,9 +369,7 @@ impl KeymapConfig {
     pub fn find_matched_prefix_keymaps(&self, prefix: &KeySequence) -> Vec<&Keymap> {
         self.keymaps
             .iter()
-            .filter(|&keymap| {
-                prefix.is_prefix(&keymap.key_sequence) || prefix.is_prefix(&keymap.key_sequence)
-            })
+            .filter(|&keymap| prefix.is_prefix(&keymap.key_sequence))
             .collect()
     }
 
@@ -379,9 +377,7 @@ impl KeymapConfig {
     pub fn find_matched_prefix_actions(&self, prefix: &KeySequence) -> Vec<&ActionMap> {
         self.actions
             .iter()
-            .filter(|&action| {
-                prefix.is_prefix(&action.key_sequence) || prefix.is_prefix(&action.key_sequence)
-            })
+            .filter(|&action| prefix.is_prefix(&action.key_sequence))
             .collect()
     }
 
