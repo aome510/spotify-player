@@ -373,7 +373,7 @@ To add new shortcuts or modify the default shortcuts, please refer to the [keyma
 
 ### Actions
 
-A general list of actions is available; however, not all Spotify items (track, album, artist, or playlist) implement each action. To get the list of available actions on an item, call the ShowActionsOnCurrentTrack command or the ShowActionsOnSelectedItem command, then press enter (default binding for the ChooseSelected command) to initiate the selected action. Some actions may not appear in the popup but can be bound to a shortcut.
+A general list of actions is available; however, not all Spotify items (track, album, artist, or playlist) implement each action. To get the list of available actions on an item, call the `ShowActionsOnCurrentTrack` command or the `ShowActionsOnSelectedItem` command, then press enter (default binding for the `ChooseSelected` command) to initiate the selected action. Some actions may not appear in the popup but can be bound to a shortcut.
 
 List of available actions:
 
