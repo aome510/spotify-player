@@ -1,12 +1,104 @@
 use super::page::handle_navigation_command;
 use super::*;
 use crate::{
-    command::{
-        construct_album_actions, construct_artist_actions, construct_playlist_actions, TrackAction,
-    },
+    command::{construct_album_actions, construct_artist_actions, construct_playlist_actions},
     state::UIStateGuard,
 };
+use command::Action;
 use rand::Rng;
+
+pub fn handle_action_for_focused_context_page(
+    action: Action,
+    client_pub: &flume::Sender<ClientRequest>,
+    ui: &mut UIStateGuard,
+    state: &SharedState,
+) -> Result<bool> {
+    let context_id = match ui.current_page() {
+        PageState::Context { id: Some(id), .. } => id,
+        _ => return Ok(false),
+    };
+
+    let data = state.data.read();
+    match data.caches.context.get(&context_id.uri()) {
+        Some(Context::Artist {
+            top_tracks,
+            albums,
+            related_artists,
+            ..
+        }) => {
+            let focus_state = match ui.current_page() {
+                PageState::Context {
+                    state: Some(ContextPageUIState::Artist { focus, .. }),
+                    ..
+                } => focus,
+                _ => return Ok(false),
+            };
+
+            match focus_state {
+                ArtistFocusState::Albums => handle_action_for_selected_item(
+                    action,
+                    ui.search_filtered_items(albums),
+                    &data,
+                    ui,
+                    client_pub,
+                ),
+                ArtistFocusState::RelatedArtists => handle_action_for_selected_item(
+                    action,
+                    ui.search_filtered_items(related_artists),
+                    &data,
+                    ui,
+                    client_pub,
+                ),
+                ArtistFocusState::TopTracks => handle_action_for_selected_item(
+                    action,
+                    ui.search_filtered_items(top_tracks),
+                    &data,
+                    ui,
+                    client_pub,
+                ),
+            }
+        }
+        Some(Context::Album { tracks, .. }) => handle_action_for_selected_item(
+            action,
+            ui.search_filtered_items(tracks),
+            &data,
+            ui,
+            client_pub,
+        ),
+        Some(Context::Tracks { tracks, .. }) => handle_action_for_selected_item(
+            action,
+            ui.search_filtered_items(tracks),
+            &data,
+            ui,
+            client_pub,
+        ),
+        Some(Context::Playlist { tracks, .. }) => handle_action_for_selected_item(
+            action,
+            ui.search_filtered_items(tracks),
+            &data,
+            ui,
+            client_pub,
+        ),
+        None => Ok(false),
+    }
+}
+
+pub fn handle_action_for_selected_item<T: Into<ActionContext> + Clone>(
+    action: Action,
+    items: Vec<&T>,
+    data: &DataReadGuard,
+    ui: &mut UIStateGuard,
+    client_pub: &flume::Sender<ClientRequest>,
+) -> Result<bool> {
+    let id = ui.current_page_mut().selected().unwrap_or_default();
+    if id >= items.len() {
+        return Ok(false);
+    }
+
+    handle_action_in_context(action, items[id].clone().into(), client_pub, data, ui)?;
+
+    Ok(true)
+}
 
 /// Handle a command for the currently focused context window
 ///
@@ -155,7 +247,7 @@ fn handle_playlist_modify_command(
         }
         Command::ShowActionsOnSelectedItem => {
             let mut actions = command::construct_track_actions(tracks[id], data);
-            actions.push(TrackAction::DeleteFromCurrentPlaylist);
+            actions.push(Action::DeleteFromPlaylist);
             ui.popup = Some(PopupState::ActionList(
                 ActionListItem::Track(tracks[id].clone(), actions),
                 new_list_state(),

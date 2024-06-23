@@ -28,10 +28,10 @@ pub enum PopupState {
 
 #[derive(Debug, Clone)]
 pub enum ActionListItem {
-    Track(Track, Vec<command::TrackAction>),
-    Artist(Artist, Vec<command::ArtistAction>),
-    Album(Album, Vec<command::AlbumAction>),
-    Playlist(Playlist, Vec<command::PlaylistAction>),
+    Track(Track, Vec<command::Action>),
+    Artist(Artist, Vec<command::Action>),
+    Album(Album, Vec<command::Action>),
+    Playlist(Playlist, Vec<command::Action>),
 }
 
 /// An action on an item in a playlist popup list

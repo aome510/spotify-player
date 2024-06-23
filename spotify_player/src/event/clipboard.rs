@@ -4,7 +4,7 @@ use anyhow::Result;
 
 use crate::config::Command;
 
-pub static CLIPBOARD_PROVIDER: OnceLock<Box<dyn ClipboardProvider>> = OnceLock::new();
+static CLIPBOARD_PROVIDER: OnceLock<Box<dyn ClipboardProvider>> = OnceLock::new();
 
 pub trait ClipboardProvider: Send + Sync {
     fn get_contents(&self) -> Result<String>;
@@ -120,4 +120,16 @@ fn binary_exists(command: &'static str) -> bool {
 
 fn env_var_is_set(env_var_name: &str) -> bool {
     std::env::var_os(env_var_name).is_some()
+}
+
+pub fn get_clipboard_content() -> Result<String> {
+    CLIPBOARD_PROVIDER
+        .get_or_init(|| get_clipboard_provider())
+        .get_contents()
+}
+
+pub fn execute_copy_command(text: String) -> Result<()> {
+    CLIPBOARD_PROVIDER
+        .get_or_init(|| get_clipboard_provider())
+        .set_contents(text)
 }

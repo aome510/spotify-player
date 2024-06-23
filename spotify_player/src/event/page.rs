@@ -1,4 +1,5 @@
 use anyhow::Context as _;
+use command::CommandOrAction;
 
 use super::*;
 
@@ -15,23 +16,66 @@ pub fn handle_key_sequence_for_page(
         return handle_key_sequence_for_search_page(key_sequence, client_pub, state, ui);
     }
 
-    let command = match config::get_config()
+    match config::get_config()
         .keymap_config
-        .find_command_from_key_sequence(key_sequence)
+        .find_command_or_action_from_key_sequence(key_sequence)
     {
-        Some(command) => command,
-        None => return Ok(false),
-    };
+        Some(CommandOrAction::Command(command)) => match page_type {
+            PageType::Search => anyhow::bail!("page search type should already be handled!"),
+            PageType::Library => handle_command_for_library_page(command, client_pub, ui, state),
+            PageType::Context => handle_command_for_context_page(command, client_pub, ui, state),
+            PageType::Browse => handle_command_for_browse_page(command, client_pub, ui, state),
+            #[cfg(feature = "lyric-finder")]
+            PageType::Lyric => handle_command_for_lyric_page(command, ui),
+            PageType::Queue => handle_command_for_queue_page(command, ui),
+            PageType::CommandHelp => handle_command_for_command_help_page(command, ui),
+        },
+        Some(CommandOrAction::Action(action)) => match page_type {
+            PageType::Search => anyhow::bail!("page search type should already be handled!"),
+            PageType::Library => handle_action_for_library_page(action, client_pub, ui, state),
+            PageType::Context => {
+                window::handle_action_for_focused_context_page(action, client_pub, ui, state)
+            }
+            PageType::Browse => handle_action_for_browse_page(action, client_pub, ui, state),
+            _ => Ok(false),
+        },
+        None => Ok(false),
+    }
+}
 
-    match page_type {
-        PageType::Search => anyhow::bail!("page search type should already be handled!"),
-        PageType::Library => handle_command_for_library_page(command, client_pub, ui, state),
-        PageType::Context => handle_command_for_context_page(command, client_pub, ui, state),
-        PageType::Browse => handle_command_for_browse_page(command, client_pub, ui, state),
-        #[cfg(feature = "lyric-finder")]
-        PageType::Lyric => handle_command_for_lyric_page(command, ui),
-        PageType::Queue => handle_command_for_queue_page(command, ui),
-        PageType::CommandHelp => handle_command_for_command_help_page(command, ui),
+fn handle_action_for_library_page(
+    action: Action,
+    client_pub: &flume::Sender<ClientRequest>,
+    ui: &mut UIStateGuard,
+    state: &SharedState,
+) -> Result<bool> {
+    let data = state.data.read();
+    let focus_state = match ui.current_page() {
+        PageState::Library { state } => state.focus,
+        _ => anyhow::bail!("expect a library page state"),
+    };
+    match focus_state {
+        LibraryFocusState::Playlists => window::handle_action_for_selected_item(
+            action,
+            ui.search_filtered_items(&data.user_data.playlists),
+            &data,
+            ui,
+            client_pub,
+        ),
+        LibraryFocusState::SavedAlbums => window::handle_action_for_selected_item(
+            action,
+            ui.search_filtered_items(&data.user_data.saved_albums),
+            &data,
+            ui,
+            client_pub,
+        ),
+        LibraryFocusState::FollowedArtists => window::handle_action_for_selected_item(
+            action,
+            ui.search_filtered_items(&data.user_data.followed_artists),
+            &data,
+            ui,
+            client_pub,
+        ),
     }
 }
 
@@ -113,11 +157,11 @@ fn handle_key_sequence_for_search_page(
         }
     }
 
-    let command = match config::get_config()
+    let found_keymap = match config::get_config()
         .keymap_config
-        .find_command_from_key_sequence(key_sequence)
+        .find_command_or_action_from_key_sequence(key_sequence)
     {
-        Some(command) => command,
+        Some(found) => found,
         None => return Ok(false),
     };
 
@@ -127,28 +171,61 @@ fn handle_key_sequence_for_search_page(
     match focus_state {
         SearchFocusState::Input => anyhow::bail!("user's search input should be handled before"),
         SearchFocusState::Tracks => {
-            let tracks = search_results
-                .map(|s| s.tracks.iter().collect())
-                .unwrap_or_default();
-            window::handle_command_for_track_list_window(command, client_pub, tracks, &data, ui)
+            let tracks = match search_results {
+                Some(s) => s.tracks.iter().collect(),
+                None => Vec::new(),
+            };
+
+            match found_keymap {
+                CommandOrAction::Command(command) => window::handle_command_for_track_list_window(
+                    command, client_pub, tracks, &data, ui,
+                ),
+                CommandOrAction::Action(action) => {
+                    window::handle_action_for_selected_item(action, tracks, &data, ui, client_pub)
+                }
+            }
         }
         SearchFocusState::Artists => {
             let artists = search_results
                 .map(|s| s.artists.iter().collect())
                 .unwrap_or_default();
-            window::handle_command_for_artist_list_window(command, artists, &data, ui)
+
+            match found_keymap {
+                CommandOrAction::Command(command) => {
+                    window::handle_command_for_artist_list_window(command, artists, &data, ui)
+                }
+                CommandOrAction::Action(action) => {
+                    window::handle_action_for_selected_item(action, artists, &data, ui, client_pub)
+                }
+            }
         }
         SearchFocusState::Albums => {
             let albums = search_results
                 .map(|s| s.albums.iter().collect())
                 .unwrap_or_default();
-            window::handle_command_for_album_list_window(command, albums, &data, ui, client_pub)
+
+            match found_keymap {
+                CommandOrAction::Command(command) => window::handle_command_for_album_list_window(
+                    command, albums, &data, ui, client_pub,
+                ),
+                CommandOrAction::Action(action) => {
+                    window::handle_action_for_selected_item(action, albums, &data, ui, client_pub)
+                }
+            }
         }
         SearchFocusState::Playlists => {
             let playlists = search_results
                 .map(|s| s.playlists.iter().collect())
                 .unwrap_or_default();
-            window::handle_command_for_playlist_list_window(command, playlists, &data, ui)
+
+            match found_keymap {
+                CommandOrAction::Command(command) => {
+                    window::handle_command_for_playlist_list_window(command, playlists, &data, ui)
+                }
+                CommandOrAction::Action(action) => window::handle_action_for_selected_item(
+                    action, playlists, &data, ui, client_pub,
+                ),
+            }
         }
     }
 }
@@ -165,6 +242,44 @@ fn handle_command_for_context_page(
             Ok(true)
         }
         _ => window::handle_command_for_focused_context_window(command, client_pub, ui, state),
+    }
+}
+
+fn handle_action_for_browse_page(
+    action: Action,
+    client_pub: &flume::Sender<ClientRequest>,
+    ui: &mut UIStateGuard,
+    state: &SharedState,
+) -> Result<bool> {
+    let data = state.data.read();
+
+    match ui.current_page() {
+        PageState::Browse { state } => match state {
+            BrowsePageUIState::CategoryPlaylistList { category, .. } => {
+                let playlists = match data.browse.category_playlists.get(&category.id) {
+                    Some(v) => v,
+                    None => return Ok(false),
+                };
+
+                let page_state = ui.current_page_mut();
+                let selected = page_state.selected().unwrap_or_default();
+                if selected >= playlists.len() {
+                    return Ok(false);
+                }
+
+                handle_action_in_context(
+                    action,
+                    playlists[selected].clone().into(),
+                    client_pub,
+                    &data,
+                    ui,
+                )?;
+
+                Ok(true)
+            }
+            _ => Ok(false),
+        },
+        _ => anyhow::bail!("expect a browse page state"),
     }
 }
 
