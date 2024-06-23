@@ -111,6 +111,30 @@ pub enum CommandOrAction {
     Action(Action),
 }
 
+impl From<Track> for ActionContext {
+    fn from(v: Track) -> Self {
+        Self::Track(v)
+    }
+}
+
+impl From<Artist> for ActionContext {
+    fn from(v: Artist) -> Self {
+        Self::Artist(v)
+    }
+}
+
+impl From<Album> for ActionContext {
+    fn from(v: Album) -> Self {
+        Self::Album(v)
+    }
+}
+
+impl From<Playlist> for ActionContext {
+    fn from(v: Playlist) -> Self {
+        Self::Playlist(v)
+    }
+}
+
 impl ActionContext {
     pub fn get_available_actions(&self, data: &DataReadGuard) -> Vec<Action> {
         match self {

@@ -35,52 +35,69 @@ pub fn handle_action_for_focused_context_page(
             };
 
             match focus_state {
-                ArtistFocusState::Albums => handle_action_for_album_window(
+                ArtistFocusState::Albums => handle_action_for_selected_item(
                     action,
                     ui.search_filtered_items(albums),
                     &data,
                     ui,
                     client_pub,
                 ),
-                ArtistFocusState::RelatedArtists => handle_action_for_artist_window(
+                ArtistFocusState::RelatedArtists => handle_action_for_selected_item(
                     action,
                     ui.search_filtered_items(related_artists),
                     &data,
                     ui,
                     client_pub,
                 ),
-                ArtistFocusState::TopTracks => handle_action_for_track_window(
+                ArtistFocusState::TopTracks => handle_action_for_selected_item(
                     action,
-                    client_pub,
                     ui.search_filtered_items(top_tracks),
                     &data,
                     ui,
+                    client_pub,
                 ),
             }
         }
-        Some(Context::Album { tracks, .. }) => handle_action_for_track_window(
+        Some(Context::Album { tracks, .. }) => handle_action_for_selected_item(
             action,
-            client_pub,
             ui.search_filtered_items(tracks),
             &data,
             ui,
+            client_pub,
         ),
-        Some(Context::Tracks { tracks, .. }) => handle_action_for_track_window(
+        Some(Context::Tracks { tracks, .. }) => handle_action_for_selected_item(
             action,
-            client_pub,
             ui.search_filtered_items(tracks),
             &data,
             ui,
+            client_pub,
         ),
-        Some(Context::Playlist { tracks, .. }) => handle_action_for_track_window(
+        Some(Context::Playlist { tracks, .. }) => handle_action_for_selected_item(
             action,
-            client_pub,
             ui.search_filtered_items(tracks),
             &data,
             ui,
+            client_pub,
         ),
         None => Ok(false),
     }
+}
+
+pub fn handle_action_for_selected_item<T: Into<ActionContext> + Clone>(
+    action: Action,
+    items: Vec<&T>,
+    data: &DataReadGuard,
+    ui: &mut UIStateGuard,
+    client_pub: &flume::Sender<ClientRequest>,
+) -> Result<bool> {
+    let id = ui.current_page_mut().selected().unwrap_or_default();
+    if id >= items.len() {
+        return Ok(false);
+    }
+
+    handle_action_in_context(action, items[id].clone().into(), client_pub, data, ui)?;
+
+    Ok(true)
 }
 
 /// Handle a command for the currently focused context window
@@ -243,29 +260,6 @@ fn handle_playlist_modify_command(
     Ok(false)
 }
 
-pub fn handle_action_for_track_window(
-    action: Action,
-    client_pub: &flume::Sender<ClientRequest>,
-    tracks: Vec<&Track>,
-    data: &DataReadGuard,
-    ui: &mut UIStateGuard,
-) -> Result<bool> {
-    let id = ui.current_page_mut().selected().unwrap_or_default();
-    if id >= tracks.len() {
-        return Ok(false);
-    }
-
-    handle_action_in_context(
-        action,
-        ActionContext::Track(tracks[id].clone()),
-        client_pub,
-        data,
-        ui,
-    )?;
-
-    Ok(true)
-}
-
 fn handle_command_for_track_table_window(
     command: Command,
     client_pub: &flume::Sender<ClientRequest>,
@@ -386,29 +380,6 @@ pub fn handle_command_for_track_list_window(
     Ok(true)
 }
 
-pub fn handle_action_for_artist_window(
-    action: Action,
-    artists: Vec<&Artist>,
-    data: &DataReadGuard,
-    ui: &mut UIStateGuard,
-    client_pub: &flume::Sender<ClientRequest>,
-) -> Result<bool> {
-    let id = ui.current_page_mut().selected().unwrap_or_default();
-    if id >= artists.len() {
-        return Ok(false);
-    }
-
-    handle_action_in_context(
-        action,
-        ActionContext::Artist(artists[id].clone()),
-        client_pub,
-        data,
-        ui,
-    )?;
-
-    Ok(true)
-}
-
 pub fn handle_command_for_artist_list_window(
     command: Command,
     artists: Vec<&Artist>,
@@ -441,29 +412,6 @@ pub fn handle_command_for_artist_list_window(
         }
         _ => return Ok(false),
     }
-    Ok(true)
-}
-
-pub fn handle_action_for_album_window(
-    action: Action,
-    albums: Vec<&Album>,
-    data: &DataReadGuard,
-    ui: &mut UIStateGuard,
-    client_pub: &flume::Sender<ClientRequest>,
-) -> Result<bool> {
-    let id = ui.current_page_mut().selected().unwrap_or_default();
-    if id >= albums.len() {
-        return Ok(false);
-    }
-
-    handle_action_in_context(
-        action,
-        ActionContext::Album(albums[id].clone()),
-        client_pub,
-        data,
-        ui,
-    )?;
-
     Ok(true)
 }
 
@@ -503,29 +451,6 @@ pub fn handle_command_for_album_list_window(
         }
         _ => return Ok(false),
     }
-    Ok(true)
-}
-
-pub fn handle_action_for_playlist_window(
-    action: Action,
-    playlists: Vec<&Playlist>,
-    data: &DataReadGuard,
-    ui: &mut UIStateGuard,
-    client_pub: &flume::Sender<ClientRequest>,
-) -> Result<bool> {
-    let id = ui.current_page_mut().selected().unwrap_or_default();
-    if id >= playlists.len() {
-        return Ok(false);
-    }
-
-    handle_action_in_context(
-        action,
-        ActionContext::Playlist(playlists[id].clone()),
-        client_pub,
-        data,
-        ui,
-    )?;
-
     Ok(true)
 }
 

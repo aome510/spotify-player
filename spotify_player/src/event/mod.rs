@@ -12,7 +12,7 @@ use crate::{
 use crate::utils::map_join;
 use anyhow::{Context as _, Result};
 
-use self::clipboard::{get_clipboard_provider, CLIPBOARD_PROVIDER};
+use clipboard::{execute_copy_command, get_clipboard_content};
 
 mod clipboard;
 mod page;
@@ -122,7 +122,7 @@ fn handle_key_event(
     Ok(())
 }
 
-fn handle_action_in_context(
+pub fn handle_action_in_context(
     action: Action,
     context: ActionContext,
     client_pub: &flume::Sender<ClientRequest>,
@@ -321,12 +321,6 @@ fn handle_action_in_context(
     }
 
     Ok(())
-}
-
-fn execute_copy_command(text: String) -> Result<()> {
-    CLIPBOARD_PROVIDER
-        .get_or_init(|| get_clipboard_provider())
-        .set_contents(text)
 }
 
 /// Handle a global command that is not specific to any page/popup
@@ -603,10 +597,4 @@ fn handle_global_command(
         _ => return Ok(false),
     }
     Ok(true)
-}
-
-fn get_clipboard_content() -> Result<String> {
-    CLIPBOARD_PROVIDER
-        .get_or_init(|| get_clipboard_provider())
-        .get_contents()
 }

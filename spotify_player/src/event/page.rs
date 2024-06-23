@@ -55,21 +55,21 @@ fn handle_action_for_library_page(
         _ => anyhow::bail!("expect a library page state"),
     };
     match focus_state {
-        LibraryFocusState::Playlists => window::handle_action_for_playlist_window(
+        LibraryFocusState::Playlists => window::handle_action_for_selected_item(
             action,
             ui.search_filtered_items(&data.user_data.playlists),
             &data,
             ui,
             client_pub,
         ),
-        LibraryFocusState::SavedAlbums => window::handle_action_for_album_window(
+        LibraryFocusState::SavedAlbums => window::handle_action_for_selected_item(
             action,
             ui.search_filtered_items(&data.user_data.saved_albums),
             &data,
             ui,
             client_pub,
         ),
-        LibraryFocusState::FollowedArtists => window::handle_action_for_artist_window(
+        LibraryFocusState::FollowedArtists => window::handle_action_for_selected_item(
             action,
             ui.search_filtered_items(&data.user_data.followed_artists),
             &data,
@@ -181,7 +181,7 @@ fn handle_key_sequence_for_search_page(
                     command, client_pub, tracks, &data, ui,
                 ),
                 CommandOrAction::Action(action) => {
-                    window::handle_action_for_track_window(action, client_pub, tracks, &data, ui)
+                    window::handle_action_for_selected_item(action, tracks, &data, ui, client_pub)
                 }
             }
         }
@@ -195,7 +195,7 @@ fn handle_key_sequence_for_search_page(
                     window::handle_command_for_artist_list_window(command, artists, &data, ui)
                 }
                 CommandOrAction::Action(action) => {
-                    window::handle_action_for_artist_window(action, artists, &data, ui, client_pub)
+                    window::handle_action_for_selected_item(action, artists, &data, ui, client_pub)
                 }
             }
         }
@@ -209,7 +209,7 @@ fn handle_key_sequence_for_search_page(
                     command, albums, &data, ui, client_pub,
                 ),
                 CommandOrAction::Action(action) => {
-                    window::handle_action_for_album_window(action, albums, &data, ui, client_pub)
+                    window::handle_action_for_selected_item(action, albums, &data, ui, client_pub)
                 }
             }
         }
@@ -222,7 +222,7 @@ fn handle_key_sequence_for_search_page(
                 CommandOrAction::Command(command) => {
                     window::handle_command_for_playlist_list_window(command, playlists, &data, ui)
                 }
-                CommandOrAction::Action(action) => window::handle_action_for_playlist_window(
+                CommandOrAction::Action(action) => window::handle_action_for_selected_item(
                     action, playlists, &data, ui, client_pub,
                 ),
             }
@@ -269,7 +269,7 @@ fn handle_action_for_browse_page(
 
                 handle_action_in_context(
                     action,
-                    ActionContext::Playlist(playlists[selected].clone()),
+                    playlists[selected].clone().into(),
                     client_pub,
                     &data,
                     ui,
