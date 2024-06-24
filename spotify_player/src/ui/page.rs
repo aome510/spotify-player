@@ -576,7 +576,7 @@ pub fn render_commands_help_page(frame: &mut Frame, ui: &mut UIStateGuard, rect:
                 ])
                     // adding alternating row colors
                     .style(if (i + scroll_offset) % 2 == 0 {
-                        ui.theme.app().bg(Color::DarkGray)
+                        ui.theme.secondary_row()
                     } else {
                         ui.theme.app()
                     })

@@ -77,6 +77,7 @@ pub struct ComponentStyle {
     pub playlist_desc: Option<Style>,
     pub table_header: Option<Style>,
     pub selection: Option<Style>,
+    pub secondary_row: Option<Style>,
 }
 
 #[derive(Default, Clone, Debug, Deserialize)]
@@ -288,7 +289,12 @@ impl Theme {
             Some(s) => s.style(&self.palette),
         }
     }
-
+    pub fn secondary_row(&self) -> tui::style::Style {
+        match &self.component_style.secondary_row {
+            None => Style::default().bg(StyleColor::DarkGray).style(&self.palette),
+            Some(s) => s.style(&self.palette),
+        }
+    }
 }
 
 impl Style {
