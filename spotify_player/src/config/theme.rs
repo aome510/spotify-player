@@ -58,6 +58,9 @@ pub struct Palette {
     pub bright_blue: Color,
     #[serde(default = "Color::bright_yellow")]
     pub bright_yellow: Color,
+
+    #[serde(default = "Color::dark_gray")]
+    pub dark_gray: Color,
 }
 
 #[derive(Clone, Debug, Default, Deserialize)]
@@ -102,6 +105,7 @@ pub enum StyleColor {
     BrightCyan,
     BrightBlue,
     BrightYellow,
+    DarkGray,
     Rgb { r: u8, g: u8, b: u8 },
 }
 
@@ -284,6 +288,7 @@ impl Theme {
             Some(s) => s.style(&self.palette),
         }
     }
+
 }
 
 impl Style {
@@ -379,6 +384,7 @@ impl StyleColor {
             Self::BrightCyan => palette.bright_cyan.color,
             Self::BrightBlue => palette.bright_blue.color,
             Self::BrightYellow => palette.bright_yellow.color,
+            Self::DarkGray => style::Color::DarkGray,
             Self::Rgb { r, g, b } => style::Color::Rgb(r, g, b),
         }
     }
@@ -463,6 +469,9 @@ impl Color {
     pub fn bright_white() -> Self {
         style::Color::White.into()
     }
+    pub fn dark_gray() -> Self {
+        style::Color::DarkGray.into()
+    }
 }
 
 impl From<&str> for Color {
@@ -519,6 +528,7 @@ impl Default for Palette {
             bright_magenta: Color::bright_magenta(),
             bright_cyan: Color::bright_cyan(),
             bright_white: Color::bright_white(),
+            dark_gray: Color::dark_gray(),
         }
     }
 }
