@@ -1538,21 +1538,13 @@ impl Client {
 
     /// Process a list of albums, which includes
     /// - sort albums by the release date
-    /// - remove albums with duplicated names
     fn process_artist_albums(&self, albums: Vec<Album>) -> Vec<Album> {
         let mut albums = albums.into_iter().collect::<Vec<_>>();
 
         albums.sort_by(|x, y| x.release_date.partial_cmp(&y.release_date).unwrap());
 
-        // use a HashSet to keep track albums with the same name
-        let mut seen_names = std::collections::HashSet::new();
+        albums.reverse();
 
-        albums.into_iter().rfold(vec![], |mut acc, a| {
-            if !seen_names.contains(&a.name) {
-                seen_names.insert(a.name.clone());
-                acc.push(a);
-            }
-            acc
-        })
+        albums
     }
 }
