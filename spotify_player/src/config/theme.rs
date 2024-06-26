@@ -291,7 +291,9 @@ impl Theme {
     }
     pub fn secondary_row(&self) -> tui::style::Style {
         match &self.component_style.secondary_row {
-            None => Style::default().bg(StyleColor::DarkGray).style(&self.palette),
+            None => Style::default()
+                .bg(StyleColor::DarkGray)
+                .style(&self.palette),
             Some(s) => s.style(&self.palette),
         }
     }

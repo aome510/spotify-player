@@ -574,12 +574,12 @@ pub fn render_commands_help_page(frame: &mut Frame, ui: &mut UIStateGuard, rect:
                     Cell::from(format!("[{keys}]")),
                     Cell::from(command.desc()),
                 ])
-                    // adding alternating row colors
-                    .style(if (i + scroll_offset) % 2 == 0 {
-                        ui.theme.secondary_row()
-                    } else {
-                        ui.theme.app()
-                    })
+                // adding alternating row colors
+                .style(if (i + scroll_offset) % 2 == 0 {
+                    ui.theme.secondary_row()
+                } else {
+                    ui.theme.app()
+                })
             })
             .collect::<Vec<_>>(),
         COMMAND_TABLE_CONSTRAINTS,
