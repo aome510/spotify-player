@@ -3,6 +3,7 @@ use rspotify::model::CurrentPlaybackContext;
 pub use rspotify::model::{AlbumId, ArtistId, Id, PlaylistId, TrackId, UserId};
 
 use crate::utils::map_join;
+use html_escape::decode_html_entities;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 
@@ -403,10 +404,9 @@ impl From<rspotify_model::SimplifiedPlaylist> for Playlist {
 impl From<rspotify_model::FullPlaylist> for Playlist {
     fn from(playlist: rspotify_model::FullPlaylist) -> Self {
         // remove HTML tags from the description
-        // TODO: may also need to do HTML escaping here
         let re = regex::Regex::new("(<.*?>|</.*?>)").expect("valid regex");
         let desc = playlist.description.unwrap_or_default();
-        let desc = re.replace_all(&desc, "").to_string();
+        let desc = decode_html_entities(&re.replace_all(&desc, "")).to_string();
 
         Self {
             id: playlist.id,
