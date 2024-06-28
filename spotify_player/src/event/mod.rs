@@ -376,17 +376,19 @@ fn handle_global_command(
         }
         Command::SeekForward => {
             if let Some(progress) = state.player.read().playback_progress() {
+                let duration = config::get_config().app_config.seek_duration_secs;
                 client_pub.send(ClientRequest::Player(PlayerRequest::SeekTrack(
-                    progress + chrono::Duration::try_seconds(5).unwrap(),
+                    progress + chrono::Duration::try_seconds(duration as i64).unwrap(),
                 )))?;
             }
         }
         Command::SeekBackward => {
             if let Some(progress) = state.player.read().playback_progress() {
+                let duration = config::get_config().app_config.seek_duration_secs;
                 client_pub.send(ClientRequest::Player(PlayerRequest::SeekTrack(
                     std::cmp::max(
                         chrono::Duration::zero(),
-                        progress - chrono::Duration::try_seconds(5).unwrap(),
+                        progress - chrono::Duration::try_seconds(duration as i64).unwrap(),
                     ),
                 )))?;
             }
