@@ -82,6 +82,9 @@ pub struct AppConfig {
 
     pub playback_window_position: Position,
 
+    pub playlist_width: u16,
+    pub album_width: u16,
+
     #[cfg(feature = "image")]
     pub cover_img_length: usize,
     #[cfg(feature = "image")]
@@ -246,6 +249,9 @@ impl Default for AppConfig {
 
             border_type: BorderType::Plain,
             progress_bar_type: ProgressBarType::Rectangle,
+
+            playlist_width: 40,
+            album_width: 40,
 
             playback_window_position: Position::Top,
 
