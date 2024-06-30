@@ -160,9 +160,9 @@ pub fn construct_track_actions(track: &Track, data: &DataReadGuard) -> Vec<Actio
     ];
 
     if data.user_data.is_liked_track(track) {
-        actions.push(Action::AddToLiked);
-    } else {
         actions.push(Action::DeleteFromLiked);
+    } else {
+        actions.push(Action::AddToLiked);
     }
 
     actions
