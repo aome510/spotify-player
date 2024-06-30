@@ -327,6 +327,12 @@ pub fn render_library_page(
     // - a playlists window
     // - a saved albums window
     // - a followed artists window
+
+    if configs.app_config.playlist_width + configs.app_config.album_width > 99 {
+        println!("Cannot have playlist_width + album_width be greater than 99");
+        std::process::exit(1)
+    }
+
     let chunks = Layout::horizontal([
         Constraint::Percentage(configs.app_config.playlist_width),
         Constraint::Percentage(configs.app_config.album_width),
