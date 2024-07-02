@@ -43,6 +43,31 @@ bright_cyan = "#8be9fd"
 bright_white = "#ffffff"
 
 [[themes]]
+name = "my_dracula"
+[themes.palette]
+background = "#1e1f29"
+foreground = "#f8f8f2"
+black = "#000000"
+red = "#ff5555"
+green = "#50fa7b"
+yellow = "#f1fa8c"
+blue = "#bd93f9"
+magenta = "#ff79c6"
+cyan = "#8be9fd"
+white = "#bbbbbb"
+bright_black = "#555555"
+bright_red = "#ff5555"
+bright_green = "#50fa7b"
+bright_yellow = "#f1fa8c"
+bright_blue = "#bd93f9"
+bright_magenta = "#ff79c6"
+bright_cyan = "#8be9fd"
+bright_white = "#ffffff"
+[themes.component_style]
+selection = {bg = "Black", fg = "White", modifiers = ["Bold"]}
+secondary_row = { bg = "#677075" }
+
+[[themes]]
 name = "gruvbox_dark"
 [themes.palette]
 background = "#282828"
