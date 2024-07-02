@@ -74,6 +74,7 @@ pub struct ComponentStyle {
     pub playlist_desc: Option<Style>,
     pub table_header: Option<Style>,
     pub selection: Option<Style>,
+    pub secondary_row: Option<Style>,
 }
 
 #[derive(Default, Clone, Debug, Deserialize)]
@@ -281,6 +282,12 @@ impl Theme {
     pub fn table_header(&self) -> tui::style::Style {
         match &self.component_style.table_header {
             None => Style::default().fg(StyleColor::Blue).style(&self.palette),
+            Some(s) => s.style(&self.palette),
+        }
+    }
+    pub fn secondary_row(&self) -> tui::style::Style {
+        match &self.component_style.secondary_row {
+            None => Style::default().style(&self.palette),
             Some(s) => s.style(&self.palette),
         }
     }
