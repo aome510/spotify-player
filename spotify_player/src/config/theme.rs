@@ -287,14 +287,7 @@ impl Theme {
     }
     pub fn secondary_row(&self) -> tui::style::Style {
         match &self.component_style.secondary_row {
-            None => Style::default()
-                .bg(StyleColor::Rgb {
-                    // "Dark Steel Gray"
-                    r: 67,
-                    g: 70,
-                    b: 75,
-                })
-                .style(&self.palette),
+            None => Style::default().style(&self.palette),
             Some(s) => s.style(&self.palette),
         }
     }
