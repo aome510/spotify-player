@@ -42,8 +42,9 @@ bright_magenta = "#ff79c6"
 bright_cyan = "#8be9fd"
 bright_white = "#ffffff"
 
+# same colors as dracula, but includes non-default component styles
 [[themes]]
-name = "my_dracula"
+name = "dracula2"
 [themes.palette]
 background = "#1e1f29"
 foreground = "#f8f8f2"
@@ -64,7 +65,7 @@ bright_magenta = "#ff79c6"
 bright_cyan = "#8be9fd"
 bright_white = "#ffffff"
 [themes.component_style]
-selection = {bg = "Black", fg = "White", modifiers = ["Bold"]}
+selection = { bg = "Black", fg = "White", modifiers = ["Bold"] }
 secondary_row = { bg = "#677075" }
 
 [[themes]]
