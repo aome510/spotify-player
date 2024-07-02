@@ -53,6 +53,8 @@ All configuration files should be placed inside the application's configuration 
 | `cover_img_length`                | the length of the cover image (`image` feature only)                                     | `9`                                                     |
 | `cover_img_scale`                 | the scale of the cover image (`image` feature only)                                      | `1.0`                                                   |
 | `seek_duration_secs`              | the duration (in seconds) to seek when using `SeekForward` and `SeekBackward` commands   | `5`                                                     |
+| `playlist_window_width`           | the width of the playlist window in the library                                          | `40`                                                    |
+| `album_window_width`              | the width of the album window in the library                                             | `40`                                                    |
 
 ### Notes
 
