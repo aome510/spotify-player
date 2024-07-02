@@ -203,6 +203,7 @@ To define application's component styles, the user can specify any of the below 
 - `page_desc`
 - `table_header`
 - `selection`
+- `secondary_row`
 
 A field in `component_style` is a struct with three **optional** fields: `fg` (foreground), `bg` (background) and `modifiers` (terminal effects):
 
