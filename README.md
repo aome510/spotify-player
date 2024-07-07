@@ -42,7 +42,7 @@
 
 ## Examples
 
-A demo of `spotify_player` `v0.5.0-pre-release` on [youtube](https://www.youtube.com/shorts/Jbfe9GLNWbA) or on [asciicast](https://asciinema.org/a/446913):
+A demo of `spotify_player` `v0.5.0-pre-release` on [youtube](https://www.youtube.com/watch/Jbfe9GLNWbA) or on [asciicast](https://asciinema.org/a/446913):
 
 Checkout [examples/README.md](./examples/README.md) for more examples.
 
