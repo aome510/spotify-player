@@ -295,6 +295,9 @@ fn handle_key_sequence_for_search_popup(
                     if !query.is_empty() {
                         query.pop().unwrap();
                         ui.current_page_mut().select(0);
+                    } else {
+                        // close search popup when user presses backspace on empty search
+                        ui.popup = None;
                     }
                     return Ok(true);
                 }
