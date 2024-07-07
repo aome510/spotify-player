@@ -177,20 +177,21 @@ fn construct_playback_text(
                 playback_text.lines.push(Line::from(tmp));
                 continue;
             }
+            "{status}" => (
+                if !playback.is_playing {
+                    &configs.app_config.pause_icon
+                } else {
+                    &configs.app_config.play_icon
+                }
+                .to_owned(),
+                ui.theme.playback_status(),
+            ),
             "{track}" => (
-                format!(
-                    "{} {}",
-                    if !playback.is_playing {
-                        &configs.app_config.pause_icon
-                    } else {
-                        &configs.app_config.play_icon
-                    },
-                    if track.explicit {
-                        format!("{} (E)", track.name)
-                    } else {
-                        track.name.clone()
-                    }
-                ),
+                if track.explicit {
+                    format!("{} (E)", track.name)
+                } else {
+                    track.name.clone()
+                },
                 ui.theme.playback_track(),
             ),
             "{artists}" => (

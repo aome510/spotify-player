@@ -64,6 +64,7 @@ pub struct Palette {
 pub struct ComponentStyle {
     pub block_title: Option<Style>,
     pub border: Option<Style>,
+    pub playback_status: Option<Style>,
     pub playback_track: Option<Style>,
     pub playback_artists: Option<Style>,
     pub playback_album: Option<Style>,
@@ -199,6 +200,16 @@ impl Theme {
     pub fn border(&self) -> tui::style::Style {
         match &self.component_style.border {
             None => Style::default().style(&self.palette),
+            Some(s) => s.style(&self.palette),
+        }
+    }
+
+    pub fn playback_status(&self) -> tui::style::Style {
+        match &self.component_style.playback_status {
+            None => Style::default()
+                .fg(StyleColor::Cyan)
+                .modifiers(vec![StyleModifier::Bold])
+                .style(&self.palette),
             Some(s) => s.style(&self.palette),
         }
     }
