@@ -182,7 +182,8 @@ fn construct_playback_text(
                     &configs.app_config.pause_icon
                 } else {
                     &configs.app_config.play_icon
-                }.to_owned(),
+                }
+                .to_owned(),
                 ui.theme.playback_status(),
             ),
             "{track}" => (
