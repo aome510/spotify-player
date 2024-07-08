@@ -246,7 +246,7 @@ fn render_playback_progress_bar(
     match config::get_config().app_config.progress_bar_type {
         config::ProgressBarType::Line => frame.render_widget(
             LineGauge::default()
-                .gauge_style(ui.theme.playback_progress_bar())
+                .filled_style(ui.theme.playback_progress_bar())
                 .ratio(ratio)
                 .label(Span::styled(
                     format!(
