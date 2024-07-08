@@ -9,6 +9,7 @@ use std::io::Write;
 use anyhow::Context as _;
 use anyhow::Result;
 use librespot_core::session::Session;
+use reqwest::StatusCode;
 use rspotify::{
     http::Query,
     model::{FullPlaylist, Market, Page, SimplifiedPlaylist},
@@ -1199,23 +1200,34 @@ impl Client {
 
         // get the artist's information, including top tracks, related artists, and albums
 
-        let artist = self.artist(artist_id.as_ref()).await?.into();
+        let artist = self
+            .artist(artist_id.as_ref())
+            .await
+            .context("get artist")?
+            .into();
 
         let top_tracks = self
             .artist_top_tracks(artist_id.as_ref(), Some(Market::FromToken))
-            .await?;
+            .await
+            .context("get artist's top tracks")?;
         let top_tracks = top_tracks
             .into_iter()
             .filter_map(Track::try_from_full_track)
             .collect::<Vec<_>>();
 
-        let related_artists = self.artist_related_artists(artist_id.as_ref()).await?;
+        let related_artists = self
+            .artist_related_artists(artist_id.as_ref())
+            .await
+            .context("get related artists")?;
         let related_artists = related_artists
             .into_iter()
             .map(|a| a.into())
             .collect::<Vec<_>>();
 
-        let albums = self.artist_albums(artist_id.as_ref()).await?;
+        let albums = self
+            .artist_albums(artist_id.as_ref())
+            .await
+            .context("get artist's albums")?;
 
         Ok(Context::Artist {
             artist,
@@ -1254,8 +1266,13 @@ impl Client {
             .send()
             .await?;
 
+        let status = response.status();
         let text = process_spotify_api_response(response.text().await?);
         tracing::debug!("{text}");
+
+        if status != StatusCode::OK {
+            anyhow::bail!("failed to send a Spotify API request {url}: {text}");
+        }
 
         Ok(serde_json::from_str(&text)?)
     }
@@ -1276,6 +1293,9 @@ impl Client {
             let mut next_page = self
                 .http_get::<rspotify_model::Page<T>>(&url, payload)
                 .await?;
+            if next_page.items.is_empty() {
+                break;
+            }
             items.append(&mut next_page.items);
             maybe_next = next_page.next;
         }
