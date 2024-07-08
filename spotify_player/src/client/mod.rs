@@ -60,21 +60,18 @@ impl Client {
         }
     }
 
-    /// Create a new client session
-    // unused variables:
-    // - `state` when the `streaming` feature is not enabled
-    #[allow(unused_variables)]
-    async fn new_session(&self, state: &SharedState) -> Result<()> {
-        let session = crate::auth::new_session(&self.auth_config, false).await?;
-        *self.session.lock().await = Some(session);
-
-        tracing::info!("Used a new session for Spotify client.");
-
-        // upon creating a new session, also create a new streaming connection
+    /// Initialize the application's playback upon creating a new session or during startup
+    pub async fn initialize_playback(&self, state: &SharedState) -> Result<()> {
         #[cfg(feature = "streaming")]
         if state.is_streaming_enabled() {
             self.new_streaming_connection(state).await;
-            // handle `connect_device` task separately as we don't want to block here
+        }
+
+        self.retrieve_current_playback(state, false).await?;
+
+        if state.player.read().playback.is_none() {
+            tracing::info!("No playback found, trying to connect to an available device...");
+            // // handle `connect_device` task separately as we don't want to block here
             tokio::task::spawn({
                 let client = self.clone();
                 let state = state.clone();
@@ -83,6 +80,23 @@ impl Client {
                 }
             });
         }
+
+        Ok(())
+    }
+
+    /// Create a new client session
+    async fn new_session(&self, state: &SharedState) -> Result<()> {
+        let session = crate::auth::new_session(&self.auth_config, false).await?;
+        *self.session.lock().await = Some(session);
+
+        tracing::info!("Used a new session for Spotify client.");
+
+        // reset the application's caches
+        state.data.write().caches = MemoryCaches::new();
+
+        self.initialize_playback(state)
+            .await
+            .context("initialize playback")?;
 
         Ok(())
     }
@@ -259,9 +273,6 @@ impl Client {
                         .lyrics
                         .insert(query, result, *TTL_CACHE_DURATION);
                 }
-            }
-            ClientRequest::ConnectDevice => {
-                self.connect_device(state).await;
             }
             #[cfg(feature = "streaming")]
             ClientRequest::RestartIntegratedClient => {

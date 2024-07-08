@@ -64,6 +64,7 @@ A Spotify Premium account is **required**.
 
 - [Rust and cargo](https://www.rust-lang.org/tools/install) as the build dependencies
 - install `openssl`, `alsa-lib` (`streaming` feature), `libdbus` (`media-control` feature).
+
   - For example, on Debian based systems, run the below command to install application's dependencies:
 
     ```shell
@@ -335,7 +336,7 @@ List of supported commands:
 | `SelectLastOrScrollToBottom`   | select the last item in a list/table or scroll to the bottom            | `G`, `end`         |
 | `ChooseSelected`               | choose the selected item                                                | `enter`            |
 | `RefreshPlayback`              | manually refresh the current playback                                   | `r`                |
-| `RestartIntegratedClient`      | restart the integrated librespot client (`streaming` feature only)      | `R`                |
+| `RestartIntegratedClient`      | restart the integrated client (`streaming` feature only)                | `R`                |
 | `ShowActionsOnSelectedItem`    | open a popup showing actions on a selected item                         | `g a`, `C-space`   |
 | `ShowActionsOnCurrentTrack`    | open a popup showing actions on the current track                       | `a`                |
 | `AddSelectedItemToQueue`       | add the selected item to queue                                          | `Z`, `C-z`         |
