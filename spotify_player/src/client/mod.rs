@@ -1249,6 +1249,9 @@ impl Client {
         fn process_spotify_api_response(text: String) -> String {
             // See: https://github.com/ramsayleung/rspotify/issues/459
             text.replace("\"images\":null", "\"images\":[]")
+                // See: https://github.com/aome510/spotify-player/issues/494
+                // an item's name can be null while Spotify requires it to be available
+                .replace("\"name\":null", "\"name\":\"\"")
         }
 
         let access_token = self.access_token().await?;
