@@ -590,6 +590,11 @@ impl Client {
             tracing::info!("Available devices: {devices:?}");
         }
 
+        // if there is an active device, return it
+        if let Some(d) = devices.iter().find(|d| d.is_active) {
+            return Ok(d.id.clone());
+        }
+
         // convert a vector of `Device` items into `(name, id)` pairs
         let mut devices = devices
             .into_iter()
