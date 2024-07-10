@@ -593,6 +593,25 @@ fn handle_global_command(
                 current_field: PlaylistCreateCurrentField::Name,
             });
         }
+        Command::JumpToCurrentTrackInContext => {
+            state.player.read()
+                .current_playing_track()
+                .and_then(|track| track.id.clone())
+                .and_then(|track_id| match ui.current_page() {
+                    PageState::Context { id: Some(context_id), .. } => {
+                        state.data.read().caches.context.get(&context_id.uri())
+                            .and_then(|context| match context {
+                                Context::Tracks { tracks, .. } => {
+                                    tracks.iter().position(|t| t.id == track_id)
+                                }
+                                _ => None,
+                            })
+                    }
+                    _ => None,
+                })
+                .map(|i| ui.current_page_mut().select(i));
+            ui.popup = None;
+        }
         Command::ClosePopup => {
             ui.popup = None;
         }
