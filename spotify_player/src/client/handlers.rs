@@ -151,7 +151,7 @@ fn handle_page_change_event(
             if let Some(current_track) = state.player.read().current_playing_track() {
                 if current_track.name != *track {
                     tracing::info!("Current playing track \"{}\" is different from the track \"{track}\" shown up in the lyric page. Updating the track and fetching its lyric...", current_track.name);
-                    *track = current_track.name.clone();
+                    track.clone_from(&current_track.name);
                     *artists = map_join(&current_track.artists, |a| &a.name, ", ");
                     *scroll_offset = 0;
 

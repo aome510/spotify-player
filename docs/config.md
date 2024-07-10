@@ -26,7 +26,7 @@ All configuration files should be placed inside the application's configuration 
 | `client_id`                       | the Spotify client's ID                                                                  | `65b708073fc0480ea92a077233ca87bd`                      |
 | `client_port`                     | the port that the application's client is running on to handle CLI commands              | `8080`                                                  |
 | `tracks_playback_limit`           | the limit for the number of tracks played in a **tracks** playback                       | `50`                                                    |
-| `playback_format`                 | the format of the text in the playback's window                                          | `{track} • {artists}\n{album}\n{metadata}`              |
+| `playback_format`                 | the format of the text in the playback's window                                          | `{status} {track} • {artists}\n{album}\n{metadata}`              |
 | `notify_format`                   | the format of a notification (`notify` feature only)                                     | `{ summary = "{track} • {artists}", body = "{album}" }` |
 | `notify_timeout_in_secs`          | the timeout (in seconds) of a notification (`notify` feature only)                       | `0` (no timeout)                                        |
 | `player_event_hook_command`       | the hook command executed when there is a new player event                               | `None`                                                  |
@@ -52,6 +52,7 @@ All configuration files should be placed inside the application's configuration 
 | `cover_img_width`                 | the width of the cover image (`image` feature only)                                      | `5`                                                     |
 | `cover_img_length`                | the length of the cover image (`image` feature only)                                     | `9`                                                     |
 | `cover_img_scale`                 | the scale of the cover image (`image` feature only)                                      | `1.0`                                                   |
+| `seek_duration_secs`              | the duration (in seconds) to seek when using `SeekForward` and `SeekBackward` commands   | `5`                                                     |
 
 ### Notes
 
@@ -132,6 +133,7 @@ The configuration options for the [Librespot](https://github.com/librespot-org/l
 | `bitrate`       | Bitrate in kbps (`96`, `160`, or `320`)                                 | `320`            |
 | `audio_cache`   | Enable caching audio files (store in `$APP_CACHE_FOLDER/audio/` folder) | `false`          |
 | `normalization` | Enable audio normalization                                              | `false`          |
+| `autoplay`      | Enable autoplay similar songs                                           | `false`          |
 
 More details on the above configuration options can be found under the [Librespot wiki page](https://github.com/librespot-org/librespot/wiki/Options).
 
@@ -194,6 +196,7 @@ To define application's component styles, the user can specify any of the below 
 
 - `block_title`
 - `border`
+- `playback_status`
 - `playback_track`
 - `playback_artists`
 - `playback_album`
@@ -203,6 +206,7 @@ To define application's component styles, the user can specify any of the below 
 - `page_desc`
 - `table_header`
 - `selection`
+- `secondary_row`
 
 A field in `component_style` is a struct with three **optional** fields: `fg` (foreground), `bg` (background) and `modifiers` (terminal effects):
 
@@ -223,6 +227,7 @@ Default value for application's component styles:
 ```toml
 block_title = { fg = "Magenta"  }
 border = {}
+playback_status = { fg = "Cyan", modifiers = ["Bold"] }
 playback_track = { fg = "Cyan", modifiers = ["Bold"] }
 playback_artists = { fg = "Cyan", modifiers = ["Bold"] }
 playback_album = { fg = "Yellow" }
@@ -255,4 +260,21 @@ key_sequence = "M-enter"
 [[keymaps]]
 command = "None"
 key_sequence = "q"
+```
+
+## Actions
+
+Actions are located in the same `keymap.toml` file as keymaps. An action can be triggered by a key sequence that is not bound to any command. Once the mapped key sequence is pressed, the corresponding action will be triggered **on the currently selected item**. For example,
+a list of actions can be found [here](../README.md#actions).
+
+```toml
+[[actions]]
+action = "GoToArtist"
+key_sequence = "g A"
+[[actions]]
+action = "GoToAlbum"
+key_sequence = "g B"
+[[actions]]
+action="ToggleLiked"
+key_sequence="C-l"
 ```

@@ -108,6 +108,8 @@ pub struct AppConfig {
 
     #[cfg(all(feature = "streaming", feature = "notify"))]
     pub notify_streaming_only: bool,
+
+    pub seek_duration_secs: u16,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -150,6 +152,7 @@ pub struct DeviceConfig {
     pub bitrate: u16,
     pub audio_cache: bool,
     pub normalization: bool,
+    pub autoplay: bool,
 }
 
 #[derive(Debug, Deserialize, Serialize, ConfigParse, Clone)]
@@ -219,7 +222,7 @@ impl Default for AppConfig {
 
             tracks_playback_limit: 50,
 
-            playback_format: String::from("{track} • {artists}\n{album}\n{metadata}"),
+            playback_format: String::from("{status} {track} • {artists}\n{album}\n{metadata}"),
             #[cfg(feature = "notify")]
             notify_format: NotifyFormat {
                 summary: String::from("{track} • {artists}"),
@@ -280,6 +283,8 @@ impl Default for AppConfig {
 
             #[cfg(all(feature = "streaming", feature = "notify"))]
             notify_streaming_only: false,
+
+            seek_duration_secs: 5,
         }
     }
 }
@@ -293,6 +298,7 @@ impl Default for DeviceConfig {
             bitrate: 320,
             audio_cache: false,
             normalization: false,
+            autoplay: false,
         }
     }
 }

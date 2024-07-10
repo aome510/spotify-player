@@ -4,9 +4,12 @@ use std::{borrow::Cow, collections::HashMap, sync::Arc};
 use crate::config;
 use crate::{auth::AuthConfig, state::*};
 
+use std::io::Write;
+
 use anyhow::Context as _;
 use anyhow::Result;
 use librespot_core::session::Session;
+use reqwest::StatusCode;
 use rspotify::{
     http::Query,
     model::{FullPlaylist, Market, Page, SimplifiedPlaylist},
@@ -57,21 +60,18 @@ impl Client {
         }
     }
 
-    /// Create a new client session
-    // unused variables:
-    // - `state` when the `streaming` feature is not enabled
-    #[allow(unused_variables)]
-    async fn new_session(&self, state: &SharedState) -> Result<()> {
-        let session = crate::auth::new_session(&self.auth_config, false).await?;
-        *self.session.lock().await = Some(session);
-
-        tracing::info!("Used a new session for Spotify client.");
-
-        // upon creating a new session, also create a new streaming connection
+    /// Initialize the application's playback upon creating a new session or during startup
+    pub async fn initialize_playback(&self, state: &SharedState) -> Result<()> {
         #[cfg(feature = "streaming")]
         if state.is_streaming_enabled() {
             self.new_streaming_connection(state).await;
-            // handle `connect_device` task separately as we don't want to block here
+        }
+
+        self.retrieve_current_playback(state, false).await?;
+
+        if state.player.read().playback.is_none() {
+            tracing::info!("No playback found, trying to connect to an available device...");
+            // // handle `connect_device` task separately as we don't want to block here
             tokio::task::spawn({
                 let client = self.clone();
                 let state = state.clone();
@@ -80,6 +80,23 @@ impl Client {
                 }
             });
         }
+
+        Ok(())
+    }
+
+    /// Create a new client session
+    async fn new_session(&self, state: &SharedState) -> Result<()> {
+        let session = crate::auth::new_session(&self.auth_config, false).await?;
+        *self.session.lock().await = Some(session);
+
+        tracing::info!("Used a new session for Spotify client.");
+
+        // reset the application's caches
+        state.data.write().caches = MemoryCaches::new();
+
+        self.initialize_playback(state)
+            .await
+            .context("initialize playback")?;
 
         Ok(())
     }
@@ -256,9 +273,6 @@ impl Client {
                         .lyrics
                         .insert(query, result, *TTL_CACHE_DURATION);
                 }
-            }
-            ClientRequest::ConnectDevice => {
-                self.connect_device(state).await;
             }
             #[cfg(feature = "streaming")]
             ClientRequest::RestartIntegratedClient => {
@@ -585,6 +599,11 @@ impl Client {
                             support as described in https://github.com/aome510/spotify-player#spotify-connect.");
         } else {
             tracing::info!("Available devices: {devices:?}");
+        }
+
+        // if there is an active device, return it
+        if let Some(d) = devices.iter().find(|d| d.is_active) {
+            return Ok(d.id.clone());
         }
 
         // convert a vector of `Device` items into `(name, id)` pairs
@@ -1197,23 +1216,34 @@ impl Client {
 
         // get the artist's information, including top tracks, related artists, and albums
 
-        let artist = self.artist(artist_id.as_ref()).await?.into();
+        let artist = self
+            .artist(artist_id.as_ref())
+            .await
+            .context("get artist")?
+            .into();
 
         let top_tracks = self
             .artist_top_tracks(artist_id.as_ref(), Some(Market::FromToken))
-            .await?;
+            .await
+            .context("get artist's top tracks")?;
         let top_tracks = top_tracks
             .into_iter()
             .filter_map(Track::try_from_full_track)
             .collect::<Vec<_>>();
 
-        let related_artists = self.artist_related_artists(artist_id.as_ref()).await?;
+        let related_artists = self
+            .artist_related_artists(artist_id.as_ref())
+            .await
+            .context("get related artists")?;
         let related_artists = related_artists
             .into_iter()
             .map(|a| a.into())
             .collect::<Vec<_>>();
 
-        let albums = self.artist_albums(artist_id.as_ref()).await?;
+        let albums = self
+            .artist_albums(artist_id.as_ref())
+            .await
+            .context("get artist's albums")?;
 
         Ok(Context::Artist {
             artist,
@@ -1235,6 +1265,9 @@ impl Client {
         fn process_spotify_api_response(text: String) -> String {
             // See: https://github.com/ramsayleung/rspotify/issues/459
             text.replace("\"images\":null", "\"images\":[]")
+                // See: https://github.com/aome510/spotify-player/issues/494
+                // an item's name can be null while Spotify requires it to be available
+                .replace("\"name\":null", "\"name\":\"\"")
         }
 
         let access_token = self.access_token().await?;
@@ -1252,8 +1285,13 @@ impl Client {
             .send()
             .await?;
 
+        let status = response.status();
         let text = process_spotify_api_response(response.text().await?);
         tracing::debug!("{text}");
+
+        if status != StatusCode::OK {
+            anyhow::bail!("failed to send a Spotify API request {url}: {text}");
+        }
 
         Ok(serde_json::from_str(&text)?)
     }
@@ -1274,6 +1312,9 @@ impl Client {
             let mut next_page = self
                 .http_get::<rspotify_model::Page<T>>(&url, payload)
                 .await?;
+            if next_page.items.is_empty() {
+                break;
+            }
             items.append(&mut next_page.items);
             maybe_next = next_page.next;
         }
@@ -1355,14 +1396,12 @@ impl Client {
         if !new_track {
             return Ok(());
         }
-        #[cfg(any(feature = "image", feature = "notify"))]
         self.handle_new_track_event(state).await?;
 
         Ok(())
     }
 
     // Handle new track event
-    #[cfg(any(feature = "image", feature = "notify"))]
     async fn handle_new_track_event(&self, state: &SharedState) -> Result<()> {
         let configs = config::get_config();
 
@@ -1384,11 +1423,13 @@ impl Client {
         .replace('/', ""); // remove invalid characters from the file's name
         let path = configs.cache_folder.join("image").join(path);
 
+        if configs.app_config.enable_cover_image_cache {
+            self.retrieve_image(url, &path, true).await?;
+        }
+
         #[cfg(feature = "image")]
         if !state.data.read().caches.images.contains_key(url) {
-            let bytes = self
-                .retrieve_image(url, &path, configs.app_config.enable_cover_image_cache)
-                .await?;
+            let bytes = self.retrieve_image(url, &path, false).await?;
             let image =
                 image::load_from_memory(&bytes).context("Failed to load image from memory")?;
             state
@@ -1401,16 +1442,10 @@ impl Client {
 
         // notify user about the playback's change if any
         #[cfg(feature = "notify")]
-        if configs.app_config.enable_notify {
-            // for Linux, ensure that the cached cover image is available to render the notification's thumbnail
-            #[cfg(all(unix, not(target_os = "macos")))]
-            self.retrieve_image(url, &path, true).await?;
-
-            if !configs.app_config.notify_streaming_only || self.stream_conn.lock().is_some() {
-                Self::notify_new_track(track, &path)?;
-            }
-            #[cfg(not(feature = "streaming"))]
-            Self::notify_new_track(track, &path, state)?;
+        if configs.app_config.enable_notify
+            && (!configs.app_config.notify_streaming_only || self.stream_conn.lock().is_some())
+        {
+            Self::notify_new_track(track, &path)?;
         }
 
         Ok(())
@@ -1488,13 +1523,15 @@ impl Client {
         let configs = config::get_config();
 
         n.appname("spotify_player")
-            .icon(cover_img_path.to_str().unwrap())
             .summary(&get_text_from_format_str(
                 &configs.app_config.notify_format.summary,
             ))
             .body(&get_text_from_format_str(
                 &configs.app_config.notify_format.body,
             ));
+        if cover_img_path.exists() {
+            n.icon(cover_img_path.to_str().context("valid cover_img_path")?);
+        }
         if configs.app_config.notify_timeout_in_secs > 0 {
             n.timeout(std::time::Duration::from_secs(
                 configs.app_config.notify_timeout_in_secs,
@@ -1507,17 +1544,14 @@ impl Client {
 
     /// Retrieve an image from a `url` or a cached `path`.
     /// If `saved` is specified, the retrieved image is saved to the cached `path`.
-    #[cfg(any(feature = "image", feature = "notify"))]
     async fn retrieve_image(
         &self,
         url: &str,
         path: &std::path::Path,
         saved: bool,
     ) -> Result<Vec<u8>> {
-        use std::io::Write;
-
         if path.exists() {
-            tracing::info!("Retrieving image from file: {}", path.display());
+            tracing::debug!("Retrieving image from file: {}", path.display());
             return Ok(std::fs::read(path)?);
         }
 
@@ -1543,21 +1577,13 @@ impl Client {
 
     /// Process a list of albums, which includes
     /// - sort albums by the release date
-    /// - remove albums with duplicated names
     fn process_artist_albums(&self, albums: Vec<Album>) -> Vec<Album> {
         let mut albums = albums.into_iter().collect::<Vec<_>>();
 
         albums.sort_by(|x, y| x.release_date.partial_cmp(&y.release_date).unwrap());
 
-        // use a HashSet to keep track albums with the same name
-        let mut seen_names = std::collections::HashSet::new();
+        albums.reverse();
 
-        albums.into_iter().rfold(vec![], |mut acc, a| {
-            if !seen_names.contains(&a.name) {
-                seen_names.insert(a.name.clone());
-                acc.push(a);
-            }
-            acc
-        })
+        albums
     }
 }

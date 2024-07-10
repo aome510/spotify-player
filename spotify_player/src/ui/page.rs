@@ -567,12 +567,19 @@ pub fn render_commands_help_page(frame: &mut Frame, ui: &mut UIStateGuard, rect:
     let help_table = Table::new(
         map.into_iter()
             .skip(scroll_offset)
-            .map(|(command, keys)| {
+            .enumerate()
+            .map(|(i, (command, keys))| {
                 Row::new(vec![
                     Cell::from(format!("{command:?}")),
                     Cell::from(format!("[{keys}]")),
                     Cell::from(command.desc()),
                 ])
+                // adding alternating row colors
+                .style(if (i + scroll_offset) % 2 == 0 {
+                    ui.theme.secondary_row()
+                } else {
+                    ui.theme.app()
+                })
             })
             .collect::<Vec<_>>(),
         COMMAND_TABLE_CONSTRAINTS,
@@ -728,7 +735,7 @@ fn render_artist_context_page_windows(
     let (album_list, n_albums) = {
         let album_items = albums
             .into_iter()
-            .map(|a| (format!("{1} • {0}", a.name, a.year()), false))
+            .map(|a| (format!("{1} • {0}", a.name, a.release_date), false))
             .collect::<Vec<_>>();
 
         utils::construct_list_widget(

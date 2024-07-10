@@ -23,19 +23,7 @@ async fn init_spotify(
     client: &client::Client,
     state: &state::SharedState,
 ) -> Result<()> {
-    // if `streaming` feature is enabled, create a new streaming connection
-    #[cfg(feature = "streaming")]
-    if state.is_streaming_enabled() {
-        client.new_streaming_connection(state).await;
-    }
-
-    // initialize the playback state
-    client.retrieve_current_playback(state, false).await?;
-
-    if state.player.read().playback.is_none() {
-        tracing::info!("No playback found on startup, trying to connect to an available device...");
-        client_pub.send(client::ClientRequest::ConnectDevice)?;
-    }
+    client.initialize_playback(state).await?;
 
     // request user data
     client_pub.send(client::ClientRequest::GetCurrentUser)?;
@@ -217,6 +205,7 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
             // control events. The below code will create an invisible window on startup
             // to listen to such events.
             let event_loop = winit::event_loop::EventLoop::new()?;
+            #[allow(deprecated)]
             event_loop.run(move |_, _| {})?;
         }
     }
@@ -259,7 +248,7 @@ fn main() -> Result<()> {
         let mut configs = config::Configs::new(&config_folder, &cache_folder)?;
         if let Some(theme) = args.get_one::<String>("theme") {
             // override the theme config if user specifies a `theme` cli argument
-            configs.app_config.theme = theme.to_owned();
+            theme.clone_into(&mut configs.app_config.theme);
         }
         config::set_config(configs);
     }

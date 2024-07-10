@@ -1,6 +1,6 @@
 [package]
 name = "lyric_finder"
-version = "0.1.6"
+version = "0.1.7"
 edition = "2021"
 license = "MIT"
 description = "A lyric finder library"
@@ -15,8 +15,8 @@ native-tls = ["reqwest/native-tls"]
 
 [dependencies]
 reqwest = { version = "0.12.4", features = ["json"], default-features = false }
-anyhow = "1.0.82"
-serde = { version = "1.0.199", features = ["derive"] }
+anyhow = "1.0.86"
+serde = { version = "1.0.202", features = ["derive"] }
 html5ever = "0.27.0"
 markup5ever_rcdom = "0.3.0"
 log = "0.4.21"

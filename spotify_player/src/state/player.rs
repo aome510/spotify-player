@@ -35,8 +35,8 @@ impl PlayerState {
 
         // update the playback's metadata based on the `buffered_playback` metadata
         if let Some(ref p) = self.buffered_playback {
-            playback.device.name = p.device_name.clone();
-            playback.device.id = p.device_id.clone();
+            playback.device.name.clone_from(&p.device_name);
+            playback.device.id.clone_from(&p.device_id);
             playback.is_playing = p.is_playing;
             playback.device.volume_percent = p.volume;
             playback.repeat_state = p.repeat_state;

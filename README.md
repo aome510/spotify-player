@@ -14,6 +14,7 @@
   - [Notify](#notify)
   - [Mouse support](#mouse-support)
   - [Daemon](#daemon)
+  - [Fuzzy search](#fuzzy-search)
   - [CLI commands](#cli-commands)
 - [Commands](#commands)
 - [Configurations](#configurations)
@@ -41,7 +42,7 @@
 
 ## Examples
 
-A demo of `spotify_player` `v0.5.0-pre-release` on [youtube](https://www.youtube.com/shorts/Jbfe9GLNWbA) or on [asciicast](https://asciinema.org/a/446913):
+A demo of `spotify_player` `v0.5.0-pre-release` on [youtube](https://www.youtube.com/watch/Jbfe9GLNWbA) or on [asciicast](https://asciinema.org/a/446913):
 
 Checkout [examples/README.md](./examples/README.md) for more examples.
 
@@ -63,7 +64,9 @@ A Spotify Premium account is **required**.
 
 - [Rust and cargo](https://www.rust-lang.org/tools/install) as the build dependencies
 - install `openssl`, `alsa-lib` (`streaming` feature), `libdbus` (`media-control` feature).
+
   - For example, on Debian based systems, run the below command to install application's dependencies:
+
     ```shell
     sudo apt install libssl-dev libasound2-dev libdbus-1-dev
     ```
@@ -275,6 +278,10 @@ You can run the application as a daemon by specifying the `-d` or `--daemon` opt
   cargo install spotify_player --no-default-features --features daemon,rodio-backend
   ```
 
+### Fuzzy search
+
+To enable [fuzzy search](https://en.wikipedia.org/wiki/Approximate_string_matching) support, `spotify_player` needs to be built/installed with `fzf` feature (**disabled** by default).
+
 ### CLI Commands
 
 `spotify_player` offers several CLI commands to interact with Spotify:
@@ -329,7 +336,7 @@ List of supported commands:
 | `SelectLastOrScrollToBottom`   | select the last item in a list/table or scroll to the bottom            | `G`, `end`         |
 | `ChooseSelected`               | choose the selected item                                                | `enter`            |
 | `RefreshPlayback`              | manually refresh the current playback                                   | `r`                |
-| `RestartIntegratedClient`      | restart the integrated librespot client (`streaming` feature only)      | `R`                |
+| `RestartIntegratedClient`      | restart the integrated client (`streaming` feature only)                | `R`                |
 | `ShowActionsOnSelectedItem`    | open a popup showing actions on a selected item                         | `g a`, `C-space`   |
 | `ShowActionsOnCurrentTrack`    | open a popup showing actions on the current track                       | `a`                |
 | `AddSelectedItemToQueue`       | add the selected item to queue                                          | `Z`, `C-z`         |
@@ -367,10 +374,28 @@ To add new shortcuts or modify the default shortcuts, please refer to the [keyma
 
 ### Actions
 
-A list of actions is available for each type of Spotify item (track, album, artist, or playlist).
-For example, the list of available actions on a track is `[GoToAlbum, GoToArtist, GoToTrackRadio, GoToArtistRadio, GoToAlbumRadio, AddToPlaylist, DeleteFromCurrentPlaylist, AddToLikedTracks, DeleteFromLikedTracks]`.
+A general list of actions is available; however, not all Spotify items (track, album, artist, or playlist) implement each action. To get the list of available actions on an item, call the `ShowActionsOnCurrentTrack` command or the `ShowActionsOnSelectedItem` command, then press enter (default binding for the `ChooseSelected` command) to initiate the selected action. Some actions may not appear in the popup but can be bound to a shortcut.
 
-To get the list of actions on an item, call the `ShowActionsOnCurrentTrack` command or `ShowActionsOnSelectedItem` command, then press enter (default binding for `ChooseSelected` command) to initiate the selected action.
+List of available actions:
+
+- `GoToArtist`
+- `GoToAlbum`
+- `GoToRadio`
+- `AddToLibrary`
+- `AddToPlaylist`
+- `AddToQueue`
+- `AddToLiked`
+- `DeleteFromLiked`
+- `DeleteFromLibrary`
+- `DeleteFromPlaylist`
+- `ShowActionsOnAlbum`
+- `ShowActionsOnArtist`
+- `ToggleLiked`
+- `CopyLink`
+- `Follow`
+- `Unfollow`
+
+These actions can also be bound to a shortcut. To add new shortcuts, please refer to the [actions section](docs/config.md#actions) in the configuration documentation.
 
 ### Search Page
 
