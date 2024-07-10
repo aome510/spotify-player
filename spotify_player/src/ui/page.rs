@@ -329,21 +329,18 @@ pub fn render_library_page(
     // - a saved albums window
     // - a followed artists window
 
-    let playlist_window_width: u16;
-    let album_window_width: u16;
-
     if configs.app_config.playlist_window_width + configs.app_config.album_window_width > 99 {
-        playlist_window_width = defaults.playlist_window_width;
-        album_window_width = defaults.album_window_width;
-    } else {
-        playlist_window_width = configs.app_config.playlist_window_width;
-        album_window_width = configs.app_config.album_window_width;
+        println!("Cannot have playlist_width + album_width be greater than 99");
+        std::process::exit(1)
     }
 
     let chunks = Layout::horizontal([
-        Constraint::Percentage(playlist_window_width),
-        Constraint::Percentage(album_window_width),
-        Constraint::Percentage(100 - (album_window_width + playlist_window_width)),
+        Constraint::Percentage(configs.app_config.playlist_window_width),
+        Constraint::Percentage(configs.app_config.album_window_width),
+        Constraint::Percentage(
+            100 - (configs.app_config.album_window_width
+                + configs.app_config.playlist_window_width),
+        ),
     ])
     .split(rect);
 
