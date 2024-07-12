@@ -312,6 +312,10 @@ impl Default for KeymapConfig {
                     key_sequence: "N".into(),
                     command: Command::CreatePlaylist,
                 },
+                Keymap {
+                    key_sequence: "g c".into(),
+                    command: Command::JumpToCurrentTrackInContext,
+                },
             ],
         }
     }

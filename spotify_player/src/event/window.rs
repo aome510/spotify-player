@@ -132,7 +132,7 @@ pub fn handle_command_for_focused_context_window(
         // sort ordering commands
         if let Some(order) = order {
             let mut data = state.data.write();
-            if let Some(tracks) = data.context_tracks(context_id) {
+            if let Some(tracks) = data.context_tracks_mut(context_id) {
                 tracks.sort_by(|x, y| order.compare(x, y));
             }
             return Ok(true);
@@ -140,7 +140,7 @@ pub fn handle_command_for_focused_context_window(
         // reverse ordering command
         if command == Command::ReverseTrackOrder {
             let mut data = state.data.write();
-            if let Some(tracks) = data.context_tracks(context_id) {
+            if let Some(tracks) = data.context_tracks_mut(context_id) {
                 tracks.reverse();
             }
             return Ok(true);
