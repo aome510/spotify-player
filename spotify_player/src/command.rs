@@ -30,6 +30,7 @@ pub enum Command {
     SelectFirstOrScrollToTop,
     SelectLastOrScrollToBottom,
 
+    JumpToCurrentTrackInContext,
     ChooseSelected,
 
     RefreshPlayback,
@@ -251,6 +252,7 @@ impl Command {
                 "select the last item in a list/table or scroll to the bottom"
             }
             Self::ChooseSelected => "choose the selected item and act on it",
+            Self::JumpToCurrentTrackInContext => "jump to the current track in the context",
             Self::RefreshPlayback => "manually refresh the current playback",
             Self::ShowActionsOnSelectedItem => "open a popup showing actions on a selected item",
             Self::ShowActionsOnCurrentTrack => "open a popup showing actions on the current track",
