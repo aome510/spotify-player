@@ -76,8 +76,19 @@ impl AppData {
     }
 
     /// Get a list of tracks inside a given context
-    pub fn context_tracks(&mut self, id: &ContextId) -> Option<&mut Vec<Track>> {
+    pub fn context_tracks_mut(&mut self, id: &ContextId) -> Option<&mut Vec<Track>> {
         self.caches.context.get_mut(&id.uri()).map(|c| match c {
+            Context::Album { tracks, .. } => tracks,
+            Context::Playlist { tracks, .. } => tracks,
+            Context::Artist {
+                top_tracks: tracks, ..
+            } => tracks,
+            Context::Tracks { tracks, .. } => tracks,
+        })
+    }
+
+    pub fn context_tracks(&self, id: &ContextId) -> Option<&Vec<Track>> {
+        self.caches.context.get(&id.uri()).map(|c| match c {
             Context::Album { tracks, .. } => tracks,
             Context::Playlist { tracks, .. } => tracks,
             Context::Artist {

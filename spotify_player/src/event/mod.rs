@@ -594,23 +594,31 @@ fn handle_global_command(
             });
         }
         Command::JumpToCurrentTrackInContext => {
-            state.player.read()
+            let track_id = match state
+                .player
+                .read()
                 .current_playing_track()
                 .and_then(|track| track.id.clone())
-                .and_then(|track_id| match ui.current_page() {
-                    PageState::Context { id: Some(context_id), .. } => {
-                        state.data.read().caches.context.get(&context_id.uri())
-                            .and_then(|context| match context {
-                                Context::Tracks { tracks, .. } => {
-                                    tracks.iter().position(|t| t.id == track_id)
-                                }
-                                _ => None,
-                            })
-                    }
-                    _ => None,
-                })
-                .map(|i| ui.current_page_mut().select(i));
-            ui.popup = None;
+            {
+                Some(id) => id,
+                None => return Ok(false),
+            };
+
+            if let PageState::Context {
+                id: Some(context_id),
+                ..
+            } = ui.current_page()
+            {
+                let context_track_pos = state
+                    .data
+                    .read()
+                    .context_tracks(context_id)
+                    .and_then(|tracks| tracks.iter().position(|t| t.id == track_id));
+
+                if let Some(p) = context_track_pos {
+                    ui.current_page_mut().select(p);
+                }
+            }
         }
         Command::ClosePopup => {
             ui.popup = None;
