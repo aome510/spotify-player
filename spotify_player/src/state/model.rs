@@ -1,6 +1,6 @@
 pub use rspotify::model as rspotify_model;
 use rspotify::model::CurrentPlaybackContext;
-pub use rspotify::model::{AlbumId, ArtistId, Id, PlaylistId, TrackId, UserId};
+pub use rspotify::model::{AlbumId, AlbumType, ArtistId, Id, PlaylistId, TrackId, UserId};
 
 use crate::utils::map_join;
 use html_escape::decode_html_entities;
@@ -137,6 +137,7 @@ pub struct Album {
     pub release_date: String,
     pub name: String,
     pub artists: Vec<Artist>,
+    pub album_type: String,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -314,6 +315,7 @@ impl Album {
             name: album.name,
             release_date: album.release_date.unwrap_or_default(),
             artists: from_simplified_artists_to_artists(album.artists),
+            album_type: album.album_type.unwrap_or_default(),
         })
     }
 
@@ -334,6 +336,12 @@ impl From<rspotify_model::FullAlbum> for Album {
             id: album.id,
             release_date: album.release_date,
             artists: from_simplified_artists_to_artists(album.artists),
+            album_type: match album.album_type {
+                AlbumType::Album => "album".to_string(),
+                AlbumType::Single => "single".to_string(),
+                AlbumType::Compilation => "compilation".to_string(),
+                AlbumType::AppearsOn => "appears on".to_string(),
+            },
         }
     }
 }
