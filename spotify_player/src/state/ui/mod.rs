@@ -96,7 +96,10 @@ impl UIState {
                             true
                         } else {
                             let t = t.to_string().to_lowercase();
-                            query.split(' ').any(|q| !q.is_empty() && t.contains(q))
+                            query
+                                .split(' ')
+                                .filter(|q| !q.is_empty())
+                                .all(|q| t.contains(q))
                         }
                     })
                     .collect::<Vec<_>>()

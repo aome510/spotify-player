@@ -9,6 +9,7 @@ use std::io::Write;
 use anyhow::Context as _;
 use anyhow::Result;
 use librespot_core::session::Session;
+use reqwest::StatusCode;
 use rspotify::{
     http::Query,
     model::{FullPlaylist, Market, Page, SimplifiedPlaylist},
@@ -59,21 +60,18 @@ impl Client {
         }
     }
 
-    /// Create a new client session
-    // unused variables:
-    // - `state` when the `streaming` feature is not enabled
-    #[allow(unused_variables)]
-    async fn new_session(&self, state: &SharedState) -> Result<()> {
-        let session = crate::auth::new_session(&self.auth_config, false).await?;
-        *self.session.lock().await = Some(session);
-
-        tracing::info!("Used a new session for Spotify client.");
-
-        // upon creating a new session, also create a new streaming connection
+    /// Initialize the application's playback upon creating a new session or during startup
+    pub async fn initialize_playback(&self, state: &SharedState) -> Result<()> {
         #[cfg(feature = "streaming")]
         if state.is_streaming_enabled() {
             self.new_streaming_connection(state).await;
-            // handle `connect_device` task separately as we don't want to block here
+        }
+
+        self.retrieve_current_playback(state, false).await?;
+
+        if state.player.read().playback.is_none() {
+            tracing::info!("No playback found, trying to connect to an available device...");
+            // // handle `connect_device` task separately as we don't want to block here
             tokio::task::spawn({
                 let client = self.clone();
                 let state = state.clone();
@@ -82,6 +80,23 @@ impl Client {
                 }
             });
         }
+
+        Ok(())
+    }
+
+    /// Create a new client session
+    async fn new_session(&self, state: &SharedState) -> Result<()> {
+        let session = crate::auth::new_session(&self.auth_config, false).await?;
+        *self.session.lock().await = Some(session);
+
+        tracing::info!("Used a new session for Spotify client.");
+
+        // reset the application's caches
+        state.data.write().caches = MemoryCaches::new();
+
+        self.initialize_playback(state)
+            .await
+            .context("initialize playback")?;
 
         Ok(())
     }
@@ -258,9 +273,6 @@ impl Client {
                         .lyrics
                         .insert(query, result, *TTL_CACHE_DURATION);
                 }
-            }
-            ClientRequest::ConnectDevice => {
-                self.connect_device(state).await;
             }
             #[cfg(feature = "streaming")]
             ClientRequest::RestartIntegratedClient => {
@@ -587,6 +599,11 @@ impl Client {
                             support as described in https://github.com/aome510/spotify-player#spotify-connect.");
         } else {
             tracing::info!("Available devices: {devices:?}");
+        }
+
+        // if there is an active device, return it
+        if let Some(d) = devices.iter().find(|d| d.is_active) {
+            return Ok(d.id.clone());
         }
 
         // convert a vector of `Device` items into `(name, id)` pairs
@@ -1199,23 +1216,34 @@ impl Client {
 
         // get the artist's information, including top tracks, related artists, and albums
 
-        let artist = self.artist(artist_id.as_ref()).await?.into();
+        let artist = self
+            .artist(artist_id.as_ref())
+            .await
+            .context("get artist")?
+            .into();
 
         let top_tracks = self
             .artist_top_tracks(artist_id.as_ref(), Some(Market::FromToken))
-            .await?;
+            .await
+            .context("get artist's top tracks")?;
         let top_tracks = top_tracks
             .into_iter()
             .filter_map(Track::try_from_full_track)
             .collect::<Vec<_>>();
 
-        let related_artists = self.artist_related_artists(artist_id.as_ref()).await?;
+        let related_artists = self
+            .artist_related_artists(artist_id.as_ref())
+            .await
+            .context("get related artists")?;
         let related_artists = related_artists
             .into_iter()
             .map(|a| a.into())
             .collect::<Vec<_>>();
 
-        let albums = self.artist_albums(artist_id.as_ref()).await?;
+        let albums = self
+            .artist_albums(artist_id.as_ref())
+            .await
+            .context("get artist's albums")?;
 
         Ok(Context::Artist {
             artist,
@@ -1237,6 +1265,9 @@ impl Client {
         fn process_spotify_api_response(text: String) -> String {
             // See: https://github.com/ramsayleung/rspotify/issues/459
             text.replace("\"images\":null", "\"images\":[]")
+                // See: https://github.com/aome510/spotify-player/issues/494
+                // an item's name can be null while Spotify requires it to be available
+                .replace("\"name\":null", "\"name\":\"\"")
         }
 
         let access_token = self.access_token().await?;
@@ -1254,8 +1285,13 @@ impl Client {
             .send()
             .await?;
 
+        let status = response.status();
         let text = process_spotify_api_response(response.text().await?);
         tracing::debug!("{text}");
+
+        if status != StatusCode::OK {
+            anyhow::bail!("failed to send a Spotify API request {url}: {text}");
+        }
 
         Ok(serde_json::from_str(&text)?)
     }
@@ -1276,6 +1312,9 @@ impl Client {
             let mut next_page = self
                 .http_get::<rspotify_model::Page<T>>(&url, payload)
                 .await?;
+            if next_page.items.is_empty() {
+                break;
+            }
             items.append(&mut next_page.items);
             maybe_next = next_page.next;
         }

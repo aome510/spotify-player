@@ -42,7 +42,7 @@
 
 ## Examples
 
-A demo of `spotify_player` `v0.5.0-pre-release` on [youtube](https://www.youtube.com/shorts/Jbfe9GLNWbA) or on [asciicast](https://asciinema.org/a/446913):
+A demo of `spotify_player` `v0.5.0-pre-release` on [youtube](https://www.youtube.com/watch/Jbfe9GLNWbA) or on [asciicast](https://asciinema.org/a/446913):
 
 Checkout [examples/README.md](./examples/README.md) for more examples.
 
@@ -64,6 +64,7 @@ A Spotify Premium account is **required**.
 
 - [Rust and cargo](https://www.rust-lang.org/tools/install) as the build dependencies
 - install `openssl`, `alsa-lib` (`streaming` feature), `libdbus` (`media-control` feature).
+
   - For example, on Debian based systems, run the below command to install application's dependencies:
 
     ```shell
@@ -335,7 +336,7 @@ List of supported commands:
 | `SelectLastOrScrollToBottom`   | select the last item in a list/table or scroll to the bottom            | `G`, `end`         |
 | `ChooseSelected`               | choose the selected item                                                | `enter`            |
 | `RefreshPlayback`              | manually refresh the current playback                                   | `r`                |
-| `RestartIntegratedClient`      | restart the integrated librespot client (`streaming` feature only)      | `R`                |
+| `RestartIntegratedClient`      | restart the integrated client (`streaming` feature only)                | `R`                |
 | `ShowActionsOnSelectedItem`    | open a popup showing actions on a selected item                         | `g a`, `C-space`   |
 | `ShowActionsOnCurrentTrack`    | open a popup showing actions on the current track                       | `a`                |
 | `AddSelectedItemToQueue`       | add the selected item to queue                                          | `Z`, `C-z`         |
@@ -368,6 +369,7 @@ List of supported commands:
 | `MovePlaylistItemUp`           | move playlist item up one position                                      | `C-k`              |
 | `MovePlaylistItemDown`         | move playlist item down one position                                    | `C-j`              |
 | `CreatePlaylist`               | create a new playlist                                                   | `N`                |
+| `JumpToCurrentTrackInContext`  | jump to the current track in the context                                | `g c`              |
 
 To add new shortcuts or modify the default shortcuts, please refer to the [keymaps section](docs/config.md#keymaps) in the configuration documentation.
 

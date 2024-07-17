@@ -26,7 +26,7 @@ All configuration files should be placed inside the application's configuration 
 | `client_id`                       | the Spotify client's ID                                                                  | `65b708073fc0480ea92a077233ca87bd`                      |
 | `client_port`                     | the port that the application's client is running on to handle CLI commands              | `8080`                                                  |
 | `tracks_playback_limit`           | the limit for the number of tracks played in a **tracks** playback                       | `50`                                                    |
-| `playback_format`                 | the format of the text in the playback's window                                          | `{track} • {artists}\n{album}\n{metadata}`              |
+| `playback_format`                 | the format of the text in the playback's window                                          | `{status} {track} • {artists}\n{album}\n{metadata}`              |
 | `notify_format`                   | the format of a notification (`notify` feature only)                                     | `{ summary = "{track} • {artists}", body = "{album}" }` |
 | `notify_timeout_in_secs`          | the timeout (in seconds) of a notification (`notify` feature only)                       | `0` (no timeout)                                        |
 | `player_event_hook_command`       | the hook command executed when there is a new player event                               | `None`                                                  |
@@ -198,6 +198,7 @@ To define application's component styles, the user can specify any of the below 
 
 - `block_title`
 - `border`
+- `playback_status`
 - `playback_track`
 - `playback_artists`
 - `playback_album`
@@ -207,6 +208,7 @@ To define application's component styles, the user can specify any of the below 
 - `page_desc`
 - `table_header`
 - `selection`
+- `secondary_row`
 
 A field in `component_style` is a struct with three **optional** fields: `fg` (foreground), `bg` (background) and `modifiers` (terminal effects):
 
@@ -227,6 +229,7 @@ Default value for application's component styles:
 ```toml
 block_title = { fg = "Magenta"  }
 border = {}
+playback_status = { fg = "Cyan", modifiers = ["Bold"] }
 playback_track = { fg = "Cyan", modifiers = ["Bold"] }
 playback_artists = { fg = "Cyan", modifiers = ["Bold"] }
 playback_album = { fg = "Yellow" }

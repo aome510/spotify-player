@@ -30,6 +30,7 @@ pub enum Command {
     SelectFirstOrScrollToTop,
     SelectLastOrScrollToBottom,
 
+    JumpToCurrentTrackInContext,
     ChooseSelected,
 
     RefreshPlayback,
@@ -160,9 +161,9 @@ pub fn construct_track_actions(track: &Track, data: &DataReadGuard) -> Vec<Actio
     ];
 
     if data.user_data.is_liked_track(track) {
-        actions.push(Action::AddToLiked);
-    } else {
         actions.push(Action::DeleteFromLiked);
+    } else {
+        actions.push(Action::AddToLiked);
     }
 
     actions
@@ -233,7 +234,7 @@ impl Command {
             Self::Quit => "quit the application",
             Self::ClosePopup => "close a popup",
             #[cfg(feature = "streaming")]
-            Self::RestartIntegratedClient => "restart the integrated librespot client",
+            Self::RestartIntegratedClient => "restart the integrated client",
             Self::SelectNextOrScrollDown => "select the next item in a list/table or scroll down",
             Self::SelectPreviousOrScrollUp => {
                 "select the previous item in a list/table or scroll up"
@@ -251,6 +252,7 @@ impl Command {
                 "select the last item in a list/table or scroll to the bottom"
             }
             Self::ChooseSelected => "choose the selected item and act on it",
+            Self::JumpToCurrentTrackInContext => "jump to the current track in the context",
             Self::RefreshPlayback => "manually refresh the current playback",
             Self::ShowActionsOnSelectedItem => "open a popup showing actions on a selected item",
             Self::ShowActionsOnCurrentTrack => "open a popup showing actions on the current track",

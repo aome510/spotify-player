@@ -64,6 +64,7 @@ pub struct Palette {
 pub struct ComponentStyle {
     pub block_title: Option<Style>,
     pub border: Option<Style>,
+    pub playback_status: Option<Style>,
     pub playback_track: Option<Style>,
     pub playback_artists: Option<Style>,
     pub playback_album: Option<Style>,
@@ -74,6 +75,7 @@ pub struct ComponentStyle {
     pub playlist_desc: Option<Style>,
     pub table_header: Option<Style>,
     pub selection: Option<Style>,
+    pub secondary_row: Option<Style>,
 }
 
 #[derive(Default, Clone, Debug, Deserialize)]
@@ -202,6 +204,16 @@ impl Theme {
         }
     }
 
+    pub fn playback_status(&self) -> tui::style::Style {
+        match &self.component_style.playback_status {
+            None => Style::default()
+                .fg(StyleColor::Cyan)
+                .modifiers(vec![StyleModifier::Bold])
+                .style(&self.palette),
+            Some(s) => s.style(&self.palette),
+        }
+    }
+
     pub fn playback_track(&self) -> tui::style::Style {
         match &self.component_style.playback_track {
             None => Style::default()
@@ -281,6 +293,12 @@ impl Theme {
     pub fn table_header(&self) -> tui::style::Style {
         match &self.component_style.table_header {
             None => Style::default().fg(StyleColor::Blue).style(&self.palette),
+            Some(s) => s.style(&self.palette),
+        }
+    }
+    pub fn secondary_row(&self) -> tui::style::Style {
+        match &self.component_style.secondary_row {
+            None => Style::default().style(&self.palette),
             Some(s) => s.style(&self.palette),
         }
     }
