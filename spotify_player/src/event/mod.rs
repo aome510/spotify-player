@@ -202,7 +202,10 @@ pub fn handle_action_in_context(
                 if let Some(album) = track.album {
                     let context = ActionContext::Album(album.clone());
                     ui.popup = Some(PopupState::ActionList(
-                        ActionListItem::Album(album, context.get_available_actions(data)),
+                        Box::new(ActionListItem::Album(
+                            album,
+                            context.get_available_actions(data),
+                        )),
                         new_list_state(),
                     ));
                 }
@@ -405,7 +408,7 @@ fn handle_global_command(
                     let data = state.data.read();
                     let actions = command::construct_track_actions(&track, &data);
                     ui.popup = Some(PopupState::ActionList(
-                        ActionListItem::Track(track, actions),
+                        Box::new(ActionListItem::Track(track, actions)),
                         new_list_state(),
                     ));
                 }
