@@ -1,6 +1,6 @@
 use crate::{
     client::{ClientRequest, PlayerRequest},
-    command::{self, Action, ActionContext, Command},
+    command::{self, construct_artist_actions, Action, ActionContext, Command},
     config,
     key::{Key, KeySequence},
     state::*,
@@ -144,11 +144,7 @@ pub fn handle_action_in_context(
                 }
             }
             Action::GoToArtist => {
-                ui.popup = Some(PopupState::ArtistList(
-                    ArtistPopupAction::Browse,
-                    track.artists,
-                    new_list_state(),
-                ));
+                handle_go_to_artist(track.artists, ui);
             }
             Action::AddToQueue => {
                 client_pub.send(ClientRequest::AddTrackToQueue(track.id))?;
@@ -191,18 +187,15 @@ pub fn handle_action_in_context(
                     seed_name: name,
                 })?;
             }
-            Action::ShowActionsOnArtist => {
-                ui.popup = Some(PopupState::ArtistList(
-                    ArtistPopupAction::ShowActions,
-                    track.artists,
-                    new_list_state(),
-                ));
-            }
+            Action::ShowActionsOnArtist => handle_show_actions_on_artist(track.artists, data, ui),
             Action::ShowActionsOnAlbum => {
                 if let Some(album) = track.album {
                     let context = ActionContext::Album(album.clone());
                     ui.popup = Some(PopupState::ActionList(
-                        ActionListItem::Album(album, context.get_available_actions(data)),
+                        Box::new(ActionListItem::Album(
+                            album,
+                            context.get_available_actions(data),
+                        )),
                         new_list_state(),
                     ));
                 }
@@ -224,11 +217,7 @@ pub fn handle_action_in_context(
         },
         ActionContext::Album(album) => match action {
             Action::GoToArtist => {
-                ui.popup = Some(PopupState::ArtistList(
-                    ArtistPopupAction::Browse,
-                    album.artists,
-                    new_list_state(),
-                ));
+                handle_go_to_artist(album.artists, ui);
             }
             Action::GoToRadio => {
                 let uri = album.id.uri();
@@ -240,11 +229,7 @@ pub fn handle_action_in_context(
                 })?;
             }
             Action::ShowActionsOnArtist => {
-                ui.popup = Some(PopupState::ArtistList(
-                    ArtistPopupAction::ShowActions,
-                    album.artists,
-                    new_list_state(),
-                ));
+                handle_show_actions_on_artist(album.artists, data, ui);
             }
             Action::AddToLibrary => {
                 client_pub.send(ClientRequest::AddToLibrary(Item::Album(album)))?;
@@ -321,6 +306,43 @@ pub fn handle_action_in_context(
     }
 
     Ok(())
+}
+
+fn handle_go_to_artist(artists: Vec<Artist>, ui: &mut UIStateGuard) {
+    if artists.len() == 1 {
+        let context_id = ContextId::Artist(artists[0].id.clone());
+        ui.new_page(PageState::Context {
+            id: None,
+            context_page_type: ContextPageType::Browsing(context_id),
+            state: None,
+        });
+    } else {
+        ui.popup = Some(PopupState::ArtistList(
+            ArtistPopupAction::Browse,
+            artists,
+            new_list_state(),
+        ));
+    }
+}
+
+fn handle_show_actions_on_artist(
+    artists: Vec<Artist>,
+    data: &DataReadGuard,
+    ui: &mut UIStateGuard,
+) {
+    if artists.len() == 1 {
+        let actions = construct_artist_actions(&artists[0], data);
+        ui.popup = Some(PopupState::ActionList(
+            Box::new(ActionListItem::Artist(artists[0].clone(), actions)),
+            new_list_state(),
+        ));
+    } else {
+        ui.popup = Some(PopupState::ArtistList(
+            ArtistPopupAction::ShowActions,
+            artists,
+            new_list_state(),
+        ));
+    }
 }
 
 /// Handle a global command that is not specific to any page/popup
@@ -405,7 +427,7 @@ fn handle_global_command(
                     let data = state.data.read();
                     let actions = command::construct_track_actions(&track, &data);
                     ui.popup = Some(PopupState::ActionList(
-                        ActionListItem::Track(track, actions),
+                        Box::new(ActionListItem::Track(track, actions)),
                         new_list_state(),
                     ));
                 }

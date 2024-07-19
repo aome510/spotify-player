@@ -18,7 +18,7 @@ pub enum PopupState {
     DeviceList(ListState),
     ArtistList(ArtistPopupAction, Vec<Artist>, ListState),
     ThemeList(Vec<crate::config::Theme>, ListState),
-    ActionList(ActionListItem, ListState),
+    ActionList(Box<ActionListItem>, ListState),
     PlaylistCreate {
         name: LineInput,
         desc: LineInput,
