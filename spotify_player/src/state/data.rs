@@ -1,4 +1,5 @@
 use std::{collections::HashMap, path::Path};
+use std::io::{BufReader, BufWriter};
 
 use once_cell::sync::Lazy;
 use serde::{de::DeserializeOwned, Serialize};
@@ -142,7 +143,7 @@ pub fn store_data_into_file_cache<T: Serialize>(
     data: &T,
 ) -> std::io::Result<()> {
     let path = cache_folder.join(format!("{key:?}_cache.json"));
-    let f = std::fs::File::create(path)?;
+    let f = BufWriter::new(std::fs::File::create(path)?);
     serde_json::to_writer(f, data)?;
     Ok(())
 }
@@ -154,7 +155,7 @@ where
     let path = cache_folder.join(format!("{key:?}_cache.json"));
     if path.exists() {
         tracing::info!("Loading {key:?} data from {}...", path.display());
-        let f = std::fs::File::open(path).expect("path exists");
+        let f = BufReader::new(std::fs::File::open(path).expect("path exists"));
         match serde_json::from_reader(f) {
             Ok(data) => {
                 tracing::info!("Successfully loaded {key:?} data!");
