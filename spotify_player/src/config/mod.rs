@@ -171,8 +171,8 @@ pub struct LayoutConfig {
 
 #[derive(Debug, Deserialize, Serialize, ConfigParse, Clone)]
 pub struct LibraryLayoutConfig {
-    pub playlist_window_width_percent: u16,
-    pub album_window_width_percent: u16,
+    pub playlist_percent: u16,
+    pub album_percent: u16,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
@@ -262,8 +262,8 @@ impl Default for AppConfig {
 
             layout: LayoutConfig {
                 library_page: LibraryLayoutConfig {
-                    album_window_width_percent: 70,
-                    playlist_window_width_percent: 10,
+                    album_percent: 70,
+                    playlist_percent: 10,
                 },
             },
 
