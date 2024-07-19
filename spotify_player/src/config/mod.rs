@@ -82,8 +82,7 @@ pub struct AppConfig {
 
     pub playback_window_position: Position,
 
-    pub playlist_window_width: u16,
-    pub album_window_width: u16,
+    pub layout: LayoutConfig,
 
     #[cfg(feature = "image")]
     pub cover_img_length: usize,
@@ -163,6 +162,17 @@ pub struct DeviceConfig {
 pub struct NotifyFormat {
     pub summary: String,
     pub body: String,
+}
+
+#[derive(Debug, Deserialize, Serialize, ConfigParse, Clone)]
+pub struct LayoutConfig {
+    pub library_page: LibraryLayoutConfig,
+}
+
+#[derive(Debug, Deserialize, Serialize, ConfigParse, Clone)]
+pub struct LibraryLayoutConfig {
+    pub playlist_window_width_percent: u16,
+    pub album_window_width_percent: u16,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
@@ -250,8 +260,12 @@ impl Default for AppConfig {
             border_type: BorderType::Plain,
             progress_bar_type: ProgressBarType::Rectangle,
 
-            playlist_window_width: 40,
-            album_window_width: 40,
+            layout: LayoutConfig {
+                library_page: LibraryLayoutConfig {
+                    album_window_width_percent: 70,
+                    playlist_window_width_percent: 10,
+                },
+            },
 
             playback_window_position: Position::Top,
 

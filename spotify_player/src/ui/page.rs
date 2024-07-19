@@ -316,7 +316,6 @@ pub fn render_library_page(
     let curr_context_uri = state.player.read().playing_context_id().map(|c| c.uri());
     let data = state.data.read();
     let configs = config::get_config();
-    let defaults = config::AppConfig::default();
 
     let focus_state = match ui.current_page() {
         PageState::Library { state } => state.focus,
@@ -329,17 +328,48 @@ pub fn render_library_page(
     // - a saved albums window
     // - a followed artists window
 
-    if configs.app_config.playlist_window_width + configs.app_config.album_window_width > 99 {
+    if configs
+        .app_config
+        .layout
+        .library_page
+        .playlist_window_width_percent
+        + configs
+            .app_config
+            .layout
+            .library_page
+            .album_window_width_percent
+        > 99
+    {
         println!("Cannot have playlist_width + album_width be greater than 99");
         std::process::exit(1)
     }
 
     let chunks = Layout::horizontal([
-        Constraint::Percentage(configs.app_config.playlist_window_width),
-        Constraint::Percentage(configs.app_config.album_window_width),
         Constraint::Percentage(
-            100 - (configs.app_config.album_window_width
-                + configs.app_config.playlist_window_width),
+            configs
+                .app_config
+                .layout
+                .library_page
+                .playlist_window_width_percent,
+        ),
+        Constraint::Percentage(
+            configs
+                .app_config
+                .layout
+                .library_page
+                .album_window_width_percent,
+        ),
+        Constraint::Percentage(
+            100 - (configs
+                .app_config
+                .layout
+                .library_page
+                .album_window_width_percent
+                + configs
+                    .app_config
+                    .layout
+                    .library_page
+                    .playlist_window_width_percent),
         ),
     ])
     .split(rect);
