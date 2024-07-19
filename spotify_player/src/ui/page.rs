@@ -739,7 +739,7 @@ fn render_artist_context_page_windows(
         .map(|a| {
             Row::new(vec![
                 Cell::from(a.release_date.clone()),
-                Cell::from(a.album_type.clone()),
+                Cell::from(a.album_type()),
                 Cell::from(a.name.clone()),
             ])
             .style(Style::default())

@@ -137,7 +137,7 @@ pub struct Album {
     pub release_date: String,
     pub name: String,
     pub artists: Vec<Artist>,
-    pub album_type: String,
+    pub album_type: Option<AlbumType>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -315,7 +315,15 @@ impl Album {
             name: album.name,
             release_date: album.release_date.unwrap_or_default(),
             artists: from_simplified_artists_to_artists(album.artists),
-            album_type: album.album_type.unwrap_or_default(),
+            album_type: album
+                .album_type
+                .and_then(|t| match t.to_ascii_lowercase().as_str() {
+                    "album" => Some(AlbumType::Album),
+                    "single" => Some(AlbumType::Single),
+                    "appears_on" => Some(AlbumType::AppearsOn),
+                    "compilation" => Some(AlbumType::Compilation),
+                    _ => None,
+                }),
         })
     }
 
@@ -327,6 +335,14 @@ impl Album {
             .unwrap_or("")
             .to_string()
     }
+
+    /// gets the album type
+    pub fn album_type(&self) -> String {
+        match self.album_type {
+            Some(t) => <&str>::from(t).to_string(),
+            _ => "".to_string(),
+        }
+    }
 }
 
 impl From<rspotify_model::FullAlbum> for Album {
@@ -336,12 +352,7 @@ impl From<rspotify_model::FullAlbum> for Album {
             id: album.id,
             release_date: album.release_date,
             artists: from_simplified_artists_to_artists(album.artists),
-            album_type: match album.album_type {
-                AlbumType::Album => "album".to_string(),
-                AlbumType::Single => "single".to_string(),
-                AlbumType::Compilation => "compilation".to_string(),
-                AlbumType::AppearsOn => "appears on".to_string(),
-            },
+            album_type: Some(album.album_type),
         }
     }
 }
