@@ -78,7 +78,7 @@ pub enum ContextPageUIState {
     },
     Artist {
         top_track_table: TableState,
-        album_list: ListState,
+        album_table: TableState,
         related_artist_list: ListState,
         focus: ArtistFocusState,
     },
@@ -200,12 +200,12 @@ impl PageState {
                 ContextPageUIState::Album { track_table } => MutableWindowState::Table(track_table),
                 ContextPageUIState::Artist {
                     top_track_table,
-                    album_list,
+                    album_table,
                     related_artist_list,
                     focus,
                 } => match focus {
                     ArtistFocusState::TopTracks => MutableWindowState::Table(top_track_table),
-                    ArtistFocusState::Albums => MutableWindowState::List(album_list),
+                    ArtistFocusState::Albums => MutableWindowState::Table(album_table),
                     ArtistFocusState::RelatedArtists => {
                         MutableWindowState::List(related_artist_list)
                     }
@@ -279,7 +279,7 @@ impl ContextPageUIState {
     pub fn new_artist() -> Self {
         Self::Artist {
             top_track_table: utils::new_table_state(),
-            album_list: utils::new_list_state(),
+            album_table: utils::new_table_state(),
             related_artist_list: utils::new_list_state(),
             focus: ArtistFocusState::TopTracks,
         }

@@ -75,7 +75,7 @@ pub fn handle_key_sequence_for_popup(
                                 construct_artist_actions(&artists[id], &data)
                             };
                             ui.popup = Some(PopupState::ActionList(
-                                ActionListItem::Artist(artists[id].clone(), actions),
+                                Box::new(ActionListItem::Artist(artists[id].clone(), actions)),
                                 new_list_state(),
                             ));
                         }
@@ -452,7 +452,7 @@ pub fn handle_item_action(
     ui: &mut UIStateGuard,
 ) -> Result<()> {
     let item = match ui.popup {
-        Some(PopupState::ActionList(ref item, ..)) => item.clone(),
+        Some(PopupState::ActionList(ref item, ..)) => *item.clone(),
         _ => return Ok(()),
     };
 
