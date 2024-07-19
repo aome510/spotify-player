@@ -249,7 +249,7 @@ fn handle_playlist_modify_command(
             let mut actions = command::construct_track_actions(tracks[id], data);
             actions.push(Action::DeleteFromPlaylist);
             ui.popup = Some(PopupState::ActionList(
-                ActionListItem::Track(tracks[id].clone(), actions),
+                Box::new(ActionListItem::Track(tracks[id].clone(), actions)),
                 new_list_state(),
             ));
             return Ok(true);
@@ -324,7 +324,7 @@ fn handle_command_for_track_table_window(
         Command::ShowActionsOnSelectedItem => {
             let actions = command::construct_track_actions(filtered_tracks[id], data);
             ui.popup = Some(PopupState::ActionList(
-                ActionListItem::Track(tracks[id].clone(), actions),
+                Box::new(ActionListItem::Track(tracks[id].clone(), actions)),
                 new_list_state(),
             ));
         }
@@ -368,7 +368,7 @@ pub fn handle_command_for_track_list_window(
         Command::ShowActionsOnSelectedItem => {
             let actions = command::construct_track_actions(tracks[id], data);
             ui.popup = Some(PopupState::ActionList(
-                ActionListItem::Track(tracks[id].clone(), actions),
+                Box::new(ActionListItem::Track(tracks[id].clone(), actions)),
                 new_list_state(),
             ));
         }
@@ -406,7 +406,7 @@ pub fn handle_command_for_artist_list_window(
         Command::ShowActionsOnSelectedItem => {
             let actions = construct_artist_actions(artists[id], data);
             ui.popup = Some(PopupState::ActionList(
-                ActionListItem::Artist(artists[id].clone(), actions),
+                Box::new(ActionListItem::Artist(artists[id].clone(), actions)),
                 new_list_state(),
             ));
         }
@@ -442,7 +442,7 @@ pub fn handle_command_for_album_list_window(
         Command::ShowActionsOnSelectedItem => {
             let actions = construct_album_actions(albums[id], data);
             ui.popup = Some(PopupState::ActionList(
-                ActionListItem::Album(albums[id].clone(), actions),
+                Box::new(ActionListItem::Album(albums[id].clone(), actions)),
                 new_list_state(),
             ));
         }
@@ -480,7 +480,7 @@ pub fn handle_command_for_playlist_list_window(
         Command::ShowActionsOnSelectedItem => {
             let actions = construct_playlist_actions(playlists[id], data);
             ui.popup = Some(PopupState::ActionList(
-                ActionListItem::Playlist(playlists[id].clone(), actions),
+                Box::new(ActionListItem::Playlist(playlists[id].clone(), actions)),
                 new_list_state(),
             ));
         }

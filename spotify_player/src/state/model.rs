@@ -1,6 +1,6 @@
 pub use rspotify::model as rspotify_model;
 use rspotify::model::CurrentPlaybackContext;
-pub use rspotify::model::{AlbumId, ArtistId, Id, PlaylistId, TrackId, UserId};
+pub use rspotify::model::{AlbumId, AlbumType, ArtistId, Id, PlaylistId, TrackId, UserId};
 
 use crate::utils::map_join;
 use html_escape::decode_html_entities;
@@ -137,6 +137,7 @@ pub struct Album {
     pub release_date: String,
     pub name: String,
     pub artists: Vec<Artist>,
+    pub album_type: Option<AlbumType>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -314,6 +315,15 @@ impl Album {
             name: album.name,
             release_date: album.release_date.unwrap_or_default(),
             artists: from_simplified_artists_to_artists(album.artists),
+            album_type: album
+                .album_type
+                .and_then(|t| match t.to_ascii_lowercase().as_str() {
+                    "album" => Some(AlbumType::Album),
+                    "single" => Some(AlbumType::Single),
+                    "appears_on" => Some(AlbumType::AppearsOn),
+                    "compilation" => Some(AlbumType::Compilation),
+                    _ => None,
+                }),
         })
     }
 
@@ -325,6 +335,14 @@ impl Album {
             .unwrap_or("")
             .to_string()
     }
+
+    /// gets the album type
+    pub fn album_type(&self) -> String {
+        match self.album_type {
+            Some(t) => <&str>::from(t).to_string(),
+            _ => "".to_string(),
+        }
+    }
 }
 
 impl From<rspotify_model::FullAlbum> for Album {
@@ -334,6 +352,7 @@ impl From<rspotify_model::FullAlbum> for Album {
             id: album.id,
             release_date: album.release_date,
             artists: from_simplified_artists_to_artists(album.artists),
+            album_type: Some(album.album_type),
         }
     }
 }
