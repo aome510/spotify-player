@@ -1,5 +1,5 @@
-use std::{collections::HashMap, path::Path};
 use std::io::{BufReader, BufWriter};
+use std::{collections::HashMap, path::Path};
 
 use once_cell::sync::Lazy;
 use serde::{de::DeserializeOwned, Serialize};
