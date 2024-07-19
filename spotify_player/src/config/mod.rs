@@ -260,12 +260,7 @@ impl Default for AppConfig {
             border_type: BorderType::Plain,
             progress_bar_type: ProgressBarType::Rectangle,
 
-            layout: LayoutConfig {
-                library_page: LibraryLayoutConfig {
-                    album_percent: 70,
-                    playlist_percent: 10,
-                },
-            },
+            layout: LayoutConfig::default(),
 
             playback_window_position: Position::Top,
 
@@ -319,6 +314,17 @@ impl Default for DeviceConfig {
             audio_cache: false,
             normalization: false,
             autoplay: false,
+        }
+    }
+}
+
+impl Default for LayoutConfig {
+    fn default() -> Self {
+        Self {
+            library_page: LibraryLayoutConfig {
+                playlist_percent: 30,
+                album_percent: 40,
+            },
         }
     }
 }
