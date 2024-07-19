@@ -333,7 +333,7 @@ fn handle_show_actions_on_artist(
     if artists.len() == 1 {
         let actions = construct_artist_actions(&artists[0], data);
         ui.popup = Some(PopupState::ActionList(
-            ActionListItem::Artist(artists[0].clone(), actions),
+            Box::new(ActionListItem::Artist(artists[0].clone(), actions)),
             new_list_state(),
         ));
     } else {
