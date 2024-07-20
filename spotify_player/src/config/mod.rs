@@ -166,7 +166,7 @@ pub struct NotifyFormat {
 
 #[derive(Debug, Deserialize, Serialize, ConfigParse, Clone)]
 pub struct LayoutConfig {
-    pub library_page: LibraryLayoutConfig,
+    pub library: LibraryLayoutConfig,
 }
 
 #[derive(Debug, Deserialize, Serialize, ConfigParse, Clone)]
@@ -321,7 +321,7 @@ impl Default for DeviceConfig {
 impl Default for LayoutConfig {
     fn default() -> Self {
         Self {
-            library_page: LibraryLayoutConfig {
+            library: LibraryLayoutConfig {
                 playlist_percent: 30,
                 album_percent: 40,
             },

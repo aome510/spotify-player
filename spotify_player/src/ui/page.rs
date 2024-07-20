@@ -328,8 +328,8 @@ pub fn render_library_page(
     // - a saved albums window
     // - a followed artists window
 
-    if configs.app_config.layout.library_page.playlist_percent
-        + configs.app_config.layout.library_page.album_percent
+    if configs.app_config.layout.library.playlist_percent
+        + configs.app_config.layout.library.album_percent
         > 99
     {
         println!("Cannot have playlist_width + album_width be greater than 99");
@@ -337,11 +337,11 @@ pub fn render_library_page(
     }
 
     let chunks = Layout::horizontal([
-        Constraint::Percentage(configs.app_config.layout.library_page.playlist_percent),
-        Constraint::Percentage(configs.app_config.layout.library_page.album_percent),
+        Constraint::Percentage(configs.app_config.layout.library.playlist_percent),
+        Constraint::Percentage(configs.app_config.layout.library.album_percent),
         Constraint::Percentage(
-            100 - (configs.app_config.layout.library_page.album_percent
-                + configs.app_config.layout.library_page.playlist_percent),
+            100 - (configs.app_config.layout.library.album_percent
+                + configs.app_config.layout.library.playlist_percent),
         ),
     ])
     .split(rect);
