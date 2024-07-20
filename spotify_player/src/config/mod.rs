@@ -322,7 +322,7 @@ impl Default for LayoutConfig {
     fn default() -> Self {
         Self {
             library: LibraryLayoutConfig {
-                playlist_percent: 30,
+                playlist_percent: 40,
                 album_percent: 40,
             },
         }

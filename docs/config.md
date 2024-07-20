@@ -7,6 +7,7 @@
   - [Media control](#media-control)
   - [Player event hook command](#player-event-hook-command)
   - [Device configurations](#device-configurations)
+  - [Layout configurations](#layout-configurations)
 - [Themes](#themes)
   - [Use script to add theme](#use-script-to-add-theme)
   - [Palette](#palette)
@@ -14,7 +15,7 @@
 - [Keymaps](#keymaps)
 
 All configuration files should be placed inside the application's configuration folder (default to be `$HOME/.config/spotify-player`).
-
+    
 ## General
 
 **The default `app.toml` can be found in the example [`app.toml`](../examples/app.toml) file.**
@@ -139,6 +140,23 @@ The configuration options for the [Librespot](https://github.com/librespot-org/l
 
 More details on the above configuration options can be found under the [Librespot wiki page](https://github.com/librespot-org/librespot/wiki/Options).
 
+### Layout configurations
+
+The layout of the application can be adjusted via these options. 
+
+| Option                     | Description                                              | Default |
+| -------------------------- | -------------------------------------------------------- | ------- |
+| `library.album_percent`    | Adjust the width of the album window in the library      | `40`    |
+| `library.playlist_percent` | Adjust the width of the playlist window in the library   | `40`    |
+
+Example: 
+
+``` toml
+
+[layout]
+library = { album_percent = 40, playlist_percent = 40 }
+
+```
 ## Themes
 
 `spotify_player` uses the `theme.toml` config file to look for user-defined themes.
