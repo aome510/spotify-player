@@ -341,7 +341,7 @@ fn split_rect_for_playback_window(rect: Rect) -> (Rect, Rect) {
     // +2 for top/bottom borders
     let playback_width = (playback_width + 2) as u16;
 
-    match configs.app_config.playback_window_position {
+    match configs.app_config.layout.playback_window_position {
         config::Position::Top => {
             let chunks =
                 Layout::vertical([Constraint::Length(playback_width), Constraint::Fill(0)])

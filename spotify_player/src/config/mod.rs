@@ -80,8 +80,6 @@ pub struct AppConfig {
     pub border_type: BorderType,
     pub progress_bar_type: ProgressBarType,
 
-    pub playback_window_position: Position,
-
     pub layout: LayoutConfig,
 
     #[cfg(feature = "image")]
@@ -174,6 +172,7 @@ pub struct LayoutConfig {
     pub library: LibraryLayoutConfig,
     pub search: SearchLayoutConfig,
     pub artist: ArtistLayoutConfig,
+    pub playback_window_position: Position,
 }
 
 #[derive(Debug, Deserialize, Serialize, ConfigParse, Clone)]
@@ -281,8 +280,6 @@ impl Default for AppConfig {
 
             layout: LayoutConfig::default(),
 
-            playback_window_position: Position::Top,
-
             #[cfg(feature = "image")]
             cover_img_length: 9,
             #[cfg(feature = "image")]
@@ -352,6 +349,7 @@ impl Default for LayoutConfig {
                 album_percent: 50,
                 top_songs_percent: 60,
             },
+            playback_window_position: Position::Top,
         }
     }
 }
