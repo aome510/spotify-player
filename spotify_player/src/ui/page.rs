@@ -726,13 +726,22 @@ fn render_artist_context_page_windows(
         _ => return,
     };
 
+    let configs = config::get_config();
     // 2. Construct the page's layout
     // top tracks window
-    let chunks = Layout::vertical([Constraint::Length(12), Constraint::Fill(0)]).split(rect);
+    let chunks = Layout::vertical([
+        Constraint::Percentage(configs.app_config.layout.artist.top_songs_percent),
+        Constraint::Percentage(100 - configs.app_config.layout.artist.top_songs_percent),
+    ])
+    .split(rect);
     let top_tracks_rect = chunks[0];
 
     // albums and related artitsts windows
-    let chunks = Layout::horizontal([Constraint::Ratio(1, 2); 2]).split(chunks[1]);
+    let chunks = Layout::horizontal([
+        Constraint::Percentage(configs.app_config.layout.artist.album_percent),
+        Constraint::Percentage(100 - configs.app_config.layout.artist.album_percent),
+    ])
+    .split(chunks[1]);
     let albums_rect = construct_and_render_block(
         "Albums",
         &ui.theme,

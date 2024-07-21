@@ -169,9 +169,11 @@ trait CheckValues {
 }
 
 #[derive(Debug, Deserialize, Serialize, ConfigParse, Clone)]
+// Application layout configurations
 pub struct LayoutConfig {
     pub library: LibraryLayoutConfig,
     pub search: SearchLayoutConfig,
+    pub artist: ArtistLayoutConfig,
 }
 
 #[derive(Debug, Deserialize, Serialize, ConfigParse, Clone)]
@@ -184,6 +186,12 @@ pub struct LibraryLayoutConfig {
 pub struct SearchLayoutConfig {
     pub top_percent: u16,
     pub left_percent: u16,
+}
+
+#[derive(Debug, Deserialize, Serialize, ConfigParse, Clone)]
+pub struct ArtistLayoutConfig {
+    pub album_percent: u16,
+    pub top_songs_percent: u16,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
@@ -340,6 +348,10 @@ impl Default for LayoutConfig {
                 top_percent: 50,
                 left_percent: 50,
             },
+            artist: ArtistLayoutConfig {
+                album_percent: 50,
+                top_songs_percent: 60,
+            },
         }
     }
 }
@@ -356,6 +368,11 @@ impl CheckValues for LayoutConfig {
             Err(e) => err_string = format!("{} \n{}", err_string, e),
             _ => (),
         };
+
+        match self.artist.check_values() {
+            Err(e) => err_string = format!("{} \n{}", err_string, e),
+            _ => (),
+        }
 
         if err_string.len() == 0 {
             return Ok(());
@@ -381,6 +398,15 @@ impl CheckValues for SearchLayoutConfig {
     fn check_values(&self) -> Result<(), String> {
         if self.top_percent > 99 || self.left_percent > 99 {
             return Err("Search-Layout options are invalid!".to_string());
+        }
+        Ok(())
+    }
+}
+
+impl CheckValues for ArtistLayoutConfig {
+    fn check_values(&self) -> Result<(), String> {
+        if self.album_percent > 99 || self.top_songs_percent > 99 {
+            return Err("Artist-Layout options are invalid!".to_string());
         }
         Ok(())
     }
