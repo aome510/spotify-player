@@ -27,7 +27,7 @@ All configuration files should be placed inside the application's configuration 
 | `client_id`                       | the Spotify client's ID                                                                  | `65b708073fc0480ea92a077233ca87bd`                      |
 | `client_port`                     | the port that the application's client is running on to handle CLI commands              | `8080`                                                  |
 | `tracks_playback_limit`           | the limit for the number of tracks played in a **tracks** playback                       | `50`                                                    |
-| `playback_format`                 | the format of the text in the playback's window                                          | `{status} {track} • {artists}\n{album}\n{metadata}`              |
+| `playback_format`                 | the format of the text in the playback's window                                          | `{status} {track} • {artists}\n{album}\n{metadata}`     | 
 | `notify_format`                   | the format of a notification (`notify` feature only)                                     | `{ summary = "{track} • {artists}", body = "{album}" }` |
 | `notify_timeout_in_secs`          | the timeout (in seconds) of a notification (`notify` feature only)                       | `0` (no timeout)                                        |
 | `player_event_hook_command`       | the hook command executed when there is a new player event                               | `None`                                                  |
@@ -43,9 +43,9 @@ All configuration files should be placed inside the application's configuration 
 | `enable_cover_image_cache`        | store album's cover images in the cache folder                                           | `true`                                                  |
 | `notify_streaming_only`           | only send notification when streaming is enabled (`streaming` and `notify` feature only) | `false`                                                 |
 | `default_device`                  | the default device to connect to on startup if no playing device found                   | `spotify-player`                                        |
-| `play_icon`                       | the icon to indicate playing state of a Spotify item                                     | `▶`                                                    |
+| `play_icon`                       | the icon to indicate playing state of a Spotify item                                     | `▶`                                                     |
 | `pause_icon`                      | the icon to indicate pause state of a Spotify item                                       | `▌▌`                                                    |
-| `liked_icon`                      | the icon to indicate the liked state of a song                                           | `♥`                                                    |
+| `liked_icon`                      | the icon to indicate the liked state of a song                                           | `♥`                                                     |
 | `border_type`                     | the type of the application's borders                                                    | `Plain`                                                 |
 | `progress_bar_type`               | the type of the playback progress bar                                                    | `Rectangle`                                             |
 | `playback_window_position`        | the position of the playback window                                                      | `Top`                                                   |
@@ -118,6 +118,11 @@ set -euo pipefail
 
 case "$1" in
     "Changed") echo "command: $1, old_track_id: $2, new_track_id: $3" >> /tmp/log.txt ;;
+
+
+
+
+
     "Playing") echo "command: $1, track_id: $2, position_ms: $3, duration_ms: $4" >> /tmp/log.txt ;;
     "Paused") echo "command: $1, track_id: $2, position_ms: $3, duration_ms: $4" >> /tmp/log.txt ;;
     "EndOfTrack") echo "command: $1, track_id: $2" >> /tmp/log.txt ;;
@@ -144,10 +149,14 @@ More details on the above configuration options can be found under the [Librespo
 
 The layout of the application can be adjusted via these options. 
 
-| Option                     | Description                                              | Default |
-| -------------------------- | -------------------------------------------------------- | ------- |
-| `library.album_percent`    | Adjust the width of the album window in the library      | `40`    |
-| `library.playlist_percent` | Adjust the width of the playlist window in the library   | `40`    |
+| Option                     | Description                                                  | Default |
+| -------------------------- | ------------------------------------------------------------ | ------- |
+| `library.album_percent`    | Adjust the width of the album window in the library          | `40`    |
+| `library.playlist_percent` | Adjust the width of the playlist window in the library       | `40`    |
+| `search.top_percent`       | Adjust the height of the first row of search results         | `50`    |
+| `search.left_percent`      | Adjust the width of the left column of search results        | `50`    |
+| `artist.album_percent`     | Adjust the width of the album window on the artist page      | `50`    |
+| `artist.top_song_percent`  | Adjust the height of the top songs window on the artist page | `60`    |
 
 Example: 
 
