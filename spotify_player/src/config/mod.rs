@@ -167,12 +167,19 @@ pub struct NotifyFormat {
 #[derive(Debug, Deserialize, Serialize, ConfigParse, Clone)]
 pub struct LayoutConfig {
     pub library: LibraryLayoutConfig,
+    pub search: SearchLayoutConfig,
 }
 
 #[derive(Debug, Deserialize, Serialize, ConfigParse, Clone)]
 pub struct LibraryLayoutConfig {
     pub playlist_percent: u16,
     pub album_percent: u16,
+}
+
+#[derive(Debug, Deserialize, Serialize, ConfigParse, Clone)]
+pub struct SearchLayoutConfig {
+    pub top_percent: u16,
+    pub left_percent: u16,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
@@ -325,7 +332,47 @@ impl Default for LayoutConfig {
                 playlist_percent: 40,
                 album_percent: 40,
             },
+            search: SearchLayoutConfig {
+                top_percent: 50,
+                left_percent: 50,
+            },
         }
+    }
+}
+
+impl LayoutConfig {
+    fn check_values(&self) -> String {
+        let mut err_string = String::new();
+        match self.library.check_values() {
+            Err(e) => err_string = format!("{} \n{}", err_string, e.to_string()),
+            _ => (),
+        };
+
+        match self.search.check_values() {
+            Err(e) => err_string = format!("{} \n{}", err_string, e.to_string()),
+            _ => (),
+        };
+        err_string
+    }
+}
+
+impl LibraryLayoutConfig {
+    fn check_values(&self) -> Result<(), &str> {
+        if self.album_percent + self.playlist_percent > 99 {
+            return Err(
+                "Library-Layout album_percent and playlist_percent cannot be greater than 99!",
+            );
+        }
+        Ok(())
+    }
+}
+
+impl SearchLayoutConfig {
+    fn check_values(&self) -> Result<(), &str> {
+        if self.top_percent > 99 || self.left_percent > 99 {
+            return Err("Search-Layout options are invalid!");
+        }
+        Ok(())
     }
 }
 
@@ -334,6 +381,12 @@ impl AppConfig {
         let mut config = Self::default();
         if !config.parse_config_file(path)? {
             config.write_config_file(path)?
+        }
+
+        let layout_errs = config.layout.check_values();
+        if layout_errs.len() != 0 {
+            print!("{}", layout_errs);
+            std::process::exit(1)
         }
 
         Ok(config)

@@ -26,6 +26,7 @@ pub fn render_search_page(
 ) {
     // 1. Get data
     let data = state.data.read();
+    let configs = config::get_config();
 
     let (focus_state, current_query, line_input) = match ui.current_page() {
         PageState::Search {
@@ -47,15 +48,21 @@ pub fn render_search_page(
     let rect = chunks[1];
 
     // track/album/artist/playlist search results layout (2x2 table)
-    let chunks = Layout::vertical([Constraint::Ratio(1, 2); 2])
-        .split(rect)
-        .iter()
-        .flat_map(|rect| {
-            Layout::horizontal([Constraint::Ratio(1, 2); 2])
-                .split(*rect)
-                .to_vec()
-        })
-        .collect::<Vec<_>>();
+    let chunks = Layout::vertical([
+        Constraint::Percentage(configs.app_config.layout.search.top_percent),
+        Constraint::Percentage(100 - configs.app_config.layout.search.top_percent),
+    ])
+    .split(rect)
+    .iter()
+    .flat_map(|rect| {
+        Layout::horizontal([
+            Constraint::Percentage(configs.app_config.layout.search.left_percent),
+            Constraint::Percentage(100 - configs.app_config.layout.search.left_percent),
+        ])
+        .split(*rect)
+        .to_vec()
+    })
+    .collect::<Vec<_>>();
 
     let track_rect = construct_and_render_block(
         "Tracks",
@@ -327,14 +334,6 @@ pub fn render_library_page(
     // - a playlists window
     // - a saved albums window
     // - a followed artists window
-
-    if configs.app_config.layout.library.playlist_percent
-        + configs.app_config.layout.library.album_percent
-        > 99
-    {
-        println!("Cannot have playlist_width + album_width be greater than 99");
-        std::process::exit(1)
-    }
 
     let chunks = Layout::horizontal([
         Constraint::Percentage(configs.app_config.layout.library.playlist_percent),
@@ -680,9 +679,9 @@ pub fn render_queue_page(
             .collect::<Vec<_>>(),
         [
             Constraint::Percentage(5),
-            Constraint::Percentage(40),
-            Constraint::Percentage(35),
-            Constraint::Percentage(20),
+            Constraint::Percentage(5),
+            Constraint::Percentage(5),
+            Constraint::Percentage(85),
         ],
     )
     .header(
