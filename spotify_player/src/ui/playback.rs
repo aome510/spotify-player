@@ -333,7 +333,7 @@ fn render_playback_cover_image(state: &SharedState, ui: &mut UIStateGuard) -> Re
 /// and the second one for the main application's layout (popup, page, etc).
 fn split_rect_for_playback_window(rect: Rect) -> (Rect, Rect) {
     let configs = config::get_config();
-    let playback_width = configs.app_config.playback_window_width;
+    let playback_width = configs.app_config.layout.playback_window_height;
     // the playback window's width should not be smaller than the cover image's width + 1
     #[cfg(feature = "image")]
     let playback_width = std::cmp::max(configs.app_config.cover_img_width + 1, playback_width);

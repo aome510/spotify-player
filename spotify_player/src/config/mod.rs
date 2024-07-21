@@ -89,8 +89,6 @@ pub struct AppConfig {
     #[cfg(feature = "image")]
     pub cover_img_scale: f32,
 
-    pub playback_window_width: usize,
-
     #[cfg(feature = "media-control")]
     pub enable_media_control: bool,
 
@@ -173,6 +171,7 @@ pub struct LayoutConfig {
     pub search: SearchLayoutConfig,
     pub artist: ArtistLayoutConfig,
     pub playback_window_position: Position,
+    pub playback_window_height: usize,
 }
 
 #[derive(Debug, Deserialize, Serialize, ConfigParse, Clone)]
@@ -287,8 +286,6 @@ impl Default for AppConfig {
             #[cfg(feature = "image")]
             cover_img_scale: 1.0,
 
-            playback_window_width: 6,
-
             // Because of the "creating new window and stealing focus" behaviour
             // when running the media control event loop on startup,
             // media control support is disabled by default for Windows and MacOS.
@@ -350,6 +347,7 @@ impl Default for LayoutConfig {
                 top_songs_percent: 60,
             },
             playback_window_position: Position::Top,
+            playback_window_height: 6,
         }
     }
 }
