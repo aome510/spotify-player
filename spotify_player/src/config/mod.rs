@@ -164,6 +164,10 @@ pub struct NotifyFormat {
     pub body: String,
 }
 
+trait CheckValues {
+    fn check_values(&self) -> Result<(), String>;
+}
+
 #[derive(Debug, Deserialize, Serialize, ConfigParse, Clone)]
 pub struct LayoutConfig {
     pub library: LibraryLayoutConfig,
@@ -340,37 +344,43 @@ impl Default for LayoutConfig {
     }
 }
 
-impl LayoutConfig {
-    fn check_values(&self) -> String {
+impl CheckValues for LayoutConfig {
+    fn check_values(&self) -> Result<(), String> {
         let mut err_string = String::new();
         match self.library.check_values() {
-            Err(e) => err_string = format!("{} \n{}", err_string, e.to_string()),
+            Err(e) => err_string = format!("{} \n{}", err_string, e),
             _ => (),
         };
 
         match self.search.check_values() {
-            Err(e) => err_string = format!("{} \n{}", err_string, e.to_string()),
+            Err(e) => err_string = format!("{} \n{}", err_string, e),
             _ => (),
         };
-        err_string
+
+        if err_string.len() == 0 {
+            return Ok(());
+        }
+
+        Err(err_string)
     }
 }
 
-impl LibraryLayoutConfig {
-    fn check_values(&self) -> Result<(), &str> {
+impl CheckValues for LibraryLayoutConfig {
+    fn check_values(&self) -> Result<(), String> {
         if self.album_percent + self.playlist_percent > 99 {
             return Err(
-                "Library-Layout album_percent and playlist_percent cannot be greater than 99!",
+                "Library-Layout album_percent and playlist_percent cannot be greater than 99!"
+                    .to_string(),
             );
         }
         Ok(())
     }
 }
 
-impl SearchLayoutConfig {
-    fn check_values(&self) -> Result<(), &str> {
+impl CheckValues for SearchLayoutConfig {
+    fn check_values(&self) -> Result<(), String> {
         if self.top_percent > 99 || self.left_percent > 99 {
-            return Err("Search-Layout options are invalid!");
+            return Err("Search-Layout options are invalid!".to_string());
         }
         Ok(())
     }
@@ -383,13 +393,13 @@ impl AppConfig {
             config.write_config_file(path)?
         }
 
-        let layout_errs = config.layout.check_values();
-        if layout_errs.len() != 0 {
-            print!("{}", layout_errs);
-            std::process::exit(1)
+        match config.layout.check_values() {
+            Err(e) => {
+                println!("{}", e);
+                std::process::exit(1)
+            }
+            Ok(_) => Ok(config),
         }
-
-        Ok(config)
     }
 
     // parses configurations from an application config file in `path` folder,
