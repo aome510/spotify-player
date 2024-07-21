@@ -48,8 +48,6 @@ All configuration files should be placed inside the application's configuration 
 | `liked_icon`                      | the icon to indicate the liked state of a song                                           | `♥`                                                     |
 | `border_type`                     | the type of the application's borders                                                    | `Plain`                                                 |
 | `progress_bar_type`               | the type of the playback progress bar                                                    | `Rectangle`                                             |
-| `playback_window_position`        | the position of the playback window                                                      | `Top`                                                   |
-| `playback_window_width`           | the width of the playback window                                                         | `6`                                                     |
 | `cover_img_width`                 | the width of the cover image (`image` feature only)                                      | `5`                                                     |
 | `cover_img_length`                | the length of the cover image (`image` feature only)                                     | `9`                                                     |
 | `cover_img_scale`                 | the scale of the cover image (`image` feature only)                                      | `1.0`                                                   |
@@ -151,12 +149,14 @@ The layout of the application can be adjusted via these options.
 
 | Option                     | Description                                                  | Default |
 | -------------------------- | ------------------------------------------------------------ | ------- |
-| `library.album_percent`    | Adjust the width of the album window in the library          | `40`    |
-| `library.playlist_percent` | Adjust the width of the playlist window in the library       | `40`    |
-| `search.top_percent`       | Adjust the height of the first row of search results         | `50`    |
-| `search.left_percent`      | Adjust the width of the left column of search results        | `50`    |
-| `artist.album_percent`     | Adjust the width of the album window on the artist page      | `50`    |
-| `artist.top_song_percent`  | Adjust the height of the top songs window on the artist page | `60`    |
+| `library.album_percent`    | The width of the album window in the library                 | `40`    |
+| `library.playlist_percent` | The width of the playlist window in the library              | `40`    |
+| `search.top_percent`       | The height of the first row of search results                | `50`    |
+| `search.left_percent`      | The width of the left column of search results               | `50`    |
+| `artist.album_percent`     | The width of the album window on the artist page             | `50`    |
+| `artist.top_song_percent`  | The height of the top songs window on the artist page        | `60`    |
+| `playback_window_position` | The position of the playback window                          | `Top`   |
+| `playback_window_height`   | The width of the playback window                             | `6`     |
 
 Example: 
 
@@ -164,6 +164,7 @@ Example:
 
 [layout]
 library = { album_percent = 40, playlist_percent = 40 }
+playback_window_position = "Top"
 
 ```
 ## Themes
