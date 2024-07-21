@@ -355,26 +355,27 @@ impl Default for LayoutConfig {
 impl CheckValues for LayoutConfig {
     fn check_values(&self) -> Result<(), String> {
         let mut err_string = String::new();
-        match self.library.check_values() {
-            Err(e) => err_string = format!("{} \n{}", err_string, e),
-            _ => (),
-        };
 
-        match self.search.check_values() {
-            Err(e) => err_string = format!("{} \n{}", err_string, e),
-            _ => (),
-        };
+        err_string = LayoutConfig::concat_errors(err_string, &self.library.check_values());
 
-        match self.artist.check_values() {
-            Err(e) => err_string = format!("{} \n{}", err_string, e),
-            _ => (),
-        }
+        err_string = LayoutConfig::concat_errors(err_string, &self.search.check_values());
 
-        if err_string.len() == 0 {
+        err_string = LayoutConfig::concat_errors(err_string, &self.artist.check_values());
+
+        if err_string.is_empty() {
             return Ok(());
         }
 
         Err(err_string)
+    }
+}
+
+impl LayoutConfig {
+    fn concat_errors(prev_msgs: String, new_msg: &Result<(), String>) -> String {
+        if let Err(e) = new_msg {
+            return format!("{} \n {}", prev_msgs, e);
+        }
+        prev_msgs
     }
 }
 
