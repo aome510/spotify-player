@@ -2,6 +2,8 @@ use std::borrow::Cow;
 
 use tui::widgets::*;
 
+use blake3;
+
 /// formats a time duration into a "{minutes}:{seconds}" format
 pub fn format_duration(duration: &chrono::Duration) -> String {
     let secs = duration.num_seconds();
@@ -53,4 +55,10 @@ pub fn parse_uri(uri: &str) -> Cow<str> {
     } else {
         Cow::Borrowed(uri)
     }
+}
+
+pub fn hash_filename(filename: &str) -> String {
+    // return the first 16 characters of the hash
+    let hash = blake3::hash(filename.as_bytes());
+    hash.to_hex().to_string().split_at(16).0.to_string()
 }
