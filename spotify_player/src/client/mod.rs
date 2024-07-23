@@ -1415,21 +1415,20 @@ impl Client {
             None => return Ok(()),
         };
 
-        let path = (format!(
+        let filename = (format!(
             "{}-{}-cover.jpg",
             track.album.name,
             crate::utils::map_join(&track.album.artists, |a| &a.name, ", ")
         ))
         .replace('/', ""); // remove invalid characters from the file's name
-        let path = configs.cache_folder.join("image").join(path);
 
         if configs.app_config.enable_cover_image_cache {
-            self.retrieve_image(url, &path, true).await?;
+            self.retrieve_image(url, &filename, true).await?;
         }
 
         #[cfg(feature = "image")]
         if !state.data.read().caches.images.contains_key(url) {
-            let bytes = self.retrieve_image(url, &path, false).await?;
+            let bytes = self.retrieve_image(url, &filename, false).await?;
             let image =
                 image::load_from_memory(&bytes).context("Failed to load image from memory")?;
             state
@@ -1547,9 +1546,14 @@ impl Client {
     async fn retrieve_image(
         &self,
         url: &str,
-        path: &std::path::Path,
+        filename: &str,
         saved: bool,
     ) -> Result<Vec<u8>> {
+        let configs = config::get_config();
+        let hashedname = crate::utils::hash_filename(filename);
+        let path = configs.cache_folder.join("image").join(hashedname+".jpg"); 
+        // add the jpg back to you could still see the image
+
         if path.exists() {
             tracing::debug!("Retrieving image from file: {}", path.display());
             return Ok(std::fs::read(path)?);
