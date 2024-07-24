@@ -202,6 +202,7 @@ To define application's component styles, the user can specify any of the below 
 - `playback_album`
 - `playback_metadata`
 - `playback_progress_bar`
+- `playback_progress_bar_unfilled` (Specific to `progress_bar_type` as `Line`)
 - `current_playing`
 - `page_desc`
 - `table_header`

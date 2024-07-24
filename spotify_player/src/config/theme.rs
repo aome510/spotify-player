@@ -70,6 +70,7 @@ pub struct ComponentStyle {
     pub playback_album: Option<Style>,
     pub playback_metadata: Option<Style>,
     pub playback_progress_bar: Option<Style>,
+    pub playback_progress_bar_unfilled: Option<Style>,
     pub current_playing: Option<Style>,
     pub page_desc: Option<Style>,
     pub playlist_desc: Option<Style>,
@@ -255,6 +256,15 @@ impl Theme {
             None => Style::default()
                 .bg(StyleColor::BrightBlack)
                 .fg(StyleColor::Green)
+                .style(&self.palette),
+            Some(s) => s.style(&self.palette),
+        }
+    }
+
+    pub fn playback_progress_bar_unfilled(&self) -> tui::style::Style {
+        match &self.component_style.playback_progress_bar_unfilled {
+            None => Style::default()
+                .bg(StyleColor::BrightBlack)
                 .style(&self.palette),
             Some(s) => s.style(&self.palette),
         }
