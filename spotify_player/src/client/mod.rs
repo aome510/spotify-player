@@ -1415,11 +1415,13 @@ impl Client {
             None => return Ok(()),
         };
 
-        let filename = (format!(
-            "{}-{}-cover.jpg",
+        let album_id_slice = track.album.id.as_ref().unwrap().id().split_at(6).0;
+        let filename = format!(
+            "{}-{}-cover-{}.jpg",
             track.album.name,
-            crate::utils::map_join(&track.album.artists, |a| &a.name, ", ")
-        ))
+            track.album.artists.first().unwrap().name,
+            album_id_slice
+        )
         .replace('/', ""); // remove invalid characters from the file's name
 
         if configs.app_config.enable_cover_image_cache {
@@ -1543,16 +1545,9 @@ impl Client {
 
     /// Retrieve an image from a `url` or a cached `path`.
     /// If `saved` is specified, the retrieved image is saved to the cached `path`.
-    async fn retrieve_image(
-        &self,
-        url: &str,
-        filename: &str,
-        saved: bool,
-    ) -> Result<Vec<u8>> {
+    async fn retrieve_image(&self, url: &str, filename: &str, saved: bool) -> Result<Vec<u8>> {
         let configs = config::get_config();
-        let hashedname = crate::utils::hash_filename(filename);
-        let path = configs.cache_folder.join("image").join(hashedname+".jpg"); 
-        // add the jpg back to you could still see the image
+        let path = configs.cache_folder.join("image").join(filename);
 
         if path.exists() {
             tracing::debug!("Retrieving image from file: {}", path.display());
