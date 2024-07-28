@@ -205,14 +205,18 @@ pub fn construct_artist_actions(artist: &Artist, data: &DataReadGuard) -> Vec<Ac
 
 /// constructs a list of actions on an playlist
 pub fn construct_playlist_actions(playlist: &Playlist, data: &DataReadGuard) -> Vec<Action> {
-    let mut actions = vec![Action::GoToRadio, Action::CopyLink];
-
-    if data.user_data.playlists.iter().any(|a| a.id == playlist.id) {
-        actions.push(Action::DeleteFromLibrary);
+    if playlist.is_folder {
+        vec![]
     } else {
-        actions.push(Action::AddToLibrary);
+        let mut actions = vec![Action::GoToRadio, Action::CopyLink];
+
+        if data.user_data.playlists.iter().any(|a| a.id == playlist.id) {
+            actions.push(Action::DeleteFromLibrary);
+        } else {
+            actions.push(Action::AddToLibrary);
+        }
+        actions
     }
-    actions
 }
 
 impl Command {

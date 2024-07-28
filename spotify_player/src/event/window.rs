@@ -488,11 +488,13 @@ pub fn handle_command_for_playlist_list_window(
             }
         }
         Command::ShowActionsOnSelectedItem => {
-            let actions = construct_playlist_actions(playlists[id], data);
-            ui.popup = Some(PopupState::ActionList(
-                Box::new(ActionListItem::Playlist(playlists[id].clone(), actions)),
-                ListState::default(),
-            ));
+            if !playlists[id].is_folder {
+                let actions = construct_playlist_actions(playlists[id], data);
+                ui.popup = Some(PopupState::ActionList(
+                    Box::new(ActionListItem::Playlist(playlists[id].clone(), actions)),
+                    ListState::default(),
+                ));
+            }
         }
         _ => return Ok(false),
     }
