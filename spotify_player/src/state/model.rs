@@ -172,7 +172,6 @@ pub struct PlaylistFolderNode {
     pub children: Vec<PlaylistFolderNode>,
 }
 
-
 #[derive(Clone, Debug)]
 /// A Spotify category
 pub struct Category {
