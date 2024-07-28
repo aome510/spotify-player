@@ -89,24 +89,45 @@ pub fn handle_key_sequence_for_popup(
             )
         }
         PopupState::UserPlaylistList(action, _) => match action {
-            PlaylistPopupAction::Browse => {
+            PlaylistPopupAction::Browse(level) => {
                 let playlist_uris = state
                     .data
                     .read()
                     .user_data
-                    .playlists
+                    .folder_playlists(*level)
                     .iter()
-                    .map(|p| p.id.uri())
+                    .map(|p| (p.id.uri(), p.is_folder, p.level.1))
                     .collect::<Vec<_>>();
 
-                handle_command_for_context_browsing_list_popup(
+                handle_command_for_list_popup(
                     command,
                     ui,
-                    playlist_uris,
-                    rspotify_model::Type::Playlist,
+                    playlist_uris.len(),
+                    |_, _| {},
+                    |ui: &mut UIStateGuard, id: usize| -> Result<()> {
+                        if playlist_uris[id].1 {
+                            ui.popup = Some(PopupState::UserPlaylistList(
+                                PlaylistPopupAction::Browse(playlist_uris[id].2),
+                                new_list_state(),
+                            ));
+                        } else {
+                            let uri = crate::utils::parse_uri(&playlist_uris[id].0);
+                            let context_id =
+                                ContextId::Playlist(PlaylistId::from_uri(&uri)?.into_static());
+                            ui.new_page(PageState::Context {
+                                id: None,
+                                context_page_type: ContextPageType::Browsing(context_id),
+                                state: None,
+                            });
+                        }
+                        Ok(())
+                    },
+                    |ui: &mut UIStateGuard| {
+                        ui.popup = None;
+                    },
                 )
             }
-            PlaylistPopupAction::AddTrack(track_id) => {
+            PlaylistPopupAction::AddTrack(level, track_id) => {
                 let track_id = track_id.clone();
                 let playlist_ids = state
                     .data
@@ -114,7 +135,8 @@ pub fn handle_key_sequence_for_popup(
                     .user_data
                     .modifiable_playlists()
                     .into_iter()
-                    .map(|p| p.id.clone())
+                    .filter(|p| p.level.0 == *level)
+                    .map(|p| (p.id.clone(), p.is_folder, p.level.1))
                     .collect::<Vec<_>>();
 
                 handle_command_for_list_popup(
@@ -123,11 +145,18 @@ pub fn handle_key_sequence_for_popup(
                     playlist_ids.len(),
                     |_, _| {},
                     |ui: &mut UIStateGuard, id: usize| -> Result<()> {
-                        client_pub.send(ClientRequest::AddTrackToPlaylist(
-                            playlist_ids[id].clone(),
-                            track_id.clone(),
-                        ))?;
-                        ui.popup = None;
+                        ui.popup = if playlist_ids[id].1 {
+                            Some(PopupState::UserPlaylistList(
+                                PlaylistPopupAction::AddTrack(playlist_ids[id].2, track_id.clone()),
+                                new_list_state(),
+                            ))
+                        } else {
+                            client_pub.send(ClientRequest::AddTrackToPlaylist(
+                                playlist_ids[id].0.clone(),
+                                track_id.clone(),
+                            ))?;
+                            None
+                        };
                         Ok(())
                     },
                     |ui: &mut UIStateGuard| {

@@ -60,10 +60,9 @@ fn handle_action_for_library_page(
             ui.search_filtered_items(
                 &data
                     .user_data
-                    .playlists
-                    .clone()
+                    .folder_playlists(level)
                     .into_iter()
-                    .filter(|p| p.level.0 == level)
+                    .cloned()
                     .collect::<Vec<Playlist>>(),
             ),
             &data,
@@ -111,10 +110,9 @@ fn handle_command_for_library_page(
                         ui.search_filtered_items(
                             &data
                                 .user_data
-                                .playlists
-                                .clone()
+                                .folder_playlists(level)
                                 .into_iter()
-                                .filter(|p| p.level.0 == level)
+                                .cloned()
                                 .collect::<Vec<Playlist>>(),
                         ),
                         &data,

@@ -133,9 +133,17 @@ impl UserData {
             Some(ref u) => self
                 .playlists
                 .iter()
-                .filter(|p| p.owner.1 == u.id || p.collaborative)
+                .filter(|p| p.is_folder || p.owner.1 == u.id || p.collaborative)
                 .collect(),
         }
+    }
+
+    /// Get a list of playlists for the given folder level
+    pub fn folder_playlists(&self, level: i32) -> Vec<&Playlist> {
+        self.playlists
+            .iter()
+            .filter(|p| p.level.0 == level)
+            .collect()
     }
 
     /// Check if a track is a liked track

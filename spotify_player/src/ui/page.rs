@@ -362,9 +362,8 @@ pub fn render_library_page(
         _ => 0,
     };
     let items = ui
-        .search_filtered_items(&data.user_data.playlists)
+        .search_filtered_items(&data.user_data.folder_playlists(playlist_level))
         .into_iter()
-        .filter(|p| p.level.0 == playlist_level)
         .map(|p| (p.to_string(), curr_context_uri == Some(p.id.uri())))
         .collect::<Vec<_>>();
 

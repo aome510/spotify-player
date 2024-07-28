@@ -159,7 +159,7 @@ pub fn handle_action_in_context(
             Action::AddToPlaylist => {
                 client_pub.send(ClientRequest::GetUserPlaylists)?;
                 ui.popup = Some(PopupState::UserPlaylistList(
-                    PlaylistPopupAction::AddTrack(track.id),
+                    PlaylistPopupAction::AddTrack(0, track.id),
                     ListState::default(),
                 ));
             }
@@ -444,7 +444,7 @@ fn handle_global_command(
         Command::BrowseUserPlaylists => {
             client_pub.send(ClientRequest::GetUserPlaylists)?;
             ui.popup = Some(PopupState::UserPlaylistList(
-                PlaylistPopupAction::Browse,
+                PlaylistPopupAction::Browse(0),
                 ListState::default(),
             ));
         }
