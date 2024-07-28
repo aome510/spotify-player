@@ -155,7 +155,23 @@ pub struct Playlist {
     pub name: String,
     pub owner: (String, UserId<'static>),
     pub desc: String,
+    #[serde(default)]
+    pub is_folder: bool,
+    #[serde(default)]
+    pub level: (i32, i32), // current + target
 }
+
+#[derive(Deserialize, Debug, Clone)]
+/// A node to help building a playlist folder hierarchy
+pub struct PlaylistFolderNode {
+    pub name: Option<String>,
+    #[serde(rename = "type")]
+    pub node_type: String,
+    pub uri: String,
+    #[serde(default = "Vec::new")]
+    pub children: Vec<PlaylistFolderNode>,
+}
+
 
 #[derive(Clone, Debug)]
 /// A Spotify category
@@ -416,6 +432,8 @@ impl From<rspotify_model::SimplifiedPlaylist> for Playlist {
                 playlist.owner.id,
             ),
             desc: String::new(),
+            is_folder: false,
+            level: (0, 0),
         }
     }
 }
@@ -436,13 +454,19 @@ impl From<rspotify_model::FullPlaylist> for Playlist {
                 playlist.owner.id,
             ),
             desc,
+            is_folder: false,
+            level: (0, 0),
         }
     }
 }
 
 impl std::fmt::Display for Playlist {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} • {}", self.name, self.owner.0)
+        if self.is_folder {
+            write!(f, "{}/", self.name)
+        } else {
+            write!(f, "{} • {}", self.name, self.owner.0)
+        }
     }
 }
 

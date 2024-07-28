@@ -300,6 +300,12 @@ impl Client {
             }
             ClientRequest::GetUserPlaylists => {
                 let playlists = self.current_user_playlists().await?;
+                let nodes = state.data.read().user_data.playlist_folder_nodes.clone();
+                let playlists = if nodes.is_empty() {
+                    playlists
+                } else {
+                    crate::playlist_folders::structurize(&playlists, nodes)
+                };
                 store_data_into_file_cache(
                     FileCacheKey::Playlists,
                     &config::get_config().cache_folder,

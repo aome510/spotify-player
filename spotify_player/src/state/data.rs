@@ -11,6 +11,7 @@ pub type DataReadGuard<'a> = parking_lot::RwLockReadGuard<'a, AppData>;
 #[derive(Debug)]
 pub enum FileCacheKey {
     Playlists,
+    PlaylistFolders,
     FollowedArtists,
     SavedAlbums,
     SavedTracks,
@@ -32,6 +33,7 @@ pub struct AppData {
 pub struct UserData {
     pub user: Option<rspotify_model::PrivateUser>,
     pub playlists: Vec<Playlist>,
+    pub playlist_folder_nodes: Vec<PlaylistFolderNode>,
     pub followed_artists: Vec<Artist>,
     pub saved_albums: Vec<Album>,
     pub saved_tracks: HashMap<String, Track>,
@@ -107,6 +109,11 @@ impl UserData {
             user: None,
             playlists: load_data_from_file_cache(FileCacheKey::Playlists, cache_folder)
                 .unwrap_or_default(),
+            playlist_folder_nodes: load_data_from_file_cache(
+                FileCacheKey::PlaylistFolders,
+                cache_folder,
+            )
+            .unwrap_or_default(),
             followed_artists: load_data_from_file_cache(
                 FileCacheKey::FollowedArtists,
                 cache_folder,
