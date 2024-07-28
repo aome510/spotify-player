@@ -470,12 +470,22 @@ pub fn handle_command_for_playlist_list_window(
     }
     match command {
         Command::ChooseSelected => {
-            let context_id = ContextId::Playlist(playlists[id].id.clone());
-            ui.new_page(PageState::Context {
-                id: None,
-                context_page_type: ContextPageType::Browsing(context_id),
-                state: None,
-            });
+            let state = match ui.current_page_mut() {
+                PageState::Library { state } => state,
+                _ => return Ok(false),
+            };
+            let playlist = playlists[id];
+            if playlist.is_folder {
+                state.playlist_list.select(Some(0));
+                state.focus = LibraryFocusState::Playlists(playlist.level.1);
+            } else {
+                let context_id = ContextId::Playlist(playlists[id].id.clone());
+                ui.new_page(PageState::Context {
+                    id: None,
+                    context_page_type: ContextPageType::Browsing(context_id),
+                    state: None,
+                });
+            }
         }
         Command::ShowActionsOnSelectedItem => {
             let actions = construct_playlist_actions(playlists[id], data);

@@ -55,9 +55,17 @@ fn handle_action_for_library_page(
         _ => anyhow::bail!("expect a library page state"),
     };
     match focus_state {
-        LibraryFocusState::Playlists => window::handle_action_for_selected_item(
+        LibraryFocusState::Playlists(level) => window::handle_action_for_selected_item(
             action,
-            ui.search_filtered_items(&data.user_data.playlists),
+            ui.search_filtered_items(
+                &data
+                    .user_data
+                    .playlists
+                    .clone()
+                    .into_iter()
+                    .filter(|p| p.level.0 == level)
+                    .collect::<Vec<Playlist>>(),
+            ),
             &data,
             ui,
             client_pub,
@@ -97,12 +105,22 @@ fn handle_command_for_library_page(
                 _ => anyhow::bail!("expect a library page state"),
             };
             match focus_state {
-                LibraryFocusState::Playlists => window::handle_command_for_playlist_list_window(
-                    command,
-                    ui.search_filtered_items(&data.user_data.playlists),
-                    &data,
-                    ui,
-                ),
+                LibraryFocusState::Playlists(level) => {
+                    window::handle_command_for_playlist_list_window(
+                        command,
+                        ui.search_filtered_items(
+                            &data
+                                .user_data
+                                .playlists
+                                .clone()
+                                .into_iter()
+                                .filter(|p| p.level.0 == level)
+                                .collect::<Vec<Playlist>>(),
+                        ),
+                        &data,
+                        ui,
+                    )
+                }
                 LibraryFocusState::SavedAlbums => window::handle_command_for_album_list_window(
                     command,
                     ui.search_filtered_items(&data.user_data.saved_albums),
