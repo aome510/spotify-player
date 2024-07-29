@@ -397,6 +397,7 @@ impl KeymapConfig {
         self.keymaps
             .iter()
             .find(|&keymap| keymap.key_sequence == *key_sequence)
+            .filter(|keymap| keymap.command != Command::None)
             .map(|keymap| keymap.command)
     }
 
