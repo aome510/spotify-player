@@ -855,11 +855,11 @@ fn render_track_table(
                 ((id + 1).to_string(), Style::default())
             };
             Row::new(vec![
-                Cell::from(if data.user_data.is_liked_track(t) {
-                    &configs.app_config.liked_icon
+                if data.user_data.is_liked_track(t) {
+                    Cell::from(&configs.app_config.liked_icon as &str).style(ui.theme.like())
                 } else {
-                    ""
-                }),
+                    Cell::from("")
+                },
                 Cell::from(id),
                 Cell::from(t.display_name()),
                 Cell::from(t.artists_info()),
@@ -873,7 +873,6 @@ fn render_track_table(
             .style(style)
         })
         .collect::<Vec<_>>();
-
     let track_table = Table::new(
         rows,
         [
