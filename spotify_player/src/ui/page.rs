@@ -857,9 +857,9 @@ fn render_track_table(
             Row::new(vec![
                 Cell::from(if data.user_data.is_liked_track(t) {
                     &configs.app_config.liked_icon
-                } else {
-                    ""
-                }),
+                    } else {
+                        ""
+                    }).style(ui.theme.like()),
                 Cell::from(id),
                 Cell::from(t.display_name()),
                 Cell::from(t.artists_info()),
@@ -873,7 +873,6 @@ fn render_track_table(
             .style(style)
         })
         .collect::<Vec<_>>();
-
     let track_table = Table::new(
         rows,
         [
