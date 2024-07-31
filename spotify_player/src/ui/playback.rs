@@ -17,7 +17,7 @@ pub fn render_playback_window(
     let player = state.player.read();
     if let Some(ref playback) = player.playback {
         if let Some(rspotify::model::PlayableItem::Track(ref track)) = playback.item {
-            let (metadata_rect, progress_bar_rect) = {
+            let (title_rect, metadata_rect, progress_bar_rect) = {
                 // allocate the progress bar rect
                 let (rect, progress_bar_rect) = {
                     let chunks =
@@ -26,16 +26,16 @@ pub fn render_playback_window(
                     (chunks[0], chunks[1])
                 };
 
-                let metadata_rect = {
+                let title_metadata_rect = {
                     // Render the track's cover image if `image` feature is enabled
                     #[cfg(feature = "image")]
                     {
                         let configs = config::get_config();
-                        // Split the allocated rectangle into `metadata_rect` and `cover_img_rect`
-                        let (metadata_rect, cover_img_rect) = {
+                        // Split the allocated rectangle into `title_metadata_rect` and `cover_img_rect`
+                        let (title_metadata_rect, cover_img_rect) = {
                             let hor_chunks = Layout::horizontal([
                                 Constraint::Length(configs.app_config.cover_img_length as u16),
-                                Constraint::Fill(0), // metadata_rect
+                                Constraint::Fill(0), // title_metadata_rect
                             ])
                             .spacing(1)
                             .split(rect);
@@ -88,7 +88,7 @@ pub fn render_playback_window(
                             }
                         }
 
-                        metadata_rect
+                        title_metadata_rect
                     }
 
                     #[cfg(not(feature = "image"))]
@@ -97,13 +97,24 @@ pub fn render_playback_window(
                     }
                 };
 
-                (metadata_rect, progress_bar_rect)
+                let (title_rect, metadata_rect) = {
+                    let ver_chunks = Layout::vertical([Constraint::Fill(2), Constraint::Fill(1)])
+                        .split(title_metadata_rect);
+
+                    (ver_chunks[0], ver_chunks[1])
+                };
+
+                (title_rect, metadata_rect, progress_bar_rect)
             };
 
             if let Some(ref playback) = player.buffered_playback {
                 let playback_text = construct_playback_text(ui, track, playback);
                 let playback_desc = Paragraph::new(playback_text).wrap(Wrap { trim: false });
-                frame.render_widget(playback_desc, metadata_rect);
+                frame.render_widget(playback_desc, title_rect);
+
+                let metadata_text = construct_metadata_text(ui, playback);
+                let metadata_desc = Paragraph::new(metadata_text).wrap(Wrap { trim: false });
+                frame.render_widget(metadata_desc, metadata_rect);
             }
 
             let progress = std::cmp::min(
@@ -199,23 +210,6 @@ fn construct_playback_text(
                 ui.theme.playback_artists(),
             ),
             "{album}" => (track.album.name.to_owned(), ui.theme.playback_album()),
-            "{metadata}" => (
-                format!(
-                    "repeat: {} | shuffle: {} | volume: {} | device: {}",
-                    if playback.fake_track_repeat_state {
-                        "track (fake)"
-                    } else {
-                        <&'static str>::from(playback.repeat_state)
-                    },
-                    playback.shuffle_state,
-                    match playback.mute_state {
-                        Some(volume) => format!("{volume}% (muted)"),
-                        None => format!("{}%", playback.volume.unwrap_or_default()),
-                    },
-                    playback.device_name,
-                ),
-                ui.theme.playback_metadata(),
-            ),
             _ => continue,
         };
 
@@ -227,6 +221,32 @@ fn construct_playback_text(
     if !spans.is_empty() {
         playback_text.lines.push(Line::from(spans));
     }
+
+    playback_text
+}
+
+fn construct_metadata_text(ui: &UIStateGuard, playback: &PlaybackMetadata) -> Text<'static> {
+    // Construct a "styled" metadata text from playback's data
+    let mut playback_text = Text::default();
+    let mut spans = vec![];
+
+    let text = format!(
+        "repeat: {} | shuffle: {} | volume: {} | device: {}",
+        if playback.fake_track_repeat_state {
+            "track (fake)"
+        } else {
+            <&'static str>::from(playback.repeat_state)
+        },
+        playback.shuffle_state,
+        match playback.mute_state {
+            Some(volume) => format!("{volume}% (muted)"),
+            None => format!("{}%", playback.volume.unwrap_or_default()),
+        },
+        playback.device_name,
+    );
+
+    spans.push(Span::styled(text, ui.theme.playback_metadata()));
+    playback_text.lines.push(Line::from(spans));
 
     playback_text
 }
