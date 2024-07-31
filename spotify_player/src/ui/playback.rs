@@ -11,6 +11,7 @@ pub fn render_playback_window(
     ui: &mut UIStateGuard,
     rect: Rect,
 ) -> Rect {
+    let configs = config::get_config();
     let (rect, other_rect) = split_rect_for_playback_window(rect);
     let rect = construct_and_render_block("Playback", &ui.theme, Borders::ALL, frame, rect);
 
@@ -98,8 +99,11 @@ pub fn render_playback_window(
                 };
 
                 let (title_rect, metadata_rect) = {
-                    let ver_chunks = Layout::vertical([Constraint::Fill(2), Constraint::Fill(1)])
-                        .split(title_metadata_rect);
+                    let ver_chunks = Layout::vertical([
+                        Constraint::Length(configs.app_config.layout.title_height as u16),
+                        Constraint::Fill(0),
+                    ])
+                    .split(title_metadata_rect);
 
                     (ver_chunks[0], ver_chunks[1])
                 };

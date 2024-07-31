@@ -170,6 +170,7 @@ pub struct LayoutConfig {
     pub library: LibraryLayoutConfig,
     pub search: SearchLayoutConfig,
     pub artist: ArtistLayoutConfig,
+    pub title_height: usize,
     pub playback_window_position: Position,
     pub playback_window_height: usize,
 }
@@ -348,6 +349,7 @@ impl Default for LayoutConfig {
             },
             playback_window_position: Position::Top,
             playback_window_height: 6,
+            title_height: 1,
         }
     }
 }
