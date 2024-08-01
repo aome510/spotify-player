@@ -160,10 +160,6 @@ pub struct NotifyFormat {
     pub body: String,
 }
 
-trait CheckValues {
-    fn check_values(&self) -> Result<(), String>;
-}
-
 #[derive(Debug, Deserialize, Serialize, ConfigParse, Clone)]
 // Application layout configurations
 pub struct LayoutConfig {
@@ -330,38 +326,13 @@ impl Default for LayoutConfig {
     }
 }
 
-impl CheckValues for LayoutConfig {
-    fn check_values(&self) -> Result<(), String> {
-        let mut err_string = String::new();
-
-        err_string = LayoutConfig::concat_errors(err_string, &self.library.check_values());
-
-        if err_string.is_empty() {
-            return Ok(());
-        }
-
-        Err(err_string)
-    }
-}
-
 impl LayoutConfig {
-    fn concat_errors(prev_msgs: String, new_msg: &Result<(), String>) -> String {
-        if let Err(e) = new_msg {
-            return format!("{} \n {}", prev_msgs, e);
+    fn check_values(&self) -> Result<(), anyhow::Error> {
+        if self.library.album_percent + self.library.playlist_percent > 99 {
+            anyhow::bail!("Invalid library layout: summation of album_percent and playlist_percent cannot be greater than 99!");
+        } else {
+            Ok(())
         }
-        prev_msgs
-    }
-}
-
-impl CheckValues for LibraryLayoutConfig {
-    fn check_values(&self) -> Result<(), String> {
-        if self.album_percent + self.playlist_percent > 99 {
-            return Err(
-                "Library-Layout album_percent and playlist_percent cannot be greater than 99!"
-                    .to_string(),
-            );
-        }
-        Ok(())
     }
 }
 
