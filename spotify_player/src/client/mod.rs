@@ -1415,13 +1415,15 @@ impl Client {
             None => return Ok(()),
         };
 
-        let path = (format!(
-            "{}-{}-cover.jpg",
+        let filename = format!(
+            "{}-{}-cover-{}.jpg",
             track.album.name,
-            crate::utils::map_join(&track.album.artists, |a| &a.name, ", ")
-        ))
+            track.album.artists.first().unwrap().name,
+            // first 6 characters of the album's id
+            &track.album.id.as_ref().unwrap().id()[..6]
+        )
         .replace('/', ""); // remove invalid characters from the file's name
-        let path = configs.cache_folder.join("image").join(path);
+        let path = configs.cache_folder.join("image").join(filename);
 
         if configs.app_config.enable_cover_image_cache {
             self.retrieve_image(url, &path, true).await?;
