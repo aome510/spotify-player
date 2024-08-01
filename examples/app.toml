@@ -2,7 +2,7 @@ theme = "default"
 client_id = "65b708073fc0480ea92a077233ca87bd"
 client_port = 8080
 tracks_playback_limit = 50
-playback_format = "{status} {track} • {artists}\n{album}\n{metadata}"
+playback_format = "{status} {track} • {artists}\n{album}\n"
 notify_format = { summary = "{track} • {artists}", body = "{album}" }
 notify_timeout_in_secs = 0
 app_refresh_duration_in_ms = 32
@@ -34,3 +34,4 @@ autoplay = false
 library = { playlist_percent = 40, album_percent = 40 }
 playback_window_position = "Top"
 playback_window_height = 6
+title_height = 1
