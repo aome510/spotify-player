@@ -143,10 +143,6 @@ The layout of the application can be adjusted via these options.
 | -------------------------- | ------------------------------------------------------------- | ------- |
 | `library.album_percent`    | The width of the album window in the library                  | `40`    |
 | `library.playlist_percent` | The width of the playlist window in the library               | `40`    |
-| `search.top_percent`       | The height of the first row of search results                 | `50`    |
-| `search.left_percent`      | The width of the left column of search results                | `50`    |
-| `artist.album_percent`     | The width of the album window on the artist page              | `50`    |
-| `artist.top_song_percent`  | The height of the top songs window on the artist page         | `60`    |
 | `playback_window_position` | The position of the playback window                           | `Top`   |
 | `playback_window_height`   | The height of the playback window                             | `6`     |
 
