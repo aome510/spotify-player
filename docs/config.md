@@ -114,6 +114,7 @@ set -euo pipefail
 
 case "$1" in
     "Changed") echo "command: $1, old_track_id: $2, new_track_id: $3" >> /tmp/log.txt ;;
+    "Playing") echo "command: $1, track_id: $2, position_ms: $3, duration_ms: $4" >> /tmp/log.txt ;;
     "Paused") echo "command: $1, track_id: $2, position_ms: $3, duration_ms: $4" >> /tmp/log.txt ;;
     "EndOfTrack") echo "command: $1, track_id: $2" >> /tmp/log.txt ;;
 esac
