@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 
 use tui::widgets::*;
+
 /// formats a time duration into a "{minutes}:{seconds}" format
 pub fn format_duration(duration: &chrono::Duration) -> String {
     let secs = duration.num_seconds();
