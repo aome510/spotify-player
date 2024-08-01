@@ -146,7 +146,7 @@ The layout of the application can be adjusted via these options.
 | `library.playlist_percent` | The percentage of the playlist window in the library                   | `40`    |
 | `playback_window_position` | The position of the playback window                                    | `Top`   |
 | `playback_window_height`   | The height of the playback window                                      | `6`     |
-| `title_height`             | The hieght (in rows) for the title/album/artist in the playback window | `1`     |
+| `title_height`             | The height of the title/album/artist in the playback window            | `1`     |
 
 Example: 
 
