@@ -679,9 +679,9 @@ pub fn render_queue_page(
             .collect::<Vec<_>>(),
         [
             Constraint::Percentage(5),
-            Constraint::Percentage(5),
-            Constraint::Percentage(5),
-            Constraint::Percentage(85),
+            Constraint::Percentage(40),
+            Constraint::Percentage(35),
+            Constraint::Percentage(20),
         ],
     )
     .header(
