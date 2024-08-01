@@ -89,7 +89,7 @@ pub enum ContextPageUIState {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum LibraryFocusState {
-    Playlists(i32),
+    Playlists(usize), // Playlists in the folder level
     SavedAlbums,
     FollowedArtists,
 }

@@ -33,7 +33,7 @@ pub struct AppData {
 pub struct UserData {
     pub user: Option<rspotify_model::PrivateUser>,
     pub playlists: Vec<Playlist>,
-    pub playlist_folder_nodes: Vec<PlaylistFolderNode>,
+    pub playlist_folder_node: Option<PlaylistFolderNode>,
     pub followed_artists: Vec<Artist>,
     pub saved_albums: Vec<Album>,
     pub saved_tracks: HashMap<String, Track>,
@@ -109,11 +109,10 @@ impl UserData {
             user: None,
             playlists: load_data_from_file_cache(FileCacheKey::Playlists, cache_folder)
                 .unwrap_or_default(),
-            playlist_folder_nodes: load_data_from_file_cache(
+            playlist_folder_node: load_data_from_file_cache(
                 FileCacheKey::PlaylistFolders,
                 cache_folder,
-            )
-            .unwrap_or_default(),
+            ),
             followed_artists: load_data_from_file_cache(
                 FileCacheKey::FollowedArtists,
                 cache_folder,
@@ -139,7 +138,7 @@ impl UserData {
     }
 
     /// Get a list of playlists for the given folder level
-    pub fn folder_playlists(&self, level: i32) -> Vec<&Playlist> {
+    pub fn folder_playlists(&self, level: usize) -> Vec<&Playlist> {
         self.playlists
             .iter()
             .filter(|p| p.level.0 == level)

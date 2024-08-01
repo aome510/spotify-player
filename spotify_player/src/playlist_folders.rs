@@ -5,13 +5,13 @@ use rspotify::model::{Id, PlaylistId, UserId};
 use crate::state::{Playlist, PlaylistFolderNode};
 
 /// Structurizes a flat input playlist according to the playlist folder nodes
-pub fn structurize(playlists: &Vec<Playlist>, nodes: Vec<PlaylistFolderNode>) -> Vec<Playlist> {
+pub fn structurize(playlists: Vec<Playlist>, nodes: Vec<PlaylistFolderNode>) -> Vec<Playlist> {
     // 1. Collect playlist ids from inner nodes
     let mut playlist_ids: HashSet<String> = HashSet::new();
     get_playlist_ids_from_nodes(&nodes, &mut playlist_ids);
     // 2. Add root playlists that don't belong to folders
     let mut playlist_folders: Vec<Playlist> = Vec::new();
-    for playlist in playlists {
+    for playlist in &playlists {
         if !playlist_ids.contains(playlist.id.id()) {
             let mut p = playlist.clone();
             p.is_folder = false;
@@ -21,7 +21,6 @@ pub fn structurize(playlists: &Vec<Playlist>, nodes: Vec<PlaylistFolderNode>) ->
     }
     // 3. Add the rest
     let by_ids: HashMap<String, Playlist> = playlists
-        .clone()
         .into_iter()
         .map(|p| (p.id.id().to_string(), p))
         .collect();
@@ -42,7 +41,7 @@ fn get_playlist_ids_from_nodes(nodes: &Vec<PlaylistFolderNode>, acc: &mut HashSe
 fn add_playlist_folders(
     nodes: &Vec<PlaylistFolderNode>,
     by_ids: &HashMap<String, Playlist>,
-    folder_level: &mut i32,
+    folder_level: &mut usize,
     acc: &mut Vec<Playlist>,
 ) {
     let level = *folder_level;

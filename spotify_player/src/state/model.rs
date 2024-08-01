@@ -158,15 +158,17 @@ pub struct Playlist {
     #[serde(default)]
     pub is_folder: bool,
     #[serde(default)]
-    pub level: (i32, i32), // current + target
+    pub level: (usize, usize), // current, target
 }
 
 #[derive(Deserialize, Debug, Clone)]
-/// A node to help building a playlist folder hierarchy
+/// A reference node retrieved by running https://github.com/mikez/spotify-folders
+/// Helps building a playlist folder hierarchy
 pub struct PlaylistFolderNode {
     pub name: Option<String>,
     #[serde(rename = "type")]
     pub node_type: String,
+    #[serde(default)]
     pub uri: String,
     #[serde(default = "Vec::new")]
     pub children: Vec<PlaylistFolderNode>,
