@@ -160,16 +160,10 @@ pub struct NotifyFormat {
     pub body: String,
 }
 
-trait CheckValues {
-    fn check_values(&self) -> Result<(), String>;
-}
-
 #[derive(Debug, Deserialize, Serialize, ConfigParse, Clone)]
 // Application layout configurations
 pub struct LayoutConfig {
     pub library: LibraryLayoutConfig,
-    pub search: SearchLayoutConfig,
-    pub artist: ArtistLayoutConfig,
     pub title_height: usize,
     pub playback_window_position: Position,
     pub playback_window_height: usize,
@@ -179,18 +173,6 @@ pub struct LayoutConfig {
 pub struct LibraryLayoutConfig {
     pub playlist_percent: u16,
     pub album_percent: u16,
-}
-
-#[derive(Debug, Deserialize, Serialize, ConfigParse, Clone)]
-pub struct SearchLayoutConfig {
-    pub top_percent: u16,
-    pub left_percent: u16,
-}
-
-#[derive(Debug, Deserialize, Serialize, ConfigParse, Clone)]
-pub struct ArtistLayoutConfig {
-    pub album_percent: u16,
-    pub top_songs_percent: u16,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
@@ -339,14 +321,6 @@ impl Default for LayoutConfig {
                 playlist_percent: 40,
                 album_percent: 40,
             },
-            search: SearchLayoutConfig {
-                top_percent: 50,
-                left_percent: 50,
-            },
-            artist: ArtistLayoutConfig {
-                album_percent: 50,
-                top_songs_percent: 60,
-            },
             playback_window_position: Position::Top,
             playback_window_height: 6,
             title_height: 1,
@@ -354,60 +328,13 @@ impl Default for LayoutConfig {
     }
 }
 
-impl CheckValues for LayoutConfig {
-    fn check_values(&self) -> Result<(), String> {
-        let mut err_string = String::new();
-
-        err_string = LayoutConfig::concat_errors(err_string, &self.library.check_values());
-
-        err_string = LayoutConfig::concat_errors(err_string, &self.search.check_values());
-
-        err_string = LayoutConfig::concat_errors(err_string, &self.artist.check_values());
-
-        if err_string.is_empty() {
-            return Ok(());
-        }
-
-        Err(err_string)
-    }
-}
-
 impl LayoutConfig {
-    fn concat_errors(prev_msgs: String, new_msg: &Result<(), String>) -> String {
-        if let Err(e) = new_msg {
-            return format!("{} \n {}", prev_msgs, e);
+    fn check_values(&self) -> anyhow::Result<()> {
+        if self.library.album_percent + self.library.playlist_percent > 99 {
+            anyhow::bail!("Invalid library layout: summation of album_percent and playlist_percent cannot be greater than 99!");
+        } else {
+            Ok(())
         }
-        prev_msgs
-    }
-}
-
-impl CheckValues for LibraryLayoutConfig {
-    fn check_values(&self) -> Result<(), String> {
-        if self.album_percent + self.playlist_percent > 99 {
-            return Err(
-                "Library-Layout album_percent and playlist_percent cannot be greater than 99!"
-                    .to_string(),
-            );
-        }
-        Ok(())
-    }
-}
-
-impl CheckValues for SearchLayoutConfig {
-    fn check_values(&self) -> Result<(), String> {
-        if self.top_percent > 99 || self.left_percent > 99 {
-            return Err("Search-Layout options are invalid!".to_string());
-        }
-        Ok(())
-    }
-}
-
-impl CheckValues for ArtistLayoutConfig {
-    fn check_values(&self) -> Result<(), String> {
-        if self.album_percent > 99 || self.top_songs_percent > 99 {
-            return Err("Artist-Layout options are invalid!".to_string());
-        }
-        Ok(())
     }
 }
 
@@ -418,13 +345,8 @@ impl AppConfig {
             config.write_config_file(path)?
         }
 
-        match config.layout.check_values() {
-            Err(e) => {
-                println!("{}", e);
-                std::process::exit(1)
-            }
-            Ok(_) => Ok(config),
-        }
+        config.layout.check_values()?;
+        Ok(config)
     }
 
     // parses configurations from an application config file in `path` folder,

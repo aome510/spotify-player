@@ -52,8 +52,6 @@ All configuration files should be placed inside the application's configuration 
 | `cover_img_length`                | the length of the cover image (`image` feature only)                                     | `9`                                                     |
 | `cover_img_scale`                 | the scale of the cover image (`image` feature only)                                      | `1.0`                                                   |
 | `seek_duration_secs`              | the duration (in seconds) to seek when using `SeekForward` and `SeekBackward` commands   | `5`                                                     |
-| `playlist_window_width`           | the width of the playlist window in the library                                          | `40`                                                    |
-| `album_window_width`              | the width of the album window in the library                                             | `40`                                                    |
 
 ### Notes
 
@@ -116,11 +114,6 @@ set -euo pipefail
 
 case "$1" in
     "Changed") echo "command: $1, old_track_id: $2, new_track_id: $3" >> /tmp/log.txt ;;
-
-
-
-
-
     "Playing") echo "command: $1, track_id: $2, position_ms: $3, duration_ms: $4" >> /tmp/log.txt ;;
     "Paused") echo "command: $1, track_id: $2, position_ms: $3, duration_ms: $4" >> /tmp/log.txt ;;
     "EndOfTrack") echo "command: $1, track_id: $2" >> /tmp/log.txt ;;
@@ -149,12 +142,8 @@ The layout of the application can be adjusted via these options.
 
 | Option                     | Description                                                            | Default |
 | -------------------------- | ---------------------------------------------------------------------- | ------- |
-| `library.album_percent`    | The width of the album window in the library                           | `40`    |
-| `library.playlist_percent` | The width of the playlist window in the library                        | `40`    |
-| `search.top_percent`       | The height of the first row of search results                          | `50`    |
-| `search.left_percent`      | The width of the left column of search results                         | `50`    |
-| `artist.album_percent`     | The width of the album window on the artist page                       | `50`    |
-| `artist.top_song_percent`  | The height of the top songs window on the artist page                  | `60`    |
+| `library.album_percent`    | The percentage of the album window in the library                      | `40`    |
+| `library.playlist_percent` | The percentage of the playlist window in the library                   | `40`    |
 | `playback_window_position` | The position of the playback window                                    | `Top`   |
 | `playback_window_height`   | The height of the playback window                                      | `6`     |
 | `title_height`             | The hieght (in rows) for the title/album/artist in the playback window | `1`     |

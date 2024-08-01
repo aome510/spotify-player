@@ -17,10 +17,8 @@ default_device = "spotify-player"
 play_icon = "▶"
 pause_icon = "▌▌"
 liked_icon = "♥"
-playback_window_position = "Top"
 cover_img_length = 9
 cover_img_width = 5
-playback_window_width = 6
 seek_duration_secs = 5
 
 [device]
@@ -31,3 +29,8 @@ bitrate = 320
 audio_cache = false
 normalization = false
 autoplay = false
+
+[layout]
+library = { playlist_percent = 40, album_percent = 40 }
+playback_window_position = "Top"
+playback_window_height = 6
