@@ -139,12 +139,12 @@ More details on the above configuration options can be found under the [Librespo
 
 The layout of the application can be adjusted via these options. 
 
-| Option                     | Description                                                   | Default |
-| -------------------------- | ------------------------------------------------------------- | ------- |
-| `library.album_percent`    | The width of the album window in the library                  | `40`    |
-| `library.playlist_percent` | The width of the playlist window in the library               | `40`    |
-| `playback_window_position` | The position of the playback window                           | `Top`   |
-| `playback_window_height`   | The height of the playback window                             | `6`     |
+| Option                     | Description                                                      | Default |
+| -------------------------- | ---------------------------------------------------------------- | ------- |
+| `library.album_percent`    | The percentage of the album window in the library                | `40`    |
+| `library.playlist_percent` | The percentage of the playlist window in the library             | `40`    |
+| `playback_window_position` | The position of the playback window                              | `Top`   |
+| `playback_window_height`   | The height of the playback window                                | `6`     |
 
 Example: 
 
