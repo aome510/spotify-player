@@ -327,7 +327,7 @@ impl Default for LayoutConfig {
 }
 
 impl LayoutConfig {
-    fn check_values(&self) -> Result<(), anyhow::Error> {
+    fn check_values(&self) -> anyhow::Result<()> {
         if self.library.album_percent + self.library.playlist_percent > 99 {
             anyhow::bail!("Invalid library layout: summation of album_percent and playlist_percent cannot be greater than 99!");
         } else {
@@ -343,13 +343,8 @@ impl AppConfig {
             config.write_config_file(path)?
         }
 
-        match config.layout.check_values() {
-            Err(e) => {
-                println!("{}", e);
-                std::process::exit(1)
-            }
-            Ok(_) => Ok(config),
-        }
+        config.layout.check_values()?;
+        Ok(config)
     }
 
     // parses configurations from an application config file in `path` folder,
