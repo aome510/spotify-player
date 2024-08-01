@@ -1415,22 +1415,23 @@ impl Client {
             None => return Ok(()),
         };
 
-        let album_id_slice = track.album.id.as_ref().unwrap().id().split_at(6).0;
         let filename = format!(
             "{}-{}-cover-{}.jpg",
             track.album.name,
             track.album.artists.first().unwrap().name,
-            album_id_slice
+            // first 6 characters of the album's id
+            &track.album.id.as_ref().unwrap().id()[..6]
         )
         .replace('/', ""); // remove invalid characters from the file's name
+        let path = configs.cache_folder.join("image").join(filename);
 
         if configs.app_config.enable_cover_image_cache {
-            self.retrieve_image(url, &filename, true).await?;
+            self.retrieve_image(url, &path, true).await?;
         }
 
         #[cfg(feature = "image")]
         if !state.data.read().caches.images.contains_key(url) {
-            let bytes = self.retrieve_image(url, &filename, false).await?;
+            let bytes = self.retrieve_image(url, &path, false).await?;
             let image =
                 image::load_from_memory(&bytes).context("Failed to load image from memory")?;
             state
@@ -1545,10 +1546,12 @@ impl Client {
 
     /// Retrieve an image from a `url` or a cached `path`.
     /// If `saved` is specified, the retrieved image is saved to the cached `path`.
-    async fn retrieve_image(&self, url: &str, filename: &str, saved: bool) -> Result<Vec<u8>> {
-        let configs = config::get_config();
-        let path = configs.cache_folder.join("image").join(filename);
-
+    async fn retrieve_image(
+        &self,
+        url: &str,
+        path: &std::path::Path,
+        saved: bool,
+    ) -> Result<Vec<u8>> {
         if path.exists() {
             tracing::debug!("Retrieving image from file: {}", path.display());
             return Ok(std::fs::read(path)?);
