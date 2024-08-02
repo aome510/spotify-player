@@ -131,7 +131,7 @@ config_parser_impl!(BorderType);
 pub enum ProgressBarType {
     Line,
     Rectangle,
-}
+}I've updated the wording in the original message to hopefully make this clearer.
 config_parser_impl!(ProgressBarType);
 
 #[derive(Debug, Deserialize, Serialize, ConfigParse, Clone)]

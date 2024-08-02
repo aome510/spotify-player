@@ -140,6 +140,7 @@ More details on the above configuration options can be found under the [Librespo
 
 The layout of the application can be adjusted via these options. 
 
+
 | Option                     | Description                                                            | Default |
 | -------------------------- | ---------------------------------------------------------------------- | ------- |
 | `library.album_percent`    | The percentage of the album window in the library                      | `40`    |
@@ -222,11 +223,13 @@ To define application's component styles, the user can specify any of the below 
 - `playback_album`
 - `playback_metadata`
 - `playback_progress_bar`
+- `playback_progress_bar_unfilled` (Specific to `progress_bar_type` as `Line`)
 - `current_playing`
 - `page_desc`
 - `table_header`
 - `selection`
 - `secondary_row`
+- `like`
 
 A field in `component_style` is a struct with three **optional** fields: `fg` (foreground), `bg` (background) and `modifiers` (terminal effects):
 
