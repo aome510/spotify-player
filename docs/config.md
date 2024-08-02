@@ -7,6 +7,7 @@
   - [Media control](#media-control)
   - [Player event hook command](#player-event-hook-command)
   - [Device configurations](#device-configurations)
+  - [Layout configurations](#layout-configurations)
 - [Themes](#themes)
   - [Use script to add theme](#use-script-to-add-theme)
   - [Palette](#palette)
@@ -14,7 +15,7 @@
 - [Keymaps](#keymaps)
 
 All configuration files should be placed inside the application's configuration folder (default to be `$HOME/.config/spotify-player`).
-
+    
 ## General
 
 **The default `app.toml` can be found in the example [`app.toml`](../examples/app.toml) file.**
@@ -26,7 +27,7 @@ All configuration files should be placed inside the application's configuration 
 | `client_id`                       | the Spotify client's ID                                                                  | `65b708073fc0480ea92a077233ca87bd`                      |
 | `client_port`                     | the port that the application's client is running on to handle CLI commands              | `8080`                                                  |
 | `tracks_playback_limit`           | the limit for the number of tracks played in a **tracks** playback                       | `50`                                                    |
-| `playback_format`                 | the format of the text in the playback's window                                          | `{status} {track} • {artists}\n{album}\n{metadata}`              |
+| `playback_format`                 | the format of the text in the playback's window                                          | `{status} {track} • {artists}\n{album}\n{metadata}`     | 
 | `notify_format`                   | the format of a notification (`notify` feature only)                                     | `{ summary = "{track} • {artists}", body = "{album}" }` |
 | `notify_timeout_in_secs`          | the timeout (in seconds) of a notification (`notify` feature only)                       | `0` (no timeout)                                        |
 | `player_event_hook_command`       | the hook command executed when there is a new player event                               | `None`                                                  |
@@ -42,13 +43,11 @@ All configuration files should be placed inside the application's configuration 
 | `enable_cover_image_cache`        | store album's cover images in the cache folder                                           | `true`                                                  |
 | `notify_streaming_only`           | only send notification when streaming is enabled (`streaming` and `notify` feature only) | `false`                                                 |
 | `default_device`                  | the default device to connect to on startup if no playing device found                   | `spotify-player`                                        |
-| `play_icon`                       | the icon to indicate playing state of a Spotify item                                     | `▶`                                                    |
+| `play_icon`                       | the icon to indicate playing state of a Spotify item                                     | `▶`                                                     |
 | `pause_icon`                      | the icon to indicate pause state of a Spotify item                                       | `▌▌`                                                    |
-| `liked_icon`                      | the icon to indicate the liked state of a song                                           | `♥`                                                    |
+| `liked_icon`                      | the icon to indicate the liked state of a song                                           | `♥`                                                     |
 | `border_type`                     | the type of the application's borders                                                    | `Plain`                                                 |
 | `progress_bar_type`               | the type of the playback progress bar                                                    | `Rectangle`                                             |
-| `playback_window_position`        | the position of the playback window                                                      | `Top`                                                   |
-| `playback_window_width`           | the width of the playback window                                                         | `6`                                                     |
 | `cover_img_width`                 | the width of the cover image (`image` feature only)                                      | `5`                                                     |
 | `cover_img_length`                | the length of the cover image (`image` feature only)                                     | `9`                                                     |
 | `cover_img_scale`                 | the scale of the cover image (`image` feature only)                                      | `1.0`                                                   |
@@ -137,6 +136,26 @@ The configuration options for the [Librespot](https://github.com/librespot-org/l
 
 More details on the above configuration options can be found under the [Librespot wiki page](https://github.com/librespot-org/librespot/wiki/Options).
 
+### Layout configurations
+
+The layout of the application can be adjusted via these options. 
+
+| Option                     | Description                                                      | Default |
+| -------------------------- | ---------------------------------------------------------------- | ------- |
+| `library.album_percent`    | The percentage of the album window in the library                | `40`    |
+| `library.playlist_percent` | The percentage of the playlist window in the library             | `40`    |
+| `playback_window_position` | The position of the playback window                              | `Top`   |
+| `playback_window_height`   | The height of the playback window                                | `6`     |
+
+Example: 
+
+``` toml
+
+[layout]
+library = { album_percent = 40, playlist_percent = 40 }
+playback_window_position = "Top"
+
+```
 ## Themes
 
 `spotify_player` uses the `theme.toml` config file to look for user-defined themes.

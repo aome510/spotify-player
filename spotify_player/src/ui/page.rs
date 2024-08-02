@@ -315,6 +315,7 @@ pub fn render_library_page(
     // 1. Get data
     let curr_context_uri = state.player.read().playing_context_id().map(|c| c.uri());
     let data = state.data.read();
+    let configs = config::get_config();
 
     let focus_state = match ui.current_page() {
         PageState::Library { state } => state.focus,
@@ -326,12 +327,17 @@ pub fn render_library_page(
     // - a playlists window
     // - a saved albums window
     // - a followed artists window
+
     let chunks = Layout::horizontal([
-        Constraint::Percentage(40),
-        Constraint::Percentage(40),
-        Constraint::Percentage(20),
+        Constraint::Percentage(configs.app_config.layout.library.playlist_percent),
+        Constraint::Percentage(configs.app_config.layout.library.album_percent),
+        Constraint::Percentage(
+            100 - (configs.app_config.layout.library.album_percent
+                + configs.app_config.layout.library.playlist_percent),
+        ),
     ])
     .split(rect);
+
     let playlist_rect = construct_and_render_block(
         "Playlists",
         &ui.theme,
