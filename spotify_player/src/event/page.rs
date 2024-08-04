@@ -327,7 +327,7 @@ fn handle_command_for_browse_page(
                         ui.new_page(PageState::Browse {
                             state: BrowsePageUIState::CategoryPlaylistList {
                                 category: categories[selected].clone(),
-                                state: new_list_state(),
+                                state: ListState::default(),
                             },
                         });
                     }

@@ -1,4 +1,4 @@
-use crate::{state::model::*, ui::single_line_input::LineInput, utils};
+use crate::{state::model::*, ui::single_line_input::LineInput};
 use tui::widgets::{ListState, TableState};
 
 #[derive(Clone, Debug)]
@@ -229,9 +229,9 @@ impl PageState {
 impl LibraryPageUIState {
     pub fn new() -> Self {
         Self {
-            playlist_list: utils::new_list_state(),
-            saved_album_list: utils::new_list_state(),
-            followed_artist_list: utils::new_list_state(),
+            playlist_list: ListState::default(),
+            saved_album_list: ListState::default(),
+            followed_artist_list: ListState::default(),
             focus: LibraryFocusState::Playlists,
         }
     }
@@ -240,10 +240,10 @@ impl LibraryPageUIState {
 impl SearchPageUIState {
     pub fn new() -> Self {
         Self {
-            track_list: utils::new_list_state(),
-            album_list: utils::new_list_state(),
-            artist_list: utils::new_list_state(),
-            playlist_list: utils::new_list_state(),
+            track_list: ListState::default(),
+            album_list: ListState::default(),
+            artist_list: ListState::default(),
+            playlist_list: ListState::default(),
             focus: SearchFocusState::Input,
         }
     }
@@ -266,28 +266,28 @@ impl ContextPageType {
 impl ContextPageUIState {
     pub fn new_playlist() -> Self {
         Self::Playlist {
-            track_table: utils::new_table_state(),
+            track_table: TableState::default(),
         }
     }
 
     pub fn new_album() -> Self {
         Self::Album {
-            track_table: utils::new_table_state(),
+            track_table: TableState::default(),
         }
     }
 
     pub fn new_artist() -> Self {
         Self::Artist {
-            top_track_table: utils::new_table_state(),
-            album_table: utils::new_table_state(),
-            related_artist_list: utils::new_list_state(),
+            top_track_table: TableState::default(),
+            album_table: TableState::default(),
+            related_artist_list: ListState::default(),
             focus: ArtistFocusState::TopTracks,
         }
     }
 
     pub fn new_tracks() -> Self {
         Self::Tracks {
-            track_table: utils::new_table_state(),
+            track_table: TableState::default(),
         }
     }
 }

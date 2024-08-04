@@ -5,7 +5,7 @@ use crate::{
     key::{Key, KeySequence},
     state::*,
     ui::single_line_input::LineInput,
-    utils::{new_list_state, parse_uri},
+    utils::parse_uri,
 };
 
 #[cfg(feature = "lyric-finder")]
@@ -13,6 +13,7 @@ use crate::utils::map_join;
 use anyhow::{Context as _, Result};
 
 use clipboard::{execute_copy_command, get_clipboard_content};
+use tui::widgets::ListState;
 
 mod clipboard;
 mod page;
@@ -159,7 +160,7 @@ pub fn handle_action_in_context(
                 client_pub.send(ClientRequest::GetUserPlaylists)?;
                 ui.popup = Some(PopupState::UserPlaylistList(
                     PlaylistPopupAction::AddTrack(track.id),
-                    new_list_state(),
+                    ListState::default(),
                 ));
             }
             Action::ToggleLiked => {
@@ -196,7 +197,7 @@ pub fn handle_action_in_context(
                             album,
                             context.get_available_actions(data),
                         )),
-                        new_list_state(),
+                        ListState::default(),
                     ));
                 }
             }
@@ -320,7 +321,7 @@ fn handle_go_to_artist(artists: Vec<Artist>, ui: &mut UIStateGuard) {
         ui.popup = Some(PopupState::ArtistList(
             ArtistPopupAction::Browse,
             artists,
-            new_list_state(),
+            ListState::default(),
         ));
     }
 }
@@ -334,13 +335,13 @@ fn handle_show_actions_on_artist(
         let actions = construct_artist_actions(&artists[0], data);
         ui.popup = Some(PopupState::ActionList(
             Box::new(ActionListItem::Artist(artists[0].clone(), actions)),
-            new_list_state(),
+            ListState::default(),
         ));
     } else {
         ui.popup = Some(PopupState::ArtistList(
             ArtistPopupAction::ShowActions,
             artists,
-            new_list_state(),
+            ListState::default(),
         ));
     }
 }
@@ -428,7 +429,7 @@ fn handle_global_command(
                     let actions = command::construct_track_actions(&track, &data);
                     ui.popup = Some(PopupState::ActionList(
                         Box::new(ActionListItem::Track(track, actions)),
-                        new_list_state(),
+                        ListState::default(),
                     ));
                 }
             }
@@ -444,16 +445,16 @@ fn handle_global_command(
             client_pub.send(ClientRequest::GetUserPlaylists)?;
             ui.popup = Some(PopupState::UserPlaylistList(
                 PlaylistPopupAction::Browse,
-                new_list_state(),
+                ListState::default(),
             ));
         }
         Command::BrowseUserFollowedArtists => {
             client_pub.send(ClientRequest::GetUserFollowedArtists)?;
-            ui.popup = Some(PopupState::UserFollowedArtistList(new_list_state()));
+            ui.popup = Some(PopupState::UserFollowedArtistList(ListState::default()));
         }
         Command::BrowseUserSavedAlbums => {
             client_pub.send(ClientRequest::GetUserSavedAlbums)?;
-            ui.popup = Some(PopupState::UserSavedAlbumList(new_list_state()));
+            ui.popup = Some(PopupState::UserSavedAlbumList(ListState::default()));
         }
         Command::TopTrackPage => {
             ui.new_page(PageState::Context {
@@ -500,7 +501,7 @@ fn handle_global_command(
         Command::BrowsePage => {
             ui.new_page(PageState::Browse {
                 state: BrowsePageUIState::CategoryList {
-                    state: new_list_state(),
+                    state: ListState::default(),
                 },
             });
             client_pub.send(ClientRequest::GetBrowseCategories)?;
@@ -576,7 +577,7 @@ fn handle_global_command(
             }
         }
         Command::SwitchDevice => {
-            ui.popup = Some(PopupState::DeviceList(new_list_state()));
+            ui.popup = Some(PopupState::DeviceList(ListState::default()));
             client_pub.send(ClientRequest::GetDevices)?;
         }
         Command::SwitchTheme => {
@@ -588,7 +589,7 @@ fn handle_global_command(
                 themes.insert(0, theme);
             }
 
-            ui.popup = Some(PopupState::ThemeList(themes, new_list_state()));
+            ui.popup = Some(PopupState::ThemeList(themes, ListState::default()));
         }
         #[cfg(feature = "streaming")]
         Command::RestartIntegratedClient => {

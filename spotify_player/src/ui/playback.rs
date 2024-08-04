@@ -64,9 +64,10 @@ pub fn render_playback_window(
                             };
 
                             if needs_clear {
-                                // clear the image's area to ensure no remaining artifacts before rendering the image
+                                // clear the image's both new and old areas to ensure no remaining artifacts before rendering the image
                                 // See: https://github.com/aome510/spotify-player/issues/389
-                                frame.render_widget(Clear, cover_img_rect);
+                                clear_area(frame, ui.last_cover_image_render_info.render_area);
+                                clear_area(frame, cover_img_rect);
                             } else {
                                 if !ui.last_cover_image_render_info.rendered {
                                     if let Err(err) = render_playback_cover_image(state, ui) {
@@ -118,14 +119,7 @@ pub fn render_playback_window(
         #[cfg(feature = "image")]
         {
             if ui.last_cover_image_render_info.rendered {
-                let rect = ui.last_cover_image_render_info.render_area;
-                // reset the `skip` state of cells in the cover image area
-                // in order to render the "No playback found" message
-                for x in rect.left()..rect.right() {
-                    for y in rect.top()..rect.bottom() {
-                        frame.buffer_mut().get_mut(x, y).set_skip(false);
-                    }
-                }
+                clear_area(frame, ui.last_cover_image_render_info.render_area);
                 ui.last_cover_image_render_info = Default::default();
             }
         }
@@ -142,6 +136,15 @@ pub fn render_playback_window(
     };
 
     other_rect
+}
+
+#[cfg(feature = "image")]
+fn clear_area(frame: &mut Frame, rect: Rect) {
+    for x in rect.left()..rect.right() {
+        for y in rect.top()..rect.bottom() {
+            frame.buffer_mut().get_mut(x, y).reset();
+        }
+    }
 }
 
 fn construct_playback_text(
