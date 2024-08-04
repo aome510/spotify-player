@@ -102,7 +102,7 @@ pub fn render_playback_window(
 
             if let Some(ref playback) = player.buffered_playback {
                 let playback_text = construct_playback_text(ui, track, playback);
-                let playback_desc = Paragraph::new(playback_text).wrap(Wrap { trim: false });
+                let playback_desc = Paragraph::new(playback_text);
                 frame.render_widget(playback_desc, metadata_rect);
             }
 
