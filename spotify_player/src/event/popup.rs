@@ -76,7 +76,7 @@ pub fn handle_key_sequence_for_popup(
                             };
                             ui.popup = Some(PopupState::ActionList(
                                 Box::new(ActionListItem::Artist(artists[id].clone(), actions)),
-                                new_list_state(),
+                                ListState::default(),
                             ));
                         }
                     }

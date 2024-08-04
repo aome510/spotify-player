@@ -1,23 +1,9 @@
 use std::borrow::Cow;
 
-use tui::widgets::*;
-
 /// formats a time duration into a "{minutes}:{seconds}" format
 pub fn format_duration(duration: &chrono::Duration) -> String {
     let secs = duration.num_seconds();
     format!("{}:{:02}", secs / 60, secs % 60)
-}
-
-pub fn new_list_state() -> ListState {
-    let mut state = ListState::default();
-    state.select(Some(0));
-    state
-}
-
-pub fn new_table_state() -> TableState {
-    let mut state = TableState::default();
-    state.select(Some(0));
-    state
 }
 
 pub fn map_join<T, F>(v: &[T], f: F, sep: &str) -> String
