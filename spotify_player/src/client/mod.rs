@@ -305,6 +305,10 @@ impl Client {
                     crate::playlist_folders::structurize(playlists, node.children)
                 } else {
                     playlists
+                        .iter()
+                        .cloned()
+                        .map(PlaylistFolderItem::Playlist)
+                        .collect()
                 };
                 store_data_into_file_cache(
                     FileCacheKey::Playlists,
@@ -908,9 +912,11 @@ impl Client {
                 _ => anyhow::bail!("expect an album search result"),
             },
             match playlist_result {
-                rspotify_model::SearchResult::Playlists(p) => {
-                    p.items.into_iter().map(|i| i.into()).collect()
-                }
+                rspotify_model::SearchResult::Playlists(p) => p
+                    .items
+                    .into_iter()
+                    .map(|i| PlaylistFolderItem::Playlist(i.into()))
+                    .collect(),
                 _ => anyhow::bail!("expect a playlist search result"),
             },
         );
@@ -1091,7 +1097,12 @@ impl Client {
                     if !follows[0] {
                         self.playlist_follow(playlist.id.as_ref(), None).await?;
                         // update the in-memory `user_data`
-                        state.data.write().user_data.playlists.insert(0, playlist);
+                        state
+                            .data
+                            .write()
+                            .user_data
+                            .playlists
+                            .insert(0, PlaylistFolderItem::Playlist(playlist));
                     }
                 }
             }
@@ -1131,7 +1142,10 @@ impl Client {
                     .write()
                     .user_data
                     .playlists
-                    .retain(|p| p.id != id);
+                    .retain(|item| match item {
+                        PlaylistFolderItem::Playlist(p) => p.id != id,
+                        _ => true,
+                    });
                 self.playlist_unfollow(id).await?;
             }
         }
@@ -1484,7 +1498,12 @@ impl Client {
             playlist.name,
             playlist.id
         );
-        state.data.write().user_data.playlists.insert(0, playlist);
+        state
+            .data
+            .write()
+            .user_data
+            .playlists
+            .insert(0, PlaylistFolderItem::Playlist(playlist));
         Ok(())
     }
 

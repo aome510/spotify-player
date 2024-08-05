@@ -357,14 +357,19 @@ pub fn render_library_page(
 
     // 3. Construct the page's widgets
     // Construct the playlist window
-    let playlist_level = match focus_state {
-        LibraryFocusState::Playlists(level) => level,
+    let playlist_folder_id = match focus_state {
+        LibraryFocusState::Playlists(folder_id) => folder_id,
         _ => 0,
     };
     let items = ui
-        .search_filtered_items(&data.user_data.folder_playlists(playlist_level))
+        .search_filtered_items(&data.user_data.folder_playlists_items(playlist_folder_id))
         .into_iter()
-        .map(|p| (p.to_string(), curr_context_uri == Some(p.id.uri())))
+        .map(|item| match item {
+            PlaylistFolderItem::Playlist(p) => {
+                (p.to_string(), curr_context_uri == Some(p.id.uri()))
+            }
+            PlaylistFolderItem::Folder(f) => (f.to_string(), false),
+        })
         .collect::<Vec<_>>();
 
     let (playlist_list, n_playlists) = utils::construct_list_widget(

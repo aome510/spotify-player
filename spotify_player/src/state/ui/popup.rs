@@ -31,13 +31,13 @@ pub enum ActionListItem {
     Track(Track, Vec<command::Action>),
     Artist(Artist, Vec<command::Action>),
     Album(Album, Vec<command::Action>),
-    Playlist(Playlist, Vec<command::Action>),
+    Playlist(PlaylistFolderItem, Vec<command::Action>),
 }
 
 /// An action on an item in a playlist popup list
 #[derive(Debug)]
 pub enum PlaylistPopupAction {
-    Browse(usize), // Browse playlists by folder level
+    Browse(usize), // Browse playlists by folder local id
     AddTrack(usize, TrackId<'static>),
 }
 
@@ -109,7 +109,10 @@ impl ActionListItem {
             ActionListItem::Track(track, ..) => &track.name,
             ActionListItem::Artist(artist, ..) => &artist.name,
             ActionListItem::Album(album, ..) => &album.name,
-            ActionListItem::Playlist(playlist, ..) => &playlist.name,
+            ActionListItem::Playlist(item, ..) => match item {
+                PlaylistFolderItem::Playlist(p) => &p.name,
+                PlaylistFolderItem::Folder(f) => &f.name,
+            },
         }
     }
 

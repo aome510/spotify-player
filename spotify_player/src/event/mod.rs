@@ -276,34 +276,38 @@ pub fn handle_action_in_context(
             }
             _ => {}
         },
-        ActionContext::Playlist(playlist) => match action {
-            Action::AddToLibrary => {
-                client_pub.send(ClientRequest::AddToLibrary(Item::Playlist(playlist)))?;
-                ui.popup = None;
+        ActionContext::Playlist(item) => {
+            if let PlaylistFolderItem::Playlist(playlist) = item {
+                match action {
+                    Action::AddToLibrary => {
+                        client_pub.send(ClientRequest::AddToLibrary(Item::Playlist(playlist)))?;
+                        ui.popup = None;
+                    }
+                    Action::GoToRadio => {
+                        let uri = playlist.id.uri();
+                        let name = playlist.name;
+                        ui.new_radio_page(&uri);
+                        client_pub.send(ClientRequest::GetRadioTracks {
+                            seed_uri: uri,
+                            seed_name: name,
+                        })?;
+                    }
+                    Action::CopyLink => {
+                        let playlist_url =
+                            format!("https://open.spotify.com/playlist/{}", playlist.id.id());
+                        execute_copy_command(playlist_url)?;
+                        ui.popup = None;
+                    }
+                    Action::DeleteFromLibrary => {
+                        client_pub.send(ClientRequest::DeleteFromLibrary(ItemId::Playlist(
+                            playlist.id,
+                        )))?;
+                        ui.popup = None;
+                    }
+                    _ => {}
+                }
             }
-            Action::GoToRadio => {
-                let uri = playlist.id.uri();
-                let name = playlist.name;
-                ui.new_radio_page(&uri);
-                client_pub.send(ClientRequest::GetRadioTracks {
-                    seed_uri: uri,
-                    seed_name: name,
-                })?;
-            }
-            Action::CopyLink => {
-                let playlist_url =
-                    format!("https://open.spotify.com/playlist/{}", playlist.id.id());
-                execute_copy_command(playlist_url)?;
-                ui.popup = None;
-            }
-            Action::DeleteFromLibrary => {
-                client_pub.send(ClientRequest::DeleteFromLibrary(ItemId::Playlist(
-                    playlist.id,
-                )))?;
-                ui.popup = None;
-            }
-            _ => {}
-        },
+        }
     }
 
     Ok(())

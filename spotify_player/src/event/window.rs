@@ -275,11 +275,13 @@ fn handle_command_for_track_table_window(
     }
 
     if let Some(ContextId::Playlist(ref playlist_id)) = context_id {
-        let modifiable = data
-            .user_data
-            .modifiable_playlists()
-            .iter()
-            .any(|p| p.id.eq(playlist_id));
+        let modifiable = data.user_data.modifiable_playlists().iter().any(|item| {
+            if let PlaylistFolderItem::Playlist(p) = item {
+                p.id.eq(playlist_id)
+            } else {
+                false
+            }
+        });
         if modifiable
             && handle_playlist_modify_command(
                 id,
@@ -456,7 +458,7 @@ pub fn handle_command_for_album_list_window(
 
 pub fn handle_command_for_playlist_list_window(
     command: Command,
-    playlists: Vec<&Playlist>,
+    playlists: Vec<&PlaylistFolderItem>,
     data: &DataReadGuard,
     ui: &mut UIStateGuard,
 ) -> Result<bool> {
@@ -475,20 +477,23 @@ pub fn handle_command_for_playlist_list_window(
                 _ => return Ok(false),
             };
             let playlist = playlists[id];
-            if playlist.is_folder {
-                state.playlist_list.select(Some(0));
-                state.focus = LibraryFocusState::Playlists(playlist.level.1);
-            } else {
-                let context_id = ContextId::Playlist(playlists[id].id.clone());
-                ui.new_page(PageState::Context {
-                    id: None,
-                    context_page_type: ContextPageType::Browsing(context_id),
-                    state: None,
-                });
+            match playlist {
+                PlaylistFolderItem::Folder(f) => {
+                    state.playlist_list.select(Some(0));
+                    state.focus = LibraryFocusState::Playlists(f.target_id);
+                }
+                PlaylistFolderItem::Playlist(p) => {
+                    let context_id = ContextId::Playlist(p.id.clone());
+                    ui.new_page(PageState::Context {
+                        id: None,
+                        context_page_type: ContextPageType::Browsing(context_id),
+                        state: None,
+                    });
+                }
             }
         }
         Command::ShowActionsOnSelectedItem => {
-            if !playlists[id].is_folder {
+            if let PlaylistFolderItem::Playlist(_) = playlists[id] {
                 let actions = construct_playlist_actions(playlists[id], data);
                 ui.popup = Some(PopupState::ActionList(
                     Box::new(ActionListItem::Playlist(playlists[id].clone(), actions)),

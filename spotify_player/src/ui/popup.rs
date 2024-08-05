@@ -105,13 +105,18 @@ pub fn render_popup(
             }
             PopupState::UserPlaylistList(action, _) => {
                 let data = state.data.read();
-                let playlists: Vec<&Playlist> = match action {
-                    PlaylistPopupAction::Browse(level) => data.user_data.folder_playlists(*level),
-                    PlaylistPopupAction::AddTrack(level, _) => data
+                let playlists: Vec<&PlaylistFolderItem> = match action {
+                    PlaylistPopupAction::Browse(folder_id) => {
+                        data.user_data.folder_playlists_items(*folder_id)
+                    }
+                    PlaylistPopupAction::AddTrack(folder_id, _) => data
                         .user_data
                         .modifiable_playlists()
                         .into_iter()
-                        .filter(|p| p.level.0 == *level)
+                        .filter(|item| match item {
+                            PlaylistFolderItem::Folder(f) => f.current_id == *folder_id,
+                            PlaylistFolderItem::Playlist(p) => p.current_id == *folder_id,
+                        })
                         .collect(),
                 };
                 let items = playlists

@@ -1,22 +1,24 @@
 use std::collections::{HashMap, HashSet};
 
-use rspotify::model::{Id, PlaylistId, UserId};
+use rspotify::model::Id;
 
-use crate::state::{Playlist, PlaylistFolderNode};
+use crate::state::{Playlist, PlaylistFolder, PlaylistFolderItem, PlaylistFolderNode};
 
 /// Structurizes a flat input playlist according to the playlist folder nodes
-pub fn structurize(playlists: Vec<Playlist>, nodes: Vec<PlaylistFolderNode>) -> Vec<Playlist> {
+pub fn structurize(
+    playlists: Vec<Playlist>,
+    nodes: Vec<PlaylistFolderNode>,
+) -> Vec<PlaylistFolderItem> {
     // 1. Collect playlist ids from inner nodes
     let mut playlist_ids: HashSet<String> = HashSet::new();
     get_playlist_ids_from_nodes(&nodes, &mut playlist_ids);
     // 2. Add root playlists that don't belong to folders
-    let mut playlist_folders: Vec<Playlist> = Vec::new();
+    let mut playlist_folders: Vec<PlaylistFolderItem> = Vec::new();
     for playlist in &playlists {
         if !playlist_ids.contains(playlist.id.id()) {
             let mut p = playlist.clone();
-            p.is_folder = false;
-            p.level = (0, 0);
-            playlist_folders.push(p);
+            p.current_id = 0;
+            playlist_folders.push(PlaylistFolderItem::Playlist(p));
         }
     }
     // 3. Add the rest
@@ -41,44 +43,31 @@ fn get_playlist_ids_from_nodes(nodes: &Vec<PlaylistFolderNode>, acc: &mut HashSe
 fn add_playlist_folders(
     nodes: &Vec<PlaylistFolderNode>,
     by_ids: &HashMap<String, Playlist>,
-    folder_level: &mut usize,
-    acc: &mut Vec<Playlist>,
+    folder_id: &mut usize,
+    acc: &mut Vec<PlaylistFolderItem>,
 ) {
-    let level = *folder_level;
+    let folder_local_id = *folder_id;
     for f in nodes {
         if let Some((_, id)) = f.uri.rsplit_once(':') {
             if f.node_type == "folder" {
-                *folder_level += 1;
+                *folder_id += 1;
                 // Folder node
-                acc.push(Playlist {
-                    id: PlaylistId::from_id("f".to_string() + id)
-                        .unwrap()
-                        .into_static(),
-                    collaborative: false,
+                acc.push(PlaylistFolderItem::Folder(PlaylistFolder {
                     name: f.name.clone().unwrap_or_default(),
-                    owner: ("".to_string(), UserId::from_id(id).unwrap().into_static()),
-                    desc: "".to_string(),
-                    is_folder: true,
-                    level: (level, *folder_level),
-                });
+                    current_id: folder_local_id,
+                    target_id: *folder_id,
+                }));
                 // Up node
-                acc.push(Playlist {
-                    id: PlaylistId::from_id("u".to_string() + id)
-                        .unwrap()
-                        .into_static(),
-                    collaborative: false,
-                    name: "← ".to_string() + f.name.clone().unwrap_or_default().as_str(),
-                    owner: ("".to_string(), UserId::from_id(id).unwrap().into_static()),
-                    desc: "".to_string(),
-                    is_folder: true,
-                    level: (*folder_level, level),
-                });
-                add_playlist_folders(&f.children, by_ids, folder_level, acc);
+                acc.push(PlaylistFolderItem::Folder(PlaylistFolder {
+                    name: format!("← {}", f.name.clone().unwrap_or_default()),
+                    current_id: *folder_id,
+                    target_id: folder_local_id,
+                }));
+                add_playlist_folders(&f.children, by_ids, folder_id, acc);
             } else if let Some(playlist) = by_ids.get(id) {
                 let mut p = playlist.clone();
-                p.is_folder = false;
-                p.level = (level, level);
-                acc.push(p);
+                p.current_id = folder_local_id;
+                acc.push(PlaylistFolderItem::Playlist(p));
             }
         }
     }

@@ -89,14 +89,17 @@ pub fn handle_key_sequence_for_popup(
             )
         }
         PopupState::UserPlaylistList(action, _) => match action {
-            PlaylistPopupAction::Browse(level) => {
+            PlaylistPopupAction::Browse(folder_id) => {
                 let playlist_uris = state
                     .data
                     .read()
                     .user_data
-                    .folder_playlists(*level)
+                    .folder_playlists_items(*folder_id)
                     .iter()
-                    .map(|p| (p.id.uri(), p.is_folder, p.level.1))
+                    .map(|item| match item {
+                        PlaylistFolderItem::Playlist(p) => (p.id.uri(), false, 0),
+                        PlaylistFolderItem::Folder(f) => ("".to_string(), true, f.target_id),
+                    })
                     .collect::<Vec<_>>();
 
                 handle_command_for_list_popup(
@@ -108,7 +111,7 @@ pub fn handle_key_sequence_for_popup(
                         if playlist_uris[id].1 {
                             ui.popup = Some(PopupState::UserPlaylistList(
                                 PlaylistPopupAction::Browse(playlist_uris[id].2),
-                                new_list_state(),
+                                ListState::default(),
                             ));
                         } else {
                             let uri = crate::utils::parse_uri(&playlist_uris[id].0);
@@ -127,7 +130,7 @@ pub fn handle_key_sequence_for_popup(
                     },
                 )
             }
-            PlaylistPopupAction::AddTrack(level, track_id) => {
+            PlaylistPopupAction::AddTrack(folder_id, track_id) => {
                 let track_id = track_id.clone();
                 let playlist_ids = state
                     .data
@@ -135,8 +138,22 @@ pub fn handle_key_sequence_for_popup(
                     .user_data
                     .modifiable_playlists()
                     .into_iter()
-                    .filter(|p| p.level.0 == *level)
-                    .map(|p| (p.id.clone(), p.is_folder, p.level.1))
+                    .filter_map(|item| match item {
+                        PlaylistFolderItem::Playlist(p) => {
+                            if p.current_id == *folder_id {
+                                Some((p.id.id().to_string(), false, 0))
+                            } else {
+                                None
+                            }
+                        }
+                        PlaylistFolderItem::Folder(f) => {
+                            if f.current_id == *folder_id {
+                                Some(("".to_string(), true, f.target_id))
+                            } else {
+                                None
+                            }
+                        }
+                    })
                     .collect::<Vec<_>>();
 
                 handle_command_for_list_popup(
@@ -148,11 +165,11 @@ pub fn handle_key_sequence_for_popup(
                         ui.popup = if playlist_ids[id].1 {
                             Some(PopupState::UserPlaylistList(
                                 PlaylistPopupAction::AddTrack(playlist_ids[id].2, track_id.clone()),
-                                new_list_state(),
+                                ListState::default(),
                             ))
                         } else {
                             client_pub.send(ClientRequest::AddTrackToPlaylist(
-                                playlist_ids[id].0.clone(),
+                                PlaylistId::from_id(playlist_ids[id].0.clone()).unwrap(),
                                 track_id.clone(),
                             ))?;
                             None

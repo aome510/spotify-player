@@ -1,4 +1,4 @@
-use crate::state::{Album, Artist, DataReadGuard, Playlist, Track};
+use crate::state::{Album, Artist, DataReadGuard, PlaylistFolderItem, Track};
 use serde::Deserialize;
 
 #[derive(Copy, Clone, Debug, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
@@ -104,7 +104,7 @@ pub enum ActionContext {
     Track(Track),
     Album(Album),
     Artist(Artist),
-    Playlist(Playlist),
+    Playlist(PlaylistFolderItem),
 }
 
 pub enum CommandOrAction {
@@ -130,8 +130,8 @@ impl From<Album> for ActionContext {
     }
 }
 
-impl From<Playlist> for ActionContext {
-    fn from(v: Playlist) -> Self {
+impl From<PlaylistFolderItem> for ActionContext {
+    fn from(v: PlaylistFolderItem) -> Self {
         Self::Playlist(v)
     }
 }
@@ -204,18 +204,27 @@ pub fn construct_artist_actions(artist: &Artist, data: &DataReadGuard) -> Vec<Ac
 }
 
 /// constructs a list of actions on an playlist
-pub fn construct_playlist_actions(playlist: &Playlist, data: &DataReadGuard) -> Vec<Action> {
-    if playlist.is_folder {
-        vec![]
-    } else {
-        let mut actions = vec![Action::GoToRadio, Action::CopyLink];
+pub fn construct_playlist_actions(
+    playlist_item: &PlaylistFolderItem,
+    data: &DataReadGuard,
+) -> Vec<Action> {
+    match playlist_item {
+        PlaylistFolderItem::Folder(_) => vec![],
+        PlaylistFolderItem::Playlist(playlist) => {
+            let mut actions = vec![Action::GoToRadio, Action::CopyLink];
 
-        if data.user_data.playlists.iter().any(|a| a.id == playlist.id) {
-            actions.push(Action::DeleteFromLibrary);
-        } else {
-            actions.push(Action::AddToLibrary);
+            if data
+                .user_data
+                .playlists
+                .iter()
+                .any(|item| matches!(item, PlaylistFolderItem::Playlist(p) if p.id == playlist.id))
+            {
+                actions.push(Action::DeleteFromLibrary);
+            } else {
+                actions.push(Action::AddToLibrary);
+            }
+            actions
         }
-        actions
     }
 }
 

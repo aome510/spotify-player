@@ -55,15 +55,15 @@ fn handle_action_for_library_page(
         _ => anyhow::bail!("expect a library page state"),
     };
     match focus_state {
-        LibraryFocusState::Playlists(level) => window::handle_action_for_selected_item(
+        LibraryFocusState::Playlists(folder_id) => window::handle_action_for_selected_item(
             action,
             ui.search_filtered_items(
                 &data
                     .user_data
-                    .folder_playlists(level)
+                    .folder_playlists_items(folder_id)
                     .into_iter()
                     .cloned()
-                    .collect::<Vec<Playlist>>(),
+                    .collect::<Vec<PlaylistFolderItem>>(),
             ),
             &data,
             ui,
@@ -104,16 +104,16 @@ fn handle_command_for_library_page(
                 _ => anyhow::bail!("expect a library page state"),
             };
             match focus_state {
-                LibraryFocusState::Playlists(level) => {
+                LibraryFocusState::Playlists(folder_id) => {
                     window::handle_command_for_playlist_list_window(
                         command,
                         ui.search_filtered_items(
                             &data
                                 .user_data
-                                .folder_playlists(level)
+                                .folder_playlists_items(folder_id)
                                 .into_iter()
                                 .cloned()
-                                .collect::<Vec<Playlist>>(),
+                                .collect::<Vec<PlaylistFolderItem>>(),
                         ),
                         &data,
                         ui,
@@ -285,7 +285,7 @@ fn handle_action_for_browse_page(
 
                 handle_action_in_context(
                     action,
-                    playlists[selected].clone().into(),
+                    PlaylistFolderItem::Playlist(playlists[selected].clone()).into(),
                     client_pub,
                     &data,
                     ui,

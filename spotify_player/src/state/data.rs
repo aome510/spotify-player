@@ -32,7 +32,7 @@ pub struct AppData {
 /// current user's data
 pub struct UserData {
     pub user: Option<rspotify_model::PrivateUser>,
-    pub playlists: Vec<Playlist>,
+    pub playlists: Vec<PlaylistFolderItem>,
     pub playlist_folder_node: Option<PlaylistFolderNode>,
     pub followed_artists: Vec<Artist>,
     pub saved_albums: Vec<Album>,
@@ -126,22 +126,28 @@ impl UserData {
     }
 
     /// Get a list of playlists that are **possibly** modifiable by user
-    pub fn modifiable_playlists(&self) -> Vec<&Playlist> {
+    pub fn modifiable_playlists(&self) -> Vec<&PlaylistFolderItem> {
         match self.user {
             None => vec![],
             Some(ref u) => self
                 .playlists
                 .iter()
-                .filter(|p| p.is_folder || p.owner.1 == u.id || p.collaborative)
+                .filter(|item| match item {
+                    PlaylistFolderItem::Playlist(p) => p.owner.1 == u.id || p.collaborative,
+                    PlaylistFolderItem::Folder(_) => true,
+                })
                 .collect(),
         }
     }
 
-    /// Get a list of playlists for the given folder level
-    pub fn folder_playlists(&self, level: usize) -> Vec<&Playlist> {
+    /// Get playlists items for the given folder id
+    pub fn folder_playlists_items(&self, folder_id: usize) -> Vec<&PlaylistFolderItem> {
         self.playlists
             .iter()
-            .filter(|p| p.level.0 == level)
+            .filter(|item| match item {
+                PlaylistFolderItem::Playlist(p) => p.current_id == folder_id,
+                PlaylistFolderItem::Folder(f) => f.current_id == folder_id,
+            })
             .collect()
     }
 
