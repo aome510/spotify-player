@@ -7,6 +7,7 @@ mod event;
 mod key;
 #[cfg(feature = "media-control")]
 mod media_control;
+mod playlist_folders;
 mod state;
 #[cfg(feature = "streaming")]
 mod streaming;
