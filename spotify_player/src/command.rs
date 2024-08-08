@@ -107,9 +107,16 @@ pub enum ActionContext {
     Playlist(Playlist),
 }
 
+#[derive(Debug, PartialEq, Clone, Deserialize, Default, Copy)]
+pub enum ActionTarget {
+    PlayingTrack,
+    #[default]
+    SelectedItem,
+}
+
 pub enum CommandOrAction {
     Command(Command),
-    Action(Action),
+    Action(Action, ActionTarget),
 }
 
 impl From<Track> for ActionContext {

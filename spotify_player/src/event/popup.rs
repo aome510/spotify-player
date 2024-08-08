@@ -436,7 +436,8 @@ fn handle_key_sequence_for_action_list_popup(
         n_actions,
         |_, _| {},
         |ui: &mut UIStateGuard, id: usize| -> Result<()> {
-            handle_item_action(id, client_pub, state, ui)
+            handle_item_action(id, client_pub, state, ui)?;
+            Ok(())
         },
         |ui: &mut UIStateGuard| {
             ui.popup = None;
@@ -450,10 +451,10 @@ pub fn handle_item_action(
     client_pub: &flume::Sender<ClientRequest>,
     state: &SharedState,
     ui: &mut UIStateGuard,
-) -> Result<()> {
+) -> Result<bool> {
     let item = match ui.popup {
         Some(PopupState::ActionList(ref item, ..)) => *item.clone(),
-        _ => return Ok(()),
+        _ => return Ok(false),
     };
 
     let data = state.data.read();
