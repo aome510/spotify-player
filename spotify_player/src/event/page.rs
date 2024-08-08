@@ -30,7 +30,7 @@ pub fn handle_key_sequence_for_page(
             PageType::Queue => handle_command_for_queue_page(command, ui),
             PageType::CommandHelp => handle_command_for_command_help_page(command, ui),
         },
-        Some(CommandOrAction::Action(action, ActionType::SelectedItem)) => match page_type {
+        Some(CommandOrAction::Action(action, ActionTarget::SelectedItem)) => match page_type {
             PageType::Search => anyhow::bail!("page search type should already be handled!"),
             PageType::Library => handle_action_for_library_page(action, client_pub, ui, state),
             PageType::Context => {
