@@ -30,7 +30,7 @@ pub fn handle_key_sequence_for_page(
             PageType::Queue => handle_command_for_queue_page(command, ui),
             PageType::CommandHelp => handle_command_for_command_help_page(command, ui),
         },
-        Some(CommandOrAction::Action(action)) => match page_type {
+        Some(CommandOrAction::Action(action, ActionType::SelectedItem)) => match page_type {
             PageType::Search => anyhow::bail!("page search type should already be handled!"),
             PageType::Library => handle_action_for_library_page(action, client_pub, ui, state),
             PageType::Context => {
@@ -39,7 +39,7 @@ pub fn handle_key_sequence_for_page(
             PageType::Browse => handle_action_for_browse_page(action, client_pub, ui, state),
             _ => Ok(false),
         },
-        None => Ok(false),
+        _ => Ok(false),
     }
 }
 
@@ -180,7 +180,7 @@ fn handle_key_sequence_for_search_page(
                 CommandOrAction::Command(command) => window::handle_command_for_track_list_window(
                     command, client_pub, tracks, &data, ui,
                 ),
-                CommandOrAction::Action(action) => {
+                CommandOrAction::Action(action, _) => {
                     window::handle_action_for_selected_item(action, tracks, &data, ui, client_pub)
                 }
             }
@@ -194,7 +194,7 @@ fn handle_key_sequence_for_search_page(
                 CommandOrAction::Command(command) => {
                     window::handle_command_for_artist_list_window(command, artists, &data, ui)
                 }
-                CommandOrAction::Action(action) => {
+                CommandOrAction::Action(action, _) => {
                     window::handle_action_for_selected_item(action, artists, &data, ui, client_pub)
                 }
             }
@@ -208,7 +208,7 @@ fn handle_key_sequence_for_search_page(
                 CommandOrAction::Command(command) => window::handle_command_for_album_list_window(
                     command, albums, &data, ui, client_pub,
                 ),
-                CommandOrAction::Action(action) => {
+                CommandOrAction::Action(action, _) => {
                     window::handle_action_for_selected_item(action, albums, &data, ui, client_pub)
                 }
             }
@@ -222,7 +222,7 @@ fn handle_key_sequence_for_search_page(
                 CommandOrAction::Command(command) => {
                     window::handle_command_for_playlist_list_window(command, playlists, &data, ui)
                 }
-                CommandOrAction::Action(action) => window::handle_action_for_selected_item(
+                CommandOrAction::Action(action, _) => window::handle_action_for_selected_item(
                     action, playlists, &data, ui, client_pub,
                 ),
             }
