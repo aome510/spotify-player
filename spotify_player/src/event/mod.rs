@@ -1,7 +1,8 @@
 use crate::{
     client::{ClientRequest, PlayerRequest},
     command::{
-        self, construct_artist_actions, Action, ActionContext, ActionTarget, Command, CommandOrAction,
+        self, construct_artist_actions, Action, ActionContext, ActionTarget, Command,
+        CommandOrAction,
     },
     config,
     key::{Key, KeySequence},
@@ -404,7 +405,13 @@ fn handle_global_action(
             None => anyhow::bail!("No currently playing track"),
         };
 
-        return handle_action_in_context(action, ActionContext::Track(track), client_pub, &data, ui)
+        return handle_action_in_context(
+            action,
+            ActionContext::Track(track),
+            client_pub,
+            &data,
+            ui,
+        );
     };
 
     Ok(false)
