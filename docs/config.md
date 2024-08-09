@@ -25,6 +25,7 @@ All configuration files should be placed inside the application's configuration 
 | Option                            | Description                                                                              | Default                                                 |
 | --------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------- |
 | `client_id`                       | the Spotify client's ID                                                                  | `65b708073fc0480ea92a077233ca87bd`                      |
+| `client_id_cmd`                   | a shell command that prints the Spotify client ID to stdout (overrides `client_id`)      | `None`                                                  |
 | `client_port`                     | the port that the application's client is running on to handle CLI commands              | `8080`                                                  |
 | `tracks_playback_limit`           | the limit for the number of tracks played in a **tracks** playback                       | `50`                                                    |
 | `playback_format`                 | the format of the text in the playback's window                                          | `{status} {track} • {artists}\n{album}\n{metadata}`     | 

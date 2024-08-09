@@ -48,6 +48,7 @@ impl Configs {
 pub struct AppConfig {
     pub theme: String,
     pub client_id: String,
+    pub client_id_cmd: Option<String>,
 
     pub client_port: u16,
 
@@ -229,6 +230,7 @@ impl Default for AppConfig {
             theme: "dracula".to_owned(),
             // official Spotify web app's client id
             client_id: "65b708073fc0480ea92a077233ca87bd".to_string(),
+            client_id_cmd: None,
 
             client_port: 8080,
 
@@ -385,6 +387,34 @@ impl AppConfig {
             ap_port: self.ap_port,
             ..Default::default()
         }
+    }
+
+    /// Returns stdout of `client_id_cmd` if set, otherwise it returns the the value of `client_id`
+    pub fn get_client_id(&self) -> Result<String> {
+        if let Some(cmd) = self.client_id_cmd.clone() {
+            let output = if cfg!(target_os = "windows") {
+                std::process::Command::new("cmd")
+                    .args(["/C", &cmd])
+                    .output()
+            } else {
+                std::process::Command::new("sh")
+                    .arg("-c")
+                    .arg(&cmd)
+                    .output()
+            }?;
+
+            if !output.status.success() {
+                let stderr = String::from_utf8(output.stderr)?;
+                tracing::error!("Running command: {}, returned error: {}", cmd, stderr);
+                anyhow::bail!(stderr);
+            }
+
+            let stdout = String::from_utf8(output.stdout)?;
+            tracing::info!("Running command: {}, returned client id: {}", cmd, stdout);
+            return Ok(stdout);
+        }
+
+        Ok(self.client_id.clone())
     }
 }
 
