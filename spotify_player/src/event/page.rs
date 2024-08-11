@@ -50,12 +50,12 @@ fn handle_action_for_library_page(
     state: &SharedState,
 ) -> Result<bool> {
     let data = state.data.read();
-    let focus_state = match ui.current_page() {
-        PageState::Library { state } => state.focus,
+    let (focus_state, folder_id) = match ui.current_page() {
+        PageState::Library { state } => (state.focus, state.playlist_folder_id),
         _ => anyhow::bail!("expect a library page state"),
     };
     match focus_state {
-        LibraryFocusState::Playlists(folder_id) => window::handle_action_for_selected_item(
+        LibraryFocusState::Playlists => window::handle_action_for_selected_item(
             action,
             ui.search_filtered_items(
                 &data
@@ -102,26 +102,24 @@ fn handle_command_for_library_page(
         }
         _ => {
             let data = state.data.read();
-            let focus_state = match ui.current_page() {
-                PageState::Library { state } => state.focus,
+            let (focus_state, folder_id) = match ui.current_page() {
+                PageState::Library { state } => (state.focus, state.playlist_folder_id),
                 _ => anyhow::bail!("expect a library page state"),
             };
             match focus_state {
-                LibraryFocusState::Playlists(folder_id) => {
-                    window::handle_command_for_playlist_list_window(
-                        command,
-                        ui.search_filtered_items(
-                            &data
-                                .user_data
-                                .folder_playlists_items(folder_id)
-                                .into_iter()
-                                .cloned()
-                                .collect::<Vec<PlaylistFolderItem>>(),
-                        ),
-                        &data,
-                        ui,
-                    )
-                }
+                LibraryFocusState::Playlists => window::handle_command_for_playlist_list_window(
+                    command,
+                    ui.search_filtered_items(
+                        &data
+                            .user_data
+                            .folder_playlists_items(folder_id)
+                            .into_iter()
+                            .cloned()
+                            .collect::<Vec<PlaylistFolderItem>>(),
+                    ),
+                    &data,
+                    ui,
+                ),
                 LibraryFocusState::SavedAlbums => window::handle_command_for_album_list_window(
                     command,
                     ui.search_filtered_items(&data.user_data.saved_albums),

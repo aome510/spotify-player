@@ -476,7 +476,8 @@ pub fn handle_command_for_playlist_list_window(
                     match ui.current_page_mut() {
                         PageState::Library { state } => {
                             state.playlist_list.select(Some(0));
-                            state.focus = LibraryFocusState::Playlists(f.target_id);
+                            state.focus = LibraryFocusState::Playlists;
+                            state.playlist_folder_id = f.target_id;
                         }
                         _ => return Ok(false),
                     };

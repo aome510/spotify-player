@@ -317,8 +317,8 @@ pub fn render_library_page(
     let data = state.data.read();
     let configs = config::get_config();
 
-    let focus_state = match ui.current_page() {
-        PageState::Library { state } => state.focus,
+    let (focus_state, playlist_folder_id) = match ui.current_page() {
+        PageState::Library { state } => (state.focus, state.playlist_folder_id),
         _ => return,
     };
 
@@ -357,10 +357,6 @@ pub fn render_library_page(
 
     // 3. Construct the page's widgets
     // Construct the playlist window
-    let playlist_folder_id = match focus_state {
-        LibraryFocusState::Playlists(folder_id) => folder_id,
-        _ => 0,
-    };
     let items = ui
         .search_filtered_items(&data.user_data.folder_playlists_items(playlist_folder_id))
         .into_iter()
