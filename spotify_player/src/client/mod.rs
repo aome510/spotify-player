@@ -305,8 +305,7 @@ impl Client {
                     crate::playlist_folders::structurize(playlists, node.children)
                 } else {
                     playlists
-                        .iter()
-                        .cloned()
+                        .into_iter()
                         .map(PlaylistFolderItem::Playlist)
                         .collect()
                 };
@@ -912,11 +911,9 @@ impl Client {
                 _ => anyhow::bail!("expect an album search result"),
             },
             match playlist_result {
-                rspotify_model::SearchResult::Playlists(p) => p
-                    .items
-                    .into_iter()
-                    .map(|i| PlaylistFolderItem::Playlist(i.into()))
-                    .collect(),
+                rspotify_model::SearchResult::Playlists(p) => {
+                    p.items.into_iter().map(|i| i.into()).collect()
+                }
                 _ => anyhow::bail!("expect a playlist search result"),
             },
         );

@@ -275,13 +275,10 @@ fn handle_command_for_track_table_window(
     }
 
     if let Some(ContextId::Playlist(ref playlist_id)) = context_id {
-        let modifiable = data.user_data.modifiable_playlists().iter().any(|item| {
-            if let PlaylistFolderItem::Playlist(p) = item {
-                p.id.eq(playlist_id)
-            } else {
-                false
-            }
-        });
+        let modifiable =
+            data.user_data.modifiable_playlist_items(None).iter().any(
+                |item| matches!(item, PlaylistFolderItem::Playlist(p) if p.id.eq(playlist_id)),
+            );
         if modifiable
             && handle_playlist_modify_command(
                 id,
@@ -493,10 +490,10 @@ pub fn handle_command_for_playlist_list_window(
             }
         }
         Command::ShowActionsOnSelectedItem => {
-            if let PlaylistFolderItem::Playlist(_) = playlists[id] {
-                let actions = construct_playlist_actions(playlists[id], data);
+            if let PlaylistFolderItem::Playlist(p) = playlists[id] {
+                let actions = construct_playlist_actions(p, data);
                 ui.popup = Some(PopupState::ActionList(
-                    Box::new(ActionListItem::Playlist(playlists[id].clone(), actions)),
+                    Box::new(ActionListItem::Playlist(p.clone(), actions)),
                     ListState::default(),
                 ));
             }

@@ -17,7 +17,7 @@ pub fn structurize(
     for playlist in &playlists {
         if !playlist_ids.contains(playlist.id.id()) {
             let mut p = playlist.clone();
-            p.current_id = 0;
+            p.current_folder_id = 0;
             playlist_folders.push(PlaylistFolderItem::Playlist(p));
         }
     }
@@ -66,7 +66,7 @@ fn add_playlist_folders(
                 add_playlist_folders(&f.children, by_ids, folder_id, acc);
             } else if let Some(playlist) = by_ids.get(id) {
                 let mut p = playlist.clone();
-                p.current_id = folder_local_id;
+                p.current_folder_id = folder_local_id;
                 acc.push(PlaylistFolderItem::Playlist(p));
             }
         }

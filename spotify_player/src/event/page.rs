@@ -61,9 +61,12 @@ fn handle_action_for_library_page(
                 &data
                     .user_data
                     .folder_playlists_items(folder_id)
-                    .into_iter()
-                    .cloned()
-                    .collect::<Vec<PlaylistFolderItem>>(),
+                    .iter()
+                    .filter_map(|item| match item {
+                        PlaylistFolderItem::Playlist(p) => Some(p.clone()),
+                        PlaylistFolderItem::Folder(_) => None,
+                    })
+                    .collect::<Vec<Playlist>>(),
             ),
             &data,
             ui,
@@ -230,13 +233,22 @@ fn handle_key_sequence_for_search_page(
             }
         }
         SearchFocusState::Playlists => {
-            let playlists = search_results
+            let playlists: Vec<&Playlist> = search_results
                 .map(|s| s.playlists.iter().collect())
                 .unwrap_or_default();
 
             match found_keymap {
                 CommandOrAction::Command(command) => {
-                    window::handle_command_for_playlist_list_window(command, playlists, &data, ui)
+                    let playlists = playlists
+                        .into_iter()
+                        .map(|p| PlaylistFolderItem::Playlist(p.clone()))
+                        .collect::<Vec<_>>();
+                    window::handle_command_for_playlist_list_window(
+                        command,
+                        playlists.iter().collect(),
+                        &data,
+                        ui,
+                    )
                 }
                 CommandOrAction::Action(action) => window::handle_action_for_selected_item(
                     action, playlists, &data, ui, client_pub,
@@ -285,7 +297,7 @@ fn handle_action_for_browse_page(
 
                 handle_action_in_context(
                     action,
-                    PlaylistFolderItem::Playlist(playlists[selected].clone()).into(),
+                    playlists[selected].clone().into(),
                     client_pub,
                     &data,
                     ui,

@@ -64,7 +64,7 @@ pub struct SearchResults {
     pub tracks: Vec<Track>,
     pub artists: Vec<Artist>,
     pub albums: Vec<Album>,
-    pub playlists: Vec<PlaylistFolderItem>,
+    pub playlists: Vec<Playlist>,
 }
 
 #[derive(Debug)]
@@ -155,16 +155,19 @@ pub struct Playlist {
     pub name: String,
     pub owner: (String, UserId<'static>),
     pub desc: String,
+    /// which folder id the playlist refers to
     #[serde(default)]
-    pub current_id: usize, // which folder id the playlist refers to
+    pub current_folder_id: usize,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 /// A playlist folder, not related to Spotify API yet
 pub struct PlaylistFolder {
     pub name: String,
-    pub current_id: usize, // current folder id in the folders tree
-    pub target_id: usize,  // target folder id it refers to
+    /// current folder id in the folders tree
+    pub current_id: usize,
+    /// target folder id it refers to
+    pub target_id: usize,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -446,7 +449,7 @@ impl From<rspotify_model::SimplifiedPlaylist> for Playlist {
                 playlist.owner.id,
             ),
             desc: String::new(),
-            current_id: 0,
+            current_folder_id: 0,
         }
     }
 }
@@ -467,7 +470,7 @@ impl From<rspotify_model::FullPlaylist> for Playlist {
                 playlist.owner.id,
             ),
             desc,
-            current_id: 0,
+            current_folder_id: 0,
         }
     }
 }
