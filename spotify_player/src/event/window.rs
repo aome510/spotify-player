@@ -469,15 +469,17 @@ pub fn handle_command_for_playlist_list_window(
     }
     match command {
         Command::ChooseSelected => {
-            let state = match ui.current_page_mut() {
-                PageState::Library { state } => state,
-                _ => return Ok(false),
-            };
             let playlist = playlists[id];
             match playlist {
                 PlaylistFolderItem::Folder(f) => {
-                    state.playlist_list.select(Some(0));
-                    state.focus = LibraryFocusState::Playlists(f.target_id);
+                    // currently folders are only supported in the library page
+                    match ui.current_page_mut() {
+                        PageState::Library { state } => {
+                            state.playlist_list.select(Some(0));
+                            state.focus = LibraryFocusState::Playlists(f.target_id);
+                        }
+                        _ => return Ok(false),
+                    };
                 }
                 PlaylistFolderItem::Playlist(p) => {
                     let context_id = ContextId::Playlist(p.id.clone());
