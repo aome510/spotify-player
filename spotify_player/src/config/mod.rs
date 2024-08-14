@@ -328,8 +328,8 @@ impl Default for LayoutConfig {
 
 impl LayoutConfig {
     fn check_values(&self) -> anyhow::Result<()> {
-        if self.library.album_percent + self.library.playlist_percent > 99 {
-            anyhow::bail!("Invalid library layout: summation of album_percent and playlist_percent cannot be greater than 99!");
+        if self.library.album_percent + self.library.playlist_percent > 100 {
+            anyhow::bail!("Invalid library layout: summation of album_percent and playlist_percent cannot be greater than 100!");
         } else {
             Ok(())
         }

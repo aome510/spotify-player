@@ -341,14 +341,22 @@ pub fn render_library_page(
     let playlist_rect = construct_and_render_block(
         "Playlists",
         &ui.theme,
-        Borders::TOP | Borders::LEFT | Borders::BOTTOM,
+        if chunks[1].area() != 0 {
+            Borders::TOP | Borders::LEFT | Borders::BOTTOM
+        } else {
+            Borders::ALL
+        },
         frame,
         chunks[0],
     );
     let album_rect = construct_and_render_block(
         "Albums",
         &ui.theme,
-        Borders::TOP | Borders::LEFT | Borders::BOTTOM,
+        if chunks[2].area() != 0 {
+            Borders::TOP | Borders::LEFT | Borders::BOTTOM
+        } else {
+            Borders::ALL
+        },
         frame,
         chunks[1],
     );
