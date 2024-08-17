@@ -143,18 +143,8 @@ fn execute_player_event_hook_command(
     cmd: &config::Command,
     event: PlayerEvent,
 ) -> anyhow::Result<()> {
-    let mut args = cmd.args.clone();
-    args.extend(event.args());
-
-    let output = std::process::Command::new(&cmd.command)
-        .args(&args)
-        .output()?;
-
-    // running the player hook command failed, report the command's stderr as an error
-    if !output.status.success() {
-        let stderr = std::str::from_utf8(&output.stderr)?.to_string();
-        anyhow::bail!(stderr);
-    }
+    let args = Some(event.args());
+    cmd.execute(args)?;
 
     Ok(())
 }
