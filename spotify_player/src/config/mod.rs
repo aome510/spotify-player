@@ -143,15 +143,15 @@ pub struct Command {
 }
 
 impl Command {
+     /// Execute a command, returning stdout if succeeded or stderr if failed
     pub fn execute(&self, extra_args: Option<Vec<String>>) -> anyhow::Result<String> {
         let mut args = self.args.clone();
-        extra_args.map_or_else(|| {}, |extra| args.extend(extra));
+        args.extend(extra.unwrap_or_default());
 
         let output = std::process::Command::new(&self.command)
             .args(&args)
             .output()?;
 
-        // running the command failed, report the command's stderr as an error
         if !output.status.success() {
             let stderr = std::str::from_utf8(&output.stderr)?.to_string();
             anyhow::bail!(stderr);
@@ -411,8 +411,8 @@ impl AppConfig {
 
     /// Returns stdout of `client_id_command` if set, otherwise it returns the the value of `client_id`
     pub fn get_client_id(&self) -> Result<String> {
-        match self.client_id_command.clone() {
-            Some(cmd) => cmd.execute(None),
+        match self.client_id_command {
+            Some(ref cmd) => cmd.execute(None),
             None => Ok(self.client_id.clone()),
         }
     }
