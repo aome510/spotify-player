@@ -143,10 +143,10 @@ pub struct Command {
 }
 
 impl Command {
-     /// Execute a command, returning stdout if succeeded or stderr if failed
+    /// Execute a command, returning stdout if succeeded or stderr if failed
     pub fn execute(&self, extra_args: Option<Vec<String>>) -> anyhow::Result<String> {
         let mut args = self.args.clone();
-        args.extend(extra.unwrap_or_default());
+        args.extend(extra_args.unwrap_or_default());
 
         let output = std::process::Command::new(&self.command)
             .args(&args)
