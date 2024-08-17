@@ -143,8 +143,7 @@ fn execute_player_event_hook_command(
     cmd: &config::Command,
     event: PlayerEvent,
 ) -> anyhow::Result<()> {
-    let args = Some(event.args());
-    cmd.execute(args)?;
+    cmd.execute(Some(event.args()))?;
 
     Ok(())
 }
