@@ -95,9 +95,7 @@ pub fn handle_action_for_selected_item<T: Into<ActionContext> + Clone>(
         return Ok(false);
     }
 
-    handle_action_in_context(action, items[id].clone().into(), client_pub, data, ui)?;
-
-    Ok(true)
+    handle_action_in_context(action, items[id].clone().into(), client_pub, data, ui)
 }
 
 /// Handle a command for the currently focused context window

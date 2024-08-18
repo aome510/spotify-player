@@ -286,8 +286,10 @@ key_sequence = "q"
 
 ## Actions
 
-Actions are located in the same `keymap.toml` file as keymaps. An action can be triggered by a key sequence that is not bound to any command. Once the mapped key sequence is pressed, the corresponding action will be triggered **on the currently selected item**. For example,
+Actions are located in the same `keymap.toml` file as keymaps. An action can be triggered by a key sequence that is not bound to any command. Once the mapped key sequence is pressed, the corresponding action will be triggered. By default actions will act upon the currently selected item, you can change this behaviour by setting the `target` field for a keymap to either `PlayingTrack` or `SelectedItem`. 
 a list of actions can be found [here](../README.md#actions).
+
+For example,
 
 ```toml
 [[actions]]
@@ -296,6 +298,7 @@ key_sequence = "g A"
 [[actions]]
 action = "GoToAlbum"
 key_sequence = "g B"
+target = "PlayingTrack"
 [[actions]]
 action="ToggleLiked"
 key_sequence="C-l"
