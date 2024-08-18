@@ -347,7 +347,7 @@ pub fn handle_action_in_context(
             _ => Ok(false),
         },
         // TODO: support actions for playlist folders
-        ActionContext::PlaylistFolder(_) => {}
+        ActionContext::PlaylistFolder(_) => Ok(false),
     }
 }
 

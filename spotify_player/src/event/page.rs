@@ -244,7 +244,11 @@ fn handle_key_sequence_for_search_page(
                 }
                 CommandOrAction::Action(action, ActionTarget::SelectedItem) => {
                     window::handle_action_for_selected_item(
-                        action, playlists, &data, ui, client_pub,
+                        action,
+                        playlist_refs,
+                        &data,
+                        ui,
+                        client_pub,
                     )
                 }
                 _ => Ok(false),
