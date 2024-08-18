@@ -169,7 +169,7 @@ impl PageState {
                         ..
                     },
             } => Some(match focus {
-                LibraryFocusState::Playlists { .. } => MutableWindowState::List(playlist_list),
+                LibraryFocusState::Playlists => MutableWindowState::List(playlist_list),
                 LibraryFocusState::SavedAlbums => MutableWindowState::List(saved_album_list),
                 LibraryFocusState::FollowedArtists => {
                     MutableWindowState::List(followed_artist_list)

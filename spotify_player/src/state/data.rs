@@ -125,23 +125,31 @@ impl UserData {
         }
     }
 
-    /// Get a list of playlist folders and playlists that are **possibly** modifiable by user
+    /// Get a list of playlist items that are **possibly** modifiable by user
     ///
-    /// If `folder_id` is provided, returns the playlist items for the given folder id.
-    /// Otherwise, returns the playlist items for all folders.
+    /// If `folder_id` is provided, returns items in the given folder id.
+    /// Otherwise, returns the all items.
     pub fn modifiable_playlist_items(&self, folder_id: Option<usize>) -> Vec<&PlaylistFolderItem> {
         match self.user {
             None => vec![],
             Some(ref u) => self
                 .playlists
                 .iter()
-                .filter(|item| match (folder_id, item) {
-                    (Some(fid), PlaylistFolderItem::Playlist(p)) => {
-                        p.current_folder_id == fid && (p.owner.1 == u.id || p.collaborative)
+                // filter items in a folder (if specified)
+                .filter(|item| {
+                    if let Some(folder_id) = folder_id {
+                        match item {
+                            PlaylistFolderItem::Playlist(p) => p.current_folder_id == folder_id,
+                            PlaylistFolderItem::Folder(f) => f.current_id == folder_id,
+                        }
+                    } else {
+                        true
                     }
-                    (Some(fid), PlaylistFolderItem::Folder(f)) => f.current_id == fid,
-                    (None, PlaylistFolderItem::Playlist(p)) => p.owner.1 == u.id || p.collaborative,
-                    (None, PlaylistFolderItem::Folder(_)) => true,
+                })
+                // filter modifiable items
+                .filter(|item| match item {
+                    PlaylistFolderItem::Playlist(p) => p.owner.1 == u.id || p.collaborative,
+                    PlaylistFolderItem::Folder(_) => true,
                 })
                 .collect(),
         }

@@ -57,17 +57,10 @@ fn handle_action_for_library_page(
     match focus_state {
         LibraryFocusState::Playlists => window::handle_action_for_selected_item(
             action,
-            ui.search_filtered_items(
-                &data
-                    .user_data
-                    .folder_playlists_items(folder_id)
-                    .iter()
-                    .filter_map(|item| match item {
-                        PlaylistFolderItem::Playlist(p) => Some(p.clone()),
-                        PlaylistFolderItem::Folder(_) => None,
-                    })
-                    .collect::<Vec<Playlist>>(),
-            ),
+            ui.search_filtered_items(&data.user_data.folder_playlists_items(folder_id))
+                .into_iter()
+                .cloned()
+                .collect(),
             &data,
             ui,
             client_pub,
@@ -109,14 +102,10 @@ fn handle_command_for_library_page(
             match focus_state {
                 LibraryFocusState::Playlists => window::handle_command_for_playlist_list_window(
                     command,
-                    ui.search_filtered_items(
-                        &data
-                            .user_data
-                            .folder_playlists_items(folder_id)
-                            .into_iter()
-                            .cloned()
-                            .collect::<Vec<PlaylistFolderItem>>(),
-                    ),
+                    ui.search_filtered_items(&data.user_data.folder_playlists_items(folder_id))
+                        .into_iter()
+                        .cloned()
+                        .collect(),
                     &data,
                     ui,
                 ),
@@ -231,25 +220,31 @@ fn handle_key_sequence_for_search_page(
             }
         }
         SearchFocusState::Playlists => {
-            let playlists: Vec<&Playlist> = search_results
-                .map(|s| s.playlists.iter().collect())
+            let playlists: Vec<PlaylistFolderItem> = search_results
+                .map(|s| {
+                    s.playlists
+                        .iter()
+                        .map(|p| PlaylistFolderItem::Playlist(p.clone()))
+                        .collect()
+                })
                 .unwrap_or_default();
+            let playlist_refs = playlists.iter().collect();
 
             match found_keymap {
                 CommandOrAction::Command(command) => {
-                    let playlists = playlists
-                        .into_iter()
-                        .map(|p| PlaylistFolderItem::Playlist(p.clone()))
-                        .collect::<Vec<_>>();
                     window::handle_command_for_playlist_list_window(
                         command,
-                        playlists.iter().collect(),
+                        playlist_refs,
                         &data,
                         ui,
                     )
                 }
                 CommandOrAction::Action(action) => window::handle_action_for_selected_item(
-                    action, playlists, &data, ui, client_pub,
+                    action,
+                    playlist_refs,
+                    &data,
+                    ui,
+                    client_pub,
                 ),
             }
         }

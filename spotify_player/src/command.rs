@@ -1,4 +1,6 @@
-use crate::state::{Album, Artist, DataReadGuard, Playlist, PlaylistFolderItem, Track};
+use crate::state::{
+    Album, Artist, DataReadGuard, Playlist, PlaylistFolder, PlaylistFolderItem, Track,
+};
 use serde::Deserialize;
 
 #[derive(Copy, Clone, Debug, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
@@ -105,6 +107,9 @@ pub enum ActionContext {
     Album(Album),
     Artist(Artist),
     Playlist(Playlist),
+    #[allow(dead_code)]
+    // TODO: support actions for playlist folders
+    PlaylistFolder(PlaylistFolder),
 }
 
 pub enum CommandOrAction {
@@ -136,6 +141,15 @@ impl From<Playlist> for ActionContext {
     }
 }
 
+impl From<PlaylistFolderItem> for ActionContext {
+    fn from(value: PlaylistFolderItem) -> Self {
+        match value {
+            PlaylistFolderItem::Playlist(p) => ActionContext::Playlist(p),
+            PlaylistFolderItem::Folder(f) => ActionContext::PlaylistFolder(f),
+        }
+    }
+}
+
 impl ActionContext {
     pub fn get_available_actions(&self, data: &DataReadGuard) -> Vec<Action> {
         match self {
@@ -143,6 +157,8 @@ impl ActionContext {
             Self::Album(album) => construct_album_actions(album, data),
             Self::Artist(artist) => construct_artist_actions(artist, data),
             Self::Playlist(playlist) => construct_playlist_actions(playlist, data),
+            // TODO: support actions for playlist folders
+            Self::PlaylistFolder(_) => vec![],
         }
     }
 }
