@@ -180,9 +180,10 @@ fn handle_key_sequence_for_search_page(
                 CommandOrAction::Command(command) => window::handle_command_for_track_list_window(
                     command, client_pub, tracks, &data, ui,
                 ),
-                CommandOrAction::Action(action, _) => {
+                CommandOrAction::Action(action, ActionTarget::SelectedItem) => {
                     window::handle_action_for_selected_item(action, tracks, &data, ui, client_pub)
                 }
+                _ => Ok(false),
             }
         }
         SearchFocusState::Artists => {
@@ -194,9 +195,10 @@ fn handle_key_sequence_for_search_page(
                 CommandOrAction::Command(command) => {
                     window::handle_command_for_artist_list_window(command, artists, &data, ui)
                 }
-                CommandOrAction::Action(action, _) => {
+                CommandOrAction::Action(action, ActionTarget::SelectedItem) => {
                     window::handle_action_for_selected_item(action, artists, &data, ui, client_pub)
                 }
+                _ => Ok(false),
             }
         }
         SearchFocusState::Albums => {
@@ -208,9 +210,10 @@ fn handle_key_sequence_for_search_page(
                 CommandOrAction::Command(command) => window::handle_command_for_album_list_window(
                     command, albums, &data, ui, client_pub,
                 ),
-                CommandOrAction::Action(action, _) => {
+                CommandOrAction::Action(action, ActionTarget::SelectedItem) => {
                     window::handle_action_for_selected_item(action, albums, &data, ui, client_pub)
                 }
+                _ => Ok(false),
             }
         }
         SearchFocusState::Playlists => {
@@ -222,9 +225,12 @@ fn handle_key_sequence_for_search_page(
                 CommandOrAction::Command(command) => {
                     window::handle_command_for_playlist_list_window(command, playlists, &data, ui)
                 }
-                CommandOrAction::Action(action, _) => window::handle_action_for_selected_item(
-                    action, playlists, &data, ui, client_pub,
-                ),
+                CommandOrAction::Action(action, ActionTarget::SelectedItem) => {
+                    window::handle_action_for_selected_item(
+                        action, playlists, &data, ui, client_pub,
+                    )
+                }
+                _ => Ok(false),
             }
         }
     }

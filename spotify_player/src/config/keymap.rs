@@ -25,7 +25,8 @@ pub struct Keymap {
 /// A keymap that triggers an `Action` when a key sequence is pressed
 pub struct ActionMap {
     pub key_sequence: KeySequence,
-    pub target: Option<ActionTarget>,
+    #[serde(default)]
+    pub target: ActionTarget,
     pub action: Action,
 }
 
@@ -409,7 +410,7 @@ impl KeymapConfig {
         self.actions
             .iter()
             .find(|&action| action.key_sequence == *key_sequence)
-            .map(|action| (action.action, action.target.unwrap_or_default()))
+            .map(|action| (action.action, action.target))
     }
 
     /// finds a command or action from a mapped key sequence

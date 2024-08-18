@@ -106,7 +106,7 @@ fn handle_key_event(
         }
     };
 
-    // if the key sequence is not handled, let the global command handler handle it
+    // if the key sequence is not handled, let the global handler handle it
     let handled = if !handled {
         match keymap_config.find_command_or_action_from_key_sequence(&key_sequence) {
             Some(CommandOrAction::Action(action, target)) => {
@@ -396,22 +396,17 @@ fn handle_global_action(
         let player = state.player.read();
         let data = state.data.read();
 
-        let currently_playing = match player.current_playing_track() {
-            Some(track) => track,
-            None => anyhow::bail!("No currently playing track"),
-        };
-        let track = match Track::try_from_full_track(currently_playing.clone()) {
-            Some(track) => track,
-            None => anyhow::bail!("No currently playing track"),
-        };
-
-        return handle_action_in_context(
-            action,
-            ActionContext::Track(track),
-            client_pub,
-            &data,
-            ui,
-        );
+        if let Some(currently_playing) = player.current_playing_track() {
+            if let Some(track) = Track::try_from_full_track(currently_playing.clone()) {
+                return handle_action_in_context(
+                    action,
+                    ActionContext::Track(track),
+                    client_pub,
+                    &data,
+                    ui,
+                );
+            }
+        }
     };
 
     Ok(false)
