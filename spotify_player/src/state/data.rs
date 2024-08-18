@@ -11,6 +11,7 @@ pub type DataReadGuard<'a> = parking_lot::RwLockReadGuard<'a, AppData>;
 #[derive(Debug)]
 pub enum FileCacheKey {
     Playlists,
+    PlaylistFolders,
     FollowedArtists,
     SavedAlbums,
     SavedTracks,
@@ -31,7 +32,8 @@ pub struct AppData {
 /// current user's data
 pub struct UserData {
     pub user: Option<rspotify_model::PrivateUser>,
-    pub playlists: Vec<Playlist>,
+    pub playlists: Vec<PlaylistFolderItem>,
+    pub playlist_folder_node: Option<PlaylistFolderNode>,
     pub followed_artists: Vec<Artist>,
     pub saved_albums: Vec<Album>,
     pub saved_tracks: HashMap<String, Track>,
@@ -107,6 +109,10 @@ impl UserData {
             user: None,
             playlists: load_data_from_file_cache(FileCacheKey::Playlists, cache_folder)
                 .unwrap_or_default(),
+            playlist_folder_node: load_data_from_file_cache(
+                FileCacheKey::PlaylistFolders,
+                cache_folder,
+            ),
             followed_artists: load_data_from_file_cache(
                 FileCacheKey::FollowedArtists,
                 cache_folder,
@@ -119,16 +125,45 @@ impl UserData {
         }
     }
 
-    /// Get a list of playlists that are **possibly** modifiable by user
-    pub fn modifiable_playlists(&self) -> Vec<&Playlist> {
+    /// Get a list of playlist items that are **possibly** modifiable by user
+    ///
+    /// If `folder_id` is provided, returns items in the given folder id.
+    /// Otherwise, returns the all items.
+    pub fn modifiable_playlist_items(&self, folder_id: Option<usize>) -> Vec<&PlaylistFolderItem> {
         match self.user {
             None => vec![],
             Some(ref u) => self
                 .playlists
                 .iter()
-                .filter(|p| p.owner.1 == u.id || p.collaborative)
+                // filter items in a folder (if specified)
+                .filter(|item| {
+                    if let Some(folder_id) = folder_id {
+                        match item {
+                            PlaylistFolderItem::Playlist(p) => p.current_folder_id == folder_id,
+                            PlaylistFolderItem::Folder(f) => f.current_id == folder_id,
+                        }
+                    } else {
+                        true
+                    }
+                })
+                // filter modifiable items
+                .filter(|item| match item {
+                    PlaylistFolderItem::Playlist(p) => p.owner.1 == u.id || p.collaborative,
+                    PlaylistFolderItem::Folder(_) => true,
+                })
                 .collect(),
         }
+    }
+
+    /// Get playlists items for the given folder id
+    pub fn folder_playlists_items(&self, folder_id: usize) -> Vec<&PlaylistFolderItem> {
+        self.playlists
+            .iter()
+            .filter(|item| match item {
+                PlaylistFolderItem::Playlist(p) => p.current_folder_id == folder_id,
+                PlaylistFolderItem::Folder(f) => f.current_id == folder_id,
+            })
+            .collect()
     }
 
     /// Check if a track is a liked track

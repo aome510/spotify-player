@@ -159,7 +159,10 @@ pub fn handle_action_in_context(
             Action::AddToPlaylist => {
                 client_pub.send(ClientRequest::GetUserPlaylists)?;
                 ui.popup = Some(PopupState::UserPlaylistList(
-                    PlaylistPopupAction::AddTrack(track.id),
+                    PlaylistPopupAction::AddTrack {
+                        folder_id: 0,
+                        track_id: track.id,
+                    },
                     ListState::default(),
                 ));
             }
@@ -304,6 +307,8 @@ pub fn handle_action_in_context(
             }
             _ => {}
         },
+        // TODO: support actions for playlist folders
+        ActionContext::PlaylistFolder(_) => {}
     }
 
     Ok(())
@@ -444,7 +449,7 @@ fn handle_global_command(
         Command::BrowseUserPlaylists => {
             client_pub.send(ClientRequest::GetUserPlaylists)?;
             ui.popup = Some(PopupState::UserPlaylistList(
-                PlaylistPopupAction::Browse,
+                PlaylistPopupAction::Browse { folder_id: 0 },
                 ListState::default(),
             ));
         }

@@ -37,8 +37,13 @@ pub enum ActionListItem {
 /// An action on an item in a playlist popup list
 #[derive(Debug)]
 pub enum PlaylistPopupAction {
-    Browse,
-    AddTrack(TrackId<'static>),
+    Browse {
+        folder_id: usize,
+    },
+    AddTrack {
+        folder_id: usize,
+        track_id: TrackId<'static>,
+    },
 }
 
 /// An action on an item in an artist popup list

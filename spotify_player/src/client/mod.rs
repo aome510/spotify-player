@@ -300,6 +300,15 @@ impl Client {
             }
             ClientRequest::GetUserPlaylists => {
                 let playlists = self.current_user_playlists().await?;
+                let node = state.data.read().user_data.playlist_folder_node.clone();
+                let playlists = if let Some(node) = node.filter(|n| !n.children.is_empty()) {
+                    crate::playlist_folders::structurize(playlists, node.children)
+                } else {
+                    playlists
+                        .into_iter()
+                        .map(PlaylistFolderItem::Playlist)
+                        .collect()
+                };
                 store_data_into_file_cache(
                     FileCacheKey::Playlists,
                     &config::get_config().cache_folder,
@@ -1085,7 +1094,12 @@ impl Client {
                     if !follows[0] {
                         self.playlist_follow(playlist.id.as_ref(), None).await?;
                         // update the in-memory `user_data`
-                        state.data.write().user_data.playlists.insert(0, playlist);
+                        state
+                            .data
+                            .write()
+                            .user_data
+                            .playlists
+                            .insert(0, PlaylistFolderItem::Playlist(playlist));
                     }
                 }
             }
@@ -1125,7 +1139,10 @@ impl Client {
                     .write()
                     .user_data
                     .playlists
-                    .retain(|p| p.id != id);
+                    .retain(|item| match item {
+                        PlaylistFolderItem::Playlist(p) => p.id != id,
+                        _ => true,
+                    });
                 self.playlist_unfollow(id).await?;
             }
         }
@@ -1478,7 +1495,12 @@ impl Client {
             playlist.name,
             playlist.id
         );
-        state.data.write().user_data.playlists.insert(0, playlist);
+        state
+            .data
+            .write()
+            .user_data
+            .playlists
+            .insert(0, PlaylistFolderItem::Playlist(playlist));
         Ok(())
     }
 

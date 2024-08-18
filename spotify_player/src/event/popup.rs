@@ -89,45 +89,74 @@ pub fn handle_key_sequence_for_popup(
             )
         }
         PopupState::UserPlaylistList(action, _) => match action {
-            PlaylistPopupAction::Browse => {
-                let playlist_uris = state
-                    .data
-                    .read()
-                    .user_data
-                    .playlists
-                    .iter()
-                    .map(|p| p.id.uri())
-                    .collect::<Vec<_>>();
-
-                handle_command_for_context_browsing_list_popup(
-                    command,
-                    ui,
-                    playlist_uris,
-                    rspotify_model::Type::Playlist,
-                )
-            }
-            PlaylistPopupAction::AddTrack(track_id) => {
-                let track_id = track_id.clone();
-                let playlist_ids = state
-                    .data
-                    .read()
-                    .user_data
-                    .modifiable_playlists()
-                    .into_iter()
-                    .map(|p| p.id.clone())
-                    .collect::<Vec<_>>();
+            PlaylistPopupAction::Browse { folder_id } => {
+                let data = state.data.read();
+                let items = data.user_data.folder_playlists_items(*folder_id);
 
                 handle_command_for_list_popup(
                     command,
                     ui,
-                    playlist_ids.len(),
+                    items.len(),
                     |_, _| {},
                     |ui: &mut UIStateGuard, id: usize| -> Result<()> {
-                        client_pub.send(ClientRequest::AddTrackToPlaylist(
-                            playlist_ids[id].clone(),
-                            track_id.clone(),
-                        ))?;
+                        match items[id] {
+                            PlaylistFolderItem::Folder(f) => {
+                                ui.popup = Some(PopupState::UserPlaylistList(
+                                    PlaylistPopupAction::Browse {
+                                        folder_id: f.target_id,
+                                    },
+                                    ListState::default(),
+                                ));
+                            }
+                            PlaylistFolderItem::Playlist(p) => {
+                                let context_id = ContextId::Playlist(
+                                    PlaylistId::from_uri(&crate::utils::parse_uri(&p.id.uri()))?
+                                        .into_static(),
+                                );
+                                ui.new_page(PageState::Context {
+                                    id: None,
+                                    context_page_type: ContextPageType::Browsing(context_id),
+                                    state: None,
+                                });
+                            }
+                        }
+                        Ok(())
+                    },
+                    |ui: &mut UIStateGuard| {
                         ui.popup = None;
+                    },
+                )
+            }
+            PlaylistPopupAction::AddTrack {
+                folder_id,
+                track_id,
+            } => {
+                let track_id = track_id.clone();
+                let data = state.data.read();
+                let items = data.user_data.modifiable_playlist_items(Some(*folder_id));
+
+                handle_command_for_list_popup(
+                    command,
+                    ui,
+                    items.len(),
+                    |_, _| {},
+                    |ui: &mut UIStateGuard, id: usize| -> Result<()> {
+                        ui.popup = match items[id] {
+                            PlaylistFolderItem::Folder(f) => Some(PopupState::UserPlaylistList(
+                                PlaylistPopupAction::AddTrack {
+                                    folder_id: f.target_id,
+                                    track_id,
+                                },
+                                ListState::default(),
+                            )),
+                            PlaylistFolderItem::Playlist(p) => {
+                                client_pub.send(ClientRequest::AddTrackToPlaylist(
+                                    p.id.clone(),
+                                    track_id,
+                                ))?;
+                                None
+                            }
+                        };
                         Ok(())
                     },
                     |ui: &mut UIStateGuard| {
@@ -370,9 +399,9 @@ fn handle_command_for_list_popup(
     command: Command,
     ui: &mut UIStateGuard,
     n_items: usize,
-    on_select_func: impl Fn(&mut UIStateGuard, usize),
-    on_choose_func: impl Fn(&mut UIStateGuard, usize) -> Result<()>,
-    on_close_func: impl Fn(&mut UIStateGuard),
+    on_select_func: impl FnOnce(&mut UIStateGuard, usize),
+    on_choose_func: impl FnOnce(&mut UIStateGuard, usize) -> Result<()>,
+    on_close_func: impl FnOnce(&mut UIStateGuard),
 ) -> Result<bool> {
     let popup = ui.popup.as_mut().with_context(|| "expect a popup")?;
     let current_id = popup.list_selected().unwrap_or_default();

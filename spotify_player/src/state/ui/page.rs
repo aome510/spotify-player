@@ -51,6 +51,7 @@ pub struct LibraryPageUIState {
     pub saved_album_list: ListState,
     pub followed_artist_list: ListState,
     pub focus: LibraryFocusState,
+    pub playlist_folder_id: usize,
 }
 
 #[derive(Clone, Debug)]
@@ -165,6 +166,7 @@ impl PageState {
                         saved_album_list,
                         followed_artist_list,
                         focus,
+                        ..
                     },
             } => Some(match focus {
                 LibraryFocusState::Playlists => MutableWindowState::List(playlist_list),
@@ -233,6 +235,7 @@ impl LibraryPageUIState {
             saved_album_list: ListState::default(),
             followed_artist_list: ListState::default(),
             focus: LibraryFocusState::Playlists,
+            playlist_folder_id: 0,
         }
     }
 }

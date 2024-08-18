@@ -155,6 +155,39 @@ pub struct Playlist {
     pub name: String,
     pub owner: (String, UserId<'static>),
     pub desc: String,
+    /// which folder id the playlist refers to
+    #[serde(default)]
+    pub current_folder_id: usize,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+/// A playlist folder, not related to Spotify API yet
+pub struct PlaylistFolder {
+    pub name: String,
+    /// current folder id in the folders tree
+    pub current_id: usize,
+    /// target folder id it refers to
+    pub target_id: usize,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+/// A playlist folder item
+pub enum PlaylistFolderItem {
+    Playlist(Playlist),
+    Folder(PlaylistFolder),
+}
+
+#[derive(Deserialize, Debug, Clone)]
+/// A reference node retrieved by running https://github.com/mikez/spotify-folders
+/// Helps building a playlist folder hierarchy
+pub struct PlaylistFolderNode {
+    pub name: Option<String>,
+    #[serde(rename = "type")]
+    pub node_type: String,
+    #[serde(default)]
+    pub uri: String,
+    #[serde(default = "Vec::new")]
+    pub children: Vec<PlaylistFolderNode>,
 }
 
 #[derive(Clone, Debug)]
@@ -416,6 +449,7 @@ impl From<rspotify_model::SimplifiedPlaylist> for Playlist {
                 playlist.owner.id,
             ),
             desc: String::new(),
+            current_folder_id: 0,
         }
     }
 }
@@ -436,6 +470,7 @@ impl From<rspotify_model::FullPlaylist> for Playlist {
                 playlist.owner.id,
             ),
             desc,
+            current_folder_id: 0,
         }
     }
 }
@@ -443,6 +478,21 @@ impl From<rspotify_model::FullPlaylist> for Playlist {
 impl std::fmt::Display for Playlist {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{} • {}", self.name, self.owner.0)
+    }
+}
+
+impl std::fmt::Display for PlaylistFolder {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}/", self.name)
+    }
+}
+
+impl std::fmt::Display for PlaylistFolderItem {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PlaylistFolderItem::Playlist(playlist) => playlist.fmt(f),
+            PlaylistFolderItem::Folder(folder) => folder.fmt(f),
+        }
     }
 }
 
