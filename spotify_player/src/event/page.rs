@@ -50,14 +50,17 @@ fn handle_action_for_library_page(
     state: &SharedState,
 ) -> Result<bool> {
     let data = state.data.read();
-    let focus_state = match ui.current_page() {
-        PageState::Library { state } => state.focus,
+    let (focus_state, folder_id) = match ui.current_page() {
+        PageState::Library { state } => (state.focus, state.playlist_folder_id),
         _ => anyhow::bail!("expect a library page state"),
     };
     match focus_state {
         LibraryFocusState::Playlists => window::handle_action_for_selected_item(
             action,
-            ui.search_filtered_items(&data.user_data.playlists),
+            ui.search_filtered_items(&data.user_data.folder_playlists_items(folder_id))
+                .into_iter()
+                .cloned()
+                .collect(),
             &data,
             ui,
             client_pub,
@@ -92,14 +95,17 @@ fn handle_command_for_library_page(
         }
         _ => {
             let data = state.data.read();
-            let focus_state = match ui.current_page() {
-                PageState::Library { state } => state.focus,
+            let (focus_state, folder_id) = match ui.current_page() {
+                PageState::Library { state } => (state.focus, state.playlist_folder_id),
                 _ => anyhow::bail!("expect a library page state"),
             };
             match focus_state {
                 LibraryFocusState::Playlists => window::handle_command_for_playlist_list_window(
                     command,
-                    ui.search_filtered_items(&data.user_data.playlists),
+                    ui.search_filtered_items(&data.user_data.folder_playlists_items(folder_id))
+                        .into_iter()
+                        .cloned()
+                        .collect(),
                     &data,
                     ui,
                 ),
@@ -217,13 +223,24 @@ fn handle_key_sequence_for_search_page(
             }
         }
         SearchFocusState::Playlists => {
-            let playlists = search_results
-                .map(|s| s.playlists.iter().collect())
+            let playlists: Vec<PlaylistFolderItem> = search_results
+                .map(|s| {
+                    s.playlists
+                        .iter()
+                        .map(|p| PlaylistFolderItem::Playlist(p.clone()))
+                        .collect()
+                })
                 .unwrap_or_default();
+            let playlist_refs = playlists.iter().collect();
 
             match found_keymap {
                 CommandOrAction::Command(command) => {
-                    window::handle_command_for_playlist_list_window(command, playlists, &data, ui)
+                    window::handle_command_for_playlist_list_window(
+                        command,
+                        playlist_refs,
+                        &data,
+                        ui,
+                    )
                 }
                 CommandOrAction::Action(action, ActionTarget::SelectedItem) => {
                     window::handle_action_for_selected_item(

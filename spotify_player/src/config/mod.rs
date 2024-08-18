@@ -48,6 +48,7 @@ impl Configs {
 pub struct AppConfig {
     pub theme: String,
     pub client_id: String,
+    pub client_id_command: Option<Command>,
 
     pub client_port: u16,
 
@@ -141,6 +142,26 @@ pub struct Command {
     pub args: Vec<String>,
 }
 
+impl Command {
+    /// Execute a command, returning stdout if succeeded or stderr if failed
+    pub fn execute(&self, extra_args: Option<Vec<String>>) -> anyhow::Result<String> {
+        let mut args = self.args.clone();
+        args.extend(extra_args.unwrap_or_default());
+
+        let output = std::process::Command::new(&self.command)
+            .args(&args)
+            .output()?;
+
+        if !output.status.success() {
+            let stderr = std::str::from_utf8(&output.stderr)?.to_string();
+            anyhow::bail!(stderr);
+        }
+
+        let stdout = std::str::from_utf8(&output.stdout)?.to_string();
+        Ok(stdout)
+    }
+}
+
 #[derive(Debug, Deserialize, Serialize, ConfigParse, Clone)]
 /// Application device configurations
 pub struct DeviceConfig {
@@ -229,6 +250,7 @@ impl Default for AppConfig {
             theme: "dracula".to_owned(),
             // official Spotify web app's client id
             client_id: "65b708073fc0480ea92a077233ca87bd".to_string(),
+            client_id_command: None,
 
             client_port: 8080,
 
@@ -384,6 +406,14 @@ impl AppConfig {
             proxy,
             ap_port: self.ap_port,
             ..Default::default()
+        }
+    }
+
+    /// Returns stdout of `client_id_command` if set, otherwise it returns the the value of `client_id`
+    pub fn get_client_id(&self) -> Result<String> {
+        match self.client_id_command {
+            Some(ref cmd) => cmd.execute(None),
+            None => Ok(self.client_id.clone()),
         }
     }
 }

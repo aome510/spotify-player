@@ -3,6 +3,7 @@
 ## Table of Contents
 
 - [Introduction](#introduction)
+- [Important Notice](#important-notice)
 - [Examples](#examples)
 - [Installation](#installation)
 - [Features](#features)
@@ -39,6 +40,9 @@
 - Support [desktop notification](#notify).
 - Support running the application as [a daemon](#daemon)
 - Offer a wide range of [CLI commands](#cli-commands)
+
+## Important Notice
+spotify-player throws error "Login failed with reason: Bad credentials" when authenticating from 7/29/2024 because Spotify removed username & password authentication from API through Mercury/Hermes. Please use [librespot-auth repository](https://github.com/dspearson/librespot-auth). For more details, see [#520](https://github.com/aome510/spotify-player/issues/520)
 
 ## Examples
 

@@ -7,6 +7,7 @@ mod event;
 mod key;
 #[cfg(feature = "media-control")]
 mod media_control;
+mod playlist_folders;
 mod state;
 #[cfg(feature = "streaming")]
 mod streaming;
@@ -117,7 +118,8 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
     let session = auth::new_session(&auth_config, !state.is_daemon).await?;
 
     // create a Spotify API client
-    let client = client::Client::new(session, auth_config, configs.app_config.client_id.clone());
+    let client_id = configs.app_config.get_client_id()?;
+    let client = client::Client::new(session, auth_config, client_id);
     client.refresh_token().await?;
 
     // initialize Spotify-related stuff
