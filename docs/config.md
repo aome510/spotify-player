@@ -171,7 +171,7 @@ A theme has three main components: `name` (the theme's name), `palette` (the the
 
 ### Use script to add theme
 
-[a `theme_parse` python script](../scripts/theme_parse) (require `pyaml` and `requests` libraries) can be used to parse [Iterm2 alacritty's color schemes](https://github.com/mbadolato/iTerm2-Color-Schemes/tree/master/alacritty) into a `spotify_player` compatible theme format.
+[a `theme_parse` python script](../scripts/theme_parse) (require `toml` and `requests` libraries) can be used to parse [Iterm2 alacritty's color schemes](https://github.com/mbadolato/iTerm2-Color-Schemes/tree/master/alacritty) into a `spotify_player` compatible theme format.
 
 For example, you can run
 
