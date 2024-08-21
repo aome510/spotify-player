@@ -28,6 +28,15 @@ pub fn get_track_album_image_url(track: &rspotify::model::FullTrack) -> Option<&
     }
 }
 
+#[allow(dead_code)]
+pub fn get_episode_show_image_url(episode: &rspotify::model::FullEpisode) -> Option<&str> {
+    if episode.show.images.is_empty() {
+        None
+    } else {
+        Some(&episode.show.images[0].url)
+    }
+}
+
 pub fn parse_uri(uri: &str) -> Cow<str> {
     let parts = uri.split(':').collect::<Vec<_>>();
     // The below URI probably has a format of `spotify:user:{user_id}:{type}:{id}`,

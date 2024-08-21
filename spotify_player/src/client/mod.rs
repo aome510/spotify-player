@@ -447,6 +447,10 @@ impl Client {
                 self.add_item_to_queue(PlayableId::Track(track_id), None)
                     .await?
             }
+            ClientRequest::AddEpisodeToQueue(episode_id) => {
+                self.add_item_to_queue(PlayableId::Episode(episode_id), None)
+                    .await?
+            }
             ClientRequest::AddTrackToPlaylist(playlist_id, track_id) => {
                 self.add_track_to_playlist(state, playlist_id, track_id)
                     .await?;
@@ -880,14 +884,15 @@ impl Client {
 
     /// Search for items (tracks, artists, albums, playlists) matching a given query
     pub async fn search(&self, query: &str) -> Result<SearchResults> {
-        let (track_result, artist_result, album_result, playlist_result) = tokio::try_join!(
+        let (track_result, artist_result, album_result, playlist_result, episode_result) = tokio::try_join!(
             self.search_specific_type(query, rspotify_model::SearchType::Track),
             self.search_specific_type(query, rspotify_model::SearchType::Artist),
             self.search_specific_type(query, rspotify_model::SearchType::Album),
-            self.search_specific_type(query, rspotify_model::SearchType::Playlist)
+            self.search_specific_type(query, rspotify_model::SearchType::Playlist),
+            self.search_specific_type(query, rspotify_model::SearchType::Episode)
         )?;
 
-        let (tracks, artists, albums, playlists) = (
+        let (tracks, artists, albums, playlists, episodes) = (
             match track_result {
                 rspotify_model::SearchResult::Tracks(p) => p
                     .items
@@ -916,6 +921,12 @@ impl Client {
                 }
                 _ => anyhow::bail!("expect a playlist search result"),
             },
+            match episode_result {
+                rspotify_model::SearchResult::Episodes(p) => {
+                    p.items.into_iter().map(|i| i.into()).collect()
+                }
+                _ => anyhow::bail!("expect a episode search result"),
+            },
         );
 
         Ok(SearchResults {
@@ -923,6 +934,7 @@ impl Client {
             artists,
             albums,
             playlists,
+            episodes,
         })
     }
 
@@ -1369,18 +1381,24 @@ impl Client {
             let playback = self.current_playback(None, None::<Vec<_>>).await?;
             let mut player = state.player.write();
 
-            let prev_track_name = player
-                .current_playing_track()
-                .map(|t| t.name.to_owned())
-                .unwrap_or_default();
+            let prev_track = player.currently_playing();
+
+            let prev_track_name = match prev_track {
+                Some(rspotify_model::PlayableItem::Track(track)) => track.name.to_owned(),
+                Some(rspotify_model::PlayableItem::Episode(episode)) => episode.name.to_owned(),
+                None => String::new(),
+            };
 
             player.playback = playback;
             player.playback_last_updated_time = Some(std::time::Instant::now());
 
-            let curr_track_name = player
-                .current_playing_track()
-                .map(|t| t.name.to_owned())
-                .unwrap_or_default();
+            let curr_track = player.currently_playing();
+
+            let curr_track_name = match curr_track {
+                Some(rspotify_model::PlayableItem::Track(track)) => track.name.to_owned(),
+                Some(rspotify_model::PlayableItem::Episode(episode)) => episode.name.to_owned(),
+                None => String::new(),
+            };
 
             let new_track = prev_track_name != curr_track_name && !curr_track_name.is_empty();
             // check if we need to update the buffered playback
@@ -1422,23 +1440,45 @@ impl Client {
     async fn handle_new_track_event(&self, state: &SharedState) -> Result<()> {
         let configs = config::get_config();
 
-        let track = match state.player.read().current_playing_track() {
-            None => return Ok(()),
-            Some(track) => track.clone(),
+        let track_or_episode = {
+            let player = state.player.read();
+            let Some(track_or_episode) = player.currently_playing().clone() else {
+                return Ok(());
+            };
+            track_or_episode.clone()
         };
 
-        let url = match crate::utils::get_track_album_image_url(&track) {
-            Some(url) => url,
-            None => return Ok(()),
+        let url = match track_or_episode {
+            rspotify_model::PlayableItem::Track(ref track) => {
+                crate::utils::get_track_album_image_url(&track)
+                    .ok_or(anyhow::anyhow!("missing image"))?
+            }
+            rspotify_model::PlayableItem::Episode(ref episode) => {
+                crate::utils::get_episode_show_image_url(&episode)
+                    .ok_or(anyhow::anyhow!("missing image"))?
+            }
         };
 
-        let filename = format!(
-            "{}-{}-cover-{}.jpg",
-            track.album.name,
-            track.album.artists.first().unwrap().name,
-            // first 6 characters of the album's id
-            &track.album.id.as_ref().unwrap().id()[..6]
-        )
+        let filename = (match track_or_episode {
+            rspotify_model::PlayableItem::Track(ref track) => {
+                format!(
+                    "{}-{}-cover-{}.jpg",
+                    track.album.name,
+                    track.album.artists.first().unwrap().name,
+                    // first 6 characters of the album's id
+                    &track.album.id.as_ref().unwrap().id()[..6]
+                )
+            }
+            rspotify_model::PlayableItem::Episode(ref episode) => {
+                format!(
+                    "{}-{}-cover-{}.jpg",
+                    episode.show.name,
+                    episode.show.publisher,
+                    // first 6 characters of the album's id
+                    &episode.show.id.as_ref().id()[..6]
+                )
+            }
+        })
         .replace('/', ""); // remove invalid characters from the file's name
         let path = configs.cache_folder.join("image").join(filename);
 

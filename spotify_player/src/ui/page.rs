@@ -47,7 +47,7 @@ pub fn render_search_page(
     let rect = chunks[1];
 
     // track/album/artist/playlist search results layout (2x2 table)
-    let chunks = Layout::vertical([Constraint::Ratio(1, 2); 2])
+    let chunks = Layout::vertical([Constraint::Ratio(1, 3); 3])
         .split(rect)
         .iter()
         .flat_map(|rect| {
@@ -75,6 +75,15 @@ pub fn render_search_page(
     );
     let playlist_rect =
         construct_and_render_block("Playlists", &ui.theme, Borders::TOP, frame, chunks[3]);
+    let _show_rect = construct_and_render_block(
+        "Shows",
+        &ui.theme,
+        Borders::TOP | Borders::RIGHT,
+        frame,
+        chunks[4],
+    );
+    let episode_rect =
+        construct_and_render_block("Episodes", &ui.theme, Borders::TOP, frame, chunks[5]);
 
     // 3. Construct the page's widgets
     let (track_list, n_tracks) = {
@@ -142,6 +151,23 @@ pub fn render_search_page(
         utils::construct_list_widget(&ui.theme, playlist_items, is_active)
     };
 
+    // TODO: show
+
+    let (episode_list, n_episodes) = {
+        let episode_items = search_results
+            .map(|s| {
+                s.episodes
+                    .iter()
+                    .map(|e| (format!("{}", e.to_string()), false))
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
+
+        let is_active = is_active && focus_state == SearchFocusState::Episodes;
+
+        utils::construct_list_widget(&ui.theme, episode_items, is_active)
+    };
+
     // 4. Render the page's widgets
     // Render the query input box
     frame.render_widget(
@@ -182,6 +208,13 @@ pub fn render_search_page(
         playlist_rect,
         n_playlists,
         &mut page_state.playlist_list,
+    );
+    utils::render_list_window(
+        frame,
+        episode_list,
+        episode_rect,
+        n_episodes,
+        &mut page_state.episode_list,
     );
 }
 
@@ -634,7 +667,7 @@ pub fn render_queue_page(
                 .map(|a| a.name.as_str())
                 .collect::<Vec<_>>()
                 .join(", "),
-            PlayableItem::Episode(FullEpisode { .. }) => String::new(),
+            PlayableItem::Episode(FullEpisode { ref show, .. }) => show.publisher.clone(),
         }
     }
     fn get_playable_duration(item: &PlayableItem) -> String {

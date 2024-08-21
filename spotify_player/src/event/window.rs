@@ -309,7 +309,10 @@ fn handle_command_for_track_table_window(
             let base_playback = if let Some(context_id) = context_id {
                 Playback::Context(context_id, None)
             } else {
-                Playback::URIs(tracks.iter().map(|t| t.id.clone_static()).collect(), None)
+                Playback::URIs(
+                    tracks.iter().map(|t| t.id.clone_static().into()).collect(),
+                    None,
+                )
             };
 
             client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
@@ -358,7 +361,7 @@ pub fn handle_command_for_track_list_window(
             // `ChooseSelected` by starting a `URIs` playback
             // containing all the tracks in the table.
             client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
-                Playback::URIs(vec![tracks[id].id.clone()], None),
+                Playback::URIs(vec![tracks[id].id.clone().into()], None),
                 None,
             )))?;
         }
@@ -499,6 +502,43 @@ pub fn handle_command_for_playlist_list_window(
                 ));
             }
         }
+        _ => return Ok(false),
+    }
+    Ok(true)
+}
+
+pub fn handle_command_for_episode_list_window(
+    command: Command,
+    client_pub: &flume::Sender<ClientRequest>,
+    episodes: Vec<&Episode>,
+    data: &DataReadGuard,
+    ui: &mut UIStateGuard,
+) -> Result<bool> {
+    let id = ui.current_page_mut().selected().unwrap_or_default();
+    if id >= episodes.len() {
+        return Ok(false);
+    }
+
+    if handle_navigation_command(command, ui.current_page_mut(), id, episodes.len()) {
+        return Ok(true);
+    }
+    match command {
+        Command::ChooseSelected => {
+            client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
+                Playback::URIs(vec![episodes[id].id.clone().into()], None),
+                None,
+            )))?;
+        }
+        Command::ShowActionsOnSelectedItem => {
+            let actions = command::construct_episode_actions(episodes[id], data);
+            ui.popup = Some(PopupState::ActionList(
+                Box::new(ActionListItem::Episode(episodes[id].clone(), actions)),
+                ListState::default(),
+            ));
+        }
+        //Command::AddSelectedItemToQueue => {
+        //    client_pub.send(ClientRequest::AddEpisodeToQueue(episodes[id].id.clone()))?;
+        //}
         _ => return Ok(false),
     }
     Ok(true)

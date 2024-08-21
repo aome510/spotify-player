@@ -1,6 +1,8 @@
 pub use rspotify::model as rspotify_model;
 use rspotify::model::CurrentPlaybackContext;
-pub use rspotify::model::{AlbumId, AlbumType, ArtistId, Id, PlaylistId, TrackId, UserId};
+pub use rspotify::model::{
+    AlbumId, AlbumType, ArtistId, EpisodeId, Id, PlayableId, PlaylistId, TrackId, UserId,
+};
 
 use crate::utils::map_join;
 use html_escape::decode_html_entities;
@@ -46,7 +48,6 @@ pub enum ContextId {
     Tracks(TracksId),
 }
 
-#[derive(Clone, Debug)]
 /// Data used to start a new playback.
 /// There are two ways to start a new playback:
 /// - Specify the playing context ID with an offset
@@ -55,7 +56,42 @@ pub enum ContextId {
 /// An offset can be either a track's URI or its absolute offset in the context
 pub enum Playback {
     Context(ContextId, Option<rspotify_model::Offset>),
-    URIs(Vec<TrackId<'static>>, Option<rspotify_model::Offset>),
+    URIs(Vec<PlayableId<'static>>, Option<rspotify_model::Offset>),
+}
+
+impl std::fmt::Debug for Playback {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Context(context_id, offset) => f
+                .debug_tuple("Playback::Context")
+                .field(context_id)
+                .field(offset)
+                .finish(),
+            Self::URIs(playable_ids, offset) => {
+                write!(f, "Playback::URIs([")?;
+                for id in playable_ids.iter() {
+                    match id {
+                        PlayableId::Track(track_id) => write!(f, "{}, ", track_id)?,
+                        PlayableId::Episode(episode_id) => write!(f, "{}, ", episode_id)?,
+                    }
+                }
+                write!(f, "], ")?;
+                write!(f, "{:?})", offset)
+            }
+        }
+    }
+}
+
+impl Clone for Playback {
+    fn clone(&self) -> Self {
+        match self {
+            Self::Context(context_id, offset) => Self::Context(context_id.clone(), offset.clone()),
+            Self::URIs(playable_ids, offset) => Self::URIs(
+                playable_ids.into_iter().map(|x| x.clone_static()).collect(),
+                offset.clone(),
+            ),
+        }
+    }
 }
 
 #[derive(Default, Clone, Debug, Deserialize, Serialize)]
@@ -65,6 +101,7 @@ pub struct SearchResults {
     pub artists: Vec<Artist>,
     pub albums: Vec<Album>,
     pub playlists: Vec<Playlist>,
+    pub episodes: Vec<Episode>,
 }
 
 #[derive(Debug)]
@@ -158,6 +195,15 @@ pub struct Playlist {
     /// which folder id the playlist refers to
     #[serde(default)]
     pub current_folder_id: usize,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+/// A Spotify playlist
+pub struct Episode {
+    pub id: EpisodeId<'static>,
+    pub name: String,
+    pub description: String,
+    pub duration: std::time::Duration,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -475,9 +521,37 @@ impl From<rspotify_model::FullPlaylist> for Playlist {
     }
 }
 
+impl From<rspotify_model::SimplifiedEpisode> for Episode {
+    fn from(episode: rspotify_model::SimplifiedEpisode) -> Self {
+        Self {
+            id: episode.id,
+            name: episode.name,
+            description: episode.description,
+            duration: episode.duration.to_std().expect("valid chrono duration"),
+        }
+    }
+}
+
+impl From<rspotify_model::FullEpisode> for Episode {
+    fn from(episode: rspotify_model::FullEpisode) -> Self {
+        Self {
+            id: episode.id,
+            name: episode.name,
+            description: episode.description,
+            duration: episode.duration.to_std().expect("valid chrono duration"),
+        }
+    }
+}
+
 impl std::fmt::Display for Playlist {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{} • {}", self.name, self.owner.0)
+    }
+}
+
+impl std::fmt::Display for Episode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name,)
     }
 }
 
@@ -533,7 +607,7 @@ impl Playback {
             }
             Playback::URIs(ids, _) => {
                 let ids = if ids.len() < limit {
-                    ids.clone()
+                    ids.into_iter().map(|x| x.clone_static()).collect()
                 } else {
                     let pos = ids
                         .iter()
@@ -545,7 +619,7 @@ impl Playback {
                     // API request, we restrict the range of tracks to be played, which is based on the
                     // playing track's position (if any) and the application's limit (`app_config.tracks_playback_limit`).
                     // Related issue: https://github.com/aome510/spotify-player/issues/78
-                    ids[l..r].to_vec()
+                    ids[l..r].into_iter().map(|x| x.clone_static()).collect()
                 };
 
                 Playback::URIs(ids, Some(rspotify_model::Offset::Uri(uri)))

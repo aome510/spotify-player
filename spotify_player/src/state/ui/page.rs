@@ -60,6 +60,7 @@ pub struct SearchPageUIState {
     pub album_list: ListState,
     pub artist_list: ListState,
     pub playlist_list: ListState,
+    pub episode_list: ListState,
     pub focus: SearchFocusState,
 }
 
@@ -109,6 +110,7 @@ pub enum SearchFocusState {
     Albums,
     Artists,
     Playlists,
+    Episodes,
 }
 
 #[derive(Clone, Debug)]
@@ -182,6 +184,7 @@ impl PageState {
                         album_list,
                         artist_list,
                         playlist_list,
+                        episode_list,
                         focus,
                     },
                 ..
@@ -191,6 +194,7 @@ impl PageState {
                 SearchFocusState::Albums => Some(MutableWindowState::List(album_list)),
                 SearchFocusState::Artists => Some(MutableWindowState::List(artist_list)),
                 SearchFocusState::Playlists => Some(MutableWindowState::List(playlist_list)),
+                SearchFocusState::Episodes => Some(MutableWindowState::List(episode_list)),
             },
             Self::Context { state, .. } => state.as_mut().map(|state| match state {
                 ContextPageUIState::Tracks { track_table } => {
@@ -247,6 +251,7 @@ impl SearchPageUIState {
             album_list: ListState::default(),
             artist_list: ListState::default(),
             playlist_list: ListState::default(),
+            episode_list: ListState::default(),
             focus: SearchFocusState::Input,
         }
     }
@@ -410,5 +415,6 @@ impl_focusable!(
     [Tracks, Albums],
     [Albums, Artists],
     [Artists, Playlists],
-    [Playlists, Input]
+    [Playlists, Episodes],
+    [Episodes, Input]
 );
