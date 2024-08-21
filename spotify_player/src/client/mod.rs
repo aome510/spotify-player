@@ -403,6 +403,7 @@ impl Client {
                                 "`GetContext` request for `tracks` context is not supported!"
                             );
                         }
+                        ContextId::Show(show_id) => self.show_context(show_id).await?,
                     };
 
                     state
@@ -815,6 +816,9 @@ impl Client {
                 ContextId::Tracks(_) => {
                     anyhow::bail!("`StartPlayback` request for `tracks` context is not supported")
                 }
+                ContextId::Show(_) => {
+                    anyhow::bail!("`StartPlayback` request for `show` context is not supported")
+                }
             },
             Playback::URIs(track_ids, offset) => {
                 self.start_uris_playback(
@@ -888,15 +892,23 @@ impl Client {
 
     /// Search for items (tracks, artists, albums, playlists) matching a given query
     pub async fn search(&self, query: &str) -> Result<SearchResults> {
-        let (track_result, artist_result, album_result, playlist_result, episode_result) = tokio::try_join!(
+        let (
+            track_result,
+            artist_result,
+            album_result,
+            playlist_result,
+            show_result,
+            episode_result,
+        ) = tokio::try_join!(
             self.search_specific_type(query, rspotify_model::SearchType::Track),
             self.search_specific_type(query, rspotify_model::SearchType::Artist),
             self.search_specific_type(query, rspotify_model::SearchType::Album),
             self.search_specific_type(query, rspotify_model::SearchType::Playlist),
+            self.search_specific_type(query, rspotify_model::SearchType::Show),
             self.search_specific_type(query, rspotify_model::SearchType::Episode)
         )?;
 
-        let (tracks, artists, albums, playlists, episodes) = (
+        let (tracks, artists, albums, playlists, shows, episodes) = (
             match track_result {
                 rspotify_model::SearchResult::Tracks(p) => p
                     .items
@@ -925,6 +937,12 @@ impl Client {
                 }
                 _ => anyhow::bail!("expect a playlist search result"),
             },
+            match show_result {
+                rspotify_model::SearchResult::Shows(p) => {
+                    p.items.into_iter().map(|i| i.into()).collect()
+                }
+                _ => anyhow::bail!("expect a show search result"),
+            },
             match episode_result {
                 rspotify_model::SearchResult::Episodes(p) => {
                     p.items.into_iter().map(|i| i.into()).collect()
@@ -938,6 +956,7 @@ impl Client {
             artists,
             albums,
             playlists,
+            shows,
             episodes,
         })
     }
@@ -1115,6 +1134,9 @@ impl Client {
                     }
                 }
             }
+            Item::Show(_show) => {
+                // TODO: implement add_to_library
+            }
         }
         Ok(())
     }
@@ -1156,6 +1178,9 @@ impl Client {
                         _ => true,
                     });
                 self.playlist_unfollow(id).await?;
+            }
+            ItemId::Show(_id) => {
+                // TODO: implement unfollow
             }
         }
         Ok(())
@@ -1280,6 +1305,28 @@ impl Client {
             albums,
             related_artists,
         })
+    }
+
+    /// Get a show context data
+    pub async fn show_context(&self, show_id: ShowId<'_>) -> Result<Context> {
+        let show_uri = show_id.uri();
+        tracing::info!("Get show context: {}", show_uri);
+
+        let show = self.get_a_show(show_id, None).await?;
+        let first_page = show.episodes.clone();
+
+        // converts `rspotify_model::FullShow` into `state::Show`
+        let show: Show = show.into();
+
+        // get the show's tracks
+        let episodes = self
+            .all_paging_items(first_page, &Query::new())
+            .await?
+            .into_iter()
+            .map(|e| e.into())
+            .collect::<Vec<_>>();
+
+        Ok(Context::Show { show, episodes })
     }
 
     /// Make a GET HTTP request to the Spotify server

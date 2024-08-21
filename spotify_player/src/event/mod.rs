@@ -347,6 +347,15 @@ pub fn handle_action_in_context(
             }
             _ => Ok(false),
         },
+        ActionContext::Show(show) => match action {
+            Action::CopyLink => {
+                let show_url = format!("https://open.spotify.com/show/{}", show.id.id());
+                execute_copy_command(show_url)?;
+                ui.popup = None;
+                Ok(true)
+            }
+            _ => Ok(false),
+        },
         ActionContext::Episode(episode) => match action {
             //Action::GoToShow => {
             //    handle_go_to_artist(track.artists, ui);

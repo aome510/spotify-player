@@ -1,5 +1,6 @@
 use crate::state::{
-    Album, Artist, DataReadGuard, Episode, Playlist, PlaylistFolder, PlaylistFolderItem, Track,
+    Album, Artist, DataReadGuard, Episode, Playlist, PlaylistFolder, PlaylistFolderItem, Show,
+    Track,
 };
 use serde::Deserialize;
 
@@ -111,6 +112,7 @@ pub enum ActionContext {
     #[allow(dead_code)]
     // TODO: support actions for playlist folders
     PlaylistFolder(PlaylistFolder),
+    Show(Show),
 }
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Default, Copy)]
@@ -149,6 +151,12 @@ impl From<Playlist> for ActionContext {
     }
 }
 
+impl From<Show> for ActionContext {
+    fn from(v: Show) -> Self {
+        Self::Show(v)
+    }
+}
+
 impl From<Episode> for ActionContext {
     fn from(v: Episode) -> Self {
         Self::Episode(v)
@@ -174,6 +182,7 @@ impl ActionContext {
             Self::Episode(episode) => construct_episode_actions(episode, data),
             // TODO: support actions for playlist folders
             Self::PlaylistFolder(_) => vec![],
+            Self::Show(show) => construct_show_actions(show, data),
         }
     }
 }
@@ -248,6 +257,13 @@ pub fn construct_playlist_actions(playlist: &Playlist, data: &DataReadGuard) -> 
     } else {
         actions.push(Action::AddToLibrary);
     }
+    actions
+}
+///
+/// constructs a list of actions on a show
+pub fn construct_show_actions(show: &Show, data: &DataReadGuard) -> Vec<Action> {
+    let mut actions = vec![Action::CopyLink];
+    // TODO: add move actions
     actions
 }
 

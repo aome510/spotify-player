@@ -538,6 +538,9 @@ pub fn handle_item_action(
         ActionListItem::Playlist(playlist, actions) => {
             handle_action_in_context(actions[n], playlist.into(), client_pub, &data, ui)
         }
+        ActionListItem::Show(show, actions) => {
+            handle_action_in_context(actions[n], show.into(), client_pub, &data, ui)
+        }
         ActionListItem::Episode(episode, actions) => {
             handle_action_in_context(actions[n], episode.into(), client_pub, &data, ui)
         }

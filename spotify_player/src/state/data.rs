@@ -87,6 +87,9 @@ impl AppData {
                 top_tracks: tracks, ..
             } => tracks,
             Context::Tracks { tracks, .. } => tracks,
+            Context::Show { .. } => {
+                todo!("implement context_tracks_mut");
+            }
         })
     }
 
@@ -98,6 +101,9 @@ impl AppData {
                 top_tracks: tracks, ..
             } => tracks,
             Context::Tracks { tracks, .. } => tracks,
+            Context::Show { .. } => {
+                todo!("implement context_tracks");
+            }
         })
     }
 }

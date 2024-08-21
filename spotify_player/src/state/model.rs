@@ -1,7 +1,7 @@
 pub use rspotify::model as rspotify_model;
 use rspotify::model::CurrentPlaybackContext;
 pub use rspotify::model::{
-    AlbumId, AlbumType, ArtistId, EpisodeId, Id, PlayableId, PlaylistId, TrackId, UserId,
+    AlbumId, AlbumType, ArtistId, EpisodeId, Id, PlayableId, PlaylistId, ShowId, TrackId, UserId,
 };
 
 use crate::utils::map_join;
@@ -31,6 +31,10 @@ pub enum Context {
         tracks: Vec<Track>,
         desc: String,
     },
+    Show {
+        show: Show,
+        episodes: Vec<Episode>,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -46,6 +50,7 @@ pub enum ContextId {
     Album(AlbumId<'static>),
     Artist(ArtistId<'static>),
     Tracks(TracksId),
+    Show(ShowId<'static>),
 }
 
 /// Data used to start a new playback.
@@ -101,6 +106,7 @@ pub struct SearchResults {
     pub artists: Vec<Artist>,
     pub albums: Vec<Album>,
     pub playlists: Vec<Playlist>,
+    pub shows: Vec<Show>,
     pub episodes: Vec<Episode>,
 }
 
@@ -121,6 +127,7 @@ pub enum Item {
     Album(Album),
     Artist(Artist),
     Playlist(Playlist),
+    Show(Show),
 }
 
 #[derive(Debug, Clone)]
@@ -129,6 +136,7 @@ pub enum ItemId {
     Album(AlbumId<'static>),
     Artist(ArtistId<'static>),
     Playlist(PlaylistId<'static>),
+    Show(ShowId<'static>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -198,7 +206,14 @@ pub struct Playlist {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-/// A Spotify playlist
+/// A Spotify show (podcast)
+pub struct Show {
+    pub id: ShowId<'static>,
+    pub name: String,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+/// A Spotify episode (podcast episode)
 pub struct Episode {
     pub id: EpisodeId<'static>,
     pub name: String,
@@ -271,6 +286,10 @@ impl Context {
             }
             Context::Artist { ref artist, .. } => artist.name.to_string(),
             Context::Tracks { desc, tracks } => format!("{} | {} songs", desc, tracks.len()),
+            Context::Show {
+                ref show,
+                ref episodes,
+            } => format!("{} | {} episodes", show.name, episodes.len()),
         }
     }
 }
@@ -282,6 +301,7 @@ impl ContextId {
             Self::Artist(id) => id.uri(),
             Self::Playlist(id) => id.uri(),
             Self::Tracks(id) => id.uri.to_owned(),
+            Self::Show(id) => id.uri(),
         }
     }
 }
@@ -521,6 +541,36 @@ impl From<rspotify_model::FullPlaylist> for Playlist {
     }
 }
 
+impl std::fmt::Display for Playlist {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} • {}", self.name, self.owner.0)
+    }
+}
+
+impl From<rspotify_model::SimplifiedShow> for Show {
+    fn from(show: rspotify_model::SimplifiedShow) -> Self {
+        Self {
+            id: show.id,
+            name: show.name,
+        }
+    }
+}
+
+impl From<rspotify_model::FullShow> for Show {
+    fn from(show: rspotify_model::FullShow) -> Self {
+        Self {
+            id: show.id,
+            name: show.name,
+        }
+    }
+}
+
+impl std::fmt::Display for Show {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name)
+    }
+}
+
 impl From<rspotify_model::SimplifiedEpisode> for Episode {
     fn from(episode: rspotify_model::SimplifiedEpisode) -> Self {
         Self {
@@ -540,12 +590,6 @@ impl From<rspotify_model::FullEpisode> for Episode {
             description: episode.description,
             duration: episode.duration.to_std().expect("valid chrono duration"),
         }
-    }
-}
-
-impl std::fmt::Display for Playlist {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} • {}", self.name, self.owner.0)
     }
 }
 

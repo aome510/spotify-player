@@ -143,6 +143,7 @@ fn handle_page_change_event(
                             ContextId::Artist(_) => ContextPageUIState::new_artist(),
                             ContextId::Playlist(_) => ContextPageUIState::new_playlist(),
                             ContextId::Tracks(_) => ContextPageUIState::new_tracks(),
+                            ContextId::Show(_) => ContextPageUIState::new_show(),
                         });
                     }
                     None => {

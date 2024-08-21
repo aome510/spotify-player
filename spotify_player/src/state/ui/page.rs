@@ -60,6 +60,7 @@ pub struct SearchPageUIState {
     pub album_list: ListState,
     pub artist_list: ListState,
     pub playlist_list: ListState,
+    pub show_list: ListState,
     pub episode_list: ListState,
     pub focus: SearchFocusState,
 }
@@ -87,6 +88,9 @@ pub enum ContextPageUIState {
     Tracks {
         track_table: TableState,
     },
+    Show {
+        episode_table: TableState,
+    },
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -110,6 +114,7 @@ pub enum SearchFocusState {
     Albums,
     Artists,
     Playlists,
+    Shows,
     Episodes,
 }
 
@@ -184,6 +189,7 @@ impl PageState {
                         album_list,
                         artist_list,
                         playlist_list,
+                        show_list,
                         episode_list,
                         focus,
                     },
@@ -194,6 +200,7 @@ impl PageState {
                 SearchFocusState::Albums => Some(MutableWindowState::List(album_list)),
                 SearchFocusState::Artists => Some(MutableWindowState::List(artist_list)),
                 SearchFocusState::Playlists => Some(MutableWindowState::List(playlist_list)),
+                SearchFocusState::Shows => Some(MutableWindowState::List(show_list)),
                 SearchFocusState::Episodes => Some(MutableWindowState::List(episode_list)),
             },
             Self::Context { state, .. } => state.as_mut().map(|state| match state {
@@ -216,6 +223,9 @@ impl PageState {
                         MutableWindowState::List(related_artist_list)
                     }
                 },
+                ContextPageUIState::Show { episode_table } => {
+                    MutableWindowState::Table(episode_table)
+                }
             }),
             Self::Browse { state } => match state {
                 BrowsePageUIState::CategoryList { state } => Some(MutableWindowState::List(state)),
@@ -251,6 +261,7 @@ impl SearchPageUIState {
             album_list: ListState::default(),
             artist_list: ListState::default(),
             playlist_list: ListState::default(),
+            show_list: ListState::default(),
             episode_list: ListState::default(),
             focus: SearchFocusState::Input,
         }
@@ -266,6 +277,7 @@ impl ContextPageType {
                 ContextId::Album(_) => String::from("Album"),
                 ContextId::Artist(_) => String::from("Artist"),
                 ContextId::Tracks(id) => id.kind.to_owned(),
+                ContextId::Show(_) => String::from("Show"),
             },
         }
     }
@@ -296,6 +308,12 @@ impl ContextPageUIState {
     pub fn new_tracks() -> Self {
         Self::Tracks {
             track_table: TableState::default(),
+        }
+    }
+
+    pub fn new_show() -> Self {
+        Self::Show {
+            episode_table: TableState::default(),
         }
     }
 }
@@ -415,6 +433,7 @@ impl_focusable!(
     [Tracks, Albums],
     [Albums, Artists],
     [Artists, Playlists],
-    [Playlists, Episodes],
+    [Playlists, Shows],
+    [Shows, Episodes],
     [Episodes, Input]
 );
