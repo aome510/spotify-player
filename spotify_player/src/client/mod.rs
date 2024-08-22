@@ -452,7 +452,11 @@ impl Client {
                     .await?
             }
             ClientRequest::AddTrackToPlaylist(playlist_id, track_id) => {
-                self.add_track_to_playlist(state, playlist_id, track_id)
+                self.add_item_to_playlist(state, playlist_id, PlayableId::Track(track_id))
+                    .await?;
+            }
+            ClientRequest::AddEpisodeToPlaylist(playlist_id, episode_id) => {
+                self.add_item_to_playlist(state, playlist_id, PlayableId::Episode(episode_id))
                     .await?;
             }
             ClientRequest::AddAlbumToQueue(album_id) => {
@@ -951,26 +955,22 @@ impl Client {
     }
 
     /// Add a track to a playlist
-    pub async fn add_track_to_playlist(
+    pub async fn add_item_to_playlist(
         &self,
         state: &SharedState,
         playlist_id: PlaylistId<'_>,
-        track_id: TrackId<'_>,
+        playable_id: PlayableId<'_>,
     ) -> Result<()> {
         // remove all the occurrences of the track to ensure no duplication in the playlist
         self.playlist_remove_all_occurrences_of_items(
             playlist_id.as_ref(),
-            [PlayableId::Track(track_id.as_ref())],
+            [playable_id.as_ref()],
             None,
         )
         .await?;
 
-        self.playlist_add_items(
-            playlist_id.as_ref(),
-            [PlayableId::Track(track_id.as_ref())],
-            None,
-        )
-        .await?;
+        self.playlist_add_items(playlist_id.as_ref(), [playable_id.as_ref()], None)
+            .await?;
 
         // After adding a new track to a playlist, remove the cache of that playlist to force refetching new data
         state.data.write().caches.context.remove(&playlist_id.uri());

@@ -112,6 +112,9 @@ pub fn render_popup(
                     PlaylistPopupAction::AddTrack { folder_id, .. } => {
                         data.user_data.modifiable_playlist_items(Some(*folder_id))
                     }
+                    PlaylistPopupAction::AddEpisode { folder_id, .. } => {
+                        data.user_data.modifiable_playlist_items(Some(*folder_id))
+                    }
                 };
                 let items = items.into_iter().map(|p| (p.to_string(), false)).collect();
 

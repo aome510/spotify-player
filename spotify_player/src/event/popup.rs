@@ -164,6 +164,43 @@ pub fn handle_key_sequence_for_popup(
                     },
                 )
             }
+            PlaylistPopupAction::AddEpisode {
+                folder_id,
+                episode_id,
+            } => {
+                let episode_id = episode_id.clone();
+                let data = state.data.read();
+                let items = data.user_data.modifiable_playlist_items(Some(*folder_id));
+
+                handle_command_for_list_popup(
+                    command,
+                    ui,
+                    items.len(),
+                    |_, _| {},
+                    |ui: &mut UIStateGuard, id: usize| -> Result<()> {
+                        ui.popup = match items[id] {
+                            PlaylistFolderItem::Folder(f) => Some(PopupState::UserPlaylistList(
+                                PlaylistPopupAction::AddEpisode {
+                                    folder_id: f.target_id,
+                                    episode_id,
+                                },
+                                ListState::default(),
+                            )),
+                            PlaylistFolderItem::Playlist(p) => {
+                                client_pub.send(ClientRequest::AddEpisodeToPlaylist(
+                                    p.id.clone(),
+                                    episode_id,
+                                ))?;
+                                None
+                            }
+                        };
+                        Ok(())
+                    },
+                    |ui: &mut UIStateGuard| {
+                        ui.popup = None;
+                    },
+                )
+            }
         },
         PopupState::UserFollowedArtistList(_) => {
             let artist_uris = state

@@ -363,17 +363,17 @@ pub fn handle_action_in_context(
                 ui.popup = None;
                 Ok(true)
             }
-            //Action::AddToPlaylist => {
-            //    client_pub.send(ClientRequest::GetUserPlaylists)?;
-            //    ui.popup = Some(PopupState::UserPlaylistList(
-            //        PlaylistPopupAction::AddTrack {
-            //            folder_id: 0,
-            //            track_id: track.id,
-            //        },
-            //        ListState::default(),
-            //    ));
-            //    Ok(true)
-            //}
+            Action::AddToPlaylist => {
+                client_pub.send(ClientRequest::GetUserPlaylists)?;
+                ui.popup = Some(PopupState::UserPlaylistList(
+                    PlaylistPopupAction::AddEpisode {
+                        folder_id: 0,
+                        episode_id: episode.id,
+                    },
+                    ListState::default(),
+                ));
+                Ok(true)
+            }
             //Action::ToggleLiked => {
             //    if data.user_data.is_liked_track(&track) {
             //        client_pub.send(ClientRequest::DeleteFromLibrary(ItemId::Track(track.id)))?;

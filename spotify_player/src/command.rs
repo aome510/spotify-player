@@ -258,7 +258,7 @@ pub fn construct_episode_actions(_episode: &Episode, _data: &DataReadGuard) -> V
         //Action::GoToShow
         //Action::ShowActionsOnShow,
         Action::CopyLink,
-        //Action::AddToPlaylist,    ?
+        Action::AddToPlaylist,
         Action::AddToQueue,
     ]
 }

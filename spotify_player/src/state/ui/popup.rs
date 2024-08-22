@@ -45,6 +45,10 @@ pub enum PlaylistPopupAction {
         folder_id: usize,
         track_id: TrackId<'static>,
     },
+    AddEpisode {
+        folder_id: usize,
+        episode_id: EpisodeId<'static>,
+    },
 }
 
 /// An action on an item in an artist popup list
