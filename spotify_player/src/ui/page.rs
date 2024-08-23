@@ -1037,7 +1037,7 @@ fn render_episode_table(
                 //},
                 Cell::from(id),
                 Cell::from(t.name.clone()),
-                //Cell::from(t.artists_info()),
+                Cell::from(t.release_date.clone()),
                 //Cell::from(t.album_info()),
                 Cell::from(format!(
                     "{}:{:02}",
@@ -1054,7 +1054,7 @@ fn render_episode_table(
             Constraint::Length(configs.app_config.liked_icon.chars().count() as u16),
             Constraint::Length(4),
             Constraint::Fill(4),
-            //Constraint::Fill(3),
+            Constraint::Fill(3),
             //Constraint::Fill(5),
             Constraint::Fill(1),
         ],
@@ -1064,7 +1064,7 @@ fn render_episode_table(
             Cell::from(""),
             Cell::from("#"),
             Cell::from("Title"),
-            //Cell::from("Artists"),
+            Cell::from("Date"),
             //Cell::from("Album"),
             Cell::from("Duration"),
         ])
