@@ -219,6 +219,7 @@ pub struct Episode {
     pub name: String,
     pub description: String,
     pub duration: std::time::Duration,
+    pub show: Option<Show>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -578,6 +579,7 @@ impl From<rspotify_model::SimplifiedEpisode> for Episode {
             name: episode.name,
             description: episode.description,
             duration: episode.duration.to_std().expect("valid chrono duration"),
+            show: None,
         }
     }
 }
@@ -589,6 +591,7 @@ impl From<rspotify_model::FullEpisode> for Episode {
             name: episode.name,
             description: episode.description,
             duration: episode.duration.to_std().expect("valid chrono duration"),
+            show: Some(episode.show.into()),
         }
     }
 }

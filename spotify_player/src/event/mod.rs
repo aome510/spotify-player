@@ -357,10 +357,20 @@ pub fn handle_action_in_context(
             _ => Ok(false),
         },
         ActionContext::Episode(episode) => match action {
-            //Action::GoToShow => {
-            //    handle_go_to_artist(track.artists, ui);
-            //    Ok(true)
-            //}
+            Action::GoToShow => {
+                if let Some(show) = episode.show {
+                    let context_id = ContextId::Show(
+                        ShowId::from_uri(&parse_uri(&show.id.uri()))?.into_static(),
+                    );
+                    ui.new_page(PageState::Context {
+                        id: None,
+                        context_page_type: ContextPageType::Browsing(context_id),
+                        state: None,
+                    });
+                    return Ok(true);
+                }
+                Ok(false)
+            }
             Action::AddToQueue => {
                 client_pub.send(ClientRequest::AddEpisodeToQueue(episode.id))?;
                 ui.popup = None;

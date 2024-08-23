@@ -87,6 +87,7 @@ pub enum Action {
     GoToArtist,
     GoToAlbum,
     GoToRadio,
+    GoToShow,
     AddToLibrary,
     AddToPlaylist,
     AddToQueue,
@@ -268,15 +269,18 @@ pub fn construct_show_actions(show: &Show, data: &DataReadGuard) -> Vec<Action> 
 }
 
 /// constructs a list of actions on an episode
-pub fn construct_episode_actions(_episode: &Episode, _data: &DataReadGuard) -> Vec<Action> {
-    vec![
+pub fn construct_episode_actions(episode: &Episode, _data: &DataReadGuard) -> Vec<Action> {
+    let mut actions = vec![
         //TODO: implement the below
-        //Action::GoToShow
         //Action::ShowActionsOnShow,
         Action::CopyLink,
         Action::AddToPlaylist,
         Action::AddToQueue,
-    ]
+    ];
+    if episode.show.is_some() {
+        actions.push(Action::GoToShow)
+    }
+    actions
 }
 
 impl Command {
