@@ -426,20 +426,20 @@ pub fn handle_action_in_context(
             //    handle_show_actions_on_artist(track.artists, data, ui);
             //    Ok(true)
             //}
-            //Action::ShowActionsOnAlbum => {
-            //    if let Some(album) = track.album {
-            //        let context = ActionContext::Album(album.clone());
-            //        ui.popup = Some(PopupState::ActionList(
-            //            Box::new(ActionListItem::Album(
-            //                album,
-            //                context.get_available_actions(data),
-            //            )),
-            //            ListState::default(),
-            //        ));
-            //        return Ok(true);
-            //    }
-            //    Ok(false)
-            //}
+            Action::ShowActionsOnShow => {
+                if let Some(show) = episode.show {
+                    let context = ActionContext::Show(show.clone());
+                    ui.popup = Some(PopupState::ActionList(
+                        Box::new(ActionListItem::Show(
+                            show,
+                            context.get_available_actions(data),
+                        )),
+                        ListState::default(),
+                    ));
+                    return Ok(true);
+                }
+                Ok(false)
+            }
             //Action::DeleteFromPlaylist => {
             //    if let PageState::Context {
             //        id: Some(ContextId::Playlist(playlist_id)),
