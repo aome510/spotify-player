@@ -816,7 +816,7 @@ fn handle_global_command(
         Command::JumpToCurrentTrackInContext => {
             let track_id = match state.player.read().currently_playing() {
                 Some(rspotify_model::PlayableItem::Track(track)) => {
-                    PlayableId::Track(track.id.clone().unwrap())
+                    PlayableId::Track(track.id.clone().expect("all non-local tracks have ids"))
                 }
                 Some(rspotify_model::PlayableItem::Episode(episode)) => {
                     PlayableId::Episode(episode.id.clone())

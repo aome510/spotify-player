@@ -52,7 +52,7 @@ fn handle_playback_change_event(
     ) {
         (Some(playback), Some(PlayableItem::Track(track))) => (
             playback,
-            PlayableId::Track(track.id.clone().unwrap()),
+            PlayableId::Track(track.id.clone().expect("all non-local tracks have ids")),
             track.name.clone(),
             track.duration,
         ),
@@ -75,7 +75,12 @@ fn handle_playback_change_event(
     if let Some(queue) = player.queue.as_ref() {
         // queue needs to be updated if its playing track is different from actual playback's playing track
         if let Some(queue_track) = queue.currently_playing.as_ref() {
-            if queue_track.id().unwrap().uri() != id.uri() {
+            if queue_track
+                .id()
+                .expect("all non-local tracks have ids")
+                .uri()
+                != id.uri()
+            {
                 client_pub.send(ClientRequest::GetCurrentUserQueue)?;
             }
         }
