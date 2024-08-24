@@ -34,8 +34,8 @@ impl ClipboardProvider for CommandProvider {
         let mut child = std::process::Command::new(&self.copy_command.command)
             .args(&self.copy_command.args)
             .stdin(std::process::Stdio::piped())
-            .stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
             .spawn()?;
 
         if let Some(mut stdin) = child.stdin.take() {
@@ -46,7 +46,7 @@ impl ClipboardProvider for CommandProvider {
         if output.status.success() {
             Ok(())
         } else {
-            anyhow::bail!("copy command failed: {}", String::from_utf8(output.stderr)?);
+            anyhow::bail!("copy command failed");
         }
     }
 }
