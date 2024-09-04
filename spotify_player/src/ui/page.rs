@@ -46,33 +46,32 @@ pub fn render_search_page(
     let search_input_rect = chunks[0];
     let rect = chunks[1];
 
-    // track/album/artist/playlist search results layout (2x2 table)
-    let chunks = Layout::vertical([Constraint::Ratio(1, 2); 2])
-        .split(rect)
-        .iter()
-        .flat_map(|rect| {
-            Layout::horizontal([Constraint::Ratio(1, 2); 2])
-                .split(*rect)
-                .to_vec()
-        })
-        .collect::<Vec<_>>();
+    // track/album/artist/playlist search results layout
+    let chunks = match ui.orientation {
+        Orientation::Vertical => Layout::vertical([Constraint::Ratio(1, 4); 4]).split(rect),
+        // 2x2 table
+        Orientation::Horizontal => Layout::vertical([Constraint::Ratio(1, 2); 2])
+            .split(rect)
+            .iter()
+            .flat_map(|rect| {
+                Layout::horizontal([Constraint::Ratio(1, 2); 2])
+                    .split(*rect)
+                    .to_vec()
+            })
+            .collect(),
+    };
 
-    let track_rect = construct_and_render_block(
-        "Tracks",
-        &ui.theme,
-        Borders::TOP | Borders::RIGHT,
-        frame,
-        chunks[0],
-    );
+    let mut left_column_borders = Borders::TOP;
+    if ui.orientation.is_horizontal() {
+        left_column_borders |= Borders::RIGHT;
+    }
+
+    let track_rect =
+        construct_and_render_block("Tracks", &ui.theme, left_column_borders, frame, chunks[0]);
     let album_rect =
         construct_and_render_block("Albums", &ui.theme, Borders::TOP, frame, chunks[1]);
-    let artist_rect = construct_and_render_block(
-        "Artists",
-        &ui.theme,
-        Borders::TOP | Borders::RIGHT,
-        frame,
-        chunks[2],
-    );
+    let artist_rect =
+        construct_and_render_block("Artists", &ui.theme, left_column_borders, frame, chunks[2]);
     let playlist_rect =
         construct_and_render_block("Playlists", &ui.theme, Borders::TOP, frame, chunks[3]);
 
@@ -323,35 +322,31 @@ pub fn render_library_page(
     };
 
     // 2. Construct the page's layout
-    // Horizontally split the library page into 3 windows:
+    // Split the library page into 3 windows:
     // - a playlists window
     // - a saved albums window
     // - a followed artists window
 
-    let chunks = Layout::horizontal([
-        Constraint::Percentage(configs.app_config.layout.library.playlist_percent),
-        Constraint::Percentage(configs.app_config.layout.library.album_percent),
-        Constraint::Percentage(
-            100 - (configs.app_config.layout.library.album_percent
-                + configs.app_config.layout.library.playlist_percent),
-        ),
-    ])
-    .split(rect);
+    let chunks = ui
+        .orientation
+        .layout([
+            Constraint::Percentage(configs.app_config.layout.library.playlist_percent),
+            Constraint::Percentage(configs.app_config.layout.library.album_percent),
+            Constraint::Percentage(
+                100 - (configs.app_config.layout.library.album_percent
+                    + configs.app_config.layout.library.playlist_percent),
+            ),
+        ])
+        .split(rect);
 
-    let playlist_rect = construct_and_render_block(
-        "Playlists",
-        &ui.theme,
-        Borders::TOP | Borders::LEFT | Borders::BOTTOM,
-        frame,
-        chunks[0],
-    );
-    let album_rect = construct_and_render_block(
-        "Albums",
-        &ui.theme,
-        Borders::TOP | Borders::LEFT | Borders::BOTTOM,
-        frame,
-        chunks[1],
-    );
+    let borders = match ui.orientation {
+        Orientation::Horizontal => Borders::TOP | Borders::LEFT | Borders::BOTTOM,
+        Orientation::Vertical => Borders::ALL,
+    };
+
+    let playlist_rect =
+        construct_and_render_block("Playlists", &ui.theme, borders, frame, chunks[0]);
+    let album_rect = construct_and_render_block("Albums", &ui.theme, borders, frame, chunks[1]);
     let artist_rect =
         construct_and_render_block("Artists", &ui.theme, Borders::ALL, frame, chunks[2]);
 

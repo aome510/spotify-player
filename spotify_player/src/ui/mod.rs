@@ -116,3 +116,41 @@ fn render_main_layout(
         PageType::CommandHelp => page::render_commands_help_page(frame, ui, rect),
     }
 }
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Orientation {
+    Vertical,
+    #[default]
+    Horizontal,
+}
+
+impl Orientation {
+    pub fn from_size(columns: u16, rows: u16) -> Self {
+        let ratio = columns as f64 / rows as f64;
+
+        // a larger ratio has to be used since terminal cells aren't square
+        if ratio > 2.3 {
+            Self::Horizontal
+        } else {
+            Self::Vertical
+        }
+    }
+
+    pub fn layout<I>(&self, constraints: I) -> Layout
+    where
+        I: IntoIterator,
+        I::Item: Into<Constraint>,
+    {
+        match self {
+            Self::Vertical => Layout::vertical(constraints),
+            Self::Horizontal => Layout::horizontal(constraints),
+        }
+    }
+
+    pub fn is_vertical(&self) -> bool {
+        self == &Self::Vertical
+    }
+    pub fn is_horizontal(&self) -> bool {
+        self == &Self::Horizontal
+    }
+}
