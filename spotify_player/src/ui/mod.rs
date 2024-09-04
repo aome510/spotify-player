@@ -147,9 +147,6 @@ impl Orientation {
         }
     }
 
-    pub fn is_vertical(&self) -> bool {
-        self == &Self::Vertical
-    }
     pub fn is_horizontal(&self) -> bool {
         self == &Self::Horizontal
     }
