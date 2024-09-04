@@ -48,7 +48,18 @@ pub fn render_search_page(
 
     // track/album/artist/playlist search results layout
     let chunks = match ui.orientation {
-        Orientation::Vertical => Layout::vertical([Constraint::Ratio(1, 4); 4]).split(rect),
+        Orientation::Vertical => {
+            let constraints = match focus_state {
+                SearchFocusState::Input => [Constraint::Ratio(1, 4); 4],
+                _ => {
+                    let mut constraints = [Constraint::Percentage(20); 4];
+                    constraints[focus_state as usize - 1] = Constraint::Percentage(40);
+                    constraints
+                }
+            };
+
+            Layout::vertical(constraints).split(rect)
+        }
         // 2x2 table
         Orientation::Horizontal => Layout::vertical([Constraint::Ratio(1, 2); 2])
             .split(rect)
