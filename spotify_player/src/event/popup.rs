@@ -150,9 +150,9 @@ pub fn handle_key_sequence_for_popup(
                                 ListState::default(),
                             )),
                             PlaylistFolderItem::Playlist(p) => {
-                                client_pub.send(ClientRequest::AddTrackToPlaylist(
+                                client_pub.send(ClientRequest::AddPlayableToPlaylist(
                                     p.id.clone(),
-                                    track_id,
+                                    track_id.into(),
                                 ))?;
                                 None
                             }
@@ -187,9 +187,9 @@ pub fn handle_key_sequence_for_popup(
                                 ListState::default(),
                             )),
                             PlaylistFolderItem::Playlist(p) => {
-                                client_pub.send(ClientRequest::AddEpisodeToPlaylist(
+                                client_pub.send(ClientRequest::AddPlayableToPlaylist(
                                     p.id.clone(),
-                                    episode_id,
+                                    episode_id.into(),
                                 ))?;
                                 None
                             }

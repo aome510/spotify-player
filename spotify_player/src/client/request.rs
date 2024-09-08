@@ -39,8 +39,7 @@ pub enum ClientRequest {
     Search(String),
     AddPlayableToQueue(PlayableId<'static>),
     AddAlbumToQueue(AlbumId<'static>),
-    AddTrackToPlaylist(PlaylistId<'static>, TrackId<'static>),
-    AddEpisodeToPlaylist(PlaylistId<'static>, EpisodeId<'static>),
+    AddPlayableToPlaylist(PlaylistId<'static>, PlayableId<'static>),
     DeleteTrackFromPlaylist(PlaylistId<'static>, TrackId<'static>),
     ReorderPlaylistItems {
         playlist_id: PlaylistId<'static>,
