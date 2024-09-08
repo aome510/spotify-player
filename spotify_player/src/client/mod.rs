@@ -444,13 +444,8 @@ impl Client {
                     );
                 }
             }
-            ClientRequest::AddTrackToQueue(track_id) => {
-                self.add_item_to_queue(PlayableId::Track(track_id), None)
-                    .await?
-            }
-            ClientRequest::AddEpisodeToQueue(episode_id) => {
-                self.add_item_to_queue(PlayableId::Episode(episode_id), None)
-                    .await?
+            ClientRequest::AddPlayableToQueue(playable_id) => {
+                self.add_item_to_queue(playable_id, None).await?
             }
             ClientRequest::AddTrackToPlaylist(playlist_id, track_id) => {
                 self.add_item_to_playlist(state, playlist_id, PlayableId::Track(track_id))

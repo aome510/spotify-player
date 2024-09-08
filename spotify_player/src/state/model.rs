@@ -357,7 +357,7 @@ impl Track {
     pub fn try_from_simplified_track(track: rspotify_model::SimplifiedTrack) -> Option<Self> {
         if track.is_playable.unwrap_or(true) {
             let id = match track.linked_from {
-                Some(d) => d.id,
+                Some(d) => d.id?,
                 None => track.id?,
             };
             Some(Self {
@@ -378,7 +378,7 @@ impl Track {
     pub fn try_from_full_track(track: rspotify_model::FullTrack) -> Option<Self> {
         if track.is_playable.unwrap_or(true) {
             let id = match track.linked_from {
-                Some(d) => d.id,
+                Some(d) => d.id?,
                 None => track.id?,
             };
             Some(Self {

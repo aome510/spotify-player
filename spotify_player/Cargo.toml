@@ -22,7 +22,7 @@ log = "0.4.22"
 chrono = "0.4.38"
 reqwest = { version = "0.12.5", features = ["json"] }
 rpassword = "7.3.1"
-rspotify = "0.13.2"
+rspotify = "0.13.3"
 serde = { version = "1.0.204", features = ["derive"] }
 tokio = { version = "1.38.0", features = ["rt", "rt-multi-thread", "macros", "time"] }
 toml = "0.8.14"
@@ -89,4 +89,3 @@ default = ["rodio-backend", "media-control"]
 
 [package.metadata.binstall]
 pkg-url = "{ repo }/releases/download/v{ version }/{ name }_{ target }{ archive-suffix }"
-

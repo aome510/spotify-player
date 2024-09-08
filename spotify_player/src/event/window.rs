@@ -336,8 +336,8 @@ fn handle_command_for_track_table_window(
             ));
         }
         Command::AddSelectedItemToQueue => {
-            client_pub.send(ClientRequest::AddTrackToQueue(
-                filtered_tracks[id].id.clone(),
+            client_pub.send(ClientRequest::AddPlayableToQueue(
+                filtered_tracks[id].id.clone().into(),
             ))?;
         }
         _ => return Ok(false),
@@ -419,8 +419,8 @@ fn handle_command_for_episode_table_window(
             ));
         }
         Command::AddSelectedItemToQueue => {
-            client_pub.send(ClientRequest::AddEpisodeToQueue(
-                filtered_episodes[id].id.clone(),
+            client_pub.send(ClientRequest::AddPlayableToQueue(
+                filtered_episodes[id].id.clone().into(),
             ))?;
         }
         _ => return Ok(false),
@@ -463,7 +463,9 @@ pub fn handle_command_for_track_list_window(
             ));
         }
         Command::AddSelectedItemToQueue => {
-            client_pub.send(ClientRequest::AddTrackToQueue(tracks[id].id.clone()))?;
+            client_pub.send(ClientRequest::AddPlayableToQueue(
+                tracks[id].id.clone().into(),
+            ))?;
         }
         _ => return Ok(false),
     }
