@@ -13,6 +13,7 @@ pub enum FileCacheKey {
     Playlists,
     PlaylistFolders,
     FollowedArtists,
+    SavedShows,
     SavedAlbums,
     SavedTracks,
 }
@@ -35,6 +36,7 @@ pub struct UserData {
     pub playlists: Vec<PlaylistFolderItem>,
     pub playlist_folder_node: Option<PlaylistFolderNode>,
     pub followed_artists: Vec<Artist>,
+    pub saved_shows: Vec<Show>,
     pub saved_albums: Vec<Album>,
     pub saved_tracks: HashMap<String, Track>,
 }
@@ -124,6 +126,8 @@ impl UserData {
                 cache_folder,
             )
             .unwrap_or_default(),
+            saved_shows: load_data_from_file_cache(FileCacheKey::SavedShows, cache_folder)
+                .unwrap_or_default(),
             saved_albums: load_data_from_file_cache(FileCacheKey::SavedAlbums, cache_folder)
                 .unwrap_or_default(),
             saved_tracks: load_data_from_file_cache(FileCacheKey::SavedTracks, cache_folder)

@@ -1125,8 +1125,13 @@ impl Client {
                     }
                 }
             }
-            Item::Show(_show) => {
-                // TODO: implement add_to_library
+            Item::Show(show) => {
+                let follows = self.check_users_saved_shows([show.id.as_ref()]).await?;
+                if !follows[0] {
+                    self.save_shows([show.id.as_ref()]).await?;
+                    // update the in-memory `user_data`
+                    state.data.write().user_data.saved_shows.insert(0, show);
+                }
             }
         }
         Ok(())
@@ -1170,8 +1175,15 @@ impl Client {
                     });
                 self.playlist_unfollow(id).await?;
             }
-            ItemId::Show(_id) => {
-                // TODO: implement unfollow
+            ItemId::Show(id) => {
+                state
+                    .data
+                    .write()
+                    .user_data
+                    .saved_shows
+                    .retain(|s| s.id != id);
+                self.remove_users_saved_shows([id], Some(Market::FromToken))
+                    .await?;
             }
         }
         Ok(())

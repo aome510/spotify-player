@@ -354,6 +354,16 @@ pub fn handle_action_in_context(
                 ui.popup = None;
                 Ok(true)
             }
+            Action::AddToLibrary => {
+                client_pub.send(ClientRequest::AddToLibrary(Item::Show(show)))?;
+                ui.popup = None;
+                Ok(true)
+            }
+            Action::DeleteFromLibrary => {
+                client_pub.send(ClientRequest::DeleteFromLibrary(ItemId::Show(show.id)))?;
+                ui.popup = None;
+                Ok(true)
+            }
             _ => Ok(false),
         },
         ActionContext::Episode(episode) => match action {

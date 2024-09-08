@@ -357,7 +357,6 @@ pub fn render_context_page(
                         state,
                         ui.search_filtered_items(episodes),
                         ui,
-                        &data,
                     );
                 }
             }
@@ -1001,7 +1000,6 @@ fn render_episode_table(
     state: &SharedState,
     episodes: Vec<&Episode>,
     ui: &mut UIStateGuard,
-    data: &DataReadGuard,
 ) {
     let configs = config::get_config();
     // get the current playing track's URI to decorate such track (if exists) in the track table
@@ -1030,15 +1028,9 @@ fn render_episode_table(
                 ((id + 1).to_string(), Style::default())
             };
             Row::new(vec![
-                //if data.user_data.is_liked_track(t) {
-                //    Cell::from(&configs.app_config.liked_icon as &str).style(ui.theme.like())
-                //} else {
-                Cell::from(""),
-                //},
                 Cell::from(id),
                 Cell::from(t.name.clone()),
                 Cell::from(t.release_date.clone()),
-                //Cell::from(t.album_info()),
                 Cell::from(format!(
                     "{}:{:02}",
                     t.duration.as_secs() / 60,
@@ -1051,21 +1043,17 @@ fn render_episode_table(
     let episode_table = Table::new(
         rows,
         [
-            Constraint::Length(configs.app_config.liked_icon.chars().count() as u16),
             Constraint::Length(4),
             Constraint::Fill(4),
             Constraint::Fill(3),
-            //Constraint::Fill(5),
             Constraint::Fill(1),
         ],
     )
     .header(
         Row::new(vec![
-            Cell::from(""),
             Cell::from("#"),
             Cell::from("Title"),
             Cell::from("Date"),
-            //Cell::from("Album"),
             Cell::from("Duration"),
         ])
         .style(ui.theme.table_header()),
