@@ -393,39 +393,6 @@ pub fn handle_action_in_context(
                 ));
                 Ok(true)
             }
-            //Action::ToggleLiked => {
-            //    if data.user_data.is_liked_track(&track) {
-            //        client_pub.send(ClientRequest::DeleteFromLibrary(ItemId::Track(track.id)))?;
-            //    } else {
-            //        client_pub.send(ClientRequest::AddToLibrary(Item::Track(track)))?;
-            //    }
-            //    ui.popup = None;
-            //    Ok(true)
-            //}
-            //Action::AddToLiked => {
-            //    client_pub.send(ClientRequest::AddToLibrary(Item::Track(track)))?;
-            //    ui.popup = None;
-            //    Ok(true)
-            //}
-            //Action::DeleteFromLiked => {
-            //    client_pub.send(ClientRequest::DeleteFromLibrary(ItemId::Track(track.id)))?;
-            //    ui.popup = None;
-            //    Ok(true)
-            //}
-            //Action::GoToRadio => {
-            //    let uri = track.id.uri();
-            //    let name = track.name;
-            //    ui.new_radio_page(&uri);
-            //    client_pub.send(ClientRequest::GetRadioTracks {
-            //        seed_uri: uri,
-            //        seed_name: name,
-            //    })?;
-            //    Ok(true)
-            //}
-            //Action::ShowActionsOnArtist => {
-            //    handle_show_actions_on_artist(track.artists, data, ui);
-            //    Ok(true)
-            //}
             Action::ShowActionsOnShow => {
                 if let Some(show) = episode.show {
                     let context = ActionContext::Show(show.clone());
@@ -440,20 +407,6 @@ pub fn handle_action_in_context(
                 }
                 Ok(false)
             }
-            //Action::DeleteFromPlaylist => {
-            //    if let PageState::Context {
-            //        id: Some(ContextId::Playlist(playlist_id)),
-            //        ..
-            //    } = ui.current_page()
-            //    {
-            //        client_pub.send(ClientRequest::DeleteTrackFromPlaylist(
-            //            playlist_id.clone_static(),
-            //            track.id,
-            //        ))?;
-            //    }
-            //    ui.popup = None;
-            //    Ok(true)
-            //}
             _ => Ok(false),
         },
         // TODO: support actions for playlist folders

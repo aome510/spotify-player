@@ -59,44 +59,10 @@ pub enum ContextId {
 /// - Specify the list of track IDs with an offset
 ///
 /// An offset can be either a track's URI or its absolute offset in the context
+#[derive(Clone, Debug)]
 pub enum Playback {
     Context(ContextId, Option<rspotify_model::Offset>),
     URIs(Vec<PlayableId<'static>>, Option<rspotify_model::Offset>),
-}
-
-impl std::fmt::Debug for Playback {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Context(context_id, offset) => f
-                .debug_tuple("Playback::Context")
-                .field(context_id)
-                .field(offset)
-                .finish(),
-            Self::URIs(playable_ids, offset) => {
-                write!(f, "Playback::URIs([")?;
-                for id in playable_ids.iter() {
-                    match id {
-                        PlayableId::Track(track_id) => write!(f, "{}, ", track_id)?,
-                        PlayableId::Episode(episode_id) => write!(f, "{}, ", episode_id)?,
-                    }
-                }
-                write!(f, "], ")?;
-                write!(f, "{:?})", offset)
-            }
-        }
-    }
-}
-
-impl Clone for Playback {
-    fn clone(&self) -> Self {
-        match self {
-            Self::Context(context_id, offset) => Self::Context(context_id.clone(), offset.clone()),
-            Self::URIs(playable_ids, offset) => Self::URIs(
-                playable_ids.into_iter().map(|x| x.clone_static()).collect(),
-                offset.clone(),
-            ),
-        }
-    }
 }
 
 #[derive(Default, Clone, Debug, Deserialize, Serialize)]
@@ -657,7 +623,7 @@ impl Playback {
             }
             Playback::URIs(ids, _) => {
                 let ids = if ids.len() < limit {
-                    ids.into_iter().map(|x| x.clone_static()).collect()
+                    ids.clone()
                 } else {
                     let pos = ids
                         .iter()
@@ -669,7 +635,7 @@ impl Playback {
                     // API request, we restrict the range of tracks to be played, which is based on the
                     // playing track's position (if any) and the application's limit (`app_config.tracks_playback_limit`).
                     // Related issue: https://github.com/aome510/spotify-player/issues/78
-                    ids[l..r].into_iter().map(|x| x.clone_static()).collect()
+                    ids[l..r].to_vec()
                 };
 
                 Playback::URIs(ids, Some(rspotify_model::Offset::Uri(uri)))

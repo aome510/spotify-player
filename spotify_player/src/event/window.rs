@@ -82,7 +82,13 @@ pub fn handle_action_for_focused_context_page(
             ui,
             client_pub,
         ),
-        Some(Context::Show { .. }) => todo!("handle_action_for_focused_context_page"),
+        Some(Context::Show { episodes, .. }) => handle_action_for_selected_item(
+            action,
+            ui.search_filtered_items(episodes),
+            &data,
+            ui,
+            client_pub,
+        ),
         None => Ok(false),
     }
 }
@@ -316,10 +322,7 @@ fn handle_command_for_track_table_window(
             let base_playback = if let Some(context_id) = context_id {
                 Playback::Context(context_id, None)
             } else {
-                Playback::URIs(
-                    tracks.iter().map(|t| t.id.clone_static().into()).collect(),
-                    None,
-                )
+                Playback::URIs(tracks.iter().map(|t| t.id.clone().into()).collect(), None)
             };
 
             client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
@@ -396,13 +399,7 @@ fn handle_command_for_episode_table_window(
             let base_playback = if let Some(context_id) = context_id {
                 Playback::Context(context_id, None)
             } else {
-                Playback::URIs(
-                    episodes
-                        .iter()
-                        .map(|t| t.id.clone_static().into())
-                        .collect(),
-                    None,
-                )
+                Playback::URIs(episodes.iter().map(|t| t.id.clone().into()).collect(), None)
             };
 
             client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
@@ -662,9 +659,11 @@ pub fn handle_command_for_episode_list_window(
                 ListState::default(),
             ));
         }
-        //Command::AddSelectedItemToQueue => {
-        //    client_pub.send(ClientRequest::AddEpisodeToQueue(episodes[id].id.clone()))?;
-        //}
+        Command::AddSelectedItemToQueue => {
+            client_pub.send(ClientRequest::AddPlayableToQueue(
+                episodes[id].id.clone().into(),
+            ))?;
+        }
         _ => return Ok(false),
     }
     Ok(true)

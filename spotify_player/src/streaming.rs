@@ -12,6 +12,7 @@ use librespot_playback::{
     player,
 };
 use rspotify::model::{EpisodeId, Id, PlayableId, TrackId};
+use serde::Serialize;
 
 #[cfg(not(any(
     feature = "rodio-backend",
@@ -35,6 +36,7 @@ compile_error!("Streaming feature is enabled but no audio backend has been selec
 For more information, visit https://github.com/aome510/spotify-player?tab=readme-ov-file#streaming
 ");
 
+#[derive(Debug, Serialize)]
 enum PlayerEvent {
     Changed {
         old_playable_id: PlayableId<'static>,
@@ -214,7 +216,7 @@ pub async fn new_connection(client: Client, state: SharedState) -> Spirc {
                         tracing::warn!("Failed to convert a `librespot` player event into `spotify_player` player event: {err:#}");
                     }
                     Ok(Some(event)) => {
-                        tracing::info!("Got a new player event");
+                        tracing::info!("Got a new player event: {event:?}");
                         match event {
                             PlayerEvent::Playing { .. } => {
                                 let mut player = state.player.write();
