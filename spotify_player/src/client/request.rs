@@ -26,6 +26,7 @@ pub enum ClientRequest {
     GetBrowseCategoryPlaylists(Category),
     GetUserPlaylists,
     GetUserSavedAlbums,
+    GetUserSavedShows,
     GetUserFollowedArtists,
     GetUserSavedTracks,
     GetUserTopTracks,

@@ -32,6 +32,7 @@ async fn init_spotify(
     client_pub.send(client::ClientRequest::GetUserFollowedArtists)?;
     client_pub.send(client::ClientRequest::GetUserSavedAlbums)?;
     client_pub.send(client::ClientRequest::GetUserSavedTracks)?;
+    client_pub.send(client::ClientRequest::GetUserSavedShows)?;
 
     Ok(())
 }

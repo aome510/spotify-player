@@ -337,6 +337,16 @@ impl Client {
                 .context("store user's saved albums into the cache folder")?;
                 state.data.write().user_data.saved_albums = albums;
             }
+            ClientRequest::GetUserSavedShows => {
+                let shows = self.current_user_saved_shows().await?;
+                store_data_into_file_cache(
+                    FileCacheKey::SavedShows,
+                    &config::get_config().cache_folder,
+                    &shows,
+                )
+                .context("store user's saved shows into the cache folder")?;
+                state.data.write().user_data.saved_shows = shows;
+            }
             ClientRequest::GetUserTopTracks => {
                 let uri = &USER_TOP_TRACKS_ID.uri;
                 if !state.data.read().caches.context.contains_key(uri) {
@@ -748,6 +758,16 @@ impl Client {
 
         // converts `rspotify_model::SavedAlbum` into `state::Album`
         Ok(albums.into_iter().map(|a| a.album.into()).collect())
+    }
+
+    /// Get all saved shows of the current user
+    pub async fn current_user_saved_shows(&self) -> Result<Vec<Show>> {
+        let first_page = self.get_saved_show_manual(Some(50), None).await?;
+
+        let shows = self.all_paging_items(first_page, &Query::new()).await?;
+
+        // converts `rspotify_model::SavedAlbum` into `state::Album`
+        Ok(shows.into_iter().map(|s| s.show.into()).collect())
     }
 
     /// Get all albums of an artist
