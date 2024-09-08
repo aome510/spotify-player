@@ -102,7 +102,7 @@ fn handle_playback_change_event(
                     "fake track repeat mode is enabled, add the current track ({}) to queue",
                     name
                 );
-                client_pub.send(ClientRequest::AddPlayableToQueue(id.into()))?;
+                client_pub.send(ClientRequest::AddPlayableToQueue(id))?;
                 handler_state.add_track_to_queue_req_timer = std::time::Instant::now();
             }
         }

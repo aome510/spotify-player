@@ -170,7 +170,7 @@ pub fn render_search_page(
             .map(|s| {
                 s.episodes
                     .iter()
-                    .map(|e| (format!("{}", e.to_string()), false))
+                    .map(|e| (format!("{}", e), false))
                     .collect::<Vec<_>>()
             })
             .unwrap_or_default();

@@ -47,7 +47,7 @@ impl PlayerState {
     }
 
     pub fn currently_playing(&self) -> Option<&rspotify_model::PlayableItem> {
-        self.playback.as_ref().map(|p| p.item.as_ref()).flatten()
+        self.playback.as_ref().and_then(|p| p.item.as_ref())
     }
 
     pub fn playback_progress(&self) -> Option<chrono::Duration> {

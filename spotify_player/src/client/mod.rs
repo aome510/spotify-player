@@ -1512,7 +1512,7 @@ impl Client {
 
         let track_or_episode = {
             let player = state.player.read();
-            let Some(track_or_episode) = player.currently_playing().clone() else {
+            let Some(track_or_episode) = player.currently_playing() else {
                 return Ok(());
             };
             track_or_episode.clone()
@@ -1520,11 +1520,11 @@ impl Client {
 
         let url = match track_or_episode {
             rspotify_model::PlayableItem::Track(ref track) => {
-                crate::utils::get_track_album_image_url(&track)
+                crate::utils::get_track_album_image_url(track)
                     .ok_or(anyhow::anyhow!("missing image"))?
             }
             rspotify_model::PlayableItem::Episode(ref episode) => {
-                crate::utils::get_episode_show_image_url(&episode)
+                crate::utils::get_episode_show_image_url(episode)
                     .ok_or(anyhow::anyhow!("missing image"))?
             }
         };
@@ -1644,7 +1644,7 @@ impl Client {
                             rspotify_model::PlayableItem::Track(ref track) => &track.name,
                             rspotify_model::PlayableItem::Episode(ref episode) => &episode.name,
                         };
-                        text += &name
+                        text += name
                     }
                     "{artists}" => {
                         let artists_or_show = match playable {
