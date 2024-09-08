@@ -83,6 +83,9 @@ impl PlayerState {
                         rspotify_model::Type::Artist => Some(ContextId::Artist(
                             ArtistId::from_uri(&uri).ok()?.into_static(),
                         )),
+                        rspotify_model::Type::Show => {
+                            Some(ContextId::Show(ShowId::from_uri(&uri).ok()?.into_static()))
+                        }
                         _ => None,
                     }
                 }

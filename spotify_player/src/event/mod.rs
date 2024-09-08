@@ -732,7 +732,9 @@ fn handle_global_command(
         }
         #[cfg(feature = "lyric-finder")]
         Command::LyricPage => {
-            if let Some(track) = state.player.read().currently_playing() {
+            if let Some(rspotify_model::PlayableItem::Track(track)) =
+                state.player.read().currently_playing()
+            {
                 let artists = map_join(&track.artists, |a| &a.name, ", ");
                 ui.new_page(PageState::Lyric {
                     track: track.name.clone(),

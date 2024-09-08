@@ -165,7 +165,9 @@ fn handle_page_change_event(
             artists,
             scroll_offset,
         } => {
-            if let Some(current_track) = state.player.read().currently_playing() {
+            if let Some(rspotify_model::PlayableItem::Track(current_track)) =
+                state.player.read().currently_playing()
+            {
                 if current_track.name != *track {
                     tracing::info!("Current playing track \"{}\" is different from the track \"{track}\" shown up in the lyric page. Updating the track and fetching its lyric...", current_track.name);
                     track.clone_from(&current_track.name);

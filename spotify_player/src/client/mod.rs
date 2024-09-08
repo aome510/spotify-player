@@ -1574,7 +1574,7 @@ impl Client {
         if configs.app_config.enable_notify
             && (!configs.app_config.notify_streaming_only || self.stream_conn.lock().is_some())
         {
-            Self::notify_new_track(track, &path)?;
+            Self::notify_new_track(track_or_episode, &path)?;
         }
 
         Ok(())
@@ -1617,7 +1617,7 @@ impl Client {
     #[cfg(feature = "notify")]
     /// Create a notification for a new track
     fn notify_new_track(
-        track: rspotify_model::FullTrack,
+        playable: rspotify_model::PlayableItem,
         cover_img_path: &std::path::Path,
     ) -> Result<()> {
         let mut n = notify_rust::Notification::new();
@@ -1639,11 +1639,29 @@ impl Client {
                 }
                 ptr = e;
                 match m.as_str() {
-                    "{track}" => text += &track.name,
-                    "{artists}" => {
-                        text += &crate::utils::map_join(&track.artists, |a| &a.name, ", ")
+                    "{track}" => {
+                        let name = match playable {
+                            rspotify_model::PlayableItem::Track(ref track) => &track.name,
+                            rspotify_model::PlayableItem::Episode(ref episode) => &episode.name,
+                        };
+                        text += &name
                     }
-                    "{album}" => text += &track.album.name,
+                    "{artists}" => {
+                        let artists_or_show = match playable {
+                            rspotify_model::PlayableItem::Track(ref track) => {
+                                crate::utils::map_join(&track.artists, |a| &a.name, ", ")
+                            }
+                            rspotify_model::PlayableItem::Episode(ref episode) => {
+                                episode.show.name.clone()
+                            }
+                        };
+                        text += &artists_or_show
+                    }
+                    "{album}" => {
+                        if let rspotify_model::PlayableItem::Track(ref track) = playable {
+                            text += &track.album.name
+                        }
+                    }
                     _ => continue,
                 }
             }
