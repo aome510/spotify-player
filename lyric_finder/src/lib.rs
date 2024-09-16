@@ -111,25 +111,30 @@ impl Client {
 
     /// Get the lyric of a song satisfying a given `query`.
     pub async fn get_lyric(&self, query: &str) -> anyhow::Result<LyricResult> {
-        // The function first searches songs satisfying the query
-        // then it retrieves the song's lyric by crawling the "genius.com" website.
-
-        let result = {
-            let mut results = self.search_songs(query).await?;
-            log::debug!("search results: {results:?}");
-            if results.is_empty() {
-                return Ok(LyricResult::None);
-            }
-            results.remove(0)
+        // Perform the search for songs
+        let results = self.search_songs(query).await?;
+    
+        // Filter to find the first result where the artist names do not contain 'Genius'
+        let result = results.into_iter()
+            .find(|result| !result.artist_names.contains("Genius"));
+    
+        // If no valid result is found, return LyricResult::None
+        let result = match result {
+            Some(res) => res,
+            None => return Ok(LyricResult::None),
         };
-
+    
+        // Retrieve the song lyrics from the URL of the result
         let lyric = self.retrieve_lyric(&result.url).await?;
+    
+        // Return a LyricResult::Some with the song information
         Ok(LyricResult::Some {
             track: result.title,
             artists: result.artist_names,
             lyric: Self::process_lyric(lyric),
         })
     }
+    
 }
 
 impl Default for Client {
