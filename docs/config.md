@@ -7,6 +7,7 @@
   - [Media control](#media-control)
   - [Player event hook command](#player-event-hook-command)
   - [Device configurations](#device-configurations)
+  - [Layout configurations](#layout-configurations)
 - [Themes](#themes)
   - [Use script to add theme](#use-script-to-add-theme)
   - [Palette](#palette)
@@ -14,7 +15,7 @@
 - [Keymaps](#keymaps)
 
 All configuration files should be placed inside the application's configuration folder (default to be `$HOME/.config/spotify-player`).
-
+    
 ## General
 
 **The default `app.toml` can be found in the example [`app.toml`](../examples/app.toml) file.**
@@ -24,9 +25,10 @@ All configuration files should be placed inside the application's configuration 
 | Option                            | Description                                                                              | Default                                                 |
 | --------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------- |
 | `client_id`                       | the Spotify client's ID                                                                  | `65b708073fc0480ea92a077233ca87bd`                      |
+| `client_id_command`                   | a shell command that prints the Spotify client ID to stdout (overrides `client_id`)      | `None`                                                  |
 | `client_port`                     | the port that the application's client is running on to handle CLI commands              | `8080`                                                  |
 | `tracks_playback_limit`           | the limit for the number of tracks played in a **tracks** playback                       | `50`                                                    |
-| `playback_format`                 | the format of the text in the playback's window                                          | `{status} {track} • {artists}\n{album}\n{metadata}`              |
+| `playback_format`                 | the format of the text in the playback's window                                          | `{status} {track} • {artists}\n{album}\n{metadata}`     | 
 | `notify_format`                   | the format of a notification (`notify` feature only)                                     | `{ summary = "{track} • {artists}", body = "{album}" }` |
 | `notify_timeout_in_secs`          | the timeout (in seconds) of a notification (`notify` feature only)                       | `0` (no timeout)                                        |
 | `player_event_hook_command`       | the hook command executed when there is a new player event                               | `None`                                                  |
@@ -42,13 +44,11 @@ All configuration files should be placed inside the application's configuration 
 | `enable_cover_image_cache`        | store album's cover images in the cache folder                                           | `true`                                                  |
 | `notify_streaming_only`           | only send notification when streaming is enabled (`streaming` and `notify` feature only) | `false`                                                 |
 | `default_device`                  | the default device to connect to on startup if no playing device found                   | `spotify-player`                                        |
-| `play_icon`                       | the icon to indicate playing state of a Spotify item                                     | `▶`                                                    |
+| `play_icon`                       | the icon to indicate playing state of a Spotify item                                     | `▶`                                                     |
 | `pause_icon`                      | the icon to indicate pause state of a Spotify item                                       | `▌▌`                                                    |
-| `liked_icon`                      | the icon to indicate the liked state of a song                                           | `♥`                                                    |
+| `liked_icon`                      | the icon to indicate the liked state of a song                                           | `♥`                                                     |
 | `border_type`                     | the type of the application's borders                                                    | `Plain`                                                 |
 | `progress_bar_type`               | the type of the playback progress bar                                                    | `Rectangle`                                             |
-| `playback_window_position`        | the position of the playback window                                                      | `Top`                                                   |
-| `playback_window_width`           | the width of the playback window                                                         | `6`                                                     |
 | `cover_img_width`                 | the width of the cover image (`image` feature only)                                      | `5`                                                     |
 | `cover_img_length`                | the length of the cover image (`image` feature only)                                     | `9`                                                     |
 | `cover_img_scale`                 | the scale of the cover image (`image` feature only)                                      | `1.0`                                                   |
@@ -137,6 +137,26 @@ The configuration options for the [Librespot](https://github.com/librespot-org/l
 
 More details on the above configuration options can be found under the [Librespot wiki page](https://github.com/librespot-org/librespot/wiki/Options).
 
+### Layout configurations
+
+The layout of the application can be adjusted via these options. 
+
+| Option                     | Description                                                      | Default |
+| -------------------------- | ---------------------------------------------------------------- | ------- |
+| `library.album_percent`    | The percentage of the album window in the library                | `40`    |
+| `library.playlist_percent` | The percentage of the playlist window in the library             | `40`    |
+| `playback_window_position` | The position of the playback window                              | `Top`   |
+| `playback_window_height`   | The height of the playback window                                | `6`     |
+
+Example: 
+
+``` toml
+
+[layout]
+library = { album_percent = 40, playlist_percent = 40 }
+playback_window_position = "Top"
+
+```
 ## Themes
 
 `spotify_player` uses the `theme.toml` config file to look for user-defined themes.
@@ -151,7 +171,7 @@ A theme has three main components: `name` (the theme's name), `palette` (the the
 
 ### Use script to add theme
 
-[a `theme_parse` python script](../scripts/theme_parse) (require `pyaml` and `requests` libraries) can be used to parse [Iterm2 alacritty's color schemes](https://github.com/mbadolato/iTerm2-Color-Schemes/tree/master/alacritty) into a `spotify_player` compatible theme format.
+[a `theme_parse` python script](../scripts/theme_parse) (require `toml` and `requests` libraries) can be used to parse [Iterm2 alacritty's color schemes](https://github.com/mbadolato/iTerm2-Color-Schemes/tree/master/alacritty) into a `spotify_player` compatible theme format.
 
 For example, you can run
 
@@ -202,11 +222,13 @@ To define application's component styles, the user can specify any of the below 
 - `playback_album`
 - `playback_metadata`
 - `playback_progress_bar`
+- `playback_progress_bar_unfilled` (Specific to `progress_bar_type` as `Line`)
 - `current_playing`
 - `page_desc`
 - `table_header`
 - `selection`
 - `secondary_row`
+- `like`
 
 A field in `component_style` is a struct with three **optional** fields: `fg` (foreground), `bg` (background) and `modifiers` (terminal effects):
 
@@ -264,8 +286,10 @@ key_sequence = "q"
 
 ## Actions
 
-Actions are located in the same `keymap.toml` file as keymaps. An action can be triggered by a key sequence that is not bound to any command. Once the mapped key sequence is pressed, the corresponding action will be triggered **on the currently selected item**. For example,
+Actions are located in the same `keymap.toml` file as keymaps. An action can be triggered by a key sequence that is not bound to any command. Once the mapped key sequence is pressed, the corresponding action will be triggered. By default actions will act upon the currently selected item, you can change this behaviour by setting the `target` field for a keymap to either `PlayingTrack` or `SelectedItem`. 
 a list of actions can be found [here](../README.md#actions).
+
+For example,
 
 ```toml
 [[actions]]
@@ -274,6 +298,7 @@ key_sequence = "g A"
 [[actions]]
 action = "GoToAlbum"
 key_sequence = "g B"
+target = "PlayingTrack"
 [[actions]]
 action="ToggleLiked"
 key_sequence="C-l"

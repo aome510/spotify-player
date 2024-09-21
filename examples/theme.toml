@@ -65,6 +65,7 @@ bright_magenta = "#ff79c6"
 bright_cyan = "#8be9fd"
 bright_white = "#ffffff"
 [themes.component_style]
+like = { fg = "Red", modifiers = ["Bold"] }
 selection = { bg = "Black", fg = "White", modifiers = ["Bold"] }
 secondary_row = { bg = "#677075" }
 

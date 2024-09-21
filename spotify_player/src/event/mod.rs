@@ -1,11 +1,14 @@
 use crate::{
     client::{ClientRequest, PlayerRequest},
-    command::{self, Action, ActionContext, Command},
+    command::{
+        self, construct_artist_actions, Action, ActionContext, ActionTarget, Command,
+        CommandOrAction,
+    },
     config,
     key::{Key, KeySequence},
     state::*,
     ui::single_line_input::LineInput,
-    utils::{new_list_state, parse_uri},
+    utils::parse_uri,
 };
 
 #[cfg(feature = "lyric-finder")]
@@ -13,6 +16,7 @@ use crate::utils::map_join;
 use anyhow::{Context as _, Result};
 
 use clipboard::{execute_copy_command, get_clipboard_content};
+use tui::widgets::ListState;
 
 mod clipboard;
 mod page;
@@ -102,10 +106,15 @@ fn handle_key_event(
         }
     };
 
-    // if the key sequence is not handled, let the global command handler handle it
+    // if the key sequence is not handled, let the global handler handle it
     let handled = if !handled {
-        match keymap_config.find_command_from_key_sequence(&key_sequence) {
-            Some(command) => handle_global_command(command, client_pub, state, &mut ui)?,
+        match keymap_config.find_command_or_action_from_key_sequence(&key_sequence) {
+            Some(CommandOrAction::Action(action, target)) => {
+                handle_global_action(action, target, client_pub, state, &mut ui)?
+            }
+            Some(CommandOrAction::Command(command)) => {
+                handle_global_command(command, client_pub, state, &mut ui)?
+            }
             None => false,
         }
     } else {
@@ -128,7 +137,7 @@ pub fn handle_action_in_context(
     client_pub: &flume::Sender<ClientRequest>,
     data: &DataReadGuard,
     ui: &mut UIStateGuard,
-) -> Result<()> {
+) -> Result<bool> {
     match context {
         ActionContext::Track(track) => match action {
             Action::GoToAlbum => {
@@ -141,30 +150,35 @@ pub fn handle_action_in_context(
                         context_page_type: ContextPageType::Browsing(context_id),
                         state: None,
                     });
+                    return Ok(true);
                 }
+                Ok(false)
             }
             Action::GoToArtist => {
-                ui.popup = Some(PopupState::ArtistList(
-                    ArtistPopupAction::Browse,
-                    track.artists,
-                    new_list_state(),
-                ));
+                handle_go_to_artist(track.artists, ui);
+                Ok(true)
             }
             Action::AddToQueue => {
                 client_pub.send(ClientRequest::AddTrackToQueue(track.id))?;
                 ui.popup = None;
+                Ok(true)
             }
             Action::CopyLink => {
                 let track_url = format!("https://open.spotify.com/track/{}", track.id.id());
                 execute_copy_command(track_url)?;
                 ui.popup = None;
+                Ok(true)
             }
             Action::AddToPlaylist => {
                 client_pub.send(ClientRequest::GetUserPlaylists)?;
                 ui.popup = Some(PopupState::UserPlaylistList(
-                    PlaylistPopupAction::AddTrack(track.id),
-                    new_list_state(),
+                    PlaylistPopupAction::AddTrack {
+                        folder_id: 0,
+                        track_id: track.id,
+                    },
+                    ListState::default(),
                 ));
+                Ok(true)
             }
             Action::ToggleLiked => {
                 if data.user_data.is_liked_track(&track) {
@@ -173,14 +187,17 @@ pub fn handle_action_in_context(
                     client_pub.send(ClientRequest::AddToLibrary(Item::Track(track)))?;
                 }
                 ui.popup = None;
+                Ok(true)
             }
             Action::AddToLiked => {
                 client_pub.send(ClientRequest::AddToLibrary(Item::Track(track)))?;
                 ui.popup = None;
+                Ok(true)
             }
             Action::DeleteFromLiked => {
                 client_pub.send(ClientRequest::DeleteFromLibrary(ItemId::Track(track.id)))?;
                 ui.popup = None;
+                Ok(true)
             }
             Action::GoToRadio => {
                 let uri = track.id.uri();
@@ -190,22 +207,25 @@ pub fn handle_action_in_context(
                     seed_uri: uri,
                     seed_name: name,
                 })?;
+                Ok(true)
             }
             Action::ShowActionsOnArtist => {
-                ui.popup = Some(PopupState::ArtistList(
-                    ArtistPopupAction::ShowActions,
-                    track.artists,
-                    new_list_state(),
-                ));
+                handle_show_actions_on_artist(track.artists, data, ui);
+                Ok(true)
             }
             Action::ShowActionsOnAlbum => {
                 if let Some(album) = track.album {
                     let context = ActionContext::Album(album.clone());
                     ui.popup = Some(PopupState::ActionList(
-                        ActionListItem::Album(album, context.get_available_actions(data)),
-                        new_list_state(),
+                        Box::new(ActionListItem::Album(
+                            album,
+                            context.get_available_actions(data),
+                        )),
+                        ListState::default(),
                     ));
+                    return Ok(true);
                 }
+                Ok(false)
             }
             Action::DeleteFromPlaylist => {
                 if let PageState::Context {
@@ -219,16 +239,14 @@ pub fn handle_action_in_context(
                     ))?;
                 }
                 ui.popup = None;
+                Ok(true)
             }
-            _ => {}
+            _ => Ok(false),
         },
         ActionContext::Album(album) => match action {
             Action::GoToArtist => {
-                ui.popup = Some(PopupState::ArtistList(
-                    ArtistPopupAction::Browse,
-                    album.artists,
-                    new_list_state(),
-                ));
+                handle_go_to_artist(album.artists, ui);
+                Ok(true)
             }
             Action::GoToRadio => {
                 let uri = album.id.uri();
@@ -238,46 +256,51 @@ pub fn handle_action_in_context(
                     seed_uri: uri,
                     seed_name: name,
                 })?;
+                Ok(true)
             }
             Action::ShowActionsOnArtist => {
-                ui.popup = Some(PopupState::ArtistList(
-                    ArtistPopupAction::ShowActions,
-                    album.artists,
-                    new_list_state(),
-                ));
+                handle_show_actions_on_artist(album.artists, data, ui);
+                Ok(true)
             }
             Action::AddToLibrary => {
                 client_pub.send(ClientRequest::AddToLibrary(Item::Album(album)))?;
                 ui.popup = None;
+                Ok(true)
             }
             Action::DeleteFromLibrary => {
                 client_pub.send(ClientRequest::DeleteFromLibrary(ItemId::Album(album.id)))?;
                 ui.popup = None;
+                Ok(true)
             }
             Action::CopyLink => {
                 let album_url = format!("https://open.spotify.com/album/{}", album.id.id());
                 execute_copy_command(album_url)?;
                 ui.popup = None;
+                Ok(true)
             }
             Action::AddToQueue => {
                 client_pub.send(ClientRequest::AddAlbumToQueue(album.id))?;
                 ui.popup = None;
+                Ok(true)
             }
-            _ => {}
+            _ => Ok(false),
         },
         ActionContext::Artist(artist) => match action {
             Action::Follow => {
                 client_pub.send(ClientRequest::AddToLibrary(Item::Artist(artist)))?;
                 ui.popup = None;
+                Ok(true)
             }
             Action::Unfollow => {
                 client_pub.send(ClientRequest::DeleteFromLibrary(ItemId::Artist(artist.id)))?;
                 ui.popup = None;
+                Ok(true)
             }
             Action::CopyLink => {
                 let artist_url = format!("https://open.spotify.com/artist/{}", artist.id.id());
                 execute_copy_command(artist_url)?;
                 ui.popup = None;
+                Ok(true)
             }
             Action::GoToRadio => {
                 let uri = artist.id.uri();
@@ -287,13 +310,15 @@ pub fn handle_action_in_context(
                     seed_uri: uri,
                     seed_name: name,
                 })?;
+                Ok(true)
             }
-            _ => {}
+            _ => Ok(false),
         },
         ActionContext::Playlist(playlist) => match action {
             Action::AddToLibrary => {
                 client_pub.send(ClientRequest::AddToLibrary(Item::Playlist(playlist)))?;
                 ui.popup = None;
+                Ok(true)
             }
             Action::GoToRadio => {
                 let uri = playlist.id.uri();
@@ -303,24 +328,93 @@ pub fn handle_action_in_context(
                     seed_uri: uri,
                     seed_name: name,
                 })?;
+                Ok(true)
             }
             Action::CopyLink => {
                 let playlist_url =
                     format!("https://open.spotify.com/playlist/{}", playlist.id.id());
                 execute_copy_command(playlist_url)?;
                 ui.popup = None;
+                Ok(true)
             }
             Action::DeleteFromLibrary => {
                 client_pub.send(ClientRequest::DeleteFromLibrary(ItemId::Playlist(
                     playlist.id,
                 )))?;
                 ui.popup = None;
+                Ok(true)
             }
-            _ => {}
+            _ => Ok(false),
         },
+        // TODO: support actions for playlist folders
+        ActionContext::PlaylistFolder(_) => Ok(false),
     }
+}
 
-    Ok(())
+fn handle_go_to_artist(artists: Vec<Artist>, ui: &mut UIStateGuard) {
+    if artists.len() == 1 {
+        let context_id = ContextId::Artist(artists[0].id.clone());
+        ui.new_page(PageState::Context {
+            id: None,
+            context_page_type: ContextPageType::Browsing(context_id),
+            state: None,
+        });
+    } else {
+        ui.popup = Some(PopupState::ArtistList(
+            ArtistPopupAction::Browse,
+            artists,
+            ListState::default(),
+        ));
+    }
+}
+
+fn handle_show_actions_on_artist(
+    artists: Vec<Artist>,
+    data: &DataReadGuard,
+    ui: &mut UIStateGuard,
+) {
+    if artists.len() == 1 {
+        let actions = construct_artist_actions(&artists[0], data);
+        ui.popup = Some(PopupState::ActionList(
+            Box::new(ActionListItem::Artist(artists[0].clone(), actions)),
+            ListState::default(),
+        ));
+    } else {
+        ui.popup = Some(PopupState::ArtistList(
+            ArtistPopupAction::ShowActions,
+            artists,
+            ListState::default(),
+        ));
+    }
+}
+
+/// Handle a global action, currently this is only used to target
+/// the currently playing song instead of the selection.
+fn handle_global_action(
+    action: Action,
+    target: ActionTarget,
+    client_pub: &flume::Sender<ClientRequest>,
+    state: &SharedState,
+    ui: &mut UIStateGuard,
+) -> Result<bool> {
+    if target == ActionTarget::PlayingTrack {
+        let player = state.player.read();
+        let data = state.data.read();
+
+        if let Some(currently_playing) = player.current_playing_track() {
+            if let Some(track) = Track::try_from_full_track(currently_playing.clone()) {
+                return handle_action_in_context(
+                    action,
+                    ActionContext::Track(track),
+                    client_pub,
+                    &data,
+                    ui,
+                );
+            }
+        }
+    };
+
+    Ok(false)
 }
 
 /// Handle a global command that is not specific to any page/popup
@@ -405,8 +499,8 @@ fn handle_global_command(
                     let data = state.data.read();
                     let actions = command::construct_track_actions(&track, &data);
                     ui.popup = Some(PopupState::ActionList(
-                        ActionListItem::Track(track, actions),
-                        new_list_state(),
+                        Box::new(ActionListItem::Track(track, actions)),
+                        ListState::default(),
                     ));
                 }
             }
@@ -421,17 +515,17 @@ fn handle_global_command(
         Command::BrowseUserPlaylists => {
             client_pub.send(ClientRequest::GetUserPlaylists)?;
             ui.popup = Some(PopupState::UserPlaylistList(
-                PlaylistPopupAction::Browse,
-                new_list_state(),
+                PlaylistPopupAction::Browse { folder_id: 0 },
+                ListState::default(),
             ));
         }
         Command::BrowseUserFollowedArtists => {
             client_pub.send(ClientRequest::GetUserFollowedArtists)?;
-            ui.popup = Some(PopupState::UserFollowedArtistList(new_list_state()));
+            ui.popup = Some(PopupState::UserFollowedArtistList(ListState::default()));
         }
         Command::BrowseUserSavedAlbums => {
             client_pub.send(ClientRequest::GetUserSavedAlbums)?;
-            ui.popup = Some(PopupState::UserSavedAlbumList(new_list_state()));
+            ui.popup = Some(PopupState::UserSavedAlbumList(ListState::default()));
         }
         Command::TopTrackPage => {
             ui.new_page(PageState::Context {
@@ -478,7 +572,7 @@ fn handle_global_command(
         Command::BrowsePage => {
             ui.new_page(PageState::Browse {
                 state: BrowsePageUIState::CategoryList {
-                    state: new_list_state(),
+                    state: ListState::default(),
                 },
             });
             client_pub.send(ClientRequest::GetBrowseCategories)?;
@@ -554,7 +648,7 @@ fn handle_global_command(
             }
         }
         Command::SwitchDevice => {
-            ui.popup = Some(PopupState::DeviceList(new_list_state()));
+            ui.popup = Some(PopupState::DeviceList(ListState::default()));
             client_pub.send(ClientRequest::GetDevices)?;
         }
         Command::SwitchTheme => {
@@ -566,7 +660,7 @@ fn handle_global_command(
                 themes.insert(0, theme);
             }
 
-            ui.popup = Some(PopupState::ThemeList(themes, new_list_state()));
+            ui.popup = Some(PopupState::ThemeList(themes, ListState::default()));
         }
         #[cfg(feature = "streaming")]
         Command::RestartIntegratedClient => {

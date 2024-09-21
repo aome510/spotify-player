@@ -73,12 +73,14 @@ pub fn construct_list_widget<'a>(
     )
 }
 
-// Adjust the `selected` position of a `ListState` if that position is out of index
+/// adjust the `selected` position of a `ListState` if that position is invalid
 fn adjust_list_state(state: &mut ListState, len: usize) {
     if let Some(p) = state.selected() {
         if p >= len {
             state.select(if len > 0 { Some(len - 1) } else { Some(0) });
         }
+    } else if len > 0 {
+        state.select(Some(0));
     }
 }
 
@@ -93,12 +95,14 @@ pub fn render_list_window(
     frame.render_stateful_widget(widget, rect, state);
 }
 
-// Adjust the `selected` position of a `TableState` if that position is out of index
+/// adjust the `selected` position of a `TableState` if that position is invalid
 fn adjust_table_state(state: &mut TableState, len: usize) {
     if let Some(p) = state.selected() {
         if p >= len {
             state.select(if len > 0 { Some(len - 1) } else { Some(0) });
         }
+    } else if len > 0 {
+        state.select(Some(0));
     }
 }
 

@@ -315,9 +315,10 @@ pub fn render_library_page(
     // 1. Get data
     let curr_context_uri = state.player.read().playing_context_id().map(|c| c.uri());
     let data = state.data.read();
+    let configs = config::get_config();
 
-    let focus_state = match ui.current_page() {
-        PageState::Library { state } => state.focus,
+    let (focus_state, playlist_folder_id) = match ui.current_page() {
+        PageState::Library { state } => (state.focus, state.playlist_folder_id),
         _ => return,
     };
 
@@ -326,12 +327,17 @@ pub fn render_library_page(
     // - a playlists window
     // - a saved albums window
     // - a followed artists window
+
     let chunks = Layout::horizontal([
-        Constraint::Percentage(40),
-        Constraint::Percentage(40),
-        Constraint::Percentage(20),
+        Constraint::Percentage(configs.app_config.layout.library.playlist_percent),
+        Constraint::Percentage(configs.app_config.layout.library.album_percent),
+        Constraint::Percentage(
+            100 - (configs.app_config.layout.library.album_percent
+                + configs.app_config.layout.library.playlist_percent),
+        ),
     ])
     .split(rect);
+
     let playlist_rect = construct_and_render_block(
         "Playlists",
         &ui.theme,
@@ -351,13 +357,23 @@ pub fn render_library_page(
 
     // 3. Construct the page's widgets
     // Construct the playlist window
+    let items = ui
+        .search_filtered_items(&data.user_data.folder_playlists_items(playlist_folder_id))
+        .into_iter()
+        .map(|item| match item {
+            PlaylistFolderItem::Playlist(p) => {
+                (p.to_string(), curr_context_uri == Some(p.id.uri()))
+            }
+            PlaylistFolderItem::Folder(f) => (f.to_string(), false),
+        })
+        .collect::<Vec<_>>();
+
     let (playlist_list, n_playlists) = utils::construct_list_widget(
         &ui.theme,
-        ui.search_filtered_items(&data.user_data.playlists)
-            .into_iter()
-            .map(|p| (p.to_string(), curr_context_uri == Some(p.id.uri())))
-            .collect(),
-        is_active && focus_state == LibraryFocusState::Playlists,
+        items,
+        is_active
+            && focus_state != LibraryFocusState::SavedAlbums
+            && focus_state != LibraryFocusState::FollowedArtists,
     );
     // Construct the saved album window
     let (album_list, n_albums) = utils::construct_list_widget(
@@ -687,7 +703,7 @@ pub fn render_queue_page(
 
 /// Render windows for an artist context page, which includes
 /// - A top track table
-/// - An album list
+/// - An album table
 /// - A related artist list
 fn render_artist_context_page_windows(
     is_active: bool,
@@ -731,19 +747,39 @@ fn render_artist_context_page_windows(
         construct_and_render_block("Related Artists", &ui.theme, Borders::TOP, frame, chunks[1]);
 
     // 3. Construct the page's widgets
-    // album list widget
-    let (album_list, n_albums) = {
-        let album_items = albums
-            .into_iter()
-            .map(|a| (format!("{1} • {0}", a.name, a.release_date), false))
-            .collect::<Vec<_>>();
+    // album table
+    let is_albums_active = is_active && focus_state == ArtistFocusState::Albums;
+    let n_albums = albums.len();
+    let album_rows = albums
+        .into_iter()
+        .map(|a| {
+            Row::new(vec![
+                Cell::from(a.release_date.clone()),
+                Cell::from(a.album_type()),
+                Cell::from(a.name.clone()),
+            ])
+            .style(Style::default())
+        })
+        .collect::<Vec<_>>();
 
-        utils::construct_list_widget(
-            &ui.theme,
-            album_items,
-            is_active && focus_state == ArtistFocusState::Albums,
-        )
-    };
+    let albums_table = Table::new(
+        album_rows,
+        [
+            Constraint::Length(10),
+            Constraint::Length(6),
+            Constraint::Fill(1),
+        ],
+    )
+    .header(
+        Row::new(vec![
+            Cell::from("Date"),
+            Cell::from("Type"),
+            Cell::from("Name"),
+        ])
+        .style(ui.theme.table_header()),
+    )
+    .column_spacing(2)
+    .highlight_style(ui.theme.selection(is_albums_active));
 
     // artist list widget
     let (artist_list, n_artists) = {
@@ -770,20 +806,26 @@ fn render_artist_context_page_windows(
         data,
     );
 
-    let (album_list_state, artist_list_state) = match ui.current_page_mut() {
+    let (album_table_state, artist_list_state) = match ui.current_page_mut() {
         PageState::Context {
             state:
                 Some(ContextPageUIState::Artist {
-                    album_list,
+                    album_table,
                     related_artist_list,
                     ..
                 }),
             ..
-        } => (album_list, related_artist_list),
+        } => (album_table, related_artist_list),
         _ => return,
     };
 
-    utils::render_list_window(frame, album_list, albums_rect, n_albums, album_list_state);
+    utils::render_table_window(
+        frame,
+        albums_table,
+        albums_rect,
+        n_albums,
+        album_table_state,
+    );
     utils::render_list_window(
         frame,
         artist_list,
@@ -829,11 +871,11 @@ fn render_track_table(
                 ((id + 1).to_string(), Style::default())
             };
             Row::new(vec![
-                Cell::from(if data.user_data.is_liked_track(t) {
-                    &configs.app_config.liked_icon
+                if data.user_data.is_liked_track(t) {
+                    Cell::from(&configs.app_config.liked_icon as &str).style(ui.theme.like())
                 } else {
-                    ""
-                }),
+                    Cell::from("")
+                },
                 Cell::from(id),
                 Cell::from(t.display_name()),
                 Cell::from(t.artists_info()),
@@ -847,7 +889,6 @@ fn render_track_table(
             .style(style)
         })
         .collect::<Vec<_>>();
-
     let track_table = Table::new(
         rows,
         [

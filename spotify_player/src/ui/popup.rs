@@ -105,14 +105,15 @@ pub fn render_popup(
             }
             PopupState::UserPlaylistList(action, _) => {
                 let data = state.data.read();
-                let playlists = match action {
-                    PlaylistPopupAction::Browse => data.user_data.playlists.iter().collect(),
-                    PlaylistPopupAction::AddTrack(_) => data.user_data.modifiable_playlists(),
+                let items = match action {
+                    PlaylistPopupAction::Browse { folder_id } => {
+                        data.user_data.folder_playlists_items(*folder_id)
+                    }
+                    PlaylistPopupAction::AddTrack { folder_id, .. } => {
+                        data.user_data.modifiable_playlist_items(Some(*folder_id))
+                    }
                 };
-                let items = playlists
-                    .into_iter()
-                    .map(|p| (p.to_string(), false))
-                    .collect();
+                let items = items.into_iter().map(|p| (p.to_string(), false)).collect();
 
                 let rect = render_list_popup(frame, rect, "User Playlists", items, 10, ui);
                 (rect, false)

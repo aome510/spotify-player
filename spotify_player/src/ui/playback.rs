@@ -64,9 +64,10 @@ pub fn render_playback_window(
                             };
 
                             if needs_clear {
-                                // clear the image's area to ensure no remaining artifacts before rendering the image
+                                // clear the image's both new and old areas to ensure no remaining artifacts before rendering the image
                                 // See: https://github.com/aome510/spotify-player/issues/389
-                                frame.render_widget(Clear, cover_img_rect);
+                                clear_area(frame, ui.last_cover_image_render_info.render_area);
+                                clear_area(frame, cover_img_rect);
                             } else {
                                 if !ui.last_cover_image_render_info.rendered {
                                     if let Err(err) = render_playback_cover_image(state, ui) {
@@ -102,7 +103,7 @@ pub fn render_playback_window(
 
             if let Some(ref playback) = player.buffered_playback {
                 let playback_text = construct_playback_text(ui, track, playback);
-                let playback_desc = Paragraph::new(playback_text).wrap(Wrap { trim: false });
+                let playback_desc = Paragraph::new(playback_text);
                 frame.render_widget(playback_desc, metadata_rect);
             }
 
@@ -118,14 +119,7 @@ pub fn render_playback_window(
         #[cfg(feature = "image")]
         {
             if ui.last_cover_image_render_info.rendered {
-                let rect = ui.last_cover_image_render_info.render_area;
-                // reset the `skip` state of cells in the cover image area
-                // in order to render the "No playback found" message
-                for x in rect.left()..rect.right() {
-                    for y in rect.top()..rect.bottom() {
-                        frame.buffer_mut().get_mut(x, y).set_skip(false);
-                    }
-                }
+                clear_area(frame, ui.last_cover_image_render_info.render_area);
                 ui.last_cover_image_render_info = Default::default();
             }
         }
@@ -142,6 +136,15 @@ pub fn render_playback_window(
     };
 
     other_rect
+}
+
+#[cfg(feature = "image")]
+fn clear_area(frame: &mut Frame, rect: Rect) {
+    for x in rect.left()..rect.right() {
+        for y in rect.top()..rect.bottom() {
+            frame.buffer_mut().get_mut(x, y).reset();
+        }
+    }
 }
 
 fn construct_playback_text(
@@ -247,6 +250,7 @@ fn render_playback_progress_bar(
         config::ProgressBarType::Line => frame.render_widget(
             LineGauge::default()
                 .filled_style(ui.theme.playback_progress_bar())
+                .unfilled_style(ui.theme.playback_progress_bar_unfilled())
                 .ratio(ratio)
                 .label(Span::styled(
                     format!(
@@ -333,7 +337,7 @@ fn render_playback_cover_image(state: &SharedState, ui: &mut UIStateGuard) -> Re
 /// and the second one for the main application's layout (popup, page, etc).
 fn split_rect_for_playback_window(rect: Rect) -> (Rect, Rect) {
     let configs = config::get_config();
-    let playback_width = configs.app_config.playback_window_width;
+    let playback_width = configs.app_config.layout.playback_window_height;
     // the playback window's width should not be smaller than the cover image's width + 1
     #[cfg(feature = "image")]
     let playback_width = std::cmp::max(configs.app_config.cover_img_width + 1, playback_width);
@@ -341,7 +345,7 @@ fn split_rect_for_playback_window(rect: Rect) -> (Rect, Rect) {
     // +2 for top/bottom borders
     let playback_width = (playback_width + 2) as u16;
 
-    match configs.app_config.playback_window_position {
+    match configs.app_config.layout.playback_window_position {
         config::Position::Top => {
             let chunks =
                 Layout::vertical([Constraint::Length(playback_width), Constraint::Fill(0)])

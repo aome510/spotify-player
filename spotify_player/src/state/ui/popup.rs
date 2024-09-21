@@ -18,7 +18,7 @@ pub enum PopupState {
     DeviceList(ListState),
     ArtistList(ArtistPopupAction, Vec<Artist>, ListState),
     ThemeList(Vec<crate::config::Theme>, ListState),
-    ActionList(ActionListItem, ListState),
+    ActionList(Box<ActionListItem>, ListState),
     PlaylistCreate {
         name: LineInput,
         desc: LineInput,
@@ -37,8 +37,13 @@ pub enum ActionListItem {
 /// An action on an item in a playlist popup list
 #[derive(Debug)]
 pub enum PlaylistPopupAction {
-    Browse,
-    AddTrack(TrackId<'static>),
+    Browse {
+        folder_id: usize,
+    },
+    AddTrack {
+        folder_id: usize,
+        track_id: TrackId<'static>,
+    },
 }
 
 /// An action on an item in an artist popup list

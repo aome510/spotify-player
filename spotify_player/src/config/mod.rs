@@ -48,6 +48,7 @@ impl Configs {
 pub struct AppConfig {
     pub theme: String,
     pub client_id: String,
+    pub client_id_command: Option<Command>,
 
     pub client_port: u16,
 
@@ -80,7 +81,7 @@ pub struct AppConfig {
     pub border_type: BorderType,
     pub progress_bar_type: ProgressBarType,
 
-    pub playback_window_position: Position,
+    pub layout: LayoutConfig,
 
     #[cfg(feature = "image")]
     pub cover_img_length: usize,
@@ -88,8 +89,6 @@ pub struct AppConfig {
     pub cover_img_width: usize,
     #[cfg(feature = "image")]
     pub cover_img_scale: f32,
-
-    pub playback_window_width: usize,
 
     #[cfg(feature = "media-control")]
     pub enable_media_control: bool,
@@ -143,6 +142,26 @@ pub struct Command {
     pub args: Vec<String>,
 }
 
+impl Command {
+    /// Execute a command, returning stdout if succeeded or stderr if failed
+    pub fn execute(&self, extra_args: Option<Vec<String>>) -> anyhow::Result<String> {
+        let mut args = self.args.clone();
+        args.extend(extra_args.unwrap_or_default());
+
+        let output = std::process::Command::new(&self.command)
+            .args(&args)
+            .output()?;
+
+        if !output.status.success() {
+            let stderr = std::str::from_utf8(&output.stderr)?.to_string();
+            anyhow::bail!(stderr);
+        }
+
+        let stdout = std::str::from_utf8(&output.stdout)?.to_string();
+        Ok(stdout)
+    }
+}
+
 #[derive(Debug, Deserialize, Serialize, ConfigParse, Clone)]
 /// Application device configurations
 pub struct DeviceConfig {
@@ -160,6 +179,20 @@ pub struct DeviceConfig {
 pub struct NotifyFormat {
     pub summary: String,
     pub body: String,
+}
+
+#[derive(Debug, Deserialize, Serialize, ConfigParse, Clone)]
+// Application layout configurations
+pub struct LayoutConfig {
+    pub library: LibraryLayoutConfig,
+    pub playback_window_position: Position,
+    pub playback_window_height: usize,
+}
+
+#[derive(Debug, Deserialize, Serialize, ConfigParse, Clone)]
+pub struct LibraryLayoutConfig {
+    pub playlist_percent: u16,
+    pub album_percent: u16,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
@@ -217,6 +250,7 @@ impl Default for AppConfig {
             theme: "dracula".to_owned(),
             // official Spotify web app's client id
             client_id: "65b708073fc0480ea92a077233ca87bd".to_string(),
+            client_id_command: None,
 
             client_port: 8080,
 
@@ -247,7 +281,7 @@ impl Default for AppConfig {
             border_type: BorderType::Plain,
             progress_bar_type: ProgressBarType::Rectangle,
 
-            playback_window_position: Position::Top,
+            layout: LayoutConfig::default(),
 
             #[cfg(feature = "image")]
             cover_img_length: 9,
@@ -255,8 +289,6 @@ impl Default for AppConfig {
             cover_img_width: 5,
             #[cfg(feature = "image")]
             cover_img_scale: 1.0,
-
-            playback_window_width: 6,
 
             // Because of the "creating new window and stealing focus" behaviour
             // when running the media control event loop on startup,
@@ -303,6 +335,29 @@ impl Default for DeviceConfig {
     }
 }
 
+impl Default for LayoutConfig {
+    fn default() -> Self {
+        Self {
+            library: LibraryLayoutConfig {
+                playlist_percent: 40,
+                album_percent: 40,
+            },
+            playback_window_position: Position::Top,
+            playback_window_height: 6,
+        }
+    }
+}
+
+impl LayoutConfig {
+    fn check_values(&self) -> anyhow::Result<()> {
+        if self.library.album_percent + self.library.playlist_percent > 99 {
+            anyhow::bail!("Invalid library layout: summation of album_percent and playlist_percent cannot be greater than 99!");
+        } else {
+            Ok(())
+        }
+    }
+}
+
 impl AppConfig {
     pub fn new(path: &Path) -> Result<Self> {
         let mut config = Self::default();
@@ -310,6 +365,7 @@ impl AppConfig {
             config.write_config_file(path)?
         }
 
+        config.layout.check_values()?;
         Ok(config)
     }
 
@@ -350,6 +406,14 @@ impl AppConfig {
             proxy,
             ap_port: self.ap_port,
             ..Default::default()
+        }
+    }
+
+    /// Returns stdout of `client_id_command` if set, otherwise it returns the the value of `client_id`
+    pub fn get_client_id(&self) -> Result<String> {
+        match self.client_id_command {
+            Some(ref cmd) => cmd.execute(None),
+            None => Ok(self.client_id.clone()),
         }
     }
 }

@@ -95,9 +95,7 @@ pub fn handle_action_for_selected_item<T: Into<ActionContext> + Clone>(
         return Ok(false);
     }
 
-    handle_action_in_context(action, items[id].clone().into(), client_pub, data, ui)?;
-
-    Ok(true)
+    handle_action_in_context(action, items[id].clone().into(), client_pub, data, ui)
 }
 
 /// Handle a command for the currently focused context window
@@ -249,8 +247,8 @@ fn handle_playlist_modify_command(
             let mut actions = command::construct_track_actions(tracks[id], data);
             actions.push(Action::DeleteFromPlaylist);
             ui.popup = Some(PopupState::ActionList(
-                ActionListItem::Track(tracks[id].clone(), actions),
-                new_list_state(),
+                Box::new(ActionListItem::Track(tracks[id].clone(), actions)),
+                ListState::default(),
             ));
             return Ok(true);
         }
@@ -275,11 +273,10 @@ fn handle_command_for_track_table_window(
     }
 
     if let Some(ContextId::Playlist(ref playlist_id)) = context_id {
-        let modifiable = data
-            .user_data
-            .modifiable_playlists()
-            .iter()
-            .any(|p| p.id.eq(playlist_id));
+        let modifiable =
+            data.user_data.modifiable_playlist_items(None).iter().any(
+                |item| matches!(item, PlaylistFolderItem::Playlist(p) if p.id.eq(playlist_id)),
+            );
         if modifiable
             && handle_playlist_modify_command(
                 id,
@@ -324,8 +321,8 @@ fn handle_command_for_track_table_window(
         Command::ShowActionsOnSelectedItem => {
             let actions = command::construct_track_actions(filtered_tracks[id], data);
             ui.popup = Some(PopupState::ActionList(
-                ActionListItem::Track(tracks[id].clone(), actions),
-                new_list_state(),
+                Box::new(ActionListItem::Track(tracks[id].clone(), actions)),
+                ListState::default(),
             ));
         }
         Command::AddSelectedItemToQueue => {
@@ -368,8 +365,8 @@ pub fn handle_command_for_track_list_window(
         Command::ShowActionsOnSelectedItem => {
             let actions = command::construct_track_actions(tracks[id], data);
             ui.popup = Some(PopupState::ActionList(
-                ActionListItem::Track(tracks[id].clone(), actions),
-                new_list_state(),
+                Box::new(ActionListItem::Track(tracks[id].clone(), actions)),
+                ListState::default(),
             ));
         }
         Command::AddSelectedItemToQueue => {
@@ -406,8 +403,8 @@ pub fn handle_command_for_artist_list_window(
         Command::ShowActionsOnSelectedItem => {
             let actions = construct_artist_actions(artists[id], data);
             ui.popup = Some(PopupState::ActionList(
-                ActionListItem::Artist(artists[id].clone(), actions),
-                new_list_state(),
+                Box::new(ActionListItem::Artist(artists[id].clone(), actions)),
+                ListState::default(),
             ));
         }
         _ => return Ok(false),
@@ -442,8 +439,8 @@ pub fn handle_command_for_album_list_window(
         Command::ShowActionsOnSelectedItem => {
             let actions = construct_album_actions(albums[id], data);
             ui.popup = Some(PopupState::ActionList(
-                ActionListItem::Album(albums[id].clone(), actions),
-                new_list_state(),
+                Box::new(ActionListItem::Album(albums[id].clone(), actions)),
+                ListState::default(),
             ));
         }
         Command::AddSelectedItemToQueue => {
@@ -456,7 +453,7 @@ pub fn handle_command_for_album_list_window(
 
 pub fn handle_command_for_playlist_list_window(
     command: Command,
-    playlists: Vec<&Playlist>,
+    playlists: Vec<&PlaylistFolderItem>,
     data: &DataReadGuard,
     ui: &mut UIStateGuard,
 ) -> Result<bool> {
@@ -470,19 +467,37 @@ pub fn handle_command_for_playlist_list_window(
     }
     match command {
         Command::ChooseSelected => {
-            let context_id = ContextId::Playlist(playlists[id].id.clone());
-            ui.new_page(PageState::Context {
-                id: None,
-                context_page_type: ContextPageType::Browsing(context_id),
-                state: None,
-            });
+            let playlist = playlists[id];
+            match playlist {
+                PlaylistFolderItem::Folder(f) => {
+                    // currently folders are only supported in the library page
+                    match ui.current_page_mut() {
+                        PageState::Library { state } => {
+                            state.playlist_list.select(Some(0));
+                            state.focus = LibraryFocusState::Playlists;
+                            state.playlist_folder_id = f.target_id;
+                        }
+                        _ => return Ok(false),
+                    };
+                }
+                PlaylistFolderItem::Playlist(p) => {
+                    let context_id = ContextId::Playlist(p.id.clone());
+                    ui.new_page(PageState::Context {
+                        id: None,
+                        context_page_type: ContextPageType::Browsing(context_id),
+                        state: None,
+                    });
+                }
+            }
         }
         Command::ShowActionsOnSelectedItem => {
-            let actions = construct_playlist_actions(playlists[id], data);
-            ui.popup = Some(PopupState::ActionList(
-                ActionListItem::Playlist(playlists[id].clone(), actions),
-                new_list_state(),
-            ));
+            if let PlaylistFolderItem::Playlist(p) = playlists[id] {
+                let actions = construct_playlist_actions(p, data);
+                ui.popup = Some(PopupState::ActionList(
+                    Box::new(ActionListItem::Playlist(p.clone(), actions)),
+                    ListState::default(),
+                ));
+            }
         }
         _ => return Ok(false),
     }

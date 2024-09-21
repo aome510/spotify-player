@@ -1,5 +1,5 @@
 use crate::{
-    command::{Action, Command, CommandOrAction},
+    command::{Action, ActionTarget, Command, CommandOrAction},
     key::{Key, KeySequence},
 };
 use anyhow::Result;
@@ -25,6 +25,8 @@ pub struct Keymap {
 /// A keymap that triggers an `Action` when a key sequence is pressed
 pub struct ActionMap {
     pub key_sequence: KeySequence,
+    #[serde(default)]
+    pub target: ActionTarget,
     pub action: Action,
 }
 
@@ -396,16 +398,19 @@ impl KeymapConfig {
     pub fn find_command_from_key_sequence(&self, key_sequence: &KeySequence) -> Option<Command> {
         self.keymaps
             .iter()
-            .find(|&keymap| keymap.key_sequence == *key_sequence)
+            .find(|&keymap| keymap.key_sequence == *key_sequence && keymap.command != Command::None)
             .map(|keymap| keymap.command)
     }
 
     /// finds an action from a mapped key sequence
-    pub fn find_action_from_key_sequence(&self, key_sequence: &KeySequence) -> Option<Action> {
+    pub fn find_action_from_key_sequence(
+        &self,
+        key_sequence: &KeySequence,
+    ) -> Option<(Action, ActionTarget)> {
         self.actions
             .iter()
             .find(|&action| action.key_sequence == *key_sequence)
-            .map(|action| action.action)
+            .map(|action| (action.action, action.target))
     }
 
     /// finds a command or action from a mapped key sequence
@@ -416,8 +421,8 @@ impl KeymapConfig {
         if let Some(command) = self.find_command_from_key_sequence(key_sequence) {
             return Some(CommandOrAction::Command(command));
         }
-        if let Some(action) = self.find_action_from_key_sequence(key_sequence) {
-            return Some(CommandOrAction::Action(action));
+        if let Some((action, target)) = self.find_action_from_key_sequence(key_sequence) {
+            return Some(CommandOrAction::Action(action, target));
         }
         None
     }

@@ -1,4 +1,6 @@
-use crate::state::{Album, Artist, DataReadGuard, Playlist, Track};
+use crate::state::{
+    Album, Artist, DataReadGuard, Playlist, PlaylistFolder, PlaylistFolderItem, Track,
+};
 use serde::Deserialize;
 
 #[derive(Copy, Clone, Debug, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
@@ -105,11 +107,21 @@ pub enum ActionContext {
     Album(Album),
     Artist(Artist),
     Playlist(Playlist),
+    #[allow(dead_code)]
+    // TODO: support actions for playlist folders
+    PlaylistFolder(PlaylistFolder),
+}
+
+#[derive(Debug, PartialEq, Clone, Deserialize, Default, Copy)]
+pub enum ActionTarget {
+    PlayingTrack,
+    #[default]
+    SelectedItem,
 }
 
 pub enum CommandOrAction {
     Command(Command),
-    Action(Action),
+    Action(Action, ActionTarget),
 }
 
 impl From<Track> for ActionContext {
@@ -136,6 +148,15 @@ impl From<Playlist> for ActionContext {
     }
 }
 
+impl From<PlaylistFolderItem> for ActionContext {
+    fn from(value: PlaylistFolderItem) -> Self {
+        match value {
+            PlaylistFolderItem::Playlist(p) => ActionContext::Playlist(p),
+            PlaylistFolderItem::Folder(f) => ActionContext::PlaylistFolder(f),
+        }
+    }
+}
+
 impl ActionContext {
     pub fn get_available_actions(&self, data: &DataReadGuard) -> Vec<Action> {
         match self {
@@ -143,6 +164,8 @@ impl ActionContext {
             Self::Album(album) => construct_album_actions(album, data),
             Self::Artist(artist) => construct_artist_actions(artist, data),
             Self::Playlist(playlist) => construct_playlist_actions(playlist, data),
+            // TODO: support actions for playlist folders
+            Self::PlaylistFolder(_) => vec![],
         }
     }
 }
@@ -207,7 +230,12 @@ pub fn construct_artist_actions(artist: &Artist, data: &DataReadGuard) -> Vec<Ac
 pub fn construct_playlist_actions(playlist: &Playlist, data: &DataReadGuard) -> Vec<Action> {
     let mut actions = vec![Action::GoToRadio, Action::CopyLink];
 
-    if data.user_data.playlists.iter().any(|a| a.id == playlist.id) {
+    if data
+        .user_data
+        .playlists
+        .iter()
+        .any(|item| matches!(item, PlaylistFolderItem::Playlist(p) if p.id == playlist.id))
+    {
         actions.push(Action::DeleteFromLibrary);
     } else {
         actions.push(Action::AddToLibrary);

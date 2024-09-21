@@ -1,4 +1,4 @@
-use crate::{state::model::*, ui::single_line_input::LineInput, utils};
+use crate::{state::model::*, ui::single_line_input::LineInput};
 use tui::widgets::{ListState, TableState};
 
 #[derive(Clone, Debug)]
@@ -51,6 +51,7 @@ pub struct LibraryPageUIState {
     pub saved_album_list: ListState,
     pub followed_artist_list: ListState,
     pub focus: LibraryFocusState,
+    pub playlist_folder_id: usize,
 }
 
 #[derive(Clone, Debug)]
@@ -78,7 +79,7 @@ pub enum ContextPageUIState {
     },
     Artist {
         top_track_table: TableState,
-        album_list: ListState,
+        album_table: TableState,
         related_artist_list: ListState,
         focus: ArtistFocusState,
     },
@@ -165,6 +166,7 @@ impl PageState {
                         saved_album_list,
                         followed_artist_list,
                         focus,
+                        ..
                     },
             } => Some(match focus {
                 LibraryFocusState::Playlists => MutableWindowState::List(playlist_list),
@@ -200,12 +202,12 @@ impl PageState {
                 ContextPageUIState::Album { track_table } => MutableWindowState::Table(track_table),
                 ContextPageUIState::Artist {
                     top_track_table,
-                    album_list,
+                    album_table,
                     related_artist_list,
                     focus,
                 } => match focus {
                     ArtistFocusState::TopTracks => MutableWindowState::Table(top_track_table),
-                    ArtistFocusState::Albums => MutableWindowState::List(album_list),
+                    ArtistFocusState::Albums => MutableWindowState::Table(album_table),
                     ArtistFocusState::RelatedArtists => {
                         MutableWindowState::List(related_artist_list)
                     }
@@ -229,10 +231,11 @@ impl PageState {
 impl LibraryPageUIState {
     pub fn new() -> Self {
         Self {
-            playlist_list: utils::new_list_state(),
-            saved_album_list: utils::new_list_state(),
-            followed_artist_list: utils::new_list_state(),
+            playlist_list: ListState::default(),
+            saved_album_list: ListState::default(),
+            followed_artist_list: ListState::default(),
             focus: LibraryFocusState::Playlists,
+            playlist_folder_id: 0,
         }
     }
 }
@@ -240,10 +243,10 @@ impl LibraryPageUIState {
 impl SearchPageUIState {
     pub fn new() -> Self {
         Self {
-            track_list: utils::new_list_state(),
-            album_list: utils::new_list_state(),
-            artist_list: utils::new_list_state(),
-            playlist_list: utils::new_list_state(),
+            track_list: ListState::default(),
+            album_list: ListState::default(),
+            artist_list: ListState::default(),
+            playlist_list: ListState::default(),
             focus: SearchFocusState::Input,
         }
     }
@@ -266,28 +269,28 @@ impl ContextPageType {
 impl ContextPageUIState {
     pub fn new_playlist() -> Self {
         Self::Playlist {
-            track_table: utils::new_table_state(),
+            track_table: TableState::default(),
         }
     }
 
     pub fn new_album() -> Self {
         Self::Album {
-            track_table: utils::new_table_state(),
+            track_table: TableState::default(),
         }
     }
 
     pub fn new_artist() -> Self {
         Self::Artist {
-            top_track_table: utils::new_table_state(),
-            album_list: utils::new_list_state(),
-            related_artist_list: utils::new_list_state(),
+            top_track_table: TableState::default(),
+            album_table: TableState::default(),
+            related_artist_list: ListState::default(),
             focus: ArtistFocusState::TopTracks,
         }
     }
 
     pub fn new_tracks() -> Self {
         Self::Tracks {
-            track_table: utils::new_table_state(),
+            track_table: TableState::default(),
         }
     }
 }
