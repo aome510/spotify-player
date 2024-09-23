@@ -113,20 +113,21 @@ impl Client {
     pub async fn get_lyric(&self, query: &str) -> anyhow::Result<LyricResult> {
         // Perform the search for songs
         let results = self.search_songs(query).await?;
-    
+
         // Filter to find the first result where the artist names do not contain 'Genius'
-        let result = results.into_iter()
+        let result = results
+            .into_iter()
             .find(|result| !result.artist_names.contains("Genius"));
-    
+
         // If no valid result is found, return LyricResult::None
         let result = match result {
             Some(res) => res,
             None => return Ok(LyricResult::None),
         };
-    
+
         // Retrieve the song lyrics from the URL of the result
         let lyric = self.retrieve_lyric(&result.url).await?;
-    
+
         // Return a LyricResult::Some with the song information
         Ok(LyricResult::Some {
             track: result.title,
@@ -134,7 +135,6 @@ impl Client {
             lyric: Self::process_lyric(lyric),
         })
     }
-    
 }
 
 impl Default for Client {
