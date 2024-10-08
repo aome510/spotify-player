@@ -120,7 +120,7 @@ impl Client {
         let mut stream_conn = self.stream_conn.lock();
         // shutdown old streaming connection and replace it with a new connection
         if let Some(conn) = stream_conn.as_ref() {
-            conn.shutdown();
+            let _ = conn.shutdown();
         }
         *stream_conn = Some(new_conn);
     }

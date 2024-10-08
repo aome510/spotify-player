@@ -27,7 +27,7 @@ const SCOPES: [&str; 15] = [
 const TIMEOUT_IN_SECS: u64 = 5;
 
 /// gets an authentication token with pre-defined permission scopes
-pub async fn get_token(session: &Session, client_id: &str) -> Result<Token> {
+pub async fn get_token(session: &Session) -> Result<Token> {
     tracing::info!("Getting new authentication token...");
 
     let scopes = SCOPES.join(",");
