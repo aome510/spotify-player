@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use anyhow::Result;
 use chrono::{Duration, Utc};
-use librespot_core::{keymaster, session::Session};
+use librespot_core::session::Session;
 use rspotify::Token;
 
 /// the application authentication token's permission scopes
@@ -31,7 +31,7 @@ pub async fn get_token(session: &Session, client_id: &str) -> Result<Token> {
     tracing::info!("Getting new authentication token...");
 
     let scopes = SCOPES.join(",");
-    let fut = keymaster::get_token(session, client_id, &scopes);
+    let fut = session.token_provider().get_token(&scopes);
     let token =
         match tokio::time::timeout(std::time::Duration::from_secs(TIMEOUT_IN_SECS), fut).await {
             Ok(Ok(token)) => token,
@@ -48,7 +48,7 @@ pub async fn get_token(session: &Session, client_id: &str) -> Result<Token> {
 
     // converts the token returned by librespot `get_token` function to a `rspotify::Token`
 
-    let expires_in = Duration::from_std(std::time::Duration::from_secs(token.expires_in as u64))?;
+    let expires_in = Duration::from_std(token.expires_in)?;
     // let expires_in = Duration::from_std(std::time::Duration::from_secs(5))?;
     let expires_at = Utc::now() + expires_in;
 

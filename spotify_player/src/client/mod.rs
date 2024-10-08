@@ -832,8 +832,8 @@ impl Client {
         let response = session
             .mercury()
             .get(autoplay_query_url)
-            .await
-            .map_err(|_| anyhow::anyhow!("Failed to get autoplay URI: got a Mercury error"))?;
+            .map_err(|_| anyhow::anyhow!("Failed to get autoplay URI: got a Mercury error"))?
+            .await?;
         if response.status_code != 200 {
             anyhow::bail!(
                 "Failed to get autoplay URI: got non-OK status code: {}",
@@ -844,9 +844,13 @@ impl Client {
 
         // Retrieve radio's data based on the autoplay URI
         let radio_query_url = format!("hm://radio-apollo/v3/stations/{autoplay_uri}");
-        let response = session.mercury().get(radio_query_url).await.map_err(|_| {
-            anyhow::anyhow!("Failed to get radio data of {autoplay_uri}: got a Mercury error")
-        })?;
+        let response = session
+            .mercury()
+            .get(radio_query_url)
+            .map_err(|_| {
+                anyhow::anyhow!("Failed to get radio data of {autoplay_uri}: got a Mercury error")
+            })?
+            .await?;
         if response.status_code != 200 {
             anyhow::bail!(
                 "Failed to get radio data of {autoplay_uri}: got non-OK status code: {}",
