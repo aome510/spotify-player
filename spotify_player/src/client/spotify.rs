@@ -113,7 +113,7 @@ impl BaseClient for Spotify {
             return Ok(old_token);
         }
 
-        match token::get_token(&session, &self.client_id).await {
+        match token::get_token(&session).await {
             Ok(token) => Ok(Some(token)),
             Err(err) => {
                 tracing::error!("Failed to get a new token: {err:#}");

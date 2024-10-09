@@ -2,10 +2,8 @@ use std::io::Write;
 
 use anyhow::{anyhow, Result};
 use librespot_core::{
-    authentication::Credentials,
-    cache::Cache,
-    config::SessionConfig,
-    session::{Session, SessionError},
+    authentication::Credentials, cache::Cache, config::SessionConfig, error::ErrorKind,
+    session::Session, Error,
 };
 
 use crate::config;
@@ -72,15 +70,15 @@ pub async fn new_session_with_new_creds(auth_config: &AuthConfig) -> Result<Sess
     for i in 0..3 {
         let (username, password) = read_user_auth_details(user)?;
         user = Some(username.clone());
-        match Session::connect(
+        let session = Session::new(
             auth_config.session_config.clone(),
-            Credentials::with_password(username, password),
             Some(auth_config.cache.clone()),
-            true,
-        )
-        .await
+        );
+        match session
+            .connect(Credentials::with_password(username, password), true)
+            .await
         {
-            Ok((session, _)) => {
+            Ok(()) => {
                 println!("Successfully authenticated as {}", user.unwrap_or_default());
                 return Ok(session);
             }
@@ -112,27 +110,25 @@ pub async fn new_session(auth_config: &AuthConfig, reauth: bool) -> Result<Sessi
             }
         }
         Some(creds) => {
-            match Session::connect(
+            let session = Session::new(
                 auth_config.session_config.clone(),
-                creds,
                 Some(auth_config.cache.clone()),
-                true,
-            )
-            .await
-            {
-                Ok((session, _)) => {
+            );
+            match session.connect(creds, true).await {
+                Ok(()) => {
                     tracing::info!(
                         "Successfully used the cached credentials to create a new session!"
                     );
                     Ok(session)
                 }
-                Err(err) => match err {
-                    SessionError::AuthenticationError(err) => {
-                        anyhow::bail!("Failed to authenticate using cached credentials: {err:#}");
+                Err(Error { kind, error }) => match kind {
+                    ErrorKind::Unauthenticated => {
+                        anyhow::bail!("Failed to authenticate using cached credentials: {error:#}");
                     }
-                    SessionError::IoError(err) => {
-                        anyhow::bail!("{err:#}\nPlease check your internet connection.");
+                    ErrorKind::Unavailable => {
+                        anyhow::bail!("{error:#}\nPlease check your internet connection.");
                     }
+                    _ => anyhow::bail!("{error:#}"),
                 },
             }
         }
