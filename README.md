@@ -91,11 +91,7 @@ Run `scoop install spotify-player` to install the application.
 
 ### Cargo
 
-Run `cargo install spotify_player` to install the application from [crates.io](https://crates.io/crates/spotify_player).
-
-#### Notes for WSL
-
-If you encounter a compilation error in WSL try running `cargo install spotify_player` with `--locked` (see #560)
+Run `cargo install spotify_player --locked` to install the application from [crates.io](https://crates.io/crates/spotify_player).
 
 ### AUR
 
