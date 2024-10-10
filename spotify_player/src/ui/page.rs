@@ -47,7 +47,7 @@ pub fn render_search_page(
     let rect = chunks[1];
 
     // track/album/artist/playlist search results layout (2x2 table)
-    let chunks = Layout::vertical([Constraint::Ratio(1, 2); 2])
+    let chunks = Layout::vertical([Constraint::Ratio(1, 3); 3])
         .split(rect)
         .iter()
         .flat_map(|rect| {
@@ -75,6 +75,15 @@ pub fn render_search_page(
     );
     let playlist_rect =
         construct_and_render_block("Playlists", &ui.theme, Borders::TOP, frame, chunks[3]);
+    let show_rect = construct_and_render_block(
+        "Shows",
+        &ui.theme,
+        Borders::TOP | Borders::RIGHT,
+        frame,
+        chunks[4],
+    );
+    let episode_rect =
+        construct_and_render_block("Episodes", &ui.theme, Borders::TOP, frame, chunks[5]);
 
     // 3. Construct the page's widgets
     let (track_list, n_tracks) = {
@@ -142,6 +151,35 @@ pub fn render_search_page(
         utils::construct_list_widget(&ui.theme, playlist_items, is_active)
     };
 
+    let (show_list, n_shows) = {
+        let show_items = search_results
+            .map(|s| {
+                s.shows
+                    .iter()
+                    .map(|a| (a.to_string(), false))
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
+        let is_active = is_active && focus_state == SearchFocusState::Shows;
+
+        utils::construct_list_widget(&ui.theme, show_items, is_active)
+    };
+
+    let (episode_list, n_episodes) = {
+        let episode_items = search_results
+            .map(|s| {
+                s.episodes
+                    .iter()
+                    .map(|e| (format!("{}", e), false))
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
+
+        let is_active = is_active && focus_state == SearchFocusState::Episodes;
+
+        utils::construct_list_widget(&ui.theme, episode_items, is_active)
+    };
+
     // 4. Render the page's widgets
     // Render the query input box
     frame.render_widget(
@@ -182,6 +220,20 @@ pub fn render_search_page(
         playlist_rect,
         n_playlists,
         &mut page_state.playlist_list,
+    );
+    utils::render_list_window(
+        frame,
+        show_list,
+        show_rect,
+        n_shows,
+        &mut page_state.show_list,
+    );
+    utils::render_list_window(
+        frame,
+        episode_list,
+        episode_rect,
+        n_episodes,
+        &mut page_state.episode_list,
     );
 }
 
@@ -295,6 +347,16 @@ pub fn render_context_page(
                         ui.search_filtered_items(tracks),
                         ui,
                         &data,
+                    );
+                }
+                Context::Show { episodes, .. } => {
+                    render_episode_table(
+                        frame,
+                        rect,
+                        is_active,
+                        state,
+                        ui.search_filtered_items(episodes),
+                        ui,
                     );
                 }
             }
@@ -634,7 +696,7 @@ pub fn render_queue_page(
                 .map(|a| a.name.as_str())
                 .collect::<Vec<_>>()
                 .join(", "),
-            PlayableItem::Episode(FullEpisode { .. }) => String::new(),
+            PlayableItem::Episode(FullEpisode { ref show, .. }) => show.publisher.clone(),
         }
     }
     fn get_playable_duration(item: &PlayableItem) -> String {
@@ -918,14 +980,100 @@ fn render_track_table(
         state: Some(state), ..
     } = ui.current_page_mut()
     {
-        let track_table_state = match state {
+        let playable_table_state = match state {
             ContextPageUIState::Artist {
                 top_track_table, ..
             } => top_track_table,
             ContextPageUIState::Playlist { track_table } => track_table,
             ContextPageUIState::Album { track_table } => track_table,
             ContextPageUIState::Tracks { track_table } => track_table,
+            ContextPageUIState::Show { episode_table } => episode_table,
         };
-        utils::render_table_window(frame, track_table, rect, n_tracks, track_table_state);
+        utils::render_table_window(frame, track_table, rect, n_tracks, playable_table_state);
+    }
+}
+
+fn render_episode_table(
+    frame: &mut Frame,
+    rect: Rect,
+    is_active: bool,
+    state: &SharedState,
+    episodes: Vec<&Episode>,
+    ui: &mut UIStateGuard,
+) {
+    let configs = config::get_config();
+    // get the current playing track's URI to decorate such track (if exists) in the track table
+    let mut playing_episode_uri = "".to_string();
+    let mut playing_id = "";
+    if let Some(ref playback) = state.player.read().playback {
+        if let Some(rspotify_model::PlayableItem::Episode(ref episode)) = playback.item {
+            playing_episode_uri = episode.id.uri();
+
+            playing_id = if playback.is_playing {
+                &configs.app_config.play_icon
+            } else {
+                &configs.app_config.pause_icon
+            };
+        }
+    }
+
+    let n_episodes = episodes.len();
+    let rows = episodes
+        .into_iter()
+        .enumerate()
+        .map(|(id, t)| {
+            let (id, style) = if playing_episode_uri == t.id.uri() {
+                (playing_id.to_string(), ui.theme.current_playing())
+            } else {
+                ((id + 1).to_string(), Style::default())
+            };
+            Row::new(vec![
+                Cell::from(id),
+                Cell::from(t.name.clone()),
+                Cell::from(t.release_date.clone()),
+                Cell::from(format!(
+                    "{}:{:02}",
+                    t.duration.as_secs() / 60,
+                    t.duration.as_secs() % 60,
+                )),
+            ])
+            .style(style)
+        })
+        .collect::<Vec<_>>();
+    let episode_table = Table::new(
+        rows,
+        [
+            Constraint::Length(4),
+            Constraint::Fill(4),
+            Constraint::Fill(3),
+            Constraint::Fill(1),
+        ],
+    )
+    .header(
+        Row::new(vec![
+            Cell::from("#"),
+            Cell::from("Title"),
+            Cell::from("Date"),
+            Cell::from("Duration"),
+        ])
+        .style(ui.theme.table_header()),
+    )
+    .column_spacing(2)
+    .highlight_style(ui.theme.selection(is_active));
+
+    if let PageState::Context {
+        state: Some(state), ..
+    } = ui.current_page_mut()
+    {
+        let playable_table_state = match state {
+            ContextPageUIState::Artist {
+                top_track_table, ..
+            } => top_track_table,
+            ContextPageUIState::Playlist { track_table } => track_table,
+            ContextPageUIState::Album { track_table } => track_table,
+            ContextPageUIState::Tracks { track_table } => track_table,
+            ContextPageUIState::Show { episode_table } => episode_table,
+        };
+        utils::render_table_window(frame, episode_table, rect, n_episodes, playable_table_state);
     }
 }

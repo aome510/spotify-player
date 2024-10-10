@@ -339,27 +339,27 @@ async fn handle_playback_request(
             let tracks = client.radio_tracks(sid.uri()).await?;
 
             PlayerRequest::StartPlayback(
-                Playback::URIs(tracks.into_iter().map(|t| t.id).collect(), None),
+                Playback::URIs(tracks.into_iter().map(|t| t.id.into()).collect(), None),
                 None,
             )
         }
         Command::StartLikedTracks { limit, random } => {
             // get a list of liked tracks' ids
-            let mut ids: Vec<_> = if let Some(ref state) = state {
+            let mut ids: Vec<PlayableId> = if let Some(ref state) = state {
                 state
                     .data
                     .read()
                     .user_data
                     .saved_tracks
                     .values()
-                    .map(|t| t.id.to_owned())
+                    .map(|t| t.id.to_owned().into())
                     .collect()
             } else {
                 client
                     .current_user_saved_tracks()
                     .await?
                     .into_iter()
-                    .map(|t| t.id)
+                    .map(|t| t.id.into())
                     .collect()
             };
 

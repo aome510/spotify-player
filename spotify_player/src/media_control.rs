@@ -1,4 +1,5 @@
 #![allow(unused_imports)]
+use rspotify::model as rspotify_model;
 use souvlaki::MediaPosition;
 use souvlaki::{MediaControlEvent, MediaControls, MediaMetadata, MediaPlayback, PlatformConfig};
 
@@ -16,9 +17,9 @@ fn update_control_metadata(
 ) -> Result<(), souvlaki::Error> {
     let player = state.player.read();
 
-    match player.current_playing_track() {
+    match player.currently_playing() {
         None => {}
-        Some(track) => {
+        Some(rspotify_model::PlayableItem::Track(track)) => {
             if let Some(ref playback) = player.playback {
                 let progress = player
                     .playback_progress()
@@ -43,6 +44,33 @@ fn update_control_metadata(
                 })?;
 
                 *prev_track_info = track_info;
+            }
+        }
+        Some(rspotify_model::PlayableItem::Episode(episode)) => {
+            if let Some(ref playback) = player.playback {
+                let progress = player
+                    .playback_progress()
+                    .and_then(|p| Some(MediaPosition(p.to_std().ok()?)));
+
+                if playback.is_playing {
+                    controls.set_playback(MediaPlayback::Playing { progress })?;
+                } else {
+                    controls.set_playback(MediaPlayback::Paused { progress })?;
+                }
+            }
+
+            // only update metadata when the episode information is changed
+            let episode_info = format!("{}/{}", episode.name, episode.show.name);
+            if episode_info != *prev_track_info {
+                controls.set_metadata(MediaMetadata {
+                    title: Some(&episode.name),
+                    album: Some(&episode.show.name),
+                    artist: Some(&episode.show.publisher),
+                    duration: episode.duration.to_std().ok(),
+                    cover_url: utils::get_episode_show_image_url(episode),
+                })?;
+
+                *prev_track_info = episode_info;
             }
         }
     }
