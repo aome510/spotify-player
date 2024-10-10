@@ -1,4 +1,4 @@
-use crate::{config, key};
+use crate::{config, key, ui};
 
 pub type UIStateGuard<'a> = parking_lot::MutexGuard<'a, UIState>;
 
@@ -25,6 +25,7 @@ pub struct UIState {
     pub is_running: bool,
     pub theme: config::Theme,
     pub input_key_sequence: key::KeySequence,
+    pub orientation: ui::Orientation,
 
     pub history: Vec<PageState>,
     pub popup: Option<PopupState>,
@@ -134,6 +135,13 @@ impl Default for UIState {
             is_running: true,
             theme: Default::default(),
             input_key_sequence: key::KeySequence { keys: vec![] },
+            orientation: match crossterm::terminal::size() {
+                Ok((columns, rows)) => ui::Orientation::from_size(columns, rows),
+                Err(err) => {
+                    tracing::warn!("Unable to get terminal size, error: {err:#}");
+                    Default::default()
+                }
+            },
 
             history: vec![PageState::Library {
                 state: LibraryPageUIState::new(),

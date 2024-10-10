@@ -7,7 +7,7 @@ use crate::{
     config,
     key::{Key, KeySequence},
     state::*,
-    ui::single_line_input::LineInput,
+    ui::{single_line_input::LineInput, Orientation},
     utils::parse_uri,
 };
 
@@ -29,6 +29,11 @@ pub fn start_event_handler(state: SharedState, client_pub: flume::Sender<ClientR
         let _enter = tracing::info_span!("terminal_event", event = ?event).entered();
         if let Err(err) = match event {
             crossterm::event::Event::Mouse(event) => handle_mouse_event(event, &client_pub, &state),
+            crossterm::event::Event::Resize(columns, rows) => {
+                let mut state = state.ui.lock();
+                state.orientation = Orientation::from_size(columns, rows);
+                Ok(())
+            }
             crossterm::event::Event::Key(event) => {
                 if event.kind == crossterm::event::KeyEventKind::Press {
                     // only handle key press event to avoid handling a key event multiple times
