@@ -290,10 +290,10 @@ impl Track {
         if track.is_playable.unwrap_or(true) {
             let id = match track.linked_from {
                 Some(d) => d.id,
-                None => track.id?,
+                None => track.id,
             };
             Some(Self {
-                id,
+                id: id?,
                 name: track.name,
                 artists: from_simplified_artists_to_artists(track.artists),
                 album: None,
@@ -311,10 +311,10 @@ impl Track {
         if track.is_playable.unwrap_or(true) {
             let id = match track.linked_from {
                 Some(d) => d.id,
-                None => track.id?,
+                None => track.id,
             };
             Some(Self {
-                id,
+                id: id?,
                 name: track.name,
                 artists: from_simplified_artists_to_artists(track.artists),
                 album: Album::try_from_simplified_album(track.album),
