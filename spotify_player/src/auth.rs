@@ -1,12 +1,41 @@
-use std::io::Write;
-
 use anyhow::{anyhow, Result};
 use librespot_core::{
     authentication::Credentials, cache::Cache, config::SessionConfig, error::ErrorKind,
     session::Session, Error,
 };
+use librespot_oauth::{get_access_token, OAuthError};
 
 use crate::config;
+
+// copied from https://github.com/hrkfdn/ncspot/pull/1244/commits/81f13e2f9458a378d70d864716c2d915ad8cdaa4
+// TODO: adjust, this is just for debugging
+pub const SPOTIFY_CLIENT_ID: &str = "65b708073fc0480ea92a077233ca87bd";
+pub const CLIENT_REDIRECT_URI: &str = "http://127.0.0.1:8989/login";
+static OAUTH_SCOPES: &[&str] = &[
+    "playlist-modify",
+    "playlist-modify-private",
+    "playlist-modify-public",
+    "playlist-read",
+    "playlist-read-collaborative",
+    "playlist-read-private",
+    "streaming",
+    "user-follow-modify",
+    "user-follow-read",
+    "user-library-modify",
+    "user-library-read",
+    "user-modify",
+    "user-modify-playback-state",
+    "user-modify-private",
+    "user-personalized",
+    "user-read-currently-playing",
+    "user-read-email",
+    "user-read-play-history",
+    "user-read-playback-position",
+    "user-read-playback-state",
+    "user-read-private",
+    "user-read-recently-played",
+    "user-top-read",
+];
 
 #[derive(Clone)]
 pub struct AuthConfig {
@@ -45,42 +74,23 @@ impl AuthConfig {
     }
 }
 
-fn read_user_auth_details(user: Option<String>) -> Result<(String, String)> {
-    let mut username = String::new();
-    let mut stdout = std::io::stdout();
-    match user {
-        None => write!(stdout, "Username: ")?,
-        Some(ref u) => write!(stdout, "Username (default: {u}): ")?,
-    }
-    stdout.flush()?;
-    std::io::stdin().read_line(&mut username)?;
-    username = username.trim_end().to_string();
-    if username.is_empty() {
-        username = user.unwrap_or_default();
-    }
-    let password = rpassword::prompt_password(format!("Password for {username}: "))?;
-    Ok((username, password))
+fn get_credentials() -> Result<Credentials, OAuthError> {
+    get_access_token(
+        SPOTIFY_CLIENT_ID,
+        CLIENT_REDIRECT_URI,
+        OAUTH_SCOPES.to_vec(),
+    )
+    .map(|t| Credentials::with_access_token(t.access_token))
 }
 
-pub async fn new_session_with_new_creds(auth_config: &AuthConfig) -> Result<Session> {
-    tracing::info!("Creating a new session with new authentication credentials");
-
-    let mut user: Option<String> = None;
+async fn create_creds() -> Result<Credentials> {
+    tracing::info!("Creating new authentication credentials");
 
     for i in 0..3 {
-        let (username, password) = read_user_auth_details(user)?;
-        user = Some(username.clone());
-        let session = Session::new(
-            auth_config.session_config.clone(),
-            Some(auth_config.cache.clone()),
-        );
-        match session
-            .connect(Credentials::with_password(username, password), true)
-            .await
-        {
-            Ok(()) => {
-                println!("Successfully authenticated as {}", user.unwrap_or_default());
-                return Ok(session);
+        match get_credentials() {
+            Ok(c) => {
+                println!("Successfully authenticated");
+                return Ok(c);
             }
             Err(err) => {
                 eprintln!("Failed to authenticate, {} tries left", 2 - i);
@@ -92,45 +102,46 @@ pub async fn new_session_with_new_creds(auth_config: &AuthConfig) -> Result<Sess
     Err(anyhow!("authentication failed!"))
 }
 
-/// Creates a new Librespot session
+/// Creates a new Librespot session and connects it
 ///
 /// By default, the function will look for cached credentials in the `APP_CACHE_FOLDER` folder.
 ///
-/// If `reauth` is true, re-authenticate by asking the user for Spotify's username and password.
-/// The re-authentication process should only happen on the terminal using stdin/stdout.
+/// If `reauth` is true, re-authenticate by generating new credentials
 pub async fn new_session(auth_config: &AuthConfig, reauth: bool) -> Result<Session> {
-    match auth_config.cache.credentials() {
+    // obtain credentials
+    let creds = match auth_config.cache.credentials() {
         None => {
             let msg = "No cached credentials found, please authenticate the application first.";
             if reauth {
                 eprintln!("{msg}");
-                new_session_with_new_creds(auth_config).await
+                create_creds().await?
             } else {
                 anyhow::bail!(msg);
             }
         }
         Some(creds) => {
-            let session = Session::new(
-                auth_config.session_config.clone(),
-                Some(auth_config.cache.clone()),
-            );
-            match session.connect(creds, true).await {
-                Ok(()) => {
-                    tracing::info!(
-                        "Successfully used the cached credentials to create a new session!"
-                    );
-                    Ok(session)
-                }
-                Err(Error { kind, error }) => match kind {
-                    ErrorKind::Unauthenticated => {
-                        anyhow::bail!("Failed to authenticate using cached credentials: {error:#}");
-                    }
-                    ErrorKind::Unavailable => {
-                        anyhow::bail!("{error:#}\nPlease check your internet connection.");
-                    }
-                    _ => anyhow::bail!("{error:#}"),
-                },
-            }
+            tracing::info!("using cached credentials");
+            creds
         }
+    };
+    let session = Session::new(
+        auth_config.session_config.clone(),
+        Some(auth_config.cache.clone()),
+    );
+    // attempt to connect the session
+    match session.connect(creds, true).await {
+        Ok(()) => {
+            tracing::info!("Successfully created a new session!");
+            Ok(session)
+        }
+        Err(Error { kind, error }) => match kind {
+            ErrorKind::Unauthenticated => {
+                anyhow::bail!("Failed to authenticate using cached credentials: {error:#}");
+            }
+            ErrorKind::Unavailable => {
+                anyhow::bail!("{error:#}\nPlease check your internet connection.");
+            }
+            _ => anyhow::bail!("{error:#}"),
+        },
     }
 }

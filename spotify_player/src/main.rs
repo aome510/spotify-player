@@ -17,7 +17,7 @@ mod utils;
 
 use anyhow::{Context, Result};
 use rspotify::clients::BaseClient;
-use std::io::Write;
+//use std::io::Write;
 
 async fn init_spotify(
     client_pub: &flume::Sender<client::ClientRequest>,
@@ -54,23 +54,29 @@ fn init_logging(cache_folder: &std::path::Path) -> Result<()> {
         .with_writer(std::sync::Mutex::new(log_file))
         .init();
 
+    // TODO: reenable the panic hook; it's disabled for debugging
     // initialize the application's panic backtrace
-    let backtrace_file =
-        std::fs::File::create(cache_folder.join(format!("{log_prefix}.backtrace")))
-            .context("failed to create backtrace file")?;
-    let backtrace_file = std::sync::Mutex::new(backtrace_file);
-    std::panic::set_hook(Box::new(move |info| {
-        let mut file = backtrace_file.lock().unwrap();
-        let backtrace = backtrace::Backtrace::new();
-        writeln!(&mut file, "Got a panic: {info:#?}\n").unwrap();
-        writeln!(&mut file, "Stack backtrace:\n{backtrace:?}").unwrap();
-    }));
+    //let backtrace_file =
+    //    std::fs::File::create(cache_folder.join(format!("{log_prefix}.backtrace")))
+    //        .context("failed to create backtrace file")?;
+    //let backtrace_file = std::sync::Mutex::new(backtrace_file);
+    //std::panic::set_hook(Box::new(move |info| {
+    //    let mut file = backtrace_file.lock().unwrap();
+    //    let backtrace = backtrace::Backtrace::new();
+    //    writeln!(&mut file, "Got a panic: {info:#?}\n").unwrap();
+    //    writeln!(&mut file, "Reason: {:#?}\n", info.payload()).unwrap();
+    //    writeln!(&mut file, "Stack backtrace:\n{backtrace:?}").unwrap();
+    //}));
 
     Ok(())
 }
 
 #[tokio::main]
 async fn start_app(state: &state::SharedState) -> Result<()> {
+    // this is needed for some reason
+    // TODO: figure out why
+    rustls::crypto::aws_lc_rs::default_provider().install_default().unwrap();
+
     let configs = config::get_config();
 
     if !state.is_daemon {

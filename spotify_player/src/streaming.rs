@@ -1,6 +1,5 @@
 use crate::{client::Client, config, state::SharedState};
 use librespot_connect::{config::ConnectConfig, spirc::Spirc};
-use librespot_core::authentication::Credentials;
 use librespot_core::{config::DeviceType, spotify_id};
 use librespot_playback::mixer::MixerConfig;
 use librespot_playback::{
@@ -219,16 +218,20 @@ pub async fn new_connection(client: Client, state: SharedState) -> Spirc {
     });
 
     tracing::info!("Starting an integrated Spotify player using librespot's spirc protocol");
+    let session1 = session.clone();
 
-    let (spirc, spirc_task) = Spirc::new(
+    let (spirc, spirc_task) = match Spirc::new(
         connect_config,
         session,
-        Credentials::default(),
+        session1.cache().unwrap().credentials().unwrap(),
         player1,
         mixer.into(),
     )
     .await
-    .unwrap();
+    {
+        Ok(x) => x,
+        Err(e) => panic!("{e:?}\n{}", e.error),
+    };
     tokio::task::spawn(async move {
         tokio::select! {
             _ = spirc_task => {},
