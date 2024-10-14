@@ -191,8 +191,9 @@ pub struct LayoutConfig {
 
 #[derive(Debug, Deserialize, Serialize, ConfigParse, Clone)]
 pub struct LibraryLayoutConfig {
-    pub playlist_percent: u16,
-    pub album_percent: u16,
+    pub playlist_percent: Option<u16>,
+    pub album_percent: Option<u16>,
+    pub artist_percent: Option<u16>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
@@ -339,8 +340,9 @@ impl Default for LayoutConfig {
     fn default() -> Self {
         Self {
             library: LibraryLayoutConfig {
-                playlist_percent: 40,
-                album_percent: 40,
+                playlist_percent: Some(40),
+                album_percent: Some(40),
+                artist_percent: Some(20),
             },
             playback_window_position: Position::Top,
             playback_window_height: 6,
@@ -350,8 +352,28 @@ impl Default for LayoutConfig {
 
 impl LayoutConfig {
     fn check_values(&self) -> anyhow::Result<()> {
-        if self.library.album_percent + self.library.playlist_percent > 99 {
-            anyhow::bail!("Invalid library layout: summation of album_percent and playlist_percent cannot be greater than 99!");
+        let mut total_percent = 0;
+        let mut set_columns = 0;
+
+        if let Some(percent) = self.library.playlist_percent {
+            total_percent += percent;
+            set_columns += 1;
+        }
+        if let Some(percent) = self.library.album_percent {
+            total_percent += percent;
+            set_columns += 1;
+        }
+        if let Some(percent) = self.library.artist_percent {
+            total_percent += percent;
+            set_columns += 1;
+        }
+
+        if total_percent > 100 {
+            anyhow::bail!(
+                "Invalid library layout: summation of set percentages cannot be greater than 100!"
+            );
+        } else if set_columns == 0 {
+            anyhow::bail!("Invalid library layout: at least one of album_percent, playlist_percent, or artist_percentage must be set!");
         } else {
             Ok(())
         }
@@ -361,8 +383,17 @@ impl LayoutConfig {
 impl AppConfig {
     pub fn new(path: &Path) -> Result<Self> {
         let mut config = Self::default();
-        if !config.parse_config_file(path)? {
-            config.write_config_file(path)?
+        if config.parse_config_file(path)? {
+            // If a config file was found and parsed, reset the library percentages
+            // to ensure only the user-specified values are set
+            config.layout.library.playlist_percent = None;
+            config.layout.library.album_percent = None;
+            config.layout.library.artist_percent = None;
+
+            // Re-parse the config file to set only the user-specified values
+            config.parse_config_file(path)?;
+        } else {
+            config.write_config_file(path)?;
         }
 
         config.layout.check_values()?;
