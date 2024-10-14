@@ -125,6 +125,7 @@ pub enum Orientation {
 }
 
 impl Orientation {
+    /// Construct screen orientation based on the terminal's size
     pub fn from_size(columns: u16, rows: u16) -> Self {
         let ratio = columns as f64 / rows as f64;
 
@@ -145,9 +146,5 @@ impl Orientation {
             Self::Vertical => Layout::vertical(constraints),
             Self::Horizontal => Layout::horizontal(constraints),
         }
-    }
-
-    pub fn is_horizontal(&self) -> bool {
-        self == &Self::Horizontal
     }
 }

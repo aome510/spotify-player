@@ -72,17 +72,30 @@ pub fn render_search_page(
             .collect(),
     };
 
-    let mut left_column_borders = Borders::TOP;
-    if ui.orientation.is_horizontal() {
-        left_column_borders |= Borders::RIGHT;
-    }
-
-    let track_rect =
-        construct_and_render_block("Tracks", &ui.theme, left_column_borders, frame, chunks[0]);
+    let track_rect = construct_and_render_block(
+        "Tracks",
+        &ui.theme,
+        if ui.orientation == Orientation::Horizontal {
+            Borders::TOP | Borders::RIGHT
+        } else {
+            Borders::TOP
+        },
+        frame,
+        chunks[0],
+    );
     let album_rect =
         construct_and_render_block("Albums", &ui.theme, Borders::TOP, frame, chunks[1]);
-    let artist_rect =
-        construct_and_render_block("Artists", &ui.theme, left_column_borders, frame, chunks[2]);
+    let artist_rect = construct_and_render_block(
+        "Artists",
+        &ui.theme,
+        if ui.orientation == Orientation::Horizontal {
+            Borders::TOP | Borders::RIGHT
+        } else {
+            Borders::TOP
+        },
+        frame,
+        chunks[2],
+    );
     let playlist_rect =
         construct_and_render_block("Playlists", &ui.theme, Borders::TOP, frame, chunks[3]);
 
@@ -350,14 +363,26 @@ pub fn render_library_page(
         ])
         .split(rect);
 
-    let borders = match ui.orientation {
-        Orientation::Horizontal => Borders::TOP | Borders::LEFT | Borders::BOTTOM,
-        Orientation::Vertical => Borders::ALL,
-    };
-
-    let playlist_rect =
-        construct_and_render_block("Playlists", &ui.theme, borders, frame, chunks[0]);
-    let album_rect = construct_and_render_block("Albums", &ui.theme, borders, frame, chunks[1]);
+    let playlist_rect = construct_and_render_block(
+        "Playlists",
+        &ui.theme,
+        match ui.orientation {
+            Orientation::Horizontal => Borders::TOP | Borders::LEFT | Borders::BOTTOM,
+            Orientation::Vertical => Borders::ALL,
+        },
+        frame,
+        chunks[0],
+    );
+    let album_rect = construct_and_render_block(
+        "Albums",
+        &ui.theme,
+        match ui.orientation {
+            Orientation::Horizontal => Borders::TOP | Borders::LEFT | Borders::BOTTOM,
+            Orientation::Vertical => Borders::ALL,
+        },
+        frame,
+        chunks[1],
+    );
     let artist_rect =
         construct_and_render_block("Artists", &ui.theme, Borders::ALL, frame, chunks[2]);
 
