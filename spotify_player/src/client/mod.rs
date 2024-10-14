@@ -1468,8 +1468,7 @@ impl Client {
         }
 
         #[cfg(all(feature = "notify", not(feature = "streaming")))]
-        if configs.app_config.enable_notify
-        {
+        if configs.app_config.enable_notify {
             Self::notify_new_track(track, &path)?;
         }
 
