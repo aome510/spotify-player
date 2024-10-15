@@ -46,21 +46,40 @@ pub fn render_search_page(
     let search_input_rect = chunks[0];
     let rect = chunks[1];
 
-    // track/album/artist/playlist search results layout (2x2 table)
-    let chunks = Layout::vertical([Constraint::Ratio(1, 2); 2])
-        .split(rect)
-        .iter()
-        .flat_map(|rect| {
-            Layout::horizontal([Constraint::Ratio(1, 2); 2])
-                .split(*rect)
-                .to_vec()
-        })
-        .collect::<Vec<_>>();
+    // track/album/artist/playlist search results layout
+    let chunks = match ui.orientation {
+        Orientation::Vertical => {
+            let constraints = match focus_state {
+                SearchFocusState::Input => [Constraint::Ratio(1, 4); 4],
+                _ => {
+                    let mut constraints = [Constraint::Percentage(20); 4];
+                    constraints[focus_state as usize - 1] = Constraint::Percentage(40);
+                    constraints
+                }
+            };
+
+            Layout::vertical(constraints).split(rect)
+        }
+        // 2x2 table
+        Orientation::Horizontal => Layout::vertical([Constraint::Ratio(1, 2); 2])
+            .split(rect)
+            .iter()
+            .flat_map(|rect| {
+                Layout::horizontal([Constraint::Ratio(1, 2); 2])
+                    .split(*rect)
+                    .to_vec()
+            })
+            .collect(),
+    };
 
     let track_rect = construct_and_render_block(
         "Tracks",
         &ui.theme,
-        Borders::TOP | Borders::RIGHT,
+        if ui.orientation == Orientation::Horizontal {
+            Borders::TOP | Borders::RIGHT
+        } else {
+            Borders::TOP
+        },
         frame,
         chunks[0],
     );
@@ -69,7 +88,11 @@ pub fn render_search_page(
     let artist_rect = construct_and_render_block(
         "Artists",
         &ui.theme,
-        Borders::TOP | Borders::RIGHT,
+        if ui.orientation == Orientation::Horizontal {
+            Borders::TOP | Borders::RIGHT
+        } else {
+            Borders::TOP
+        },
         frame,
         chunks[2],
     );
@@ -323,32 +346,40 @@ pub fn render_library_page(
     };
 
     // 2. Construct the page's layout
-    // Horizontally split the library page into 3 windows:
+    // Split the library page into 3 windows:
     // - a playlists window
     // - a saved albums window
     // - a followed artists window
 
-    let chunks = Layout::horizontal([
-        Constraint::Percentage(configs.app_config.layout.library.playlist_percent),
-        Constraint::Percentage(configs.app_config.layout.library.album_percent),
-        Constraint::Percentage(
-            100 - (configs.app_config.layout.library.album_percent
-                + configs.app_config.layout.library.playlist_percent),
-        ),
-    ])
-    .split(rect);
+    let chunks = ui
+        .orientation
+        .layout([
+            Constraint::Percentage(configs.app_config.layout.library.playlist_percent),
+            Constraint::Percentage(configs.app_config.layout.library.album_percent),
+            Constraint::Percentage(
+                100 - (configs.app_config.layout.library.album_percent
+                    + configs.app_config.layout.library.playlist_percent),
+            ),
+        ])
+        .split(rect);
 
     let playlist_rect = construct_and_render_block(
         "Playlists",
         &ui.theme,
-        Borders::TOP | Borders::LEFT | Borders::BOTTOM,
+        match ui.orientation {
+            Orientation::Horizontal => Borders::TOP | Borders::LEFT | Borders::BOTTOM,
+            Orientation::Vertical => Borders::ALL,
+        },
         frame,
         chunks[0],
     );
     let album_rect = construct_and_render_block(
         "Albums",
         &ui.theme,
-        Borders::TOP | Borders::LEFT | Borders::BOTTOM,
+        match ui.orientation {
+            Orientation::Horizontal => Borders::TOP | Borders::LEFT | Borders::BOTTOM,
+            Orientation::Vertical => Borders::ALL,
+        },
         frame,
         chunks[1],
     );
