@@ -15,10 +15,10 @@ clap = { version = "4.5.8", features = ["derive", "string"] }
 config_parser2 = "0.1.5"
 crossterm = "0.27.0"
 dirs-next = "2.0.0"
-librespot-connect = { git = "https://github.com/librespot-org/librespot", branch = "dev", optional = true }
-librespot-core = { git = "https://github.com/librespot-org/librespot", branch = "dev" }
-librespot-oauth = { git = "https://github.com/librespot-org/librespot", branch = "dev" }
-librespot-playback = { git = "https://github.com/librespot-org/librespot", branch = "dev", optional = true }
+librespot-connect = { version = "0.5", optional = true }
+librespot-core = "0.5"
+librespot-oauth = "0.5"
+librespot-playback = { version = "0.5", optional = true }
 log = "0.4.22"
 chrono = "0.4.38"
 reqwest = { version = "0.12.5", features = ["json"] }
