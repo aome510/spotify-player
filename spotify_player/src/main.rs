@@ -75,7 +75,9 @@ fn init_logging(cache_folder: &std::path::Path) -> Result<()> {
 async fn start_app(state: &state::SharedState) -> Result<()> {
     // this is needed for some reason
     // TODO: figure out why
-    rustls::crypto::aws_lc_rs::default_provider().install_default().unwrap();
+    rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .unwrap();
 
     let configs = config::get_config();
 
