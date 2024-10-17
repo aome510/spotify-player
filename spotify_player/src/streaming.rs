@@ -1,4 +1,3 @@
-use std::sync::Arc;
 use crate::{client::Client, config, state::SharedState};
 use librespot_connect::{config::ConnectConfig, spirc::Spirc};
 use librespot_core::{config::DeviceType, spotify_id, Session};
@@ -11,6 +10,7 @@ use librespot_playback::{
 };
 use rspotify::model::TrackId;
 use serde::Serialize;
+use std::sync::Arc;
 
 #[cfg(not(any(
     feature = "rodio-backend",
@@ -148,8 +148,7 @@ pub async fn new_connection(client: Client, state: SharedState) -> Spirc {
 
     tracing::info!("Application's connect configurations: {:?}", connect_config);
 
-    let mixer =
-        Arc::new(mixer::softmixer::SoftMixer::open(MixerConfig::default()));
+    let mixer = Arc::new(mixer::softmixer::SoftMixer::open(MixerConfig::default()));
     mixer.set_volume(volume);
 
     let backend = audio_backend::find(None).expect("should be able to find an audio backend");
