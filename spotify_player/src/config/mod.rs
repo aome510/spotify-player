@@ -405,6 +405,7 @@ impl AppConfig {
         SessionConfig {
             proxy,
             ap_port: self.ap_port,
+            client_id: crate::auth::SPOTIFY_CLIENT_ID.to_string(),
             ..Default::default()
         }
     }

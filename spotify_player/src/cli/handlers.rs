@@ -1,5 +1,5 @@
 use crate::{
-    auth::{new_session, new_session_with_new_creds, AuthConfig},
+    auth::{new_session, AuthConfig},
     client,
 };
 
@@ -158,7 +158,9 @@ fn try_connect_to_client(socket: &UdpSocket, configs: &config::Configs) -> Resul
             let session = rt.block_on(new_session(&auth_config, false))?;
 
             // create a Spotify API client
-            let client_id = configs.app_config.get_client_id()?;
+            // TODO: the client id has been set for debugging
+            // let client_id = configs.app_config.get_client_id()?;
+            let client_id = crate::auth::SPOTIFY_CLIENT_ID.to_string();
             let client = client::Client::new(session, auth_config, client_id);
             rt.block_on(client.refresh_token())?;
 
@@ -184,7 +186,7 @@ pub fn handle_cli_subcommand(cmd: &str, args: &ArgMatches) -> Result<()> {
         "authenticate" => {
             let auth_config = AuthConfig::new(configs)?;
             let rt = tokio::runtime::Runtime::new()?;
-            rt.block_on(new_session_with_new_creds(&auth_config))?;
+            rt.block_on(new_session(&auth_config, true))?;
             std::process::exit(0);
         }
         "generate" => {
