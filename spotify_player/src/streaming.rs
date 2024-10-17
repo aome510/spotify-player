@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use crate::{client::Client, config, state::SharedState};
 use librespot_connect::{config::ConnectConfig, spirc::Spirc};
 use librespot_core::{config::DeviceType, spotify_id, Session};
@@ -148,7 +149,7 @@ pub async fn new_connection(client: Client, state: SharedState) -> Spirc {
     tracing::info!("Application's connect configurations: {:?}", connect_config);
 
     let mixer =
-        Box::new(mixer::softmixer::SoftMixer::open(MixerConfig::default())) as Box<dyn Mixer>;
+        Arc::new(mixer::softmixer::SoftMixer::open(MixerConfig::default()));
     mixer.set_volume(volume);
 
     let backend = audio_backend::find(None).expect("should be able to find an audio backend");
@@ -227,7 +228,7 @@ pub async fn new_connection(client: Client, state: SharedState) -> Spirc {
         new_session,
         session.cache().unwrap().credentials().unwrap(),
         player1,
-        mixer.into(),
+        mixer,
     )
     .await
     {
