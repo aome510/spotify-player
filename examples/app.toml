@@ -31,6 +31,6 @@ normalization = false
 autoplay = false
 
 [layout]
-library = { playlist_percent = 40, album_percent = 40 }
+library = { playlist_percent = 40, album_percent = 40, artist_percent = 20 }
 playback_window_position = "Top"
 playback_window_height = 6
