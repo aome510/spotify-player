@@ -15,7 +15,7 @@
 - [Keymaps](#keymaps)
 
 All configuration files should be placed inside the application's configuration folder (default to be `$HOME/.config/spotify-player`).
-    
+
 ## General
 
 **The default `app.toml` can be found in the example [`app.toml`](../examples/app.toml) file.**
@@ -25,10 +25,10 @@ All configuration files should be placed inside the application's configuration 
 | Option                            | Description                                                                              | Default                                                 |
 | --------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------- |
 | `client_id`                       | the Spotify client's ID                                                                  | `65b708073fc0480ea92a077233ca87bd`                      |
-| `client_id_command`                   | a shell command that prints the Spotify client ID to stdout (overrides `client_id`)      | `None`                                                  |
+| `client_id_command`               | a shell command that prints the Spotify client ID to stdout (overrides `client_id`)      | `None`                                                  |
 | `client_port`                     | the port that the application's client is running on to handle CLI commands              | `8080`                                                  |
 | `tracks_playback_limit`           | the limit for the number of tracks played in a **tracks** playback                       | `50`                                                    |
-| `playback_format`                 | the format of the text in the playback's window                                          | `{status} {track} • {artists}\n{album}\n{metadata}`     | 
+| `playback_format`                 | the format of the text in the playback's window                                          | `{status} {track} • {artists}\n{album}\n{metadata}`     |
 | `notify_format`                   | the format of a notification (`notify` feature only)                                     | `{ summary = "{track} • {artists}", body = "{album}" }` |
 | `notify_timeout_in_secs`          | the timeout (in seconds) of a notification (`notify` feature only)                       | `0` (no timeout)                                        |
 | `player_event_hook_command`       | the hook command executed when there is a new player event                               | `None`                                                  |
@@ -139,24 +139,38 @@ More details on the above configuration options can be found under the [Librespo
 
 ### Layout configurations
 
-The layout of the application can be adjusted via these options. 
+The layout of the application can be adjusted via these options.
 
-| Option                     | Description                                                      | Default |
-| -------------------------- | ---------------------------------------------------------------- | ------- |
-| `library.album_percent`    | The percentage of the album window in the library                | `40`    |
-| `library.playlist_percent` | The percentage of the playlist window in the library             | `40`    |
-| `playback_window_position` | The position of the playback window                              | `Top`   |
-| `playback_window_height`   | The height of the playback window                                | `6`     |
+| Option                     | Description                                          | Default |
+| -------------------------- | ---------------------------------------------------- | ------- |
+| `library.album_percent`    | The percentage of the album window in the library    | `40`    |
+| `library.playlist_percent` | The percentage of the playlist window in the library | `40`    |
+| `library.artist_percent`   | The percentage of the artist window in the library   | `20`    |
+| `playback_window_position` | The position of the playback window                  | `Top`   |
+| `playback_window_height`   | The height of the playback window                    | `6`     |
 
-Example: 
+Example:
 
-``` toml
+```toml
 
 [layout]
-library = { album_percent = 40, playlist_percent = 40 }
+library = { album_percent = 40, playlist_percent = 40, artist_percent = 20 }
 playback_window_position = "Top"
 
 ```
+
+If you would like to remove any of columns, omit them from the configuration file.
+
+Example:
+
+```toml
+
+[layout]
+library = { album_percent = 40, playlist_percent = 60 }
+playback_window_position = "Top"
+
+```
+
 ## Themes
 
 `spotify_player` uses the `theme.toml` config file to look for user-defined themes.
@@ -286,7 +300,7 @@ key_sequence = "q"
 
 ## Actions
 
-Actions are located in the same `keymap.toml` file as keymaps. An action can be triggered by a key sequence that is not bound to any command. Once the mapped key sequence is pressed, the corresponding action will be triggered. By default actions will act upon the currently selected item, you can change this behaviour by setting the `target` field for a keymap to either `PlayingTrack` or `SelectedItem`. 
+Actions are located in the same `keymap.toml` file as keymaps. An action can be triggered by a key sequence that is not bound to any command. Once the mapped key sequence is pressed, the corresponding action will be triggered. By default actions will act upon the currently selected item, you can change this behaviour by setting the `target` field for a keymap to either `PlayingTrack` or `SelectedItem`.
 a list of actions can be found [here](../README.md#actions).
 
 For example,
