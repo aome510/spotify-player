@@ -340,8 +340,8 @@ pub fn render_library_page(
     let data = state.data.read();
     let configs = config::get_config();
 
-    let (focus_state, playlist_folder_id) = match ui.current_page() {
-        PageState::Library { state } => (state.focus, state.playlist_folder_id),
+    let focus_state = match ui.current_page() {
+        PageState::Library { state } => state.focus,
         _ => return,
     };
 
@@ -351,60 +351,90 @@ pub fn render_library_page(
     // - a saved albums window
     // - a followed artists window
 
-    let chunks = ui
-        .orientation
-        .layout([
-            Constraint::Percentage(configs.app_config.layout.library.playlist_percent),
-            Constraint::Percentage(configs.app_config.layout.library.album_percent),
-            Constraint::Percentage(
-                100 - (configs.app_config.layout.library.album_percent
-                    + configs.app_config.layout.library.playlist_percent),
-            ),
-        ])
-        .split(rect);
+    // Calculate constraints based on visible columns
+    let mut constraints: Vec<Constraint> = Vec::new();
+    if let Some(percent) = configs.app_config.layout.library.playlist_percent {
+        constraints.push(Constraint::Percentage(percent));
+    }
+    if let Some(percent) = configs.app_config.layout.library.album_percent {
+        constraints.push(Constraint::Percentage(percent));
+    }
+    if let Some(percent) = configs.app_config.layout.library.artist_percent {
+        constraints.push(Constraint::Percentage(percent));
+    }
 
-    let playlist_rect = construct_and_render_block(
-        "Playlists",
-        &ui.theme,
-        match ui.orientation {
-            Orientation::Horizontal => Borders::TOP | Borders::LEFT | Borders::BOTTOM,
-            Orientation::Vertical => Borders::ALL,
-        },
-        frame,
-        chunks[0],
-    );
-    let album_rect = construct_and_render_block(
-        "Albums",
-        &ui.theme,
-        match ui.orientation {
-            Orientation::Horizontal => Borders::TOP | Borders::LEFT | Borders::BOTTOM,
-            Orientation::Vertical => Borders::ALL,
-        },
-        frame,
-        chunks[1],
-    );
-    let artist_rect =
-        construct_and_render_block("Artists", &ui.theme, Borders::ALL, frame, chunks[2]);
+    let total_sections = constraints.len();
+    let chunks = Layout::horizontal(&constraints).split(rect);
+
+    let mut _chunk_index = 0;
+
+    let mut playlist_rect = None;
+    let mut album_rect = None;
+    let mut artist_rect = None;
+
+    if configs.app_config.layout.library.playlist_percent.is_some() {
+        let borders = if _chunk_index == total_sections - 1 {
+            Borders::ALL
+        } else {
+            match ui.orientation {
+                Orientation::Horizontal => Borders::TOP | Borders::LEFT | Borders::BOTTOM,
+                Orientation::Vertical => Borders::ALL,
+            }
+        };
+        playlist_rect = Some(construct_and_render_block(
+            "Playlists",
+            &ui.theme,
+            borders,
+            frame,
+            chunks[_chunk_index],
+        ));
+        _chunk_index += 1;
+    }
+
+    if configs.app_config.layout.library.album_percent.is_some() {
+        let borders = if _chunk_index == total_sections - 1 {
+            Borders::ALL
+        } else {
+            match ui.orientation {
+                Orientation::Horizontal => Borders::TOP | Borders::LEFT | Borders::BOTTOM,
+                Orientation::Vertical => Borders::ALL,
+            }
+        };
+        album_rect = Some(construct_and_render_block(
+            "Albums",
+            &ui.theme,
+            borders,
+            frame,
+            chunks[_chunk_index],
+        ));
+        _chunk_index += 1;
+    }
+
+    if configs.app_config.layout.library.artist_percent.is_some() {
+        let borders = Borders::ALL;
+        artist_rect = Some(construct_and_render_block(
+            "Artists",
+            &ui.theme,
+            borders,
+            frame,
+            chunks[_chunk_index],
+        ));
+    }
 
     // 3. Construct the page's widgets
     // Construct the playlist window
-    let items = ui
-        .search_filtered_items(&data.user_data.folder_playlists_items(playlist_folder_id))
-        .into_iter()
-        .map(|item| match item {
-            PlaylistFolderItem::Playlist(p) => {
-                (p.to_string(), curr_context_uri == Some(p.id.uri()))
-            }
-            PlaylistFolderItem::Folder(f) => (f.to_string(), false),
-        })
-        .collect::<Vec<_>>();
-
     let (playlist_list, n_playlists) = utils::construct_list_widget(
         &ui.theme,
-        items,
-        is_active
-            && focus_state != LibraryFocusState::SavedAlbums
-            && focus_state != LibraryFocusState::FollowedArtists,
+        ui.search_filtered_items(&data.user_data.playlists)
+            .into_iter()
+            .map(|item| match item {
+                PlaylistFolderItem::Playlist(p) => {
+                    (p.to_string(), curr_context_uri == Some(p.id.uri()))
+                }
+                PlaylistFolderItem::Folder(f) => (f.to_string(), false),
+            })
+            .collect(),
+        is_active && focus_state == LibraryFocusState::Playlists,
     );
     // Construct the saved album window
     let (album_list, n_albums) = utils::construct_list_widget(
@@ -433,27 +463,35 @@ pub fn render_library_page(
         _ => return,
     };
 
-    utils::render_list_window(
-        frame,
-        playlist_list,
-        playlist_rect,
-        n_playlists,
-        &mut page_state.playlist_list,
-    );
-    utils::render_list_window(
-        frame,
-        album_list,
-        album_rect,
-        n_albums,
-        &mut page_state.saved_album_list,
-    );
-    utils::render_list_window(
-        frame,
-        artist_list,
-        artist_rect,
-        n_artists,
-        &mut page_state.followed_artist_list,
-    );
+    if let Some(rect) = playlist_rect {
+        utils::render_list_window(
+            frame,
+            playlist_list,
+            rect,
+            n_playlists,
+            &mut page_state.playlist_list,
+        );
+    }
+
+    if let Some(rect) = album_rect {
+        utils::render_list_window(
+            frame,
+            album_list,
+            rect,
+            n_albums,
+            &mut page_state.saved_album_list,
+        );
+    }
+
+    if let Some(rect) = artist_rect {
+        utils::render_list_window(
+            frame,
+            artist_list,
+            rect,
+            n_artists,
+            &mut page_state.followed_artist_list,
+        );
+    }
 }
 
 pub fn render_browse_page(
