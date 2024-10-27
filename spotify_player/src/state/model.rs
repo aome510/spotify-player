@@ -567,7 +567,11 @@ impl From<rspotify_model::FullEpisode> for Episode {
 
 impl std::fmt::Display for Episode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.name,)
+        if let Some(s) = &self.show {
+            write!(f, "{} • {}", self.name, s.name)
+        } else {
+            write!(f, "{}", self.name)
+        }
     }
 }
 

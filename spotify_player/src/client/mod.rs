@@ -763,10 +763,7 @@ impl Client {
     /// Get all saved shows of the current user
     pub async fn current_user_saved_shows(&self) -> Result<Vec<Show>> {
         let first_page = self.get_saved_show_manual(Some(50), None).await?;
-
         let shows = self.all_paging_items(first_page, &Query::new()).await?;
-
-        // converts `rspotify_model::SavedAlbum` into `state::Album`
         Ok(shows.into_iter().map(|s| s.show.into()).collect())
     }
 
@@ -984,7 +981,7 @@ impl Client {
             .await?)
     }
 
-    /// Add a track to a playlist
+    /// Add a playable item to a playlist
     pub async fn add_item_to_playlist(
         &self,
         state: &SharedState,
@@ -1341,7 +1338,7 @@ impl Client {
         // converts `rspotify_model::FullShow` into `state::Show`
         let show: Show = show.into();
 
-        // get the show's tracks
+        // get the show's episodes
         let episodes = self
             .all_paging_items(first_page, &Query::new())
             .await?
@@ -1446,14 +1443,14 @@ impl Client {
         state: &SharedState,
         reset_buffered_playback: bool,
     ) -> Result<()> {
-        let new_track = {
+        let new_playback = {
             // update the playback state
             let playback = self.current_playback(None, None::<Vec<_>>).await?;
             let mut player = state.player.write();
 
-            let prev_track = player.currently_playing();
+            let prev_item = player.currently_playing();
 
-            let prev_track_name = match prev_track {
+            let prev_name = match prev_item {
                 Some(rspotify_model::PlayableItem::Track(track)) => track.name.to_owned(),
                 Some(rspotify_model::PlayableItem::Episode(episode)) => episode.name.to_owned(),
                 None => String::new(),
@@ -1462,18 +1459,18 @@ impl Client {
             player.playback = playback;
             player.playback_last_updated_time = Some(std::time::Instant::now());
 
-            let curr_track = player.currently_playing();
+            let curr_item = player.currently_playing();
 
-            let curr_track_name = match curr_track {
+            let curr_name = match curr_item {
                 Some(rspotify_model::PlayableItem::Track(track)) => track.name.to_owned(),
                 Some(rspotify_model::PlayableItem::Episode(episode)) => episode.name.to_owned(),
                 None => String::new(),
             };
 
-            let new_track = prev_track_name != curr_track_name && !curr_track_name.is_empty();
+            let new_playback = prev_name != curr_name && !curr_name.is_empty();
             // check if we need to update the buffered playback
             let needs_update = match (&player.buffered_playback, &player.playback) {
-                (Some(bp), Some(p)) => bp.device_id != p.device.id || new_track,
+                (Some(bp), Some(p)) => bp.device_id != p.device.id || new_playback,
                 (None, None) => false,
                 _ => true,
             };
@@ -1495,22 +1492,22 @@ impl Client {
                 });
             }
 
-            new_track
+            new_playback
         };
 
-        if !new_track {
+        if !new_playback {
             return Ok(());
         }
-        self.handle_new_track_event(state).await?;
+        self.handle_new_playback_event(state).await?;
 
         Ok(())
     }
 
     // Handle new track event
-    async fn handle_new_track_event(&self, state: &SharedState) -> Result<()> {
+    async fn handle_new_playback_event(&self, state: &SharedState) -> Result<()> {
         let configs = config::get_config();
 
-        let track_or_episode = {
+        let curr_item = {
             let player = state.player.read();
             let Some(track_or_episode) = player.currently_playing() else {
                 return Ok(());
@@ -1518,7 +1515,7 @@ impl Client {
             track_or_episode.clone()
         };
 
-        let url = match track_or_episode {
+        let url = match curr_item {
             rspotify_model::PlayableItem::Track(ref track) => {
                 crate::utils::get_track_album_image_url(track)
                     .ok_or(anyhow::anyhow!("missing image"))?
@@ -1529,7 +1526,7 @@ impl Client {
             }
         };
 
-        let filename = (match track_or_episode {
+        let filename = (match curr_item {
             rspotify_model::PlayableItem::Track(ref track) => {
                 format!(
                     "{}-{}-cover-{}.jpg",
@@ -1544,7 +1541,7 @@ impl Client {
                     "{}-{}-cover-{}.jpg",
                     episode.show.name,
                     episode.show.publisher,
-                    // first 6 characters of the album's id
+                    // first 6 characters of the show's id
                     &episode.show.id.as_ref().id()[..6]
                 )
             }
@@ -1574,7 +1571,7 @@ impl Client {
         if configs.app_config.enable_notify
             && (!configs.app_config.notify_streaming_only || self.stream_conn.lock().is_some())
         {
-            Self::notify_new_track(track_or_episode, &path)?;
+            Self::notify_new_playback(curr_item, &path)?;
         }
 
         Ok(())
@@ -1615,8 +1612,8 @@ impl Client {
     }
 
     #[cfg(feature = "notify")]
-    /// Create a notification for a new track
-    fn notify_new_track(
+    /// Create a notification for a new playback
+    fn notify_new_playback(
         playable: rspotify_model::PlayableItem,
         cover_img_path: &std::path::Path,
     ) -> Result<()> {
@@ -1647,21 +1644,16 @@ impl Client {
                         text += name
                     }
                     "{artists}" => {
-                        let artists_or_show = match playable {
-                            rspotify_model::PlayableItem::Track(ref track) => {
-                                crate::utils::map_join(&track.artists, |a| &a.name, ", ")
-                            }
-                            rspotify_model::PlayableItem::Episode(ref episode) => {
-                                episode.show.name.clone()
-                            }
-                        };
-                        text += &artists_or_show
-                    }
-                    "{album}" => {
                         if let rspotify_model::PlayableItem::Track(ref track) = playable {
-                            text += &track.album.name
+                            text += &crate::utils::map_join(&track.artists, |a| &a.name, ", ");
                         }
                     }
+                    "{album}" => match playable {
+                        rspotify_model::PlayableItem::Track(ref track) => text += &track.album.name,
+                        rspotify_model::PlayableItem::Episode(ref episode) => {
+                            text += &episode.show.name
+                        }
+                    },
                     _ => continue,
                 }
             }

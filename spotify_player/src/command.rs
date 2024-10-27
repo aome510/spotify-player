@@ -261,7 +261,7 @@ pub fn construct_playlist_actions(playlist: &Playlist, data: &DataReadGuard) -> 
     }
     actions
 }
-///
+
 /// constructs a list of actions on a show
 pub fn construct_show_actions(show: &Show, data: &DataReadGuard) -> Vec<Action> {
     let mut actions = vec![Action::CopyLink];

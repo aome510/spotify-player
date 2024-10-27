@@ -82,7 +82,9 @@ impl AppData {
 
     /// Get a list of tracks inside a given context
     pub fn context_tracks_mut(&mut self, id: &ContextId) -> Option<&mut Vec<Track>> {
-        self.caches.context.get_mut(&id.uri()).map(|c| match c {
+        let c = self.caches.context.get_mut(&id.uri())?;
+
+        Some(match c {
             Context::Album { tracks, .. } => tracks,
             Context::Playlist { tracks, .. } => tracks,
             Context::Artist {
@@ -90,13 +92,15 @@ impl AppData {
             } => tracks,
             Context::Tracks { tracks, .. } => tracks,
             Context::Show { .. } => {
-                todo!("implement context_tracks_mut");
+                // TODO: handle context_tracks_mut for Show
+                return None;
             }
         })
     }
 
     pub fn context_tracks(&self, id: &ContextId) -> Option<&Vec<Track>> {
-        self.caches.context.get(&id.uri()).map(|c| match c {
+        let c = self.caches.context.get(&id.uri())?;
+        Some(match c {
             Context::Album { tracks, .. } => tracks,
             Context::Playlist { tracks, .. } => tracks,
             Context::Artist {
@@ -104,7 +108,8 @@ impl AppData {
             } => tracks,
             Context::Tracks { tracks, .. } => tracks,
             Context::Show { .. } => {
-                todo!("implement context_tracks");
+                // TODO: handle context_tracks for Show
+                return None;
             }
         })
     }

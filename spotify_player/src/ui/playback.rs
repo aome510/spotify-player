@@ -16,224 +16,114 @@ pub fn render_playback_window(
 
     let player = state.player.read();
     if let Some(ref playback) = player.playback {
-        match playback.item {
-            Some(rspotify::model::PlayableItem::Track(ref track)) => {
-                let (metadata_rect, progress_bar_rect) = {
-                    // allocate the progress bar rect
-                    let (rect, progress_bar_rect) = {
-                        let chunks = Layout::vertical([Constraint::Fill(0), Constraint::Length(1)])
+        if let Some(item) = &playback.item {
+            let (metadata_rect, progress_bar_rect) = {
+                // allocate the progress bar rect
+                let (rect, progress_bar_rect) = {
+                    let chunks =
+                        Layout::vertical([Constraint::Fill(0), Constraint::Length(1)]).split(rect);
+
+                    (chunks[0], chunks[1])
+                };
+
+                let metadata_rect = {
+                    // Render the track's cover image if `image` feature is enabled
+                    #[cfg(feature = "image")]
+                    {
+                        let configs = config::get_config();
+                        // Split the allocated rectangle into `metadata_rect` and `cover_img_rect`
+                        let (metadata_rect, cover_img_rect) = {
+                            let hor_chunks = Layout::horizontal([
+                                Constraint::Length(configs.app_config.cover_img_length as u16),
+                                Constraint::Fill(0), // metadata_rect
+                            ])
+                            .spacing(1)
                             .split(rect);
+                            let ver_chunks = Layout::vertical([
+                                Constraint::Length(configs.app_config.cover_img_width as u16), // cover_img_rect
+                                Constraint::Fill(0), // empty space
+                            ])
+                            .split(hor_chunks[0]);
 
-                        (chunks[0], chunks[1])
-                    };
+                            (hor_chunks[1], ver_chunks[0])
+                        };
 
-                    let metadata_rect = {
-                        // Render the track's cover image if `image` feature is enabled
-                        #[cfg(feature = "image")]
-                        {
-                            let configs = config::get_config();
-                            // Split the allocated rectangle into `metadata_rect` and `cover_img_rect`
-                            let (metadata_rect, cover_img_rect) = {
-                                let hor_chunks = Layout::horizontal([
-                                    Constraint::Length(configs.app_config.cover_img_length as u16),
-                                    Constraint::Fill(0), // metadata_rect
-                                ])
-                                .spacing(1)
-                                .split(rect);
-                                let ver_chunks = Layout::vertical([
-                                    Constraint::Length(configs.app_config.cover_img_width as u16), // cover_img_rect
-                                    Constraint::Fill(0), // empty space
-                                ])
-                                .split(hor_chunks[0]);
-
-                                (hor_chunks[1], ver_chunks[0])
+                        let url = match item {
+                            rspotify_model::PlayableItem::Track(track) => {
+                                crate::utils::get_track_album_image_url(track).map(String::from)
+                            }
+                            rspotify_model::PlayableItem::Episode(episode) => {
+                                crate::utils::get_episode_show_image_url(episode).map(String::from)
+                            }
+                        };
+                        if let Some(url) = url {
+                            let needs_clear = if ui.last_cover_image_render_info.url != url
+                                || ui.last_cover_image_render_info.render_area != cover_img_rect
+                            {
+                                ui.last_cover_image_render_info = ImageRenderInfo {
+                                    url,
+                                    render_area: cover_img_rect,
+                                    rendered: false,
+                                };
+                                true
+                            } else {
+                                false
                             };
 
-                            let url =
-                                crate::utils::get_track_album_image_url(track).map(String::from);
-                            if let Some(url) = url {
-                                let needs_clear = if ui.last_cover_image_render_info.url != url
-                                    || ui.last_cover_image_render_info.render_area != cover_img_rect
-                                {
-                                    ui.last_cover_image_render_info = ImageRenderInfo {
-                                        url,
-                                        render_area: cover_img_rect,
-                                        rendered: false,
-                                    };
-                                    true
-                                } else {
-                                    false
-                                };
-
-                                if needs_clear {
-                                    // clear the image's both new and old areas to ensure no remaining artifacts before rendering the image
-                                    // See: https://github.com/aome510/spotify-player/issues/389
-                                    clear_area(frame, ui.last_cover_image_render_info.render_area);
-                                    clear_area(frame, cover_img_rect);
-                                } else {
-                                    if !ui.last_cover_image_render_info.rendered {
-                                        if let Err(err) = render_playback_cover_image(state, ui) {
-                                            tracing::error!(
-                                                "Failed to render playback's cover image: {err:#}"
-                                            );
-                                        }
+                            if needs_clear {
+                                // clear the image's both new and old areas to ensure no remaining artifacts before rendering the image
+                                // See: https://github.com/aome510/spotify-player/issues/389
+                                clear_area(frame, ui.last_cover_image_render_info.render_area);
+                                clear_area(frame, cover_img_rect);
+                            } else {
+                                if !ui.last_cover_image_render_info.rendered {
+                                    if let Err(err) = render_playback_cover_image(state, ui) {
+                                        tracing::error!(
+                                            "Failed to render playback's cover image: {err:#}"
+                                        );
                                     }
+                                }
 
-                                    // set the `skip` state of cells in the cover image area
-                                    // to prevent buffer from overwriting the image's rendered area
-                                    // NOTE: `skip` should not be set when clearing the render area.
-                                    // Otherwise, nothing will be clear as the buffer doesn't handle cells with `skip=true`.
-                                    for x in cover_img_rect.left()..cover_img_rect.right() {
-                                        for y in cover_img_rect.top()..cover_img_rect.bottom() {
-                                            frame.buffer_mut().get_mut(x, y).set_skip(true);
-                                        }
+                                // set the `skip` state of cells in the cover image area
+                                // to prevent buffer from overwriting the image's rendered area
+                                // NOTE: `skip` should not be set when clearing the render area.
+                                // Otherwise, nothing will be clear as the buffer doesn't handle cells with `skip=true`.
+                                for x in cover_img_rect.left()..cover_img_rect.right() {
+                                    for y in cover_img_rect.top()..cover_img_rect.bottom() {
+                                        frame.buffer_mut().get_mut(x, y).set_skip(true);
                                     }
                                 }
                             }
-
-                            metadata_rect
                         }
 
-                        #[cfg(not(feature = "image"))]
-                        {
-                            rect
-                        }
-                    };
+                        metadata_rect
+                    }
 
-                    (metadata_rect, progress_bar_rect)
+                    #[cfg(not(feature = "image"))]
+                    {
+                        rect
+                    }
                 };
 
-                if let Some(ref playback) = player.buffered_playback {
-                    let playback_text = construct_playback_text(
-                        ui,
-                        &rspotify_model::PlayableItem::Track(track.clone()),
-                        playback,
-                    );
-                    let playback_desc = Paragraph::new(playback_text);
-                    frame.render_widget(playback_desc, metadata_rect);
-                }
+                (metadata_rect, progress_bar_rect)
+            };
 
-                let progress = std::cmp::min(
-                    player.playback_progress().expect("non-empty playback"),
-                    track.duration,
-                );
-                render_playback_progress_bar(
-                    frame,
-                    ui,
-                    progress,
-                    track.duration,
-                    progress_bar_rect,
-                );
+            if let Some(ref playback) = player.buffered_playback {
+                let playback_text = construct_playback_text(ui, item, playback);
+                let playback_desc = Paragraph::new(playback_text);
+                frame.render_widget(playback_desc, metadata_rect);
             }
-            Some(rspotify::model::PlayableItem::Episode(ref episode)) => {
-                let (metadata_rect, progress_bar_rect) = {
-                    // allocate the progress bar rect
-                    let (rect, progress_bar_rect) = {
-                        let chunks = Layout::vertical([Constraint::Fill(0), Constraint::Length(1)])
-                            .split(rect);
 
-                        (chunks[0], chunks[1])
-                    };
+            let duration = match item {
+                rspotify_model::PlayableItem::Track(track) => track.duration,
+                rspotify_model::PlayableItem::Episode(episode) => episode.duration,
+            };
 
-                    let metadata_rect = {
-                        // Render the track's cover image if `image` feature is enabled
-                        #[cfg(feature = "image")]
-                        {
-                            let configs = config::get_config();
-                            // Split the allocated rectangle into `metadata_rect` and `cover_img_rect`
-                            let (metadata_rect, cover_img_rect) = {
-                                let hor_chunks = Layout::horizontal([
-                                    Constraint::Length(configs.app_config.cover_img_length as u16),
-                                    Constraint::Fill(0), // metadata_rect
-                                ])
-                                .spacing(1)
-                                .split(rect);
-                                let ver_chunks = Layout::vertical([
-                                    Constraint::Length(configs.app_config.cover_img_width as u16), // cover_img_rect
-                                    Constraint::Fill(0), // empty space
-                                ])
-                                .split(hor_chunks[0]);
-
-                                (hor_chunks[1], ver_chunks[0])
-                            };
-
-                            let url =
-                                crate::utils::get_episode_show_image_url(episode).map(String::from);
-                            if let Some(url) = url {
-                                let needs_clear = if ui.last_cover_image_render_info.url != url
-                                    || ui.last_cover_image_render_info.render_area != cover_img_rect
-                                {
-                                    ui.last_cover_image_render_info = ImageRenderInfo {
-                                        url,
-                                        render_area: cover_img_rect,
-                                        rendered: false,
-                                    };
-                                    true
-                                } else {
-                                    false
-                                };
-
-                                if needs_clear {
-                                    // clear the image's both new and old areas to ensure no remaining artifacts before rendering the image
-                                    // See: https://github.com/aome510/spotify-player/issues/389
-                                    clear_area(frame, ui.last_cover_image_render_info.render_area);
-                                    clear_area(frame, cover_img_rect);
-                                } else {
-                                    if !ui.last_cover_image_render_info.rendered {
-                                        if let Err(err) = render_playback_cover_image(state, ui) {
-                                            tracing::error!(
-                                                "Failed to render playback's cover image: {err:#}"
-                                            );
-                                        }
-                                    }
-
-                                    // set the `skip` state of cells in the cover image area
-                                    // to prevent buffer from overwriting the image's rendered area
-                                    // NOTE: `skip` should not be set when clearing the render area.
-                                    // Otherwise, nothing will be clear as the buffer doesn't handle cells with `skip=true`.
-                                    for x in cover_img_rect.left()..cover_img_rect.right() {
-                                        for y in cover_img_rect.top()..cover_img_rect.bottom() {
-                                            frame.buffer_mut().get_mut(x, y).set_skip(true);
-                                        }
-                                    }
-                                }
-                            }
-
-                            metadata_rect
-                        }
-
-                        #[cfg(not(feature = "image"))]
-                        {
-                            rect
-                        }
-                    };
-
-                    (metadata_rect, progress_bar_rect)
-                };
-
-                if let Some(ref playback) = player.buffered_playback {
-                    let playback_text = construct_playback_text(
-                        ui,
-                        &rspotify_model::PlayableItem::Episode(episode.clone()),
-                        playback,
-                    );
-                    let playback_desc = Paragraph::new(playback_text);
-                    frame.render_widget(playback_desc, metadata_rect);
-                }
-
-                let progress = std::cmp::min(
-                    player.playback_progress().expect("non-empty playback"),
-                    episode.duration,
-                );
-                render_playback_progress_bar(
-                    frame,
-                    ui,
-                    progress,
-                    episode.duration,
-                    progress_bar_rect,
-                );
-            }
-            None => (),
+            let progress = std::cmp::min(
+                player.playback_progress().expect("non-empty playback"),
+                duration,
+            );
+            render_playback_progress_bar(frame, ui, progress, duration, progress_bar_rect);
         }
     } else {
         // Previously rendered image can result in a weird rendering text,

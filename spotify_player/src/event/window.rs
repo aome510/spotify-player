@@ -211,9 +211,10 @@ pub fn handle_command_for_focused_context_window(
             Context::Tracks { tracks, .. } => {
                 handle_command_for_track_table_window(command, client_pub, None, tracks, &data, ui)
             }
-            Context::Show { episodes, .. } => handle_command_for_episode_table_window(
-                command, client_pub, None, episodes, &data, ui,
-            ),
+            Context::Show { .. } => {
+                // TODO: implement command handler for episode table window similar to track table window
+                Ok(false)
+            }
         },
         None => Ok(false),
     }
@@ -341,83 +342,6 @@ fn handle_command_for_track_table_window(
         Command::AddSelectedItemToQueue => {
             client_pub.send(ClientRequest::AddPlayableToQueue(
                 filtered_tracks[id].id.clone().into(),
-            ))?;
-        }
-        _ => return Ok(false),
-    }
-    Ok(true)
-}
-
-fn handle_command_for_episode_table_window(
-    command: Command,
-    client_pub: &flume::Sender<ClientRequest>,
-    context_id: Option<ContextId>,
-    episodes: &[Episode],
-    data: &DataReadGuard,
-    ui: &mut UIStateGuard,
-) -> Result<bool> {
-    let id = ui.current_page_mut().selected().unwrap_or_default();
-    let filtered_episodes = ui.search_filtered_items(episodes);
-    if id >= filtered_episodes.len() {
-        return Ok(false);
-    }
-
-    //if let Some(ContextId::Playlist(ref playlist_id)) = context_id {
-    //    let modifiable =
-    //        data.user_data.modifiable_playlist_items(None).iter().any(
-    //            |item| matches!(item, PlaylistFolderItem::Playlist(p) if p.id.eq(playlist_id)),
-    //        );
-    //    if modifiable
-    //        && handle_playlist_modify_command(
-    //            id,
-    //            playlist_id,
-    //            command,
-    //            client_pub,
-    //            &filtered_episodes,
-    //            data,
-    //            ui,
-    //        )?
-    //    {
-    //        return Ok(true);
-    //    }
-    //}
-
-    if handle_navigation_command(command, ui.current_page_mut(), id, filtered_episodes.len()) {
-        return Ok(true);
-    }
-
-    match command {
-        Command::PlayRandom | Command::ChooseSelected => {
-            let uri = if command == Command::PlayRandom {
-                episodes[rand::thread_rng().gen_range(0..episodes.len())]
-                    .id
-                    .uri()
-            } else {
-                filtered_episodes[id].id.uri()
-            };
-
-            let base_playback = if let Some(context_id) = context_id {
-                Playback::Context(context_id, None)
-            } else {
-                Playback::URIs(episodes.iter().map(|t| t.id.clone().into()).collect(), None)
-            };
-
-            client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
-                base_playback
-                    .uri_offset(uri, config::get_config().app_config.tracks_playback_limit),
-                None,
-            )))?;
-        }
-        Command::ShowActionsOnSelectedItem => {
-            let actions = command::construct_episode_actions(filtered_episodes[id], data);
-            ui.popup = Some(PopupState::ActionList(
-                Box::new(ActionListItem::Episode(episodes[id].clone(), actions)),
-                ListState::default(),
-            ));
-        }
-        Command::AddSelectedItemToQueue => {
-            client_pub.send(ClientRequest::AddPlayableToQueue(
-                filtered_episodes[id].id.clone().into(),
             ))?;
         }
         _ => return Ok(false),
@@ -624,45 +548,6 @@ pub fn handle_command_for_show_list_window(
                 Box::new(ActionListItem::Show(shows[id].clone(), actions)),
                 ListState::default(),
             ));
-        }
-        _ => return Ok(false),
-    }
-    Ok(true)
-}
-
-pub fn handle_command_for_episode_list_window(
-    command: Command,
-    client_pub: &flume::Sender<ClientRequest>,
-    episodes: Vec<&Episode>,
-    data: &DataReadGuard,
-    ui: &mut UIStateGuard,
-) -> Result<bool> {
-    let id = ui.current_page_mut().selected().unwrap_or_default();
-    if id >= episodes.len() {
-        return Ok(false);
-    }
-
-    if handle_navigation_command(command, ui.current_page_mut(), id, episodes.len()) {
-        return Ok(true);
-    }
-    match command {
-        Command::ChooseSelected => {
-            client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
-                Playback::URIs(vec![episodes[id].id.clone().into()], None),
-                None,
-            )))?;
-        }
-        Command::ShowActionsOnSelectedItem => {
-            let actions = command::construct_episode_actions(episodes[id], data);
-            ui.popup = Some(PopupState::ActionList(
-                Box::new(ActionListItem::Episode(episodes[id].clone(), actions)),
-                ListState::default(),
-            ));
-        }
-        Command::AddSelectedItemToQueue => {
-            client_pub.send(ClientRequest::AddPlayableToQueue(
-                episodes[id].id.clone().into(),
-            ))?;
         }
         _ => return Ok(false),
     }
