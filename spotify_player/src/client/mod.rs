@@ -1567,11 +1567,16 @@ impl Client {
         }
 
         // notify user about the playback's change if any
-        #[cfg(feature = "notify")]
+        #[cfg(all(feature = "notify", feature = "streaming"))]
         if configs.app_config.enable_notify
             && (!configs.app_config.notify_streaming_only || self.stream_conn.lock().is_some())
         {
             Self::notify_new_playback(curr_item, &path)?;
+        }
+
+        #[cfg(all(feature = "notify", not(feature = "streaming")))]
+        if configs.app_config.enable_notify {
+            Self::notify_new_track(track, &path)?;
         }
 
         Ok(())

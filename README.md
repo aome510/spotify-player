@@ -42,7 +42,7 @@
 - Offer a wide range of [CLI commands](#cli-commands)
 
 ## Important Notice
-spotify-player throws error "Login failed with reason: Bad credentials" when authenticating from 7/29/2024 because Spotify removed username & password authentication from API through Mercury/Hermes. Please use [librespot-auth repository](https://github.com/dspearson/librespot-auth). For more details, see [#520](https://github.com/aome510/spotify-player/issues/520)
+spotify-player throws error "Login failed with reason: Bad credentials" when authenticating from 7/29/2024 because Spotify removed username & password authentication from API through Mercury/Hermes. Please use [librespot-auth repository](https://github.com/dspearson/librespot-auth). For more details, see [#580](https://github.com/aome510/spotify-player/issues/580)
 
 ## Examples
 
@@ -91,7 +91,7 @@ Run `scoop install spotify-player` to install the application.
 
 ### Cargo
 
-Run `cargo install spotify_player` to install the application from [crates.io](https://crates.io/crates/spotify_player).
+Run `cargo install spotify_player --locked` to install the application from [crates.io](https://crates.io/crates/spotify_player).
 
 ### AUR
 
