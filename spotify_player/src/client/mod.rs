@@ -1,13 +1,14 @@
 use std::ops::Deref;
 use std::{borrow::Cow, collections::HashMap, sync::Arc};
 
-use crate::config;
+use crate::{auth, config};
 use crate::{auth::AuthConfig, state::*};
 
 use std::io::Write;
 
 use anyhow::Context as _;
 use anyhow::Result;
+use librespot_core::authentication::Credentials;
 use librespot_core::session::Session;
 use reqwest::StatusCode;
 use rspotify::{
@@ -49,9 +50,9 @@ fn market_query() -> Query<'static> {
 
 impl Client {
     /// Construct a new client
-    pub fn new(session: Session, auth_config: AuthConfig, client_id: String) -> Self {
+    pub fn new(auth_config: AuthConfig) -> Self {
         Self {
-            spotify: Arc::new(spotify::Spotify::new(session, client_id)),
+            spotify: Arc::new(spotify::Spotify::new()),
             http: reqwest::Client::new(),
             auth_config,
 
@@ -62,11 +63,6 @@ impl Client {
 
     /// Initialize the application's playback upon creating a new session or during startup
     pub async fn initialize_playback(&self, state: &SharedState) -> Result<()> {
-        #[cfg(feature = "streaming")]
-        if state.is_streaming_enabled() {
-            self.new_streaming_connection(state).await;
-        }
-
         self.retrieve_current_playback(state, false).await?;
 
         if state.player.read().playback.is_none() {
@@ -85,11 +81,23 @@ impl Client {
     }
 
     /// Create a new client session
-    async fn new_session(&self, state: &SharedState) -> Result<()> {
-        let session = crate::auth::new_session(&self.auth_config, false).await?;
-        *self.session.lock().await = Some(session);
+    pub async fn new_session(&self, state: &SharedState) -> Result<()> {
+        let session = self.auth_config.new_session();
+        let creds = auth::get_creds(&self.auth_config, false)
+            .await
+            .context("get credentials")?;
+        *self.session.lock().await = Some(session.clone());
+
+        #[cfg(feature = "streaming")]
+        if state.is_streaming_enabled() {
+            self.new_streaming_connection(state.clone(), session, creds)
+                .await
+                .context("new streaming connection")?;
+        }
 
         tracing::info!("Used a new session for Spotify client.");
+
+        self.refresh_token().await.context("refresh auth token")?;
 
         // reset the application's caches
         state.data.write().caches = MemoryCaches::new();
@@ -114,15 +122,21 @@ impl Client {
 
     /// Create a new streaming connection
     #[cfg(feature = "streaming")]
-    pub async fn new_streaming_connection(&self, state: &SharedState) {
-        let new_conn = crate::streaming::new_connection(self.clone(), state.clone()).await;
-
+    pub async fn new_streaming_connection(
+        &self,
+        state: SharedState,
+        session: Session,
+        creds: Credentials,
+    ) -> Result<()> {
+        let new_conn =
+            crate::streaming::new_connection(self.clone(), state, session, creds).await?;
         let mut stream_conn = self.stream_conn.lock();
         // shutdown old streaming connection and replace it with a new connection
         if let Some(conn) = stream_conn.as_ref() {
-            let _ = conn.shutdown();
+            conn.shutdown()?;
         }
         *stream_conn = Some(new_conn);
+        Ok(())
     }
 
     /// Handle a player request, return a new playback metadata on success
@@ -832,7 +846,7 @@ impl Client {
         let response = session
             .mercury()
             .get(autoplay_query_url)
-            .map_err(|_| anyhow::anyhow!("Failed to get autoplay URI: got a Mercury error"))?
+            .map_err(|err| anyhow::anyhow!("Failed to get autoplay URI: {err:#}"))?
             .await?;
         if response.status_code != 200 {
             anyhow::bail!(
@@ -847,9 +861,7 @@ impl Client {
         let response = session
             .mercury()
             .get(radio_query_url)
-            .map_err(|_| {
-                anyhow::anyhow!("Failed to get radio data of {autoplay_uri}: got a Mercury error")
-            })?
+            .map_err(|err| anyhow::anyhow!("Failed to get radio data of {autoplay_uri}: {err:#}"))?
             .await?;
         if response.status_code != 200 {
             anyhow::bail!(

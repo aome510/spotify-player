@@ -16,15 +16,17 @@ mod ui;
 mod utils;
 
 use anyhow::{Context, Result};
-use rspotify::clients::BaseClient;
-//use std::io::Write;
+use std::io::Write;
 
 async fn init_spotify(
     client_pub: &flume::Sender<client::ClientRequest>,
     client: &client::Client,
     state: &state::SharedState,
 ) -> Result<()> {
-    client.initialize_playback(state).await?;
+    client
+        .initialize_playback(state)
+        .await
+        .context("initialize playback")?;
 
     // request user data
     client_pub.send(client::ClientRequest::GetCurrentUser)?;
@@ -44,7 +46,7 @@ fn init_logging(cache_folder: &std::path::Path) -> Result<()> {
 
     // initialize the application's logging
     if std::env::var("RUST_LOG").is_err() {
-        std::env::set_var("RUST_LOG", "spotify_player=info"); // default to log the current crate only
+        std::env::set_var("RUST_LOG", "spotify_player=info,librespot=info"); // default to log the current crate only
     }
     let log_file = std::fs::File::create(cache_folder.join(format!("{log_prefix}.log")))
         .context("failed to create log file")?;
@@ -54,19 +56,18 @@ fn init_logging(cache_folder: &std::path::Path) -> Result<()> {
         .with_writer(std::sync::Mutex::new(log_file))
         .init();
 
-    // TODO: reenable the panic hook; it's disabled for debugging
     // initialize the application's panic backtrace
-    //let backtrace_file =
-    //    std::fs::File::create(cache_folder.join(format!("{log_prefix}.backtrace")))
-    //        .context("failed to create backtrace file")?;
-    //let backtrace_file = std::sync::Mutex::new(backtrace_file);
-    //std::panic::set_hook(Box::new(move |info| {
-    //    let mut file = backtrace_file.lock().unwrap();
-    //    let backtrace = backtrace::Backtrace::new();
-    //    writeln!(&mut file, "Got a panic: {info:#?}\n").unwrap();
-    //    writeln!(&mut file, "Reason: {:#?}\n", info.payload()).unwrap();
-    //    writeln!(&mut file, "Stack backtrace:\n{backtrace:?}").unwrap();
-    //}));
+    let backtrace_file =
+        std::fs::File::create(cache_folder.join(format!("{log_prefix}.backtrace")))
+            .context("failed to create backtrace file")?;
+    let backtrace_file = std::sync::Mutex::new(backtrace_file);
+    std::panic::set_hook(Box::new(move |info| {
+        let mut file = backtrace_file.lock().unwrap();
+        let backtrace = backtrace::Backtrace::new();
+        writeln!(&mut file, "Got a panic: {info:#?}\n").unwrap();
+        writeln!(&mut file, "Reason: {:#?}\n", info.payload()).unwrap();
+        writeln!(&mut file, "Stack backtrace:\n{backtrace:?}").unwrap();
+    }));
 
     Ok(())
 }
@@ -115,14 +116,13 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
         }
     }
 
-    // create a librespot session
-    let auth_config = auth::AuthConfig::new(configs)?;
-    let session = auth::new_session(&auth_config, !state.is_daemon).await?;
-
     // create a Spotify API client
-    let client_id = configs.app_config.get_client_id()?;
-    let client = client::Client::new(session, auth_config, client_id);
-    client.refresh_token().await?;
+    let auth_config = auth::AuthConfig::new(configs)?;
+    let client = client::Client::new(auth_config);
+    client
+        .new_session(state)
+        .await
+        .context("initialize new Spotify session")?;
 
     // initialize Spotify-related stuff
     init_spotify(&client_pub, &client, state)
@@ -256,12 +256,6 @@ fn main() -> Result<()> {
         }
         config::set_config(configs);
     }
-
-    // librespot depends on hyper-rustls which requires a crypto provider to be set up.
-    // TODO: see if this can be fixed upstream
-    rustls::crypto::aws_lc_rs::default_provider()
-        .install_default()
-        .unwrap();
 
     match args.subcommand() {
         None => {

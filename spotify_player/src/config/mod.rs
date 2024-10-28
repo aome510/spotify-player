@@ -22,6 +22,8 @@ use theme::*;
 
 pub use theme::Theme;
 
+use crate::auth::SPOTIFY_CLIENT_ID;
+
 static CONFIGS: OnceLock<Configs> = OnceLock::new();
 
 #[derive(Debug)]
@@ -391,7 +393,7 @@ impl AppConfig {
             })
     }
 
-    pub fn session_config(&self) -> SessionConfig {
+    pub fn session_config(&self) -> Result<SessionConfig> {
         let proxy = self
             .proxy
             .as_ref()
@@ -402,15 +404,17 @@ impl AppConfig {
                 }
                 Ok(url) => Some(url),
             });
-        SessionConfig {
+        Ok(SessionConfig {
             proxy,
             ap_port: self.ap_port,
-            client_id: crate::auth::SPOTIFY_CLIENT_ID.to_string(),
+            client_id: SPOTIFY_CLIENT_ID.to_string(),
             ..Default::default()
-        }
+        })
     }
 
     /// Returns stdout of `client_id_command` if set, otherwise it returns the the value of `client_id`
+    // TODO: figure out how to use user-provided client_id for Spotify Connect integration
+    #[allow(dead_code)]
     pub fn get_client_id(&self) -> Result<String> {
         match self.client_id_command {
             Some(ref cmd) => cmd.execute(None),

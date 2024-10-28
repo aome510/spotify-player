@@ -1,13 +1,9 @@
-use crate::{
-    auth::{new_session, AuthConfig},
-    client,
-};
+use crate::{auth::AuthConfig, client};
 
 use super::*;
 use anyhow::{Context, Result};
 use clap::{ArgMatches, Id};
 use clap_complete::{generate, Shell};
-use rspotify::clients::BaseClient;
 use std::net::UdpSocket;
 
 fn receive_response(socket: &UdpSocket) -> Result<Response> {
@@ -155,14 +151,10 @@ fn try_connect_to_client(socket: &UdpSocket, configs: &config::Configs) -> Resul
 
             let auth_config = AuthConfig::new(configs)?;
             let rt = tokio::runtime::Runtime::new()?;
-            let session = rt.block_on(new_session(&auth_config, false))?;
 
             // create a Spotify API client
-            // TODO: the client id has been set for debugging
-            // let client_id = configs.app_config.get_client_id()?;
-            let client_id = crate::auth::SPOTIFY_CLIENT_ID.to_string();
-            let client = client::Client::new(session, auth_config, client_id);
-            rt.block_on(client.refresh_token())?;
+            // TODO: figure out how to create session for CLI use case
+            let client = client::Client::new(auth_config);
 
             // create a client socket for handling CLI commands
             let client_socket = rt.block_on(tokio::net::UdpSocket::bind(("127.0.0.1", port)))?;
@@ -186,7 +178,7 @@ pub fn handle_cli_subcommand(cmd: &str, args: &ArgMatches) -> Result<()> {
         "authenticate" => {
             let auth_config = AuthConfig::new(configs)?;
             let rt = tokio::runtime::Runtime::new()?;
-            rt.block_on(new_session(&auth_config, true))?;
+            rt.block_on(crate::auth::get_creds(&auth_config, true))?;
             std::process::exit(0);
         }
         "generate" => {

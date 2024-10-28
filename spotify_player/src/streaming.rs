@@ -1,6 +1,9 @@
 use crate::{client::Client, config, state::SharedState};
+use anyhow::Context;
 use librespot_connect::{config::ConnectConfig, spirc::Spirc};
-use librespot_core::{config::DeviceType, spotify_id, Session};
+use librespot_core::authentication::Credentials;
+use librespot_core::Session;
+use librespot_core::{config::DeviceType, spotify_id};
 use librespot_playback::mixer::MixerConfig;
 use librespot_playback::{
     audio_backend,
@@ -125,8 +128,12 @@ fn execute_player_event_hook_command(
 }
 
 /// Create a new streaming connection
-pub async fn new_connection(client: Client, state: SharedState) -> Spirc {
-    let session = client.session().await;
+pub async fn new_connection(
+    client: Client,
+    state: SharedState,
+    session: Session,
+    creds: Credentials,
+) -> anyhow::Result<Spirc> {
     let configs = config::get_config();
     let device = &configs.app_config.device;
 
@@ -174,9 +181,8 @@ pub async fn new_connection(client: Client, state: SharedState) -> Spirc {
         move || backend(None, AudioFormat::default()),
     );
 
-    let player1 = player.clone();
-
     let player_event_task = tokio::task::spawn({
+        let player = player.clone();
         async move {
             while let Some(event) = player.get_player_event_channel().recv().await {
                 match PlayerEvent::from_librespot_player_event(event) {
@@ -219,21 +225,10 @@ pub async fn new_connection(client: Client, state: SharedState) -> Spirc {
 
     tracing::info!("Starting an integrated Spotify player using librespot's spirc protocol");
 
-    // TODO: figure out why needing to create a new session is required
-    let new_session = Session::new(session.config().clone(), None);
+    let (spirc, spirc_task) = Spirc::new(connect_config, session, creds, player, mixer)
+        .await
+        .context("intialize spirc")?;
 
-    let (spirc, spirc_task) = match Spirc::new(
-        connect_config,
-        new_session,
-        session.cache().unwrap().credentials().unwrap(),
-        player1,
-        mixer,
-    )
-    .await
-    {
-        Ok(x) => x,
-        Err(e) => panic!("e: {e:?}\nerror: {}\nerror debug: {:?}", e.error, e.error),
-    };
     tokio::task::spawn(async move {
         tokio::select! {
             _ = spirc_task => {},
@@ -241,5 +236,5 @@ pub async fn new_connection(client: Client, state: SharedState) -> Spirc {
         }
     });
 
-    spirc
+    Ok(spirc)
 }
