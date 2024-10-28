@@ -810,7 +810,7 @@ fn render_artist_context_page_windows(
         .style(ui.theme.table_header()),
     )
     .column_spacing(2)
-    .highlight_style(ui.theme.selection(is_albums_active));
+    .row_highlight_style(ui.theme.selection(is_albums_active));
 
     // artist list widget
     let (artist_list, n_artists) = {
@@ -943,7 +943,7 @@ fn render_track_table(
         .style(ui.theme.table_header()),
     )
     .column_spacing(2)
-    .highlight_style(ui.theme.selection(is_active));
+    .row_highlight_style(ui.theme.selection(is_active));
 
     if let PageState::Context {
         state: Some(state), ..
