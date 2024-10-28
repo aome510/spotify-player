@@ -74,6 +74,12 @@ fn init_logging(cache_folder: &std::path::Path) -> Result<()> {
 
 #[tokio::main]
 async fn start_app(state: &state::SharedState) -> Result<()> {
+    // librespot depends on hyper-rustls which requires a crypto provider to be set up.
+    // TODO: see if this can be fixed upstream
+    rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .unwrap();
+
     let configs = config::get_config();
 
     if !state.is_daemon {
