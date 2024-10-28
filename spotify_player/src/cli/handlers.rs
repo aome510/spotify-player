@@ -153,8 +153,9 @@ fn try_connect_to_client(socket: &UdpSocket, configs: &config::Configs) -> Resul
             let rt = tokio::runtime::Runtime::new()?;
 
             // create a Spotify API client
-            // TODO: figure out how to create session for CLI use case
             let client = client::Client::new(auth_config);
+            rt.block_on(client.new_session(None, false))
+                .context("new session")?;
 
             // create a client socket for handling CLI commands
             let client_socket = rt.block_on(tokio::net::UdpSocket::bind(("127.0.0.1", port)))?;

@@ -8,8 +8,6 @@ use std::io::Write;
 
 use anyhow::Context as _;
 use anyhow::Result;
-use librespot_core::authentication::Credentials;
-use librespot_core::session::Session;
 use reqwest::StatusCode;
 use rspotify::{
     http::Query,
@@ -81,30 +79,46 @@ impl Client {
     }
 
     /// Create a new client session
-    pub async fn new_session(&self, state: &SharedState, reauth: bool) -> Result<()> {
+    pub async fn new_session(&self, state: Option<&SharedState>, reauth: bool) -> Result<()> {
         let session = self.auth_config.new_session();
         let creds = auth::get_creds(&self.auth_config, reauth)
             .await
             .context("get credentials")?;
         *self.session.lock().await = Some(session.clone());
 
+        #[allow(unused_mut)]
+        let mut connected = false;
+
         #[cfg(feature = "streaming")]
-        if state.is_streaming_enabled() {
-            self.new_streaming_connection(state.clone(), session, creds)
+        if let Some(state) = state {
+            if state.is_streaming_enabled() {
+                self.new_streaming_connection(state.clone(), session.clone(), creds.clone())
+                    .await
+                    .context("new streaming connection")?;
+                connected = true;
+            }
+        }
+
+        if !connected {
+            // if session is not connected (triggered by `new_streaming_connection`), connect to the session
+            session
+                .connect(creds, true)
                 .await
-                .context("new streaming connection")?;
+                .context("connect to a session")?;
         }
 
         tracing::info!("Used a new session for Spotify client.");
 
         self.refresh_token().await.context("refresh auth token")?;
 
-        // reset the application's caches
-        state.data.write().caches = MemoryCaches::new();
+        if let Some(state) = state {
+            // reset the application's caches
+            state.data.write().caches = MemoryCaches::new();
 
-        self.initialize_playback(state)
-            .await
-            .context("initialize playback")?;
+            self.initialize_playback(state)
+                .await
+                .context("initialize playback")?;
+        }
 
         Ok(())
     }
@@ -113,7 +127,7 @@ impl Client {
     pub async fn check_valid_session(&self, state: &SharedState) -> Result<()> {
         if self.session().await.is_invalid() {
             tracing::info!("Client's current session is invalid, creating a new session...");
-            self.new_session(state, false)
+            self.new_session(Some(state), false)
                 .await
                 .context("create new client session")?;
         }
@@ -125,8 +139,8 @@ impl Client {
     pub async fn new_streaming_connection(
         &self,
         state: SharedState,
-        session: Session,
-        creds: Credentials,
+        session: librespot_core::Session,
+        creds: librespot_core::authentication::Credentials,
     ) -> Result<()> {
         let new_conn =
             crate::streaming::new_connection(self.clone(), state, session, creds).await?;
@@ -290,7 +304,7 @@ impl Client {
             }
             #[cfg(feature = "streaming")]
             ClientRequest::RestartIntegratedClient => {
-                self.new_session(state, false).await?;
+                self.new_session(Some(state), false).await?;
             }
             ClientRequest::GetCurrentUser => {
                 let user = self.current_user().await?;
