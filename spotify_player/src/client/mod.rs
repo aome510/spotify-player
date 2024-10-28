@@ -60,22 +60,55 @@ impl Client {
     }
 
     /// Initialize the application's playback upon creating a new session or during startup
-    pub async fn initialize_playback(&self, state: &SharedState) -> Result<()> {
-        self.retrieve_current_playback(state, false).await?;
+    pub fn initialize_playback(&self, state: &SharedState) {
+        tokio::task::spawn({
+            let client = self.clone();
+            let state = state.clone();
+            async move {
+                // The main playback initialization logic is simple:
+                // if there is no playback, connect to an available device
+                //
+                // However, because it takes for Spotify server to show up new changes,
+                // a retry logic is implemented to ensure the application's state is properly initialized
+                let delay = std::time::Duration::from_secs(1);
 
-        if state.player.read().playback.is_none() {
-            tracing::info!("No playback found, trying to connect to an available device...");
-            // // handle `connect_device` task separately as we don't want to block here
-            tokio::task::spawn({
-                let client = self.clone();
-                let state = state.clone();
-                async move {
-                    client.connect_device(&state).await;
+                for _ in 0..5 {
+                    tokio::time::sleep(delay).await;
+
+                    if let Err(err) = client.retrieve_current_playback(&state, false).await {
+                        tracing::error!("Failed to retrieve current playback: {err:#}");
+                        return;
+                    }
+
+                    // if playback exists, don't connect to a new device
+                    if state.player.read().playback.is_some() {
+                        continue;
+                    }
+
+                    let id = match client.find_available_device().await {
+                        Ok(Some(id)) => Some(Cow::Owned(id)),
+                        Ok(None) => None,
+                        Err(err) => {
+                            tracing::error!("Failed to find an available device: {err:#}");
+                            None
+                        }
+                    };
+
+                    if let Some(id) = id {
+                        tracing::info!("Trying to connect to device (id={id})");
+                        if let Err(err) = client.transfer_playback(&id, Some(false)).await {
+                            tracing::warn!("Connection failed (device_id={id}): {err:#}");
+                        } else {
+                            tracing::info!("Connection succeeded (device_id={id})!");
+                            // upon new connection, reset the buffered playback
+                            state.player.write().buffered_playback = None;
+                            client.update_playback(&state);
+                            break;
+                        }
+                    }
                 }
-            });
-        }
-
-        Ok(())
+            }
+        });
     }
 
     /// Create a new client session
@@ -114,10 +147,7 @@ impl Client {
         if let Some(state) = state {
             // reset the application's caches
             state.data.write().caches = MemoryCaches::new();
-
-            self.initialize_playback(state)
-                .await
-                .context("initialize playback")?;
+            self.initialize_playback(state);
         }
 
         Ok(())
@@ -552,40 +582,6 @@ impl Client {
         );
 
         Ok(())
-    }
-
-    /// Connect to a Spotify device
-    async fn connect_device(&self, state: &SharedState) {
-        // Device connection can fail when the specified device hasn't shown up
-        // in the Spotify's server, resulting in a failed `TransferPlayback` API request.
-        // This is why a retry mechanism is needed to ensure a successful connection.
-        let delay = std::time::Duration::from_secs(1);
-
-        for _ in 0..10 {
-            tokio::time::sleep(delay).await;
-
-            let id = match self.find_available_device().await {
-                Ok(Some(id)) => Some(Cow::Owned(id)),
-                Ok(None) => None,
-                Err(err) => {
-                    tracing::error!("Failed to find an available device: {err:#}");
-                    None
-                }
-            };
-
-            if let Some(id) = id {
-                tracing::info!("Trying to connect to device (id={id})");
-                if let Err(err) = self.transfer_playback(&id, Some(false)).await {
-                    tracing::warn!("Connection failed (device_id={id}): {err:#}");
-                } else {
-                    tracing::info!("Connection succeeded (device_id={id})!");
-                    // upon new connection, reset the buffered playback
-                    state.player.write().buffered_playback = None;
-                    self.update_playback(state);
-                    break;
-                }
-            }
-        }
     }
 
     pub fn update_playback(&self, state: &SharedState) {

@@ -5,8 +5,10 @@ use librespot_oauth::get_access_token;
 use crate::config;
 
 pub const SPOTIFY_CLIENT_ID: &str = "65b708073fc0480ea92a077233ca87bd";
-pub const CLIENT_REDIRECT_URI: &str = "http://127.0.0.1:8989/login";
-pub const OAUTH_SCOPES: &[&str] = &[
+const CLIENT_REDIRECT_URI: &str = "http://127.0.0.1:8989/login";
+// based on https://github.com/librespot-org/librespot/blob/f96f36c064795011f9fee912291eecb1aa46fff6/src/main.rs#L173
+const OAUTH_SCOPES: &[&str] = &[
+    "app-remote-control",
     "playlist-modify",
     "playlist-modify-private",
     "playlist-modify-public",
@@ -14,6 +16,7 @@ pub const OAUTH_SCOPES: &[&str] = &[
     "playlist-read-collaborative",
     "playlist-read-private",
     "streaming",
+    "ugc-image-upload",
     "user-follow-modify",
     "user-follow-read",
     "user-library-modify",
@@ -22,6 +25,7 @@ pub const OAUTH_SCOPES: &[&str] = &[
     "user-modify-playback-state",
     "user-modify-private",
     "user-personalized",
+    "user-read-birthdate",
     "user-read-currently-playing",
     "user-read-email",
     "user-read-play-history",

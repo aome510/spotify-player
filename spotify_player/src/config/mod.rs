@@ -413,8 +413,6 @@ impl AppConfig {
     }
 
     /// Returns stdout of `client_id_command` if set, otherwise it returns the the value of `client_id`
-    // TODO: figure out how to use user-provided client_id for Spotify Connect integration
-    #[allow(dead_code)]
     pub fn get_client_id(&self) -> Result<String> {
         match self.client_id_command {
             Some(ref cmd) => cmd.execute(None),

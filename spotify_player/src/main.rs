@@ -23,10 +23,7 @@ async fn init_spotify(
     client: &client::Client,
     state: &state::SharedState,
 ) -> Result<()> {
-    client
-        .initialize_playback(state)
-        .await
-        .context("initialize playback")?;
+    client.initialize_playback(state);
 
     // request user data
     client_pub.send(client::ClientRequest::GetCurrentUser)?;
