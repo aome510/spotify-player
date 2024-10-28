@@ -81,9 +81,9 @@ impl Client {
     }
 
     /// Create a new client session
-    pub async fn new_session(&self, state: &SharedState) -> Result<()> {
+    pub async fn new_session(&self, state: &SharedState, reauth: bool) -> Result<()> {
         let session = self.auth_config.new_session();
-        let creds = auth::get_creds(&self.auth_config, false)
+        let creds = auth::get_creds(&self.auth_config, reauth)
             .await
             .context("get credentials")?;
         *self.session.lock().await = Some(session.clone());
@@ -113,7 +113,7 @@ impl Client {
     pub async fn check_valid_session(&self, state: &SharedState) -> Result<()> {
         if self.session().await.is_invalid() {
             tracing::info!("Client's current session is invalid, creating a new session...");
-            self.new_session(state)
+            self.new_session(state, false)
                 .await
                 .context("create new client session")?;
         }
@@ -290,7 +290,7 @@ impl Client {
             }
             #[cfg(feature = "streaming")]
             ClientRequest::RestartIntegratedClient => {
-                self.new_session(state).await?;
+                self.new_session(state, false).await?;
             }
             ClientRequest::GetCurrentUser => {
                 let user = self.current_user().await?;

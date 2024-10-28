@@ -120,7 +120,7 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
     let auth_config = auth::AuthConfig::new(configs)?;
     let client = client::Client::new(auth_config);
     client
-        .new_session(state)
+        .new_session(state, true)
         .await
         .context("initialize new Spotify session")?;
 
