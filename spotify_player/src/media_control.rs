@@ -194,7 +194,8 @@ mod windows {
                     None,
                     instance,
                     None,
-                );
+                )
+                .expect("create window");
 
                 if handle.0 == 0 {
                     Err(format!(
