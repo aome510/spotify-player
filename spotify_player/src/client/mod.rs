@@ -68,7 +68,7 @@ impl Client {
                 // The main playback initialization logic is simple:
                 // if there is no playback, connect to an available device
                 //
-                // However, because it takes for Spotify server to show up new changes,
+                // However, because it takes time for Spotify server to show up new changes,
                 // a retry logic is implemented to ensure the application's state is properly initialized
                 let delay = std::time::Duration::from_secs(1);
 
