@@ -197,13 +197,13 @@ mod windows {
                 )
                 .map_err(|e| (format!("Failed to create window: {e}")))?;
 
-                if handle.0 == 0 {
+                if handle.0 == std::ptr::null_mut() {
                     Err(format!(
                         "Message only window creation failed: {}",
                         Error::last_os_error()
                     ))
                 } else {
-                    Ok(DummanyWindow { handle })
+                    Ok(DummyWindow { handle })
                 }
             }
         }
