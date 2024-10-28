@@ -46,7 +46,8 @@ fn init_logging(cache_folder: &std::path::Path) -> Result<()> {
 
     // initialize the application's logging
     if std::env::var("RUST_LOG").is_err() {
-        std::env::set_var("RUST_LOG", "spotify_player=info,librespot=info"); // default to log the current crate only
+        // default to log the current crate and librespot crates
+        std::env::set_var("RUST_LOG", "spotify_player=info,librespot=info");
     }
     let log_file = std::fs::File::create(cache_folder.join(format!("{log_prefix}.log")))
         .context("failed to create log file")?;
@@ -65,7 +66,6 @@ fn init_logging(cache_folder: &std::path::Path) -> Result<()> {
         let mut file = backtrace_file.lock().unwrap();
         let backtrace = backtrace::Backtrace::new();
         writeln!(&mut file, "Got a panic: {info:#?}\n").unwrap();
-        writeln!(&mut file, "Reason: {:#?}\n", info.payload()).unwrap();
         writeln!(&mut file, "Stack backtrace:\n{backtrace:?}").unwrap();
     }));
 

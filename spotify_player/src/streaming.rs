@@ -182,9 +182,9 @@ pub async fn new_connection(
     );
 
     let player_event_task = tokio::task::spawn({
-        let player = player.clone();
+        let mut channel = player.get_player_event_channel();
         async move {
-            while let Some(event) = player.get_player_event_channel().recv().await {
+            while let Some(event) = channel.recv().await {
                 match PlayerEvent::from_librespot_player_event(event) {
                     Err(err) => {
                         tracing::warn!("Failed to convert a `librespot` player event into `spotify_player` player event: {err:#}");

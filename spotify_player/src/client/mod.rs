@@ -80,7 +80,7 @@ impl Client {
 
     /// Create a new client session
     pub async fn new_session(&self, state: Option<&SharedState>, reauth: bool) -> Result<()> {
-        let session = self.auth_config.new_session();
+        let session = self.auth_config.session();
         let creds = auth::get_creds(&self.auth_config, reauth)
             .await
             .context("get credentials")?;

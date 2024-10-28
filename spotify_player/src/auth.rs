@@ -48,7 +48,8 @@ impl Default for AuthConfig {
 }
 
 impl AuthConfig {
-    pub fn new_session(&self) -> Session {
+    /// Create a `librespot::Session` from authentication configs
+    pub fn session(&self) -> Session {
         Session::new(self.session_config.clone(), Some(self.cache.clone()))
     }
 
@@ -73,6 +74,7 @@ impl AuthConfig {
     }
 }
 
+/// Get Spotify credentials to authenticate the application
 pub async fn get_creds(auth_config: &AuthConfig, reauth: bool) -> Result<Credentials> {
     Ok(match auth_config.cache.credentials() {
         None => {

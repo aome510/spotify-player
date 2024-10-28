@@ -9,9 +9,8 @@ use crate::auth::OAUTH_SCOPES;
 
 const TIMEOUT_IN_SECS: u64 = 5;
 
-/// gets an authentication token with pre-defined permission scopes
 pub async fn get_token(session: &Session) -> Result<Token> {
-    tracing::info!("Getting new authentication token...");
+    tracing::info!("Getting a new authentication token...");
 
     let scopes = OAUTH_SCOPES.join(",");
     let fut = session.token_provider().get_token(&scopes);
