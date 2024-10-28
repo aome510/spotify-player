@@ -9,7 +9,7 @@ use rspotify::{
 };
 use std::{fmt, sync::Arc};
 
-use crate::token;
+use crate::{config, token};
 
 #[derive(Clone, Default)]
 /// A Spotify client to interact with Spotify API server
@@ -19,6 +19,7 @@ pub struct Spotify {
     config: Config,
     token: Arc<Mutex<Option<Token>>>,
     http: HttpClient,
+    client_id: String,
     pub(crate) session: Arc<tokio::sync::Mutex<Option<Session>>>,
 }
 
@@ -45,6 +46,12 @@ impl Spotify {
             },
             token: Arc::new(Mutex::new(None)),
             http: HttpClient::default(),
+            // Spotify client uses different `client_id` from Spotify session (`auth::SPOTIFY_CLIENT_ID`)
+            // to support user-provided `client_id`, which is required for Spotify Connect feature
+            client_id: config::get_config()
+                .app_config
+                .get_client_id()
+                .expect("get client_id"),
             session: Arc::new(tokio::sync::Mutex::new(None)),
         }
     }
@@ -108,7 +115,7 @@ impl BaseClient for Spotify {
             return Ok(old_token);
         }
 
-        match token::get_token(&session).await {
+        match token::get_token(&session, &self.client_id).await {
             Ok(token) => Ok(Some(token)),
             Err(err) => {
                 tracing::error!("Failed to get a new token: {err:#}");
