@@ -1,14 +1,36 @@
-use std::io::Write;
-
-use anyhow::{anyhow, Result};
-use librespot_core::{
-    authentication::Credentials,
-    cache::Cache,
-    config::SessionConfig,
-    session::{Session, SessionError},
-};
+use anyhow::Result;
+use librespot_core::{authentication::Credentials, cache::Cache, config::SessionConfig, Session};
+use librespot_oauth::get_access_token;
 
 use crate::config;
+
+pub const SPOTIFY_CLIENT_ID: &str = "65b708073fc0480ea92a077233ca87bd";
+pub const CLIENT_REDIRECT_URI: &str = "http://127.0.0.1:8989/login";
+pub const OAUTH_SCOPES: &[&str] = &[
+    "playlist-modify",
+    "playlist-modify-private",
+    "playlist-modify-public",
+    "playlist-read",
+    "playlist-read-collaborative",
+    "playlist-read-private",
+    "streaming",
+    "user-follow-modify",
+    "user-follow-read",
+    "user-library-modify",
+    "user-library-read",
+    "user-modify",
+    "user-modify-playback-state",
+    "user-modify-private",
+    "user-personalized",
+    "user-read-currently-playing",
+    "user-read-email",
+    "user-read-play-history",
+    "user-read-playback-position",
+    "user-read-playback-state",
+    "user-read-private",
+    "user-read-recently-played",
+    "user-top-read",
+];
 
 #[derive(Clone)]
 pub struct AuthConfig {
@@ -26,6 +48,11 @@ impl Default for AuthConfig {
 }
 
 impl AuthConfig {
+    /// Create a `librespot::Session` from authentication configs
+    pub fn session(&self) -> Session {
+        Session::new(self.session_config.clone(), Some(self.cache.clone()))
+    }
+
     pub fn new(configs: &config::Configs) -> Result<AuthConfig> {
         let audio_cache_folder = if configs.app_config.device.audio_cache {
             Some(configs.cache_folder.join("audio"))
@@ -42,99 +69,31 @@ impl AuthConfig {
 
         Ok(AuthConfig {
             cache,
-            session_config: configs.app_config.session_config(),
+            session_config: configs.app_config.session_config()?,
         })
     }
 }
 
-fn read_user_auth_details(user: Option<String>) -> Result<(String, String)> {
-    let mut username = String::new();
-    let mut stdout = std::io::stdout();
-    match user {
-        None => write!(stdout, "Username: ")?,
-        Some(ref u) => write!(stdout, "Username (default: {u}): ")?,
-    }
-    stdout.flush()?;
-    std::io::stdin().read_line(&mut username)?;
-    username = username.trim_end().to_string();
-    if username.is_empty() {
-        username = user.unwrap_or_default();
-    }
-    let password = rpassword::prompt_password(format!("Password for {username}: "))?;
-    Ok((username, password))
-}
-
-pub async fn new_session_with_new_creds(auth_config: &AuthConfig) -> Result<Session> {
-    tracing::info!("Creating a new session with new authentication credentials");
-
-    let mut user: Option<String> = None;
-
-    for i in 0..3 {
-        let (username, password) = read_user_auth_details(user)?;
-        user = Some(username.clone());
-        match Session::connect(
-            auth_config.session_config.clone(),
-            Credentials::with_password(username, password),
-            Some(auth_config.cache.clone()),
-            true,
-        )
-        .await
-        {
-            Ok((session, _)) => {
-                println!("Successfully authenticated as {}", user.unwrap_or_default());
-                return Ok(session);
-            }
-            Err(err) => {
-                eprintln!("Failed to authenticate, {} tries left", 2 - i);
-                tracing::warn!("Failed to authenticate: {err:#}")
-            }
-        }
-    }
-
-    Err(anyhow!("authentication failed!"))
-}
-
-/// Creates a new Librespot session
-///
-/// By default, the function will look for cached credentials in the `APP_CACHE_FOLDER` folder.
-///
-/// If `reauth` is true, re-authenticate by asking the user for Spotify's username and password.
-/// The re-authentication process should only happen on the terminal using stdin/stdout.
-pub async fn new_session(auth_config: &AuthConfig, reauth: bool) -> Result<Session> {
-    match auth_config.cache.credentials() {
+/// Get Spotify credentials to authenticate the application
+pub async fn get_creds(auth_config: &AuthConfig, reauth: bool) -> Result<Credentials> {
+    Ok(match auth_config.cache.credentials() {
         None => {
             let msg = "No cached credentials found, please authenticate the application first.";
             if reauth {
                 eprintln!("{msg}");
-                new_session_with_new_creds(auth_config).await
+                get_access_token(
+                    SPOTIFY_CLIENT_ID,
+                    CLIENT_REDIRECT_URI,
+                    OAUTH_SCOPES.to_vec(),
+                )
+                .map(|t| Credentials::with_access_token(t.access_token))?
             } else {
                 anyhow::bail!(msg);
             }
         }
         Some(creds) => {
-            match Session::connect(
-                auth_config.session_config.clone(),
-                creds,
-                Some(auth_config.cache.clone()),
-                true,
-            )
-            .await
-            {
-                Ok((session, _)) => {
-                    tracing::info!(
-                        "Successfully used the cached credentials to create a new session!"
-                    );
-                    Ok(session)
-                }
-                Err(err) => match err {
-                    SessionError::AuthenticationError(err) => {
-                        anyhow::bail!("Failed to authenticate using cached credentials: {err:#}");
-                    }
-                    SessionError::IoError(err) => {
-                        anyhow::bail!("{err:#}\nPlease check your internet connection.");
-                    }
-                },
-            }
+            tracing::info!("Using cached credentials");
+            creds
         }
-    }
+    })
 }

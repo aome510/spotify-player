@@ -13,32 +13,40 @@ readme = "../README.md"
 anyhow = "1.0.86"
 clap = { version = "4.5.8", features = ["derive", "string"] }
 config_parser2 = "0.1.5"
-crossterm = "0.27.0"
+crossterm = "0.28.1"
 dirs-next = "2.0.0"
-librespot-connect = { version = "0.4.2", optional = true }
-librespot-playback = { version = "0.4.2", optional = true }
-librespot-core = "0.4.2"
+librespot-connect = { version = "0.5.0", optional = true }
+librespot-core = "0.5.0"
+librespot-oauth = "0.5.0"
+librespot-playback = { version = "0.5.0", optional = true }
 log = "0.4.22"
 chrono = "0.4.38"
 reqwest = { version = "0.12.5", features = ["json"] }
 rpassword = "7.3.1"
-rspotify = "0.13.2"
+rspotify = "0.13.3"
 serde = { version = "1.0.204", features = ["derive"] }
-tokio = { version = "1.38.0", features = ["rt", "rt-multi-thread", "macros", "time"] }
+tokio = { version = "1.38.0", features = [
+	"rt",
+	"rt-multi-thread",
+	"macros",
+	"time",
+] }
 toml = "0.8.14"
-tui = { package = "ratatui", version = "0.27.0" }
+tui = { package = "ratatui", version = "0.29.0" }
 rand = "0.8.5"
 maybe-async = "0.2.10"
 async-trait = "0.1.81"
 parking_lot = "0.12.3"
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
-lyric_finder = { version = "0.1.6", path = "../lyric_finder" , optional = true }
+lyric_finder = { version = "0.1.6", path = "../lyric_finder", optional = true }
 backtrace = "0.3.73"
 souvlaki = { version = "0.7.3", optional = true }
-viuer = { version = "0.7.1", optional = true }
-image = { version = "0.24.9", optional = true }
-notify-rust = { version = "4.11.0", optional = true, default-features = false, features = ["d"] }
+viuer = { version = "0.9.1", optional = true }
+image = { version = "0.25.4", optional = true }
+notify-rust = { version = "4.11.0", optional = true, default-features = false, features = [
+	"d",
+] }
 flume = "0.11.0"
 serde_json = "1.0.120"
 once_cell = "1.19.0"
@@ -49,6 +57,7 @@ clap_complete = "4.5.7"
 which = "6.0.1"
 fuzzy-matcher = { version = "0.3.7", optional = true }
 html-escape = "0.2.13"
+rustls = "0.23.14"
 
 [target.'cfg(any(target_os = "windows", target_os = "macos"))'.dependencies.winit]
 version = "0.30.3"
@@ -63,7 +72,7 @@ features = [
 	"Win32_Foundation",
 	"Win32_Graphics_Gdi",
 	"Win32_System_LibraryLoader",
-	"Win32_UI_WindowsAndMessaging"
+	"Win32_UI_WindowsAndMessaging",
 ]
 optional = true
 
@@ -89,4 +98,3 @@ default = ["rodio-backend", "media-control"]
 
 [package.metadata.binstall]
 pkg-url = "{ repo }/releases/download/v{ version }/{ name }_{ target }{ archive-suffix }"
-

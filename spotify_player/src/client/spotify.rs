@@ -18,10 +18,7 @@ pub struct Spotify {
     oauth: OAuth,
     config: Config,
     token: Arc<Mutex<Option<Token>>>,
-    client_id: String,
     http: HttpClient,
-    // session should always be non-empty, but `Option` is used to implement `Default`,
-    // which is required to implement `rspotify::BaseClient` trait
     pub(crate) session: Arc<tokio::sync::Mutex<Option<Session>>>,
 }
 
@@ -32,14 +29,13 @@ impl fmt::Debug for Spotify {
             .field("oauth", &self.oauth)
             .field("config", &self.config)
             .field("token", &self.token)
-            .field("client_id", &self.client_id)
             .finish()
     }
 }
 
 impl Spotify {
-    /// creates a new Spotify client
-    pub fn new(session: Session, client_id: String) -> Spotify {
+    /// Create a new Spotify client
+    pub fn new() -> Spotify {
         Self {
             creds: Credentials::default(),
             oauth: OAuth::default(),
@@ -49,8 +45,7 @@ impl Spotify {
             },
             token: Arc::new(Mutex::new(None)),
             http: HttpClient::default(),
-            session: Arc::new(tokio::sync::Mutex::new(Some(session))),
-            client_id,
+            session: Arc::new(tokio::sync::Mutex::new(None)),
         }
     }
 
@@ -62,7 +57,7 @@ impl Spotify {
             .expect("non-empty Spotify session")
     }
 
-    /// gets a Spotify access token.
+    /// Get a Spotify access token.
     /// The function may retrieve a new token and update the current token
     /// stored inside the client if the old one is expired.
     pub async fn access_token(&self) -> Result<String> {
@@ -113,7 +108,7 @@ impl BaseClient for Spotify {
             return Ok(old_token);
         }
 
-        match token::get_token(&session, &self.client_id).await {
+        match token::get_token(&session).await {
             Ok(token) => Ok(Some(token)),
             Err(err) => {
                 tracing::error!("Failed to get a new token: {err:#}");
