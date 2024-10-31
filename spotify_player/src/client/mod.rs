@@ -177,7 +177,9 @@ impl Client {
         let mut stream_conn = self.stream_conn.lock();
         // shutdown old streaming connection and replace it with a new connection
         if let Some(conn) = stream_conn.as_ref() {
-            conn.shutdown()?;
+            if let Err(err) = conn.shutdown() {
+                log::error!("Failed to shutdown old streaming connection: {err:#}");
+            }
         }
         *stream_conn = Some(new_conn);
         Ok(())

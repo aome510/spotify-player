@@ -227,7 +227,7 @@ pub async fn new_connection(
 
     let (spirc, spirc_task) = Spirc::new(connect_config, session, creds, player, mixer)
         .await
-        .context("intialize spirc")?;
+        .context("initialize spirc")?;
 
     tokio::task::spawn(async move {
         tokio::select! {
@@ -235,6 +235,8 @@ pub async fn new_connection(
             _ = player_event_task => {}
         }
     });
+
+    tracing::info!("New streaming connection has been established!");
 
     Ok(spirc)
 }
