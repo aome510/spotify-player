@@ -54,6 +54,8 @@ pub struct AppConfig {
 
     pub client_port: u16,
 
+    pub login_redirect_uri: String,
+
     pub player_event_hook_command: Option<Command>,
 
     pub playback_format: String,
@@ -255,6 +257,8 @@ impl Default for AppConfig {
             client_id_command: None,
 
             client_port: 8080,
+
+            login_redirect_uri: "http://127.0.0.1:8989/login".to_string(),
 
             tracks_playback_limit: 50,
 

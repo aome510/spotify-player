@@ -5,7 +5,6 @@ use librespot_oauth::get_access_token;
 use crate::config;
 
 pub const SPOTIFY_CLIENT_ID: &str = "65b708073fc0480ea92a077233ca87bd";
-const CLIENT_REDIRECT_URI: &str = "http://127.0.0.1:8989/login";
 // based on https://github.com/librespot-org/librespot/blob/f96f36c064795011f9fee912291eecb1aa46fff6/src/main.rs#L173
 const OAUTH_SCOPES: &[&str] = &[
     "app-remote-control",
@@ -47,6 +46,7 @@ impl Default for AuthConfig {
         AuthConfig {
             cache: Cache::new(None::<String>, None, None, None).unwrap(),
             session_config: SessionConfig::default(),
+            login_redirect_uri: "http://127.0.0.1:8989/login".to_string(),
         }
     }
 }
@@ -74,6 +74,7 @@ impl AuthConfig {
         Ok(AuthConfig {
             cache,
             session_config: configs.app_config.session_config()?,
+            login_redirect_uri: configs.app_config.login_redirect_uri.clone(),
         })
     }
 }
@@ -87,7 +88,7 @@ pub async fn get_creds(auth_config: &AuthConfig, reauth: bool) -> Result<Credent
                 eprintln!("{msg}");
                 get_access_token(
                     SPOTIFY_CLIENT_ID,
-                    CLIENT_REDIRECT_URI,
+                    &auth_config.login_redirect_uri,
                     OAUTH_SCOPES.to_vec(),
                 )
                 .map(|t| Credentials::with_access_token(t.access_token))?

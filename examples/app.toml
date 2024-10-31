@@ -1,5 +1,6 @@
 theme = "default"
 client_id = "65b708073fc0480ea92a077233ca87bd"
+login_redirect_uri = "http://127.0.0.1:8989/login"
 client_port = 8080
 tracks_playback_limit = 50
 playback_format = "{status} {track} • {artists}\n{album}\n{metadata}"
