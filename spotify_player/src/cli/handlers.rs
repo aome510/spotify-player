@@ -171,7 +171,6 @@ fn try_connect_to_client(socket: &UdpSocket, configs: &config::Configs) -> Resul
 }
 
 pub fn handle_cli_subcommand(cmd: &str, args: &ArgMatches) -> Result<()> {
-    let socket = UdpSocket::bind("127.0.0.1:0")?;
     let configs = config::get_config();
 
     // handle commands that don't require a client separately
@@ -179,7 +178,7 @@ pub fn handle_cli_subcommand(cmd: &str, args: &ArgMatches) -> Result<()> {
         "authenticate" => {
             let auth_config = AuthConfig::new(configs)?;
             let rt = tokio::runtime::Runtime::new()?;
-            rt.block_on(crate::auth::get_creds(&auth_config, true))?;
+            rt.block_on(crate::auth::get_creds(&auth_config, true, false))?;
             std::process::exit(0);
         }
         "generate" => {
@@ -194,6 +193,7 @@ pub fn handle_cli_subcommand(cmd: &str, args: &ArgMatches) -> Result<()> {
         _ => {}
     }
 
+    let socket = UdpSocket::bind("127.0.0.1:0")?;
     try_connect_to_client(&socket, configs).context("try to connect to a client")?;
 
     // construct a socket request based on the CLI command and its arguments
