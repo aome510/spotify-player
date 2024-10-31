@@ -114,7 +114,7 @@ impl Client {
     /// Create a new client session
     pub async fn new_session(&self, state: Option<&SharedState>, reauth: bool) -> Result<()> {
         let session = self.auth_config.session();
-        let creds = auth::get_creds(&self.auth_config, reauth)
+        let creds = auth::get_creds(&self.auth_config, reauth, true)
             .await
             .context("get credentials")?;
         *self.session.lock().await = Some(session.clone());

@@ -39,6 +39,7 @@ const OAUTH_SCOPES: &[&str] = &[
 pub struct AuthConfig {
     pub cache: Cache,
     pub session_config: SessionConfig,
+    pub login_redirect_uri: String,
 }
 
 impl Default for AuthConfig {
@@ -80,8 +81,23 @@ impl AuthConfig {
 }
 
 /// Get Spotify credentials to authenticate the application
-pub async fn get_creds(auth_config: &AuthConfig, reauth: bool) -> Result<Credentials> {
-    Ok(match auth_config.cache.credentials() {
+///
+/// # Args
+/// - `auth_config`: authentication configuration
+/// - `reauth`: whether to re-authenticate the application if no cached credentials are found
+// - `use_cached`: whether to use cached credentials if available
+pub async fn get_creds(
+    auth_config: &AuthConfig,
+    reauth: bool,
+    use_cached: bool,
+) -> Result<Credentials> {
+    let creds = if use_cached {
+        auth_config.cache.credentials()
+    } else {
+        None
+    };
+
+    Ok(match creds {
         None => {
             let msg = "No cached credentials found, please authenticate the application first.";
             if reauth {
