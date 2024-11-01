@@ -48,9 +48,11 @@ jobs:
         if: matrix.cross_arch
         uses: actions-rs/cargo@v1
         with:
-          use-cross: ${{ matrix.cross_arch }}
           command: install
           args: --locked --force bindgen-cli
+
+      - name: Add cargo bin to PATH
+        run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
       - name: Build
         uses: actions-rs/cargo@v1
