@@ -44,6 +44,14 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
+      - name: Install cross cargo dependencies
+        if: matrix.cross_arch
+        uses: actions-rs/cargo@v1
+        with:
+          use-cross: ${{ matrix.cross_arch }}
+          command: install
+          args: --locked --force bindgen-cli
+
       - name: Build
         uses: actions-rs/cargo@v1
         with:
