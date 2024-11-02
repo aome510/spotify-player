@@ -221,7 +221,7 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
 fn main() -> Result<()> {
     // librespot depends on hyper-rustls which requires a crypto provider to be set up.
     // TODO: see if this can be fixed upstream
-    rustls::crypto::aws_lc_rs::default_provider()
+    rustls::crypto::ring::default_provider()
         .install_default()
         .unwrap();
 
