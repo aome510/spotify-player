@@ -269,6 +269,20 @@ impl Client {
                 playback.volume = Some(volume as u32);
                 playback.mute_state = None;
             }
+            PlayerRequest::VolumeUp => {
+                let volume = std::cmp::min(playback.volume.unwrap_or_default() + 5, 100_u32);
+                self.volume(volume as u8, device_id).await?;
+                
+                playback.volume = Some(volume);
+                playback.mute_state = None;
+            }
+            PlayerRequest::VolumeDown => {
+                let volume = playback.volume.unwrap_or_default().saturating_sub(5_u32);
+                self.volume(volume as u8, device_id).await?;
+
+                playback.volume = Some(volume);
+                playback.mute_state = None;
+            }
             PlayerRequest::ToggleMute => {
                 let new_mute_state = match playback.mute_state {
                     None => {
