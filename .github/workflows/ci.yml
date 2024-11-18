@@ -58,3 +58,24 @@ jobs:
 
       - name: Cargo clippy without features
         run: cargo clippy --no-default-features -- -D warnings
+
+  cargo-machete:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Machete
+        uses: bnjbvr/cargo-machete@main
+
+  typos:
+    # https://github.com/crate-ci/typos
+    # install and run locally: cargo install typos-cli && typos
+    name: typos
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Actions Repository
+        uses: actions/checkout@v4
+
+      - name: Check spelling of entire workspace
+        uses: crate-ci/typos@master
