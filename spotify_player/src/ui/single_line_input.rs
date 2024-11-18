@@ -1,7 +1,7 @@
 use crossterm::event::KeyCode;
 use tui::widgets::Widget;
 
-use super::*;
+use super::{Line, Modifier, Paragraph, Span, Style};
 use crate::key::Key;
 
 #[derive(Debug, Clone)]
@@ -86,7 +86,7 @@ impl LineInput {
 
         let before_cursor: String = self.line[0..self.cursor].iter().collect();
         let after_cursor: String = if self.cursor == self.line.len() {
-            "".to_string()
+            String::new()
         } else {
             self.line[self.cursor + 1..].iter().collect()
         };

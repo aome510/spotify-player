@@ -13,28 +13,27 @@ pub fn handle_action_for_focused_context_page(
     ui: &mut UIStateGuard,
     state: &SharedState,
 ) -> Result<bool> {
-    let context_id = match ui.current_page() {
-        PageState::Context { id: Some(id), .. } => id,
-        _ => return Ok(false),
+    let PageState::Context { id: Some(id), .. } = ui.current_page() else {
+        return Ok(false);
     };
 
     let data = state.data.read();
-    match data.caches.context.get(&context_id.uri()) {
+    match data.caches.context.get(&id.uri()) {
         Some(Context::Artist {
             top_tracks,
             albums,
             related_artists,
             ..
         }) => {
-            let focus_state = match ui.current_page() {
-                PageState::Context {
-                    state: Some(ContextPageUIState::Artist { focus, .. }),
-                    ..
-                } => focus,
-                _ => return Ok(false),
+            let PageState::Context {
+                state: Some(ContextPageUIState::Artist { focus, .. }),
+                ..
+            } = ui.current_page()
+            else {
+                return Ok(false);
             };
 
-            match focus_state {
+            match focus {
                 ArtistFocusState::Albums => handle_action_for_selected_item(
                     action,
                     ui.search_filtered_items(albums),
@@ -58,21 +57,11 @@ pub fn handle_action_for_focused_context_page(
                 ),
             }
         }
-        Some(Context::Album { tracks, .. }) => handle_action_for_selected_item(
-            action,
-            ui.search_filtered_items(tracks),
-            &data,
-            ui,
-            client_pub,
-        ),
-        Some(Context::Tracks { tracks, .. }) => handle_action_for_selected_item(
-            action,
-            ui.search_filtered_items(tracks),
-            &data,
-            ui,
-            client_pub,
-        ),
-        Some(Context::Playlist { tracks, .. }) => handle_action_for_selected_item(
+        Some(
+            Context::Album { tracks, .. }
+            | Context::Tracks { tracks, .. }
+            | Context::Playlist { tracks, .. },
+        ) => handle_action_for_selected_item(
             action,
             ui.search_filtered_items(tracks),
             &data,
@@ -83,6 +72,7 @@ pub fn handle_action_for_focused_context_page(
     }
 }
 
+#[allow(clippy::needless_pass_by_value)] // might be rewritten to take a reference
 pub fn handle_action_for_selected_item<T: Into<ActionContext> + Clone>(
     action: Action,
     items: Vec<&T>,
@@ -155,15 +145,15 @@ pub fn handle_command_for_focused_context_window(
                 related_artists,
                 ..
             } => {
-                let focus_state = match ui.current_page() {
-                    PageState::Context {
-                        state: Some(ContextPageUIState::Artist { focus, .. }),
-                        ..
-                    } => focus,
-                    _ => anyhow::bail!("expect an arist context page with a state"),
+                let PageState::Context {
+                    state: Some(ContextPageUIState::Artist { focus, .. }),
+                    ..
+                } = ui.current_page()
+                else {
+                    anyhow::bail!("expect an arist context page with a state")
                 };
 
-                match focus_state {
+                match focus {
                     ArtistFocusState::Albums => handle_command_for_album_list_window(
                         command,
                         ui.search_filtered_items(albums),
@@ -182,7 +172,9 @@ pub fn handle_command_for_focused_context_window(
                     ),
                 }
             }
-            Context::Album { tracks, .. } => handle_command_for_track_table_window(
+            Context::Album { tracks, .. }
+            | Context::Playlist { tracks, .. }
+            | Context::Tracks { tracks, .. } => handle_command_for_track_table_window(
                 command,
                 client_pub,
                 Some(context_id.clone()),
@@ -190,17 +182,6 @@ pub fn handle_command_for_focused_context_window(
                 &data,
                 ui,
             ),
-            Context::Playlist { tracks, .. } => handle_command_for_track_table_window(
-                command,
-                client_pub,
-                Some(context_id.clone()),
-                tracks,
-                &data,
-                ui,
-            ),
-            Context::Tracks { tracks, .. } => {
-                handle_command_for_track_table_window(command, client_pub, None, tracks, &data, ui)
-            }
         },
         None => Ok(false),
     }
@@ -335,6 +316,7 @@ fn handle_command_for_track_table_window(
     Ok(true)
 }
 
+#[allow(clippy::needless_pass_by_value)] // might be rewritten to take a reference
 pub fn handle_command_for_track_list_window(
     command: Command,
     client_pub: &flume::Sender<ClientRequest>,
@@ -377,6 +359,8 @@ pub fn handle_command_for_track_list_window(
     Ok(true)
 }
 
+#[allow(clippy::unnecessary_wraps)] // needed to match other functions
+#[allow(clippy::needless_pass_by_value)] // might be rewritten to take a reference
 pub fn handle_command_for_artist_list_window(
     command: Command,
     artists: Vec<&Artist>,
@@ -412,6 +396,8 @@ pub fn handle_command_for_artist_list_window(
     Ok(true)
 }
 
+#[allow(clippy::unnecessary_wraps)] // needed to match other functions
+#[allow(clippy::needless_pass_by_value)] // might be rewritten to take a reference
 pub fn handle_command_for_album_list_window(
     command: Command,
     albums: Vec<&Album>,
@@ -451,6 +437,8 @@ pub fn handle_command_for_album_list_window(
     Ok(true)
 }
 
+#[allow(clippy::unnecessary_wraps)] // needed to match other functions
+#[allow(clippy::needless_pass_by_value)] // might be rewritten to take a reference
 pub fn handle_command_for_playlist_list_window(
     command: Command,
     playlists: Vec<&PlaylistFolderItem>,

@@ -120,7 +120,7 @@ impl PlayerEvent {
 
 fn execute_player_event_hook_command(
     cmd: &config::Command,
-    event: PlayerEvent,
+    event: &PlayerEvent,
 ) -> anyhow::Result<()> {
     cmd.execute(Some(event.args()))?;
 
@@ -140,7 +140,7 @@ pub async fn new_connection(
     // `librespot` volume is a u16 number ranging from 0 to 65535,
     // while a percentage volume value (from 0 to 100) is used for the device configuration.
     // So we need to convert from one format to another
-    let volume = (std::cmp::min(device.volume, 100_u8) as f64 / 100.0 * 65535.0).round() as u16;
+    let volume = (f64::from(std::cmp::min(device.volume, 100_u8)) / 100.0 * 65535.0).round() as u16;
 
     let connect_config = ConnectConfig {
         name: device.name.clone(),
@@ -210,7 +210,7 @@ pub async fn new_connection(
 
                         // execute a player event hook command
                         if let Some(ref cmd) = configs.app_config.player_event_hook_command {
-                            if let Err(err) = execute_player_event_hook_command(cmd, event) {
+                            if let Err(err) = execute_player_event_hook_command(cmd, &event) {
                                 tracing::warn!(
                                     "Failed to execute player event hook command: {err:#}"
                                 );
@@ -231,7 +231,7 @@ pub async fn new_connection(
 
     tokio::task::spawn(async move {
         tokio::select! {
-            _ = spirc_task => {},
+            () = spirc_task => {},
             _ = player_event_task => {}
         }
     });

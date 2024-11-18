@@ -8,7 +8,7 @@ const THEME_CONFIG_FILE: &str = "theme.toml";
 const KEYMAP_CONFIG_FILE: &str = "keymap.toml";
 
 use anyhow::{anyhow, Result};
-use config_parser2::*;
+use config_parser2::{config_parser_impl, ConfigParse, ConfigParser};
 use librespot_core::config::SessionConfig;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
@@ -17,8 +17,8 @@ use std::{
     sync::OnceLock,
 };
 
-use keymap::*;
-use theme::*;
+use keymap::KeymapConfig;
+use theme::ThemeConfig;
 
 pub use theme::Theme;
 
@@ -226,11 +226,11 @@ enum StreamingTypeOrBool {
 impl From<StreamingTypeOrBool> for StreamingType {
     fn from(v: StreamingTypeOrBool) -> Self {
         match v {
-            StreamingTypeOrBool::Bool(true) => StreamingType::Always,
-            StreamingTypeOrBool::Bool(false) => StreamingType::Never,
-            StreamingTypeOrBool::Type(RawStreamingType::Always) => StreamingType::Always,
+            StreamingTypeOrBool::Bool(true)
+            | StreamingTypeOrBool::Type(RawStreamingType::Always) => StreamingType::Always,
+            StreamingTypeOrBool::Bool(false)
+            | StreamingTypeOrBool::Type(RawStreamingType::Never) => StreamingType::Never,
             StreamingTypeOrBool::Type(RawStreamingType::DaemonOnly) => StreamingType::DaemonOnly,
-            StreamingTypeOrBool::Type(RawStreamingType::Never) => StreamingType::Never,
         }
     }
 }
@@ -243,7 +243,7 @@ impl Command {
     {
         Self {
             command: command.to_string(),
-            args: args.iter().map(|a| a.to_string()).collect(),
+            args: args.iter().map(std::string::ToString::to_string).collect(),
         }
     }
 }
@@ -358,9 +358,8 @@ impl LayoutConfig {
     fn check_values(&self) -> anyhow::Result<()> {
         if self.library.album_percent + self.library.playlist_percent > 99 {
             anyhow::bail!("Invalid library layout: summation of album_percent and playlist_percent cannot be greater than 99!");
-        } else {
-            Ok(())
         }
+        Ok(())
     }
 }
 
@@ -368,7 +367,7 @@ impl AppConfig {
     pub fn new(path: &Path) -> Result<Self> {
         let mut config = Self::default();
         if !config.parse_config_file(path)? {
-            config.write_config_file(path)?
+            config.write_config_file(path)?;
         }
 
         config.layout.check_values()?;
@@ -383,7 +382,7 @@ impl AppConfig {
         match std::fs::read_to_string(file_path) {
             Ok(content) => self
                 .parse(toml::from_str::<toml::Value>(&content)?)
-                .map(|_| true),
+                .map(|()| true),
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(false),
             Err(error) => Err(error.into()),
         }
@@ -397,7 +396,7 @@ impl AppConfig {
             })
     }
 
-    pub fn session_config(&self) -> Result<SessionConfig> {
+    pub fn session_config(&self) -> SessionConfig {
         let proxy = self
             .proxy
             .as_ref()
@@ -408,12 +407,12 @@ impl AppConfig {
                 }
                 Ok(url) => Some(url),
             });
-        Ok(SessionConfig {
+        SessionConfig {
             proxy,
             ap_port: self.ap_port,
             client_id: SPOTIFY_CLIENT_ID.to_string(),
             ..Default::default()
-        })
+        }
     }
 
     /// Returns stdout of `client_id_command` if set, otherwise it returns the the value of `client_id`
@@ -448,5 +447,5 @@ pub fn get_config() -> &'static Configs {
 pub fn set_config(configs: Configs) {
     CONFIGS
         .set(configs)
-        .expect("configs should be initialized only once")
+        .expect("configs should be initialized only once");
 }

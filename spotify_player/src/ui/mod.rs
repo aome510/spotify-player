@@ -1,6 +1,23 @@
-use crate::{config, state::*};
+use crate::{
+    config,
+    state::{
+        rspotify_model, Album, Artist, ArtistFocusState, BrowsePageUIState, Context,
+        ContextPageUIState, DataReadGuard, Id, LibraryFocusState, MutableWindowState, PageState,
+        PageType, PlaybackMetadata, PlaylistCreateCurrentField, PlaylistFolderItem,
+        PlaylistPopupAction, PopupState, SearchFocusState, SharedState, Track, UIStateGuard,
+    },
+};
 use anyhow::{Context as AnyhowContext, Result};
-use tui::{layout::*, style::*, text::*, widgets::*, Frame};
+use tui::{
+    layout::{Constraint, Layout, Rect},
+    style::{Modifier, Style},
+    text::{Line, Span, Text},
+    widgets::{
+        Block, BorderType, Borders, Cell, Gauge, LineGauge, List, ListItem, ListState, Paragraph,
+        Row, Table, TableState, Wrap,
+    },
+    Frame,
+};
 
 type Terminal = tui::Terminal<tui::backend::CrosstermBackend<std::io::Stdout>>;
 
@@ -11,7 +28,7 @@ pub mod single_line_input;
 mod utils;
 
 /// Run the application UI
-pub fn run(state: SharedState) -> Result<()> {
+pub fn run(state: &SharedState) -> Result<()> {
     let mut terminal = init_ui().context("failed to initialize the application's UI")?;
 
     let ui_refresh_duration = std::time::Duration::from_millis(
@@ -43,7 +60,7 @@ pub fn run(state: SharedState) -> Result<()> {
                 let block = Block::default().style(ui.theme.app());
                 frame.render_widget(block, rect);
 
-                render_application(frame, &state, &mut ui, rect);
+                render_application(frame, state, &mut ui, rect);
             }) {
                 tracing::error!("Failed to render the application: {err:#}");
             }
@@ -127,7 +144,7 @@ pub enum Orientation {
 impl Orientation {
     /// Construct screen orientation based on the terminal's size
     pub fn from_size(columns: u16, rows: u16) -> Self {
-        let ratio = columns as f64 / rows as f64;
+        let ratio = f64::from(columns) / f64::from(rows);
 
         // a larger ratio has to be used since terminal cells aren't square
         if ratio > 2.3 {
@@ -137,7 +154,7 @@ impl Orientation {
         }
     }
 
-    pub fn layout<I>(&self, constraints: I) -> Layout
+    pub fn layout<I>(self, constraints: I) -> Layout
     where
         I: IntoIterator,
         I::Item: Into<Constraint>,

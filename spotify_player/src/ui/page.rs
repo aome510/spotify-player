@@ -2,7 +2,13 @@ use std::collections::{btree_map::Entry, BTreeMap};
 
 use crate::utils::format_duration;
 
-use super::{utils::construct_and_render_block, *};
+use super::{
+    config, rspotify_model, utils, utils::construct_and_render_block, Album, Artist,
+    ArtistFocusState, Borders, BrowsePageUIState, Cell, Constraint, Context, ContextPageUIState,
+    DataReadGuard, Frame, Id, Layout, LibraryFocusState, MutableWindowState, Orientation,
+    PageState, Paragraph, PlaylistFolderItem, Rect, Row, SearchFocusState, SharedState, Style,
+    Table, Track, UIStateGuard,
+};
 
 const COMMAND_TABLE_CONSTRAINTS: [Constraint; 3] = [
     Constraint::Percentage(25),
@@ -49,13 +55,12 @@ pub fn render_search_page(
     // track/album/artist/playlist search results layout
     let chunks = match ui.orientation {
         Orientation::Vertical => {
-            let constraints = match focus_state {
-                SearchFocusState::Input => [Constraint::Ratio(1, 4); 4],
-                _ => {
-                    let mut constraints = [Constraint::Percentage(20); 4];
-                    constraints[focus_state as usize - 1] = Constraint::Percentage(40);
-                    constraints
-                }
+            let constraints = if focus_state == SearchFocusState::Input {
+                [Constraint::Ratio(1, 4); 4]
+            } else {
+                let mut constraints = [Constraint::Percentage(20); 4];
+                constraints[focus_state as usize - 1] = Constraint::Percentage(40);
+                constraints
             };
 
             Layout::vertical(constraints).split(rect)
@@ -174,9 +179,11 @@ pub fn render_search_page(
 
     // Render the search result windows.
     // Need mutable access to the list/table states stored inside the page state for rendering.
-    let page_state = match ui.current_page_mut() {
-        PageState::Search { state, .. } => state,
-        _ => return,
+    let PageState::Search {
+        state: page_state, ..
+    } = ui.current_page_mut()
+    else {
+        return;
     };
     utils::render_list_window(
         frame,
@@ -216,13 +223,13 @@ pub fn render_context_page(
     rect: Rect,
 ) {
     // 1. Get data
-    let (id, context_page_type) = match ui.current_page() {
-        PageState::Context {
-            id,
-            context_page_type,
-            ..
-        } => (id, context_page_type),
-        _ => return,
+    let PageState::Context {
+        id,
+        context_page_type,
+        ..
+    } = ui.current_page()
+    else {
+        return;
     };
 
     // 2. Construct the page's layout
@@ -298,18 +305,7 @@ pub fn render_context_page(
                         &data,
                     );
                 }
-                Context::Album { tracks, .. } => {
-                    render_track_table(
-                        frame,
-                        rect,
-                        is_active,
-                        state,
-                        ui.search_filtered_items(tracks),
-                        ui,
-                        &data,
-                    );
-                }
-                Context::Tracks { tracks, .. } => {
+                Context::Tracks { tracks, .. } | Context::Album { tracks, .. } => {
                     render_track_table(
                         frame,
                         rect,
@@ -428,9 +424,8 @@ pub fn render_library_page(
     // 4. Render the page's widgets
     // Render the library page's windows.
     // Will need mutable access to the list/table states stored inside the page state for rendering.
-    let page_state = match ui.current_page_mut() {
-        PageState::Library { state } => state,
-        _ => return,
+    let PageState::Library { state: page_state } = ui.current_page_mut() else {
+        return;
     };
 
     utils::render_list_window(
@@ -486,12 +481,9 @@ pub fn render_browse_page(
                 let title = format!("{} Playlists", category.name);
                 rect = construct_and_render_block(&title, &ui.theme, Borders::ALL, frame, rect);
 
-                let playlists = match data.browse.category_playlists.get(&category.id) {
-                    Some(playlists) => playlists,
-                    None => {
-                        frame.render_widget(Paragraph::new("Loading..."), rect);
-                        return;
-                    }
+                let Some(playlists) = data.browse.category_playlists.get(&category.id) else {
+                    frame.render_widget(Paragraph::new("Loading..."), rect);
+                    return;
                 };
 
                 utils::construct_list_widget(
@@ -508,9 +500,9 @@ pub fn render_browse_page(
     };
 
     // 4. Render the page's widget
-    let list_state = match ui.current_page_mut().focus_window_state_mut() {
-        Some(MutableWindowState::List(list_state)) => list_state,
-        _ => return,
+    let Some(MutableWindowState::List(list_state)) = ui.current_page_mut().focus_window_state_mut()
+    else {
+        return;
     };
     utils::render_list_window(frame, list, rect, len, list_state);
 }
@@ -600,7 +592,7 @@ pub fn render_commands_help_page(frame: &mut Frame, ui: &mut UIStateGuard, rect:
             ref mut scroll_offset,
         } => {
             if !map.is_empty() && *scroll_offset >= map.len() {
-                *scroll_offset = map.len() - 1
+                *scroll_offset = map.len() - 1;
             }
             *scroll_offset
         }
@@ -653,8 +645,8 @@ pub fn render_queue_page(
     use rspotify::model::{FullEpisode, FullTrack, PlayableItem};
     fn get_playable_name(item: &PlayableItem) -> String {
         match item {
-            PlayableItem::Track(FullTrack { ref name, .. }) => name,
-            PlayableItem::Episode(FullEpisode { ref name, .. }) => name,
+            PlayableItem::Track(FullTrack { ref name, .. })
+            | PlayableItem::Episode(FullEpisode { ref name, .. }) => name,
         }
         .to_string()
     }
@@ -670,8 +662,8 @@ pub fn render_queue_page(
     }
     fn get_playable_duration(item: &PlayableItem) -> String {
         match item {
-            PlayableItem::Track(FullTrack { ref duration, .. }) => format_duration(duration),
-            PlayableItem::Episode(FullEpisode { ref duration, .. }) => format_duration(duration),
+            PlayableItem::Track(FullTrack { ref duration, .. })
+            | PlayableItem::Episode(FullEpisode { ref duration, .. }) => format_duration(duration),
         }
     }
 
@@ -686,7 +678,7 @@ pub fn render_queue_page(
             ref mut scroll_offset,
         } => {
             if !queue.is_empty() && *scroll_offset >= queue.len() {
-                *scroll_offset = queue.len() - 1
+                *scroll_offset = queue.len() - 1;
             }
             *scroll_offset
         }
@@ -837,32 +829,26 @@ fn render_artist_context_page_windows(
         data,
     );
 
-    let (album_table_state, artist_list_state) = match ui.current_page_mut() {
-        PageState::Context {
-            state:
-                Some(ContextPageUIState::Artist {
-                    album_table,
-                    related_artist_list,
-                    ..
-                }),
-            ..
-        } => (album_table, related_artist_list),
-        _ => return,
+    let PageState::Context {
+        state:
+            Some(ContextPageUIState::Artist {
+                album_table,
+                related_artist_list,
+                ..
+            }),
+        ..
+    } = ui.current_page_mut()
+    else {
+        return;
     };
 
-    utils::render_table_window(
-        frame,
-        albums_table,
-        albums_rect,
-        n_albums,
-        album_table_state,
-    );
+    utils::render_table_window(frame, albums_table, albums_rect, n_albums, album_table);
     utils::render_list_window(
         frame,
         artist_list,
         related_artists_rect,
         n_artists,
-        artist_list_state,
+        related_artist_list,
     );
 }
 
@@ -877,11 +863,15 @@ fn render_track_table(
 ) {
     let configs = config::get_config();
     // get the current playing track's URI to decorate such track (if exists) in the track table
-    let mut playing_track_uri = "".to_string();
+    let mut playing_track_uri = String::new();
     let mut playing_id = "";
     if let Some(ref playback) = state.player.read().playback {
         if let Some(rspotify_model::PlayableItem::Track(ref track)) = playback.item {
-            playing_track_uri = track.id.as_ref().map(|id| id.uri()).unwrap_or_default();
+            playing_track_uri = track
+                .id
+                .as_ref()
+                .map(rspotify::prelude::Id::uri)
+                .unwrap_or_default();
 
             playing_id = if playback.is_playing {
                 &configs.app_config.play_icon
@@ -949,14 +939,7 @@ fn render_track_table(
         state: Some(state), ..
     } = ui.current_page_mut()
     {
-        let track_table_state = match state {
-            ContextPageUIState::Artist {
-                top_track_table, ..
-            } => top_track_table,
-            ContextPageUIState::Playlist { track_table } => track_table,
-            ContextPageUIState::Album { track_table } => track_table,
-            ContextPageUIState::Tracks { track_table } => track_table,
-        };
+        let track_table_state = state.track_table_mut();
         utils::render_table_window(frame, track_table, rect, n_tracks, track_table_state);
     }
 }

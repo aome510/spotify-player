@@ -7,7 +7,7 @@ use crate::state::{Playlist, PlaylistFolder, PlaylistFolderItem, PlaylistFolderN
 /// Structurize a flat input playlist according to the playlist folder nodes
 pub fn structurize(
     playlists: Vec<Playlist>,
-    nodes: Vec<PlaylistFolderNode>,
+    nodes: &[PlaylistFolderNode],
 ) -> Vec<PlaylistFolderItem> {
     let mut playlist_folders = Vec::new();
 
@@ -17,7 +17,7 @@ pub fn structurize(
         .collect::<HashMap<_, _>>();
 
     // Construct playlist folders with relevant playlists
-    add_playlist_folders(&nodes, &mut playlists, &mut 0, &mut playlist_folders);
+    add_playlist_folders(nodes, &mut playlists, &mut 0, &mut playlist_folders);
 
     // Remaining playlists that don't belong to any folders are added as root playlists
     for (_, mut p) in playlists {
@@ -28,7 +28,7 @@ pub fn structurize(
 }
 
 fn add_playlist_folders(
-    nodes: &Vec<PlaylistFolderNode>,
+    nodes: &[PlaylistFolderNode],
     playlists: &mut HashMap<String, Playlist>,
     folder_id: &mut usize,
     acc: &mut Vec<PlaylistFolderItem>,

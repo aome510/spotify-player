@@ -52,7 +52,7 @@ fn update_control_metadata(
 
 /// Start the application's media control event watcher
 pub fn start_event_watcher(
-    state: SharedState,
+    state: &SharedState,
     client_pub: flume::Sender<ClientRequest>,
 ) -> Result<(), souvlaki::Error> {
     tracing::info!("Initializing application's media control event watcher...");
@@ -127,7 +127,7 @@ pub fn start_event_watcher(
     let refresh_duration = std::time::Duration::from_millis(1000);
     let mut track_info = String::new();
     loop {
-        update_control_metadata(&state, &mut controls, &mut track_info)?;
+        update_control_metadata(state, &mut controls, &mut track_info)?;
         std::thread::sleep(refresh_duration);
 
         // this must be run repeatedly to ensure that

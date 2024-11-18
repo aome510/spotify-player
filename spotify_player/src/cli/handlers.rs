@@ -1,6 +1,9 @@
 use crate::{auth::AuthConfig, client};
 
-use super::*;
+use super::{
+    config, init_cli, start_socket, Command, ContextType, GetRequest, IdOrName, ItemType, Key,
+    PlaylistCommand, PlaylistId, Request, Response, MAX_REQUEST_SIZE,
+};
 use anyhow::{Context, Result};
 use clap::{ArgMatches, Id};
 use clap_complete::{generate, Shell};
@@ -43,6 +46,7 @@ fn get_id_or_name(args: &ArgMatches) -> IdOrName {
     }
 }
 
+#[allow(clippy::unnecessary_wraps)] // we need this to match the other functions return type
 fn handle_get_subcommand(args: &ArgMatches) -> Result<Request> {
     let (cmd, args) = args.subcommand().expect("playback subcommand is required");
 
@@ -243,7 +247,7 @@ fn handle_playlist_subcommand(args: &ArgMatches) -> Result<Request> {
 
             let description = args
                 .get_one::<String>("description")
-                .map(|s| s.to_owned())
+                .map(std::borrow::ToOwned::to_owned)
                 .unwrap_or_default();
 
             let public = args.get_flag("public");
@@ -280,8 +284,8 @@ fn handle_playlist_subcommand(args: &ArgMatches) -> Result<Request> {
 
             let delete = args.get_flag("delete");
 
-            let from = PlaylistId::from_id(from_s.to_owned())?;
-            let to = PlaylistId::from_id(to_s.to_owned())?;
+            let from = PlaylistId::from_id(from_s.clone())?;
+            let to = PlaylistId::from_id(to_s.clone())?;
 
             println!("Importing '{from_s}' into '{to_s}'...\n");
             PlaylistCommand::Import { from, to, delete }
@@ -292,7 +296,7 @@ fn handle_playlist_subcommand(args: &ArgMatches) -> Result<Request> {
                 .expect("Playlist id is required.")
                 .to_owned();
 
-            let id = PlaylistId::from_id(id_s.to_owned())?;
+            let id = PlaylistId::from_id(id_s.clone())?;
 
             println!("Forking '{id_s}'...\n");
             PlaylistCommand::Fork { id }
@@ -301,15 +305,12 @@ fn handle_playlist_subcommand(args: &ArgMatches) -> Result<Request> {
             let id_s = args.get_one::<String>("id");
             let delete = args.get_flag("delete");
 
-            let pid = match id_s {
-                Some(id_s) => {
-                    println!("Syncing imports for playlist '{id_s}'...\n");
-                    Some(PlaylistId::from_id(id_s.to_owned())?)
-                }
-                None => {
-                    println!("Syncing imports for all playlists...\n");
-                    None
-                }
+            let pid = if let Some(id_s) = id_s {
+                println!("Syncing imports for playlist '{id_s}'...\n");
+                Some(PlaylistId::from_id(id_s.to_owned())?)
+            } else {
+                println!("Syncing imports for all playlists...\n");
+                None
             };
 
             PlaylistCommand::Sync { id: pid, delete }

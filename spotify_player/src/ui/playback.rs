@@ -1,4 +1,8 @@
-use super::{utils::construct_and_render_block, *};
+use super::{
+    config, rspotify_model, utils::construct_and_render_block, Borders, Constraint, Frame, Gauge,
+    Layout, Line, LineGauge, Modifier, Paragraph, PlaybackMetadata, Rect, SharedState, Span, Style,
+    Text, UIStateGuard, Wrap,
+};
 
 /// Render a playback window showing information about the current playback, which includes
 /// - track title, artists, album
@@ -189,10 +193,10 @@ fn construct_playback_text(
                 continue;
             }
             "{status}" => (
-                if !playback.is_playing {
-                    &configs.app_config.pause_icon
-                } else {
+                if playback.is_playing {
                     &configs.app_config.play_icon
+                } else {
+                    &configs.app_config.pause_icon
                 }
                 .to_owned(),
                 ui.theme.playback_status(),
@@ -209,7 +213,7 @@ fn construct_playback_text(
                 crate::utils::map_join(&track.artists, |a| &a.name, ", "),
                 ui.theme.playback_artists(),
             ),
-            "{album}" => (track.album.name.to_owned(), ui.theme.playback_album()),
+            "{album}" => (track.album.name.clone(), ui.theme.playback_album()),
             "{metadata}" => (
                 format!(
                     "repeat: {} | shuffle: {} | volume: {} | device: {}",

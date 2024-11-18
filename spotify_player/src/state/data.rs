@@ -4,7 +4,10 @@ use std::{collections::HashMap, path::Path};
 use once_cell::sync::Lazy;
 use serde::{de::DeserializeOwned, Serialize};
 
-use super::model::*;
+use super::model::{
+    rspotify_model, Album, Artist, Category, Context, ContextId, Id, Playlist, PlaylistFolderItem,
+    PlaylistFolderNode, SearchResults, Track,
+};
 
 pub type DataReadGuard<'a> = parking_lot::RwLockReadGuard<'a, AppData>;
 
@@ -80,25 +83,17 @@ impl AppData {
 
     /// Get a list of tracks inside a given context
     pub fn context_tracks_mut(&mut self, id: &ContextId) -> Option<&mut Vec<Track>> {
-        self.caches.context.get_mut(&id.uri()).map(|c| match c {
-            Context::Album { tracks, .. } => tracks,
-            Context::Playlist { tracks, .. } => tracks,
-            Context::Artist {
-                top_tracks: tracks, ..
-            } => tracks,
-            Context::Tracks { tracks, .. } => tracks,
-        })
+        self.caches
+            .context
+            .get_mut(&id.uri())
+            .map(super::model::Context::tracks_mut)
     }
 
     pub fn context_tracks(&self, id: &ContextId) -> Option<&Vec<Track>> {
-        self.caches.context.get(&id.uri()).map(|c| match c {
-            Context::Album { tracks, .. } => tracks,
-            Context::Playlist { tracks, .. } => tracks,
-            Context::Artist {
-                top_tracks: tracks, ..
-            } => tracks,
-            Context::Tracks { tracks, .. } => tracks,
-        })
+        self.caches
+            .context
+            .get(&id.uri())
+            .map(super::model::Context::tracks)
     }
 }
 
@@ -172,6 +167,7 @@ impl UserData {
     }
 }
 
+#[allow(clippy::needless_pass_by_value)] // that's ok here
 pub fn store_data_into_file_cache<T: Serialize>(
     key: FileCacheKey,
     cache_folder: &Path,
@@ -183,6 +179,7 @@ pub fn store_data_into_file_cache<T: Serialize>(
     Ok(())
 }
 
+#[allow(clippy::needless_pass_by_value)] // that's ok here
 pub fn load_data_from_file_cache<T>(key: FileCacheKey, cache_folder: &Path) -> Option<T>
 where
     T: DeserializeOwned,

@@ -1,4 +1,7 @@
-use super::*;
+use super::{
+    config, Block, BorderType, Borders, Frame, List, ListItem, ListState, Rect, Span, Style, Table,
+    TableState,
+};
 
 /// Construct and render a block.
 ///
@@ -16,8 +19,7 @@ pub fn construct_and_render_block(
     let configs = config::get_config();
 
     let (borders, border_type) = match configs.app_config.border_type {
-        config::BorderType::Hidden => (borders, BorderType::Plain),
-        config::BorderType::Plain => (borders, BorderType::Plain),
+        config::BorderType::Hidden | config::BorderType::Plain => (borders, BorderType::Plain),
         config::BorderType::Rounded => (borders, BorderType::Rounded),
         config::BorderType::Double => (borders, BorderType::Double),
         config::BorderType::Thick => (borders, BorderType::Thick),

@@ -198,7 +198,7 @@ impl std::fmt::Display for KeySequence {
             "{}",
             self.keys
                 .iter()
-                .map(|k| k.to_string())
+                .map(std::string::ToString::to_string)
                 .collect::<Vec<_>>()
                 .join(" ")
         )
