@@ -22,6 +22,7 @@ cast_sign_loss = { level = "allow", priority = 23 }
 cast_possible_wrap = { level = "allow", priority = 24 }
 struct_field_names = { level = "allow", priority = 25 }
 cast_precision_loss = { level = "allow", priority = 26 }
+struct_excessive_bools = { level = "allow", priority = 27 }
 
 ####### These lints could be enabled in the future
 missing_errors_doc = { level = "allow", priority = 30 }

@@ -381,6 +381,7 @@ fn handle_command_for_browse_page(
 }
 
 #[cfg(feature = "lyric-finder")]
+#[allow(clippy::unnecessary_wraps)] // match return type
 fn handle_command_for_lyric_page(command: Command, ui: &mut UIStateGuard) -> Result<bool> {
     let scroll_offset = match ui.current_page() {
         PageState::Lyric { scroll_offset, .. } => *scroll_offset,

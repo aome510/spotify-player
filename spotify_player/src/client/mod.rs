@@ -1,12 +1,14 @@
 use std::ops::Deref;
 use std::{borrow::Cow, collections::HashMap, sync::Arc};
 
+#[cfg(feature = "streaming")]
+use crate::state::Mutex;
 use crate::{auth, config};
 use crate::{
     auth::AuthConfig,
     state::{
         rspotify_model, store_data_into_file_cache, Album, AlbumId, Artist, ArtistId, Category,
-        Context, ContextId, Device, FileCacheKey, Item, ItemId, MemoryCaches, Mutex, Playback,
+        Context, ContextId, Device, FileCacheKey, Item, ItemId, MemoryCaches, Playback,
         PlaybackMetadata, Playlist, PlaylistFolderItem, PlaylistId, SearchResults, SharedState,
         Track, TrackId, UserId, TTL_CACHE_DURATION, USER_LIKED_TRACKS_ID,
         USER_RECENTLY_PLAYED_TRACKS_ID, USER_TOP_TRACKS_ID,
@@ -1505,12 +1507,12 @@ impl Client {
         if configs.app_config.enable_notify
             && (!configs.app_config.notify_streaming_only || self.stream_conn.lock().is_some())
         {
-            Self::notify_new_track(track, &path)?;
+            Self::notify_new_track(&track, &path)?;
         }
 
         #[cfg(all(feature = "notify", not(feature = "streaming")))]
         if configs.app_config.enable_notify {
-            Self::notify_new_track(track, &path)?;
+            Self::notify_new_track(&track, &path)?;
         }
 
         Ok(())
@@ -1553,7 +1555,7 @@ impl Client {
     #[cfg(feature = "notify")]
     /// Create a notification for a new track
     fn notify_new_track(
-        track: rspotify_model::FullTrack,
+        track: &rspotify_model::FullTrack,
         cover_img_path: &std::path::Path,
     ) -> Result<()> {
         let mut n = notify_rust::Notification::new();
@@ -1577,7 +1579,7 @@ impl Client {
                 match m.as_str() {
                     "{track}" => text += &track.name,
                     "{artists}" => {
-                        text += &crate::utils::map_join(&track.artists, |a| &a.name, ", ")
+                        text += &crate::utils::map_join(&track.artists, |a| &a.name, ", ");
                     }
                     "{album}" => text += &track.album.name,
                     _ => continue,

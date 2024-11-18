@@ -19,6 +19,9 @@ use tui::{
     Frame,
 };
 
+#[cfg(feature = "image")]
+use crate::state::ImageRenderInfo;
+
 type Terminal = tui::Terminal<tui::backend::CrosstermBackend<std::io::Stdout>>;
 
 mod page;
@@ -50,7 +53,7 @@ pub fn run(state: &SharedState) -> Result<()> {
                 #[cfg(feature = "image")]
                 {
                     // redraw the cover image when the terminal's size changes
-                    ui.last_cover_image_render_info = Default::default();
+                    ui.last_cover_image_render_info = ImageRenderInfo::default();
                 }
             }
 

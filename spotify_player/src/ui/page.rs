@@ -523,13 +523,13 @@ pub fn render_lyric_page(
     let chunks = Layout::vertical([Constraint::Length(1), Constraint::Fill(0)]).split(rect);
 
     // 3. Construct the page's widgets
-    let (track, artists, scroll_offset) = match ui.current_page_mut() {
-        PageState::Lyric {
-            track,
-            artists,
-            scroll_offset,
-        } => (track, artists, scroll_offset),
-        _ => return,
+    let PageState::Lyric {
+        track,
+        artists,
+        scroll_offset,
+    } = ui.current_page_mut()
+    else {
+        return;
     };
 
     let (desc, lyric) = match data.caches.lyrics.get(&format!("{track} {artists}")) {

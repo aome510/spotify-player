@@ -1,3 +1,8 @@
+#[cfg(feature = "image")]
+use crate::state::ImageRenderInfo;
+#[cfg(feature = "image")]
+use anyhow::{Context, Result};
+
 use super::{
     config, rspotify_model, utils::construct_and_render_block, Borders, Constraint, Frame, Gauge,
     Layout, Line, LineGauge, Modifier, Paragraph, PlaybackMetadata, Rect, SharedState, Span, Style,
@@ -128,7 +133,7 @@ pub fn render_playback_window(
         {
             if ui.last_cover_image_render_info.rendered {
                 clear_area(frame, ui.last_cover_image_render_info.render_area);
-                ui.last_cover_image_render_info = Default::default();
+                ui.last_cover_image_render_info = ImageRenderInfo::default();
             }
         }
 
@@ -323,8 +328,8 @@ fn render_playback_cover_image(state: &SharedState, ui: &mut UIStateGuard) -> Re
         // with different fonts and terminals.
         // For more context, see https://github.com/aome510/spotify-player/issues/122.
         let scale = config::get_config().app_config.cover_img_scale;
-        let width = (rect.width as f32 * scale).round() as u32;
-        let height = (rect.height as f32 * scale).round() as u32;
+        let width = (f32::from(rect.width) * scale).round() as u32;
+        let height = (f32::from(rect.height) * scale).round() as u32;
 
         viuer::print(
             image,
