@@ -9,6 +9,10 @@ repository = "https://github.com/aome510/spotify-player"
 keywords = ["spotify", "tui", "player"]
 readme = "../README.md"
 
+[[bin]]
+name = "sptplay"
+path = "src/main.rs"
+
 [dependencies]
 anyhow = "1.0.91"
 clap = { version = "4.5.20", features = ["derive", "string"] }
