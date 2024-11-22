@@ -15,7 +15,7 @@
 - [Keymaps](#keymaps)
 
 All configuration files should be placed inside the application's configuration folder (default to be `$HOME/.config/spotify-player`).
-    
+
 ## General
 
 **The default `app.toml` can be found in the example [`app.toml`](../examples/app.toml) file.**
@@ -25,10 +25,11 @@ All configuration files should be placed inside the application's configuration 
 | Option                            | Description                                                                              | Default                                                 |
 | --------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------- |
 | `client_id`                       | the Spotify client's ID                                                                  | `65b708073fc0480ea92a077233ca87bd`                      |
-| `client_id_command`                   | a shell command that prints the Spotify client ID to stdout (overrides `client_id`)      | `None`                                                  |
+| `client_id_command`               | a shell command that prints the Spotify client ID to stdout (overrides `client_id`)      | `None`                                                  |
+| `login_redirect_uri`              | the redirect URI for authenticating the application                                      | `http://127.0.0.1:8989/login`                           |
 | `client_port`                     | the port that the application's client is running on to handle CLI commands              | `8080`                                                  |
 | `tracks_playback_limit`           | the limit for the number of tracks played in a **tracks** playback                       | `50`                                                    |
-| `playback_format`                 | the format of the text in the playback's window                                          | `{status} {track} • {artists}\n{album}\n{metadata}`     | 
+| `playback_format`                 | the format of the text in the playback's window                                          | `{status} {track} • {artists}\n{album}\n{metadata}`     |
 | `notify_format`                   | the format of a notification (`notify` feature only)                                     | `{ summary = "{track} • {artists}", body = "{album}" }` |
 | `notify_timeout_in_secs`          | the timeout (in seconds) of a notification (`notify` feature only)                       | `0` (no timeout)                                        |
 | `player_event_hook_command`       | the hook command executed when there is a new player event                               | `None`                                                  |
@@ -44,9 +45,9 @@ All configuration files should be placed inside the application's configuration 
 | `enable_cover_image_cache`        | store album's cover images in the cache folder                                           | `true`                                                  |
 | `notify_streaming_only`           | only send notification when streaming is enabled (`streaming` and `notify` feature only) | `false`                                                 |
 | `default_device`                  | the default device to connect to on startup if no playing device found                   | `spotify-player`                                        |
-| `play_icon`                       | the icon to indicate playing state of a Spotify item                                     | `▶`                                                     |
+| `play_icon`                       | the icon to indicate playing state of a Spotify item                                     | `▶`                                                    |
 | `pause_icon`                      | the icon to indicate pause state of a Spotify item                                       | `▌▌`                                                    |
-| `liked_icon`                      | the icon to indicate the liked state of a song                                           | `♥`                                                     |
+| `liked_icon`                      | the icon to indicate the liked state of a song                                           | `♥`                                                    |
 | `border_type`                     | the type of the application's borders                                                    | `Plain`                                                 |
 | `progress_bar_type`               | the type of the playback progress bar                                                    | `Rectangle`                                             |
 | `cover_img_width`                 | the width of the cover image (`image` feature only)                                      | `5`                                                     |
@@ -57,7 +58,7 @@ All configuration files should be placed inside the application's configuration 
 ### Notes
 
 - By default, `spotify_player` uses the official Spotify Web app's client (`client_id = 65b708073fc0480ea92a077233ca87bd`)
-- It's recommended to specify [your own Client ID](https://developer.spotify.com/documentation/web-api/concepts/apps) to avoid possible rate limits and to allow a full [Spotify connect](https://www.spotify.com/us/connect/) support.
+- It's recommended to specify [your own Client ID](https://developer.spotify.com/documentation/web-api/concepts/apps) to avoid possible rate limits and to allow a full [Spotify connect](https://www.spotify.com/us/connect/) support. An error such as `Failed to initialize the Spotify data` can appear if the `client_id` is invalid.
 - `ap_port` and `proxy` are [Librespot's session configurations](https://github.com/librespot-org/librespot/wiki/Behind-web-proxy). By default, `spotify_player` doesn't set those values, which means the Librespot library will fallback to use its default options.
 - Positive-value `app_refresh_duration_in_ms` is used to refresh the playback periodically. This can result in hitting a Spotify rate limit if the application is running for a long time.
 - To prevent the rate limit, `spotify_player` sets `playback_refresh_duration_in_ms=0` by default and makes additional API calls when there is an event or a command triggering a playback update.
@@ -93,17 +94,17 @@ If specified, `player_event_hook_command` should be an object with two fields `c
 
 A player event is represented as a list of arguments with either of the following values:
 
-- `"Changed" OLD_TRACK_ID NEW_TRACK_ID`
-- `"Playing" TRACK_ID POSITION_MS DURATION_MS`
-- `"Paused" TRACK_ID POSITION_MS DURATION_MS`
+- `"Changed" NEW_TRACK_ID`
+- `"Playing" TRACK_ID POSITION_MS`
+- `"Paused" TRACK_ID POSITION_MS`
 - `"EndOfTrack" TRACK_ID`
 
 **Note**: if `args` is specified, such arguments will be called before the event's arguments.
 
-For example, if `player_event_hook_command = { command = "a.sh", args = ["-b", "c", "-d"] }`, upon receiving a `Changed` event with `OLD_TRACK_ID=x`, `NEW_TRACK_ID=y`, the following command will be run
+For example, if `player_event_hook_command = { command = "a.sh", args = ["-b", "c", "-d"] }`, upon receiving a `Changed` event with `NEW_TRACK_ID=id`, the following command will be run
 
 ```shell
-a.sh -b c -d Changed x y
+a.sh -b c -d Changed id
 ```
 
 Example script that reads event's data from arguments and prints them to a file:
@@ -114,9 +115,9 @@ Example script that reads event's data from arguments and prints them to a file:
 set -euo pipefail
 
 case "$1" in
-    "Changed") echo "command: $1, old_track_id: $2, new_track_id: $3" >> /tmp/log.txt ;;
-    "Playing") echo "command: $1, track_id: $2, position_ms: $3, duration_ms: $4" >> /tmp/log.txt ;;
-    "Paused") echo "command: $1, track_id: $2, position_ms: $3, duration_ms: $4" >> /tmp/log.txt ;;
+    "Changed") echo "command: $1, new_track_id: $2" >> /tmp/log.txt ;;
+    "Playing") echo "command: $1, track_id: $2, position_ms: $3" >> /tmp/log.txt ;;
+    "Paused") echo "command: $1, track_id: $2, position_ms: $3" >> /tmp/log.txt ;;
     "EndOfTrack") echo "command: $1, track_id: $2" >> /tmp/log.txt ;;
 esac
 ```
@@ -139,24 +140,25 @@ More details on the above configuration options can be found under the [Librespo
 
 ### Layout configurations
 
-The layout of the application can be adjusted via these options. 
+The layout of the application can be adjusted via these options.
 
-| Option                     | Description                                                      | Default |
-| -------------------------- | ---------------------------------------------------------------- | ------- |
-| `library.album_percent`    | The percentage of the album window in the library                | `40`    |
-| `library.playlist_percent` | The percentage of the playlist window in the library             | `40`    |
-| `playback_window_position` | The position of the playback window                              | `Top`   |
-| `playback_window_height`   | The height of the playback window                                | `6`     |
+| Option                     | Description                                          | Default |
+| -------------------------- | ---------------------------------------------------- | ------- |
+| `library.album_percent`    | The percentage of the album window in the library    | `40`    |
+| `library.playlist_percent` | The percentage of the playlist window in the library | `40`    |
+| `playback_window_position` | The position of the playback window                  | `Top`   |
+| `playback_window_height`   | The height of the playback window                    | `6`     |
 
-Example: 
+Example:
 
-``` toml
+```toml
 
 [layout]
 library = { album_percent = 40, playlist_percent = 40 }
 playback_window_position = "Top"
 
 ```
+
 ## Themes
 
 `spotify_player` uses the `theme.toml` config file to look for user-defined themes.
@@ -286,7 +288,7 @@ key_sequence = "q"
 
 ## Actions
 
-Actions are located in the same `keymap.toml` file as keymaps. An action can be triggered by a key sequence that is not bound to any command. Once the mapped key sequence is pressed, the corresponding action will be triggered. By default actions will act upon the currently selected item, you can change this behaviour by setting the `target` field for a keymap to either `PlayingTrack` or `SelectedItem`. 
+Actions are located in the same `keymap.toml` file as keymaps. An action can be triggered by a key sequence that is not bound to any command. Once the mapped key sequence is pressed, the corresponding action will be triggered. By default actions will act upon the currently selected item, you can change this behaviour by setting the `target` field for a keymap to either `PlayingTrack` or `SelectedItem`.
 a list of actions can be found [here](../README.md#actions).
 
 For example,

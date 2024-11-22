@@ -22,6 +22,8 @@ use theme::*;
 
 pub use theme::Theme;
 
+use crate::auth::SPOTIFY_CLIENT_ID;
+
 static CONFIGS: OnceLock<Configs> = OnceLock::new();
 
 #[derive(Debug)]
@@ -51,6 +53,8 @@ pub struct AppConfig {
     pub client_id_command: Option<Command>,
 
     pub client_port: u16,
+
+    pub login_redirect_uri: String,
 
     pub player_event_hook_command: Option<Command>,
 
@@ -254,6 +258,8 @@ impl Default for AppConfig {
 
             client_port: 8080,
 
+            login_redirect_uri: "http://127.0.0.1:8989/login".to_string(),
+
             tracks_playback_limit: 50,
 
             playback_format: String::from("{status} {track} • {artists}\n{album}\n{metadata}"),
@@ -391,7 +397,7 @@ impl AppConfig {
             })
     }
 
-    pub fn session_config(&self) -> SessionConfig {
+    pub fn session_config(&self) -> Result<SessionConfig> {
         let proxy = self
             .proxy
             .as_ref()
@@ -402,11 +408,13 @@ impl AppConfig {
                 }
                 Ok(url) => Some(url),
             });
-        SessionConfig {
+        Ok(SessionConfig {
             proxy,
             ap_port: self.ap_port,
+            client_id: SPOTIFY_CLIENT_ID.to_string(),
+            autoplay: Some(self.device.autoplay),
             ..Default::default()
-        }
+        })
     }
 
     /// Returns stdout of `client_id_command` if set, otherwise it returns the the value of `client_id`

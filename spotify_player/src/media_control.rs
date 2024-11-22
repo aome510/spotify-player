@@ -162,7 +162,7 @@ mod windows {
         pub fn new() -> Result<DummyWindow, String> {
             let class_name = w!("SimpleTray");
 
-            let handle_result = unsafe {
+            unsafe {
                 let instance = GetModuleHandleW(None)
                     .map_err(|e| (format!("Getting module handle failed: {e}")))?;
 
@@ -194,19 +194,18 @@ mod windows {
                     None,
                     instance,
                     None,
-                );
+                )
+                .map_err(|e| (format!("Failed to create window: {e}")))?;
 
-                if handle.0 == 0 {
+                if handle.0.is_null() {
                     Err(format!(
                         "Message only window creation failed: {}",
                         Error::last_os_error()
                     ))
                 } else {
-                    Ok(handle)
+                    Ok(DummyWindow { handle })
                 }
-            };
-
-            handle_result.map(|handle| DummyWindow { handle })
+            }
         }
         extern "system" fn wnd_proc(
             hwnd: HWND,

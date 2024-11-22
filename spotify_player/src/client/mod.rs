@@ -1,14 +1,13 @@
 use std::ops::Deref;
 use std::{borrow::Cow, collections::HashMap, sync::Arc};
 
-use crate::config;
+use crate::{auth, config};
 use crate::{auth::AuthConfig, state::*};
 
 use std::io::Write;
 
 use anyhow::Context as _;
 use anyhow::Result;
-use librespot_core::session::Session;
 use reqwest::StatusCode;
 use rspotify::{
     http::Query,
@@ -49,9 +48,9 @@ fn market_query() -> Query<'static> {
 
 impl Client {
     /// Construct a new client
-    pub fn new(session: Session, auth_config: AuthConfig, client_id: String) -> Self {
+    pub fn new(auth_config: AuthConfig) -> Self {
         Self {
-            spotify: Arc::new(spotify::Spotify::new(session, client_id)),
+            spotify: Arc::new(spotify::Spotify::new()),
             http: reqwest::Client::new(),
             auth_config,
 
@@ -61,42 +60,95 @@ impl Client {
     }
 
     /// Initialize the application's playback upon creating a new session or during startup
-    pub async fn initialize_playback(&self, state: &SharedState) -> Result<()> {
-        #[cfg(feature = "streaming")]
-        if state.is_streaming_enabled() {
-            self.new_streaming_connection(state).await;
-        }
+    pub fn initialize_playback(&self, state: &SharedState) {
+        tokio::task::spawn({
+            let client = self.clone();
+            let state = state.clone();
+            async move {
+                // The main playback initialization logic is simple:
+                // if there is no playback, connect to an available device
+                //
+                // However, because it takes time for Spotify server to show up new changes,
+                // a retry logic is implemented to ensure the application's state is properly initialized
+                let delay = std::time::Duration::from_secs(1);
 
-        self.retrieve_current_playback(state, false).await?;
+                for _ in 0..5 {
+                    tokio::time::sleep(delay).await;
 
-        if state.player.read().playback.is_none() {
-            tracing::info!("No playback found, trying to connect to an available device...");
-            // // handle `connect_device` task separately as we don't want to block here
-            tokio::task::spawn({
-                let client = self.clone();
-                let state = state.clone();
-                async move {
-                    client.connect_device(&state).await;
+                    if let Err(err) = client.retrieve_current_playback(&state, false).await {
+                        tracing::error!("Failed to retrieve current playback: {err:#}");
+                        return;
+                    }
+
+                    // if playback exists, don't connect to a new device
+                    if state.player.read().playback.is_some() {
+                        continue;
+                    }
+
+                    let id = match client.find_available_device().await {
+                        Ok(Some(id)) => Some(Cow::Owned(id)),
+                        Ok(None) => None,
+                        Err(err) => {
+                            tracing::error!("Failed to find an available device: {err:#}");
+                            None
+                        }
+                    };
+
+                    if let Some(id) = id {
+                        tracing::info!("Trying to connect to device (id={id})");
+                        if let Err(err) = client.transfer_playback(&id, Some(false)).await {
+                            tracing::warn!("Connection failed (device_id={id}): {err:#}");
+                        } else {
+                            tracing::info!("Connection succeeded (device_id={id})!");
+                            // upon new connection, reset the buffered playback
+                            state.player.write().buffered_playback = None;
+                            client.update_playback(&state);
+                            break;
+                        }
+                    }
                 }
-            });
-        }
-
-        Ok(())
+            }
+        });
     }
 
     /// Create a new client session
-    async fn new_session(&self, state: &SharedState) -> Result<()> {
-        let session = crate::auth::new_session(&self.auth_config, false).await?;
-        *self.session.lock().await = Some(session);
+    pub async fn new_session(&self, state: Option<&SharedState>, reauth: bool) -> Result<()> {
+        let session = self.auth_config.session();
+        let creds = auth::get_creds(&self.auth_config, reauth, true)
+            .await
+            .context("get credentials")?;
+        *self.session.lock().await = Some(session.clone());
+
+        #[allow(unused_mut)]
+        let mut connected = false;
+
+        #[cfg(feature = "streaming")]
+        if let Some(state) = state {
+            if state.is_streaming_enabled() {
+                self.new_streaming_connection(state.clone(), session.clone(), creds.clone())
+                    .await
+                    .context("new streaming connection")?;
+                connected = true;
+            }
+        }
+
+        if !connected {
+            // if session is not connected (triggered by `new_streaming_connection`), connect to the session
+            session
+                .connect(creds, true)
+                .await
+                .context("connect to a session")?;
+        }
 
         tracing::info!("Used a new session for Spotify client.");
 
-        // reset the application's caches
-        state.data.write().caches = MemoryCaches::new();
+        self.refresh_token().await.context("refresh auth token")?;
 
-        self.initialize_playback(state)
-            .await
-            .context("initialize playback")?;
+        if let Some(state) = state {
+            // reset the application's caches
+            state.data.write().caches = MemoryCaches::new();
+            self.initialize_playback(state);
+        }
 
         Ok(())
     }
@@ -105,7 +157,7 @@ impl Client {
     pub async fn check_valid_session(&self, state: &SharedState) -> Result<()> {
         if self.session().await.is_invalid() {
             tracing::info!("Client's current session is invalid, creating a new session...");
-            self.new_session(state)
+            self.new_session(Some(state), false)
                 .await
                 .context("create new client session")?;
         }
@@ -114,15 +166,23 @@ impl Client {
 
     /// Create a new streaming connection
     #[cfg(feature = "streaming")]
-    pub async fn new_streaming_connection(&self, state: &SharedState) {
-        let new_conn = crate::streaming::new_connection(self.clone(), state.clone()).await;
-
+    pub async fn new_streaming_connection(
+        &self,
+        state: SharedState,
+        session: librespot_core::Session,
+        creds: librespot_core::authentication::Credentials,
+    ) -> Result<()> {
+        let new_conn =
+            crate::streaming::new_connection(self.clone(), state, session, creds).await?;
         let mut stream_conn = self.stream_conn.lock();
         // shutdown old streaming connection and replace it with a new connection
         if let Some(conn) = stream_conn.as_ref() {
-            conn.shutdown();
+            if let Err(err) = conn.shutdown() {
+                log::error!("Failed to shutdown old streaming connection: {err:#}");
+            }
         }
         *stream_conn = Some(new_conn);
+        Ok(())
     }
 
     /// Handle a player request, return a new playback metadata on success
@@ -276,7 +336,7 @@ impl Client {
             }
             #[cfg(feature = "streaming")]
             ClientRequest::RestartIntegratedClient => {
-                self.new_session(state).await?;
+                self.new_session(Some(state), false).await?;
             }
             ClientRequest::GetCurrentUser => {
                 let user = self.current_user().await?;
@@ -524,40 +584,6 @@ impl Client {
         );
 
         Ok(())
-    }
-
-    /// Connect to a Spotify device
-    async fn connect_device(&self, state: &SharedState) {
-        // Device connection can fail when the specified device hasn't shown up
-        // in the Spotify's server, resulting in a failed `TransferPlayback` API request.
-        // This is why a retry mechanism is needed to ensure a successful connection.
-        let delay = std::time::Duration::from_secs(1);
-
-        for _ in 0..10 {
-            tokio::time::sleep(delay).await;
-
-            let id = match self.find_available_device().await {
-                Ok(Some(id)) => Some(Cow::Owned(id)),
-                Ok(None) => None,
-                Err(err) => {
-                    tracing::error!("Failed to find an available device: {err:#}");
-                    None
-                }
-            };
-
-            if let Some(id) = id {
-                tracing::info!("Trying to connect to device (id={id})");
-                if let Err(err) = self.transfer_playback(&id, Some(false)).await {
-                    tracing::warn!("Connection failed (device_id={id}): {err:#}");
-                } else {
-                    tracing::info!("Connection succeeded (device_id={id})!");
-                    // upon new connection, reset the buffered playback
-                    state.player.write().buffered_playback = None;
-                    self.update_playback(state);
-                    break;
-                }
-            }
-        }
     }
 
     pub fn update_playback(&self, state: &SharedState) {
@@ -832,8 +858,8 @@ impl Client {
         let response = session
             .mercury()
             .get(autoplay_query_url)
-            .await
-            .map_err(|_| anyhow::anyhow!("Failed to get autoplay URI: got a Mercury error"))?;
+            .map_err(|err| anyhow::anyhow!("Failed to get autoplay URI: {err:#}"))?
+            .await?;
         if response.status_code != 200 {
             anyhow::bail!(
                 "Failed to get autoplay URI: got non-OK status code: {}",
@@ -844,9 +870,11 @@ impl Client {
 
         // Retrieve radio's data based on the autoplay URI
         let radio_query_url = format!("hm://radio-apollo/v3/stations/{autoplay_uri}");
-        let response = session.mercury().get(radio_query_url).await.map_err(|_| {
-            anyhow::anyhow!("Failed to get radio data of {autoplay_uri}: got a Mercury error")
-        })?;
+        let response = session
+            .mercury()
+            .get(radio_query_url)
+            .map_err(|err| anyhow::anyhow!("Failed to get radio data of {autoplay_uri}: {err:#}"))?
+            .await?;
         if response.status_code != 200 {
             anyhow::bail!(
                 "Failed to get radio data of {autoplay_uri}: got non-OK status code: {}",

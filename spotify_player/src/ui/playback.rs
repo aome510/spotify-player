@@ -83,7 +83,11 @@ pub fn render_playback_window(
                                 // Otherwise, nothing will be clear as the buffer doesn't handle cells with `skip=true`.
                                 for x in cover_img_rect.left()..cover_img_rect.right() {
                                     for y in cover_img_rect.top()..cover_img_rect.bottom() {
-                                        frame.buffer_mut().get_mut(x, y).set_skip(true);
+                                        frame
+                                            .buffer_mut()
+                                            .cell_mut((x, y))
+                                            .expect("invalid cell")
+                                            .set_skip(true);
                                     }
                                 }
                             }
@@ -142,7 +146,11 @@ pub fn render_playback_window(
 fn clear_area(frame: &mut Frame, rect: Rect) {
     for x in rect.left()..rect.right() {
         for y in rect.top()..rect.bottom() {
-            frame.buffer_mut().get_mut(x, y).reset();
+            frame
+                .buffer_mut()
+                .cell_mut((x, y))
+                .expect("invalid cell")
+                .reset();
         }
     }
 }
