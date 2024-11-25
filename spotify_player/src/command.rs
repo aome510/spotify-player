@@ -244,7 +244,7 @@ pub fn construct_playlist_actions(playlist: &Playlist, data: &DataReadGuard) -> 
 }
 
 impl Command {
-    pub fn desc(&self) -> &'static str {
+    pub fn desc(self) -> &'static str {
         match self {
             Self::None => "do nothing",
             Self::NextTrack => "next track",

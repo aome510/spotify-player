@@ -45,6 +45,7 @@ pub enum LyricResult {
 }
 
 impl Client {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             http: reqwest::Client::new(),
@@ -52,6 +53,7 @@ impl Client {
     }
 
     /// Construct a client reusing an existing http client
+    #[must_use]
     pub fn from_http_client(http: &reqwest::Client) -> Self {
         Self { http: http.clone() }
     }
@@ -94,7 +96,7 @@ impl Client {
     pub async fn retrieve_lyric(&self, url: &str) -> anyhow::Result<String> {
         let html = self.http.get(url).send().await?.text().await?;
         log::debug!("retrieve lyric from url={url}: html={html}");
-        let lyric = parse::parse(html)?;
+        let lyric = parse::parse(&html)?;
         Ok(lyric.trim().to_string())
     }
 
@@ -104,7 +106,7 @@ impl Client {
     /// The below function tries an ad-hoc method to fix this issue.
     ///
     /// (*): A section often starts with `[`.
-    fn process_lyric(lyric: String) -> String {
+    fn process_lyric(lyric: &str) -> String {
         // the below code modifies the `lyric` to make the newline between sections consistent
         lyric.replace("\n\n[", "\n[").replace("\n[", "\n\n[")
     }
@@ -120,9 +122,8 @@ impl Client {
             .find(|result| !result.artist_names.contains("Genius"));
 
         // If no valid result is found, return LyricResult::None
-        let result = match result {
-            Some(res) => res,
-            None => return Ok(LyricResult::None),
+        let Some(result) = result else {
+            return Ok(LyricResult::None);
         };
 
         // Retrieve the song lyrics from the URL of the result
@@ -132,7 +133,7 @@ impl Client {
         Ok(LyricResult::Some {
             track: result.title,
             artists: result.artist_names,
-            lyric: Self::process_lyric(lyric),
+            lyric: Self::process_lyric(&lyric),
         })
     }
 }
@@ -205,15 +206,15 @@ fn improve_query(query: &str) -> String {
 
 mod parse {
     use html5ever::tendril::TendrilSink;
-    use html5ever::*;
+    use html5ever::{expanded_name, local_name, namespace_url, ns, parse_document, ParseOpts};
     use markup5ever_rcdom::{Handle, NodeData, RcDom};
 
     const LYRIC_CONTAINER_ATTR: &str = "data-lyrics-container";
 
     /// Parse the HTML content of a "genius.com" lyric page to retrieve the corresponding lyric.
-    pub fn parse(html: String) -> anyhow::Result<String> {
+    pub fn parse(html: &str) -> anyhow::Result<String> {
         // parse HTML content into DOM node(s)
-        let dom = parse_document(RcDom::default(), Default::default())
+        let dom = parse_document(RcDom::default(), ParseOpts::default())
             .from_utf8()
             .read_from(&mut (html.as_bytes()))?;
 
@@ -225,14 +226,14 @@ mod parse {
             _ => false,
         };
 
-        Ok(parse_dom_node(dom.document, &Some(filter), false))
+        Ok(parse_dom_node(&dom.document, &Some(filter), false))
     }
 
     /// Parse a dom node and extract the text of children nodes satisfying a requirement.
     ///
     /// The requirement is represented by a `filter` function and a `should_parse` variable.
     /// Once a node satisfies a requirement, its children should also satisfy it.
-    fn parse_dom_node<F>(node: Handle, filter: &Option<F>, mut should_parse: bool) -> String
+    fn parse_dom_node<F>(node: &Handle, filter: &Option<F>, mut should_parse: bool) -> String
     where
         F: Fn(&NodeData) -> bool,
     {
@@ -263,7 +264,7 @@ mod parse {
         }
 
         node.children.borrow().iter().for_each(|node| {
-            s.push_str(&parse_dom_node(node.clone(), filter, should_parse));
+            s.push_str(&parse_dom_node(node, filter, should_parse));
         });
 
         s

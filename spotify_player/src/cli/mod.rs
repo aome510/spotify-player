@@ -3,7 +3,7 @@ mod commands;
 mod handlers;
 
 use crate::config;
-use rspotify::model::*;
+use rspotify::model::{AlbumId, ArtistId, Id, PlaylistId, TrackId};
 use serde::{Deserialize, Serialize};
 
 const MAX_REQUEST_SIZE: usize = 4096;
