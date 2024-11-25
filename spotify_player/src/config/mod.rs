@@ -411,6 +411,7 @@ impl AppConfig {
             proxy,
             ap_port: self.ap_port,
             client_id: SPOTIFY_CLIENT_ID.to_string(),
+            autoplay: Some(self.device.autoplay),
             ..Default::default()
         }
     }
