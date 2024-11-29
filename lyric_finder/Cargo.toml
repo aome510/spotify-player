@@ -28,3 +28,6 @@ env_logger = { version = "0.11.3", default-features = false }
 [[example]]
 name = "lyric-finder"
 path = "examples/lyric-finder.rs"
+
+[lints]
+workspace = true

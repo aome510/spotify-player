@@ -41,7 +41,7 @@ async fn retrieve_token(
         .payload
         .first()
         .ok_or(librespot_core::token::TokenError::Empty)?
-        .to_vec();
+        .clone();
     let token = librespot_core::token::Token::from_json(String::from_utf8(data)?)?;
     Ok(token)
 }

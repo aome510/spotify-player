@@ -2,7 +2,10 @@ use anyhow::Context;
 use rspotify::model::PlayableItem;
 use tracing::Instrument;
 
-use crate::{config, state::*};
+use crate::{
+    config,
+    state::{ContextId, ContextPageType, ContextPageUIState, PageState, SharedState},
+};
 
 #[cfg(feature = "lyric-finder")]
 use crate::utils::map_join;
@@ -46,12 +49,11 @@ fn handle_playback_change_event(
     handler_state: &mut PlayerEventHandlerState,
 ) -> anyhow::Result<()> {
     let player = state.player.read();
-    let (playback, track) = match (
+    let (Some(playback), Some(track)) = (
         player.buffered_playback.as_ref(),
         player.current_playing_track(),
-    ) {
-        (Some(playback), Some(track)) => (playback, track),
-        _ => return Ok(()),
+    ) else {
+        return Ok(());
     };
 
     if let Some(progress) = player.playback_progress() {

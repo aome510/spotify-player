@@ -74,7 +74,7 @@ impl AuthConfig {
 
         Ok(AuthConfig {
             cache,
-            session_config: configs.app_config.session_config()?,
+            session_config: configs.app_config.session_config(),
             login_redirect_uri: configs.app_config.login_redirect_uri.clone(),
         })
     }
