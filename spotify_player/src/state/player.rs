@@ -1,4 +1,6 @@
-use super::model::*;
+use super::model::{
+    rspotify_model, AlbumId, ArtistId, ContextId, Device, PlaybackMetadata, PlaylistId, ShowId,
+};
 
 /// Player state
 #[derive(Default, Debug)]

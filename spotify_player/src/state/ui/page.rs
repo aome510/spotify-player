@@ -1,4 +1,7 @@
-use crate::{state::model::*, ui::single_line_input::LineInput};
+use crate::{
+    state::model::{Category, ContextId},
+    ui::single_line_input::LineInput,
+};
 use tui::widgets::{ListState, TableState};
 
 #[derive(Clone, Debug)]
@@ -93,6 +96,20 @@ pub enum ContextPageUIState {
     },
 }
 
+impl ContextPageUIState {
+    pub fn track_table_mut(&mut self) -> &mut TableState {
+        match self {
+            Self::Playlist { track_table }
+            | Self::Album { track_table }
+            | Self::Tracks { track_table } => track_table,
+            Self::Artist {
+                top_track_table, ..
+            } => top_track_table,
+            Self::Show { .. } => unimplemented!(),
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum LibraryFocusState {
     Playlists,
@@ -153,7 +170,7 @@ impl PageState {
     /// Select a `id`-th item in the currently focused window of the page.
     pub fn select(&mut self, id: usize) {
         if let Some(mut state) = self.focus_window_state_mut() {
-            state.select(id)
+            state.select(id);
         }
     }
 
@@ -204,10 +221,8 @@ impl PageState {
                 SearchFocusState::Episodes => Some(MutableWindowState::List(episode_list)),
             },
             Self::Context { state, .. } => state.as_mut().map(|state| match state {
-                ContextPageUIState::Tracks { track_table } => {
-                    MutableWindowState::Table(track_table)
-                }
-                ContextPageUIState::Playlist { track_table } => {
+                ContextPageUIState::Tracks { track_table }
+                | ContextPageUIState::Playlist { track_table } => {
                     MutableWindowState::Table(track_table)
                 }
                 ContextPageUIState::Album { track_table } => MutableWindowState::Table(track_table),
@@ -276,7 +291,7 @@ impl ContextPageType {
                 ContextId::Playlist(_) => String::from("Playlist"),
                 ContextId::Album(_) => String::from("Album"),
                 ContextId::Artist(_) => String::from("Artist"),
-                ContextId::Tracks(id) => id.kind.to_owned(),
+                ContextId::Tracks(id) => id.kind.clone(),
                 ContextId::Show(_) => String::from("Show"),
             },
         }
@@ -363,7 +378,7 @@ impl Focusable for PageState {
 
         // reset the list/table state of the focus window
         if let Some(mut state) = self.focus_window_state_mut() {
-            state.select(0)
+            state.select(0);
         }
     }
 
@@ -386,7 +401,7 @@ impl Focusable for PageState {
 
         // reset the list/table state of the focus window
         if let Some(mut state) = self.focus_window_state_mut() {
-            state.select(0)
+            state.select(0);
         }
     }
 }

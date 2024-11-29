@@ -17,11 +17,17 @@ use crate::{
     state::{Context, ContextId, Playback, PlaybackMetadata, SharedState},
 };
 use rspotify::{
-    model::*,
+    model::{
+        AlbumId, ArtistId, CurrentPlaybackContext, Id, PlayableId, PlaylistId, SearchResult,
+        SearchType, TrackId,
+    },
     prelude::{BaseClient, OAuthClient},
 };
 
-use super::*;
+use super::{
+    Command, Deserialize, GetRequest, IdOrName, ItemId, ItemType, Key, PlaylistCommand, Response,
+    Serialize, MAX_REQUEST_SIZE,
+};
 
 pub async fn start_socket(client: Client, socket: UdpSocket, state: Option<SharedState>) {
     let mut buf = [0; MAX_REQUEST_SIZE];
@@ -151,7 +157,7 @@ async fn handle_socket_request(
                 },
             };
 
-            if let Some(id) = track.and_then(|t| t.id.to_owned()) {
+            if let Some(id) = track.and_then(|t| t.id.clone()) {
                 if unlike {
                     client.current_user_saved_tracks_delete([id]).await?;
                 } else {
@@ -228,11 +234,10 @@ async fn get_spotify_id(client: &Client, typ: ItemType, id_or_name: IdOrName) ->
 
                 match results {
                     SearchResult::Playlists(page) => {
-                        if !page.items.is_empty() {
-                            ItemId::Playlist(page.items[0].id.to_owned())
-                        } else {
+                        if page.items.is_empty() {
                             anyhow::bail!("Cannot find playlist with name='{name}'");
                         }
+                        ItemId::Playlist(page.items[0].id.clone())
                     }
                     _ => unreachable!(),
                 }
@@ -248,7 +253,7 @@ async fn get_spotify_id(client: &Client, typ: ItemType, id_or_name: IdOrName) ->
                 match results {
                     SearchResult::Albums(page) => {
                         if !page.items.is_empty() && page.items[0].id.is_some() {
-                            ItemId::Album(page.items[0].id.to_owned().unwrap())
+                            ItemId::Album(page.items[0].id.clone().unwrap())
                         } else {
                             anyhow::bail!("Cannot find album with name='{name}'");
                         }
@@ -266,11 +271,10 @@ async fn get_spotify_id(client: &Client, typ: ItemType, id_or_name: IdOrName) ->
 
                 match results {
                     SearchResult::Artists(page) => {
-                        if !page.items.is_empty() {
-                            ItemId::Artist(page.items[0].id.to_owned())
-                        } else {
+                        if page.items.is_empty() {
                             anyhow::bail!("Cannot find artist with name='{name}'");
                         }
+                        ItemId::Artist(page.items[0].id.clone())
                     }
                     _ => unreachable!(),
                 }
@@ -286,7 +290,7 @@ async fn get_spotify_id(client: &Client, typ: ItemType, id_or_name: IdOrName) ->
                 match results {
                     SearchResult::Tracks(page) => {
                         if !page.items.is_empty() && page.items[0].id.is_some() {
-                            ItemId::Track(page.items[0].id.to_owned().unwrap())
+                            ItemId::Track(page.items[0].id.clone().unwrap())
                         } else {
                             anyhow::bail!("Cannot find track with name='{name}'");
                         }
@@ -325,12 +329,11 @@ async fn handle_playback_request(
     state: &Option<SharedState>,
     command: Command,
 ) -> Result<()> {
-    let playback = match state {
-        Some(state) => state.player.read().buffered_playback.clone(),
-        None => {
-            let playback = client.current_playback(None, None::<Vec<_>>).await?;
-            playback.as_ref().map(PlaybackMetadata::from_playback)
-        }
+    let playback = if let Some(state) = state {
+        state.player.read().buffered_playback.clone()
+    } else {
+        let playback = client.current_playback(None, None::<Vec<_>>).await?;
+        playback.as_ref().map(PlaybackMetadata::from_playback)
     };
 
     let player_request = match command {
@@ -352,7 +355,7 @@ async fn handle_playback_request(
                     .user_data
                     .saved_tracks
                     .values()
-                    .map(|t| t.id.to_owned().into())
+                    .map(|t| t.id.clone().into())
                     .collect()
             } else {
                 client
@@ -365,7 +368,7 @@ async fn handle_playback_request(
 
             if random {
                 let mut rng = rand::thread_rng();
-                ids.shuffle(&mut rng)
+                ids.shuffle(&mut rng);
             }
 
             ids.truncate(limit);
@@ -382,7 +385,7 @@ async fn handle_playback_request(
                 ItemId::Playlist(id) => ContextId::Playlist(id),
                 ItemId::Album(id) => ContextId::Album(id),
                 ItemId::Artist(id) => ContextId::Artist(id),
-                _ => unreachable!(),
+                ItemId::Track(_) => unreachable!(),
             };
 
             PlayerRequest::StartPlayback(Playback::Context(context_id, None), Some(shuffle))
@@ -480,7 +483,7 @@ async fn handle_playlist_request(client: &Client, command: PlaylistCommand) -> R
         }
         PlaylistCommand::Delete { id } => {
             let following = client
-                .playlist_check_follow(id.to_owned(), &[uid])
+                .playlist_check_follow(id.clone(), &[uid])
                 .await
                 .context(format!("Could not find playlist '{}'", id.id()))?
                 .pop()
@@ -488,7 +491,7 @@ async fn handle_playlist_request(client: &Client, command: PlaylistCommand) -> R
 
             // Won't delete if not following
             if following {
-                client.playlist_unfollow(id.to_owned()).await?;
+                client.playlist_unfollow(id.clone()).await?;
                 Ok(format!("Playlist '{id}' was deleted/unfollowed"))
             } else {
                 Ok(format!(
@@ -514,7 +517,7 @@ async fn handle_playlist_request(client: &Client, command: PlaylistCommand) -> R
         } => playlist_import(client, import_from, import_to, delete).await,
         PlaylistCommand::Fork { id } => {
             let from = client
-                .playlist(id.to_owned(), None, None)
+                .playlist(id.clone(), None, None)
                 .await
                 .context(format!("Cannot import from {}.", id.id()))?;
             let from_desc = from.description.unwrap_or_default();
@@ -609,7 +612,7 @@ async fn playlist_import(
         name: String,
     }
     // Get playlists' info
-    let (from_tracks, from_name) = match client.playlist_context(import_from.to_owned()).await? {
+    let (from_tracks, from_name) = match client.playlist_context(import_from.clone()).await? {
         Context::Playlist { tracks, playlist } => (
             tracks.into_iter().map(|t| TrackData {
                 id: t.id,
@@ -619,7 +622,7 @@ async fn playlist_import(
         ),
         _ => unreachable!(),
     };
-    let (to_tracks, to_name) = match client.playlist_context(import_to.to_owned()).await? {
+    let (to_tracks, to_name) = match client.playlist_context(import_to.clone()).await? {
         Context::Playlist { tracks, playlist } => (
             tracks.into_iter().map(|t| TrackData {
                 id: t.id,
@@ -640,8 +643,8 @@ async fn playlist_import(
         create_dir_all(to_dir)?;
     }
     // Construct hash sets of the playlists' track IDs
-    let to_hash_set: HashSet<TrackData> = HashSet::from_iter(to_tracks);
-    let from_hash_set: HashSet<TrackData> = HashSet::from_iter(from_tracks);
+    let to_hash_set: HashSet<TrackData> = to_tracks.collect::<HashSet<_>>();
+    let from_hash_set: HashSet<TrackData> = from_tracks.collect::<HashSet<_>>();
 
     let mut new_tracks_hash_set = &from_hash_set - &to_hash_set;
 

@@ -1,4 +1,6 @@
-use crate::state::*;
+use crate::state::{
+    AlbumId, Category, ContextId, Item, ItemId, PlayableId, Playback, PlaylistId, TrackId,
+};
 
 #[derive(Clone, Debug)]
 /// A request that modifies the player's playback

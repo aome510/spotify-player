@@ -1,13 +1,12 @@
-use crate::{
-    auth::{new_session, new_session_with_new_creds, AuthConfig},
-    client,
-};
+use crate::{auth::AuthConfig, client};
 
-use super::*;
+use super::{
+    config, init_cli, start_socket, Command, ContextType, GetRequest, IdOrName, ItemType, Key,
+    PlaylistCommand, PlaylistId, Request, Response, MAX_REQUEST_SIZE,
+};
 use anyhow::{Context, Result};
 use clap::{ArgMatches, Id};
 use clap_complete::{generate, Shell};
-use rspotify::clients::BaseClient;
 use std::net::UdpSocket;
 
 fn receive_response(socket: &UdpSocket) -> Result<Response> {
@@ -47,6 +46,7 @@ fn get_id_or_name(args: &ArgMatches) -> IdOrName {
     }
 }
 
+#[allow(clippy::unnecessary_wraps)] // we need this to match the other functions return type
 fn handle_get_subcommand(args: &ArgMatches) -> Result<Request> {
     let (cmd, args) = args.subcommand().expect("playback subcommand is required");
 
@@ -155,12 +155,11 @@ fn try_connect_to_client(socket: &UdpSocket, configs: &config::Configs) -> Resul
 
             let auth_config = AuthConfig::new(configs)?;
             let rt = tokio::runtime::Runtime::new()?;
-            let session = rt.block_on(new_session(&auth_config, false))?;
 
             // create a Spotify API client
-            let client_id = configs.app_config.get_client_id()?;
-            let client = client::Client::new(session, auth_config, client_id);
-            rt.block_on(client.refresh_token())?;
+            let client = client::Client::new(auth_config);
+            rt.block_on(client.new_session(None, false))
+                .context("new session")?;
 
             // create a client socket for handling CLI commands
             let client_socket = rt.block_on(tokio::net::UdpSocket::bind(("127.0.0.1", port)))?;
@@ -176,7 +175,6 @@ fn try_connect_to_client(socket: &UdpSocket, configs: &config::Configs) -> Resul
 }
 
 pub fn handle_cli_subcommand(cmd: &str, args: &ArgMatches) -> Result<()> {
-    let socket = UdpSocket::bind("127.0.0.1:0")?;
     let configs = config::get_config();
 
     // handle commands that don't require a client separately
@@ -184,7 +182,7 @@ pub fn handle_cli_subcommand(cmd: &str, args: &ArgMatches) -> Result<()> {
         "authenticate" => {
             let auth_config = AuthConfig::new(configs)?;
             let rt = tokio::runtime::Runtime::new()?;
-            rt.block_on(new_session_with_new_creds(&auth_config))?;
+            rt.block_on(crate::auth::get_creds(&auth_config, true, false))?;
             std::process::exit(0);
         }
         "generate" => {
@@ -199,6 +197,7 @@ pub fn handle_cli_subcommand(cmd: &str, args: &ArgMatches) -> Result<()> {
         _ => {}
     }
 
+    let socket = UdpSocket::bind("127.0.0.1:0")?;
     try_connect_to_client(&socket, configs).context("try to connect to a client")?;
 
     // construct a socket request based on the CLI command and its arguments
@@ -248,7 +247,7 @@ fn handle_playlist_subcommand(args: &ArgMatches) -> Result<Request> {
 
             let description = args
                 .get_one::<String>("description")
-                .map(|s| s.to_owned())
+                .map(std::borrow::ToOwned::to_owned)
                 .unwrap_or_default();
 
             let public = args.get_flag("public");
@@ -285,8 +284,8 @@ fn handle_playlist_subcommand(args: &ArgMatches) -> Result<Request> {
 
             let delete = args.get_flag("delete");
 
-            let from = PlaylistId::from_id(from_s.to_owned())?;
-            let to = PlaylistId::from_id(to_s.to_owned())?;
+            let from = PlaylistId::from_id(from_s.clone())?;
+            let to = PlaylistId::from_id(to_s.clone())?;
 
             println!("Importing '{from_s}' into '{to_s}'...\n");
             PlaylistCommand::Import { from, to, delete }
@@ -297,7 +296,7 @@ fn handle_playlist_subcommand(args: &ArgMatches) -> Result<Request> {
                 .expect("Playlist id is required.")
                 .to_owned();
 
-            let id = PlaylistId::from_id(id_s.to_owned())?;
+            let id = PlaylistId::from_id(id_s.clone())?;
 
             println!("Forking '{id_s}'...\n");
             PlaylistCommand::Fork { id }
@@ -306,15 +305,12 @@ fn handle_playlist_subcommand(args: &ArgMatches) -> Result<Request> {
             let id_s = args.get_one::<String>("id");
             let delete = args.get_flag("delete");
 
-            let pid = match id_s {
-                Some(id_s) => {
-                    println!("Syncing imports for playlist '{id_s}'...\n");
-                    Some(PlaylistId::from_id(id_s.to_owned())?)
-                }
-                None => {
-                    println!("Syncing imports for all playlists...\n");
-                    None
-                }
+            let pid = if let Some(id_s) = id_s {
+                println!("Syncing imports for playlist '{id_s}'...\n");
+                Some(PlaylistId::from_id(id_s.to_owned())?)
+            } else {
+                println!("Syncing imports for all playlists...\n");
+                None
             };
 
             PlaylistCommand::Sync { id: pid, delete }

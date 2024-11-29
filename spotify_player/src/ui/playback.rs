@@ -1,4 +1,13 @@
-use super::{utils::construct_and_render_block, *};
+#[cfg(feature = "image")]
+use crate::state::ImageRenderInfo;
+#[cfg(feature = "image")]
+use anyhow::{Context, Result};
+
+use super::{
+    config, rspotify_model, utils::construct_and_render_block, Borders, Constraint, Frame, Gauge,
+    Layout, Line, LineGauge, Modifier, Paragraph, PlaybackMetadata, Rect, SharedState, Span, Style,
+    Text, UIStateGuard, Wrap,
+};
 
 /// Render a playback window showing information about the current playback, which includes
 /// - track title, artists, album
@@ -90,7 +99,11 @@ pub fn render_playback_window(
                                 // Otherwise, nothing will be clear as the buffer doesn't handle cells with `skip=true`.
                                 for x in cover_img_rect.left()..cover_img_rect.right() {
                                     for y in cover_img_rect.top()..cover_img_rect.bottom() {
-                                        frame.buffer_mut().get_mut(x, y).set_skip(true);
+                                        frame
+                                            .buffer_mut()
+                                            .cell_mut((x, y))
+                                            .expect("invalid cell")
+                                            .set_skip(true);
                                     }
                                 }
                             }
@@ -132,7 +145,7 @@ pub fn render_playback_window(
         {
             if ui.last_cover_image_render_info.rendered {
                 clear_area(frame, ui.last_cover_image_render_info.render_area);
-                ui.last_cover_image_render_info = Default::default();
+                ui.last_cover_image_render_info = ImageRenderInfo::default();
             }
         }
 
@@ -154,7 +167,11 @@ pub fn render_playback_window(
 fn clear_area(frame: &mut Frame, rect: Rect) {
     for x in rect.left()..rect.right() {
         for y in rect.top()..rect.bottom() {
-            frame.buffer_mut().get_mut(x, y).reset();
+            frame
+                .buffer_mut()
+                .cell_mut((x, y))
+                .expect("invalid cell")
+                .reset();
         }
     }
 }
@@ -193,10 +210,10 @@ fn construct_playback_text(
                 continue;
             }
             "{status}" => (
-                if !playback.is_playing {
-                    &configs.app_config.pause_icon
-                } else {
+                if playback.is_playing {
                     &configs.app_config.play_icon
+                } else {
+                    &configs.app_config.pause_icon
                 }
                 .to_owned(),
                 ui.theme.playback_status(),
@@ -225,16 +242,16 @@ fn construct_playback_text(
                     ui.theme.playback_artists(),
                 ),
                 rspotify_model::PlayableItem::Episode(episode) => (
-                    episode.show.publisher.to_owned(),
+                    episode.show.publisher.clone(),
                     ui.theme.playback_artists(),
                 ),
             },
             "{album}" => match playable {
                 rspotify_model::PlayableItem::Track(track) => {
-                    (track.album.name.to_owned(), ui.theme.playback_album())
+                    (track.album.name.clone(), ui.theme.playback_album())
                 }
                 rspotify_model::PlayableItem::Episode(episode) => {
-                    (episode.show.name.to_owned(), ui.theme.playback_album())
+                    (episode.show.name.clone(), ui.theme.playback_album())
                 }
             },
             "{metadata}" => (
@@ -246,10 +263,7 @@ fn construct_playback_text(
                         <&'static str>::from(playback.repeat_state)
                     },
                     playback.shuffle_state,
-                    match playback.mute_state {
-                        Some(volume) => format!("{volume}% (muted)"),
-                        None => format!("{}%", playback.volume.unwrap_or_default()),
-                    },
+                    if let Some(volume) = playback.mute_state { format!("{volume}% (muted)") } else { format!("{}%", playback.volume.unwrap_or_default()) },
                     playback.device_name,
                 ),
                 ui.theme.playback_metadata(),
@@ -345,8 +359,8 @@ fn render_playback_cover_image(state: &SharedState, ui: &mut UIStateGuard) -> Re
         // with different fonts and terminals.
         // For more context, see https://github.com/aome510/spotify-player/issues/122.
         let scale = config::get_config().app_config.cover_img_scale;
-        let width = (rect.width as f32 * scale).round() as u32;
-        let height = (rect.height as f32 * scale).round() as u32;
+        let width = (f32::from(rect.width) * scale).round() as u32;
+        let height = (f32::from(rect.height) * scale).round() as u32;
 
         viuer::print(
             image,

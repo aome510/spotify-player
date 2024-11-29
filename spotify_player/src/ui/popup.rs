@@ -1,4 +1,8 @@
-use super::{utils::construct_and_render_block, *};
+use super::{
+    config, utils, utils::construct_and_render_block, Borders, Cell, Constraint, Frame, Layout,
+    Paragraph, PlaylistCreateCurrentField, PlaylistPopupAction, PopupState, Rect, Row, SharedState,
+    Table, UIStateGuard,
+};
 
 const SHORTCUT_TABLE_N_COLUMNS: usize = 3;
 const SHORTCUT_TABLE_CONSTRAINS: [Constraint; SHORTCUT_TABLE_N_COLUMNS] =
@@ -109,10 +113,8 @@ pub fn render_popup(
                     PlaylistPopupAction::Browse { folder_id } => {
                         data.user_data.folder_playlists_items(*folder_id)
                     }
-                    PlaylistPopupAction::AddTrack { folder_id, .. } => {
-                        data.user_data.modifiable_playlist_items(Some(*folder_id))
-                    }
-                    PlaylistPopupAction::AddEpisode { folder_id, .. } => {
+                    PlaylistPopupAction::AddTrack { folder_id, .. }
+                    | PlaylistPopupAction::AddEpisode { folder_id, .. } => {
                         data.user_data.modifiable_playlist_items(Some(*folder_id))
                     }
                 };

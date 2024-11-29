@@ -37,6 +37,28 @@ pub enum Context {
     },
 }
 
+impl Context {
+    pub fn tracks_mut(&mut self) -> &mut Vec<Track> {
+        match self {
+            Context::Album { tracks, .. }
+            | Context::Playlist { tracks, .. }
+            | Context::Tracks { tracks, .. } => tracks,
+            Context::Artist { top_tracks, .. } => top_tracks,
+            Context::Show { .. } => unimplemented!(),
+        }
+    }
+
+    pub fn tracks(&self) -> &Vec<Track> {
+        match self {
+            Context::Album { tracks, .. }
+            | Context::Playlist { tracks, .. }
+            | Context::Tracks { tracks, .. } => tracks,
+            Context::Artist { top_tracks, .. } => top_tracks,
+            Context::Show { .. } => unimplemented!(),
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TracksId {
     pub uri: String,
@@ -268,7 +290,7 @@ impl ContextId {
             Self::Album(id) => id.uri(),
             Self::Artist(id) => id.uri(),
             Self::Playlist(id) => id.uri(),
-            Self::Tracks(id) => id.uri.to_owned(),
+            Self::Tracks(id) => id.uri.clone(),
             Self::Show(id) => id.uri(),
         }
     }
@@ -407,7 +429,7 @@ impl Album {
     pub fn album_type(&self) -> String {
         match self.album_type {
             Some(t) => <&str>::from(t).to_string(),
-            _ => "".to_string(),
+            _ => String::new(),
         }
     }
 }

@@ -70,7 +70,7 @@ fn update_control_metadata(
 
 /// Start the application's media control event watcher
 pub fn start_event_watcher(
-    state: SharedState,
+    state: &SharedState,
     client_pub: flume::Sender<ClientRequest>,
 ) -> Result<(), souvlaki::Error> {
     tracing::info!("Initializing application's media control event watcher...");
@@ -81,7 +81,7 @@ pub fn start_event_watcher(
     #[cfg(target_os = "windows")]
     let (hwnd, _dummy_window) = {
         let dummy_window = windows::DummyWindow::new().unwrap();
-        let handle = Some(dummy_window.handle.0 as _);
+        let handle = Some(dummy_window.handle.0.cast());
         (handle, dummy_window)
     };
 
@@ -145,7 +145,7 @@ pub fn start_event_watcher(
     let refresh_duration = std::time::Duration::from_millis(1000);
     let mut info = String::new();
     loop {
-        update_control_metadata(&state, &mut controls, &mut info)?;
+        update_control_metadata(state, &mut controls, &mut info)?;
         std::thread::sleep(refresh_duration);
 
         // this must be run repeatedly to ensure that
@@ -158,6 +158,7 @@ pub fn start_event_watcher(
 // demonstrates how to make a minimal window to allow use of media keys on the command line
 // ref: https://github.com/Sinono3/souvlaki/blob/master/examples/print_events.rs
 #[cfg(target_os = "windows")]
+#[allow(unsafe_code)] // used to interact with the Windows API
 mod windows {
     use std::io::Error;
     use std::mem;
@@ -180,7 +181,7 @@ mod windows {
         pub fn new() -> Result<DummyWindow, String> {
             let class_name = w!("SimpleTray");
 
-            let handle_result = unsafe {
+            unsafe {
                 let instance = GetModuleHandleW(None)
                     .map_err(|e| (format!("Getting module handle failed: {e}")))?;
 
@@ -212,19 +213,18 @@ mod windows {
                     None,
                     instance,
                     None,
-                );
+                )
+                .map_err(|e| (format!("Failed to create window: {e}")))?;
 
-                if handle.0 == 0 {
+                if handle.0.is_null() {
                     Err(format!(
                         "Message only window creation failed: {}",
                         Error::last_os_error()
                     ))
                 } else {
-                    Ok(handle)
+                    Ok(DummyWindow { handle })
                 }
-            };
-
-            handle_result.map(|handle| DummyWindow { handle })
+            }
         }
         extern "system" fn wnd_proc(
             hwnd: HWND,

@@ -1,9 +1,9 @@
 use crate::{client::Client, config, state::SharedState};
-use librespot_connect::spirc::Spirc;
-use librespot_core::{
-    config::{ConnectConfig, DeviceType},
-    spotify_id,
-};
+use anyhow::Context;
+use librespot_connect::{config::ConnectConfig, spirc::Spirc};
+use librespot_core::authentication::Credentials;
+use librespot_core::Session;
+use librespot_core::{config::DeviceType, spotify_id};
 use librespot_playback::mixer::MixerConfig;
 use librespot_playback::{
     audio_backend,
@@ -13,6 +13,7 @@ use librespot_playback::{
 };
 use rspotify::model::{EpisodeId, Id, PlayableId, TrackId};
 use serde::Serialize;
+use std::sync::Arc;
 
 #[cfg(not(any(
     feature = "rodio-backend",
@@ -39,18 +40,15 @@ For more information, visit https://github.com/aome510/spotify-player?tab=readme
 #[derive(Debug, Serialize)]
 enum PlayerEvent {
     Changed {
-        old_playable_id: PlayableId<'static>,
-        new_playable_id: PlayableId<'static>,
+        playable_id: PlayableId<'static>,
     },
     Playing {
         playable_id: PlayableId<'static>,
         position_ms: u32,
-        duration_ms: u32,
     },
     Paused {
         playable_id: PlayableId<'static>,
         position_ms: u32,
-        duration_ms: u32,
     },
     EndOfTrack {
         playable_id: PlayableId<'static>,
@@ -61,33 +59,24 @@ impl PlayerEvent {
     /// gets the event's arguments
     pub fn args(&self) -> Vec<String> {
         match self {
-            PlayerEvent::Changed {
-                old_playable_id,
-                new_playable_id,
-            } => vec![
-                "Changed".to_string(),
-                old_playable_id.uri(),
-                new_playable_id.uri(),
-            ],
+            PlayerEvent::Changed { playable_id } => {
+                vec!["Changed".to_string(), playable_id.uri()]
+            }
             PlayerEvent::Playing {
                 playable_id,
                 position_ms,
-                duration_ms,
             } => vec![
                 "Playing".to_string(),
                 playable_id.uri(),
                 position_ms.to_string(),
-                duration_ms.to_string(),
             ],
             PlayerEvent::Paused {
                 playable_id,
                 position_ms,
-                duration_ms,
             } => vec![
                 "Paused".to_string(),
                 playable_id.uri(),
                 position_ms.to_string(),
-                duration_ms.to_string(),
             ],
             PlayerEvent::EndOfTrack { playable_id } => {
                 vec!["EndOfTrack".to_string(), playable_id.uri()]
@@ -97,12 +86,12 @@ impl PlayerEvent {
 }
 
 fn spotify_id_to_playable_id(id: spotify_id::SpotifyId) -> anyhow::Result<PlayableId<'static>> {
-    match id.audio_type {
-        spotify_id::SpotifyAudioType::Track => {
+    match id.item_type {
+        spotify_id::SpotifyItemType::Track => {
             let uri = id.to_uri()?;
             Ok(TrackId::from_uri(&uri)?.into_static().into())
         }
-        spotify_id::SpotifyAudioType::Podcast => {
+        spotify_id::SpotifyItemType::Episode => {
             let uri = id.to_uri()?;
             Ok(EpisodeId::from_uri(&uri)?.into_static().into())
         }
@@ -113,32 +102,24 @@ fn spotify_id_to_playable_id(id: spotify_id::SpotifyId) -> anyhow::Result<Playab
 impl PlayerEvent {
     pub fn from_librespot_player_event(e: player::PlayerEvent) -> anyhow::Result<Option<Self>> {
         Ok(match e {
-            player::PlayerEvent::Changed {
-                old_track_id,
-                new_track_id,
-            } => Some(PlayerEvent::Changed {
-                old_playable_id: spotify_id_to_playable_id(old_track_id)?,
-                new_playable_id: spotify_id_to_playable_id(new_track_id)?,
+            player::PlayerEvent::TrackChanged { audio_item } => Some(PlayerEvent::Changed {
+                playable_id: spotify_id_to_playable_id(audio_item.track_id)?,
             }),
             player::PlayerEvent::Playing {
                 track_id,
                 position_ms,
-                duration_ms,
                 ..
             } => Some(PlayerEvent::Playing {
                 playable_id: spotify_id_to_playable_id(track_id)?,
                 position_ms,
-                duration_ms,
             }),
             player::PlayerEvent::Paused {
                 track_id,
                 position_ms,
-                duration_ms,
                 ..
             } => Some(PlayerEvent::Paused {
                 playable_id: spotify_id_to_playable_id(track_id)?,
                 position_ms,
-                duration_ms,
             }),
             player::PlayerEvent::EndOfTrack { track_id, .. } => Some(PlayerEvent::EndOfTrack {
                 playable_id: spotify_id_to_playable_id(track_id)?,
@@ -150,7 +131,7 @@ impl PlayerEvent {
 
 fn execute_player_event_hook_command(
     cmd: &config::Command,
-    event: PlayerEvent,
+    event: &PlayerEvent,
 ) -> anyhow::Result<()> {
     cmd.execute(Some(event.args()))?;
 
@@ -158,31 +139,34 @@ fn execute_player_event_hook_command(
 }
 
 /// Create a new streaming connection
-pub async fn new_connection(client: Client, state: SharedState) -> Spirc {
-    let session = client.session().await;
+pub async fn new_connection(
+    client: Client,
+    state: SharedState,
+    session: Session,
+    creds: Credentials,
+) -> anyhow::Result<Spirc> {
     let configs = config::get_config();
     let device = &configs.app_config.device;
 
     // `librespot` volume is a u16 number ranging from 0 to 65535,
     // while a percentage volume value (from 0 to 100) is used for the device configuration.
     // So we need to convert from one format to another
-    let volume = (std::cmp::min(device.volume, 100_u8) as f64 / 100.0 * 65535.0).round() as u16;
+    let volume = (f64::from(std::cmp::min(device.volume, 100_u8)) / 100.0 * 65535.0).round() as u16;
 
     let connect_config = ConnectConfig {
         name: device.name.clone(),
         device_type: device.device_type.parse::<DeviceType>().unwrap_or_default(),
-        autoplay: device.autoplay,
         initial_volume: Some(volume),
 
         // non-configurable fields, use default values.
         // We may allow users to configure these fields in a future release
         has_volume_ctrl: true,
+        is_group: false,
     };
 
     tracing::info!("Application's connect configurations: {:?}", connect_config);
 
-    let mixer =
-        Box::new(mixer::softmixer::SoftMixer::open(MixerConfig::default())) as Box<dyn Mixer>;
+    let mixer = Arc::new(mixer::softmixer::SoftMixer::open(MixerConfig::default()));
     mixer.set_volume(volume);
 
     let backend = audio_backend::find(None).expect("should be able to find an audio backend");
@@ -201,7 +185,7 @@ pub async fn new_connection(client: Client, state: SharedState) -> Spirc {
         session.device_id()
     );
 
-    let (player, mut channel) = player::Player::new(
+    let player = player::Player::new(
         player_config,
         session.clone(),
         mixer.get_soft_volume(),
@@ -209,6 +193,7 @@ pub async fn new_connection(client: Client, state: SharedState) -> Spirc {
     );
 
     let player_event_task = tokio::task::spawn({
+        let mut channel = player.get_player_event_channel();
         async move {
             while let Some(event) = channel.recv().await {
                 match PlayerEvent::from_librespot_player_event(event) {
@@ -236,7 +221,7 @@ pub async fn new_connection(client: Client, state: SharedState) -> Spirc {
 
                         // execute a player event hook command
                         if let Some(ref cmd) = configs.app_config.player_event_hook_command {
-                            if let Err(err) = execute_player_event_hook_command(cmd, event) {
+                            if let Err(err) = execute_player_event_hook_command(cmd, &event) {
                                 tracing::warn!(
                                     "Failed to execute player event hook command: {err:#}"
                                 );
@@ -251,13 +236,18 @@ pub async fn new_connection(client: Client, state: SharedState) -> Spirc {
 
     tracing::info!("Starting an integrated Spotify player using librespot's spirc protocol");
 
-    let (spirc, spirc_task) = Spirc::new(connect_config, session, player, mixer);
+    let (spirc, spirc_task) = Spirc::new(connect_config, session, creds, player, mixer)
+        .await
+        .context("initialize spirc")?;
+
     tokio::task::spawn(async move {
         tokio::select! {
-            _ = spirc_task => {},
+            () = spirc_task => {},
             _ = player_event_task => {}
         }
     });
 
-    spirc
+    tracing::info!("New streaming connection has been established!");
+
+    Ok(spirc)
 }

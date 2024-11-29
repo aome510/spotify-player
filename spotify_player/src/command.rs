@@ -284,7 +284,7 @@ pub fn construct_episode_actions(episode: &Episode, _data: &DataReadGuard) -> Ve
 }
 
 impl Command {
-    pub fn desc(&self) -> &'static str {
+    pub fn desc(self) -> &'static str {
         match self {
             Self::None => "do nothing",
             Self::NextTrack => "next track",

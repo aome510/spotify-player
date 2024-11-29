@@ -4,7 +4,10 @@ use std::{collections::HashMap, path::Path};
 use once_cell::sync::Lazy;
 use serde::{de::DeserializeOwned, Serialize};
 
-use super::model::*;
+use super::model::{
+    rspotify_model, Album, Artist, Category, Context, ContextId, Id, Playlist, PlaylistFolderItem,
+    PlaylistFolderNode, SearchResults, Show, Track,
+};
 
 pub type DataReadGuard<'a> = parking_lot::RwLockReadGuard<'a, AppData>;
 
@@ -20,7 +23,7 @@ pub enum FileCacheKey {
 
 /// default time-to-live cache duration
 pub static TTL_CACHE_DURATION: Lazy<std::time::Duration> =
-    Lazy::new(|| std::time::Duration::from_secs(60 * 60 * 3));
+    Lazy::new(|| std::time::Duration::from_secs(60 * 60));
 
 /// the application's data
 pub struct AppData {
@@ -85,12 +88,12 @@ impl AppData {
         let c = self.caches.context.get_mut(&id.uri())?;
 
         Some(match c {
-            Context::Album { tracks, .. } => tracks,
-            Context::Playlist { tracks, .. } => tracks,
-            Context::Artist {
+            Context::Album { tracks, .. }
+            | Context::Playlist { tracks, .. }
+            | Context::Tracks { tracks, .. }
+            | Context::Artist {
                 top_tracks: tracks, ..
             } => tracks,
-            Context::Tracks { tracks, .. } => tracks,
             Context::Show { .. } => {
                 // TODO: handle context_tracks_mut for Show
                 return None;
@@ -101,12 +104,12 @@ impl AppData {
     pub fn context_tracks(&self, id: &ContextId) -> Option<&Vec<Track>> {
         let c = self.caches.context.get(&id.uri())?;
         Some(match c {
-            Context::Album { tracks, .. } => tracks,
-            Context::Playlist { tracks, .. } => tracks,
-            Context::Artist {
+            Context::Album { tracks, .. }
+            | Context::Playlist { tracks, .. }
+            | Context::Tracks { tracks, .. }
+            | Context::Artist {
                 top_tracks: tracks, ..
             } => tracks,
-            Context::Tracks { tracks, .. } => tracks,
             Context::Show { .. } => {
                 // TODO: handle context_tracks for Show
                 return None;
@@ -187,6 +190,7 @@ impl UserData {
     }
 }
 
+#[allow(clippy::needless_pass_by_value)] // that's ok here
 pub fn store_data_into_file_cache<T: Serialize>(
     key: FileCacheKey,
     cache_folder: &Path,
@@ -198,6 +202,7 @@ pub fn store_data_into_file_cache<T: Serialize>(
     Ok(())
 }
 
+#[allow(clippy::needless_pass_by_value)] // that's ok here
 pub fn load_data_from_file_cache<T>(key: FileCacheKey, cache_folder: &Path) -> Option<T>
 where
     T: DeserializeOwned,

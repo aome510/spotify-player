@@ -9,7 +9,7 @@ use rspotify::{
 };
 use std::{fmt, sync::Arc};
 
-use crate::token;
+use crate::{config, token};
 
 #[derive(Clone, Default)]
 /// A Spotify client to interact with Spotify API server
@@ -18,13 +18,12 @@ pub struct Spotify {
     oauth: OAuth,
     config: Config,
     token: Arc<Mutex<Option<Token>>>,
-    client_id: String,
     http: HttpClient,
-    // session should always be non-empty, but `Option` is used to implement `Default`,
-    // which is required to implement `rspotify::BaseClient` trait
+    client_id: String,
     pub(crate) session: Arc<tokio::sync::Mutex<Option<Session>>>,
 }
 
+#[allow(clippy::missing_fields_in_debug)] // Seems like not all fields are necessary in debug
 impl fmt::Debug for Spotify {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Spotify")
@@ -32,14 +31,13 @@ impl fmt::Debug for Spotify {
             .field("oauth", &self.oauth)
             .field("config", &self.config)
             .field("token", &self.token)
-            .field("client_id", &self.client_id)
             .finish()
     }
 }
 
 impl Spotify {
-    /// creates a new Spotify client
-    pub fn new(session: Session, client_id: String) -> Spotify {
+    /// Create a new Spotify client
+    pub fn new() -> Spotify {
         Self {
             creds: Credentials::default(),
             oauth: OAuth::default(),
@@ -49,8 +47,13 @@ impl Spotify {
             },
             token: Arc::new(Mutex::new(None)),
             http: HttpClient::default(),
-            session: Arc::new(tokio::sync::Mutex::new(Some(session))),
-            client_id,
+            // Spotify client uses different `client_id` from Spotify session (`auth::SPOTIFY_CLIENT_ID`)
+            // to support user-provided `client_id`, which is required for Spotify Connect feature
+            client_id: config::get_config()
+                .app_config
+                .get_client_id()
+                .expect("get client_id"),
+            session: Arc::new(tokio::sync::Mutex::new(None)),
         }
     }
 
@@ -62,7 +65,7 @@ impl Spotify {
             .expect("non-empty Spotify session")
     }
 
-    /// gets a Spotify access token.
+    /// Get a Spotify access token.
     /// The function may retrieve a new token and update the current token
     /// stored inside the client if the old one is expired.
     pub async fn access_token(&self) -> Result<String> {

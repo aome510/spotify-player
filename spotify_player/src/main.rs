@@ -16,7 +16,6 @@ mod ui;
 mod utils;
 
 use anyhow::{Context, Result};
-use rspotify::clients::BaseClient;
 use std::io::Write;
 
 async fn init_spotify(
@@ -24,7 +23,7 @@ async fn init_spotify(
     client: &client::Client,
     state: &state::SharedState,
 ) -> Result<()> {
-    client.initialize_playback(state).await?;
+    client.initialize_playback(state);
 
     // request user data
     client_pub.send(client::ClientRequest::GetCurrentUser)?;
@@ -45,7 +44,8 @@ fn init_logging(cache_folder: &std::path::Path) -> Result<()> {
 
     // initialize the application's logging
     if std::env::var("RUST_LOG").is_err() {
-        std::env::set_var("RUST_LOG", "spotify_player=info"); // default to log the current crate only
+        // default to log the current crate and librespot crates
+        std::env::set_var("RUST_LOG", "spotify_player=info,librespot=info");
     }
     let log_file = std::fs::File::create(cache_folder.join(format!("{log_prefix}.log")))
         .context("failed to create log file")?;
@@ -114,14 +114,13 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
         }
     }
 
-    // create a librespot session
-    let auth_config = auth::AuthConfig::new(configs)?;
-    let session = auth::new_session(&auth_config, !state.is_daemon).await?;
-
     // create a Spotify API client
-    let client_id = configs.app_config.get_client_id()?;
-    let client = client::Client::new(session, auth_config, client_id);
-    client.refresh_token().await?;
+    let auth_config = auth::AuthConfig::new(configs)?;
+    let client = client::Client::new(auth_config);
+    client
+        .new_session(Some(state), true)
+        .await
+        .context("initialize new Spotify session")?;
 
     // initialize Spotify-related stuff
     init_spotify(&client_pub, &client, state)
@@ -143,7 +142,7 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
                 Err(err) => {
                     tracing::warn!(
                         "Failed to create a client socket for handling CLI commands: {err:#}"
-                    )
+                    );
                 }
             }
         }
@@ -174,14 +173,14 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
             let client_pub = client_pub.clone();
             let state = state.clone();
             move || {
-                event::start_event_handler(state, client_pub);
+                event::start_event_handler(&state, &client_pub);
             }
         });
 
         // application UI task
         tokio::task::spawn_blocking({
             let state = state.clone();
-            move || ui::run(state)
+            move || ui::run(&state)
         });
     }
 
@@ -191,7 +190,7 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
         tokio::task::spawn_blocking({
             let state = state.clone();
             move || {
-                if let Err(err) = media_control::start_event_watcher(state, client_pub) {
+                if let Err(err) = media_control::start_event_watcher(&state, client_pub) {
                     tracing::error!(
                         "Failed to start the application's media control event watcher: err={err:#?}"
                     );
@@ -221,6 +220,12 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
 }
 
 fn main() -> Result<()> {
+    // librespot depends on hyper-rustls which requires a crypto provider to be set up.
+    // TODO: see if this can be fixed upstream
+    rustls::crypto::ring::default_provider()
+        .install_default()
+        .unwrap();
+
     // parse command line arguments
     let args = cli::init_cli()?.get_matches();
 

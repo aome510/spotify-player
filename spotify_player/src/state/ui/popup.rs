@@ -1,4 +1,8 @@
-use crate::{command, state::model::*, ui::single_line_input::LineInput};
+use crate::{
+    command,
+    state::model::{Album, Artist, Episode, EpisodeId, Playlist, Show, Track, TrackId},
+    ui::single_line_input::LineInput,
+};
 use tui::widgets::ListState;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -63,13 +67,13 @@ impl PopupState {
     /// gets the (immutable) list state of a (list) popup
     pub fn list_state(&self) -> Option<&ListState> {
         match self {
-            Self::DeviceList(list_state) => Some(list_state),
-            Self::UserPlaylistList(.., list_state) => Some(list_state),
-            Self::UserFollowedArtistList(list_state) => Some(list_state),
-            Self::UserSavedAlbumList(list_state) => Some(list_state),
-            Self::ArtistList(.., list_state) => Some(list_state),
-            Self::ThemeList(.., list_state) => Some(list_state),
-            Self::ActionList(.., list_state) => Some(list_state),
+            Self::DeviceList(list_state)
+            | Self::UserPlaylistList(.., list_state)
+            | Self::UserFollowedArtistList(list_state)
+            | Self::UserSavedAlbumList(list_state)
+            | Self::ArtistList(.., list_state)
+            | Self::ThemeList(.., list_state)
+            | Self::ActionList(.., list_state) => Some(list_state),
             Self::Search { .. } | Self::PlaylistCreate { .. } => None,
         }
     }
@@ -77,13 +81,13 @@ impl PopupState {
     /// gets the (mutable) list state of a (list) popup
     pub fn list_state_mut(&mut self) -> Option<&mut ListState> {
         match self {
-            Self::DeviceList(list_state) => Some(list_state),
-            Self::UserPlaylistList(.., list_state) => Some(list_state),
-            Self::UserFollowedArtistList(list_state) => Some(list_state),
-            Self::UserSavedAlbumList(list_state) => Some(list_state),
-            Self::ArtistList(.., list_state) => Some(list_state),
-            Self::ThemeList(.., list_state) => Some(list_state),
-            Self::ActionList(.., list_state) => Some(list_state),
+            Self::DeviceList(list_state)
+            | Self::UserPlaylistList(.., list_state)
+            | Self::UserFollowedArtistList(list_state)
+            | Self::UserSavedAlbumList(list_state)
+            | Self::ArtistList(.., list_state)
+            | Self::ThemeList(.., list_state)
+            | Self::ActionList(.., list_state) => Some(list_state),
             Self::Search { .. } | Self::PlaylistCreate { .. } => None,
         }
     }
@@ -108,12 +112,12 @@ impl PopupState {
 impl ActionListItem {
     pub fn n_actions(&self) -> usize {
         match self {
-            ActionListItem::Track(.., actions) => actions.len(),
-            ActionListItem::Artist(.., actions) => actions.len(),
-            ActionListItem::Album(.., actions) => actions.len(),
-            ActionListItem::Playlist(.., actions) => actions.len(),
-            ActionListItem::Show(.., actions) => actions.len(),
-            ActionListItem::Episode(.., actions) => actions.len(),
+            ActionListItem::Track(.., actions)
+            | ActionListItem::Artist(.., actions)
+            | ActionListItem::Album(.., actions)
+            | ActionListItem::Playlist(.., actions)
+            | ActionListItem::Show(.., actions)
+            | ActionListItem::Episode(.., actions) => actions.len(),
         }
     }
 
@@ -130,22 +134,12 @@ impl ActionListItem {
 
     pub fn actions_desc(&self) -> Vec<String> {
         match self {
-            ActionListItem::Track(.., actions) => {
-                actions.iter().map(|a| format!("{a:?}")).collect::<Vec<_>>()
-            }
-            ActionListItem::Artist(.., actions) => {
-                actions.iter().map(|a| format!("{a:?}")).collect::<Vec<_>>()
-            }
-            ActionListItem::Album(.., actions) => {
-                actions.iter().map(|a| format!("{a:?}")).collect::<Vec<_>>()
-            }
-            ActionListItem::Playlist(.., actions) => {
-                actions.iter().map(|a| format!("{a:?}")).collect::<Vec<_>>()
-            }
-            ActionListItem::Show(.., actions) => {
-                actions.iter().map(|a| format!("{a:?}")).collect::<Vec<_>>()
-            }
-            ActionListItem::Episode(.., actions) => {
+            ActionListItem::Track(.., actions)
+            | ActionListItem::Artist(.., actions)
+            | ActionListItem::Album(.., actions)
+            | ActionListItem::Playlist(.., actions)
+            | ActionListItem::Show(.., actions)
+            | ActionListItem::Episode(.., actions) => {
                 actions.iter().map(|a| format!("{a:?}")).collect::<Vec<_>>()
             }
         }

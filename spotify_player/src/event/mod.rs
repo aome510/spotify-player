@@ -6,7 +6,15 @@ use crate::{
     },
     config,
     key::{Key, KeySequence},
-    state::*,
+    state::{
+        rspotify_model, ActionListItem, Album, AlbumId, Artist, ArtistFocusState, ArtistId,
+        ArtistPopupAction, BrowsePageUIState, Context, ContextId, ContextPageType,
+        ContextPageUIState, DataReadGuard, Focusable, Id, Item, ItemId, LibraryFocusState,
+        LibraryPageUIState, PageState, PageType, PlayableId, Playback, PlaylistCreateCurrentField,
+        PlaylistFolderItem, PlaylistId, PlaylistPopupAction, PopupState, SearchFocusState,
+        SearchPageUIState, SharedState, ShowId, Track, TrackId, TrackOrder, UIStateGuard,
+        USER_LIKED_TRACKS_ID, USER_RECENTLY_PLAYED_TRACKS_ID, USER_TOP_TRACKS_ID,
+    },
     ui::{single_line_input::LineInput, Orientation},
     utils::parse_uri,
 };
@@ -24,11 +32,11 @@ mod popup;
 mod window;
 
 /// Start a terminal event handler (key pressed, mouse clicked, etc)
-pub fn start_event_handler(state: SharedState, client_pub: flume::Sender<ClientRequest>) {
+pub fn start_event_handler(state: &SharedState, client_pub: &flume::Sender<ClientRequest>) {
     while let Ok(event) = crossterm::event::read() {
         let _enter = tracing::info_span!("terminal_event", event = ?event).entered();
         if let Err(err) = match event {
-            crossterm::event::Event::Mouse(event) => handle_mouse_event(event, &client_pub, &state),
+            crossterm::event::Event::Mouse(event) => handle_mouse_event(event, client_pub, state),
             crossterm::event::Event::Resize(columns, rows) => {
                 let mut state = state.ui.lock();
                 state.orientation = Orientation::from_size(columns, rows);
@@ -40,7 +48,7 @@ pub fn start_event_handler(state: SharedState, client_pub: flume::Sender<ClientR
                     // context:
                     // - https://github.com/crossterm-rs/crossterm/issues/752
                     // - https://github.com/aome510/spotify-player/issues/136
-                    handle_key_event(event, &client_pub, &state)
+                    handle_key_event(event, client_pub, state)
                 } else {
                     Ok(())
                 }
@@ -74,7 +82,7 @@ fn handle_mouse_event(
             };
             if let Some(duration) = duration {
                 let position_ms =
-                    (duration.num_milliseconds()) * (event.column as i64) / (rect.width as i64);
+                    (duration.num_milliseconds()) * i64::from(event.column) / i64::from(rect.width);
                 client_pub.send(ClientRequest::Player(PlayerRequest::SeekTrack(
                     chrono::Duration::try_milliseconds(position_ms).unwrap(),
                 )))?;
@@ -113,7 +121,9 @@ fn handle_key_event(
     };
 
     // if the key sequence is not handled, let the global handler handle it
-    let handled = if !handled {
+    let handled = if handled {
+        true
+    } else {
         match keymap_config.find_command_or_action_from_key_sequence(&key_sequence) {
             Some(CommandOrAction::Action(action, target)) => {
                 handle_global_action(action, target, client_pub, state, &mut ui)?
@@ -123,8 +133,6 @@ fn handle_key_event(
             }
             None => false,
         }
-    } else {
-        true
     };
 
     // if handled, clear the key sequence
@@ -563,7 +571,7 @@ fn handle_global_command(
             if let Some(progress) = state.player.read().playback_progress() {
                 let duration = config::get_config().app_config.seek_duration_secs;
                 client_pub.send(ClientRequest::Player(PlayerRequest::SeekTrack(
-                    progress + chrono::Duration::try_seconds(duration as i64).unwrap(),
+                    progress + chrono::Duration::try_seconds(i64::from(duration)).unwrap(),
                 )))?;
             }
         }
@@ -573,7 +581,7 @@ fn handle_global_command(
                 client_pub.send(ClientRequest::Player(PlayerRequest::SeekTrack(
                     std::cmp::max(
                         chrono::Duration::zero(),
-                        progress - chrono::Duration::try_seconds(duration as i64).unwrap(),
+                        progress - chrono::Duration::try_seconds(i64::from(duration)).unwrap(),
                     ),
                 )))?;
             }
@@ -774,12 +782,12 @@ fn handle_global_command(
         }
         Command::FocusNextWindow => {
             if !ui.has_focused_popup() {
-                ui.current_page_mut().next()
+                ui.current_page_mut().next();
             }
         }
         Command::FocusPreviousWindow => {
             if !ui.has_focused_popup() {
-                ui.current_page_mut().previous()
+                ui.current_page_mut().previous();
             }
         }
         Command::Queue => {
