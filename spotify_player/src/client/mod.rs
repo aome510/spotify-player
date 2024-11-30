@@ -212,7 +212,7 @@ impl Client {
                 // because `TransferPlayback` doesn't require an active playback
                 self.transfer_playback(&device_id, Some(force_play)).await?;
                 tracing::info!("Transferred playback to device with id={}", device_id);
-                return Ok(playback);
+                return Ok(None);
             }
             PlayerRequest::StartPlayback(p, shuffle) => {
                 // Set the playback's shuffle state if specified in the request
@@ -226,7 +226,7 @@ impl Client {
                 if let Some(ref playback) = playback {
                     self.shuffle(playback.shuffle_state, device_id).await?;
                 }
-                return Ok(playback);
+                return Ok(None);
             }
             _ => {}
         }
