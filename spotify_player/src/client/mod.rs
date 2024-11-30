@@ -1,9 +1,6 @@
 use std::ops::Deref;
 use std::{borrow::Cow, collections::HashMap, sync::Arc};
 
-#[cfg(feature = "streaming")]
-use crate::state::Mutex;
-use crate::state::Show;
 use crate::{auth, config};
 use crate::{
     auth::AuthConfig,
@@ -11,7 +8,7 @@ use crate::{
         rspotify_model, store_data_into_file_cache, Album, AlbumId, Artist, ArtistId, Category,
         Context, ContextId, Device, FileCacheKey, Item, ItemId, MemoryCaches, Playback,
         PlaybackMetadata, Playlist, PlaylistFolderItem, PlaylistId, SearchResults, SharedState,
-        ShowId, Track, TrackId, UserId, TTL_CACHE_DURATION, USER_LIKED_TRACKS_ID,
+        Show, ShowId, Track, TrackId, UserId, TTL_CACHE_DURATION, USER_LIKED_TRACKS_ID,
         USER_RECENTLY_PLAYED_TRACKS_ID, USER_TOP_TRACKS_ID,
     },
 };
@@ -20,6 +17,10 @@ use std::io::Write;
 
 use anyhow::Context as _;
 use anyhow::Result;
+
+#[cfg(feature = "streaming")]
+use parking_lot::Mutex;
+
 use reqwest::StatusCode;
 use rspotify::model::{AdditionalType, CurrentPlaybackContext};
 use rspotify::{
@@ -212,7 +213,7 @@ impl Client {
                 // because `TransferPlayback` doesn't require an active playback
                 self.transfer_playback(&device_id, Some(force_play)).await?;
                 tracing::info!("Transferred playback to device with id={}", device_id);
-                return Ok(playback);
+                return Ok(None);
             }
             PlayerRequest::StartPlayback(p, shuffle) => {
                 // Set the playback's shuffle state if specified in the request
@@ -226,7 +227,7 @@ impl Client {
                 if let Some(ref playback) = playback {
                     self.shuffle(playback.shuffle_state, device_id).await?;
                 }
-                return Ok(playback);
+                return Ok(None);
             }
             _ => {}
         }
@@ -366,7 +367,7 @@ impl Client {
                 self.retrieve_current_playback(state, true).await?;
             }
             ClientRequest::GetDevices => {
-                let devices = self.device().await?;
+                let devices = self.available_devices().await?;
                 state.player.write().devices = devices
                     .into_iter()
                     .filter_map(Device::try_from_device)
@@ -610,6 +611,19 @@ impl Client {
         Ok(())
     }
 
+    /// Get user available devices
+    // This is a custom API to replace `rspotify::device` API to support Spotify Connect feature
+    pub async fn available_devices(&self) -> Result<Vec<rspotify::model::Device>> {
+        Ok(self
+            .http_get::<rspotify::model::DevicePayload>(
+                &format!("{SPOTIFY_API_ENDPOINT}/me/player/devices"),
+                &Query::new(),
+                true,
+            )
+            .await?
+            .devices)
+    }
+
     pub fn update_playback(&self, state: &SharedState) {
         // After handling a request changing the player's playback,
         // update the playback state by making multiple get-playback requests.
@@ -652,7 +666,8 @@ impl Client {
 
     /// Find an available device. If found, return the device's ID.
     async fn find_available_device(&self) -> Result<Option<String>> {
-        let devices = self.device().await?.into_iter().collect::<Vec<_>>();
+        let devices = self.available_devices().await?;
+
         if devices.is_empty() {
             tracing::warn!("No device found. Please make sure you already setup Spotify Connect \
                             support as described in https://github.com/aome510/spotify-player#spotify-connect.");
@@ -754,6 +769,7 @@ impl Client {
             .http_get::<Page<SimplifiedPlaylist>>(
                 &format!("{SPOTIFY_API_ENDPOINT}/me/playlists"),
                 &Query::from([("limit", "50")]),
+                false,
             )
             .await?;
         // let first_page = self
@@ -780,7 +796,7 @@ impl Client {
         let mut maybe_next = first_page.next;
         while let Some(url) = maybe_next {
             let mut next_page = self
-                .http_get::<rspotify_model::CursorPageFullArtists>(&url, &Query::new())
+                .http_get::<rspotify_model::CursorPageFullArtists>(&url, &Query::new(), false)
                 .await?
                 .artists;
             artists.append(&mut next_page.items);
@@ -1272,6 +1288,7 @@ impl Client {
             .http_get::<FullPlaylist>(
                 &format!("{SPOTIFY_API_ENDPOINT}/playlists/{}", playlist_id.id()),
                 &market_query(),
+                false,
             )
             .await?;
 
@@ -1392,7 +1409,12 @@ impl Client {
     }
 
     /// Make a GET HTTP request to the Spotify server
-    async fn http_get<T>(&self, url: &str, payload: &Query<'_>) -> Result<T>
+    async fn http_get<T>(
+        &self,
+        url: &str,
+        payload: &Query<'_>,
+        use_user_client_id: bool,
+    ) -> Result<T>
     where
         T: serde::de::DeserializeOwned,
     {
@@ -1408,7 +1430,12 @@ impl Client {
                 .replace("\"name\":null", "\"name\":\"\"")
         }
 
-        let access_token = self.access_token().await?;
+        let access_token = if use_user_client_id {
+            self.access_token_from_user_client_id().await
+        } else {
+            self.access_token().await
+        }
+        .context("get access token")?;
 
         tracing::debug!("{access_token} {url}");
 
@@ -1448,7 +1475,7 @@ impl Client {
 
         while let Some(url) = maybe_next {
             let mut next_page = self
-                .http_get::<rspotify_model::Page<T>>(&url, payload)
+                .http_get::<rspotify_model::Page<T>>(&url, payload, false)
                 .await?;
             if next_page.items.is_empty() {
                 break;
@@ -1471,7 +1498,7 @@ impl Client {
         let mut maybe_next = first_page.next;
         while let Some(url) = maybe_next {
             let mut next_page = self
-                .http_get::<rspotify_model::CursorBasedPage<T>>(&url, &Query::new())
+                .http_get::<rspotify_model::CursorBasedPage<T>>(&url, &Query::new(), false)
                 .await?;
             items.append(&mut next_page.items);
             maybe_next = next_page.next;
@@ -1492,7 +1519,6 @@ impl Client {
         let new_playback = {
             // update the playback state
             let playback = self.current_playback2().await?;
-            log::info!("current_playback: {playback:?}");
             let mut player = state.player.write();
 
             let prev_item = player.currently_playing();

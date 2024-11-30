@@ -25,7 +25,7 @@ const SCOPES: [&str; 15] = [
     "user-library-modify",
 ];
 
-async fn retrieve_token(
+pub async fn get_token_librespot(
     session: &Session,
     client_id: &str,
 ) -> Result<librespot_core::token::Token> {
@@ -46,10 +46,10 @@ async fn retrieve_token(
     Ok(token)
 }
 
-pub async fn get_token(session: &Session, client_id: &str) -> Result<rspotify::Token> {
+pub async fn get_token_rspotify(session: &Session, client_id: &str) -> Result<rspotify::Token> {
     tracing::info!("Getting a new authentication token...");
 
-    let fut = retrieve_token(session, client_id);
+    let fut = get_token_librespot(session, client_id);
     let token =
         match tokio::time::timeout(std::time::Duration::from_secs(TIMEOUT_IN_SECS), fut).await {
             Ok(Ok(token)) => token,

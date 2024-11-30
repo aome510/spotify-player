@@ -141,32 +141,33 @@ pub fn render_playback_window(
                 duration,
             );
             render_playback_progress_bar(frame, ui, progress, duration, progress_bar_rect);
+            return other_rect;
         }
-    } else {
-        // Previously rendered image can result in a weird rendering text,
-        // clear the previous widget's area before rendering the text.
-        #[cfg(feature = "image")]
-        {
-            if ui.last_cover_image_render_info.rendered {
-                clear_area(
-                    frame,
-                    ui.last_cover_image_render_info.render_area,
-                    &ui.theme,
-                );
-                ui.last_cover_image_render_info = ImageRenderInfo::default();
-            }
-        }
+    }
 
-        frame.render_widget(
+    // Previously rendered image can result in a weird rendering text,
+    // clear the previous widget's area before rendering the text.
+    #[cfg(feature = "image")]
+    {
+        if ui.last_cover_image_render_info.rendered {
+            clear_area(
+                frame,
+                ui.last_cover_image_render_info.render_area,
+                &ui.theme,
+            );
+            ui.last_cover_image_render_info = ImageRenderInfo::default();
+        }
+    }
+
+    frame.render_widget(
             Paragraph::new(
-                "No playback found.\n \
-                 Please make sure there is a running Spotify device and try to connect to one using the `SwitchDevice` command.\n \
+                "No playback found. Please start a new playback.\n \
+                 Make sure there is a running Spotify device and try to connect to one using the `SwitchDevice` command.\n \
                  You may also need to set up Spotify Connect to see available devices as in https://github.com/aome510/spotify-player#spotify-connect."
             )
             .wrap(Wrap { trim: true }),
             rect,
         );
-    };
 
     other_rect
 }
