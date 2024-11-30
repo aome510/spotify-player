@@ -1040,8 +1040,8 @@ fn render_episode_table(
         rows,
         [
             Constraint::Length(4),
-            Constraint::Fill(4),
-            Constraint::Fill(3),
+            Constraint::Fill(6),
+            Constraint::Fill(2),
             Constraint::Fill(1),
         ],
     )
