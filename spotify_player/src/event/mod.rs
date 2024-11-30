@@ -38,8 +38,7 @@ pub fn start_event_handler(state: &SharedState, client_pub: &flume::Sender<Clien
         if let Err(err) = match event {
             crossterm::event::Event::Mouse(event) => handle_mouse_event(event, client_pub, state),
             crossterm::event::Event::Resize(columns, rows) => {
-                let mut state = state.ui.lock();
-                state.orientation = Orientation::from_size(columns, rows);
+                state.ui.lock().orientation = Orientation::from_size(columns, rows);
                 Ok(())
             }
             crossterm::event::Event::Key(event) => {
@@ -55,7 +54,7 @@ pub fn start_event_handler(state: &SharedState, client_pub: &flume::Sender<Clien
             }
             _ => Ok(()),
         } {
-            tracing::error!("Failed to handle event: {err:#}");
+            tracing::error!("Failed to handle terminal event: {err:#}");
         }
     }
 }
@@ -475,7 +474,7 @@ fn handle_show_actions_on_artist(
 }
 
 /// Handle a global action, currently this is only used to target
-/// the currently playing song instead of the selection.
+/// the currently playing item instead of the selection.
 fn handle_global_action(
     action: Action,
     target: ActionTarget,
