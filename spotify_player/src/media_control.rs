@@ -1,5 +1,4 @@
 #![allow(unused_imports)]
-use rspotify::model as rspotify_model;
 use souvlaki::MediaPosition;
 use souvlaki::{MediaControlEvent, MediaControls, MediaMetadata, MediaPlayback, PlatformConfig};
 
@@ -31,7 +30,7 @@ fn update_control_metadata(
             }
 
             match item {
-                rspotify_model::PlayableItem::Track(track) => {
+                rspotify::model::PlayableItem::Track(track) => {
                     // only update metadata when the track information is changed
                     let track_info = format!("{}/{}", track.name, track.album.name);
                     if track_info != *prev_info {
@@ -46,7 +45,7 @@ fn update_control_metadata(
                         *prev_info = track_info;
                     }
                 }
-                rspotify_model::PlayableItem::Episode(episode) => {
+                rspotify::model::PlayableItem::Episode(episode) => {
                     // only update metadata when the episode information is changed
                     let episode_info = format!("{}/{}", episode.name, episode.show.name);
                     if episode_info != *prev_info {

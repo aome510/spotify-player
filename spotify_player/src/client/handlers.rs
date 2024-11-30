@@ -1,5 +1,4 @@
 use anyhow::Context;
-use rspotify::model::PlayableItem;
 use tracing::Instrument;
 
 use crate::{
@@ -54,13 +53,13 @@ fn handle_playback_change_event(
         player.buffered_playback.as_ref(),
         player.currently_playing(),
     ) {
-        (Some(playback), Some(PlayableItem::Track(track))) => (
+        (Some(playback), Some(rspotify::model::PlayableItem::Track(track))) => (
             playback,
             PlayableId::Track(track.id.clone().expect("null track_id")),
             &track.name,
             track.duration,
         ),
-        (Some(playback), Some(PlayableItem::Episode(episode))) => (
+        (Some(playback), Some(rspotify::model::PlayableItem::Episode(episode))) => (
             playback,
             PlayableId::Episode(episode.id.clone()),
             &episode.name,

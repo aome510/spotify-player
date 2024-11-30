@@ -14,15 +14,12 @@ use crate::{
     cli::Request,
     client::{Client, PlayerRequest},
     config::get_cache_folder_path,
-    state::{Context, ContextId, Playback, PlaybackMetadata, SharedState},
-};
-use rspotify::{
-    model::{
-        AlbumId, ArtistId, CurrentPlaybackContext, Id, PlayableId, PlaylistId, SearchResult,
-        SearchType, TrackId,
+    state::{
+        AlbumId, ArtistId, Context, ContextId, Id, PlayableId, Playback, PlaybackMetadata,
+        PlaylistId, SharedState, TrackId,
     },
-    prelude::{BaseClient, OAuthClient},
 };
+use rspotify::prelude::{BaseClient, OAuthClient};
 
 use super::{
     Command, Deserialize, GetRequest, IdOrName, ItemId, ItemType, Key, PlaylistCommand, Response,
@@ -96,7 +93,7 @@ async fn send_response(
 async fn current_playback(
     client: &Client,
     state: Option<&SharedState>,
-) -> Result<Option<CurrentPlaybackContext>> {
+) -> Result<Option<rspotify::model::CurrentPlaybackContext>> {
     // get current playback from the application's state, if exists, or by making an API request
     match state {
         Some(state) => Ok(state.player.read().current_playback()),
@@ -230,11 +227,11 @@ async fn get_spotify_id(client: &Client, typ: ItemType, id_or_name: IdOrName) ->
             IdOrName::Id(id) => ItemId::Playlist(PlaylistId::from_id(id)?),
             IdOrName::Name(name) => {
                 let results = client
-                    .search_specific_type(&name, SearchType::Playlist)
+                    .search_specific_type(&name, rspotify::model::SearchType::Playlist)
                     .await?;
 
                 match results {
-                    SearchResult::Playlists(page) => {
+                    rspotify::model::SearchResult::Playlists(page) => {
                         if page.items.is_empty() {
                             anyhow::bail!("Cannot find playlist with name='{name}'");
                         }
@@ -248,11 +245,11 @@ async fn get_spotify_id(client: &Client, typ: ItemType, id_or_name: IdOrName) ->
             IdOrName::Id(id) => ItemId::Album(AlbumId::from_id(id)?),
             IdOrName::Name(name) => {
                 let results = client
-                    .search_specific_type(&name, SearchType::Album)
+                    .search_specific_type(&name, rspotify::model::SearchType::Album)
                     .await?;
 
                 match results {
-                    SearchResult::Albums(page) => {
+                    rspotify::model::SearchResult::Albums(page) => {
                         if !page.items.is_empty() && page.items[0].id.is_some() {
                             ItemId::Album(page.items[0].id.clone().unwrap())
                         } else {
@@ -267,11 +264,11 @@ async fn get_spotify_id(client: &Client, typ: ItemType, id_or_name: IdOrName) ->
             IdOrName::Id(id) => ItemId::Artist(ArtistId::from_id(id)?),
             IdOrName::Name(name) => {
                 let results = client
-                    .search_specific_type(&name, SearchType::Artist)
+                    .search_specific_type(&name, rspotify::model::SearchType::Artist)
                     .await?;
 
                 match results {
-                    SearchResult::Artists(page) => {
+                    rspotify::model::SearchResult::Artists(page) => {
                         if page.items.is_empty() {
                             anyhow::bail!("Cannot find artist with name='{name}'");
                         }
@@ -285,11 +282,11 @@ async fn get_spotify_id(client: &Client, typ: ItemType, id_or_name: IdOrName) ->
             IdOrName::Id(id) => ItemId::Track(TrackId::from_id(id)?),
             IdOrName::Name(name) => {
                 let results = client
-                    .search_specific_type(&name, SearchType::Track)
+                    .search_specific_type(&name, rspotify::model::SearchType::Track)
                     .await?;
 
                 match results {
-                    SearchResult::Tracks(page) => {
+                    rspotify::model::SearchResult::Tracks(page) => {
                         if !page.items.is_empty() && page.items[0].id.is_some() {
                             ItemId::Track(page.items[0].id.clone().unwrap())
                         } else {

@@ -5,7 +5,7 @@ use once_cell::sync::Lazy;
 use serde::{de::DeserializeOwned, Serialize};
 
 use super::model::{
-    rspotify_model, Album, Artist, Category, Context, ContextId, Id, Playlist, PlaylistFolderItem,
+    Album, Artist, Category, Context, ContextId, Id, Playlist, PlaylistFolderItem,
     PlaylistFolderNode, SearchResults, Show, Track,
 };
 
@@ -35,7 +35,7 @@ pub struct AppData {
 #[derive(Debug)]
 /// current user's data
 pub struct UserData {
-    pub user: Option<rspotify_model::PrivateUser>,
+    pub user: Option<rspotify::model::PrivateUser>,
     pub playlists: Vec<PlaylistFolderItem>,
     pub playlist_folder_node: Option<PlaylistFolderNode>,
     pub followed_artists: Vec<Artist>,
