@@ -37,28 +37,6 @@ pub enum Context {
     },
 }
 
-impl Context {
-    pub fn tracks_mut(&mut self) -> &mut Vec<Track> {
-        match self {
-            Context::Album { tracks, .. }
-            | Context::Playlist { tracks, .. }
-            | Context::Tracks { tracks, .. } => tracks,
-            Context::Artist { top_tracks, .. } => top_tracks,
-            Context::Show { .. } => unimplemented!(),
-        }
-    }
-
-    pub fn tracks(&self) -> &Vec<Track> {
-        match self {
-            Context::Album { tracks, .. }
-            | Context::Playlist { tracks, .. }
-            | Context::Tracks { tracks, .. } => tracks,
-            Context::Artist { top_tracks, .. } => top_tracks,
-            Context::Show { .. } => unimplemented!(),
-        }
-    }
-}
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TracksId {
     pub uri: String,

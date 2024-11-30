@@ -25,10 +25,10 @@ reqwest = { version = "0.12.9", features = ["json"] }
 rspotify = "0.13.3"
 serde = { version = "1.0.214", features = ["derive"] }
 tokio = { version = "1.41.0", features = [
-  "rt",
-  "rt-multi-thread",
-  "macros",
-  "time",
+	"rt",
+	"rt-multi-thread",
+	"macros",
+	"time",
 ] }
 toml = "0.8.19"
 tui = { package = "ratatui", version = "0.29.0" }
@@ -44,7 +44,7 @@ souvlaki = { version = "0.7.3", optional = true }
 viuer = { version = "0.9.1", optional = true }
 image = { version = "0.25.4", optional = true }
 notify-rust = { version = "4.11.3", optional = true, default-features = false, features = [
-  "d",
+	"d",
 ] }
 flume = "0.11.1"
 serde_json = "1.0.132"
@@ -68,10 +68,10 @@ clipboard-win = "5.4.0"
 [target.'cfg(target_os = "windows")'.dependencies.windows]
 version = "0.58.0"
 features = [
-  "Win32_Foundation",
-  "Win32_Graphics_Gdi",
-  "Win32_System_LibraryLoader",
-  "Win32_UI_WindowsAndMessaging",
+	"Win32_Foundation",
+	"Win32_Graphics_Gdi",
+	"Win32_System_LibraryLoader",
+	"Win32_UI_WindowsAndMessaging",
 ]
 optional = true
 

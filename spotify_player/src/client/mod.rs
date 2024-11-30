@@ -1616,7 +1616,7 @@ impl Client {
         if configs.app_config.enable_notify
             && (!configs.app_config.notify_streaming_only || self.stream_conn.lock().is_some())
         {
-            Self::notify_new_playback(curr_item, &path)?;
+            Self::notify_new_playback(&curr_item, &path)?;
         }
 
         #[cfg(all(feature = "notify", not(feature = "streaming")))]
@@ -1664,7 +1664,7 @@ impl Client {
     #[cfg(feature = "notify")]
     /// Create a notification for a new playback
     fn notify_new_playback(
-        playable: rspotify_model::PlayableItem,
+        playable: &rspotify_model::PlayableItem,
         cover_img_path: &std::path::Path,
     ) -> Result<()> {
         let mut n = notify_rust::Notification::new();
@@ -1691,7 +1691,7 @@ impl Client {
                             rspotify_model::PlayableItem::Track(ref track) => &track.name,
                             rspotify_model::PlayableItem::Episode(ref episode) => &episode.name,
                         };
-                        text += name
+                        text += name;
                     }
                     "{artists}" => {
                         if let rspotify_model::PlayableItem::Track(ref track) = playable {
@@ -1701,7 +1701,7 @@ impl Client {
                     "{album}" => match playable {
                         rspotify_model::PlayableItem::Track(ref track) => text += &track.album.name,
                         rspotify_model::PlayableItem::Episode(ref episode) => {
-                            text += &episode.show.name
+                            text += &episode.show.name;
                         }
                     },
                     _ => continue,

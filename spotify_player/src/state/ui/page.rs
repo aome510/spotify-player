@@ -96,20 +96,6 @@ pub enum ContextPageUIState {
     },
 }
 
-impl ContextPageUIState {
-    pub fn track_table_mut(&mut self) -> &mut TableState {
-        match self {
-            Self::Playlist { track_table }
-            | Self::Album { track_table }
-            | Self::Tracks { track_table } => track_table,
-            Self::Artist {
-                top_track_table, ..
-            } => top_track_table,
-            Self::Show { .. } => unimplemented!(),
-        }
-    }
-}
-
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum LibraryFocusState {
     Playlists,

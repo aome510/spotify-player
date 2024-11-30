@@ -163,7 +163,7 @@ fn handle_page_change_event(
             artists,
             scroll_offset,
         } => {
-            if let Some(rspotify_model::PlayableItem::Track(current_track)) =
+            if let Some(rspotify::model::PlayableItem::Track(current_track)) =
                 state.player.read().currently_playing()
             {
                 if current_track.name != *track {
