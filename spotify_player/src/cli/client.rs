@@ -101,7 +101,7 @@ async fn current_playback(
     match state {
         Some(state) => Ok(state.player.read().current_playback()),
         None => client
-            .current_playback(None, None::<Vec<_>>)
+            .current_playback2()
             .await
             .context("get current playback"),
     }
@@ -333,7 +333,7 @@ async fn handle_playback_request(
     let playback = if let Some(state) = state {
         state.player.read().buffered_playback.clone()
     } else {
-        let playback = client.current_playback(None, None::<Vec<_>>).await?;
+        let playback = client.current_playback2().await?;
         playback.as_ref().map(PlaybackMetadata::from_playback)
     };
 
@@ -416,7 +416,7 @@ async fn handle_playback_request(
             // the function scope is from the application's state (cached) or the `current_playback` API.
             // Therefore, we need to make an additional API request to get the playback's progress.
             let progress = client
-                .current_playback(None, None::<Vec<_>>)
+                .current_playback2()
                 .await?
                 .context("no active playback found!")?
                 .progress

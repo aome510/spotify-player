@@ -21,6 +21,7 @@ use std::io::Write;
 use anyhow::Context as _;
 use anyhow::Result;
 use reqwest::StatusCode;
+use rspotify::model::{AdditionalType, CurrentPlaybackContext};
 use rspotify::{
     http::Query,
     model::{FullPlaylist, Market, Page, SimplifiedPlaylist},
@@ -36,6 +37,7 @@ pub use request::*;
 use serde::Deserialize;
 
 const SPOTIFY_API_ENDPOINT: &str = "https://api.spotify.com/v1";
+const PLAYBACK_TYPES: [&AdditionalType; 2] = [&AdditionalType::Track, &AdditionalType::Episode];
 
 /// The application's Spotify client
 #[derive(Clone)]
@@ -1477,6 +1479,10 @@ impl Client {
         Ok(items)
     }
 
+    pub async fn current_playback2(&self) -> Result<Option<CurrentPlaybackContext>> {
+        Ok(self.current_playback(None, PLAYBACK_TYPES.into()).await?)
+    }
+
     /// Retrieve the latest playback state
     pub async fn retrieve_current_playback(
         &self,
@@ -1485,7 +1491,8 @@ impl Client {
     ) -> Result<()> {
         let new_playback = {
             // update the playback state
-            let playback = self.current_playback(None, None::<Vec<_>>).await?;
+            let playback = self.current_playback2().await?;
+            log::info!("current_playback: {playback:?}");
             let mut player = state.player.write();
 
             let prev_item = player.currently_playing();
