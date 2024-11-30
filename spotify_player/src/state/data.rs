@@ -95,7 +95,6 @@ impl AppData {
                 top_tracks: tracks, ..
             } => tracks,
             Context::Show { .. } => {
-                // TODO: handle context_tracks_mut for Show
                 return None;
             }
         })
@@ -111,7 +110,6 @@ impl AppData {
                 top_tracks: tracks, ..
             } => tracks,
             Context::Show { .. } => {
-                // TODO: handle context_tracks for Show
                 return None;
             }
         })

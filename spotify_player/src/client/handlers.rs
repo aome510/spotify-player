@@ -14,6 +14,7 @@ use super::ClientRequest;
 
 struct PlayerEventHandlerState {
     add_track_to_queue_req_timer: std::time::Instant,
+    get_context_timer: std::time::Instant,
 }
 
 /// starts the client's request handler
@@ -112,6 +113,7 @@ fn handle_playback_change_event(
 fn handle_page_change_event(
     state: &SharedState,
     client_pub: &flume::Sender<ClientRequest>,
+    handler_state: &mut PlayerEventHandlerState,
 ) -> anyhow::Result<()> {
     match state.ui.lock().current_page_mut() {
         PageState::Context {
@@ -124,8 +126,10 @@ fn handle_page_change_event(
                 ContextPageType::CurrentPlaying => state.player.read().playing_context_id(),
             };
 
-            // update the context state and request new data when moving to a new context page
-            if *id != expected_id {
+            let new_id = if *id == expected_id {
+                false
+            } else {
+                // update the context state and request new data when moving to a new context page
                 tracing::info!("Current context ID ({:?}) is different from the expected ID ({:?}), update the context state", id, expected_id);
 
                 *id = expected_id;
@@ -145,14 +149,21 @@ fn handle_page_change_event(
                         *page_state = None;
                     }
                 }
-            }
+                true
+            };
 
             // request new context's data if not found in memory
+            // To avoid making too many requests, only request if context id is changed
+            // or it's been a while since the last request.
             if let Some(id) = id {
                 if !matches!(id, ContextId::Tracks(_))
                     && !state.data.read().caches.context.contains_key(&id.uri())
+                    && (new_id
+                        || handler_state.get_context_timer.elapsed()
+                            > std::time::Duration::from_secs(5))
                 {
                     client_pub.send(ClientRequest::GetContext(id.clone()))?;
+                    handler_state.get_context_timer = std::time::Instant::now();
                 }
             }
         }
@@ -190,7 +201,8 @@ fn handle_player_event(
     client_pub: &flume::Sender<ClientRequest>,
     handler_state: &mut PlayerEventHandlerState,
 ) -> anyhow::Result<()> {
-    handle_page_change_event(state, client_pub).context("handle page change event")?;
+    handle_page_change_event(state, client_pub, handler_state)
+        .context("handle page change event")?;
     handle_playback_change_event(state, client_pub, handler_state)
         .context("handle playback change event")?;
 
@@ -228,6 +240,7 @@ pub async fn start_player_event_watchers(
     let refresh_duration = std::time::Duration::from_secs(1);
     let mut handler_state = PlayerEventHandlerState {
         add_track_to_queue_req_timer: std::time::Instant::now(),
+        get_context_timer: std::time::Instant::now(),
     };
 
     loop {

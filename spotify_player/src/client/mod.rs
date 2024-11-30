@@ -880,11 +880,12 @@ impl Client {
                     self.start_context_playback(PlayContextId::from(id), device_id, offset, None)
                         .await?;
                 }
+                ContextId::Show(id) => {
+                    self.start_context_playback(PlayContextId::from(id), device_id, offset, None)
+                        .await?;
+                }
                 ContextId::Tracks(_) => {
                     anyhow::bail!("`StartPlayback` request for `tracks` context is not supported")
-                }
-                ContextId::Show(_) => {
-                    anyhow::bail!("`StartPlayback` request for `show` context is not supported")
                 }
             },
             Playback::URIs(ids, offset) => {
