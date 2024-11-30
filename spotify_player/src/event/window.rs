@@ -5,7 +5,7 @@ use crate::{
         construct_album_actions, construct_artist_actions, construct_playlist_actions,
         construct_show_actions,
     },
-    state::{Show, UIStateGuard},
+    state::{Episode, Show, UIStateGuard},
 };
 use command::Action;
 use rand::Rng;
@@ -507,6 +507,7 @@ pub fn handle_command_for_playlist_list_window(
     }
     Ok(true)
 }
+
 pub fn handle_command_for_show_list_window(
     command: Command,
     shows: &[&Show],
@@ -540,4 +541,43 @@ pub fn handle_command_for_show_list_window(
         _ => return false,
     }
     true
+}
+
+pub fn handle_command_for_episode_list_window(
+    command: Command,
+    client_pub: &flume::Sender<ClientRequest>,
+    episodes: &[&Episode],
+    data: &DataReadGuard,
+    ui: &mut UIStateGuard,
+) -> Result<bool> {
+    let id = ui.current_page_mut().selected().unwrap_or_default();
+    if id >= episodes.len() {
+        return Ok(false);
+    }
+
+    if handle_navigation_command(command, ui.current_page_mut(), id, episodes.len()) {
+        return Ok(true);
+    }
+    match command {
+        Command::ChooseSelected => {
+            client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
+                Playback::URIs(vec![episodes[id].id.clone().into()], None),
+                None,
+            )))?;
+        }
+        Command::ShowActionsOnSelectedItem => {
+            let actions = command::construct_episode_actions(episodes[id], data);
+            ui.popup = Some(PopupState::ActionList(
+                Box::new(ActionListItem::Episode(episodes[id].clone(), actions)),
+                ListState::default(),
+            ));
+        }
+        Command::AddSelectedItemToQueue => {
+            client_pub.send(ClientRequest::AddPlayableToQueue(
+                episodes[id].id.clone().into(),
+            ))?;
+        }
+        _ => return Ok(false),
+    }
+    Ok(true)
 }
