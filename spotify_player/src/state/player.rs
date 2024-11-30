@@ -1,5 +1,5 @@
 use super::model::{
-    rspotify_model, AlbumId, ArtistId, ContextId, Device, PlaybackMetadata, PlaylistId,
+    rspotify_model, AlbumId, ArtistId, ContextId, Device, PlaybackMetadata, PlaylistId, ShowId,
 };
 
 /// Player state
@@ -48,14 +48,8 @@ impl PlayerState {
         Some(playback)
     }
 
-    pub fn current_playing_track(&self) -> Option<&rspotify_model::FullTrack> {
-        match self.playback {
-            None => None,
-            Some(ref playback) => match playback.item {
-                Some(rspotify::model::PlayableItem::Track(ref track)) => Some(track),
-                _ => None,
-            },
-        }
+    pub fn currently_playing(&self) -> Option<&rspotify_model::PlayableItem> {
+        self.playback.as_ref().and_then(|p| p.item.as_ref())
     }
 
     pub fn playback_progress(&self) -> Option<chrono::Duration> {
@@ -91,6 +85,9 @@ impl PlayerState {
                         rspotify_model::Type::Artist => Some(ContextId::Artist(
                             ArtistId::from_uri(&uri).ok()?.into_static(),
                         )),
+                        rspotify_model::Type::Show => {
+                            Some(ContextId::Show(ShowId::from_uri(&uri).ok()?.into_static()))
+                        }
                         _ => None,
                     }
                 }

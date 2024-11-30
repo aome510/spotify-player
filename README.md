@@ -391,6 +391,7 @@ List of available actions:
 - `DeleteFromPlaylist`
 - `ShowActionsOnAlbum`
 - `ShowActionsOnArtist`
+- `ShowActionsOnShow`
 - `ToggleLiked`
 - `CopyLink`
 - `Follow`
