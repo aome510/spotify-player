@@ -600,7 +600,7 @@ fn handle_command_for_episode_table_window(
             client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
                 Playback::Context(
                     ContextId::Show(show_id.clone_static()),
-                    Some(rspotify_model::Offset::Uri(uri)),
+                    Some(rspotify::model::Offset::Uri(uri)),
                 ),
                 None,
             )))?;
