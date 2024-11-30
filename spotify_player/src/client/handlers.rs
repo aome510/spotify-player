@@ -126,8 +126,10 @@ fn handle_page_change_event(
                 ContextPageType::CurrentPlaying => state.player.read().playing_context_id(),
             };
 
-            // update the context state and request new data when moving to a new context page
-            if *id != expected_id {
+            let new_id = if *id == expected_id {
+                false
+            } else {
+                // update the context state and request new data when moving to a new context page
                 tracing::info!("Current context ID ({:?}) is different from the expected ID ({:?}), update the context state", id, expected_id);
 
                 *id = expected_id;
@@ -147,13 +149,18 @@ fn handle_page_change_event(
                         *page_state = None;
                     }
                 }
-            }
+                true
+            };
 
             // request new context's data if not found in memory
+            // To avoid making too many requests, only request if context id is changed
+            // or it's been a while since the last request.
             if let Some(id) = id {
                 if !matches!(id, ContextId::Tracks(_))
                     && !state.data.read().caches.context.contains_key(&id.uri())
-                    && handler_state.get_context_timer.elapsed() > std::time::Duration::from_secs(5)
+                    && (new_id
+                        || handler_state.get_context_timer.elapsed()
+                            > std::time::Duration::from_secs(5))
                 {
                     client_pub.send(ClientRequest::GetContext(id.clone()))?;
                     handler_state.get_context_timer = std::time::Instant::now();
