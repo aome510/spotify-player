@@ -869,14 +869,9 @@ impl Client {
                     anyhow::bail!("`StartPlayback` request for `show` context is not supported")
                 }
             },
-            Playback::URIs(track_ids, offset) => {
-                self.start_uris_playback(
-                    track_ids.into_iter().map(PlayableId::from),
-                    device_id,
-                    offset,
-                    None,
-                )
-                .await?;
+            Playback::URIs(ids, offset) => {
+                self.start_uris_playback(ids, device_id, offset, None)
+                    .await?;
             }
         }
 

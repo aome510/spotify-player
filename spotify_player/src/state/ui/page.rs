@@ -319,7 +319,7 @@ impl ContextPageUIState {
     }
 }
 
-impl<'a> MutableWindowState<'a> {
+impl MutableWindowState<'_> {
     pub fn select(&mut self, id: usize) {
         match self {
             Self::List(state) => state.select(Some(id)),

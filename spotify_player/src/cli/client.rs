@@ -54,14 +54,15 @@ pub async fn start_socket(client: Client, socket: UdpSocket, state: Option<Share
                 let span = tracing::info_span!("socket_request", request = ?request, dest_addr = ?dest_addr);
 
                 async {
-                    let response = match handle_socket_request(&client, &state, request).await {
-                        Err(err) => {
-                            tracing::error!("Failed to handle socket request: {err:#}");
-                            let msg = format!("Bad request: {err:#}");
-                            Response::Err(msg.into_bytes())
-                        }
-                        Ok(data) => Response::Ok(data),
-                    };
+                    let response =
+                        match handle_socket_request(&client, state.as_ref(), request).await {
+                            Err(err) => {
+                                tracing::error!("Failed to handle socket request: {err:#}");
+                                let msg = format!("Bad request: {err:#}");
+                                Response::Err(msg.into_bytes())
+                            }
+                            Ok(data) => Response::Ok(data),
+                        };
                     send_response(response, &socket, dest_addr)
                         .await
                         .unwrap_or_default();
@@ -94,11 +95,11 @@ async fn send_response(
 
 async fn current_playback(
     client: &Client,
-    state: &Option<SharedState>,
+    state: Option<&SharedState>,
 ) -> Result<Option<CurrentPlaybackContext>> {
     // get current playback from the application's state, if exists, or by making an API request
     match state {
-        Some(ref state) => Ok(state.player.read().current_playback()),
+        Some(state) => Ok(state.player.read().current_playback()),
         None => client
             .current_playback(None, None::<Vec<_>>)
             .await
@@ -108,7 +109,7 @@ async fn current_playback(
 
 async fn handle_socket_request(
     client: &Client,
-    state: &Option<SharedState>,
+    state: Option<&SharedState>,
     request: super::Request,
 ) -> Result<Vec<u8>> {
     if let Some(state) = state {
@@ -180,7 +181,7 @@ async fn handle_socket_request(
 
 async fn handle_get_key_request(
     client: &Client,
-    state: &Option<SharedState>,
+    state: Option<&SharedState>,
     key: Key,
 ) -> Result<Vec<u8>> {
     Ok(match key {
@@ -326,7 +327,7 @@ async fn handle_search_request(client: &Client, query: String) -> Result<Vec<u8>
 
 async fn handle_playback_request(
     client: &Client,
-    state: &Option<SharedState>,
+    state: Option<&SharedState>,
     command: Command,
 ) -> Result<()> {
     let playback = if let Some(state) = state {
@@ -348,7 +349,7 @@ async fn handle_playback_request(
         }
         Command::StartLikedTracks { limit, random } => {
             // get a list of liked tracks' ids
-            let mut ids: Vec<PlayableId> = if let Some(ref state) = state {
+            let mut ids: Vec<PlayableId> = if let Some(state) = state {
                 state
                     .data
                     .read()
@@ -426,7 +427,7 @@ async fn handle_playback_request(
         }
     };
 
-    if let Some(ref state) = state {
+    if let Some(state) = state {
         // A non-null application's state indicates there is a running application instance.
         // To reduce the latency of the CLI command, the player request is handled asynchronously
         // knowing that the application will outlive the asynchronous task.
