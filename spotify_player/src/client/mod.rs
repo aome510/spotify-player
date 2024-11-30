@@ -22,12 +22,7 @@ use anyhow::Result;
 use parking_lot::Mutex;
 
 use reqwest::StatusCode;
-use rspotify::model::{AdditionalType, CurrentPlaybackContext};
-use rspotify::{
-    http::Query,
-    model::{FullPlaylist, Market, Page, SimplifiedPlaylist},
-    prelude::*,
-};
+use rspotify::{http::Query, prelude::*};
 
 mod handlers;
 mod request;
@@ -38,7 +33,10 @@ pub use request::*;
 use serde::Deserialize;
 
 const SPOTIFY_API_ENDPOINT: &str = "https://api.spotify.com/v1";
-const PLAYBACK_TYPES: [&AdditionalType; 2] = [&AdditionalType::Track, &AdditionalType::Episode];
+const PLAYBACK_TYPES: [&rspotify::model::AdditionalType; 2] = [
+    &rspotify::model::AdditionalType::Track,
+    &rspotify::model::AdditionalType::Episode,
+];
 
 /// The application's Spotify client
 #[derive(Clone)]
@@ -721,7 +719,11 @@ impl Client {
     /// Get the saved (liked) tracks of the current user
     pub async fn current_user_saved_tracks(&self) -> Result<Vec<Track>> {
         let first_page = self
-            .current_user_saved_tracks_manual(Some(Market::FromToken), Some(50), None)
+            .current_user_saved_tracks_manual(
+                Some(rspotify::model::Market::FromToken),
+                Some(50),
+                None,
+            )
             .await?;
         let tracks = self.all_paging_items(first_page, &market_query()).await?;
         Ok(tracks
@@ -766,7 +768,7 @@ impl Client {
         // TODO: this should use `rspotify::current_user_playlists_manual` API instead of `internal_call`
         // See: https://github.com/ramsayleung/rspotify/issues/459
         let first_page = self
-            .http_get::<Page<SimplifiedPlaylist>>(
+            .http_get::<rspotify::model::Page<rspotify::model::SimplifiedPlaylist>>(
                 &format!("{SPOTIFY_API_ENDPOINT}/me/playlists"),
                 &Query::from([("limit", "50")]),
                 false,
@@ -810,7 +812,11 @@ impl Client {
     /// Get all saved albums of the current user
     pub async fn current_user_saved_albums(&self) -> Result<Vec<Album>> {
         let first_page = self
-            .current_user_saved_albums_manual(Some(Market::FromToken), Some(50), None)
+            .current_user_saved_albums_manual(
+                Some(rspotify::model::Market::FromToken),
+                Some(50),
+                None,
+            )
             .await?;
 
         let albums = self.all_paging_items(first_page, &Query::new()).await?;
@@ -835,7 +841,7 @@ impl Client {
                 .artist_albums_manual(
                     artist_id.as_ref(),
                     Some(rspotify::model::AlbumType::Single),
-                    Some(Market::FromToken),
+                    Some(rspotify::model::Market::FromToken),
                     Some(50),
                     None,
                 )
@@ -847,7 +853,7 @@ impl Client {
                 .artist_albums_manual(
                     artist_id.as_ref(),
                     Some(rspotify::model::AlbumType::Album),
-                    Some(Market::FromToken),
+                    Some(rspotify::model::Market::FromToken),
                     Some(50),
                     None,
                 )
@@ -946,7 +952,9 @@ impl Client {
             .filter_map(|t| TrackId::from_id(t.original_gid).ok());
 
         // Retrieve tracks based on IDs
-        let tracks = self.tracks(track_ids, Some(Market::FromToken)).await?;
+        let tracks = self
+            .tracks(track_ids, Some(rspotify::model::Market::FromToken))
+            .await?;
         let tracks = tracks
             .into_iter()
             .filter_map(Track::try_from_full_track)
@@ -1258,7 +1266,7 @@ impl Client {
                     .user_data
                     .saved_shows
                     .retain(|s| s.id != id);
-                self.remove_users_saved_shows([id], Some(Market::FromToken))
+                self.remove_users_saved_shows([id], Some(rspotify::model::Market::FromToken))
                     .await?;
             }
         }
@@ -1269,7 +1277,7 @@ impl Client {
     pub async fn track(&self, track_id: TrackId<'_>) -> Result<Track> {
         Track::try_from_full_track(
             self.spotify
-                .track(track_id, Some(Market::FromToken))
+                .track(track_id, Some(rspotify::model::Market::FromToken))
                 .await?,
         )
         .context("convert FullTrack into Track")
@@ -1286,7 +1294,7 @@ impl Client {
         //     .playlist(playlist_id, None, Some(Market::FromToken))
         //     .await?;
         let playlist = self
-            .http_get::<FullPlaylist>(
+            .http_get::<rspotify::model::FullPlaylist>(
                 &format!("{SPOTIFY_API_ENDPOINT}/playlists/{}", playlist_id.id()),
                 &market_query(),
                 false,
@@ -1318,7 +1326,9 @@ impl Client {
         let album_uri = album_id.uri();
         tracing::info!("Get album context: {}", album_uri);
 
-        let album = self.album(album_id, Some(Market::FromToken)).await?;
+        let album = self
+            .album(album_id, Some(rspotify::model::Market::FromToken))
+            .await?;
         let first_page = album.tracks.clone();
 
         // converts `rspotify::model::FullAlbum` into `state::Album`
@@ -1357,7 +1367,7 @@ impl Client {
             .into();
 
         let top_tracks = self
-            .artist_top_tracks(artist_id.as_ref(), Some(Market::FromToken))
+            .artist_top_tracks(artist_id.as_ref(), Some(rspotify::model::Market::FromToken))
             .await
             .context("get artist's top tracks")?;
         let top_tracks = top_tracks
@@ -1507,7 +1517,9 @@ impl Client {
         Ok(items)
     }
 
-    pub async fn current_playback2(&self) -> Result<Option<CurrentPlaybackContext>> {
+    pub async fn current_playback2(
+        &self,
+    ) -> Result<Option<rspotify::model::CurrentPlaybackContext>> {
         Ok(self.current_playback(None, PLAYBACK_TYPES.into()).await?)
     }
 

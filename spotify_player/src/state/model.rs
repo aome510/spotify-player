@@ -1,6 +1,5 @@
 pub use rspotify::model::{
-    AlbumId, AlbumType, ArtistId, CurrentPlaybackContext, EpisodeId, Id, PlayableId, PlaylistId,
-    ShowId, TrackId, UserId,
+    AlbumId, ArtistId, EpisodeId, Id, PlayableId, PlaylistId, ShowId, TrackId, UserId,
 };
 
 use crate::utils::map_join;
@@ -147,7 +146,7 @@ pub struct Album {
     pub release_date: String,
     pub name: String,
     pub artists: Vec<Artist>,
-    pub album_type: Option<AlbumType>,
+    pub album_type: Option<rspotify::model::AlbumType>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -384,10 +383,10 @@ impl Album {
             album_type: album
                 .album_type
                 .and_then(|t| match t.to_ascii_lowercase().as_str() {
-                    "album" => Some(AlbumType::Album),
-                    "single" => Some(AlbumType::Single),
-                    "appears_on" => Some(AlbumType::AppearsOn),
-                    "compilation" => Some(AlbumType::Compilation),
+                    "album" => Some(rspotify::model::AlbumType::Album),
+                    "single" => Some(rspotify::model::AlbumType::Single),
+                    "appears_on" => Some(rspotify::model::AlbumType::AppearsOn),
+                    "compilation" => Some(rspotify::model::AlbumType::Compilation),
                     _ => None,
                 }),
         })
@@ -648,7 +647,7 @@ impl Playback {
 }
 
 impl PlaybackMetadata {
-    pub fn from_playback(p: &CurrentPlaybackContext) -> Self {
+    pub fn from_playback(p: &rspotify::model::CurrentPlaybackContext) -> Self {
         Self {
             device_name: p.device.name.clone(),
             device_id: p.device.id.clone(),
