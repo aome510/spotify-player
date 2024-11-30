@@ -1,5 +1,6 @@
 use crate::state::{
-    Album, Artist, DataReadGuard, Playlist, PlaylistFolder, PlaylistFolderItem, Track,
+    Album, Artist, DataReadGuard, Episode, Playlist, PlaylistFolder, PlaylistFolderItem, Show,
+    Track,
 };
 use serde::Deserialize;
 
@@ -86,6 +87,7 @@ pub enum Action {
     GoToArtist,
     GoToAlbum,
     GoToRadio,
+    GoToShow,
     AddToLibrary,
     AddToPlaylist,
     AddToQueue,
@@ -95,6 +97,7 @@ pub enum Action {
     DeleteFromPlaylist,
     ShowActionsOnAlbum,
     ShowActionsOnArtist,
+    ShowActionsOnShow,
     ToggleLiked,
     CopyLink,
     Follow,
@@ -107,9 +110,11 @@ pub enum ActionContext {
     Album(Album),
     Artist(Artist),
     Playlist(Playlist),
+    Episode(Episode),
     #[allow(dead_code)]
     // TODO: support actions for playlist folders
     PlaylistFolder(PlaylistFolder),
+    Show(Show),
 }
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Default, Copy)]
@@ -148,6 +153,18 @@ impl From<Playlist> for ActionContext {
     }
 }
 
+impl From<Show> for ActionContext {
+    fn from(v: Show) -> Self {
+        Self::Show(v)
+    }
+}
+
+impl From<Episode> for ActionContext {
+    fn from(v: Episode) -> Self {
+        Self::Episode(v)
+    }
+}
+
 impl From<PlaylistFolderItem> for ActionContext {
     fn from(value: PlaylistFolderItem) -> Self {
         match value {
@@ -164,8 +181,10 @@ impl ActionContext {
             Self::Album(album) => construct_album_actions(album, data),
             Self::Artist(artist) => construct_artist_actions(artist, data),
             Self::Playlist(playlist) => construct_playlist_actions(playlist, data),
+            Self::Episode(episode) => construct_episode_actions(episode, data),
             // TODO: support actions for playlist folders
             Self::PlaylistFolder(_) => vec![],
+            Self::Show(show) => construct_show_actions(show, data),
         }
     }
 }
@@ -243,8 +262,29 @@ pub fn construct_playlist_actions(playlist: &Playlist, data: &DataReadGuard) -> 
     actions
 }
 
+/// constructs a list of actions on a show
+pub fn construct_show_actions(show: &Show, data: &DataReadGuard) -> Vec<Action> {
+    let mut actions = vec![Action::CopyLink];
+    if data.user_data.saved_shows.iter().any(|s| s.id == show.id) {
+        actions.push(Action::DeleteFromLibrary);
+    } else {
+        actions.push(Action::AddToLibrary);
+    }
+    actions
+}
+
+/// constructs a list of actions on an episode
+pub fn construct_episode_actions(episode: &Episode, _data: &DataReadGuard) -> Vec<Action> {
+    let mut actions = vec![Action::CopyLink, Action::AddToPlaylist, Action::AddToQueue];
+    if episode.show.is_some() {
+        actions.push(Action::ShowActionsOnShow);
+        actions.push(Action::GoToShow);
+    }
+    actions
+}
+
 impl Command {
-    pub fn desc(&self) -> &'static str {
+    pub fn desc(self) -> &'static str {
         match self {
             Self::None => "do nothing",
             Self::NextTrack => "next track",

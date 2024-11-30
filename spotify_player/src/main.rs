@@ -31,6 +31,7 @@ async fn init_spotify(
     client_pub.send(client::ClientRequest::GetUserFollowedArtists)?;
     client_pub.send(client::ClientRequest::GetUserSavedAlbums)?;
     client_pub.send(client::ClientRequest::GetUserSavedTracks)?;
+    client_pub.send(client::ClientRequest::GetUserSavedShows)?;
 
     Ok(())
 }
@@ -141,7 +142,7 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
                 Err(err) => {
                     tracing::warn!(
                         "Failed to create a client socket for handling CLI commands: {err:#}"
-                    )
+                    );
                 }
             }
         }
@@ -172,14 +173,14 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
             let client_pub = client_pub.clone();
             let state = state.clone();
             move || {
-                event::start_event_handler(state, client_pub);
+                event::start_event_handler(&state, &client_pub);
             }
         });
 
         // application UI task
         tokio::task::spawn_blocking({
             let state = state.clone();
-            move || ui::run(state)
+            move || ui::run(&state)
         });
     }
 
@@ -189,7 +190,7 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
         tokio::task::spawn_blocking({
             let state = state.clone();
             move || {
-                if let Err(err) = media_control::start_event_watcher(state, client_pub) {
+                if let Err(err) = media_control::start_event_watcher(&state, client_pub) {
                     tracing::error!(
                         "Failed to start the application's media control event watcher: err={err:#?}"
                     );

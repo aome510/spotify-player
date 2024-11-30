@@ -6,7 +6,15 @@ use crate::{
     },
     config,
     key::{Key, KeySequence},
-    state::*,
+    state::{
+        rspotify_model, ActionListItem, Album, AlbumId, Artist, ArtistFocusState, ArtistId,
+        ArtistPopupAction, BrowsePageUIState, Context, ContextId, ContextPageType,
+        ContextPageUIState, DataReadGuard, Focusable, Id, Item, ItemId, LibraryFocusState,
+        LibraryPageUIState, PageState, PageType, PlayableId, Playback, PlaylistCreateCurrentField,
+        PlaylistFolderItem, PlaylistId, PlaylistPopupAction, PopupState, SearchFocusState,
+        SearchPageUIState, SharedState, ShowId, Track, TrackId, TrackOrder, UIStateGuard,
+        USER_LIKED_TRACKS_ID, USER_RECENTLY_PLAYED_TRACKS_ID, USER_TOP_TRACKS_ID,
+    },
     ui::{single_line_input::LineInput, Orientation},
     utils::parse_uri,
 };
@@ -24,11 +32,11 @@ mod popup;
 mod window;
 
 /// Start a terminal event handler (key pressed, mouse clicked, etc)
-pub fn start_event_handler(state: SharedState, client_pub: flume::Sender<ClientRequest>) {
+pub fn start_event_handler(state: &SharedState, client_pub: &flume::Sender<ClientRequest>) {
     while let Ok(event) = crossterm::event::read() {
         let _enter = tracing::info_span!("terminal_event", event = ?event).entered();
         if let Err(err) = match event {
-            crossterm::event::Event::Mouse(event) => handle_mouse_event(event, &client_pub, &state),
+            crossterm::event::Event::Mouse(event) => handle_mouse_event(event, client_pub, state),
             crossterm::event::Event::Resize(columns, rows) => {
                 let mut state = state.ui.lock();
                 state.orientation = Orientation::from_size(columns, rows);
@@ -40,7 +48,7 @@ pub fn start_event_handler(state: SharedState, client_pub: flume::Sender<ClientR
                     // context:
                     // - https://github.com/crossterm-rs/crossterm/issues/752
                     // - https://github.com/aome510/spotify-player/issues/136
-                    handle_key_event(event, &client_pub, &state)
+                    handle_key_event(event, client_pub, state)
                 } else {
                     Ok(())
                 }
@@ -66,14 +74,15 @@ fn handle_mouse_event(
         if event.row == rect.y {
             // calculate the seek position (in ms) based on the mouse click position,
             // the progress bar's width and the track's duration (in ms)
-            let duration = state
-                .player
-                .read()
-                .current_playing_track()
-                .map(|t| t.duration);
+            let player = state.player.read();
+            let duration = match player.currently_playing() {
+                Some(rspotify_model::PlayableItem::Track(track)) => Some(track.duration),
+                Some(rspotify_model::PlayableItem::Episode(episode)) => Some(episode.duration),
+                None => None,
+            };
             if let Some(duration) = duration {
                 let position_ms =
-                    (duration.num_milliseconds()) * (event.column as i64) / (rect.width as i64);
+                    (duration.num_milliseconds()) * i64::from(event.column) / i64::from(rect.width);
                 client_pub.send(ClientRequest::Player(PlayerRequest::SeekTrack(
                     chrono::Duration::try_milliseconds(position_ms).unwrap(),
                 )))?;
@@ -112,7 +121,9 @@ fn handle_key_event(
     };
 
     // if the key sequence is not handled, let the global handler handle it
-    let handled = if !handled {
+    let handled = if handled {
+        true
+    } else {
         match keymap_config.find_command_or_action_from_key_sequence(&key_sequence) {
             Some(CommandOrAction::Action(action, target)) => {
                 handle_global_action(action, target, client_pub, state, &mut ui)?
@@ -122,8 +133,6 @@ fn handle_key_event(
             }
             None => false,
         }
-    } else {
-        true
     };
 
     // if handled, clear the key sequence
@@ -164,7 +173,7 @@ pub fn handle_action_in_context(
                 Ok(true)
             }
             Action::AddToQueue => {
-                client_pub.send(ClientRequest::AddTrackToQueue(track.id))?;
+                client_pub.send(ClientRequest::AddPlayableToQueue(track.id.into()))?;
                 ui.popup = None;
                 Ok(true)
             }
@@ -351,6 +360,78 @@ pub fn handle_action_in_context(
             }
             _ => Ok(false),
         },
+        ActionContext::Show(show) => match action {
+            Action::CopyLink => {
+                let show_url = format!("https://open.spotify.com/show/{}", show.id.id());
+                execute_copy_command(show_url)?;
+                ui.popup = None;
+                Ok(true)
+            }
+            Action::AddToLibrary => {
+                client_pub.send(ClientRequest::AddToLibrary(Item::Show(show)))?;
+                ui.popup = None;
+                Ok(true)
+            }
+            Action::DeleteFromLibrary => {
+                client_pub.send(ClientRequest::DeleteFromLibrary(ItemId::Show(show.id)))?;
+                ui.popup = None;
+                Ok(true)
+            }
+            _ => Ok(false),
+        },
+        ActionContext::Episode(episode) => match action {
+            Action::GoToShow => {
+                if let Some(show) = episode.show {
+                    let context_id = ContextId::Show(
+                        ShowId::from_uri(&parse_uri(&show.id.uri()))?.into_static(),
+                    );
+                    ui.new_page(PageState::Context {
+                        id: None,
+                        context_page_type: ContextPageType::Browsing(context_id),
+                        state: None,
+                    });
+                    return Ok(true);
+                }
+                Ok(false)
+            }
+            Action::AddToQueue => {
+                client_pub.send(ClientRequest::AddPlayableToQueue(episode.id.into()))?;
+                ui.popup = None;
+                Ok(true)
+            }
+            Action::CopyLink => {
+                let episode_url = format!("https://open.spotify.com/episode/{}", episode.id.id());
+                execute_copy_command(episode_url)?;
+                ui.popup = None;
+                Ok(true)
+            }
+            Action::AddToPlaylist => {
+                client_pub.send(ClientRequest::GetUserPlaylists)?;
+                ui.popup = Some(PopupState::UserPlaylistList(
+                    PlaylistPopupAction::AddEpisode {
+                        folder_id: 0,
+                        episode_id: episode.id,
+                    },
+                    ListState::default(),
+                ));
+                Ok(true)
+            }
+            Action::ShowActionsOnShow => {
+                if let Some(show) = episode.show {
+                    let context = ActionContext::Show(show.clone());
+                    ui.popup = Some(PopupState::ActionList(
+                        Box::new(ActionListItem::Show(
+                            show,
+                            context.get_available_actions(data),
+                        )),
+                        ListState::default(),
+                    ));
+                    return Ok(true);
+                }
+                Ok(false)
+            }
+            _ => Ok(false),
+        },
         // TODO: support actions for playlist folders
         ActionContext::PlaylistFolder(_) => Ok(false),
     }
@@ -406,15 +487,28 @@ fn handle_global_action(
         let player = state.player.read();
         let data = state.data.read();
 
-        if let Some(currently_playing) = player.current_playing_track() {
-            if let Some(track) = Track::try_from_full_track(currently_playing.clone()) {
-                return handle_action_in_context(
-                    action,
-                    ActionContext::Track(track),
-                    client_pub,
-                    &data,
-                    ui,
-                );
+        if let Some(currently_playing) = player.currently_playing() {
+            match currently_playing {
+                rspotify_model::PlayableItem::Track(track) => {
+                    if let Some(track) = Track::try_from_full_track(track.clone()) {
+                        return handle_action_in_context(
+                            action,
+                            ActionContext::Track(track),
+                            client_pub,
+                            &data,
+                            ui,
+                        );
+                    }
+                }
+                rspotify_model::PlayableItem::Episode(episode) => {
+                    return handle_action_in_context(
+                        action,
+                        ActionContext::Episode(episode.clone().into()),
+                        client_pub,
+                        &data,
+                        ui,
+                    );
+                }
             }
         }
     };
@@ -477,7 +571,7 @@ fn handle_global_command(
             if let Some(progress) = state.player.read().playback_progress() {
                 let duration = config::get_config().app_config.seek_duration_secs;
                 client_pub.send(ClientRequest::Player(PlayerRequest::SeekTrack(
-                    progress + chrono::Duration::try_seconds(duration as i64).unwrap(),
+                    progress + chrono::Duration::try_seconds(i64::from(duration)).unwrap(),
                 )))?;
             }
         }
@@ -487,7 +581,7 @@ fn handle_global_command(
                 client_pub.send(ClientRequest::Player(PlayerRequest::SeekTrack(
                     std::cmp::max(
                         chrono::Duration::zero(),
-                        progress - chrono::Duration::try_seconds(duration as i64).unwrap(),
+                        progress - chrono::Duration::try_seconds(i64::from(duration)).unwrap(),
                     ),
                 )))?;
             }
@@ -499,14 +593,27 @@ fn handle_global_command(
             client_pub.send(ClientRequest::GetCurrentPlayback)?;
         }
         Command::ShowActionsOnCurrentTrack => {
-            if let Some(track) = state.player.read().current_playing_track() {
-                if let Some(track) = Track::try_from_full_track(track.clone()) {
-                    let data = state.data.read();
-                    let actions = command::construct_track_actions(&track, &data);
-                    ui.popup = Some(PopupState::ActionList(
-                        Box::new(ActionListItem::Track(track, actions)),
-                        ListState::default(),
-                    ));
+            if let Some(currently_playing) = state.player.read().currently_playing() {
+                match currently_playing {
+                    rspotify_model::PlayableItem::Track(track) => {
+                        if let Some(track) = Track::try_from_full_track(track.clone()) {
+                            let data = state.data.read();
+                            let actions = command::construct_track_actions(&track, &data);
+                            ui.popup = Some(PopupState::ActionList(
+                                Box::new(ActionListItem::Track(track, actions)),
+                                ListState::default(),
+                            ));
+                        }
+                    }
+                    rspotify_model::PlayableItem::Episode(episode) => {
+                        let episode = episode.clone().into();
+                        let data = state.data.read();
+                        let actions = command::construct_episode_actions(&episode, &data);
+                        ui.popup = Some(PopupState::ActionList(
+                            Box::new(ActionListItem::Episode(episode, actions)),
+                            ListState::default(),
+                        ));
+                    }
                 }
             }
         }
@@ -601,7 +708,7 @@ fn handle_global_command(
                     "track" => {
                         let id = TrackId::from_id(id)?.into_static();
                         client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
-                            Playback::URIs(vec![id], None),
+                            Playback::URIs(vec![id.into()], None),
                             None,
                         )))?;
                     }
@@ -638,7 +745,9 @@ fn handle_global_command(
         }
         #[cfg(feature = "lyric-finder")]
         Command::LyricPage => {
-            if let Some(track) = state.player.read().current_playing_track() {
+            if let Some(rspotify_model::PlayableItem::Track(track)) =
+                state.player.read().currently_playing()
+            {
                 let artists = map_join(&track.artists, |a| &a.name, ", ");
                 ui.new_page(PageState::Lyric {
                     track: track.name.clone(),
@@ -673,12 +782,12 @@ fn handle_global_command(
         }
         Command::FocusNextWindow => {
             if !ui.has_focused_popup() {
-                ui.current_page_mut().next()
+                ui.current_page_mut().next();
             }
         }
         Command::FocusPreviousWindow => {
             if !ui.has_focused_popup() {
-                ui.current_page_mut().previous()
+                ui.current_page_mut().previous();
             }
         }
         Command::Queue => {
@@ -693,13 +802,13 @@ fn handle_global_command(
             });
         }
         Command::JumpToCurrentTrackInContext => {
-            let track_id = match state
-                .player
-                .read()
-                .current_playing_track()
-                .and_then(|track| track.id.clone())
-            {
-                Some(id) => id,
+            let track_id = match state.player.read().currently_playing() {
+                Some(rspotify_model::PlayableItem::Track(track)) => {
+                    PlayableId::Track(track.id.clone().expect("all non-local tracks have ids"))
+                }
+                Some(rspotify_model::PlayableItem::Episode(episode)) => {
+                    PlayableId::Episode(episode.id.clone())
+                }
                 None => return Ok(false),
             };
 
@@ -712,7 +821,7 @@ fn handle_global_command(
                     .data
                     .read()
                     .context_tracks(context_id)
-                    .and_then(|tracks| tracks.iter().position(|t| t.id == track_id));
+                    .and_then(|tracks| tracks.iter().position(|t| t.id.uri() == track_id.uri()));
 
                 if let Some(p) = context_track_pos {
                     ui.current_page_mut().select(p);

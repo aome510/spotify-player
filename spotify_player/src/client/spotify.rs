@@ -23,6 +23,7 @@ pub struct Spotify {
     pub(crate) session: Arc<tokio::sync::Mutex<Option<Session>>>,
 }
 
+#[allow(clippy::missing_fields_in_debug)] // Seems like not all fields are necessary in debug
 impl fmt::Debug for Spotify {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Spotify")

@@ -396,8 +396,8 @@ impl<'de> serde::de::Deserialize<'de> for StyleColor {
 }
 
 impl StyleColor {
-    pub fn color(&self, palette: &Palette) -> style::Color {
-        match *self {
+    pub fn color(self, palette: &Palette) -> style::Color {
+        match self {
             Self::Black => palette.black.color,
             Self::Blue => palette.blue.color,
             Self::Cyan => palette.cyan.color,

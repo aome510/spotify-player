@@ -1,11 +1,15 @@
-use crate::{config, key, ui};
+use crate::{
+    config::{self, Theme},
+    key,
+    ui::{self, Orientation},
+};
 
 pub type UIStateGuard<'a> = parking_lot::MutexGuard<'a, UIState>;
 
 mod page;
 mod popup;
 
-use super::*;
+use super::TracksId;
 
 pub use page::*;
 pub use popup::*;
@@ -50,7 +54,7 @@ impl UIState {
     pub fn new_search_popup(&mut self) {
         self.current_page_mut().select(0);
         self.popup = Some(PopupState::Search {
-            query: "".to_owned(),
+            query: String::new(),
         });
     }
 
@@ -112,6 +116,7 @@ impl UIState {
 
 #[cfg(feature = "fzf")]
 use fuzzy_matcher::skim::SkimMatcherV2;
+use tui::layout::Rect;
 
 #[cfg(feature = "fzf")]
 fn fuzzy_search_items<'a, T: std::fmt::Display>(items: &'a [T], query: &str) -> Vec<&'a T> {
@@ -133,13 +138,13 @@ impl Default for UIState {
     fn default() -> Self {
         Self {
             is_running: true,
-            theme: Default::default(),
+            theme: Theme::default(),
             input_key_sequence: key::KeySequence { keys: vec![] },
             orientation: match crossterm::terminal::size() {
                 Ok((columns, rows)) => ui::Orientation::from_size(columns, rows),
                 Err(err) => {
                     tracing::warn!("Unable to get terminal size, error: {err:#}");
-                    Default::default()
+                    Orientation::default()
                 }
             },
 
@@ -148,10 +153,10 @@ impl Default for UIState {
             }],
             popup: None,
 
-            playback_progress_bar_rect: Default::default(),
+            playback_progress_bar_rect: Rect::default(),
 
             #[cfg(feature = "image")]
-            last_cover_image_render_info: Default::default(),
+            last_cover_image_render_info: ImageRenderInfo::default(),
         }
     }
 }

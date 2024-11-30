@@ -2,7 +2,10 @@ use anyhow::Context;
 use rspotify::model::PlayableItem;
 use tracing::Instrument;
 
-use crate::{config, state::*};
+use crate::{
+    config,
+    state::{ContextId, ContextPageType, ContextPageUIState, PageState, PlayableId, SharedState},
+};
 
 #[cfg(feature = "lyric-finder")]
 use crate::utils::map_join;
@@ -46,25 +49,36 @@ fn handle_playback_change_event(
     handler_state: &mut PlayerEventHandlerState,
 ) -> anyhow::Result<()> {
     let player = state.player.read();
-    let (playback, track) = match (
+    let (playback, id, name, duration) = match (
         player.buffered_playback.as_ref(),
-        player.current_playing_track(),
+        player.currently_playing(),
     ) {
-        (Some(playback), Some(track)) => (playback, track),
+        (Some(playback), Some(PlayableItem::Track(track))) => (
+            playback,
+            PlayableId::Track(track.id.clone().expect("null track_id")),
+            &track.name,
+            track.duration,
+        ),
+        (Some(playback), Some(PlayableItem::Episode(episode))) => (
+            playback,
+            PlayableId::Episode(episode.id.clone()),
+            &episode.name,
+            episode.duration,
+        ),
         _ => return Ok(()),
     };
 
     if let Some(progress) = player.playback_progress() {
         // update the playback when the current track ends
-        if progress >= track.duration && playback.is_playing {
+        if progress >= duration && playback.is_playing {
             client_pub.send(ClientRequest::GetCurrentPlayback)?;
         }
     }
 
     if let Some(queue) = player.queue.as_ref() {
         // queue needs to be updated if its playing track is different from actual playback's playing track
-        if let Some(PlayableItem::Track(queue_track)) = queue.currently_playing.as_ref() {
-            if queue_track.id != track.id {
+        if let Some(queue_track) = queue.currently_playing.as_ref() {
+            if queue_track.id().expect("null track_id") != id {
                 client_pub.send(ClientRequest::GetCurrentUserQueue)?;
             }
         }
@@ -77,16 +91,16 @@ fn handle_playback_change_event(
         if let Some(progress) = player.playback_progress() {
             // re-queue the current track if it's about to end while
             // ensuring that only one `AddTrackToQueue` request is made
-            if progress + chrono::TimeDelta::seconds(5) >= track.duration
+            if progress + chrono::TimeDelta::seconds(5) >= duration
                 && playback.is_playing
                 && handler_state.add_track_to_queue_req_timer.elapsed()
                     > std::time::Duration::from_secs(10)
             {
                 tracing::info!(
                     "fake track repeat mode is enabled, add the current track ({}) to queue",
-                    track.name
+                    name
                 );
-                client_pub.send(ClientRequest::AddTrackToQueue(track.id.clone().unwrap()))?;
+                client_pub.send(ClientRequest::AddPlayableToQueue(id))?;
                 handler_state.add_track_to_queue_req_timer = std::time::Instant::now();
             }
         }
@@ -124,6 +138,7 @@ fn handle_page_change_event(
                             ContextId::Artist(_) => ContextPageUIState::new_artist(),
                             ContextId::Playlist(_) => ContextPageUIState::new_playlist(),
                             ContextId::Tracks(_) => ContextPageUIState::new_tracks(),
+                            ContextId::Show(_) => ContextPageUIState::new_show(),
                         });
                     }
                     None => {
@@ -148,7 +163,9 @@ fn handle_page_change_event(
             artists,
             scroll_offset,
         } => {
-            if let Some(current_track) = state.player.read().current_playing_track() {
+            if let Some(rspotify::model::PlayableItem::Track(current_track)) =
+                state.player.read().currently_playing()
+            {
                 if current_track.name != *track {
                     tracing::info!("Current playing track \"{}\" is different from the track \"{track}\" shown up in the lyric page. Updating the track and fetching its lyric...", current_track.name);
                     track.clone_from(&current_track.name);

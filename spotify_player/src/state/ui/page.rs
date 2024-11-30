@@ -1,4 +1,7 @@
-use crate::{state::model::*, ui::single_line_input::LineInput};
+use crate::{
+    state::model::{Category, ContextId},
+    ui::single_line_input::LineInput,
+};
 use tui::widgets::{ListState, TableState};
 
 #[derive(Clone, Debug)]
@@ -60,6 +63,8 @@ pub struct SearchPageUIState {
     pub album_list: ListState,
     pub artist_list: ListState,
     pub playlist_list: ListState,
+    pub show_list: ListState,
+    pub episode_list: ListState,
     pub focus: SearchFocusState,
 }
 
@@ -86,6 +91,9 @@ pub enum ContextPageUIState {
     Tracks {
         track_table: TableState,
     },
+    Show {
+        episode_table: TableState,
+    },
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -109,6 +117,8 @@ pub enum SearchFocusState {
     Albums,
     Artists,
     Playlists,
+    Shows,
+    Episodes,
 }
 
 #[derive(Clone, Debug)]
@@ -146,7 +156,7 @@ impl PageState {
     /// Select a `id`-th item in the currently focused window of the page.
     pub fn select(&mut self, id: usize) {
         if let Some(mut state) = self.focus_window_state_mut() {
-            state.select(id)
+            state.select(id);
         }
     }
 
@@ -182,6 +192,8 @@ impl PageState {
                         album_list,
                         artist_list,
                         playlist_list,
+                        show_list,
+                        episode_list,
                         focus,
                     },
                 ..
@@ -191,12 +203,12 @@ impl PageState {
                 SearchFocusState::Albums => Some(MutableWindowState::List(album_list)),
                 SearchFocusState::Artists => Some(MutableWindowState::List(artist_list)),
                 SearchFocusState::Playlists => Some(MutableWindowState::List(playlist_list)),
+                SearchFocusState::Shows => Some(MutableWindowState::List(show_list)),
+                SearchFocusState::Episodes => Some(MutableWindowState::List(episode_list)),
             },
             Self::Context { state, .. } => state.as_mut().map(|state| match state {
-                ContextPageUIState::Tracks { track_table } => {
-                    MutableWindowState::Table(track_table)
-                }
-                ContextPageUIState::Playlist { track_table } => {
+                ContextPageUIState::Tracks { track_table }
+                | ContextPageUIState::Playlist { track_table } => {
                     MutableWindowState::Table(track_table)
                 }
                 ContextPageUIState::Album { track_table } => MutableWindowState::Table(track_table),
@@ -212,6 +224,9 @@ impl PageState {
                         MutableWindowState::List(related_artist_list)
                     }
                 },
+                ContextPageUIState::Show { episode_table } => {
+                    MutableWindowState::Table(episode_table)
+                }
             }),
             Self::Browse { state } => match state {
                 BrowsePageUIState::CategoryList { state } => Some(MutableWindowState::List(state)),
@@ -247,6 +262,8 @@ impl SearchPageUIState {
             album_list: ListState::default(),
             artist_list: ListState::default(),
             playlist_list: ListState::default(),
+            show_list: ListState::default(),
+            episode_list: ListState::default(),
             focus: SearchFocusState::Input,
         }
     }
@@ -260,7 +277,8 @@ impl ContextPageType {
                 ContextId::Playlist(_) => String::from("Playlist"),
                 ContextId::Album(_) => String::from("Album"),
                 ContextId::Artist(_) => String::from("Artist"),
-                ContextId::Tracks(id) => id.kind.to_owned(),
+                ContextId::Tracks(id) => id.kind.clone(),
+                ContextId::Show(_) => String::from("Show"),
             },
         }
     }
@@ -293,9 +311,15 @@ impl ContextPageUIState {
             track_table: TableState::default(),
         }
     }
+
+    pub fn new_show() -> Self {
+        Self::Show {
+            episode_table: TableState::default(),
+        }
+    }
 }
 
-impl<'a> MutableWindowState<'a> {
+impl MutableWindowState<'_> {
     pub fn select(&mut self, id: usize) {
         match self {
             Self::List(state) => state.select(Some(id)),
@@ -340,7 +364,7 @@ impl Focusable for PageState {
 
         // reset the list/table state of the focus window
         if let Some(mut state) = self.focus_window_state_mut() {
-            state.select(0)
+            state.select(0);
         }
     }
 
@@ -363,7 +387,7 @@ impl Focusable for PageState {
 
         // reset the list/table state of the focus window
         if let Some(mut state) = self.focus_window_state_mut() {
-            state.select(0)
+            state.select(0);
         }
     }
 }
@@ -410,5 +434,7 @@ impl_focusable!(
     [Tracks, Albums],
     [Albums, Artists],
     [Artists, Playlists],
-    [Playlists, Input]
+    [Playlists, Shows],
+    [Shows, Episodes],
+    [Episodes, Input]
 );

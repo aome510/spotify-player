@@ -30,12 +30,11 @@ pub fn handle_key_sequence_for_popup(
         _ => {}
     }
 
-    let command = match config::get_config()
+    let Some(command) = config::get_config()
         .keymap_config
         .find_command_from_key_sequence(key_sequence)
-    {
-        Some(command) => command,
-        None => return Ok(false),
+    else {
+        return Ok(false);
     };
 
     match popup {
@@ -55,9 +54,8 @@ pub fn handle_key_sequence_for_popup(
                 n_items,
                 |_, _| {},
                 |ui: &mut UIStateGuard, id: usize| -> Result<()> {
-                    let (action, artists) = match ui.popup {
-                        Some(PopupState::ArtistList(action, ref artists, _)) => (action, artists),
-                        _ => return Ok(()),
+                    let Some(PopupState::ArtistList(action, artists, _)) = &ui.popup else {
+                        return Ok(());
                     };
 
                     match action {
@@ -99,7 +97,7 @@ pub fn handle_key_sequence_for_popup(
                     items.len(),
                     |_, _| {},
                     |ui: &mut UIStateGuard, id: usize| -> Result<()> {
-                        match items[id] {
+                        match items.get(id).expect("invalid index") {
                             PlaylistFolderItem::Folder(f) => {
                                 ui.popup = Some(PopupState::UserPlaylistList(
                                     PlaylistPopupAction::Browse {
@@ -141,7 +139,7 @@ pub fn handle_key_sequence_for_popup(
                     items.len(),
                     |_, _| {},
                     |ui: &mut UIStateGuard, id: usize| -> Result<()> {
-                        ui.popup = match items[id] {
+                        ui.popup = match items.get(id).expect("invalid index") {
                             PlaylistFolderItem::Folder(f) => Some(PopupState::UserPlaylistList(
                                 PlaylistPopupAction::AddTrack {
                                     folder_id: f.target_id,
@@ -150,9 +148,46 @@ pub fn handle_key_sequence_for_popup(
                                 ListState::default(),
                             )),
                             PlaylistFolderItem::Playlist(p) => {
-                                client_pub.send(ClientRequest::AddTrackToPlaylist(
+                                client_pub.send(ClientRequest::AddPlayableToPlaylist(
                                     p.id.clone(),
-                                    track_id,
+                                    track_id.into(),
+                                ))?;
+                                None
+                            }
+                        };
+                        Ok(())
+                    },
+                    |ui: &mut UIStateGuard| {
+                        ui.popup = None;
+                    },
+                )
+            }
+            PlaylistPopupAction::AddEpisode {
+                folder_id,
+                episode_id,
+            } => {
+                let episode_id = episode_id.clone();
+                let data = state.data.read();
+                let items = data.user_data.modifiable_playlist_items(Some(*folder_id));
+
+                handle_command_for_list_popup(
+                    command,
+                    ui,
+                    items.len(),
+                    |_, _| {},
+                    |ui: &mut UIStateGuard, id: usize| -> Result<()> {
+                        ui.popup = match items.get(id).expect("invalid index") {
+                            PlaylistFolderItem::Folder(f) => Some(PopupState::UserPlaylistList(
+                                PlaylistPopupAction::AddEpisode {
+                                    folder_id: f.target_id,
+                                    episode_id,
+                                },
+                                ListState::default(),
+                            )),
+                            PlaylistFolderItem::Playlist(p) => {
+                                client_pub.send(ClientRequest::AddPlayableToPlaylist(
+                                    p.id.clone(),
+                                    episode_id.into(),
                                 ))?;
                                 None
                             }
@@ -178,7 +213,7 @@ pub fn handle_key_sequence_for_popup(
             handle_command_for_context_browsing_list_popup(
                 command,
                 ui,
-                artist_uris,
+                &artist_uris,
                 rspotify_model::Type::Artist,
             )
         }
@@ -195,7 +230,7 @@ pub fn handle_key_sequence_for_popup(
             handle_command_for_context_browsing_list_popup(
                 command,
                 ui,
-                album_uris,
+                &album_uris,
                 rspotify_model::Type::Album,
             )
         }
@@ -234,11 +269,7 @@ pub fn handle_key_sequence_for_popup(
                 player.devices.len(),
                 |_, _| {},
                 |ui: &mut UIStateGuard, id: usize| -> Result<()> {
-                    let is_playing = player
-                        .playback
-                        .as_ref()
-                        .map(|p| p.is_playing)
-                        .unwrap_or(false);
+                    let is_playing = player.playback.as_ref().is_some_and(|p| p.is_playing);
                     client_pub.send(ClientRequest::Player(PlayerRequest::TransferPlayback(
                         player.devices[id].id.clone(),
                         is_playing,
@@ -254,6 +285,7 @@ pub fn handle_key_sequence_for_popup(
     }
 }
 
+#[allow(clippy::manual_let_else)] // we need this to get mutable reference to the popup state
 fn handle_key_sequence_for_create_playlist_popup(
     key_sequence: &KeySequence,
     client_pub: &flume::Sender<ClientRequest>,
@@ -279,8 +311,7 @@ fn handle_key_sequence_for_create_playlist_popup(
                 ui.popup = None;
                 return Ok(true);
             }
-            Key::None(crossterm::event::KeyCode::Tab)
-            | Key::None(crossterm::event::KeyCode::BackTab) => {
+            Key::None(crossterm::event::KeyCode::Tab | crossterm::event::KeyCode::BackTab) => {
                 *current_field = match &current_field {
                     PlaylistCreateCurrentField::Name => PlaylistCreateCurrentField::Desc,
                     PlaylistCreateCurrentField::Desc => PlaylistCreateCurrentField::Name,
@@ -301,6 +332,7 @@ fn handle_key_sequence_for_create_playlist_popup(
     Ok(false)
 }
 
+#[allow(clippy::manual_let_else)] // we need this to get mutable reference to the popup state
 fn handle_key_sequence_for_search_popup(
     key_sequence: &KeySequence,
     client_pub: &flume::Sender<ClientRequest>,
@@ -321,12 +353,12 @@ fn handle_key_sequence_for_search_popup(
                     return Ok(true);
                 }
                 crossterm::event::KeyCode::Backspace => {
-                    if !query.is_empty() {
-                        query.pop().unwrap();
-                        ui.current_page_mut().select(0);
-                    } else {
+                    if query.is_empty() {
                         // close search popup when user presses backspace on empty search
                         ui.popup = None;
+                    } else {
+                        query.pop().unwrap();
+                        ui.current_page_mut().select(0);
                     }
                     return Ok(true);
                 }
@@ -349,7 +381,7 @@ fn handle_key_sequence_for_search_popup(
 fn handle_command_for_context_browsing_list_popup(
     command: Command,
     ui: &mut UIStateGuard,
-    uris: Vec<String>,
+    uris: &[String],
     context_type: rspotify_model::Type,
 ) -> Result<bool> {
     handle_command_for_list_popup(
@@ -400,9 +432,9 @@ fn handle_command_for_list_popup(
     ui: &mut UIStateGuard,
     n_items: usize,
     on_select_func: impl FnOnce(&mut UIStateGuard, usize),
-    on_choose_func: impl FnOnce(&mut UIStateGuard, usize) -> Result<()>,
+    on_choose_func: impl FnOnce(&mut UIStateGuard, usize) -> anyhow::Result<()>,
     on_close_func: impl FnOnce(&mut UIStateGuard),
-) -> Result<bool> {
+) -> anyhow::Result<bool> {
     let popup = ui.popup.as_mut().with_context(|| "expect a popup")?;
     let current_id = popup.list_selected().unwrap_or_default();
 
@@ -439,24 +471,21 @@ fn handle_key_sequence_for_action_list_popup(
     state: &SharedState,
     ui: &mut UIStateGuard,
 ) -> Result<bool> {
-    let command = match config::get_config()
+    let Some(command) = config::get_config()
         .keymap_config
         .find_command_from_key_sequence(key_sequence)
-    {
-        Some(command) => command,
-        None => {
-            // handle selecting an action by pressing a key from '0' to '9'
-            if let Some(Key::None(crossterm::event::KeyCode::Char(c))) = key_sequence.keys.first() {
-                if let Some(id) = c.to_digit(10) {
-                    let id = id as usize;
-                    if id < n_actions {
-                        handle_item_action(id, client_pub, state, ui)?;
-                        return Ok(true);
-                    }
+    else {
+        // handle selecting an action by pressing a key from '0' to '9'
+        if let Some(Key::None(crossterm::event::KeyCode::Char(c))) = key_sequence.keys.first() {
+            if let Some(id) = c.to_digit(10) {
+                let id = id as usize;
+                if id < n_actions {
+                    handle_item_action(id, client_pub, state, ui)?;
+                    return Ok(true);
                 }
             }
-            return Ok(false);
         }
+        return Ok(false);
     };
 
     handle_command_for_list_popup(
@@ -500,6 +529,12 @@ pub fn handle_item_action(
         }
         ActionListItem::Playlist(playlist, actions) => {
             handle_action_in_context(actions[n], playlist.into(), client_pub, &data, ui)
+        }
+        ActionListItem::Show(show, actions) => {
+            handle_action_in_context(actions[n], show.into(), client_pub, &data, ui)
+        }
+        ActionListItem::Episode(episode, actions) => {
+            handle_action_in_context(actions[n], episode.into(), client_pub, &data, ui)
         }
     }
 }

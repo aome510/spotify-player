@@ -59,7 +59,7 @@ fn handle_action_for_library_page(
             action,
             ui.search_filtered_items(&data.user_data.folder_playlists_items(folder_id))
                 .into_iter()
-                .cloned()
+                .copied()
                 .collect(),
             &data,
             ui,
@@ -88,43 +88,38 @@ fn handle_command_for_library_page(
     ui: &mut UIStateGuard,
     state: &SharedState,
 ) -> Result<bool> {
-    match command {
-        Command::Search => {
-            ui.new_search_popup();
-            Ok(true)
-        }
-        _ => {
-            let data = state.data.read();
-            let (focus_state, folder_id) = match ui.current_page() {
-                PageState::Library { state } => (state.focus, state.playlist_folder_id),
-                _ => anyhow::bail!("expect a library page state"),
-            };
-            match focus_state {
-                LibraryFocusState::Playlists => window::handle_command_for_playlist_list_window(
-                    command,
-                    ui.search_filtered_items(&data.user_data.folder_playlists_items(folder_id))
-                        .into_iter()
-                        .cloned()
-                        .collect(),
-                    &data,
-                    ui,
-                ),
-                LibraryFocusState::SavedAlbums => window::handle_command_for_album_list_window(
-                    command,
-                    ui.search_filtered_items(&data.user_data.saved_albums),
-                    &data,
-                    ui,
-                    client_pub,
-                ),
-                LibraryFocusState::FollowedArtists => {
-                    window::handle_command_for_artist_list_window(
-                        command,
-                        ui.search_filtered_items(&data.user_data.followed_artists),
-                        &data,
-                        ui,
-                    )
-                }
-            }
+    if command == Command::Search {
+        ui.new_search_popup();
+        Ok(true)
+    } else {
+        let data = state.data.read();
+        let (focus_state, folder_id) = match ui.current_page() {
+            PageState::Library { state } => (state.focus, state.playlist_folder_id),
+            _ => anyhow::bail!("expect a library page state"),
+        };
+        match focus_state {
+            LibraryFocusState::Playlists => window::handle_command_for_playlist_list_window(
+                command,
+                ui.search_filtered_items(&data.user_data.folder_playlists_items(folder_id))
+                    .into_iter()
+                    .copied()
+                    .collect(),
+                &data,
+                ui,
+            ),
+            LibraryFocusState::SavedAlbums => window::handle_command_for_album_list_window(
+                command,
+                ui.search_filtered_items(&data.user_data.saved_albums),
+                &data,
+                ui,
+                client_pub,
+            ),
+            LibraryFocusState::FollowedArtists => window::handle_command_for_artist_list_window(
+                command,
+                ui.search_filtered_items(&data.user_data.followed_artists),
+                &data,
+                ui,
+            ),
         }
     }
 }
@@ -163,12 +158,11 @@ fn handle_key_sequence_for_search_page(
         }
     }
 
-    let found_keymap = match config::get_config()
+    let Some(found_keymap) = config::get_config()
         .keymap_config
         .find_command_or_action_from_key_sequence(key_sequence)
-    {
-        Some(found) => found,
-        None => return Ok(false),
+    else {
+        return Ok(false);
     };
 
     let data = state.data.read();
@@ -189,7 +183,7 @@ fn handle_key_sequence_for_search_page(
                 CommandOrAction::Action(action, ActionTarget::SelectedItem) => {
                     window::handle_action_for_selected_item(action, tracks, &data, ui, client_pub)
                 }
-                _ => Ok(false),
+                CommandOrAction::Action(..) => Ok(false),
             }
         }
         SearchFocusState::Artists => {
@@ -204,7 +198,7 @@ fn handle_key_sequence_for_search_page(
                 CommandOrAction::Action(action, ActionTarget::SelectedItem) => {
                     window::handle_action_for_selected_item(action, artists, &data, ui, client_pub)
                 }
-                _ => Ok(false),
+                CommandOrAction::Action(..) => Ok(false),
             }
         }
         SearchFocusState::Albums => {
@@ -219,7 +213,7 @@ fn handle_key_sequence_for_search_page(
                 CommandOrAction::Action(action, ActionTarget::SelectedItem) => {
                     window::handle_action_for_selected_item(action, albums, &data, ui, client_pub)
                 }
-                _ => Ok(false),
+                CommandOrAction::Action(..) => Ok(false),
             }
         }
         SearchFocusState::Playlists => {
@@ -251,7 +245,40 @@ fn handle_key_sequence_for_search_page(
                         client_pub,
                     )
                 }
-                _ => Ok(false),
+                CommandOrAction::Action(..) => Ok(false),
+            }
+        }
+        SearchFocusState::Shows => {
+            let shows = search_results
+                .map(|s| s.shows.iter().collect::<Vec<_>>())
+                .unwrap_or_default();
+
+            match found_keymap {
+                CommandOrAction::Command(command) => Ok(
+                    window::handle_command_for_show_list_window(command, &shows, &data, ui),
+                ),
+                CommandOrAction::Action(action, ActionTarget::SelectedItem) => {
+                    window::handle_action_for_selected_item(action, shows, &data, ui, client_pub)
+                }
+                CommandOrAction::Action(..) => Ok(false),
+            }
+        }
+        SearchFocusState::Episodes => {
+            let episodes = match search_results {
+                Some(s) => s.episodes.iter().collect(),
+                None => Vec::new(),
+            };
+
+            match found_keymap {
+                CommandOrAction::Command(command) => {
+                    window::handle_command_for_episode_list_window(
+                        command, client_pub, &episodes, &data, ui,
+                    )
+                }
+                CommandOrAction::Action(action, ActionTarget::SelectedItem) => {
+                    window::handle_action_for_selected_item(action, episodes, &data, ui, client_pub)
+                }
+                CommandOrAction::Action(..) => Ok(false),
             }
         }
     }
@@ -283,9 +310,8 @@ fn handle_action_for_browse_page(
     match ui.current_page() {
         PageState::Browse { state } => match state {
             BrowsePageUIState::CategoryPlaylistList { category, .. } => {
-                let playlists = match data.browse.category_playlists.get(&category.id) {
-                    Some(v) => v,
-                    None => return Ok(false),
+                let Some(playlists) = data.browse.category_playlists.get(&category.id) else {
+                    return Ok(false);
                 };
 
                 let page_state = ui.current_page_mut();
@@ -304,7 +330,7 @@ fn handle_action_for_browse_page(
 
                 Ok(true)
             }
-            _ => Ok(false),
+            BrowsePageUIState::CategoryList { .. } => Ok(false),
         },
         _ => anyhow::bail!("expect a browse page state"),
     }
@@ -388,6 +414,7 @@ fn handle_command_for_browse_page(
 }
 
 #[cfg(feature = "lyric-finder")]
+#[allow(clippy::unnecessary_wraps)] // match return type
 fn handle_command_for_lyric_page(command: Command, ui: &mut UIStateGuard) -> Result<bool> {
     let scroll_offset = match ui.current_page() {
         PageState::Lyric { scroll_offset, .. } => *scroll_offset,
@@ -401,6 +428,7 @@ fn handle_command_for_lyric_page(command: Command, ui: &mut UIStateGuard) -> Res
     ))
 }
 
+#[allow(clippy::unnecessary_wraps)] // for consistency
 fn handle_command_for_queue_page(
     command: Command,
     ui: &mut UIStateGuard,
@@ -417,6 +445,7 @@ fn handle_command_for_queue_page(
     ))
 }
 
+#[allow(clippy::unnecessary_wraps)] // for consistency
 fn handle_command_for_command_help_page(command: Command, ui: &mut UIStateGuard) -> Result<bool> {
     let scroll_offset = match ui.current_page() {
         PageState::CommandHelp { scroll_offset } => *scroll_offset,
