@@ -1,7 +1,6 @@
-pub use rspotify::model as rspotify_model;
-use rspotify::model::CurrentPlaybackContext;
 pub use rspotify::model::{
-    AlbumId, AlbumType, ArtistId, EpisodeId, Id, PlayableId, PlaylistId, ShowId, TrackId, UserId,
+    AlbumId, AlbumType, ArtistId, CurrentPlaybackContext, EpisodeId, Id, PlayableId, PlaylistId,
+    ShowId, TrackId, UserId,
 };
 
 use crate::utils::map_join;
@@ -61,8 +60,8 @@ pub enum ContextId {
 /// An offset can be either a track's URI or its absolute offset in the context
 #[derive(Clone, Debug)]
 pub enum Playback {
-    Context(ContextId, Option<rspotify_model::Offset>),
-    URIs(Vec<PlayableId<'static>>, Option<rspotify_model::Offset>),
+    Context(ContextId, Option<rspotify::model::Offset>),
+    URIs(Vec<PlayableId<'static>>, Option<rspotify::model::Offset>),
 }
 
 #[derive(Default, Clone, Debug, Deserialize, Serialize)]
@@ -111,7 +110,7 @@ pub struct PlaybackMetadata {
     pub device_id: Option<String>,
     pub volume: Option<u32>,
     pub is_playing: bool,
-    pub repeat_state: rspotify_model::RepeatState,
+    pub repeat_state: rspotify::model::RepeatState,
     pub shuffle_state: bool,
     pub mute_state: Option<u32>,
     /// Indicate if fake track repeat mode is enabled.
@@ -287,8 +286,8 @@ impl TrackOrder {
 }
 
 impl Device {
-    /// tries to convert from a `rspotify_model::Device` into `Device`
-    pub fn try_from_device(device: rspotify_model::Device) -> Option<Self> {
+    /// tries to convert from a `rspotify::model::Device` into `Device`
+    pub fn try_from_device(device: rspotify::model::Device) -> Option<Self> {
         Some(Self {
             id: device.id?,
             name: device.name,
@@ -319,8 +318,8 @@ impl Track {
         }
     }
 
-    /// tries to convert from a `rspotify_model::SimplifiedTrack` into `Track`
-    pub fn try_from_simplified_track(track: rspotify_model::SimplifiedTrack) -> Option<Self> {
+    /// tries to convert from a `rspotify::model::SimplifiedTrack` into `Track`
+    pub fn try_from_simplified_track(track: rspotify::model::SimplifiedTrack) -> Option<Self> {
         if track.is_playable.unwrap_or(true) {
             let id = match track.linked_from {
                 Some(d) => d.id?,
@@ -340,8 +339,8 @@ impl Track {
         }
     }
 
-    /// tries to convert from a `rspotify_model::FullTrack` into `Track`
-    pub fn try_from_full_track(track: rspotify_model::FullTrack) -> Option<Self> {
+    /// tries to convert from a `rspotify::model::FullTrack` into `Track`
+    pub fn try_from_full_track(track: rspotify::model::FullTrack) -> Option<Self> {
         if track.is_playable.unwrap_or(true) {
             let id = match track.linked_from {
                 Some(d) => d.id?,
@@ -375,8 +374,8 @@ impl std::fmt::Display for Track {
 }
 
 impl Album {
-    /// tries to convert from a `rspotify_model::SimplifiedAlbum` into `Album`
-    pub fn try_from_simplified_album(album: rspotify_model::SimplifiedAlbum) -> Option<Self> {
+    /// tries to convert from a `rspotify::model::SimplifiedAlbum` into `Album`
+    pub fn try_from_simplified_album(album: rspotify::model::SimplifiedAlbum) -> Option<Self> {
         Some(Self {
             id: album.id?,
             name: album.name,
@@ -412,8 +411,8 @@ impl Album {
     }
 }
 
-impl From<rspotify_model::FullAlbum> for Album {
-    fn from(album: rspotify_model::FullAlbum) -> Self {
+impl From<rspotify::model::FullAlbum> for Album {
+    fn from(album: rspotify::model::FullAlbum) -> Self {
         Self {
             name: album.name,
             id: album.id,
@@ -437,8 +436,8 @@ impl std::fmt::Display for Album {
 }
 
 impl Artist {
-    /// tries to convert from a `rspotify_model::SimplifiedArtist` into `Artist`
-    pub fn try_from_simplified_artist(artist: rspotify_model::SimplifiedArtist) -> Option<Self> {
+    /// tries to convert from a `rspotify::model::SimplifiedArtist` into `Artist`
+    pub fn try_from_simplified_artist(artist: rspotify::model::SimplifiedArtist) -> Option<Self> {
         Some(Self {
             id: artist.id?,
             name: artist.name,
@@ -446,8 +445,8 @@ impl Artist {
     }
 }
 
-impl From<rspotify_model::FullArtist> for Artist {
-    fn from(artist: rspotify_model::FullArtist) -> Self {
+impl From<rspotify::model::FullArtist> for Artist {
+    fn from(artist: rspotify::model::FullArtist) -> Self {
         Self {
             name: artist.name,
             id: artist.id,
@@ -461,10 +460,10 @@ impl std::fmt::Display for Artist {
     }
 }
 
-/// a helper function to convert a vector of `rspotify_model::SimplifiedArtist`
+/// a helper function to convert a vector of `rspotify::model::SimplifiedArtist`
 /// into a vector of `Artist`.
 fn from_simplified_artists_to_artists(
-    artists: Vec<rspotify_model::SimplifiedArtist>,
+    artists: Vec<rspotify::model::SimplifiedArtist>,
 ) -> Vec<Artist> {
     artists
         .into_iter()
@@ -472,8 +471,8 @@ fn from_simplified_artists_to_artists(
         .collect()
 }
 
-impl From<rspotify_model::SimplifiedPlaylist> for Playlist {
-    fn from(playlist: rspotify_model::SimplifiedPlaylist) -> Self {
+impl From<rspotify::model::SimplifiedPlaylist> for Playlist {
+    fn from(playlist: rspotify::model::SimplifiedPlaylist) -> Self {
         Self {
             id: playlist.id,
             name: playlist.name,
@@ -488,8 +487,8 @@ impl From<rspotify_model::SimplifiedPlaylist> for Playlist {
     }
 }
 
-impl From<rspotify_model::FullPlaylist> for Playlist {
-    fn from(playlist: rspotify_model::FullPlaylist) -> Self {
+impl From<rspotify::model::FullPlaylist> for Playlist {
+    fn from(playlist: rspotify::model::FullPlaylist) -> Self {
         // remove HTML tags from the description
         let re = regex::Regex::new("(<.*?>|</.*?>)").expect("valid regex");
         let desc = playlist.description.unwrap_or_default();
@@ -515,8 +514,8 @@ impl std::fmt::Display for Playlist {
     }
 }
 
-impl From<rspotify_model::SimplifiedShow> for Show {
-    fn from(show: rspotify_model::SimplifiedShow) -> Self {
+impl From<rspotify::model::SimplifiedShow> for Show {
+    fn from(show: rspotify::model::SimplifiedShow) -> Self {
         Self {
             id: show.id,
             name: show.name,
@@ -524,8 +523,8 @@ impl From<rspotify_model::SimplifiedShow> for Show {
     }
 }
 
-impl From<rspotify_model::FullShow> for Show {
-    fn from(show: rspotify_model::FullShow) -> Self {
+impl From<rspotify::model::FullShow> for Show {
+    fn from(show: rspotify::model::FullShow) -> Self {
         Self {
             id: show.id,
             name: show.name,
@@ -539,8 +538,8 @@ impl std::fmt::Display for Show {
     }
 }
 
-impl From<rspotify_model::SimplifiedEpisode> for Episode {
-    fn from(episode: rspotify_model::SimplifiedEpisode) -> Self {
+impl From<rspotify::model::SimplifiedEpisode> for Episode {
+    fn from(episode: rspotify::model::SimplifiedEpisode) -> Self {
         Self {
             id: episode.id,
             name: episode.name,
@@ -552,8 +551,8 @@ impl From<rspotify_model::SimplifiedEpisode> for Episode {
     }
 }
 
-impl From<rspotify_model::FullEpisode> for Episode {
-    fn from(episode: rspotify_model::FullEpisode) -> Self {
+impl From<rspotify::model::FullEpisode> for Episode {
+    fn from(episode: rspotify::model::FullEpisode) -> Self {
         Self {
             id: episode.id,
             name: episode.name,
@@ -590,8 +589,8 @@ impl std::fmt::Display for PlaylistFolderItem {
     }
 }
 
-impl From<rspotify_model::category::Category> for Category {
-    fn from(c: rspotify_model::category::Category) -> Self {
+impl From<rspotify::model::category::Category> for Category {
+    fn from(c: rspotify::model::category::Category) -> Self {
         Self {
             name: c.name,
             id: c.id,
@@ -623,7 +622,7 @@ impl Playback {
     pub fn uri_offset(&self, uri: String, limit: usize) -> Self {
         match self {
             Playback::Context(id, _) => {
-                Playback::Context(id.clone(), Some(rspotify_model::Offset::Uri(uri)))
+                Playback::Context(id.clone(), Some(rspotify::model::Offset::Uri(uri)))
             }
             Playback::URIs(ids, _) => {
                 let ids = if ids.len() < limit {
@@ -642,7 +641,7 @@ impl Playback {
                     ids[l..r].to_vec()
                 };
 
-                Playback::URIs(ids, Some(rspotify_model::Offset::Uri(uri)))
+                Playback::URIs(ids, Some(rspotify::model::Offset::Uri(uri)))
             }
         }
     }

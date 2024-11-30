@@ -7,13 +7,13 @@ use crate::{
     config,
     key::{Key, KeySequence},
     state::{
-        rspotify_model, ActionListItem, Album, AlbumId, Artist, ArtistFocusState, ArtistId,
-        ArtistPopupAction, BrowsePageUIState, Context, ContextId, ContextPageType,
-        ContextPageUIState, DataReadGuard, Focusable, Id, Item, ItemId, LibraryFocusState,
-        LibraryPageUIState, PageState, PageType, PlayableId, Playback, PlaylistCreateCurrentField,
-        PlaylistFolderItem, PlaylistId, PlaylistPopupAction, PopupState, SearchFocusState,
-        SearchPageUIState, SharedState, ShowId, Track, TrackId, TrackOrder, UIStateGuard,
-        USER_LIKED_TRACKS_ID, USER_RECENTLY_PLAYED_TRACKS_ID, USER_TOP_TRACKS_ID,
+        ActionListItem, Album, AlbumId, Artist, ArtistFocusState, ArtistId, ArtistPopupAction,
+        BrowsePageUIState, Context, ContextId, ContextPageType, ContextPageUIState, DataReadGuard,
+        Focusable, Id, Item, ItemId, LibraryFocusState, LibraryPageUIState, PageState, PageType,
+        PlayableId, Playback, PlaylistCreateCurrentField, PlaylistFolderItem, PlaylistId,
+        PlaylistPopupAction, PopupState, SearchFocusState, SearchPageUIState, SharedState, ShowId,
+        Track, TrackId, TrackOrder, UIStateGuard, USER_LIKED_TRACKS_ID,
+        USER_RECENTLY_PLAYED_TRACKS_ID, USER_TOP_TRACKS_ID,
     },
     ui::{single_line_input::LineInput, Orientation},
     utils::parse_uri,
@@ -38,8 +38,7 @@ pub fn start_event_handler(state: &SharedState, client_pub: &flume::Sender<Clien
         if let Err(err) = match event {
             crossterm::event::Event::Mouse(event) => handle_mouse_event(event, client_pub, state),
             crossterm::event::Event::Resize(columns, rows) => {
-                let mut state = state.ui.lock();
-                state.orientation = Orientation::from_size(columns, rows);
+                state.ui.lock().orientation = Orientation::from_size(columns, rows);
                 Ok(())
             }
             crossterm::event::Event::Key(event) => {
@@ -55,7 +54,7 @@ pub fn start_event_handler(state: &SharedState, client_pub: &flume::Sender<Clien
             }
             _ => Ok(()),
         } {
-            tracing::error!("Failed to handle event: {err:#}");
+            tracing::error!("Failed to handle terminal event: {err:#}");
         }
     }
 }
@@ -76,8 +75,8 @@ fn handle_mouse_event(
             // the progress bar's width and the track's duration (in ms)
             let player = state.player.read();
             let duration = match player.currently_playing() {
-                Some(rspotify_model::PlayableItem::Track(track)) => Some(track.duration),
-                Some(rspotify_model::PlayableItem::Episode(episode)) => Some(episode.duration),
+                Some(rspotify::model::PlayableItem::Track(track)) => Some(track.duration),
+                Some(rspotify::model::PlayableItem::Episode(episode)) => Some(episode.duration),
                 None => None,
             };
             if let Some(duration) = duration {
@@ -475,7 +474,7 @@ fn handle_show_actions_on_artist(
 }
 
 /// Handle a global action, currently this is only used to target
-/// the currently playing song instead of the selection.
+/// the currently playing item instead of the selection.
 fn handle_global_action(
     action: Action,
     target: ActionTarget,
@@ -489,7 +488,7 @@ fn handle_global_action(
 
         if let Some(currently_playing) = player.currently_playing() {
             match currently_playing {
-                rspotify_model::PlayableItem::Track(track) => {
+                rspotify::model::PlayableItem::Track(track) => {
                     if let Some(track) = Track::try_from_full_track(track.clone()) {
                         return handle_action_in_context(
                             action,
@@ -500,7 +499,7 @@ fn handle_global_action(
                         );
                     }
                 }
-                rspotify_model::PlayableItem::Episode(episode) => {
+                rspotify::model::PlayableItem::Episode(episode) => {
                     return handle_action_in_context(
                         action,
                         ActionContext::Episode(episode.clone().into()),
@@ -595,7 +594,7 @@ fn handle_global_command(
         Command::ShowActionsOnCurrentTrack => {
             if let Some(currently_playing) = state.player.read().currently_playing() {
                 match currently_playing {
-                    rspotify_model::PlayableItem::Track(track) => {
+                    rspotify::model::PlayableItem::Track(track) => {
                         if let Some(track) = Track::try_from_full_track(track.clone()) {
                             let data = state.data.read();
                             let actions = command::construct_track_actions(&track, &data);
@@ -605,7 +604,7 @@ fn handle_global_command(
                             ));
                         }
                     }
-                    rspotify_model::PlayableItem::Episode(episode) => {
+                    rspotify::model::PlayableItem::Episode(episode) => {
                         let episode = episode.clone().into();
                         let data = state.data.read();
                         let actions = command::construct_episode_actions(&episode, &data);
@@ -745,7 +744,7 @@ fn handle_global_command(
         }
         #[cfg(feature = "lyric-finder")]
         Command::LyricPage => {
-            if let Some(rspotify_model::PlayableItem::Track(track)) =
+            if let Some(rspotify::model::PlayableItem::Track(track)) =
                 state.player.read().currently_playing()
             {
                 let artists = map_join(&track.artists, |a| &a.name, ", ");
@@ -803,10 +802,10 @@ fn handle_global_command(
         }
         Command::JumpToCurrentTrackInContext => {
             let track_id = match state.player.read().currently_playing() {
-                Some(rspotify_model::PlayableItem::Track(track)) => {
+                Some(rspotify::model::PlayableItem::Track(track)) => {
                     PlayableId::Track(track.id.clone().expect("all non-local tracks have ids"))
                 }
-                Some(rspotify_model::PlayableItem::Episode(episode)) => {
+                Some(rspotify::model::PlayableItem::Episode(episode)) => {
                     PlayableId::Episode(episode.id.clone())
                 }
                 None => return Ok(false),

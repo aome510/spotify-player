@@ -214,7 +214,7 @@ pub fn handle_key_sequence_for_popup(
                 command,
                 ui,
                 &artist_uris,
-                rspotify_model::Type::Artist,
+                rspotify::model::Type::Artist,
             )
         }
         PopupState::UserSavedAlbumList(_) => {
@@ -231,7 +231,7 @@ pub fn handle_key_sequence_for_popup(
                 command,
                 ui,
                 &album_uris,
-                rspotify_model::Type::Album,
+                rspotify::model::Type::Album,
             )
         }
         PopupState::ThemeList(themes, _) => {
@@ -382,7 +382,7 @@ fn handle_command_for_context_browsing_list_popup(
     command: Command,
     ui: &mut UIStateGuard,
     uris: &[String],
-    context_type: rspotify_model::Type,
+    context_type: rspotify::model::Type,
 ) -> Result<bool> {
     handle_command_for_list_popup(
         command,
@@ -392,13 +392,13 @@ fn handle_command_for_context_browsing_list_popup(
         |ui: &mut UIStateGuard, id: usize| -> Result<()> {
             let uri = crate::utils::parse_uri(&uris[id]);
             let context_id = match context_type {
-                rspotify_model::Type::Playlist => {
+                rspotify::model::Type::Playlist => {
                     ContextId::Playlist(PlaylistId::from_uri(&uri)?.into_static())
                 }
-                rspotify_model::Type::Artist => {
+                rspotify::model::Type::Artist => {
                     ContextId::Artist(ArtistId::from_uri(&uri)?.into_static())
                 }
-                rspotify_model::Type::Album => {
+                rspotify::model::Type::Album => {
                     ContextId::Album(AlbumId::from_uri(&uri)?.into_static())
                 }
                 _ => {

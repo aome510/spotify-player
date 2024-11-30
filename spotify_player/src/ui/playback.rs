@@ -4,9 +4,9 @@ use crate::state::ImageRenderInfo;
 use anyhow::{Context, Result};
 
 use super::{
-    config, rspotify_model, utils::construct_and_render_block, Borders, Constraint, Frame, Gauge,
-    Layout, Line, LineGauge, Modifier, Paragraph, PlaybackMetadata, Rect, SharedState, Span, Style,
-    Text, UIStateGuard, Wrap,
+    config, utils::construct_and_render_block, Borders, Constraint, Frame, Gauge, Layout, Line,
+    LineGauge, Modifier, Paragraph, PlaybackMetadata, Rect, SharedState, Span, Style, Text,
+    UIStateGuard, Wrap,
 };
 
 /// Render a playback window showing information about the current playback, which includes
@@ -58,10 +58,10 @@ pub fn render_playback_window(
                         };
 
                         let url = match item {
-                            rspotify_model::PlayableItem::Track(track) => {
+                            rspotify::model::PlayableItem::Track(track) => {
                                 crate::utils::get_track_album_image_url(track).map(String::from)
                             }
-                            rspotify_model::PlayableItem::Episode(episode) => {
+                            rspotify::model::PlayableItem::Episode(episode) => {
                                 crate::utils::get_episode_show_image_url(episode).map(String::from)
                             }
                         };
@@ -132,8 +132,8 @@ pub fn render_playback_window(
             }
 
             let duration = match item {
-                rspotify_model::PlayableItem::Track(track) => track.duration,
-                rspotify_model::PlayableItem::Episode(episode) => episode.duration,
+                rspotify::model::PlayableItem::Track(track) => track.duration,
+                rspotify::model::PlayableItem::Episode(episode) => episode.duration,
             };
 
             let progress = std::cmp::min(
@@ -188,7 +188,7 @@ fn clear_area(frame: &mut Frame, rect: Rect, theme: &config::Theme) {
 
 fn construct_playback_text(
     ui: &UIStateGuard,
-    playable: &rspotify_model::PlayableItem,
+    playable: &rspotify::model::PlayableItem,
     playback: &PlaybackMetadata,
 ) -> Text<'static> {
     // Construct a "styled" text (`playback_text`) from playback's data
@@ -229,7 +229,7 @@ fn construct_playback_text(
                 ui.theme.playback_status(),
             ),
             "{track}" => match playable {
-                rspotify_model::PlayableItem::Track(track) => (
+                rspotify::model::PlayableItem::Track(track) => (
                     if track.explicit {
                         format!("{} (E)", track.name)
                     } else {
@@ -237,7 +237,7 @@ fn construct_playback_text(
                     },
                     ui.theme.playback_track(),
                 ),
-                rspotify_model::PlayableItem::Episode(episode) => (
+                rspotify::model::PlayableItem::Episode(episode) => (
                     if episode.explicit {
                         format!("{} (E)", episode.name)
                     } else {
@@ -247,19 +247,19 @@ fn construct_playback_text(
                 ),
             },
             "{artists}" => match playable {
-                rspotify_model::PlayableItem::Track(track) => (
+                rspotify::model::PlayableItem::Track(track) => (
                     crate::utils::map_join(&track.artists, |a| &a.name, ", "),
                     ui.theme.playback_artists(),
                 ),
-                rspotify_model::PlayableItem::Episode(episode) => {
+                rspotify::model::PlayableItem::Episode(episode) => {
                     (episode.show.publisher.clone(), ui.theme.playback_artists())
                 }
             },
             "{album}" => match playable {
-                rspotify_model::PlayableItem::Track(track) => {
+                rspotify::model::PlayableItem::Track(track) => {
                     (track.album.name.clone(), ui.theme.playback_album())
                 }
-                rspotify_model::PlayableItem::Episode(episode) => {
+                rspotify::model::PlayableItem::Episode(episode) => {
                     (episode.show.name.clone(), ui.theme.playback_album())
                 }
             },

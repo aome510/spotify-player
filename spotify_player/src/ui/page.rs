@@ -6,11 +6,11 @@ use std::{
 use crate::{state::Episode, utils::format_duration};
 
 use super::{
-    config, rspotify_model, utils, utils::construct_and_render_block, Album, Artist,
-    ArtistFocusState, Borders, BrowsePageUIState, Cell, Constraint, Context, ContextPageUIState,
-    DataReadGuard, Frame, Id, Layout, LibraryFocusState, MutableWindowState, Orientation,
-    PageState, Paragraph, PlaylistFolderItem, Rect, Row, SearchFocusState, SharedState, Style,
-    Table, Track, UIStateGuard,
+    config, utils, utils::construct_and_render_block, Album, Artist, ArtistFocusState, Borders,
+    BrowsePageUIState, Cell, Constraint, Context, ContextPageUIState, DataReadGuard, Frame, Id,
+    Layout, LibraryFocusState, MutableWindowState, Orientation, PageState, Paragraph,
+    PlaylistFolderItem, Rect, Row, SearchFocusState, SharedState, Style, Table, Track,
+    UIStateGuard,
 };
 
 const COMMAND_TABLE_CONSTRAINTS: [Constraint; 3] = [
@@ -901,7 +901,7 @@ fn render_track_table(
     let mut playing_track_uri = String::new();
     let mut playing_id = "";
     if let Some(ref playback) = state.player.read().playback {
-        if let Some(rspotify_model::PlayableItem::Track(ref track)) = playback.item {
+        if let Some(rspotify::model::PlayableItem::Track(ref track)) = playback.item {
             playing_track_uri = track
                 .id
                 .as_ref()
@@ -1002,7 +1002,7 @@ fn render_episode_table(
     let mut playing_episode_uri = String::new();
     let mut playing_id = "";
     if let Some(ref playback) = state.player.read().playback {
-        if let Some(rspotify_model::PlayableItem::Episode(ref episode)) = playback.item {
+        if let Some(rspotify::model::PlayableItem::Episode(ref episode)) = playback.item {
             playing_episode_uri = episode.id.uri();
 
             playing_id = if playback.is_playing {

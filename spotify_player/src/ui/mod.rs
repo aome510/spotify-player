@@ -1,10 +1,10 @@
 use crate::{
     config,
     state::{
-        rspotify_model, Album, Artist, ArtistFocusState, BrowsePageUIState, Context,
-        ContextPageUIState, DataReadGuard, Id, LibraryFocusState, MutableWindowState, PageState,
-        PageType, PlaybackMetadata, PlaylistCreateCurrentField, PlaylistFolderItem,
-        PlaylistPopupAction, PopupState, SearchFocusState, SharedState, Track, UIStateGuard,
+        Album, Artist, ArtistFocusState, BrowsePageUIState, Context, ContextPageUIState,
+        DataReadGuard, Id, LibraryFocusState, MutableWindowState, PageState, PageType,
+        PlaybackMetadata, PlaylistCreateCurrentField, PlaylistFolderItem, PlaylistPopupAction,
+        PopupState, SearchFocusState, SharedState, Track, UIStateGuard,
     },
 };
 use anyhow::{Context as AnyhowContext, Result};
