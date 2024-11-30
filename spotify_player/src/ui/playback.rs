@@ -241,10 +241,9 @@ fn construct_playback_text(
                     crate::utils::map_join(&track.artists, |a| &a.name, ", "),
                     ui.theme.playback_artists(),
                 ),
-                rspotify_model::PlayableItem::Episode(episode) => (
-                    episode.show.publisher.clone(),
-                    ui.theme.playback_artists(),
-                ),
+                rspotify_model::PlayableItem::Episode(episode) => {
+                    (episode.show.publisher.clone(), ui.theme.playback_artists())
+                }
             },
             "{album}" => match playable {
                 rspotify_model::PlayableItem::Track(track) => {
@@ -263,7 +262,11 @@ fn construct_playback_text(
                         <&'static str>::from(playback.repeat_state)
                     },
                     playback.shuffle_state,
-                    if let Some(volume) = playback.mute_state { format!("{volume}% (muted)") } else { format!("{}%", playback.volume.unwrap_or_default()) },
+                    if let Some(volume) = playback.mute_state {
+                        format!("{volume}% (muted)")
+                    } else {
+                        format!("{}%", playback.volume.unwrap_or_default())
+                    },
                     playback.device_name,
                 ),
                 ui.theme.playback_metadata(),
