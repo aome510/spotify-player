@@ -82,8 +82,12 @@ pub fn render_playback_window(
                             if needs_clear {
                                 // clear the image's both new and old areas to ensure no remaining artifacts before rendering the image
                                 // See: https://github.com/aome510/spotify-player/issues/389
-                                clear_area(frame, ui.last_cover_image_render_info.render_area);
-                                clear_area(frame, cover_img_rect);
+                                clear_area(
+                                    frame,
+                                    ui.last_cover_image_render_info.render_area,
+                                    &ui.theme,
+                                );
+                                clear_area(frame, cover_img_rect, &ui.theme);
                             } else {
                                 if !ui.last_cover_image_render_info.rendered {
                                     if let Err(err) = render_playback_cover_image(state, ui) {
@@ -144,7 +148,11 @@ pub fn render_playback_window(
         #[cfg(feature = "image")]
         {
             if ui.last_cover_image_render_info.rendered {
-                clear_area(frame, ui.last_cover_image_render_info.render_area);
+                clear_area(
+                    frame,
+                    ui.last_cover_image_render_info.render_area,
+                    &ui.theme,
+                );
                 ui.last_cover_image_render_info = ImageRenderInfo::default();
             }
         }
@@ -164,14 +172,15 @@ pub fn render_playback_window(
 }
 
 #[cfg(feature = "image")]
-fn clear_area(frame: &mut Frame, rect: Rect) {
+fn clear_area(frame: &mut Frame, rect: Rect, theme: &config::Theme) {
     for x in rect.left()..rect.right() {
         for y in rect.top()..rect.bottom() {
             frame
                 .buffer_mut()
                 .cell_mut((x, y))
                 .expect("invalid cell")
-                .reset();
+                .set_char(' ')
+                .set_style(theme.app());
         }
     }
 }
@@ -373,6 +382,7 @@ fn render_playback_cover_image(state: &SharedState, ui: &mut UIStateGuard) -> Re
                 width: Some(width),
                 height: Some(height),
                 restore_cursor: true,
+                transparent: true,
                 ..Default::default()
             },
         )
