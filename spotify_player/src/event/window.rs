@@ -181,16 +181,19 @@ pub fn handle_command_for_focused_context_window(
                     ),
                 }
             }
-            Context::Album { tracks, .. }
-            | Context::Playlist { tracks, .. }
-            | Context::Tracks { tracks, .. } => handle_command_for_track_table_window(
-                command,
-                client_pub,
-                Some(context_id.clone()),
-                tracks,
-                &data,
-                ui,
-            ),
+            Context::Tracks { tracks, .. } => {
+                handle_command_for_track_table_window(command, client_pub, None, tracks, &data, ui)
+            }
+            Context::Album { tracks, .. } | Context::Playlist { tracks, .. } => {
+                handle_command_for_track_table_window(
+                    command,
+                    client_pub,
+                    Some(context_id.clone()),
+                    tracks,
+                    &data,
+                    ui,
+                )
+            }
             Context::Show { show, episodes } => handle_command_for_episode_table_window(
                 command,
                 client_pub,
