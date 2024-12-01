@@ -304,10 +304,14 @@ fn handle_command_for_track_table_window(
                 filtered_tracks[id].id.uri()
             };
 
-            let base_playback = if let Some(context_id) = context_id {
-                Playback::Context(context_id, None)
-            } else {
-                Playback::URIs(tracks.iter().map(|t| t.id.clone().into()).collect(), None)
+            let base_playback = match context_id {
+                None | Some(ContextId::Tracks(_)) => {
+                    Playback::URIs(tracks.iter().map(|t| t.id.clone().into()).collect(), None)
+                }
+                Some(ContextId::Show(_)) => unreachable!(
+                    "show context should be handled by handle_command_for_episode_table_window"
+                ),
+                Some(context_id) => Playback::Context(context_id, None),
             };
 
             client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
