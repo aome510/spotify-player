@@ -181,19 +181,16 @@ pub fn handle_command_for_focused_context_window(
                     ),
                 }
             }
-            Context::Tracks { tracks, .. } => {
-                handle_command_for_track_table_window(command, client_pub, None, tracks, &data, ui)
-            }
-            Context::Album { tracks, .. } | Context::Playlist { tracks, .. } => {
-                handle_command_for_track_table_window(
-                    command,
-                    client_pub,
-                    Some(context_id.clone()),
-                    tracks,
-                    &data,
-                    ui,
-                )
-            }
+            Context::Album { tracks, .. }
+            | Context::Playlist { tracks, .. }
+            | Context::Tracks { tracks, .. } => handle_command_for_track_table_window(
+                command,
+                client_pub,
+                Some(context_id.clone()),
+                tracks,
+                &data,
+                ui,
+            ),
             Context::Show { show, episodes } => handle_command_for_episode_table_window(
                 command,
                 client_pub,
@@ -307,10 +304,14 @@ fn handle_command_for_track_table_window(
                 filtered_tracks[id].id.uri()
             };
 
-            let base_playback = if let Some(context_id) = context_id {
-                Playback::Context(context_id, None)
-            } else {
-                Playback::URIs(tracks.iter().map(|t| t.id.clone().into()).collect(), None)
+            let base_playback = match context_id {
+                None | Some(ContextId::Tracks(_)) => {
+                    Playback::URIs(tracks.iter().map(|t| t.id.clone().into()).collect(), None)
+                }
+                Some(ContextId::Show(_)) => unreachable!(
+                    "show context should be handled by handle_command_for_episode_table_window"
+                ),
+                Some(context_id) => Playback::Context(context_id, None),
             };
 
             client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
