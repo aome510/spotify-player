@@ -1,6 +1,6 @@
 [package]
 name = "spotify_player"
-version = "0.20.1"
+version = "0.20.2"
 authors = ["Thang Pham <phamducthang1234@gmail.com>"]
 edition = "2021"
 license = "MIT"
@@ -38,7 +38,7 @@ async-trait = "0.1.83"
 parking_lot = "0.12.3"
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
-lyric_finder = { version = "0.1.6", path = "../lyric_finder", optional = true }
+lyric_finder = { version = "0.1.8", path = "../lyric_finder", optional = true }
 backtrace = "0.3.74"
 souvlaki = { version = "0.7.3", optional = true }
 viuer = { version = "0.9.1", optional = true }
