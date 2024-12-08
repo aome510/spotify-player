@@ -287,7 +287,7 @@ pub fn construct_episode_actions(episode: &Episode, _data: &DataReadGuard) -> Ve
 impl Command {
     pub fn desc(self) -> String {
         if let Self::VolumeChange { offset } = self {
-            return format!("change playback volume by {}", offset);
+            return format!("change playback volume by {offset}");
         }
 
         match self {
