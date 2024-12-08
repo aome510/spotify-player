@@ -16,8 +16,9 @@ pub enum Command {
     Repeat,
     ToggleFakeTrackRepeatMode,
     Shuffle,
-    VolumeUp,
-    VolumeDown,
+    VolumeChange {
+        offset: i32,
+    },
     Mute,
     SeekForward,
     SeekBackward,
@@ -284,7 +285,11 @@ pub fn construct_episode_actions(episode: &Episode, _data: &DataReadGuard) -> Ve
 }
 
 impl Command {
-    pub fn desc(self) -> &'static str {
+    pub fn desc(self) -> String {
+        if let Self::VolumeChange { offset } = self {
+            return format!("change playback volume by {}", offset);
+        }
+
         match self {
             Self::None => "do nothing",
             Self::NextTrack => "next track",
@@ -294,8 +299,6 @@ impl Command {
             Self::Repeat => "cycle the repeat mode",
             Self::ToggleFakeTrackRepeatMode => "toggle fake track repeat mode",
             Self::Shuffle => "toggle the shuffle mode",
-            Self::VolumeUp => "increase playback volume by 5%",
-            Self::VolumeDown => "decrease playback volume by 5%",
             Self::Mute => "toggle playback volume between 0% and previous level",
             Self::SeekForward => "seek forward by 5s",
             Self::SeekBackward => "seek backward by 5s",
@@ -355,6 +358,8 @@ impl Command {
             Self::MovePlaylistItemUp => "move playlist item up one position",
             Self::MovePlaylistItemDown => "move playlist item down one position",
             Self::CreatePlaylist => "create a new playlist",
+            _ => unreachable!(),
         }
+        .to_string()
     }
 }

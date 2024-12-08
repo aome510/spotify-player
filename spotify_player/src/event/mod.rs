@@ -547,18 +547,10 @@ fn handle_global_command(
         Command::Shuffle => {
             client_pub.send(ClientRequest::Player(PlayerRequest::Shuffle))?;
         }
-        Command::VolumeUp => {
+        Command::VolumeChange { offset } => {
             if let Some(ref playback) = state.player.read().buffered_playback {
                 if let Some(volume) = playback.volume {
-                    let volume = std::cmp::min(volume + 5, 100_u32);
-                    client_pub.send(ClientRequest::Player(PlayerRequest::Volume(volume as u8)))?;
-                }
-            }
-        }
-        Command::VolumeDown => {
-            if let Some(ref playback) = state.player.read().buffered_playback {
-                if let Some(volume) = playback.volume {
-                    let volume = volume.saturating_sub(5_u32);
+                    let volume = std::cmp::min(volume as i32 + offset, 100_i32);
                     client_pub.send(ClientRequest::Player(PlayerRequest::Volume(volume as u8)))?;
                 }
             }
