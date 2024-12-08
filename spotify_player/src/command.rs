@@ -358,7 +358,7 @@ impl Command {
             Self::MovePlaylistItemUp => "move playlist item up one position",
             Self::MovePlaylistItemDown => "move playlist item down one position",
             Self::CreatePlaylist => "create a new playlist",
-            _ => unreachable!(),
+            Self::VolumeChange { offset: _ } => unreachable!(),
         }
         .to_string()
     }

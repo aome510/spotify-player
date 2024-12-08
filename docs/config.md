@@ -285,7 +285,7 @@ key_sequence = "M-enter"
 command = "None"
 key_sequence = "q"
 [[keymaps]]
-command = "VolumeChange -5"
+command = { VolumeChange = { offset = 1 } }
 key_sequence = "-"
 ```
 
