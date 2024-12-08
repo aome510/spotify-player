@@ -284,6 +284,9 @@ key_sequence = "M-enter"
 [[keymaps]]
 command = "None"
 key_sequence = "q"
+[[keymaps]]
+command = { VolumeChange = { offset = 1 } }
+key_sequence = "-"
 ```
 
 ## Actions

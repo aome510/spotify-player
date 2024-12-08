@@ -65,11 +65,11 @@ impl Default for KeymapConfig {
                 },
                 Keymap {
                     key_sequence: "+".into(),
-                    command: Command::VolumeUp,
+                    command: Command::VolumeChange { offset: 5 },
                 },
                 Keymap {
                     key_sequence: "-".into(),
-                    command: Command::VolumeDown,
+                    command: Command::VolumeChange { offset: -5 },
                 },
                 Keymap {
                     key_sequence: "_".into(),
