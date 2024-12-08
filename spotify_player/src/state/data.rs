@@ -5,8 +5,8 @@ use once_cell::sync::Lazy;
 use serde::{de::DeserializeOwned, Serialize};
 
 use super::model::{
-    rspotify_model, Album, Artist, Category, Context, ContextId, Id, Playlist, PlaylistFolderItem,
-    PlaylistFolderNode, SearchResults, Track,
+    Album, Artist, Category, Context, ContextId, Id, Playlist, PlaylistFolderItem,
+    PlaylistFolderNode, SearchResults, Show, Track,
 };
 
 pub type DataReadGuard<'a> = parking_lot::RwLockReadGuard<'a, AppData>;
@@ -16,6 +16,7 @@ pub enum FileCacheKey {
     Playlists,
     PlaylistFolders,
     FollowedArtists,
+    SavedShows,
     SavedAlbums,
     SavedTracks,
 }
@@ -34,10 +35,11 @@ pub struct AppData {
 #[derive(Debug)]
 /// current user's data
 pub struct UserData {
-    pub user: Option<rspotify_model::PrivateUser>,
+    pub user: Option<rspotify::model::PrivateUser>,
     pub playlists: Vec<PlaylistFolderItem>,
     pub playlist_folder_node: Option<PlaylistFolderNode>,
     pub followed_artists: Vec<Artist>,
+    pub saved_shows: Vec<Show>,
     pub saved_albums: Vec<Album>,
     pub saved_tracks: HashMap<String, Track>,
 }
@@ -83,17 +85,34 @@ impl AppData {
 
     /// Get a list of tracks inside a given context
     pub fn context_tracks_mut(&mut self, id: &ContextId) -> Option<&mut Vec<Track>> {
-        self.caches
-            .context
-            .get_mut(&id.uri())
-            .map(super::model::Context::tracks_mut)
+        let c = self.caches.context.get_mut(&id.uri())?;
+
+        Some(match c {
+            Context::Album { tracks, .. }
+            | Context::Playlist { tracks, .. }
+            | Context::Tracks { tracks, .. }
+            | Context::Artist {
+                top_tracks: tracks, ..
+            } => tracks,
+            Context::Show { .. } => {
+                return None;
+            }
+        })
     }
 
     pub fn context_tracks(&self, id: &ContextId) -> Option<&Vec<Track>> {
-        self.caches
-            .context
-            .get(&id.uri())
-            .map(super::model::Context::tracks)
+        let c = self.caches.context.get(&id.uri())?;
+        Some(match c {
+            Context::Album { tracks, .. }
+            | Context::Playlist { tracks, .. }
+            | Context::Tracks { tracks, .. }
+            | Context::Artist {
+                top_tracks: tracks, ..
+            } => tracks,
+            Context::Show { .. } => {
+                return None;
+            }
+        })
     }
 }
 
@@ -113,6 +132,8 @@ impl UserData {
                 cache_folder,
             )
             .unwrap_or_default(),
+            saved_shows: load_data_from_file_cache(FileCacheKey::SavedShows, cache_folder)
+                .unwrap_or_default(),
             saved_albums: load_data_from_file_cache(FileCacheKey::SavedAlbums, cache_folder)
                 .unwrap_or_default(),
             saved_tracks: load_data_from_file_cache(FileCacheKey::SavedTracks, cache_folder)

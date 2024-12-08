@@ -14,15 +14,12 @@ use crate::{
     cli::Request,
     client::{Client, PlayerRequest},
     config::get_cache_folder_path,
-    state::{Context, ContextId, Playback, PlaybackMetadata, SharedState},
-};
-use rspotify::{
-    model::{
-        AlbumId, ArtistId, CurrentPlaybackContext, Id, PlayableId, PlaylistId, SearchResult,
-        SearchType, TrackId,
+    state::{
+        AlbumId, ArtistId, Context, ContextId, Id, PlayableId, Playback, PlaybackMetadata,
+        PlaylistId, SharedState, TrackId,
     },
-    prelude::{BaseClient, OAuthClient},
 };
+use rspotify::prelude::{BaseClient, OAuthClient};
 
 use super::{
     Command, Deserialize, GetRequest, IdOrName, ItemId, ItemType, Key, PlaylistCommand, Response,
@@ -54,14 +51,15 @@ pub async fn start_socket(client: Client, socket: UdpSocket, state: Option<Share
                 let span = tracing::info_span!("socket_request", request = ?request, dest_addr = ?dest_addr);
 
                 async {
-                    let response = match handle_socket_request(&client, &state, request).await {
-                        Err(err) => {
-                            tracing::error!("Failed to handle socket request: {err:#}");
-                            let msg = format!("Bad request: {err:#}");
-                            Response::Err(msg.into_bytes())
-                        }
-                        Ok(data) => Response::Ok(data),
-                    };
+                    let response =
+                        match handle_socket_request(&client, state.as_ref(), request).await {
+                            Err(err) => {
+                                tracing::error!("Failed to handle socket request: {err:#}");
+                                let msg = format!("Bad request: {err:#}");
+                                Response::Err(msg.into_bytes())
+                            }
+                            Ok(data) => Response::Ok(data),
+                        };
                     send_response(response, &socket, dest_addr)
                         .await
                         .unwrap_or_default();
@@ -94,13 +92,13 @@ async fn send_response(
 
 async fn current_playback(
     client: &Client,
-    state: &Option<SharedState>,
-) -> Result<Option<CurrentPlaybackContext>> {
+    state: Option<&SharedState>,
+) -> Result<Option<rspotify::model::CurrentPlaybackContext>> {
     // get current playback from the application's state, if exists, or by making an API request
     match state {
-        Some(ref state) => Ok(state.player.read().current_playback()),
+        Some(state) => Ok(state.player.read().current_playback()),
         None => client
-            .current_playback(None, None::<Vec<_>>)
+            .current_playback2()
             .await
             .context("get current playback"),
     }
@@ -108,7 +106,7 @@ async fn current_playback(
 
 async fn handle_socket_request(
     client: &Client,
-    state: &Option<SharedState>,
+    state: Option<&SharedState>,
     request: super::Request,
 ) -> Result<Vec<u8>> {
     if let Some(state) = state {
@@ -180,7 +178,7 @@ async fn handle_socket_request(
 
 async fn handle_get_key_request(
     client: &Client,
-    state: &Option<SharedState>,
+    state: Option<&SharedState>,
     key: Key,
 ) -> Result<Vec<u8>> {
     Ok(match key {
@@ -229,11 +227,11 @@ async fn get_spotify_id(client: &Client, typ: ItemType, id_or_name: IdOrName) ->
             IdOrName::Id(id) => ItemId::Playlist(PlaylistId::from_id(id)?),
             IdOrName::Name(name) => {
                 let results = client
-                    .search_specific_type(&name, SearchType::Playlist)
+                    .search_specific_type(&name, rspotify::model::SearchType::Playlist)
                     .await?;
 
                 match results {
-                    SearchResult::Playlists(page) => {
+                    rspotify::model::SearchResult::Playlists(page) => {
                         if page.items.is_empty() {
                             anyhow::bail!("Cannot find playlist with name='{name}'");
                         }
@@ -247,11 +245,11 @@ async fn get_spotify_id(client: &Client, typ: ItemType, id_or_name: IdOrName) ->
             IdOrName::Id(id) => ItemId::Album(AlbumId::from_id(id)?),
             IdOrName::Name(name) => {
                 let results = client
-                    .search_specific_type(&name, SearchType::Album)
+                    .search_specific_type(&name, rspotify::model::SearchType::Album)
                     .await?;
 
                 match results {
-                    SearchResult::Albums(page) => {
+                    rspotify::model::SearchResult::Albums(page) => {
                         if !page.items.is_empty() && page.items[0].id.is_some() {
                             ItemId::Album(page.items[0].id.clone().unwrap())
                         } else {
@@ -266,11 +264,11 @@ async fn get_spotify_id(client: &Client, typ: ItemType, id_or_name: IdOrName) ->
             IdOrName::Id(id) => ItemId::Artist(ArtistId::from_id(id)?),
             IdOrName::Name(name) => {
                 let results = client
-                    .search_specific_type(&name, SearchType::Artist)
+                    .search_specific_type(&name, rspotify::model::SearchType::Artist)
                     .await?;
 
                 match results {
-                    SearchResult::Artists(page) => {
+                    rspotify::model::SearchResult::Artists(page) => {
                         if page.items.is_empty() {
                             anyhow::bail!("Cannot find artist with name='{name}'");
                         }
@@ -284,11 +282,11 @@ async fn get_spotify_id(client: &Client, typ: ItemType, id_or_name: IdOrName) ->
             IdOrName::Id(id) => ItemId::Track(TrackId::from_id(id)?),
             IdOrName::Name(name) => {
                 let results = client
-                    .search_specific_type(&name, SearchType::Track)
+                    .search_specific_type(&name, rspotify::model::SearchType::Track)
                     .await?;
 
                 match results {
-                    SearchResult::Tracks(page) => {
+                    rspotify::model::SearchResult::Tracks(page) => {
                         if !page.items.is_empty() && page.items[0].id.is_some() {
                             ItemId::Track(page.items[0].id.clone().unwrap())
                         } else {
@@ -326,13 +324,13 @@ async fn handle_search_request(client: &Client, query: String) -> Result<Vec<u8>
 
 async fn handle_playback_request(
     client: &Client,
-    state: &Option<SharedState>,
+    state: Option<&SharedState>,
     command: Command,
 ) -> Result<()> {
     let playback = if let Some(state) = state {
         state.player.read().buffered_playback.clone()
     } else {
-        let playback = client.current_playback(None, None::<Vec<_>>).await?;
+        let playback = client.current_playback2().await?;
         playback.as_ref().map(PlaybackMetadata::from_playback)
     };
 
@@ -342,27 +340,27 @@ async fn handle_playback_request(
             let tracks = client.radio_tracks(sid.uri()).await?;
 
             PlayerRequest::StartPlayback(
-                Playback::URIs(tracks.into_iter().map(|t| t.id).collect(), None),
+                Playback::URIs(tracks.into_iter().map(|t| t.id.into()).collect(), None),
                 None,
             )
         }
         Command::StartLikedTracks { limit, random } => {
             // get a list of liked tracks' ids
-            let mut ids: Vec<_> = if let Some(ref state) = state {
+            let mut ids: Vec<PlayableId> = if let Some(state) = state {
                 state
                     .data
                     .read()
                     .user_data
                     .saved_tracks
                     .values()
-                    .map(|t| t.id.clone())
+                    .map(|t| t.id.clone().into())
                     .collect()
             } else {
                 client
                     .current_user_saved_tracks()
                     .await?
                     .into_iter()
-                    .map(|t| t.id)
+                    .map(|t| t.id.into())
                     .collect()
             };
 
@@ -415,7 +413,7 @@ async fn handle_playback_request(
             // the function scope is from the application's state (cached) or the `current_playback` API.
             // Therefore, we need to make an additional API request to get the playback's progress.
             let progress = client
-                .current_playback(None, None::<Vec<_>>)
+                .current_playback2()
                 .await?
                 .context("no active playback found!")?
                 .progress
@@ -426,7 +424,7 @@ async fn handle_playback_request(
         }
     };
 
-    if let Some(ref state) = state {
+    if let Some(state) = state {
         // A non-null application's state indicates there is a running application instance.
         // To reduce the latency of the CLI command, the player request is handled asynchronously
         // knowing that the application will outlive the asynchronous task.

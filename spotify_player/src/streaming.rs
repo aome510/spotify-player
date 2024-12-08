@@ -11,7 +11,7 @@ use librespot_playback::{
     mixer::{self, Mixer},
     player,
 };
-use rspotify::model::TrackId;
+use rspotify::model::{EpisodeId, Id, PlayableId, TrackId};
 use serde::Serialize;
 use std::sync::Arc;
 
@@ -40,18 +40,18 @@ For more information, visit https://github.com/aome510/spotify-player?tab=readme
 #[derive(Debug, Serialize)]
 enum PlayerEvent {
     Changed {
-        track_id: TrackId<'static>,
+        playable_id: PlayableId<'static>,
     },
     Playing {
-        track_id: TrackId<'static>,
+        playable_id: PlayableId<'static>,
         position_ms: u32,
     },
     Paused {
-        track_id: TrackId<'static>,
+        playable_id: PlayableId<'static>,
         position_ms: u32,
     },
     EndOfTrack {
-        track_id: TrackId<'static>,
+        playable_id: PlayableId<'static>,
     },
 }
 
@@ -59,47 +59,58 @@ impl PlayerEvent {
     /// gets the event's arguments
     pub fn args(&self) -> Vec<String> {
         match self {
-            PlayerEvent::Changed { track_id } => vec!["Changed".to_string(), track_id.to_string()],
+            PlayerEvent::Changed { playable_id } => {
+                vec!["Changed".to_string(), playable_id.uri()]
+            }
             PlayerEvent::Playing {
-                track_id,
+                playable_id,
                 position_ms,
             } => vec![
                 "Playing".to_string(),
-                track_id.to_string(),
+                playable_id.uri(),
                 position_ms.to_string(),
             ],
             PlayerEvent::Paused {
-                track_id,
+                playable_id,
                 position_ms,
             } => vec![
                 "Paused".to_string(),
-                track_id.to_string(),
+                playable_id.uri(),
                 position_ms.to_string(),
             ],
-            PlayerEvent::EndOfTrack { track_id } => {
-                vec!["EndOfTrack".to_string(), track_id.to_string()]
+            PlayerEvent::EndOfTrack { playable_id } => {
+                vec!["EndOfTrack".to_string(), playable_id.uri()]
             }
         }
     }
 }
 
-fn spotify_id_to_track_id(id: spotify_id::SpotifyId) -> anyhow::Result<TrackId<'static>> {
-    let uri = id.to_uri()?;
-    Ok(TrackId::from_uri(&uri)?.into_static())
+fn spotify_id_to_playable_id(id: spotify_id::SpotifyId) -> anyhow::Result<PlayableId<'static>> {
+    match id.item_type {
+        spotify_id::SpotifyItemType::Track => {
+            let uri = id.to_uri()?;
+            Ok(TrackId::from_uri(&uri)?.into_static().into())
+        }
+        spotify_id::SpotifyItemType::Episode => {
+            let uri = id.to_uri()?;
+            Ok(EpisodeId::from_uri(&uri)?.into_static().into())
+        }
+        _ => anyhow::bail!("unexpected spotify_id {:?}", id),
+    }
 }
 
 impl PlayerEvent {
     pub fn from_librespot_player_event(e: player::PlayerEvent) -> anyhow::Result<Option<Self>> {
         Ok(match e {
             player::PlayerEvent::TrackChanged { audio_item } => Some(PlayerEvent::Changed {
-                track_id: spotify_id_to_track_id(audio_item.track_id)?,
+                playable_id: spotify_id_to_playable_id(audio_item.track_id)?,
             }),
             player::PlayerEvent::Playing {
                 track_id,
                 position_ms,
                 ..
             } => Some(PlayerEvent::Playing {
-                track_id: spotify_id_to_track_id(track_id)?,
+                playable_id: spotify_id_to_playable_id(track_id)?,
                 position_ms,
             }),
             player::PlayerEvent::Paused {
@@ -107,11 +118,11 @@ impl PlayerEvent {
                 position_ms,
                 ..
             } => Some(PlayerEvent::Paused {
-                track_id: spotify_id_to_track_id(track_id)?,
+                playable_id: spotify_id_to_playable_id(track_id)?,
                 position_ms,
             }),
             player::PlayerEvent::EndOfTrack { track_id, .. } => Some(PlayerEvent::EndOfTrack {
-                track_id: spotify_id_to_track_id(track_id)?,
+                playable_id: spotify_id_to_playable_id(track_id)?,
             }),
             _ => None,
         })

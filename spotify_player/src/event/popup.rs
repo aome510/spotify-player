@@ -97,7 +97,7 @@ pub fn handle_key_sequence_for_popup(
                     items.len(),
                     |_, _| {},
                     |ui: &mut UIStateGuard, id: usize| -> Result<()> {
-                        match items.get(id).context("invalid index")? {
+                        match items.get(id).expect("invalid index") {
                             PlaylistFolderItem::Folder(f) => {
                                 ui.popup = Some(PopupState::UserPlaylistList(
                                     PlaylistPopupAction::Browse {
@@ -139,7 +139,7 @@ pub fn handle_key_sequence_for_popup(
                     items.len(),
                     |_, _| {},
                     |ui: &mut UIStateGuard, id: usize| -> Result<()> {
-                        ui.popup = match items.get(id).context("invalid index")? {
+                        ui.popup = match items.get(id).expect("invalid index") {
                             PlaylistFolderItem::Folder(f) => Some(PopupState::UserPlaylistList(
                                 PlaylistPopupAction::AddTrack {
                                     folder_id: f.target_id,
@@ -148,9 +148,46 @@ pub fn handle_key_sequence_for_popup(
                                 ListState::default(),
                             )),
                             PlaylistFolderItem::Playlist(p) => {
-                                client_pub.send(ClientRequest::AddTrackToPlaylist(
+                                client_pub.send(ClientRequest::AddPlayableToPlaylist(
                                     p.id.clone(),
-                                    track_id,
+                                    track_id.into(),
+                                ))?;
+                                None
+                            }
+                        };
+                        Ok(())
+                    },
+                    |ui: &mut UIStateGuard| {
+                        ui.popup = None;
+                    },
+                )
+            }
+            PlaylistPopupAction::AddEpisode {
+                folder_id,
+                episode_id,
+            } => {
+                let episode_id = episode_id.clone();
+                let data = state.data.read();
+                let items = data.user_data.modifiable_playlist_items(Some(*folder_id));
+
+                handle_command_for_list_popup(
+                    command,
+                    ui,
+                    items.len(),
+                    |_, _| {},
+                    |ui: &mut UIStateGuard, id: usize| -> Result<()> {
+                        ui.popup = match items.get(id).expect("invalid index") {
+                            PlaylistFolderItem::Folder(f) => Some(PopupState::UserPlaylistList(
+                                PlaylistPopupAction::AddEpisode {
+                                    folder_id: f.target_id,
+                                    episode_id,
+                                },
+                                ListState::default(),
+                            )),
+                            PlaylistFolderItem::Playlist(p) => {
+                                client_pub.send(ClientRequest::AddPlayableToPlaylist(
+                                    p.id.clone(),
+                                    episode_id.into(),
                                 ))?;
                                 None
                             }
@@ -177,7 +214,7 @@ pub fn handle_key_sequence_for_popup(
                 command,
                 ui,
                 &artist_uris,
-                rspotify_model::Type::Artist,
+                rspotify::model::Type::Artist,
             )
         }
         PopupState::UserSavedAlbumList(_) => {
@@ -194,7 +231,7 @@ pub fn handle_key_sequence_for_popup(
                 command,
                 ui,
                 &album_uris,
-                rspotify_model::Type::Album,
+                rspotify::model::Type::Album,
             )
         }
         PopupState::ThemeList(themes, _) => {
@@ -345,7 +382,7 @@ fn handle_command_for_context_browsing_list_popup(
     command: Command,
     ui: &mut UIStateGuard,
     uris: &[String],
-    context_type: rspotify_model::Type,
+    context_type: rspotify::model::Type,
 ) -> Result<bool> {
     handle_command_for_list_popup(
         command,
@@ -353,15 +390,15 @@ fn handle_command_for_context_browsing_list_popup(
         uris.len(),
         |_, _| {},
         |ui: &mut UIStateGuard, id: usize| -> Result<()> {
-            let uri = crate::utils::parse_uri(uris.get(id).context("invalid index")?);
+            let uri = crate::utils::parse_uri(&uris[id]);
             let context_id = match context_type {
-                rspotify_model::Type::Playlist => {
+                rspotify::model::Type::Playlist => {
                     ContextId::Playlist(PlaylistId::from_uri(&uri)?.into_static())
                 }
-                rspotify_model::Type::Artist => {
+                rspotify::model::Type::Artist => {
                     ContextId::Artist(ArtistId::from_uri(&uri)?.into_static())
                 }
-                rspotify_model::Type::Album => {
+                rspotify::model::Type::Album => {
                     ContextId::Album(AlbumId::from_uri(&uri)?.into_static())
                 }
                 _ => {
@@ -492,6 +529,12 @@ pub fn handle_item_action(
         }
         ActionListItem::Playlist(playlist, actions) => {
             handle_action_in_context(actions[n], playlist.into(), client_pub, &data, ui)
+        }
+        ActionListItem::Show(show, actions) => {
+            handle_action_in_context(actions[n], show.into(), client_pub, &data, ui)
+        }
+        ActionListItem::Episode(episode, actions) => {
+            handle_action_in_context(actions[n], episode.into(), client_pub, &data, ui)
         }
     }
 }

@@ -1,4 +1,6 @@
-use crate::state::{AlbumId, Category, ContextId, Item, ItemId, Playback, PlaylistId, TrackId};
+use crate::state::{
+    AlbumId, Category, ContextId, Item, ItemId, PlayableId, Playback, PlaylistId, TrackId,
+};
 
 #[derive(Clone, Debug)]
 /// A request that modifies the player's playback
@@ -26,6 +28,7 @@ pub enum ClientRequest {
     GetBrowseCategoryPlaylists(Category),
     GetUserPlaylists,
     GetUserSavedAlbums,
+    GetUserSavedShows,
     GetUserFollowedArtists,
     GetUserSavedTracks,
     GetUserTopTracks,
@@ -37,9 +40,9 @@ pub enum ClientRequest {
         seed_name: String,
     },
     Search(String),
-    AddTrackToQueue(TrackId<'static>),
+    AddPlayableToQueue(PlayableId<'static>),
     AddAlbumToQueue(AlbumId<'static>),
-    AddTrackToPlaylist(PlaylistId<'static>, TrackId<'static>),
+    AddPlayableToPlaylist(PlaylistId<'static>, PlayableId<'static>),
     DeleteTrackFromPlaylist(PlaylistId<'static>, TrackId<'static>),
     ReorderPlaylistItems {
         playlist_id: PlaylistId<'static>,

@@ -73,9 +73,10 @@ impl Client {
             .await?;
 
         if body.meta.status != 200 {
-            let message = match body.meta.message {
-                Some(m) => m,
-                None => format!("request failed with status code: {}", body.meta.status),
+            let message = if let Some(m) = body.meta.message {
+                m
+            } else {
+                format!("request failed with status code: {}", body.meta.status)
             };
             anyhow::bail!(message);
         }
@@ -226,14 +227,14 @@ mod parse {
             _ => false,
         };
 
-        Ok(parse_dom_node(&dom.document, &Some(filter), false))
+        Ok(parse_dom_node(&dom.document, Some(&filter), false))
     }
 
     /// Parse a dom node and extract the text of children nodes satisfying a requirement.
     ///
     /// The requirement is represented by a `filter` function and a `should_parse` variable.
     /// Once a node satisfies a requirement, its children should also satisfy it.
-    fn parse_dom_node<F>(node: &Handle, filter: &Option<F>, mut should_parse: bool) -> String
+    fn parse_dom_node<F>(node: &Handle, filter: Option<&F>, mut should_parse: bool) -> String
     where
         F: Fn(&NodeData) -> bool,
     {

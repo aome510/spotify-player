@@ -1,8 +1,11 @@
 use super::page::handle_navigation_command;
 use super::*;
 use crate::{
-    command::{construct_album_actions, construct_artist_actions, construct_playlist_actions},
-    state::UIStateGuard,
+    command::{
+        construct_album_actions, construct_artist_actions, construct_playlist_actions,
+        construct_show_actions,
+    },
+    state::{Episode, Show, UIStateGuard},
 };
 use command::Action;
 use rand::Rng;
@@ -36,21 +39,21 @@ pub fn handle_action_for_focused_context_page(
             match focus {
                 ArtistFocusState::Albums => handle_action_for_selected_item(
                     action,
-                    ui.search_filtered_items(albums),
+                    &ui.search_filtered_items(albums),
                     &data,
                     ui,
                     client_pub,
                 ),
                 ArtistFocusState::RelatedArtists => handle_action_for_selected_item(
                     action,
-                    ui.search_filtered_items(related_artists),
+                    &ui.search_filtered_items(related_artists),
                     &data,
                     ui,
                     client_pub,
                 ),
                 ArtistFocusState::TopTracks => handle_action_for_selected_item(
                     action,
-                    ui.search_filtered_items(top_tracks),
+                    &ui.search_filtered_items(top_tracks),
                     &data,
                     ui,
                     client_pub,
@@ -63,7 +66,14 @@ pub fn handle_action_for_focused_context_page(
             | Context::Playlist { tracks, .. },
         ) => handle_action_for_selected_item(
             action,
-            ui.search_filtered_items(tracks),
+            &ui.search_filtered_items(tracks),
+            &data,
+            ui,
+            client_pub,
+        ),
+        Some(Context::Show { episodes, .. }) => handle_action_for_selected_item(
+            action,
+            &ui.search_filtered_items(episodes),
             &data,
             ui,
             client_pub,
@@ -72,10 +82,9 @@ pub fn handle_action_for_focused_context_page(
     }
 }
 
-#[allow(clippy::needless_pass_by_value)] // might be rewritten to take a reference
 pub fn handle_action_for_selected_item<T: Into<ActionContext> + Clone>(
     action: Action,
-    items: Vec<&T>,
+    items: &[&T],
     data: &DataReadGuard,
     ui: &mut UIStateGuard,
     client_pub: &flume::Sender<ClientRequest>,
@@ -156,17 +165,17 @@ pub fn handle_command_for_focused_context_window(
                 match focus {
                     ArtistFocusState::Albums => handle_command_for_album_list_window(
                         command,
-                        ui.search_filtered_items(albums),
+                        &ui.search_filtered_items(albums),
                         &data,
                         ui,
                         client_pub,
                     ),
-                    ArtistFocusState::RelatedArtists => handle_command_for_artist_list_window(
+                    ArtistFocusState::RelatedArtists => Ok(handle_command_for_artist_list_window(
                         command,
-                        ui.search_filtered_items(related_artists),
+                        &ui.search_filtered_items(related_artists),
                         &data,
                         ui,
-                    ),
+                    )),
                     ArtistFocusState::TopTracks => handle_command_for_track_table_window(
                         command, client_pub, None, top_tracks, &data, ui,
                     ),
@@ -179,6 +188,14 @@ pub fn handle_command_for_focused_context_window(
                 client_pub,
                 Some(context_id.clone()),
                 tracks,
+                &data,
+                ui,
+            ),
+            Context::Show { show, episodes } => handle_command_for_episode_table_window(
+                command,
+                client_pub,
+                &show.id,
+                &ui.search_filtered_items(episodes),
                 &data,
                 ui,
             ),
@@ -287,10 +304,14 @@ fn handle_command_for_track_table_window(
                 filtered_tracks[id].id.uri()
             };
 
-            let base_playback = if let Some(context_id) = context_id {
-                Playback::Context(context_id, None)
-            } else {
-                Playback::URIs(tracks.iter().map(|t| t.id.clone_static()).collect(), None)
+            let base_playback = match context_id {
+                None | Some(ContextId::Tracks(_)) => {
+                    Playback::URIs(tracks.iter().map(|t| t.id.clone().into()).collect(), None)
+                }
+                Some(ContextId::Show(_)) => unreachable!(
+                    "show context should be handled by handle_command_for_episode_table_window"
+                ),
+                Some(context_id) => Playback::Context(context_id, None),
             };
 
             client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
@@ -307,8 +328,8 @@ fn handle_command_for_track_table_window(
             ));
         }
         Command::AddSelectedItemToQueue => {
-            client_pub.send(ClientRequest::AddTrackToQueue(
-                filtered_tracks[id].id.clone(),
+            client_pub.send(ClientRequest::AddPlayableToQueue(
+                filtered_tracks[id].id.clone().into(),
             ))?;
         }
         _ => return Ok(false),
@@ -316,11 +337,10 @@ fn handle_command_for_track_table_window(
     Ok(true)
 }
 
-#[allow(clippy::needless_pass_by_value)] // might be rewritten to take a reference
 pub fn handle_command_for_track_list_window(
     command: Command,
     client_pub: &flume::Sender<ClientRequest>,
-    tracks: Vec<&Track>,
+    tracks: &[&Track],
     data: &DataReadGuard,
     ui: &mut UIStateGuard,
 ) -> Result<bool> {
@@ -340,7 +360,7 @@ pub fn handle_command_for_track_list_window(
             // `ChooseSelected` by starting a `URIs` playback
             // containing all the tracks in the table.
             client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
-                Playback::URIs(vec![tracks[id].id.clone()], None),
+                Playback::URIs(vec![tracks[id].id.clone().into()], None),
                 None,
             )))?;
         }
@@ -352,28 +372,28 @@ pub fn handle_command_for_track_list_window(
             ));
         }
         Command::AddSelectedItemToQueue => {
-            client_pub.send(ClientRequest::AddTrackToQueue(tracks[id].id.clone()))?;
+            client_pub.send(ClientRequest::AddPlayableToQueue(
+                tracks[id].id.clone().into(),
+            ))?;
         }
         _ => return Ok(false),
     }
     Ok(true)
 }
 
-#[allow(clippy::unnecessary_wraps)] // needed to match other functions
-#[allow(clippy::needless_pass_by_value)] // might be rewritten to take a reference
 pub fn handle_command_for_artist_list_window(
     command: Command,
-    artists: Vec<&Artist>,
+    artists: &[&Artist],
     data: &DataReadGuard,
     ui: &mut UIStateGuard,
-) -> Result<bool> {
+) -> bool {
     let id = ui.current_page_mut().selected().unwrap_or_default();
     if id >= artists.len() {
-        return Ok(false);
+        return false;
     }
 
     if handle_navigation_command(command, ui.current_page_mut(), id, artists.len()) {
-        return Ok(true);
+        return true;
     }
     match command {
         Command::ChooseSelected => {
@@ -391,16 +411,14 @@ pub fn handle_command_for_artist_list_window(
                 ListState::default(),
             ));
         }
-        _ => return Ok(false),
+        _ => return false,
     }
-    Ok(true)
+    true
 }
 
-#[allow(clippy::unnecessary_wraps)] // needed to match other functions
-#[allow(clippy::needless_pass_by_value)] // might be rewritten to take a reference
 pub fn handle_command_for_album_list_window(
     command: Command,
-    albums: Vec<&Album>,
+    albums: &[&Album],
     data: &DataReadGuard,
     ui: &mut UIStateGuard,
     client_pub: &flume::Sender<ClientRequest>,
@@ -437,21 +455,19 @@ pub fn handle_command_for_album_list_window(
     Ok(true)
 }
 
-#[allow(clippy::unnecessary_wraps)] // needed to match other functions
-#[allow(clippy::needless_pass_by_value)] // might be rewritten to take a reference
 pub fn handle_command_for_playlist_list_window(
     command: Command,
-    playlists: Vec<&PlaylistFolderItem>,
+    playlists: &[&PlaylistFolderItem],
     data: &DataReadGuard,
     ui: &mut UIStateGuard,
-) -> Result<bool> {
+) -> bool {
     let id = ui.current_page_mut().selected().unwrap_or_default();
     if id >= playlists.len() {
-        return Ok(false);
+        return false;
     }
 
     if handle_navigation_command(command, ui.current_page_mut(), id, playlists.len()) {
-        return Ok(true);
+        return true;
     }
     match command {
         Command::ChooseSelected => {
@@ -465,7 +481,7 @@ pub fn handle_command_for_playlist_list_window(
                             state.focus = LibraryFocusState::Playlists;
                             state.playlist_folder_id = f.target_id;
                         }
-                        _ => return Ok(false),
+                        _ => return false,
                     };
                 }
                 PlaylistFolderItem::Playlist(p) => {
@@ -486,6 +502,124 @@ pub fn handle_command_for_playlist_list_window(
                     ListState::default(),
                 ));
             }
+        }
+        _ => return false,
+    }
+    true
+}
+
+pub fn handle_command_for_show_list_window(
+    command: Command,
+    shows: &[&Show],
+    data: &DataReadGuard,
+    ui: &mut UIStateGuard,
+) -> bool {
+    let id = ui.current_page_mut().selected().unwrap_or_default();
+    if id >= shows.len() {
+        return false;
+    }
+
+    if handle_navigation_command(command, ui.current_page_mut(), id, shows.len()) {
+        return true;
+    }
+    match command {
+        Command::ChooseSelected => {
+            let context_id = ContextId::Show(shows[id].id.clone());
+            ui.new_page(PageState::Context {
+                id: None,
+                context_page_type: ContextPageType::Browsing(context_id),
+                state: None,
+            });
+        }
+        Command::ShowActionsOnSelectedItem => {
+            let actions = construct_show_actions(shows[id], data);
+            ui.popup = Some(PopupState::ActionList(
+                Box::new(ActionListItem::Show(shows[id].clone(), actions)),
+                ListState::default(),
+            ));
+        }
+        _ => return false,
+    }
+    true
+}
+
+pub fn handle_command_for_episode_list_window(
+    command: Command,
+    client_pub: &flume::Sender<ClientRequest>,
+    episodes: &[&Episode],
+    data: &DataReadGuard,
+    ui: &mut UIStateGuard,
+) -> Result<bool> {
+    let id = ui.current_page_mut().selected().unwrap_or_default();
+    if id >= episodes.len() {
+        return Ok(false);
+    }
+
+    if handle_navigation_command(command, ui.current_page_mut(), id, episodes.len()) {
+        return Ok(true);
+    }
+    match command {
+        Command::ChooseSelected => {
+            client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
+                Playback::URIs(vec![episodes[id].id.clone().into()], None),
+                None,
+            )))?;
+        }
+        Command::ShowActionsOnSelectedItem => {
+            let actions = command::construct_episode_actions(episodes[id], data);
+            ui.popup = Some(PopupState::ActionList(
+                Box::new(ActionListItem::Episode(episodes[id].clone(), actions)),
+                ListState::default(),
+            ));
+        }
+        Command::AddSelectedItemToQueue => {
+            client_pub.send(ClientRequest::AddPlayableToQueue(
+                episodes[id].id.clone().into(),
+            ))?;
+        }
+        _ => return Ok(false),
+    }
+    Ok(true)
+}
+
+fn handle_command_for_episode_table_window(
+    command: Command,
+    client_pub: &flume::Sender<ClientRequest>,
+    show_id: &ShowId,
+    episodes: &[&Episode],
+    data: &DataReadGuard,
+    ui: &mut UIStateGuard,
+) -> Result<bool> {
+    let id = ui.current_page_mut().selected().unwrap_or_default();
+    if id >= episodes.len() {
+        return Ok(false);
+    }
+
+    if handle_navigation_command(command, ui.current_page_mut(), id, episodes.len()) {
+        return Ok(true);
+    }
+    match command {
+        Command::ChooseSelected => {
+            let uri = episodes[id].id.uri();
+            client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
+                Playback::Context(
+                    ContextId::Show(show_id.clone_static()),
+                    Some(rspotify::model::Offset::Uri(uri)),
+                ),
+                None,
+            )))?;
+        }
+        Command::ShowActionsOnSelectedItem => {
+            let actions = command::construct_episode_actions(episodes[id], data);
+            ui.popup = Some(PopupState::ActionList(
+                Box::new(ActionListItem::Episode(episodes[id].clone(), actions)),
+                ListState::default(),
+            ));
+        }
+        Command::AddSelectedItemToQueue => {
+            client_pub.send(ClientRequest::AddPlayableToQueue(
+                episodes[id].id.clone().into(),
+            ))?;
         }
         _ => return Ok(false),
     }

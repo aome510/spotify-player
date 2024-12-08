@@ -321,8 +321,7 @@ List of supported commands:
 | `Repeat`                       | cycle the repeat mode                                                   | `C-r`              |
 | `ToggleFakeTrackRepeatMode`    | toggle fake track repeat mode                                           | `M-r`              |
 | `Shuffle`                      | toggle the shuffle mode                                                 | `C-s`              |
-| `VolumeUp`                     | increase playback volume by 5%                                          | `+`                |
-| `VolumeDown`                   | decrease playback volume by 5%                                          | `-`                |
+| `VolumeChange`                 | change playback volume by an offset (default shortcuts use 5%)          | `+`, `-`           |
 | `Mute`                         | toggle playback volume between 0% and previous level                    | `_`                |
 | `SeekForward`                  | seek forward by 5s                                                      | `>`                |
 | `SeekBackward`                 | seek backward by 5s                                                     | `<`                |
@@ -391,6 +390,7 @@ List of available actions:
 - `DeleteFromPlaylist`
 - `ShowActionsOnAlbum`
 - `ShowActionsOnArtist`
+- `ShowActionsOnShow`
 - `ToggleLiked`
 - `CopyLink`
 - `Follow`

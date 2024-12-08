@@ -1,17 +1,15 @@
 use std::ops::Deref;
 use std::{borrow::Cow, collections::HashMap, sync::Arc};
 
-#[cfg(feature = "streaming")]
-use crate::state::Mutex;
 use crate::{auth, config};
 use crate::{
     auth::AuthConfig,
     state::{
-        rspotify_model, store_data_into_file_cache, Album, AlbumId, Artist, ArtistId, Category,
-        Context, ContextId, Device, FileCacheKey, Item, ItemId, MemoryCaches, Playback,
-        PlaybackMetadata, Playlist, PlaylistFolderItem, PlaylistId, SearchResults, SharedState,
-        Track, TrackId, UserId, TTL_CACHE_DURATION, USER_LIKED_TRACKS_ID,
-        USER_RECENTLY_PLAYED_TRACKS_ID, USER_TOP_TRACKS_ID,
+        store_data_into_file_cache, Album, AlbumId, Artist, ArtistId, Category, Context, ContextId,
+        Device, FileCacheKey, Item, ItemId, MemoryCaches, Playback, PlaybackMetadata, Playlist,
+        PlaylistFolderItem, PlaylistId, SearchResults, SharedState, Show, ShowId, Track, TrackId,
+        UserId, TTL_CACHE_DURATION, USER_LIKED_TRACKS_ID, USER_RECENTLY_PLAYED_TRACKS_ID,
+        USER_TOP_TRACKS_ID,
     },
 };
 
@@ -19,12 +17,12 @@ use std::io::Write;
 
 use anyhow::Context as _;
 use anyhow::Result;
+
+#[cfg(feature = "streaming")]
+use parking_lot::Mutex;
+
 use reqwest::StatusCode;
-use rspotify::{
-    http::Query,
-    model::{FullPlaylist, Market, Page, SimplifiedPlaylist},
-    prelude::*,
-};
+use rspotify::{http::Query, prelude::*};
 
 mod handlers;
 mod request;
@@ -35,6 +33,10 @@ pub use request::*;
 use serde::Deserialize;
 
 const SPOTIFY_API_ENDPOINT: &str = "https://api.spotify.com/v1";
+const PLAYBACK_TYPES: [&rspotify::model::AdditionalType; 2] = [
+    &rspotify::model::AdditionalType::Track,
+    &rspotify::model::AdditionalType::Episode,
+];
 
 /// The application's Spotify client
 #[derive(Clone)]
@@ -209,7 +211,7 @@ impl Client {
                 // because `TransferPlayback` doesn't require an active playback
                 self.transfer_playback(&device_id, Some(force_play)).await?;
                 tracing::info!("Transferred playback to device with id={}", device_id);
-                return Ok(playback);
+                return Ok(None);
             }
             PlayerRequest::StartPlayback(p, shuffle) => {
                 // Set the playback's shuffle state if specified in the request
@@ -223,7 +225,7 @@ impl Client {
                 if let Some(ref playback) = playback {
                     self.shuffle(playback.shuffle_state, device_id).await?;
                 }
-                return Ok(playback);
+                return Ok(None);
             }
             _ => {}
         }
@@ -260,9 +262,9 @@ impl Client {
             }
             PlayerRequest::Repeat => {
                 let next_repeat_state = match playback.repeat_state {
-                    rspotify_model::RepeatState::Off => rspotify_model::RepeatState::Track,
-                    rspotify_model::RepeatState::Track => rspotify_model::RepeatState::Context,
-                    rspotify_model::RepeatState::Context => rspotify_model::RepeatState::Off,
+                    rspotify::model::RepeatState::Off => rspotify::model::RepeatState::Track,
+                    rspotify::model::RepeatState::Track => rspotify::model::RepeatState::Context,
+                    rspotify::model::RepeatState::Context => rspotify::model::RepeatState::Off,
                 };
 
                 self.repeat(next_repeat_state, device_id).await?;
@@ -363,7 +365,7 @@ impl Client {
                 self.retrieve_current_playback(state, true).await?;
             }
             ClientRequest::GetDevices => {
-                let devices = self.device().await?;
+                let devices = self.available_devices().await?;
                 state.player.write().devices = devices
                     .into_iter()
                     .filter_map(Device::try_from_device)
@@ -407,6 +409,16 @@ impl Client {
                 )
                 .context("store user's saved albums into the cache folder")?;
                 state.data.write().user_data.saved_albums = albums;
+            }
+            ClientRequest::GetUserSavedShows => {
+                let shows = self.current_user_saved_shows().await?;
+                store_data_into_file_cache(
+                    FileCacheKey::SavedShows,
+                    &config::get_config().cache_folder,
+                    &shows,
+                )
+                .context("store user's saved shows into the cache folder")?;
+                state.data.write().user_data.saved_shows = shows;
             }
             ClientRequest::GetUserTopTracks => {
                 let uri = &USER_TOP_TRACKS_ID.uri;
@@ -474,6 +486,7 @@ impl Client {
                                 "`GetContext` request for `tracks` context is not supported!"
                             );
                         }
+                        ContextId::Show(show_id) => self.show_context(show_id).await?,
                     };
 
                     state
@@ -514,12 +527,11 @@ impl Client {
                     );
                 }
             }
-            ClientRequest::AddTrackToQueue(track_id) => {
-                self.add_item_to_queue(PlayableId::Track(track_id), None)
-                    .await?;
+            ClientRequest::AddPlayableToQueue(playable_id) => {
+                self.add_item_to_queue(playable_id, None).await?;
             }
-            ClientRequest::AddTrackToPlaylist(playlist_id, track_id) => {
-                self.add_track_to_playlist(state, playlist_id, track_id)
+            ClientRequest::AddPlayableToPlaylist(playlist_id, playable_id) => {
+                self.add_item_to_playlist(state, playlist_id, playable_id)
                     .await?;
             }
             ClientRequest::AddAlbumToQueue(album_id) => {
@@ -597,6 +609,19 @@ impl Client {
         Ok(())
     }
 
+    /// Get user available devices
+    // This is a custom API to replace `rspotify::device` API to support Spotify Connect feature
+    pub async fn available_devices(&self) -> Result<Vec<rspotify::model::Device>> {
+        Ok(self
+            .http_get::<rspotify::model::DevicePayload>(
+                &format!("{SPOTIFY_API_ENDPOINT}/me/player/devices"),
+                &Query::new(),
+                true,
+            )
+            .await?
+            .devices)
+    }
+
     pub fn update_playback(&self, state: &SharedState) {
         // After handling a request changing the player's playback,
         // update the playback state by making multiple get-playback requests.
@@ -639,7 +664,8 @@ impl Client {
 
     /// Find an available device. If found, return the device's ID.
     async fn find_available_device(&self) -> Result<Option<String>> {
-        let devices = self.device().await?.into_iter().collect::<Vec<_>>();
+        let devices = self.available_devices().await?;
+
         if devices.is_empty() {
             tracing::warn!("No device found. Please make sure you already setup Spotify Connect \
                             support as described in https://github.com/aome510/spotify-player#spotify-connect.");
@@ -693,7 +719,11 @@ impl Client {
     /// Get the saved (liked) tracks of the current user
     pub async fn current_user_saved_tracks(&self) -> Result<Vec<Track>> {
         let first_page = self
-            .current_user_saved_tracks_manual(Some(Market::FromToken), Some(50), None)
+            .current_user_saved_tracks_manual(
+                Some(rspotify::model::Market::FromToken),
+                Some(50),
+                None,
+            )
             .await?;
         let tracks = self.all_paging_items(first_page, &market_query()).await?;
         Ok(tracks
@@ -738,9 +768,10 @@ impl Client {
         // TODO: this should use `rspotify::current_user_playlists_manual` API instead of `internal_call`
         // See: https://github.com/ramsayleung/rspotify/issues/459
         let first_page = self
-            .http_get::<Page<SimplifiedPlaylist>>(
+            .http_get::<rspotify::model::Page<rspotify::model::SimplifiedPlaylist>>(
                 &format!("{SPOTIFY_API_ENDPOINT}/me/playlists"),
                 &Query::from([("limit", "50")]),
+                false,
             )
             .await?;
         // let first_page = self
@@ -767,27 +798,38 @@ impl Client {
         let mut maybe_next = first_page.next;
         while let Some(url) = maybe_next {
             let mut next_page = self
-                .http_get::<rspotify_model::CursorPageFullArtists>(&url, &Query::new())
+                .http_get::<rspotify::model::CursorPageFullArtists>(&url, &Query::new(), false)
                 .await?
                 .artists;
             artists.append(&mut next_page.items);
             maybe_next = next_page.next;
         }
 
-        // converts `rspotify_model::FullArtist` into `state::Artist`
+        // converts `rspotify::model::FullArtist` into `state::Artist`
         Ok(artists.into_iter().map(std::convert::Into::into).collect())
     }
 
     /// Get all saved albums of the current user
     pub async fn current_user_saved_albums(&self) -> Result<Vec<Album>> {
         let first_page = self
-            .current_user_saved_albums_manual(Some(Market::FromToken), Some(50), None)
+            .current_user_saved_albums_manual(
+                Some(rspotify::model::Market::FromToken),
+                Some(50),
+                None,
+            )
             .await?;
 
         let albums = self.all_paging_items(first_page, &Query::new()).await?;
 
-        // converts `rspotify_model::SavedAlbum` into `state::Album`
+        // converts `rspotify::model::SavedAlbum` into `state::Album`
         Ok(albums.into_iter().map(|a| a.album.into()).collect())
+    }
+
+    /// Get all saved shows of the current user
+    pub async fn current_user_saved_shows(&self) -> Result<Vec<Show>> {
+        let first_page = self.get_saved_show_manual(Some(50), None).await?;
+        let shows = self.all_paging_items(first_page, &Query::new()).await?;
+        Ok(shows.into_iter().map(|s| s.show.into()).collect())
     }
 
     /// Get all albums of an artist
@@ -798,8 +840,8 @@ impl Client {
             let first_page = self
                 .artist_albums_manual(
                     artist_id.as_ref(),
-                    Some(rspotify_model::AlbumType::Single),
-                    Some(Market::FromToken),
+                    Some(rspotify::model::AlbumType::Single),
+                    Some(rspotify::model::Market::FromToken),
                     Some(50),
                     None,
                 )
@@ -810,8 +852,8 @@ impl Client {
             let first_page = self
                 .artist_albums_manual(
                     artist_id.as_ref(),
-                    Some(rspotify_model::AlbumType::Album),
-                    Some(Market::FromToken),
+                    Some(rspotify::model::AlbumType::Album),
+                    Some(rspotify::model::Market::FromToken),
                     Some(50),
                     None,
                 )
@@ -820,7 +862,7 @@ impl Client {
         }?;
         albums.append(&mut singles);
 
-        // converts `rspotify_model::SimplifiedAlbum` into `state::Album`
+        // converts `rspotify::model::SimplifiedAlbum` into `state::Album`
         let albums = albums
             .into_iter()
             .filter_map(Album::try_from_simplified_album)
@@ -844,18 +886,17 @@ impl Client {
                     self.start_context_playback(PlayContextId::from(id), device_id, offset, None)
                         .await?;
                 }
+                ContextId::Show(id) => {
+                    self.start_context_playback(PlayContextId::from(id), device_id, offset, None)
+                        .await?;
+                }
                 ContextId::Tracks(_) => {
                     anyhow::bail!("`StartPlayback` request for `tracks` context is not supported")
                 }
             },
-            Playback::URIs(track_ids, offset) => {
-                self.start_uris_playback(
-                    track_ids.into_iter().map(PlayableId::from),
-                    device_id,
-                    offset,
-                    None,
-                )
-                .await?;
+            Playback::URIs(ids, offset) => {
+                self.start_uris_playback(ids, device_id, offset, None)
+                    .await?;
             }
         }
 
@@ -911,7 +952,9 @@ impl Client {
             .filter_map(|t| TrackId::from_id(t.original_gid).ok());
 
         // Retrieve tracks based on IDs
-        let tracks = self.tracks(track_ids, Some(Market::FromToken)).await?;
+        let tracks = self
+            .tracks(track_ids, Some(rspotify::model::Market::FromToken))
+            .await?;
         let tracks = tracks
             .into_iter()
             .filter_map(Track::try_from_full_track)
@@ -922,16 +965,25 @@ impl Client {
 
     /// Search for items (tracks, artists, albums, playlists) matching a given query
     pub async fn search(&self, query: &str) -> Result<SearchResults> {
-        let (track_result, artist_result, album_result, playlist_result) = tokio::try_join!(
-            self.search_specific_type(query, rspotify_model::SearchType::Track),
-            self.search_specific_type(query, rspotify_model::SearchType::Artist),
-            self.search_specific_type(query, rspotify_model::SearchType::Album),
-            self.search_specific_type(query, rspotify_model::SearchType::Playlist)
+        let (
+            track_result,
+            artist_result,
+            album_result,
+            playlist_result,
+            show_result,
+            episode_result,
+        ) = tokio::try_join!(
+            self.search_specific_type(query, rspotify::model::SearchType::Track),
+            self.search_specific_type(query, rspotify::model::SearchType::Artist),
+            self.search_specific_type(query, rspotify::model::SearchType::Album),
+            self.search_specific_type(query, rspotify::model::SearchType::Playlist),
+            self.search_specific_type(query, rspotify::model::SearchType::Show),
+            self.search_specific_type(query, rspotify::model::SearchType::Episode)
         )?;
 
-        let (tracks, artists, albums, playlists) = (
+        let (tracks, artists, albums, playlists, shows, episodes) = (
             match track_result {
-                rspotify_model::SearchResult::Tracks(p) => p
+                rspotify::model::SearchResult::Tracks(p) => p
                     .items
                     .into_iter()
                     .filter_map(Track::try_from_full_track)
@@ -939,13 +991,13 @@ impl Client {
                 _ => anyhow::bail!("expect a track search result"),
             },
             match artist_result {
-                rspotify_model::SearchResult::Artists(p) => {
+                rspotify::model::SearchResult::Artists(p) => {
                     p.items.into_iter().map(std::convert::Into::into).collect()
                 }
                 _ => anyhow::bail!("expect an artist search result"),
             },
             match album_result {
-                rspotify_model::SearchResult::Albums(p) => p
+                rspotify::model::SearchResult::Albums(p) => p
                     .items
                     .into_iter()
                     .filter_map(Album::try_from_simplified_album)
@@ -953,10 +1005,22 @@ impl Client {
                 _ => anyhow::bail!("expect an album search result"),
             },
             match playlist_result {
-                rspotify_model::SearchResult::Playlists(p) => {
+                rspotify::model::SearchResult::Playlists(p) => {
                     p.items.into_iter().map(std::convert::Into::into).collect()
                 }
                 _ => anyhow::bail!("expect a playlist search result"),
+            },
+            match show_result {
+                rspotify::model::SearchResult::Shows(p) => {
+                    p.items.into_iter().map(std::convert::Into::into).collect()
+                }
+                _ => anyhow::bail!("expect a show search result"),
+            },
+            match episode_result {
+                rspotify::model::SearchResult::Episodes(p) => {
+                    p.items.into_iter().map(std::convert::Into::into).collect()
+                }
+                _ => anyhow::bail!("expect a episode search result"),
             },
         );
 
@@ -965,6 +1029,8 @@ impl Client {
             artists,
             albums,
             playlists,
+            shows,
+            episodes,
         })
     }
 
@@ -973,35 +1039,31 @@ impl Client {
     pub async fn search_specific_type(
         &self,
         query: &str,
-        _type: rspotify_model::SearchType,
-    ) -> Result<rspotify_model::SearchResult> {
+        _type: rspotify::model::SearchType,
+    ) -> Result<rspotify::model::SearchResult> {
         Ok(self
             .spotify
             .search(query, _type, None, None, None, None)
             .await?)
     }
 
-    /// Add a track to a playlist
-    pub async fn add_track_to_playlist(
+    /// Add a playable item to a playlist
+    pub async fn add_item_to_playlist(
         &self,
         state: &SharedState,
         playlist_id: PlaylistId<'_>,
-        track_id: TrackId<'_>,
+        playable_id: PlayableId<'_>,
     ) -> Result<()> {
         // remove all the occurrences of the track to ensure no duplication in the playlist
         self.playlist_remove_all_occurrences_of_items(
             playlist_id.as_ref(),
-            [PlayableId::Track(track_id.as_ref())],
+            [playable_id.as_ref()],
             None,
         )
         .await?;
 
-        self.playlist_add_items(
-            playlist_id.as_ref(),
-            [PlayableId::Track(track_id.as_ref())],
-            None,
-        )
-        .await?;
+        self.playlist_add_items(playlist_id.as_ref(), [playable_id.as_ref()], None)
+            .await?;
 
         // After adding a new track to a playlist, remove the cache of that playlist to force refetching new data
         state.data.write().caches.context.remove(&playlist_id.uri());
@@ -1147,6 +1209,14 @@ impl Client {
                     }
                 }
             }
+            Item::Show(show) => {
+                let follows = self.check_users_saved_shows([show.id.as_ref()]).await?;
+                if !follows[0] {
+                    self.save_shows([show.id.as_ref()]).await?;
+                    // update the in-memory `user_data`
+                    state.data.write().user_data.saved_shows.insert(0, show);
+                }
+            }
         }
         Ok(())
     }
@@ -1189,6 +1259,16 @@ impl Client {
                     });
                 self.playlist_unfollow(id).await?;
             }
+            ItemId::Show(id) => {
+                state
+                    .data
+                    .write()
+                    .user_data
+                    .saved_shows
+                    .retain(|s| s.id != id);
+                self.remove_users_saved_shows([id], Some(rspotify::model::Market::FromToken))
+                    .await?;
+            }
         }
         Ok(())
     }
@@ -1197,7 +1277,7 @@ impl Client {
     pub async fn track(&self, track_id: TrackId<'_>) -> Result<Track> {
         Track::try_from_full_track(
             self.spotify
-                .track(track_id, Some(Market::FromToken))
+                .track(track_id, Some(rspotify::model::Market::FromToken))
                 .await?,
         )
         .context("convert FullTrack into Track")
@@ -1214,9 +1294,10 @@ impl Client {
         //     .playlist(playlist_id, None, Some(Market::FromToken))
         //     .await?;
         let playlist = self
-            .http_get::<FullPlaylist>(
+            .http_get::<rspotify::model::FullPlaylist>(
                 &format!("{SPOTIFY_API_ENDPOINT}/playlists/{}", playlist_id.id()),
                 &market_query(),
+                false,
             )
             .await?;
 
@@ -1227,7 +1308,7 @@ impl Client {
             .await?
             .into_iter()
             .filter_map(|item| match item.track {
-                Some(rspotify_model::PlayableItem::Track(track)) => {
+                Some(rspotify::model::PlayableItem::Track(track)) => {
                     Track::try_from_full_track(track)
                 }
                 _ => None,
@@ -1245,10 +1326,12 @@ impl Client {
         let album_uri = album_id.uri();
         tracing::info!("Get album context: {}", album_uri);
 
-        let album = self.album(album_id, Some(Market::FromToken)).await?;
+        let album = self
+            .album(album_id, Some(rspotify::model::Market::FromToken))
+            .await?;
         let first_page = album.tracks.clone();
 
-        // converts `rspotify_model::FullAlbum` into `state::Album`
+        // converts `rspotify::model::FullAlbum` into `state::Album`
         let album: Album = album.into();
 
         // get the album's tracks
@@ -1284,7 +1367,7 @@ impl Client {
             .into();
 
         let top_tracks = self
-            .artist_top_tracks(artist_id.as_ref(), Some(Market::FromToken))
+            .artist_top_tracks(artist_id.as_ref(), Some(rspotify::model::Market::FromToken))
             .await
             .context("get artist's top tracks")?;
         let top_tracks = top_tracks
@@ -1314,8 +1397,35 @@ impl Client {
         })
     }
 
+    /// Get a show context data
+    pub async fn show_context(&self, show_id: ShowId<'_>) -> Result<Context> {
+        let show_uri = show_id.uri();
+        tracing::info!("Get show context: {}", show_uri);
+
+        let show = self.get_a_show(show_id, None).await?;
+        let first_page = show.episodes.clone();
+
+        // converts `rspotify::model::FullShow` into `state::Show`
+        let show: Show = show.into();
+
+        // get the show's episodes
+        let episodes = self
+            .all_paging_items(first_page, &Query::new())
+            .await?
+            .into_iter()
+            .map(std::convert::Into::into)
+            .collect::<Vec<_>>();
+
+        Ok(Context::Show { show, episodes })
+    }
+
     /// Make a GET HTTP request to the Spotify server
-    async fn http_get<T>(&self, url: &str, payload: &Query<'_>) -> Result<T>
+    async fn http_get<T>(
+        &self,
+        url: &str,
+        payload: &Query<'_>,
+        use_user_client_id: bool,
+    ) -> Result<T>
     where
         T: serde::de::DeserializeOwned,
     {
@@ -1331,7 +1441,12 @@ impl Client {
                 .replace("\"name\":null", "\"name\":\"\"")
         }
 
-        let access_token = self.access_token().await?;
+        let access_token = if use_user_client_id {
+            self.access_token_from_user_client_id().await
+        } else {
+            self.access_token().await
+        }
+        .context("get access token")?;
 
         tracing::debug!("{access_token} {url}");
 
@@ -1360,7 +1475,7 @@ impl Client {
     /// Get all paging items starting from a pagination object of the first page
     async fn all_paging_items<T>(
         &self,
-        first_page: rspotify_model::Page<T>,
+        first_page: rspotify::model::Page<T>,
         payload: &Query<'_>,
     ) -> Result<Vec<T>>
     where
@@ -1371,7 +1486,7 @@ impl Client {
 
         while let Some(url) = maybe_next {
             let mut next_page = self
-                .http_get::<rspotify_model::Page<T>>(&url, payload)
+                .http_get::<rspotify::model::Page<T>>(&url, payload, false)
                 .await?;
             if next_page.items.is_empty() {
                 break;
@@ -1385,7 +1500,7 @@ impl Client {
     /// Get all cursor-based paging items starting from a pagination object of the first page
     async fn all_cursor_based_paging_items<T>(
         &self,
-        first_page: rspotify_model::CursorBasedPage<T>,
+        first_page: rspotify::model::CursorBasedPage<T>,
     ) -> Result<Vec<T>>
     where
         T: serde::de::DeserializeOwned,
@@ -1394,12 +1509,18 @@ impl Client {
         let mut maybe_next = first_page.next;
         while let Some(url) = maybe_next {
             let mut next_page = self
-                .http_get::<rspotify_model::CursorBasedPage<T>>(&url, &Query::new())
+                .http_get::<rspotify::model::CursorBasedPage<T>>(&url, &Query::new(), false)
                 .await?;
             items.append(&mut next_page.items);
             maybe_next = next_page.next;
         }
         Ok(items)
+    }
+
+    pub async fn current_playback2(
+        &self,
+    ) -> Result<Option<rspotify::model::CurrentPlaybackContext>> {
+        Ok(self.current_playback(None, PLAYBACK_TYPES.into()).await?)
     }
 
     /// Retrieve the latest playback state
@@ -1408,28 +1529,34 @@ impl Client {
         state: &SharedState,
         reset_buffered_playback: bool,
     ) -> Result<()> {
-        let new_track = {
+        let new_playback = {
             // update the playback state
-            let playback = self.current_playback(None, None::<Vec<_>>).await?;
+            let playback = self.current_playback2().await?;
             let mut player = state.player.write();
 
-            let prev_track_name = player
-                .current_playing_track()
-                .map(|t| t.name.clone())
-                .unwrap_or_default();
+            let prev_item = player.currently_playing();
+
+            let prev_name = match prev_item {
+                Some(rspotify::model::PlayableItem::Track(track)) => track.name.clone(),
+                Some(rspotify::model::PlayableItem::Episode(episode)) => episode.name.clone(),
+                None => String::new(),
+            };
 
             player.playback = playback;
             player.playback_last_updated_time = Some(std::time::Instant::now());
 
-            let curr_track_name = player
-                .current_playing_track()
-                .map(|t| t.name.clone())
-                .unwrap_or_default();
+            let curr_item = player.currently_playing();
 
-            let new_track = prev_track_name != curr_track_name && !curr_track_name.is_empty();
+            let curr_name = match curr_item {
+                Some(rspotify::model::PlayableItem::Track(track)) => track.name.clone(),
+                Some(rspotify::model::PlayableItem::Episode(episode)) => episode.name.clone(),
+                None => String::new(),
+            };
+
+            let new_playback = prev_name != curr_name && !curr_name.is_empty();
             // check if we need to update the buffered playback
             let needs_update = match (&player.buffered_playback, &player.playback) {
-                (Some(bp), Some(p)) => bp.device_id != p.device.id || new_track,
+                (Some(bp), Some(p)) => bp.device_id != p.device.id || new_playback,
                 (None, None) => false,
                 _ => true,
             };
@@ -1451,37 +1578,60 @@ impl Client {
                 });
             }
 
-            new_track
+            new_playback
         };
 
-        if !new_track {
+        if !new_playback {
             return Ok(());
         }
-        self.handle_new_track_event(state).await?;
+        self.handle_new_playback_event(state).await?;
 
         Ok(())
     }
 
     // Handle new track event
-    async fn handle_new_track_event(&self, state: &SharedState) -> Result<()> {
+    async fn handle_new_playback_event(&self, state: &SharedState) -> Result<()> {
         let configs = config::get_config();
 
-        let track = match state.player.read().current_playing_track() {
-            None => return Ok(()),
-            Some(track) => track.clone(),
+        let curr_item = {
+            let player = state.player.read();
+            let Some(track_or_episode) = player.currently_playing() else {
+                return Ok(());
+            };
+            track_or_episode.clone()
         };
 
-        let Some(url) = crate::utils::get_track_album_image_url(&track) else {
-            return Ok(());
+        let url = match curr_item {
+            rspotify::model::PlayableItem::Track(ref track) => {
+                crate::utils::get_track_album_image_url(track)
+                    .ok_or(anyhow::anyhow!("missing image"))?
+            }
+            rspotify::model::PlayableItem::Episode(ref episode) => {
+                crate::utils::get_episode_show_image_url(episode)
+                    .ok_or(anyhow::anyhow!("missing image"))?
+            }
         };
 
-        let filename = format!(
-            "{}-{}-cover-{}.jpg",
-            track.album.name,
-            track.album.artists.first().unwrap().name,
-            // first 6 characters of the album's id
-            &track.album.id.as_ref().unwrap().id()[..6]
-        )
+        let filename = (match curr_item {
+            rspotify::model::PlayableItem::Track(ref track) => {
+                format!(
+                    "{}-{}-cover-{}.jpg",
+                    track.album.name,
+                    track.album.artists.first().unwrap().name,
+                    // first 6 characters of the album's id
+                    &track.album.id.as_ref().unwrap().id()[..6]
+                )
+            }
+            rspotify::model::PlayableItem::Episode(ref episode) => {
+                format!(
+                    "{}-{}-cover-{}.jpg",
+                    episode.show.name,
+                    episode.show.publisher,
+                    // first 6 characters of the show's id
+                    &episode.show.id.as_ref().id()[..6]
+                )
+            }
+        })
         .replace('/', ""); // remove invalid characters from the file's name
         let path = configs.cache_folder.join("image").join(filename);
 
@@ -1507,7 +1657,7 @@ impl Client {
         if configs.app_config.enable_notify
             && (!configs.app_config.notify_streaming_only || self.stream_conn.lock().is_some())
         {
-            Self::notify_new_track(&track, &path)?;
+            Self::notify_new_playback(&curr_item, &path)?;
         }
 
         #[cfg(all(feature = "notify", not(feature = "streaming")))]
@@ -1553,9 +1703,9 @@ impl Client {
     }
 
     #[cfg(feature = "notify")]
-    /// Create a notification for a new track
-    fn notify_new_track(
-        track: &rspotify_model::FullTrack,
+    /// Create a notification for a new playback
+    fn notify_new_playback(
+        playable: &rspotify::model::PlayableItem,
         cover_img_path: &std::path::Path,
     ) -> Result<()> {
         let mut n = notify_rust::Notification::new();
@@ -1577,11 +1727,26 @@ impl Client {
                 }
                 ptr = e;
                 match m.as_str() {
-                    "{track}" => text += &track.name,
-                    "{artists}" => {
-                        text += &crate::utils::map_join(&track.artists, |a| &a.name, ", ");
+                    "{track}" => {
+                        let name = match playable {
+                            rspotify::model::PlayableItem::Track(ref track) => &track.name,
+                            rspotify::model::PlayableItem::Episode(ref episode) => &episode.name,
+                        };
+                        text += name;
                     }
-                    "{album}" => text += &track.album.name,
+                    "{artists}" => {
+                        if let rspotify::model::PlayableItem::Track(ref track) = playable {
+                            text += &crate::utils::map_join(&track.artists, |a| &a.name, ", ");
+                        }
+                    }
+                    "{album}" => match playable {
+                        rspotify::model::PlayableItem::Track(ref track) => {
+                            text += &track.album.name;
+                        }
+                        rspotify::model::PlayableItem::Episode(ref episode) => {
+                            text += &episode.show.name;
+                        }
+                    },
                     _ => continue,
                 }
             }

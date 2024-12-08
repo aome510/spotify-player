@@ -12,38 +12,55 @@ use crate::{
 fn update_control_metadata(
     state: &SharedState,
     controls: &mut MediaControls,
-    prev_track_info: &mut String,
+    prev_info: &mut String,
 ) -> Result<(), souvlaki::Error> {
     let player = state.player.read();
 
-    match player.current_playing_track() {
+    match player.currently_playing() {
         None => {}
-        Some(track) => {
-            if let Some(ref playback) = player.playback {
-                let progress = player
-                    .playback_progress()
-                    .and_then(|p| Some(MediaPosition(p.to_std().ok()?)));
+        Some(item) => {
+            let progress = player
+                .playback_progress()
+                .and_then(|p| Some(MediaPosition(p.to_std().ok()?)));
 
-                if playback.is_playing {
-                    controls.set_playback(MediaPlayback::Playing { progress })?;
-                } else {
-                    controls.set_playback(MediaPlayback::Paused { progress })?;
+            if player.playback.as_ref().expect("playback").is_playing {
+                controls.set_playback(MediaPlayback::Playing { progress })?;
+            } else {
+                controls.set_playback(MediaPlayback::Paused { progress })?;
+            }
+
+            match item {
+                rspotify::model::PlayableItem::Track(track) => {
+                    // only update metadata when the track information is changed
+                    let track_info = format!("{}/{}", track.name, track.album.name);
+                    if track_info != *prev_info {
+                        controls.set_metadata(MediaMetadata {
+                            title: Some(&track.name),
+                            album: Some(&track.album.name),
+                            artist: Some(&map_join(&track.artists, |a| &a.name, ", ")),
+                            duration: track.duration.to_std().ok(),
+                            cover_url: utils::get_track_album_image_url(track),
+                        })?;
+
+                        *prev_info = track_info;
+                    }
                 }
-            }
+                rspotify::model::PlayableItem::Episode(episode) => {
+                    // only update metadata when the episode information is changed
+                    let episode_info = format!("{}/{}", episode.name, episode.show.name);
+                    if episode_info != *prev_info {
+                        controls.set_metadata(MediaMetadata {
+                            title: Some(&episode.name),
+                            album: Some(&episode.show.name),
+                            artist: Some(&episode.show.publisher),
+                            duration: episode.duration.to_std().ok(),
+                            cover_url: utils::get_episode_show_image_url(episode),
+                        })?;
 
-            // only update metadata when the track information is changed
-            let track_info = format!("{}/{}", track.name, track.album.name);
-            if track_info != *prev_track_info {
-                controls.set_metadata(MediaMetadata {
-                    title: Some(&track.name),
-                    album: Some(&track.album.name),
-                    artist: Some(&map_join(&track.artists, |a| &a.name, ", ")),
-                    duration: track.duration.to_std().ok(),
-                    cover_url: utils::get_track_album_image_url(track),
-                })?;
-
-                *prev_track_info = track_info;
-            }
+                        *prev_info = episode_info;
+                    }
+                }
+            };
         }
     }
 
@@ -125,9 +142,9 @@ pub fn start_event_watcher(
     // handler provided by the souvlaki library, which only handles an event every 1s.
     // [1]: https://github.com/Sinono3/souvlaki/blob/b4d47bb2797ffdd625c17192df640510466762e1/src/platform/linux/mod.rs#L450
     let refresh_duration = std::time::Duration::from_millis(1000);
-    let mut track_info = String::new();
+    let mut info = String::new();
     loop {
-        update_control_metadata(state, &mut controls, &mut track_info)?;
+        update_control_metadata(state, &mut controls, &mut info)?;
         std::thread::sleep(refresh_duration);
 
         // this must be run repeatedly to ensure that

@@ -4,9 +4,9 @@ use crate::state::ImageRenderInfo;
 use anyhow::{Context, Result};
 
 use super::{
-    config, rspotify_model, utils::construct_and_render_block, Borders, Constraint, Frame, Gauge,
-    Layout, Line, LineGauge, Modifier, Paragraph, PlaybackMetadata, Rect, SharedState, Span, Style,
-    Text, UIStateGuard, Wrap,
+    config, utils::construct_and_render_block, Borders, Constraint, Frame, Gauge, Layout, Line,
+    LineGauge, Modifier, Paragraph, PlaybackMetadata, Rect, SharedState, Span, Style, Text,
+    UIStateGuard, Wrap,
 };
 
 /// Render a playback window showing information about the current playback, which includes
@@ -25,7 +25,7 @@ pub fn render_playback_window(
 
     let player = state.player.read();
     if let Some(ref playback) = player.playback {
-        if let Some(rspotify::model::PlayableItem::Track(ref track)) = playback.item {
+        if let Some(item) = &playback.item {
             let (metadata_rect, progress_bar_rect) = {
                 // allocate the progress bar rect
                 let (rect, progress_bar_rect) = {
@@ -57,7 +57,14 @@ pub fn render_playback_window(
                             (hor_chunks[1], ver_chunks[0])
                         };
 
-                        let url = crate::utils::get_track_album_image_url(track).map(String::from);
+                        let url = match item {
+                            rspotify::model::PlayableItem::Track(track) => {
+                                crate::utils::get_track_album_image_url(track).map(String::from)
+                            }
+                            rspotify::model::PlayableItem::Episode(episode) => {
+                                crate::utils::get_episode_show_image_url(episode).map(String::from)
+                            }
+                        };
                         if let Some(url) = url {
                             let needs_clear = if ui.last_cover_image_render_info.url != url
                                 || ui.last_cover_image_render_info.render_area != cover_img_rect
@@ -75,8 +82,12 @@ pub fn render_playback_window(
                             if needs_clear {
                                 // clear the image's both new and old areas to ensure no remaining artifacts before rendering the image
                                 // See: https://github.com/aome510/spotify-player/issues/389
-                                clear_area(frame, ui.last_cover_image_render_info.render_area);
-                                clear_area(frame, cover_img_rect);
+                                clear_area(
+                                    frame,
+                                    ui.last_cover_image_render_info.render_area,
+                                    &ui.theme,
+                                );
+                                clear_area(frame, cover_img_rect, &ui.theme);
                             } else {
                                 if !ui.last_cover_image_render_info.rendered {
                                     if let Err(err) = render_playback_cover_image(state, ui) {
@@ -115,58 +126,69 @@ pub fn render_playback_window(
             };
 
             if let Some(ref playback) = player.buffered_playback {
-                let playback_text = construct_playback_text(ui, track, playback);
+                let playback_text = construct_playback_text(ui, item, playback);
                 let playback_desc = Paragraph::new(playback_text);
                 frame.render_widget(playback_desc, metadata_rect);
             }
 
+            let duration = match item {
+                rspotify::model::PlayableItem::Track(track) => track.duration,
+                rspotify::model::PlayableItem::Episode(episode) => episode.duration,
+            };
+
             let progress = std::cmp::min(
                 player.playback_progress().expect("non-empty playback"),
-                track.duration,
+                duration,
             );
-            render_playback_progress_bar(frame, ui, progress, track, progress_bar_rect);
+            render_playback_progress_bar(frame, ui, progress, duration, progress_bar_rect);
+            return other_rect;
         }
-    } else {
-        // Previously rendered image can result in a weird rendering text,
-        // clear the previous widget's area before rendering the text.
-        #[cfg(feature = "image")]
-        {
-            if ui.last_cover_image_render_info.rendered {
-                clear_area(frame, ui.last_cover_image_render_info.render_area);
-                ui.last_cover_image_render_info = ImageRenderInfo::default();
-            }
-        }
+    }
 
-        frame.render_widget(
+    // Previously rendered image can result in a weird rendering text,
+    // clear the previous widget's area before rendering the text.
+    #[cfg(feature = "image")]
+    {
+        if ui.last_cover_image_render_info.rendered {
+            clear_area(
+                frame,
+                ui.last_cover_image_render_info.render_area,
+                &ui.theme,
+            );
+            ui.last_cover_image_render_info = ImageRenderInfo::default();
+        }
+    }
+
+    frame.render_widget(
             Paragraph::new(
-                "No playback found.\n \
-                 Please make sure there is a running Spotify device and try to connect to one using the `SwitchDevice` command.\n \
+                "No playback found. Please start a new playback.\n \
+                 Make sure there is a running Spotify device and try to connect to one using the `SwitchDevice` command.\n \
                  You may also need to set up Spotify Connect to see available devices as in https://github.com/aome510/spotify-player#spotify-connect."
             )
             .wrap(Wrap { trim: true }),
             rect,
         );
-    };
 
     other_rect
 }
 
 #[cfg(feature = "image")]
-fn clear_area(frame: &mut Frame, rect: Rect) {
+fn clear_area(frame: &mut Frame, rect: Rect, theme: &config::Theme) {
     for x in rect.left()..rect.right() {
         for y in rect.top()..rect.bottom() {
             frame
                 .buffer_mut()
                 .cell_mut((x, y))
                 .expect("invalid cell")
-                .reset();
+                .set_char(' ')
+                .set_style(theme.app());
         }
     }
 }
 
 fn construct_playback_text(
     ui: &UIStateGuard,
-    track: &rspotify_model::FullTrack,
+    playable: &rspotify::model::PlayableItem,
     playback: &PlaybackMetadata,
 ) -> Text<'static> {
     // Construct a "styled" text (`playback_text`) from playback's data
@@ -206,19 +228,41 @@ fn construct_playback_text(
                 .to_owned(),
                 ui.theme.playback_status(),
             ),
-            "{track}" => (
-                if track.explicit {
-                    format!("{} (E)", track.name)
-                } else {
-                    track.name.clone()
-                },
-                ui.theme.playback_track(),
-            ),
-            "{artists}" => (
-                crate::utils::map_join(&track.artists, |a| &a.name, ", "),
-                ui.theme.playback_artists(),
-            ),
-            "{album}" => (track.album.name.clone(), ui.theme.playback_album()),
+            "{track}" => match playable {
+                rspotify::model::PlayableItem::Track(track) => (
+                    if track.explicit {
+                        format!("{} (E)", track.name)
+                    } else {
+                        track.name.clone()
+                    },
+                    ui.theme.playback_track(),
+                ),
+                rspotify::model::PlayableItem::Episode(episode) => (
+                    if episode.explicit {
+                        format!("{} (E)", episode.name)
+                    } else {
+                        episode.name.clone()
+                    },
+                    ui.theme.playback_track(),
+                ),
+            },
+            "{artists}" => match playable {
+                rspotify::model::PlayableItem::Track(track) => (
+                    crate::utils::map_join(&track.artists, |a| &a.name, ", "),
+                    ui.theme.playback_artists(),
+                ),
+                rspotify::model::PlayableItem::Episode(episode) => {
+                    (episode.show.publisher.clone(), ui.theme.playback_artists())
+                }
+            },
+            "{album}" => match playable {
+                rspotify::model::PlayableItem::Track(track) => {
+                    (track.album.name.clone(), ui.theme.playback_album())
+                }
+                rspotify::model::PlayableItem::Episode(episode) => {
+                    (episode.show.name.clone(), ui.theme.playback_album())
+                }
+            },
             "{metadata}" => (
                 format!(
                     "repeat: {} | shuffle: {} | volume: {} | device: {}",
@@ -228,9 +272,10 @@ fn construct_playback_text(
                         <&'static str>::from(playback.repeat_state)
                     },
                     playback.shuffle_state,
-                    match playback.mute_state {
-                        Some(volume) => format!("{volume}% (muted)"),
-                        None => format!("{}%", playback.volume.unwrap_or_default()),
+                    if let Some(volume) = playback.mute_state {
+                        format!("{volume}% (muted)")
+                    } else {
+                        format!("{}%", playback.volume.unwrap_or_default())
                     },
                     playback.device_name,
                 ),
@@ -255,13 +300,12 @@ fn render_playback_progress_bar(
     frame: &mut Frame,
     ui: &mut UIStateGuard,
     progress: chrono::Duration,
-    track: &rspotify_model::FullTrack,
+    duration: chrono::Duration,
     rect: Rect,
 ) {
     // Negative numbers can sometimes appear from progress.num_seconds() so this stops
     // them coming through into the ratios
-    let ratio =
-        (progress.num_seconds() as f64 / track.duration.num_seconds() as f64).clamp(0.0, 1.0);
+    let ratio = (progress.num_seconds() as f64 / duration.num_seconds() as f64).clamp(0.0, 1.0);
 
     match config::get_config().app_config.progress_bar_type {
         config::ProgressBarType::Line => frame.render_widget(
@@ -273,7 +317,7 @@ fn render_playback_progress_bar(
                     format!(
                         "{}/{}",
                         crate::utils::format_duration(&progress),
-                        crate::utils::format_duration(&track.duration),
+                        crate::utils::format_duration(&duration),
                     ),
                     Style::default().add_modifier(Modifier::BOLD),
                 )),
@@ -287,7 +331,7 @@ fn render_playback_progress_bar(
                     format!(
                         "{}/{}",
                         crate::utils::format_duration(&progress),
-                        crate::utils::format_duration(&track.duration),
+                        crate::utils::format_duration(&duration),
                     ),
                     Style::default().add_modifier(Modifier::BOLD),
                 )),
@@ -339,6 +383,7 @@ fn render_playback_cover_image(state: &SharedState, ui: &mut UIStateGuard) -> Re
                 width: Some(width),
                 height: Some(height),
                 restore_cursor: true,
+                transparent: true,
                 ..Default::default()
             },
         )
