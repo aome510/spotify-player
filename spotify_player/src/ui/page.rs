@@ -578,7 +578,11 @@ pub fn render_lyrics_page(
             frame.render_widget(Paragraph::new("Loading..."), rect);
             return;
         }
-        Some(lyrics) => lyrics,
+        Some(None) => {
+            frame.render_widget(Paragraph::new("Lyrics not found"), rect);
+            return;
+        }
+        Some(Some(lyrics)) => lyrics,
     };
 
     // 4. Render the page's widgets
@@ -589,10 +593,13 @@ pub fn render_lyrics_page(
     );
 
     // render lyric text
-    let mut current_playing_line_id = 0;
+
+    // the last played line id (1-based)
+    // zero value indicates no line has been played yet
+    let mut last_played_line_id = 0;
     for (id, (t, _)) in lyrics.lines.iter().enumerate() {
         if *t <= progress {
-            current_playing_line_id = id;
+            last_played_line_id = id + 1;
         }
     }
     let lines = lyrics
@@ -600,7 +607,7 @@ pub fn render_lyrics_page(
         .iter()
         .enumerate()
         .map(|(id, (_, line))| {
-            if id <= current_playing_line_id {
+            if id < last_played_line_id {
                 Line::styled(line, ui.theme.lyrics_played())
             } else {
                 Line::raw(line)
@@ -612,7 +619,7 @@ pub fn render_lyrics_page(
     // keep the currently playing line in the center if
     // the line goes pass the lower half of lyrics section
     let half_height = (chunks[1].height / 2) as usize;
-    if let Some(offset) = current_playing_line_id.checked_sub(half_height) {
+    if let Some(offset) = last_played_line_id.checked_sub(half_height) {
         paragraph = paragraph.scroll((offset as u16, 0));
     }
     frame.render_widget(paragraph, chunks[1]);

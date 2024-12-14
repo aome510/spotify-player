@@ -49,7 +49,7 @@ pub struct UserData {
 pub struct MemoryCaches {
     pub context: ttl_cache::TtlCache<String, Context>,
     pub search: ttl_cache::TtlCache<String, SearchResults>,
-    pub lyrics: ttl_cache::TtlCache<String, Lyrics>,
+    pub lyrics: ttl_cache::TtlCache<String, Option<Lyrics>>,
     #[cfg(feature = "image")]
     pub images: ttl_cache::TtlCache<String, image::DynamicImage>,
 }

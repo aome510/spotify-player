@@ -604,12 +604,20 @@ impl Client {
         Ok(())
     }
 
-    /// Get lyrics of a given track
-    pub async fn lyrics(&self, track_id: TrackId<'static>) -> Result<Lyrics> {
+    /// Get lyrics of a given track, return None if no lyrics is available
+    pub async fn lyrics(&self, track_id: TrackId<'static>) -> Result<Option<Lyrics>> {
         let session = self.session().await;
         let id = librespot_core::spotify_id::SpotifyId::from_uri(&track_id.uri())?;
-        let lyrics = librespot_metadata::Lyrics::get(&session, &id).await?.into();
-        Ok(lyrics)
+        match librespot_metadata::Lyrics::get(&session, &id).await {
+            Ok(lyrics) => Ok(Some(lyrics.into())),
+            Err(err) => {
+                if err.to_string().to_lowercase().contains("not found") {
+                    Ok(None)
+                } else {
+                    Err(err.into())
+                }
+            }
+        }
     }
 
     /// Get user available devices
