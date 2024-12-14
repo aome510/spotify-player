@@ -11,7 +11,7 @@ use super::model::{
 
 pub type DataReadGuard<'a> = parking_lot::RwLockReadGuard<'a, AppData>;
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum FileCacheKey {
     Playlists,
     PlaylistFolders,
@@ -48,8 +48,7 @@ pub struct UserData {
 pub struct MemoryCaches {
     pub context: ttl_cache::TtlCache<String, Context>,
     pub search: ttl_cache::TtlCache<String, SearchResults>,
-    #[cfg(feature = "lyric-finder")]
-    pub lyrics: ttl_cache::TtlCache<String, lyric_finder::LyricResult>,
+    // pub lyrics: ttl_cache::TtlCache<String, lyric_finder::LyricResult>,
     #[cfg(feature = "image")]
     pub images: ttl_cache::TtlCache<String, image::DynamicImage>,
 }
@@ -66,8 +65,7 @@ impl MemoryCaches {
         Self {
             context: ttl_cache::TtlCache::new(64),
             search: ttl_cache::TtlCache::new(64),
-            #[cfg(feature = "lyric-finder")]
-            lyrics: ttl_cache::TtlCache::new(64),
+            // lyrics: ttl_cache::TtlCache::new(64),
             #[cfg(feature = "image")]
             images: ttl_cache::TtlCache::new(64),
         }
@@ -188,7 +186,6 @@ impl UserData {
     }
 }
 
-#[allow(clippy::needless_pass_by_value)] // that's ok here
 pub fn store_data_into_file_cache<T: Serialize>(
     key: FileCacheKey,
     cache_folder: &Path,
@@ -200,7 +197,6 @@ pub fn store_data_into_file_cache<T: Serialize>(
     Ok(())
 }
 
-#[allow(clippy::needless_pass_by_value)] // that's ok here
 pub fn load_data_from_file_cache<T>(key: FileCacheKey, cache_folder: &Path) -> Option<T>
 where
     T: DeserializeOwned,

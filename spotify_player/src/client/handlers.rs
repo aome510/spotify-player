@@ -6,7 +6,6 @@ use crate::{
     state::{ContextId, ContextPageType, ContextPageUIState, PageState, PlayableId, SharedState},
 };
 
-#[cfg(feature = "lyric-finder")]
 use crate::utils::map_join;
 
 use super::ClientRequest;
@@ -167,8 +166,7 @@ fn handle_page_change_event(
             }
         }
 
-        #[cfg(feature = "lyric-finder")]
-        PageState::Lyric {
+        PageState::Lyrics {
             track,
             artists,
             scroll_offset,
@@ -182,7 +180,7 @@ fn handle_page_change_event(
                     *artists = map_join(&current_track.artists, |a| &a.name, ", ");
                     *scroll_offset = 0;
 
-                    client_pub.send(ClientRequest::GetLyric {
+                    client_pub.send(ClientRequest::GetLyrics {
                         track: track.clone(),
                         artists: artists.clone(),
                     })?;

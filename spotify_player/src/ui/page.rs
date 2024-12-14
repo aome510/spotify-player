@@ -542,63 +542,62 @@ pub fn render_browse_page(
     utils::render_list_window(frame, list, rect, len, list_state);
 }
 
-#[cfg(feature = "lyric-finder")]
-pub fn render_lyric_page(
+pub fn render_lyrics_page(
     _is_active: bool,
     frame: &mut Frame,
     state: &SharedState,
     ui: &mut UIStateGuard,
     rect: Rect,
 ) {
-    // 1. Get data
-    let data = state.data.read();
+    // // 1. Get data
+    // let data = state.data.read();
 
-    // 2. Construct the page's layout
-    let rect = construct_and_render_block("Lyric", &ui.theme, Borders::ALL, frame, rect);
-    let chunks = Layout::vertical([Constraint::Length(1), Constraint::Fill(0)]).split(rect);
+    // // 2. Construct the page's layout
+    // let rect = construct_and_render_block("Lyrics", &ui.theme, Borders::ALL, frame, rect);
+    // let chunks = Layout::vertical([Constraint::Length(1), Constraint::Fill(0)]).split(rect);
 
-    // 3. Construct the page's widgets
-    let PageState::Lyric {
-        track,
-        artists,
-        scroll_offset,
-    } = ui.current_page_mut()
-    else {
-        return;
-    };
+    // // 3. Construct the page's widgets
+    // let PageState::Lyrics {
+    //     track,
+    //     artists,
+    //     scroll_offset,
+    // } = ui.current_page_mut()
+    // else {
+    //     return;
+    // };
 
-    let (desc, lyric) = match data.caches.lyrics.get(&format!("{track} {artists}")) {
-        None => {
-            frame.render_widget(Paragraph::new("Loading..."), rect);
-            return;
-        }
-        Some(lyric_finder::LyricResult::None) => {
-            frame.render_widget(Paragraph::new("Lyric not found"), rect);
-            return;
-        }
-        Some(lyric_finder::LyricResult::Some {
-            track,
-            artists,
-            lyric,
-        }) => (format!("{track} by {artists}"), format!("\n{lyric}")),
-    };
+    // let (desc, lyrics) = match data.caches.lyrics.get(&format!("{track} {artists}")) {
+    //     None => {
+    //         frame.render_widget(Paragraph::new("Loading..."), rect);
+    //         return;
+    //     }
+    //     Some(lyric_finder::LyricResult::None) => {
+    //         frame.render_widget(Paragraph::new("Lyrics not found"), rect);
+    //         return;
+    //     }
+    //     Some(lyric_finder::LyricResult::Some {
+    //         track,
+    //         artists,
+    //         lyric,
+    //     }) => (format!("{track} by {artists}"), format!("\n{lyric}")),
+    // };
 
-    // update the scroll offset so that it doesn't exceed the lyric's length
-    let n_rows = lyric.matches('\n').count() + 1;
-    if *scroll_offset >= n_rows {
-        *scroll_offset = n_rows - 1;
-    }
-    let scroll_offset = *scroll_offset;
+    // // update the scroll offset so that it doesn't exceed the lyric's length
+    // let n_rows = lyrics.matches('\n').count() + 1;
+    // if *scroll_offset >= n_rows {
+    //     *scroll_offset = n_rows - 1;
+    // }
+    // let scroll_offset = *scroll_offset;
 
-    // 4. Render the page's widgets
-    // render lyric page description text
-    frame.render_widget(Paragraph::new(desc).style(ui.theme.page_desc()), chunks[0]);
+    // // 4. Render the page's widgets
+    // // render lyric page description text
+    // frame.render_widget(Paragraph::new(desc).style(ui.theme.page_desc()), chunks[0]);
 
-    // render lyric text
-    frame.render_widget(
-        Paragraph::new(lyric).scroll((scroll_offset as u16, 0)),
-        chunks[1],
-    );
+    // // render lyric text
+    // frame.render_widget(
+    //     Paragraph::new(lyrics).scroll((scroll_offset as u16, 0)),
+    //     chunks[1],
+    // );
 }
 
 pub fn render_commands_help_page(frame: &mut Frame, ui: &mut UIStateGuard, rect: Rect) {

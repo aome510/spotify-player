@@ -19,7 +19,6 @@ use crate::{
     utils::parse_uri,
 };
 
-#[cfg(feature = "lyric-finder")]
 use crate::utils::map_join;
 use anyhow::{Context as _, Result};
 
@@ -734,19 +733,18 @@ fn handle_global_command(
                 tracing::warn!("clipboard's content ({content}) is not a valid Spotify link!");
             }
         }
-        #[cfg(feature = "lyric-finder")]
-        Command::LyricPage => {
+        Command::LyricsPage => {
             if let Some(rspotify::model::PlayableItem::Track(track)) =
                 state.player.read().currently_playing()
             {
                 let artists = map_join(&track.artists, |a| &a.name, ", ");
-                ui.new_page(PageState::Lyric {
+                ui.new_page(PageState::Lyrics {
                     track: track.name.clone(),
                     artists: artists.clone(),
                     scroll_offset: 0,
                 });
 
-                client_pub.send(ClientRequest::GetLyric {
+                client_pub.send(ClientRequest::GetLyrics {
                     track: track.name.clone(),
                     artists,
                 })?;

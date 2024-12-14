@@ -329,23 +329,8 @@ impl Client {
                     .category_playlists
                     .insert(category.id, playlists);
             }
-            #[cfg(feature = "lyric-finder")]
-            ClientRequest::GetLyric { track, artists } => {
-                let client = lyric_finder::Client::from_http_client(&self.http);
-                let query = format!("{track} {artists}");
-
-                if !state.data.read().caches.lyrics.contains_key(&query) {
-                    let result = client.get_lyric(&query).await.context(format!(
-                        "failed to get lyric for track {track} - artists {artists}"
-                    ))?;
-
-                    state
-                        .data
-                        .write()
-                        .caches
-                        .lyrics
-                        .insert(query, result, *TTL_CACHE_DURATION);
-                }
+            ClientRequest::GetLyrics { track, artists } => {
+                todo!()
             }
             #[cfg(feature = "streaming")]
             ClientRequest::RestartIntegratedClient => {
@@ -1035,15 +1020,14 @@ impl Client {
     }
 
     /// Search for items of a specific type matching a given query
-    #[allow(clippy::used_underscore_binding)] // false positive as this is because of a crate
     pub async fn search_specific_type(
         &self,
         query: &str,
-        _type: rspotify::model::SearchType,
+        typ: rspotify::model::SearchType,
     ) -> Result<rspotify::model::SearchResult> {
         Ok(self
             .spotify
-            .search(query, _type, None, None, None, None)
+            .search(query, typ, None, None, None, None)
             .await?)
     }
 

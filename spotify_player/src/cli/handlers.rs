@@ -46,8 +46,7 @@ fn get_id_or_name(args: &ArgMatches) -> IdOrName {
     }
 }
 
-#[allow(clippy::unnecessary_wraps)] // we need this to match the other functions return type
-fn handle_get_subcommand(args: &ArgMatches) -> Result<Request> {
+fn handle_get_subcommand(args: &ArgMatches) -> Request {
     let (cmd, args) = args.subcommand().expect("playback subcommand is required");
 
     let request = match cmd {
@@ -69,7 +68,7 @@ fn handle_get_subcommand(args: &ArgMatches) -> Result<Request> {
         _ => unreachable!(),
     };
 
-    Ok(request)
+    request
 }
 
 fn handle_playback_subcommand(args: &ArgMatches) -> Result<Request> {
@@ -202,7 +201,7 @@ pub fn handle_cli_subcommand(cmd: &str, args: &ArgMatches) -> Result<()> {
 
     // construct a socket request based on the CLI command and its arguments
     let request = match cmd {
-        "get" => handle_get_subcommand(args)?,
+        "get" => handle_get_subcommand(args),
         "playback" => handle_playback_subcommand(args)?,
         "playlist" => handle_playlist_subcommand(args)?,
         "connect" => Request::Connect(get_id_or_name(args)),
