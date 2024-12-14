@@ -3,6 +3,8 @@ use std::{
     fmt::Display,
 };
 
+use tui::text::Line;
+
 use crate::{state::Episode, utils::format_duration};
 
 use super::{
@@ -550,11 +552,16 @@ pub fn render_lyrics_page(
     rect: Rect,
 ) {
     // 1. Get data
+    let progress = state
+        .player
+        .read()
+        .playback_progress()
+        .expect("non-empty playback");
     let data = state.data.read();
 
     // 2. Construct the page's layout
     let rect = construct_and_render_block("Lyrics", &ui.theme, Borders::ALL, frame, rect);
-    let chunks = Layout::vertical([Constraint::Length(1), Constraint::Fill(0)]).split(rect);
+    let chunks = Layout::vertical([Constraint::Length(2), Constraint::Fill(0)]).split(rect);
 
     // 3. Construct the page's widgets
     let PageState::Lyrics {
@@ -582,12 +589,33 @@ pub fn render_lyrics_page(
     );
 
     // render lyric text
-    let lyrics_text = lyrics
+    let mut current_playing_line_id = 0;
+    for (id, (t, _)) in lyrics.lines.iter().enumerate() {
+        if *t <= progress {
+            current_playing_line_id = id;
+        }
+    }
+    let lines = lyrics
         .lines
         .iter()
-        .map(|l| &l.1)
-        .fold(String::new(), |a, b| a + "\n" + b);
-    frame.render_widget(Paragraph::new(lyrics_text), chunks[1]);
+        .enumerate()
+        .map(|(id, (_, line))| {
+            if id <= current_playing_line_id {
+                Line::styled(line, ui.theme.lyrics_played())
+            } else {
+                Line::raw(line)
+            }
+        })
+        .collect::<Vec<_>>();
+
+    let mut paragraph = Paragraph::new(lines);
+    // keep the currently playing line in the center if
+    // the line goes pass the lower half of lyrics section
+    let half_height = (chunks[1].height / 2) as usize;
+    if let Some(offset) = current_playing_line_id.checked_sub(half_height) {
+        paragraph = paragraph.scroll((offset as u16, 0));
+    }
+    frame.render_widget(paragraph, chunks[1]);
 }
 
 pub fn render_commands_help_page(frame: &mut Frame, ui: &mut UIStateGuard, rect: Rect) {

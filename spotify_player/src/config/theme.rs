@@ -78,6 +78,7 @@ pub struct ComponentStyle {
     pub selection: Option<Style>,
     pub secondary_row: Option<Style>,
     pub like: Option<Style>,
+    pub lyrics_played: Option<Style>,
 }
 
 #[derive(Default, Clone, Debug, Deserialize)]
@@ -165,6 +166,7 @@ impl ThemeConfig {
     }
 }
 
+// TODO: cleanup implementation for style getter methods
 impl Theme {
     pub fn app(&self) -> style::Style {
         let mut style = style::Style::default();
@@ -316,6 +318,14 @@ impl Theme {
     pub fn like(&self) -> tui::style::Style {
         match &self.component_style.like {
             None => Style::default().style(&self.palette),
+            Some(s) => s.style(&self.palette),
+        }
+    }
+    pub fn lyrics_played(&self) -> tui::style::Style {
+        match &self.component_style.lyrics_played {
+            None => Style::default()
+                .modifiers(vec![StyleModifier::Dim])
+                .style(&self.palette),
             Some(s) => s.style(&self.palette),
         }
     }

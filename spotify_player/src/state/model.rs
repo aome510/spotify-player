@@ -678,6 +678,7 @@ impl PlaybackMetadata {
     }
 }
 
+#[derive(Debug)]
 pub struct Lyrics {
     /// Timestamped lines
     pub lines: Vec<(chrono::Duration, String)>,
