@@ -56,8 +56,7 @@ pub enum ClientRequest {
     Player(PlayerRequest),
     GetCurrentUserQueue,
     GetLyrics {
-        track: String,
-        artists: String,
+        track_id: TrackId<'static>,
     },
     #[cfg(feature = "streaming")]
     RestartIntegratedClient,

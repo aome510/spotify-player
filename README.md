@@ -338,7 +338,7 @@ List of supported commands:
 | `TopTrackPage`                 | go to the user top track page                                     | `g t`              |
 | `RecentlyPlayedTrackPage`      | go to the user recently played track page                         | `g r`              |
 | `LikedTrackPage`               | go to the user liked track page                                   | `g y`              |
-| `LyricPage`                    | go to the lyric page of the current track                         | `g L`, `l`         |
+| `LyricsPage`                   | go to the lyrics page of the current track                        | `g L`, `l`         |
 | `LibraryPage`                  | go to the user library page                                       | `g l`              |
 | `SearchPage`                   | go to the search page                                             | `g s`              |
 | `BrowsePage`                   | go to the browse page                                             | `g b`              |

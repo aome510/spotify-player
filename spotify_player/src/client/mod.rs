@@ -329,8 +329,8 @@ impl Client {
                     .category_playlists
                     .insert(category.id, playlists);
             }
-            ClientRequest::GetLyrics { track, artists } => {
-                todo!()
+            ClientRequest::GetLyrics { track_id } => {
+                self.lyrics(track_id).await;
             }
             #[cfg(feature = "streaming")]
             ClientRequest::RestartIntegratedClient => {
@@ -591,6 +591,15 @@ impl Client {
             timer.elapsed().as_millis()
         );
 
+        Ok(())
+    }
+
+    /// Get lyrics of a given track
+    pub async fn lyrics(&self, track_id: TrackId<'static>) -> Result<()> {
+        let session = self.session().await;
+        let id = librespot_core::spotify_id::SpotifyId::from_uri(&track_id.uri())?;
+        let lyrics = librespot_metadata::Lyrics::get(&session, &id).await?;
+        tracing::info!("lyrics: {lyrics:?}");
         Ok(())
     }
 

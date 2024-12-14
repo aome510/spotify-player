@@ -22,7 +22,6 @@ pub enum PageState {
     Lyrics {
         track: String,
         artists: String,
-        scroll_offset: usize,
     },
     Browse {
         state: BrowsePageUIState,
@@ -231,7 +230,7 @@ impl PageState {
                     Some(MutableWindowState::List(state))
                 }
             },
-            Self::Lyrics { scroll_offset, .. } => Some(MutableWindowState::Scroll(scroll_offset)),
+            Self::Lyrics { .. } => None,
             Self::CommandHelp { scroll_offset } | Self::Queue { scroll_offset } => {
                 Some(MutableWindowState::Scroll(scroll_offset))
             }

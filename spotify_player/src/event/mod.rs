@@ -737,17 +737,17 @@ fn handle_global_command(
             if let Some(rspotify::model::PlayableItem::Track(track)) =
                 state.player.read().currently_playing()
             {
-                let artists = map_join(&track.artists, |a| &a.name, ", ");
-                ui.new_page(PageState::Lyrics {
-                    track: track.name.clone(),
-                    artists: artists.clone(),
-                    scroll_offset: 0,
-                });
+                if let Some(id) = &track.id {
+                    let artists = map_join(&track.artists, |a| &a.name, ", ");
+                    ui.new_page(PageState::Lyrics {
+                        track: track.name.clone(),
+                        artists,
+                    });
 
-                client_pub.send(ClientRequest::GetLyrics {
-                    track: track.name.clone(),
-                    artists,
-                })?;
+                    client_pub.send(ClientRequest::GetLyrics {
+                        track_id: id.clone_static(),
+                    })?;
+                }
             }
         }
         Command::SwitchDevice => {

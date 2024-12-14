@@ -290,13 +290,13 @@ fn handle_key_sequence_for_create_playlist_popup(
     client_pub: &flume::Sender<ClientRequest>,
     ui: &mut UIStateGuard,
 ) -> Result<bool> {
-    let (name, desc, current_field) = match ui.popup {
-        Some(PopupState::PlaylistCreate {
-            ref mut name,
-            ref mut desc,
-            ref mut current_field,
-        }) => (name, desc, current_field),
-        _ => return Ok(false),
+    let Some(PopupState::PlaylistCreate {
+        name,
+        desc,
+        current_field,
+    }) = &mut ui.popup
+    else {
+        return Ok(false);
     };
     if key_sequence.keys.len() == 1 {
         match &key_sequence.keys[0] {
@@ -338,9 +338,8 @@ fn handle_key_sequence_for_search_popup(
     ui: &mut UIStateGuard,
 ) -> Result<bool> {
     // handle user's input that updates the search query
-    let query = match ui.popup {
-        Some(PopupState::Search { ref mut query }) => query,
-        _ => return Ok(false),
+    let Some(PopupState::Search { ref mut query }) = &mut ui.popup else {
+        return Ok(false);
     };
     if key_sequence.keys.len() == 1 {
         if let Key::None(c) = key_sequence.keys[0] {
