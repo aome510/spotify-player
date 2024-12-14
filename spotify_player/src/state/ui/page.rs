@@ -19,11 +19,10 @@ pub enum PageState {
         current_query: String,
         state: SearchPageUIState,
     },
-    #[cfg(feature = "lyric-finder")]
-    Lyric {
+    Lyrics {
+        track_uri: String,
         track: String,
         artists: String,
-        scroll_offset: usize,
     },
     Browse {
         state: BrowsePageUIState,
@@ -42,8 +41,7 @@ pub enum PageType {
     Context,
     Search,
     Browse,
-    #[cfg(feature = "lyric-finder")]
-    Lyric,
+    Lyrics,
     Queue,
     CommandHelp,
 }
@@ -146,8 +144,7 @@ impl PageState {
             PageState::Context { .. } => PageType::Context,
             PageState::Search { .. } => PageType::Search,
             PageState::Browse { .. } => PageType::Browse,
-            #[cfg(feature = "lyric-finder")]
-            PageState::Lyric { .. } => PageType::Lyric,
+            PageState::Lyrics { .. } => PageType::Lyrics,
             PageState::Queue { .. } => PageType::Queue,
             PageState::CommandHelp { .. } => PageType::CommandHelp,
         }
@@ -234,8 +231,7 @@ impl PageState {
                     Some(MutableWindowState::List(state))
                 }
             },
-            #[cfg(feature = "lyric-finder")]
-            Self::Lyric { scroll_offset, .. } => Some(MutableWindowState::Scroll(scroll_offset)),
+            Self::Lyrics { .. } => None,
             Self::CommandHelp { scroll_offset } | Self::Queue { scroll_offset } => {
                 Some(MutableWindowState::Scroll(scroll_offset))
             }

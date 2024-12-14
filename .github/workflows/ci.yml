@@ -9,7 +9,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
-  RUST_FEATURES: "rodio-backend,lyric-finder,media-control,image,notify"
+  RUST_FEATURES: "rodio-backend,media-control,image,notify"
 
 jobs:
   rust-ci:

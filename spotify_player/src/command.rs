@@ -62,8 +62,7 @@ pub enum Command {
     TopTrackPage,
     RecentlyPlayedTrackPage,
     LikedTrackPage,
-    #[cfg(feature = "lyric-finder")]
-    LyricPage,
+    LyricsPage,
     LibraryPage,
     SearchPage,
     BrowsePage,
@@ -340,8 +339,7 @@ impl Command {
             Self::TopTrackPage => "go to the user top track page",
             Self::RecentlyPlayedTrackPage => "go to the user recently played track page",
             Self::LikedTrackPage => "go to the user liked track page",
-            #[cfg(feature = "lyric-finder")]
-            Self::LyricPage => "go to the lyric page of the current track",
+            Self::LyricsPage => "go to the lyrics page of the current track",
             Self::LibraryPage => "go to the user library page",
             Self::SearchPage => "go to the search page",
             Self::BrowsePage => "go to the browse page",

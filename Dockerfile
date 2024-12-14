@@ -1,7 +1,7 @@
 FROM rust as builder
 WORKDIR app
 COPY . .
-RUN cargo build --release --bin spotify_player --no-default-features --features lyric-finder
+RUN cargo build --release --bin spotify_player --no-default-features
 
 FROM gcr.io/distroless/cc
 # Create `./config` and `./cache` folders using WORKDIR commands.

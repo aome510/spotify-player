@@ -3,6 +3,8 @@ use std::{
     fmt::Display,
 };
 
+use tui::text::Line;
+
 use crate::{state::Episode, utils::format_duration};
 
 use super::{
@@ -542,8 +544,7 @@ pub fn render_browse_page(
     utils::render_list_window(frame, list, rect, len, list_state);
 }
 
-#[cfg(feature = "lyric-finder")]
-pub fn render_lyric_page(
+pub fn render_lyrics_page(
     _is_active: bool,
     frame: &mut Frame,
     state: &SharedState,
@@ -551,54 +552,77 @@ pub fn render_lyric_page(
     rect: Rect,
 ) {
     // 1. Get data
+    let progress = state
+        .player
+        .read()
+        .playback_progress()
+        .expect("non-empty playback");
     let data = state.data.read();
 
     // 2. Construct the page's layout
-    let rect = construct_and_render_block("Lyric", &ui.theme, Borders::ALL, frame, rect);
-    let chunks = Layout::vertical([Constraint::Length(1), Constraint::Fill(0)]).split(rect);
+    let rect = construct_and_render_block("Lyrics", &ui.theme, Borders::ALL, frame, rect);
+    let chunks = Layout::vertical([Constraint::Length(2), Constraint::Fill(0)]).split(rect);
 
     // 3. Construct the page's widgets
-    let PageState::Lyric {
+    let PageState::Lyrics {
+        track_uri,
         track,
         artists,
-        scroll_offset,
     } = ui.current_page_mut()
     else {
         return;
     };
 
-    let (desc, lyric) = match data.caches.lyrics.get(&format!("{track} {artists}")) {
+    let lyrics = match data.caches.lyrics.get(track_uri) {
         None => {
             frame.render_widget(Paragraph::new("Loading..."), rect);
             return;
         }
-        Some(lyric_finder::LyricResult::None) => {
-            frame.render_widget(Paragraph::new("Lyric not found"), rect);
+        Some(None) => {
+            frame.render_widget(Paragraph::new("Lyrics not found"), rect);
             return;
         }
-        Some(lyric_finder::LyricResult::Some {
-            track,
-            artists,
-            lyric,
-        }) => (format!("{track} by {artists}"), format!("\n{lyric}")),
+        Some(Some(lyrics)) => lyrics,
     };
-
-    // update the scroll offset so that it doesn't exceed the lyric's length
-    let n_rows = lyric.matches('\n').count() + 1;
-    if *scroll_offset >= n_rows {
-        *scroll_offset = n_rows - 1;
-    }
-    let scroll_offset = *scroll_offset;
 
     // 4. Render the page's widgets
     // render lyric page description text
-    frame.render_widget(Paragraph::new(desc).style(ui.theme.page_desc()), chunks[0]);
+    frame.render_widget(
+        Paragraph::new(format!("{track} by {artists}")).style(ui.theme.page_desc()),
+        chunks[0],
+    );
 
     // render lyric text
-    frame.render_widget(
-        Paragraph::new(lyric).scroll((scroll_offset as u16, 0)),
-        chunks[1],
-    );
+
+    // the last played line id (1-based)
+    // zero value indicates no line has been played yet
+    let mut last_played_line_id = 0;
+    for (id, (t, _)) in lyrics.lines.iter().enumerate() {
+        if *t <= progress {
+            last_played_line_id = id + 1;
+        }
+    }
+    let lines = lyrics
+        .lines
+        .iter()
+        .enumerate()
+        .map(|(id, (_, line))| {
+            if id < last_played_line_id {
+                Line::styled(line, ui.theme.lyrics_played())
+            } else {
+                Line::raw(line)
+            }
+        })
+        .collect::<Vec<_>>();
+
+    let mut paragraph = Paragraph::new(lines);
+    // keep the currently playing line in the center if
+    // the line goes pass the lower half of lyrics section
+    let half_height = (chunks[1].height / 2) as usize;
+    if let Some(offset) = last_played_line_id.checked_sub(half_height) {
+        paragraph = paragraph.scroll((offset as u16, 0));
+    }
+    frame.render_widget(paragraph, chunks[1]);
 }
 
 pub fn render_commands_help_page(frame: &mut Frame, ui: &mut UIStateGuard, rect: Rect) {

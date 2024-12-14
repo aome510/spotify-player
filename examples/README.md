@@ -20,9 +20,9 @@
 
 ![Search page example](https://user-images.githubusercontent.com/40011582/140253653-5b156a8f-538b-4e68-9d52-0a379477574f.png)
 
-## Lyric page
+## Lyrics page
 
-![Lyric page example](https://user-images.githubusercontent.com/40011582/169437044-420cf0e2-5d75-4022-bd9f-34540f1fe230.png)
+![Lyrics page example](https://user-images.githubusercontent.com/40011582/169437044-420cf0e2-5d75-4022-bd9f-34540f1fe230.png)
 
 ## Command help popup
 

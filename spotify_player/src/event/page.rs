@@ -25,10 +25,10 @@ pub fn handle_key_sequence_for_page(
             PageType::Library => handle_command_for_library_page(command, client_pub, ui, state),
             PageType::Context => handle_command_for_context_page(command, client_pub, ui, state),
             PageType::Browse => handle_command_for_browse_page(command, client_pub, ui, state),
-            #[cfg(feature = "lyric-finder")]
-            PageType::Lyric => handle_command_for_lyric_page(command, ui),
-            PageType::Queue => handle_command_for_queue_page(command, ui),
-            PageType::CommandHelp => handle_command_for_command_help_page(command, ui),
+            // lyrics page doesn't support any commands
+            PageType::Lyrics => Ok(false),
+            PageType::Queue => Ok(handle_command_for_queue_page(command, ui)),
+            PageType::CommandHelp => Ok(handle_command_for_command_help_page(command, ui)),
         },
         Some(CommandOrAction::Action(action, ActionTarget::SelectedItem)) => match page_type {
             PageType::Search => anyhow::bail!("page search type should already be handled!"),
@@ -416,54 +416,24 @@ fn handle_command_for_browse_page(
     Ok(true)
 }
 
-#[cfg(feature = "lyric-finder")]
-#[allow(clippy::unnecessary_wraps)] // match return type
-fn handle_command_for_lyric_page(command: Command, ui: &mut UIStateGuard) -> Result<bool> {
-    let scroll_offset = match ui.current_page() {
-        PageState::Lyric { scroll_offset, .. } => *scroll_offset,
-        _ => return Ok(false),
-    };
-    Ok(handle_navigation_command(
-        command,
-        ui.current_page_mut(),
-        scroll_offset,
-        10000,
-    ))
-}
-
-#[allow(clippy::unnecessary_wraps)] // for consistency
-fn handle_command_for_queue_page(
-    command: Command,
-    ui: &mut UIStateGuard,
-) -> Result<bool, anyhow::Error> {
+fn handle_command_for_queue_page(command: Command, ui: &mut UIStateGuard) -> bool {
     let scroll_offset = match ui.current_page() {
         PageState::Queue { scroll_offset } => *scroll_offset,
-        _ => return Ok(false),
+        _ => return false,
     };
-    Ok(handle_navigation_command(
-        command,
-        ui.current_page_mut(),
-        scroll_offset,
-        10000,
-    ))
+    handle_navigation_command(command, ui.current_page_mut(), scroll_offset, 10000)
 }
 
-#[allow(clippy::unnecessary_wraps)] // for consistency
-fn handle_command_for_command_help_page(command: Command, ui: &mut UIStateGuard) -> Result<bool> {
+fn handle_command_for_command_help_page(command: Command, ui: &mut UIStateGuard) -> bool {
     let scroll_offset = match ui.current_page() {
         PageState::CommandHelp { scroll_offset } => *scroll_offset,
-        _ => return Ok(false),
+        _ => return false,
     };
     if command == Command::Search {
         ui.new_search_popup();
-        return Ok(true);
+        return true;
     }
-    Ok(handle_navigation_command(
-        command,
-        ui.current_page_mut(),
-        scroll_offset,
-        10000,
-    ))
+    handle_navigation_command(command, ui.current_page_mut(), scroll_offset, 10000)
 }
 
 pub fn handle_navigation_command(

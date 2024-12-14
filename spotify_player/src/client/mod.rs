@@ -1,6 +1,7 @@
 use std::ops::Deref;
 use std::{borrow::Cow, collections::HashMap, sync::Arc};
 
+use crate::state::Lyrics;
 use crate::{auth, config};
 use crate::{
     auth::AuthConfig,
@@ -329,22 +330,16 @@ impl Client {
                     .category_playlists
                     .insert(category.id, playlists);
             }
-            #[cfg(feature = "lyric-finder")]
-            ClientRequest::GetLyric { track, artists } => {
-                let client = lyric_finder::Client::from_http_client(&self.http);
-                let query = format!("{track} {artists}");
-
-                if !state.data.read().caches.lyrics.contains_key(&query) {
-                    let result = client.get_lyric(&query).await.context(format!(
-                        "failed to get lyric for track {track} - artists {artists}"
-                    ))?;
-
+            ClientRequest::GetLyrics { track_id } => {
+                let uri = track_id.uri();
+                if !state.data.read().caches.lyrics.contains_key(&uri) {
+                    let lyrics = self.lyrics(track_id).await?;
                     state
                         .data
                         .write()
                         .caches
                         .lyrics
-                        .insert(query, result, *TTL_CACHE_DURATION);
+                        .insert(uri, lyrics, *TTL_CACHE_DURATION);
                 }
             }
             #[cfg(feature = "streaming")]
@@ -607,6 +602,22 @@ impl Client {
         );
 
         Ok(())
+    }
+
+    /// Get lyrics of a given track, return None if no lyrics is available
+    pub async fn lyrics(&self, track_id: TrackId<'static>) -> Result<Option<Lyrics>> {
+        let session = self.session().await;
+        let id = librespot_core::spotify_id::SpotifyId::from_uri(&track_id.uri())?;
+        match librespot_metadata::Lyrics::get(&session, &id).await {
+            Ok(lyrics) => Ok(Some(lyrics.into())),
+            Err(err) => {
+                if err.to_string().to_lowercase().contains("not found") {
+                    Ok(None)
+                } else {
+                    Err(err.into())
+                }
+            }
+        }
     }
 
     /// Get user available devices
@@ -1035,15 +1046,14 @@ impl Client {
     }
 
     /// Search for items of a specific type matching a given query
-    #[allow(clippy::used_underscore_binding)] // false positive as this is because of a crate
     pub async fn search_specific_type(
         &self,
         query: &str,
-        _type: rspotify::model::SearchType,
+        typ: rspotify::model::SearchType,
     ) -> Result<rspotify::model::SearchResult> {
         Ok(self
             .spotify
-            .search(query, _type, None, None, None, None)
+            .search(query, typ, None, None, None, None)
             .await?)
     }
 

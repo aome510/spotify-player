@@ -55,10 +55,8 @@ pub enum ClientRequest {
     DeleteFromLibrary(ItemId),
     Player(PlayerRequest),
     GetCurrentUserQueue,
-    #[cfg(feature = "lyric-finder")]
-    GetLyric {
-        track: String,
-        artists: String,
+    GetLyrics {
+        track_id: TrackId<'static>,
     },
     #[cfg(feature = "streaming")]
     RestartIntegratedClient,

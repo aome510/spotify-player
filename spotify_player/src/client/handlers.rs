@@ -1,4 +1,5 @@
 use anyhow::Context;
+use rspotify::model::Id;
 use tracing::Instrument;
 
 use crate::{
@@ -6,7 +7,6 @@ use crate::{
     state::{ContextId, ContextPageType, ContextPageUIState, PageState, PlayableId, SharedState},
 };
 
-#[cfg(feature = "lyric-finder")]
 use crate::utils::map_join;
 
 use super::ClientRequest;
@@ -167,25 +167,24 @@ fn handle_page_change_event(
             }
         }
 
-        #[cfg(feature = "lyric-finder")]
-        PageState::Lyric {
+        PageState::Lyrics {
+            track_uri,
             track,
             artists,
-            scroll_offset,
         } => {
             if let Some(rspotify::model::PlayableItem::Track(current_track)) =
                 state.player.read().currently_playing()
             {
                 if current_track.name != *track {
-                    tracing::info!("Current playing track \"{}\" is different from the track \"{track}\" shown up in the lyric page. Updating the track and fetching its lyric...", current_track.name);
-                    track.clone_from(&current_track.name);
-                    *artists = map_join(&current_track.artists, |a| &a.name, ", ");
-                    *scroll_offset = 0;
-
-                    client_pub.send(ClientRequest::GetLyric {
-                        track: track.clone(),
-                        artists: artists.clone(),
-                    })?;
+                    if let Some(id) = &current_track.id {
+                        tracing::info!("Currently playing track \"{}\" is different from the track \"{track}\" shown up in the lyrics page. Fetching new track's lyrics...", current_track.name);
+                        track.clone_from(&current_track.name);
+                        *artists = map_join(&current_track.artists, |a| &a.name, ", ");
+                        *track_uri = id.uri();
+                        client_pub.send(ClientRequest::GetLyrics {
+                            track_id: id.clone_static(),
+                        })?;
+                    }
                 }
             }
         }
