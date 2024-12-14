@@ -1307,12 +1307,7 @@ impl Client {
             .all_paging_items(first_page, &market_query())
             .await?
             .into_iter()
-            .filter_map(|item| match item.track {
-                Some(rspotify::model::PlayableItem::Track(track)) => {
-                    Track::try_from_full_track(track)
-                }
-                _ => None,
-            })
+            .filter_map(Track::try_from_playlist_item)
             .collect::<Vec<_>>();
 
         Ok(Context::Playlist {

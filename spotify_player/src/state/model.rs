@@ -338,8 +338,11 @@ impl Track {
         }
     }
 
-    /// tries to convert from a `rspotify::model::FullTrack` into `Track`
-    pub fn try_from_full_track(track: rspotify::model::FullTrack) -> Option<Self> {
+    /// tries to convert from a `rspotify::model::FullTrack` into `Track` with a optional added_at date
+    fn try_from_full_track_with_date(
+        track: rspotify::model::FullTrack,
+        added_at: Option<chrono::DateTime<chrono::Utc>>,
+    ) -> Option<Self> {
         if track.is_playable.unwrap_or(true) {
             let id = match track.linked_from {
                 Some(d) => d.id?,
@@ -352,11 +355,25 @@ impl Track {
                 album: Album::try_from_simplified_album(track.album),
                 duration: track.duration.to_std().expect("valid chrono duration"),
                 explicit: track.explicit,
-                added_at: 0,
+                added_at: added_at.map(|t| t.timestamp() as u64).unwrap_or_default(),
             })
         } else {
             None
         }
+    }
+
+    /// tries to convert from a `rspotify::model::FullTrack` into `Track`
+    pub fn try_from_full_track(track: rspotify::model::FullTrack) -> Option<Self> {
+        Track::try_from_full_track_with_date(track, None)
+    }
+
+    /// tries to convert from a `rspotify::model::PlaylistItem` into `Track`
+    pub fn try_from_playlist_item(item: rspotify::model::PlaylistItem) -> Option<Self> {
+        let rspotify::model::PlayableItem::Track(track) = item.track? else {
+            return None;
+        };
+
+        Track::try_from_full_track_with_date(track, item.added_at)
     }
 }
 
