@@ -20,6 +20,7 @@ pub enum PageState {
         state: SearchPageUIState,
     },
     Lyrics {
+        track_uri: String,
         track: String,
         artists: String,
     },

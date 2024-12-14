@@ -8,6 +8,7 @@ use super::model::{
     Album, Artist, Category, Context, ContextId, Id, Playlist, PlaylistFolderItem,
     PlaylistFolderNode, SearchResults, Show, Track,
 };
+use super::Lyrics;
 
 pub type DataReadGuard<'a> = parking_lot::RwLockReadGuard<'a, AppData>;
 
@@ -48,7 +49,7 @@ pub struct UserData {
 pub struct MemoryCaches {
     pub context: ttl_cache::TtlCache<String, Context>,
     pub search: ttl_cache::TtlCache<String, SearchResults>,
-    // pub lyrics: ttl_cache::TtlCache<String, lyric_finder::LyricResult>,
+    pub lyrics: ttl_cache::TtlCache<String, Lyrics>,
     #[cfg(feature = "image")]
     pub images: ttl_cache::TtlCache<String, image::DynamicImage>,
 }
@@ -65,7 +66,7 @@ impl MemoryCaches {
         Self {
             context: ttl_cache::TtlCache::new(64),
             search: ttl_cache::TtlCache::new(64),
-            // lyrics: ttl_cache::TtlCache::new(64),
+            lyrics: ttl_cache::TtlCache::new(64),
             #[cfg(feature = "image")]
             images: ttl_cache::TtlCache::new(64),
         }

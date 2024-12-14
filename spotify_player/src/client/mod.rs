@@ -1,6 +1,7 @@
 use std::ops::Deref;
 use std::{borrow::Cow, collections::HashMap, sync::Arc};
 
+use crate::state::Lyrics;
 use crate::{auth, config};
 use crate::{
     auth::AuthConfig,
@@ -330,7 +331,16 @@ impl Client {
                     .insert(category.id, playlists);
             }
             ClientRequest::GetLyrics { track_id } => {
-                self.lyrics(track_id).await;
+                let uri = track_id.uri();
+                if !state.data.read().caches.lyrics.contains_key(&uri) {
+                    let lyrics = self.lyrics(track_id).await?;
+                    state
+                        .data
+                        .write()
+                        .caches
+                        .lyrics
+                        .insert(uri, lyrics, *TTL_CACHE_DURATION);
+                }
             }
             #[cfg(feature = "streaming")]
             ClientRequest::RestartIntegratedClient => {
@@ -595,12 +605,11 @@ impl Client {
     }
 
     /// Get lyrics of a given track
-    pub async fn lyrics(&self, track_id: TrackId<'static>) -> Result<()> {
+    pub async fn lyrics(&self, track_id: TrackId<'static>) -> Result<Lyrics> {
         let session = self.session().await;
         let id = librespot_core::spotify_id::SpotifyId::from_uri(&track_id.uri())?;
-        let lyrics = librespot_metadata::Lyrics::get(&session, &id).await?;
-        tracing::info!("lyrics: {lyrics:?}");
-        Ok(())
+        let lyrics = librespot_metadata::Lyrics::get(&session, &id).await?.into();
+        Ok(lyrics)
     }
 
     /// Get user available devices

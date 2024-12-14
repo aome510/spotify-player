@@ -1,4 +1,5 @@
 use anyhow::Context;
+use rspotify::model::Id;
 use tracing::Instrument;
 
 use crate::{
@@ -166,7 +167,11 @@ fn handle_page_change_event(
             }
         }
 
-        PageState::Lyrics { track, artists } => {
+        PageState::Lyrics {
+            track_uri,
+            track,
+            artists,
+        } => {
             if let Some(rspotify::model::PlayableItem::Track(current_track)) =
                 state.player.read().currently_playing()
             {
@@ -175,6 +180,7 @@ fn handle_page_change_event(
                         tracing::info!("Currently playing track \"{}\" is different from the track \"{track}\" shown up in the lyrics page. Fetching new track's lyrics...", current_track.name);
                         track.clone_from(&current_track.name);
                         *artists = map_join(&current_track.artists, |a| &a.name, ", ");
+                        *track_uri = id.uri();
                         client_pub.send(ClientRequest::GetLyrics {
                             track_id: id.clone_static(),
                         })?;

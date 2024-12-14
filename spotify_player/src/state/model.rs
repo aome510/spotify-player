@@ -677,3 +677,26 @@ impl PlaybackMetadata {
         }
     }
 }
+
+pub struct Lyrics {
+    /// Timestamped lines
+    pub lines: Vec<(chrono::Duration, String)>,
+}
+
+impl From<librespot_metadata::lyrics::Lyrics> for Lyrics {
+    fn from(value: librespot_metadata::lyrics::Lyrics) -> Self {
+        let mut lines = value
+            .lyrics
+            .lines
+            .into_iter()
+            .map(|l| {
+                let t = chrono::Duration::milliseconds(
+                    l.start_time_ms.parse::<i64>().expect("invalid number"),
+                );
+                (t, l.words)
+            })
+            .collect::<Vec<_>>();
+        lines.sort_by_key(|l| l.0);
+        Self { lines }
+    }
+}

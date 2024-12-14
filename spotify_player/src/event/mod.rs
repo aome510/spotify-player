@@ -740,6 +740,7 @@ fn handle_global_command(
                 if let Some(id) = &track.id {
                     let artists = map_join(&track.artists, |a| &a.name, ", ");
                     ui.new_page(PageState::Lyrics {
+                        track_uri: id.uri(),
                         track: track.name.clone(),
                         artists,
                     });
