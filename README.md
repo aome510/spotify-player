@@ -32,7 +32,7 @@
 - Feature parity with the official Spotify application.
 - Support remote control with [Spotify Connect](#spotify-connect).
 - Support [streaming](#streaming) songs directly from the terminal.
-- Support lyrics for most songs.
+- Support synced lyrics.
 - Support [cross-platform media control](#media-control).
 - Support [image rendering](#image).
 - Support [desktop notification](#notify).
