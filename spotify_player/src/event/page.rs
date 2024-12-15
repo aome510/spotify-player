@@ -198,12 +198,13 @@ fn handle_key_sequence_for_search_page(
     state: &SharedState,
     ui: &mut UIStateGuard,
 ) -> Result<bool> {
-    let (focus_state, current_query, line_input) = match ui.current_page_mut() {
+    let (focus_state, current_query, line_input, mode) = match ui.current_page_mut() {
         PageState::Search {
             state,
             line_input,
             current_query,
-        } => (state.focus, current_query, line_input),
+            mode,
+        } => (&mut state.focus, current_query, line_input, mode),
         _ => anyhow::bail!("expect a search page"),
     };
 
@@ -211,10 +212,26 @@ fn handle_key_sequence_for_search_page(
     if let SearchFocusState::Input = focus_state {
         if key_sequence.keys.len() == 1 {
             return match &key_sequence.keys[0] {
+                Key::None(crossterm::event::KeyCode::Esc) => {
+                    if *mode == Some(InputMode::Insert) && !line_input.is_empty() {
+                        *current_query = line_input.get_text();
+                        client_pub.send(ClientRequest::Search(line_input.get_text()))?;
+                        *mode = Some(InputMode::Normal);
+                        ui.current_page_mut().next();
+                    } else if ui.history.len() > 1 {
+                        ui.history.pop();
+                    }
+                    return Ok(true);
+                }
                 Key::None(crossterm::event::KeyCode::Enter) => {
                     if !line_input.is_empty() {
                         *current_query = line_input.get_text();
                         client_pub.send(ClientRequest::Search(line_input.get_text()))?;
+
+                        if let Some(InputMode::Insert) = mode {
+                            *mode = Some(InputMode::Normal);
+                            ui.current_page_mut().next();
+                        }
                     }
                     Ok(true)
                 }
