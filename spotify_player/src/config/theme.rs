@@ -21,76 +21,76 @@ pub struct Theme {
 }
 
 #[derive(Clone, Debug, Deserialize)]
-pub struct Palette {
-    pub background: Option<Color>,
-    pub foreground: Option<Color>,
+struct Palette {
+    background: Option<Color>,
+    foreground: Option<Color>,
 
     #[serde(default = "Color::black")]
-    pub black: Color,
+    black: Color,
     #[serde(default = "Color::blue")]
-    pub blue: Color,
+    blue: Color,
     #[serde(default = "Color::cyan")]
-    pub cyan: Color,
+    cyan: Color,
     #[serde(default = "Color::green")]
-    pub green: Color,
+    green: Color,
     #[serde(default = "Color::magenta")]
-    pub magenta: Color,
+    magenta: Color,
     #[serde(default = "Color::red")]
-    pub red: Color,
+    red: Color,
     #[serde(default = "Color::white")]
-    pub white: Color,
+    white: Color,
     #[serde(default = "Color::yellow")]
-    pub yellow: Color,
+    yellow: Color,
 
     #[serde(default = "Color::bright_black")]
-    pub bright_black: Color,
+    bright_black: Color,
     #[serde(default = "Color::bright_white")]
-    pub bright_white: Color,
+    bright_white: Color,
     #[serde(default = "Color::bright_red")]
-    pub bright_red: Color,
+    bright_red: Color,
     #[serde(default = "Color::bright_magenta")]
-    pub bright_magenta: Color,
+    bright_magenta: Color,
     #[serde(default = "Color::bright_green")]
-    pub bright_green: Color,
+    bright_green: Color,
     #[serde(default = "Color::bright_cyan")]
-    pub bright_cyan: Color,
+    bright_cyan: Color,
     #[serde(default = "Color::bright_blue")]
-    pub bright_blue: Color,
+    bright_blue: Color,
     #[serde(default = "Color::bright_yellow")]
-    pub bright_yellow: Color,
+    bright_yellow: Color,
 }
 
 #[derive(Clone, Debug, Default, Deserialize)]
-pub struct ComponentStyle {
-    pub block_title: Option<Style>,
-    pub border: Option<Style>,
-    pub playback_status: Option<Style>,
-    pub playback_track: Option<Style>,
-    pub playback_artists: Option<Style>,
-    pub playback_album: Option<Style>,
-    pub playback_metadata: Option<Style>,
-    pub playback_progress_bar: Option<Style>,
-    pub playback_progress_bar_unfilled: Option<Style>,
-    pub current_playing: Option<Style>,
-    pub page_desc: Option<Style>,
-    pub playlist_desc: Option<Style>,
-    pub table_header: Option<Style>,
-    pub selection: Option<Style>,
-    pub secondary_row: Option<Style>,
-    pub like: Option<Style>,
-    pub lyrics_played: Option<Style>,
+struct ComponentStyle {
+    block_title: Option<Style>,
+    border: Option<Style>,
+    playback_status: Option<Style>,
+    playback_track: Option<Style>,
+    playback_artists: Option<Style>,
+    playback_album: Option<Style>,
+    playback_metadata: Option<Style>,
+    playback_progress_bar: Option<Style>,
+    playback_progress_bar_unfilled: Option<Style>,
+    current_playing: Option<Style>,
+    page_desc: Option<Style>,
+    playlist_desc: Option<Style>,
+    table_header: Option<Style>,
+    selection: Option<Style>,
+    secondary_row: Option<Style>,
+    like: Option<Style>,
+    lyrics_played: Option<Style>,
 }
 
 #[derive(Default, Clone, Debug, Deserialize)]
-pub struct Style {
-    pub fg: Option<StyleColor>,
-    pub bg: Option<StyleColor>,
+struct Style {
+    fg: Option<StyleColor>,
+    bg: Option<StyleColor>,
     #[serde(default)]
-    pub modifiers: Vec<StyleModifier>,
+    modifiers: Vec<StyleModifier>,
 }
 
 #[derive(Copy, Clone, Debug)]
-pub enum StyleColor {
+enum StyleColor {
     Black,
     Blue,
     Cyan,
@@ -111,7 +111,7 @@ pub enum StyleColor {
 }
 
 #[derive(Copy, Clone, Debug, Deserialize)]
-pub enum StyleModifier {
+enum StyleModifier {
     Bold,
     Dim,
     Italic,
@@ -123,8 +123,8 @@ pub enum StyleModifier {
 }
 
 #[derive(Clone, Debug)]
-pub struct Color {
-    pub color: style::Color,
+struct Color {
+    color: style::Color,
 }
 
 impl ThemeConfig {
@@ -166,7 +166,6 @@ impl ThemeConfig {
     }
 }
 
-// TODO: cleanup implementation for style getter methods
 impl Theme {
     pub fn app(&self) -> style::Style {
         let mut style = style::Style::default();
@@ -181,158 +180,177 @@ impl Theme {
 
     pub fn selection(&self, is_active: bool) -> style::Style {
         if is_active {
-            match &self.component_style.selection {
-                None => style::Style::default()
-                    .add_modifier(style::Modifier::REVERSED)
-                    .add_modifier(style::Modifier::BOLD),
-                Some(s) => s.style(&self.palette),
-            }
+            self.component_style
+                .selection
+                .as_ref()
+                .unwrap_or(
+                    &Style::default().modifiers([StyleModifier::Reversed, StyleModifier::Bold]),
+                )
+                .style(&self.palette)
         } else {
             style::Style::default()
         }
     }
 
-    pub fn block_title(&self) -> tui::style::Style {
-        match &self.component_style.block_title {
-            None => Style::default()
-                .fg(StyleColor::Magenta)
-                .style(&self.palette),
-            Some(s) => s.style(&self.palette),
-        }
+    pub fn block_title(&self) -> style::Style {
+        self.component_style
+            .block_title
+            .as_ref()
+            .unwrap_or(&Style::default().fg(StyleColor::Magenta))
+            .style(&self.palette)
     }
 
-    pub fn border(&self) -> tui::style::Style {
-        match &self.component_style.border {
-            None => Style::default().style(&self.palette),
-            Some(s) => s.style(&self.palette),
-        }
+    pub fn border(&self) -> style::Style {
+        self.component_style
+            .border
+            .as_ref()
+            .unwrap_or(&Style::default())
+            .style(&self.palette)
     }
 
-    pub fn playback_status(&self) -> tui::style::Style {
-        match &self.component_style.playback_status {
-            None => Style::default()
-                .fg(StyleColor::Cyan)
-                .modifiers(vec![StyleModifier::Bold])
-                .style(&self.palette),
-            Some(s) => s.style(&self.palette),
-        }
+    pub fn playback_status(&self) -> style::Style {
+        self.component_style
+            .playback_status
+            .as_ref()
+            .unwrap_or(
+                &Style::default()
+                    .fg(StyleColor::Cyan)
+                    .modifiers([StyleModifier::Bold]),
+            )
+            .style(&self.palette)
     }
 
-    pub fn playback_track(&self) -> tui::style::Style {
-        match &self.component_style.playback_track {
-            None => Style::default()
-                .fg(StyleColor::Cyan)
-                .modifiers(vec![StyleModifier::Bold])
-                .style(&self.palette),
-            Some(s) => s.style(&self.palette),
-        }
+    pub fn playback_track(&self) -> style::Style {
+        self.component_style
+            .playback_track
+            .as_ref()
+            .unwrap_or(
+                &Style::default()
+                    .fg(StyleColor::Cyan)
+                    .modifiers([StyleModifier::Bold]),
+            )
+            .style(&self.palette)
     }
 
-    pub fn playback_artists(&self) -> tui::style::Style {
-        match &self.component_style.playback_artists {
-            None => Style::default()
-                .fg(StyleColor::Cyan)
-                .modifiers(vec![StyleModifier::Bold])
-                .style(&self.palette),
-            Some(s) => s.style(&self.palette),
-        }
+    pub fn playback_artists(&self) -> style::Style {
+        self.component_style
+            .playback_artists
+            .as_ref()
+            .unwrap_or(
+                &Style::default()
+                    .fg(StyleColor::Cyan)
+                    .modifiers([StyleModifier::Bold]),
+            )
+            .style(&self.palette)
     }
 
-    pub fn playback_album(&self) -> tui::style::Style {
-        match &self.component_style.playback_album {
-            None => Style::default().fg(StyleColor::Yellow).style(&self.palette),
-            Some(s) => s.style(&self.palette),
-        }
+    pub fn playback_album(&self) -> style::Style {
+        self.component_style
+            .playback_album
+            .as_ref()
+            .unwrap_or(&Style::default().fg(StyleColor::Yellow))
+            .style(&self.palette)
     }
 
-    pub fn playback_metadata(&self) -> tui::style::Style {
-        match &self.component_style.playback_metadata {
-            None => Style::default()
-                .fg(StyleColor::BrightBlack)
-                .style(&self.palette),
-            Some(s) => s.style(&self.palette),
-        }
+    pub fn playback_metadata(&self) -> style::Style {
+        self.component_style
+            .playback_metadata
+            .as_ref()
+            .unwrap_or(&Style::default().fg(StyleColor::BrightBlack))
+            .style(&self.palette)
     }
 
-    pub fn playback_progress_bar(&self) -> tui::style::Style {
-        match &self.component_style.playback_progress_bar {
-            None => Style::default()
-                .bg(StyleColor::BrightBlack)
-                .fg(StyleColor::Green)
-                .style(&self.palette),
-            Some(s) => s.style(&self.palette),
-        }
+    pub fn playback_progress_bar(&self) -> style::Style {
+        self.component_style
+            .playback_progress_bar
+            .as_ref()
+            .unwrap_or(
+                &Style::default()
+                    .bg(StyleColor::BrightBlack)
+                    .fg(StyleColor::Green),
+            )
+            .style(&self.palette)
     }
 
-    pub fn playback_progress_bar_unfilled(&self) -> tui::style::Style {
-        match &self.component_style.playback_progress_bar_unfilled {
-            None => Style::default()
-                .bg(StyleColor::BrightBlack)
-                .style(&self.palette),
-            Some(s) => s.style(&self.palette),
-        }
+    pub fn playback_progress_bar_unfilled(&self) -> style::Style {
+        self.component_style
+            .playback_progress_bar_unfilled
+            .as_ref()
+            .unwrap_or(&Style::default().bg(StyleColor::BrightBlack))
+            .style(&self.palette)
     }
 
-    pub fn current_playing(&self) -> tui::style::Style {
-        match &self.component_style.current_playing {
-            None => Style::default()
-                .fg(StyleColor::Green)
-                .modifiers(vec![StyleModifier::Bold])
-                .style(&self.palette),
-            Some(s) => s.style(&self.palette),
-        }
+    pub fn current_playing(&self) -> style::Style {
+        self.component_style
+            .current_playing
+            .as_ref()
+            .unwrap_or(
+                &Style::default()
+                    .fg(StyleColor::Green)
+                    .modifiers([StyleModifier::Bold]),
+            )
+            .style(&self.palette)
     }
 
-    pub fn page_desc(&self) -> tui::style::Style {
-        match &self.component_style.page_desc {
-            None => Style::default()
-                .fg(StyleColor::Cyan)
-                .modifiers(vec![StyleModifier::Bold])
-                .style(&self.palette),
-            Some(s) => s.style(&self.palette),
-        }
+    pub fn page_desc(&self) -> style::Style {
+        self.component_style
+            .page_desc
+            .as_ref()
+            .unwrap_or(
+                &Style::default()
+                    .fg(StyleColor::Cyan)
+                    .modifiers([StyleModifier::Bold]),
+            )
+            .style(&self.palette)
     }
 
-    pub fn playlist_desc(&self) -> tui::style::Style {
-        match &self.component_style.playlist_desc {
-            None => Style::default()
-                .fg(StyleColor::BrightBlack)
-                .modifiers(vec![StyleModifier::Dim])
-                .style(&self.palette),
-            Some(s) => s.style(&self.palette),
-        }
+    pub fn playlist_desc(&self) -> style::Style {
+        self.component_style
+            .playlist_desc
+            .as_ref()
+            .unwrap_or(
+                &Style::default()
+                    .fg(StyleColor::BrightBlack)
+                    .modifiers([StyleModifier::Dim]),
+            )
+            .style(&self.palette)
     }
 
-    pub fn table_header(&self) -> tui::style::Style {
-        match &self.component_style.table_header {
-            None => Style::default().fg(StyleColor::Blue).style(&self.palette),
-            Some(s) => s.style(&self.palette),
-        }
+    pub fn table_header(&self) -> style::Style {
+        self.component_style
+            .table_header
+            .as_ref()
+            .unwrap_or(&Style::default().fg(StyleColor::Blue))
+            .style(&self.palette)
     }
-    pub fn secondary_row(&self) -> tui::style::Style {
-        match &self.component_style.secondary_row {
-            None => Style::default().style(&self.palette),
-            Some(s) => s.style(&self.palette),
-        }
+
+    pub fn secondary_row(&self) -> style::Style {
+        self.component_style
+            .secondary_row
+            .as_ref()
+            .unwrap_or(&Style::default())
+            .style(&self.palette)
     }
-    pub fn like(&self) -> tui::style::Style {
-        match &self.component_style.like {
-            None => Style::default().style(&self.palette),
-            Some(s) => s.style(&self.palette),
-        }
+
+    pub fn like(&self) -> style::Style {
+        self.component_style
+            .like
+            .as_ref()
+            .unwrap_or(&Style::default())
+            .style(&self.palette)
     }
-    pub fn lyrics_played(&self) -> tui::style::Style {
-        match &self.component_style.lyrics_played {
-            None => Style::default()
-                .modifiers(vec![StyleModifier::Dim])
-                .style(&self.palette),
-            Some(s) => s.style(&self.palette),
-        }
+
+    pub fn lyrics_played(&self) -> style::Style {
+        self.component_style
+            .lyrics_played
+            .as_ref()
+            .unwrap_or(&Style::default().modifiers([StyleModifier::Dim]))
+            .style(&self.palette)
     }
 }
 
 impl Style {
-    pub fn style(&self, palette: &Palette) -> style::Style {
+    fn style(&self, palette: &Palette) -> style::Style {
         let mut style = style::Style::default();
         if let Some(fg) = self.fg {
             style = style.fg(fg.color(palette));
@@ -346,18 +364,21 @@ impl Style {
         style
     }
 
-    pub fn fg(mut self, fg: StyleColor) -> Self {
+    fn fg(mut self, fg: StyleColor) -> Self {
         self.fg = Some(fg);
         self
     }
 
-    pub fn bg(mut self, bg: StyleColor) -> Self {
+    fn bg(mut self, bg: StyleColor) -> Self {
         self.bg = Some(bg);
         self
     }
 
-    pub fn modifiers(mut self, modifiers: Vec<StyleModifier>) -> Self {
-        self.modifiers = modifiers;
+    fn modifiers<M>(mut self, modifiers: M) -> Self
+    where
+        M: IntoIterator<Item = StyleModifier>,
+    {
+        self.modifiers = modifiers.into_iter().collect();
         self
     }
 }
@@ -406,7 +427,7 @@ impl<'de> serde::de::Deserialize<'de> for StyleColor {
 }
 
 impl StyleColor {
-    pub fn color(self, palette: &Palette) -> style::Color {
+    fn color(self, palette: &Palette) -> style::Color {
         match self {
             Self::Black => palette.black.color,
             Self::Blue => palette.blue.color,
@@ -460,52 +481,52 @@ impl<'de> serde::de::Deserialize<'de> for Color {
 }
 
 impl Color {
-    pub fn black() -> Self {
+    fn black() -> Self {
         style::Color::Black.into()
     }
-    pub fn red() -> Self {
+    fn red() -> Self {
         style::Color::Red.into()
     }
-    pub fn green() -> Self {
+    fn green() -> Self {
         style::Color::Green.into()
     }
-    pub fn yellow() -> Self {
+    fn yellow() -> Self {
         style::Color::Yellow.into()
     }
-    pub fn blue() -> Self {
+    fn blue() -> Self {
         style::Color::Blue.into()
     }
-    pub fn magenta() -> Self {
+    fn magenta() -> Self {
         style::Color::Magenta.into()
     }
-    pub fn cyan() -> Self {
+    fn cyan() -> Self {
         style::Color::Cyan.into()
     }
-    pub fn white() -> Self {
+    fn white() -> Self {
         style::Color::Gray.into()
     }
-    pub fn bright_black() -> Self {
+    fn bright_black() -> Self {
         style::Color::DarkGray.into()
     }
-    pub fn bright_red() -> Self {
+    fn bright_red() -> Self {
         style::Color::LightRed.into()
     }
-    pub fn bright_green() -> Self {
+    fn bright_green() -> Self {
         style::Color::LightGreen.into()
     }
-    pub fn bright_yellow() -> Self {
+    fn bright_yellow() -> Self {
         style::Color::LightYellow.into()
     }
-    pub fn bright_blue() -> Self {
+    fn bright_blue() -> Self {
         style::Color::LightBlue.into()
     }
-    pub fn bright_magenta() -> Self {
+    fn bright_magenta() -> Self {
         style::Color::LightMagenta.into()
     }
-    pub fn bright_cyan() -> Self {
+    fn bright_cyan() -> Self {
         style::Color::LightCyan.into()
     }
-    pub fn bright_white() -> Self {
+    fn bright_white() -> Self {
         style::Color::White.into()
     }
 }
