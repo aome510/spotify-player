@@ -552,11 +552,10 @@ pub fn render_lyrics_page(
     rect: Rect,
 ) {
     // 1. Get data
-    let progress = state
-        .player
-        .read()
-        .playback_progress()
-        .expect("non-empty playback");
+    let Some(progress) = state.player.read().playback_progress() else {
+        frame.render_widget(Paragraph::new("Lyrics not found"), rect);
+        return;
+    };
     let data = state.data.read();
 
     // 2. Construct the page's layout
