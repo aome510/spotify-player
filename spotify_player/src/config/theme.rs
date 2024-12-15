@@ -22,71 +22,71 @@ pub struct Theme {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct Palette {
-    pub background: Option<Color>,
-    pub foreground: Option<Color>,
+    background: Option<Color>,
+    foreground: Option<Color>,
 
     #[serde(default = "Color::black")]
-    pub black: Color,
+    black: Color,
     #[serde(default = "Color::blue")]
-    pub blue: Color,
+    blue: Color,
     #[serde(default = "Color::cyan")]
-    pub cyan: Color,
+    cyan: Color,
     #[serde(default = "Color::green")]
-    pub green: Color,
+    green: Color,
     #[serde(default = "Color::magenta")]
-    pub magenta: Color,
+    magenta: Color,
     #[serde(default = "Color::red")]
-    pub red: Color,
+    red: Color,
     #[serde(default = "Color::white")]
-    pub white: Color,
+    white: Color,
     #[serde(default = "Color::yellow")]
-    pub yellow: Color,
+    yellow: Color,
 
     #[serde(default = "Color::bright_black")]
-    pub bright_black: Color,
+    bright_black: Color,
     #[serde(default = "Color::bright_white")]
-    pub bright_white: Color,
+    bright_white: Color,
     #[serde(default = "Color::bright_red")]
-    pub bright_red: Color,
+    bright_red: Color,
     #[serde(default = "Color::bright_magenta")]
-    pub bright_magenta: Color,
+    bright_magenta: Color,
     #[serde(default = "Color::bright_green")]
-    pub bright_green: Color,
+    bright_green: Color,
     #[serde(default = "Color::bright_cyan")]
-    pub bright_cyan: Color,
+    bright_cyan: Color,
     #[serde(default = "Color::bright_blue")]
-    pub bright_blue: Color,
+    bright_blue: Color,
     #[serde(default = "Color::bright_yellow")]
-    pub bright_yellow: Color,
+    bright_yellow: Color,
 }
 
 #[derive(Clone, Debug, Default, Deserialize)]
 pub struct ComponentStyle {
-    pub block_title: Option<Style>,
-    pub border: Option<Style>,
-    pub playback_status: Option<Style>,
-    pub playback_track: Option<Style>,
-    pub playback_artists: Option<Style>,
-    pub playback_album: Option<Style>,
-    pub playback_metadata: Option<Style>,
-    pub playback_progress_bar: Option<Style>,
-    pub playback_progress_bar_unfilled: Option<Style>,
-    pub current_playing: Option<Style>,
-    pub page_desc: Option<Style>,
-    pub playlist_desc: Option<Style>,
-    pub table_header: Option<Style>,
-    pub selection: Option<Style>,
-    pub secondary_row: Option<Style>,
-    pub like: Option<Style>,
-    pub lyrics_played: Option<Style>,
+    block_title: Option<Style>,
+    border: Option<Style>,
+    playback_status: Option<Style>,
+    playback_track: Option<Style>,
+    playback_artists: Option<Style>,
+    playback_album: Option<Style>,
+    playback_metadata: Option<Style>,
+    playback_progress_bar: Option<Style>,
+    playback_progress_bar_unfilled: Option<Style>,
+    current_playing: Option<Style>,
+    page_desc: Option<Style>,
+    playlist_desc: Option<Style>,
+    table_header: Option<Style>,
+    selection: Option<Style>,
+    secondary_row: Option<Style>,
+    like: Option<Style>,
+    lyrics_played: Option<Style>,
 }
 
 #[derive(Default, Clone, Debug, Deserialize)]
 pub struct Style {
-    pub fg: Option<StyleColor>,
-    pub bg: Option<StyleColor>,
+    fg: Option<StyleColor>,
+    bg: Option<StyleColor>,
     #[serde(default)]
-    pub modifiers: Vec<StyleModifier>,
+    modifiers: Vec<StyleModifier>,
 }
 
 #[derive(Copy, Clone, Debug)]
