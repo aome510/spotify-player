@@ -2316,6 +2316,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "icy_sixel"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "86858ae800284d596cfdefcb0ad435c3493c12f35367431bbe9b2b3858c1155b"
+
+[[package]]
 name = "ident_case"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6142,13 +6148,13 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 [[package]]
 name = "viuer"
 version = "0.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d3f25eeadaacb5253b24f4b576fecad471b07107e552e2a631a6d7ab5e1e49e0"
+source = "git+https://github.com/ollbx/viuer/?branch=icy_sixel#1959723efb1ae5eafbd924d2bbc35316df8c7757"
 dependencies = [
  "ansi_colours",
  "base64 0.22.1",
  "console",
  "crossterm",
+ "icy_sixel",
  "image",
  "lazy_static",
  "sixel-rs",
