@@ -552,10 +552,6 @@ pub fn render_lyrics_page(
     rect: Rect,
 ) {
     // 1. Get data
-    let Some(progress) = state.player.read().playback_progress() else {
-        frame.render_widget(Paragraph::new("Lyrics not found"), rect);
-        return;
-    };
     let data = state.data.read();
 
     // 2. Construct the page's layout
@@ -563,6 +559,11 @@ pub fn render_lyrics_page(
     let chunks = Layout::vertical([Constraint::Length(2), Constraint::Fill(0)]).split(rect);
 
     // 3. Construct the page's widgets
+    let Some(progress) = state.player.read().playback_progress() else {
+        frame.render_widget(Paragraph::new("No playback available"), rect);
+        return;
+    };
+
     let PageState::Lyrics {
         track_uri,
         track,
