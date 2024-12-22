@@ -92,7 +92,7 @@ Run `cargo install spotify_player --locked` to install the application from [cra
 
 Run `yay -S spotify-player` to install the application as an AUR package.
 
-Alternatively, run `yay -S spotify-player-full-pipe` to install an AUR package compiled with full feature support and Pulseaudio/Pipewire instead of rodio.
+Alternatively, run `yay -S spotify-player-full` to install an AUR package compiled with full feature support and Pulseaudio/Pipewire instead of rodio.
 
 ### Void Linux
 
