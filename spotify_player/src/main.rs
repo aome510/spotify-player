@@ -18,7 +18,7 @@ mod utils;
 use anyhow::{Context, Result};
 use std::io::Write;
 
-async fn init_spotify(
+fn init_spotify(
     client_pub: &flume::Sender<client::ClientRequest>,
     client: &client::Client,
     state: &state::SharedState,
@@ -123,9 +123,7 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
         .context("initialize new Spotify session")?;
 
     // initialize Spotify-related stuff
-    init_spotify(&client_pub, &client, state)
-        .await
-        .context("Failed to initialize the Spotify data")?;
+    init_spotify(&client_pub, &client, state).context("Failed to initialize the Spotify data")?;
 
     // Spawn application's tasks
     let mut tasks = Vec::new();

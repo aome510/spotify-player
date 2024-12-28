@@ -86,11 +86,7 @@ impl AuthConfig {
 /// - `auth_config`: authentication configuration
 /// - `reauth`: whether to re-authenticate the application if no cached credentials are found
 // - `use_cached`: whether to use cached credentials if available
-pub async fn get_creds(
-    auth_config: &AuthConfig,
-    reauth: bool,
-    use_cached: bool,
-) -> Result<Credentials> {
+pub fn get_creds(auth_config: &AuthConfig, reauth: bool, use_cached: bool) -> Result<Credentials> {
     let creds = if use_cached {
         auth_config.cache.credentials()
     } else {

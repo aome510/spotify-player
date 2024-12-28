@@ -128,9 +128,7 @@ impl Client {
     /// Create a new client session
     pub async fn new_session(&self, state: Option<&SharedState>, reauth: bool) -> Result<()> {
         let session = self.auth_config.session();
-        let creds = auth::get_creds(&self.auth_config, reauth, true)
-            .await
-            .context("get credentials")?;
+        let creds = auth::get_creds(&self.auth_config, reauth, true).context("get credentials")?;
         *self.session.lock().await = Some(session.clone());
 
         #[allow(unused_mut)]
@@ -916,6 +914,15 @@ impl Client {
 
     /// Get recommendation (radio) tracks based on a seed
     pub async fn radio_tracks(&self, seed_uri: String) -> Result<Vec<Track>> {
+        #[derive(Debug, Deserialize)]
+        struct TrackData {
+            original_gid: String,
+        }
+        #[derive(Debug, Deserialize)]
+        struct RadioStationResponse {
+            tracks: Vec<TrackData>,
+        }
+
         let session = self.session().await;
 
         // Get an autoplay URI from the seed URI.
@@ -948,14 +955,6 @@ impl Client {
             );
         }
 
-        #[derive(Debug, Deserialize)]
-        struct TrackData {
-            original_gid: String,
-        }
-        #[derive(Debug, Deserialize)]
-        struct RadioStationResponse {
-            tracks: Vec<TrackData>,
-        }
         // Parse a list consisting of IDs of tracks inside the radio station
         let track_ids = serde_json::from_slice::<RadioStationResponse>(&response.payload[0])?
             .tracks

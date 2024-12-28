@@ -146,7 +146,7 @@ pub struct Album {
     pub release_date: String,
     pub name: String,
     pub artists: Vec<Artist>,
-    pub album_type: Option<rspotify::model::AlbumType>,
+    pub typ: Option<rspotify::model::AlbumType>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -205,7 +205,7 @@ pub enum PlaylistFolderItem {
 }
 
 #[derive(Deserialize, Debug, Clone)]
-/// A reference node retrieved by running https://github.com/mikez/spotify-folders
+/// A reference node retrieved by running <https://github.com/mikez/spotify-folders>
 /// Helps building a playlist folder hierarchy
 pub struct PlaylistFolderNode {
     pub name: Option<String>,
@@ -338,7 +338,7 @@ impl Track {
         }
     }
 
-    /// tries to convert from a `rspotify::model::FullTrack` into `Track` with a optional added_at date
+    /// tries to convert from a `rspotify::model::FullTrack` into `Track` with a optional `added_at` date
     fn try_from_full_track_with_date(
         track: rspotify::model::FullTrack,
         added_at: Option<chrono::DateTime<chrono::Utc>>,
@@ -397,7 +397,7 @@ impl Album {
             name: album.name,
             release_date: album.release_date.unwrap_or_default(),
             artists: from_simplified_artists_to_artists(album.artists),
-            album_type: album
+            typ: album
                 .album_type
                 .and_then(|t| match t.to_ascii_lowercase().as_str() {
                     "album" => Some(rspotify::model::AlbumType::Album),
@@ -420,7 +420,7 @@ impl Album {
 
     /// gets the album type
     pub fn album_type(&self) -> String {
-        match self.album_type {
+        match self.typ {
             Some(t) => <&str>::from(t).to_string(),
             _ => String::new(),
         }
@@ -434,7 +434,7 @@ impl From<rspotify::model::FullAlbum> for Album {
             id: album.id,
             release_date: album.release_date,
             artists: from_simplified_artists_to_artists(album.artists),
-            album_type: Some(album.album_type),
+            typ: Some(album.album_type),
         }
     }
 }

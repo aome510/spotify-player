@@ -35,6 +35,10 @@ pub fn render_search_page(
     ui: &mut UIStateGuard,
     rect: Rect,
 ) {
+    fn search_items<T: Display>(items: &[T]) -> Vec<(String, bool)> {
+        items.iter().map(|i| (i.to_string(), false)).collect()
+    }
+
     // 1. Get data
     let data = state.data.read();
 
@@ -118,10 +122,6 @@ pub fn render_search_page(
     );
     let episode_rect =
         construct_and_render_block("Episodes", &ui.theme, Borders::TOP, frame, chunks[5]);
-
-    fn search_items<T: Display>(items: &[T]) -> Vec<(String, bool)> {
-        items.iter().map(|i| (i.to_string(), false)).collect()
-    }
 
     // 3. Construct the page's widgets
     let (track_list, n_tracks) = {

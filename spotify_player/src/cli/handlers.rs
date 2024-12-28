@@ -180,8 +180,7 @@ pub fn handle_cli_subcommand(cmd: &str, args: &ArgMatches) -> Result<()> {
     match cmd {
         "authenticate" => {
             let auth_config = AuthConfig::new(configs)?;
-            let rt = tokio::runtime::Runtime::new()?;
-            rt.block_on(crate::auth::get_creds(&auth_config, true, false))?;
+            crate::auth::get_creds(&auth_config, true, false)?;
             std::process::exit(0);
         }
         "generate" => {

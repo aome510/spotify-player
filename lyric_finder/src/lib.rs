@@ -1,4 +1,4 @@
-//! # lyric_finder
+//! # `lyric_finder`
 //!
 //! This crate provides a [`Client`] struct for retrieving a song's lyric.
 //!

@@ -10,7 +10,7 @@ pub enum Key {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-/// KeySequence represents a combination of pressed keys
+/// `KeySequence` represents a combination of pressed keys
 pub struct KeySequence {
     pub keys: Vec<Key>,
 }
