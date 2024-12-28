@@ -46,6 +46,7 @@ impl Configs {
 }
 
 #[derive(Debug, Deserialize, Serialize, ConfigParse)]
+#[allow(clippy::struct_excessive_bools)]
 /// Application configurations
 pub struct AppConfig {
     pub theme: String,
