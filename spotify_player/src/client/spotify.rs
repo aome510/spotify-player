@@ -23,7 +23,7 @@ pub struct Spotify {
     ///
     /// This client ID is mainly used to support Spotify Connect feature
     /// because Spotify client ID doesn't have access to user available devices
-    /// (https://developer.spotify.com/documentation/web-api/reference/get-a-users-available-devices)
+    /// (<https://developer.spotify.com/documentation/web-api/reference/get-a-users-available-devices>)
     user_client_id: String,
     pub(crate) session: Arc<tokio::sync::Mutex<Option<Session>>>,
 }

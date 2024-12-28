@@ -14,7 +14,7 @@ use crate::config;
 
 pub use parking_lot::{Mutex, RwLock};
 
-/// Application's shared state (wrapped inside an std::sync::Arc)
+/// Application's shared state (wrapped inside an `std::sync::Arc`)
 pub type SharedState = std::sync::Arc<State>;
 
 /// Application's state

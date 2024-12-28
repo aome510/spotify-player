@@ -10,26 +10,15 @@ unsafe_code = "deny"
 
 [workspace.lints.clippy]
 pedantic = { level = "deny", priority = 1 }
-enum_glob_use = { level = "deny", priority = 2 }
-perf = { level = "warn", priority = 3 }
-style = { level = "warn", priority = 4 }
+perf = { level = "warn", priority = 2 }
+style = { level = "warn", priority = 3 }
+complexity = { level = "warn", priority = 4 }
 
-#####
-doc_markdown = { level = "allow", priority = 20 }
-module_name_repetitions = { level = "allow", priority = 21 }
-cast_possible_truncation = { level = "allow", priority = 22 }
-cast_sign_loss = { level = "allow", priority = 23 }
-cast_possible_wrap = { level = "allow", priority = 24 }
-struct_field_names = { level = "allow", priority = 25 }
-cast_precision_loss = { level = "allow", priority = 26 }
-struct_excessive_bools = { level = "allow", priority = 27 }
-
-####### These lints could be enabled in the future
-missing_errors_doc = { level = "allow", priority = 30 }
-similar_names = { level = "allow", priority = 31 }
-too_many_lines = { level = "allow", priority = 32 }
-unused_async = { level = "allow", priority = 33 }
-items_after_statements = { level = "allow", priority = 34 }
-inline_always = { level = "allow", priority = 35 }
-unwrap_used = { level = "allow", priority = 36 }
-expect_used = { level = "allow", priority = 37 }
+module_name_repetitions = { level = "allow", priority = 20 }
+cast_possible_truncation = { level = "allow", priority = 20 }
+cast_sign_loss = { level = "allow", priority = 20 }
+cast_possible_wrap = { level = "allow", priority = 20 }
+cast_precision_loss = { level = "allow", priority = 20 }
+missing_errors_doc = { level = "allow", priority = 20 }
+similar_names = { level = "allow", priority = 20 }
+too_many_lines = { level = "allow", priority = 20 }

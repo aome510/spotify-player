@@ -46,6 +46,7 @@ impl Configs {
 }
 
 #[derive(Debug, Deserialize, Serialize, ConfigParse)]
+#[allow(clippy::struct_excessive_bools)]
 /// Application configurations
 pub struct AppConfig {
     pub theme: String,
@@ -441,7 +442,6 @@ pub fn get_cache_folder_path() -> Result<PathBuf> {
     }
 }
 
-#[inline(always)]
 pub fn get_config() -> &'static Configs {
     CONFIGS.get().expect("configs is already initialized")
 }
