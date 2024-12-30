@@ -91,6 +91,7 @@ pub enum Command {
         id_or_name: IdOrName,
         shuffle: bool,
     },
+    StartTrack(IdOrName),
     StartLikedTracks {
         limit: usize,
         random: bool,
