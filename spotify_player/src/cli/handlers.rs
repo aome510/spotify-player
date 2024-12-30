@@ -75,6 +75,7 @@ fn handle_playback_subcommand(args: &ArgMatches) -> Result<Request> {
     let (cmd, args) = args.subcommand().expect("playback subcommand is required");
     let command = match cmd {
         "start" => match args.subcommand() {
+            Some(("track", args)) => Command::StartTrack(get_id_or_name(args)),
             Some(("context", args)) => {
                 let context_type = args
                     .get_one::<ContextType>("context_type")

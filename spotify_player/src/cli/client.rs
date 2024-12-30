@@ -388,6 +388,15 @@ async fn handle_playback_request(
 
             PlayerRequest::StartPlayback(Playback::Context(context_id, None), Some(shuffle))
         }
+        Command::StartTrack(id_or_name) => {
+            let ItemId::Track(id) = get_spotify_id(client, ItemType::Track, id_or_name).await?
+            else {
+                anyhow::bail!("Unable to get track id")
+            };
+
+            let track = client.track(id).await?;
+            PlayerRequest::StartPlayback(Playback::URIs(vec![track.id.into()], None), None)
+        }
         Command::PlayPause => PlayerRequest::ResumePause,
         Command::Play => PlayerRequest::Resume,
         Command::Pause => PlayerRequest::Pause,

@@ -47,6 +47,9 @@ fn init_playback_start_subcommand() -> Command {
                         .help("Shuffle tracks within the launched playback"),
                 ),
         ))
+        .subcommand(add_id_or_name_group(
+            Command::new("track").about("Start playback for a track"),
+        ))
         .subcommand(
             Command::new("liked")
                 .about("Start a liked tracks playback")
