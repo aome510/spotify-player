@@ -275,6 +275,7 @@ To enable [fuzzy search](https://en.wikipedia.org/wiki/Approximate_string_matchi
 
 - `get`: Get Spotify data (playlist/album/artist data, user's data, etc)
 - `playback`: Interact with the playback (start a playback, play-pause, next, etc)
+- `search`: Search spotify
 - `connect`: Connect to a Spotify device
 - `like`: Like currently playing track
 - `authenticate`: Authenticate the application
@@ -286,6 +287,18 @@ For more details, run `spotify_player -h` or `spotify_player {command} -h`, in w
 
 - When using the CLI for the first time, you'll need to run `spotify_player authenticate` to authenticate the application beforehand.
 - Under the hood, CLI command is handled by sending requests to a `spotify_player` client socket running on port `client_port`, [a general application configuration](https://github.com/aome510/spotify-player/blob/master/docs/config.md#general) with a default value of `8080`. If there is no running application's instance, a new client will be created upon handling the CLI commands, which increases the latency of the command.
+
+#### Scripting
+
+The `spotify_player` command-line interface makes scripting easy.
+With the `search` subcommand, you can search Spotify and retrieve data in JSON format, enabling queries with tools like [jq](https://jqlang.github.io/jq/).
+
+Here’s an example of starting playback for the first track from a search query:
+
+```sh
+read -p "Search spotify: " query
+spotify_player playback start track --id $(spotify_player search "$query" | jq '.tracks.[0].id' | xargs)
+```
 
 ## Commands
 
