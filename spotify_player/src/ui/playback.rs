@@ -375,7 +375,7 @@ fn render_playback_cover_image(state: &SharedState, ui: &mut UIStateGuard) -> Re
         let width = (f32::from(rect.width) * scale).round() as u32;
         let height = (f32::from(rect.height) * scale).round() as u32;
 
-        match viuer::print(
+        viuer::print(
             image,
             &viuer::Config {
                 x: rect.x,
@@ -386,12 +386,10 @@ fn render_playback_cover_image(state: &SharedState, ui: &mut UIStateGuard) -> Re
                 transparent: true,
                 ..Default::default()
             },
-        ) {
-            Err(e) => anyhow::bail!("failed to print image to the terminal, error: {e}"),
-            Ok(_) => {
-                ui.last_cover_image_render_info.rendered = true;
-            }
-        }
+        )
+        .context("print image to the terminal")?;
+
+        ui.last_cover_image_render_info.rendered = true;
     }
 
     Ok(())

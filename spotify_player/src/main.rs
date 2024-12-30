@@ -80,7 +80,7 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
             // initialize `viuer` supports for kitty, iterm2, and sixel
             viuer::get_kitty_support();
             viuer::is_iterm_supported();
-            #[cfg(feature = "sixel")]
+            #[cfg(any(feature = "sixel", feature = "icy-sixel"))]
             viuer::is_sixel_supported();
         }
     }
