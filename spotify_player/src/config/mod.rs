@@ -114,6 +114,8 @@ pub struct AppConfig {
     pub notify_streaming_only: bool,
 
     pub seek_duration_secs: u16,
+
+    pub sort_artist_albums_by_type: bool,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -324,6 +326,8 @@ impl Default for AppConfig {
             notify_streaming_only: false,
 
             seek_duration_secs: 5,
+
+            sort_artist_albums_by_type: false,
         }
     }
 }
