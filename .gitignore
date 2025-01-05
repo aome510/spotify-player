@@ -20,3 +20,5 @@ NOTES*
 
 # Generated html files for live previewing markdown
 *.html
+
+.idea

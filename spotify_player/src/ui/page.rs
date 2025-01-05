@@ -796,8 +796,9 @@ fn render_artist_context_page_windows(
     rect: Rect,
     artist_data: (&[Track], &[Album], &[Artist]),
 ) {
+    let configs = config::get_config();
     // 1. Get data
-    let (tracks, albums, artists) = (
+    let (tracks, mut albums, artists) = (
         ui.search_filtered_items(artist_data.0),
         ui.search_filtered_items(artist_data.1),
         ui.search_filtered_items(artist_data.2),
@@ -830,6 +831,19 @@ fn render_artist_context_page_windows(
 
     // 3. Construct the page's widgets
     // album table
+    if configs.app_config.sort_artist_albums_by_type {
+        fn get_priority(album_type: &str) -> usize {
+            match album_type {
+                "album" => 0,
+                "single" => 1,
+                "appears_on" => 2,
+                "compilation" => 3,
+                _ => 4,
+            }
+        }
+        albums.sort_by_key(|a| get_priority(&a.album_type()));
+    }
+
     let is_albums_active = is_active && focus_state == ArtistFocusState::Albums;
     let n_albums = albums.len();
     let album_rows = albums
