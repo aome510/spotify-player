@@ -832,17 +832,16 @@ fn render_artist_context_page_windows(
     // 3. Construct the page's widgets
     // album table
     if configs.app_config.sort_artist_albums_by_type {
-        albums.sort_by(|a, b| {
-            let get_priority = |album_type: &str| match album_type {
+        fn get_priority(album_type: &str) -> usize {
+            match album_type {
                 "album" => 0,
                 "single" => 1,
                 "appears_on" => 2,
                 "compilation" => 3,
                 _ => 4,
-            };
-
-            get_priority(&a.album_type()).cmp(&get_priority(&b.album_type()))
-        });
+            }
+        }
+        albums.sort_by_key(|a| get_priority(&a.album_type()));
     }
 
     let is_albums_active = is_active && focus_state == ArtistFocusState::Albums;
