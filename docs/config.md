@@ -6,6 +6,7 @@
   - [Notes](#notes)
   - [Media control](#media-control)
   - [Player event hook command](#player-event-hook-command)
+  - [Client id command](#client-id-command)
   - [Device configurations](#device-configurations)
   - [Layout configurations](#layout-configurations)
 - [Themes](#themes)
@@ -122,6 +123,17 @@ case "$1" in
     "EndOfTrack") echo "command: $1, track_id: $2" >> /tmp/log.txt ;;
 esac
 ```
+
+### Client id command
+
+If you prefer not to include your own `client_id` directly in your configuration, you can retrieve it at runtime using the `client_id_command` option.
+
+If specified, `client_id_command` should be an object with two fields `command` and `args`, just like `player_event_hook_command`.
+For example to read your client_id from a file your could use `client_id_command = { command = "cat", args = ["/path/to/file"] }`
+
+> [!NOTE]
+> When passing a path as an argument, always use the full path.
+> The `~` symbol will not automatically expand to your home directory.
 
 ### Device configurations
 
