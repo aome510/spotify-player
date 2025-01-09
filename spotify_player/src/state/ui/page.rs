@@ -51,6 +51,7 @@ pub struct LibraryPageUIState {
     pub playlist_list: ListState,
     pub saved_album_list: ListState,
     pub followed_artist_list: ListState,
+    pub saved_shows_list: ListState,
     pub focus: LibraryFocusState,
     pub playlist_folder_id: usize,
 }
@@ -99,6 +100,7 @@ pub enum LibraryFocusState {
     Playlists,
     SavedAlbums,
     FollowedArtists,
+    SavedShows,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -172,6 +174,7 @@ impl PageState {
                         playlist_list,
                         saved_album_list,
                         followed_artist_list,
+                        saved_shows_list,
                         focus,
                         ..
                     },
@@ -181,6 +184,7 @@ impl PageState {
                 LibraryFocusState::FollowedArtists => {
                     MutableWindowState::List(followed_artist_list)
                 }
+                LibraryFocusState::SavedShows => MutableWindowState::List(saved_shows_list),
             }),
             Self::Search {
                 state:
@@ -245,6 +249,7 @@ impl LibraryPageUIState {
             playlist_list: ListState::default(),
             saved_album_list: ListState::default(),
             followed_artist_list: ListState::default(),
+            saved_shows_list: ListState::default(),
             focus: LibraryFocusState::Playlists,
             playlist_folder_id: 0,
         }
@@ -414,7 +419,8 @@ impl_focusable!(
     LibraryFocusState,
     [Playlists, SavedAlbums],
     [SavedAlbums, FollowedArtists],
-    [FollowedArtists, Playlists]
+    [FollowedArtists, SavedShows],
+    [SavedShows, Playlists]
 );
 
 impl_focusable!(
