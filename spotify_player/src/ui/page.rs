@@ -388,15 +388,14 @@ pub fn render_library_page(
     // - a saved albums window
     // - a followed artists window
 
+    // TODO: Adjust config to account for library page
     let chunks = ui
         .orientation
         .layout([
-            Constraint::Percentage(configs.app_config.layout.library.playlist_percent),
-            Constraint::Percentage(configs.app_config.layout.library.album_percent),
-            Constraint::Percentage(
-                100 - (configs.app_config.layout.library.album_percent
-                    + configs.app_config.layout.library.playlist_percent),
-            ),
+            Constraint::Percentage(25),
+            Constraint::Percentage(25),
+            Constraint::Percentage(25),
+            Constraint::Percentage(25),
         ])
         .split(rect);
 
@@ -422,6 +421,8 @@ pub fn render_library_page(
     );
     let artist_rect =
         construct_and_render_block("Artists", &ui.theme, Borders::ALL, frame, chunks[2]);
+    let saved_shows_rect =
+        construct_and_render_block("Saved Shows", &ui.theme, Borders::ALL, frame, chunks[3]);
 
     // 3. Construct the page's widgets
     // Construct the playlist window
@@ -461,6 +462,15 @@ pub fn render_library_page(
             .collect(),
         is_active && focus_state == LibraryFocusState::FollowedArtists,
     );
+    // Construct the saved shows
+    let (saved_shows_list, n_shows) = utils::construct_list_widget(
+        &ui.theme,
+        ui.search_filtered_items(&data.user_data.saved_shows)
+            .into_iter()
+            .map(|a| (a.to_string(), curr_context_uri == Some(a.id.uri())))
+            .collect(),
+        is_active && focus_state == LibraryFocusState::SavedShows,
+    );
 
     // 4. Render the page's widgets
     // Render the library page's windows.
@@ -489,6 +499,13 @@ pub fn render_library_page(
         artist_rect,
         n_artists,
         &mut page_state.followed_artist_list,
+    );
+    utils::render_list_window(
+        frame,
+        saved_shows_list,
+        saved_shows_rect,
+        n_shows,
+        &mut page_state.saved_shows_list,
     );
 }
 
