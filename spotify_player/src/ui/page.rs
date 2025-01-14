@@ -116,7 +116,11 @@ pub fn render_search_page(
     let show_rect = construct_and_render_block(
         "Shows",
         &ui.theme,
-        Borders::TOP | Borders::RIGHT,
+        if ui.orientation == Orientation::Horizontal {
+            Borders::TOP | Borders::RIGHT
+        } else {
+            Borders::TOP
+        },
         frame,
         chunks[4],
     );
