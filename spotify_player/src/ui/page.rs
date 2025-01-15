@@ -437,8 +437,16 @@ pub fn render_library_page(
         frame,
         chunks[1],
     );
-    let artist_rect =
-        construct_and_render_block("Artists", &ui.theme, Borders::ALL, frame, chunks[2]);
+    let artist_rect = construct_and_render_block(
+        "Artists",
+        &ui.theme,
+        match ui.orientation {
+            Orientation::Horizontal => Borders::TOP | Borders::LEFT | Borders::BOTTOM,
+            Orientation::Vertical => Borders::ALL,
+        },
+        frame,
+        chunks[2],
+    );
     let saved_shows_rect =
         construct_and_render_block("Saved Shows", &ui.theme, Borders::ALL, frame, chunks[3]);
 
@@ -458,9 +466,7 @@ pub fn render_library_page(
     let (playlist_list, n_playlists) = utils::construct_list_widget(
         &ui.theme,
         items,
-        is_active
-            && focus_state != LibraryFocusState::SavedAlbums
-            && focus_state != LibraryFocusState::FollowedArtists,
+        is_active && focus_state == LibraryFocusState::Playlists,
     );
     // Construct the saved album window
     let (album_list, n_albums) = utils::construct_list_widget(
