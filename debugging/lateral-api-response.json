@@ -1,0 +1,847 @@
+{
+  "href": "https://api.spotify.com/v1/shows/1TthQOE4Fx6gBPW8l48cfN/episodes?offset=100&limit=50",
+  "items": [
+    {
+      "audio_preview_url": "https://podz-content.spotifycdn.com/audio/clips/4I7JH40abdLHmrkJe5SKGI/clip_1526500_1570800.mp3",
+      "description": "Dan Schreiber, James Harkin, Anna Ptaszynski and Andrew Hunter Murray from 'No Such Thing As a Fish' face questions about farcical facials, rapid rides and steep smiles.LATERAL is a comedy panel game podcast about weird questions with wonderful answers, hosted by Tom Scott. For business enquiries, contestant appearances or question submissions, visit https://lateralcast.com.HOST: Tom Scott. QUESTION PRODUCER: David Bodycombe. EDITED BY: Julie Hassett at The Podcast Studios, Dublin. MUSIC: Karl-Ola Kjellholm ('Private Detective'/'Agrumes', courtesy of epidemicsound.com). ADDITIONAL QUESTIONS: Marc Lesan, Marcio Barcelos. FORMAT: Pad 26 Limited/Labyrinth Games Ltd. EXECUTIVE PRODUCERS: David Bodycombe and Tom Scott. © Pad 26 Limited (https://www.pad26.com) / Labyrinth Games Ltd. 2024. Learn more about your ad choices. Visit megaphone.fm/adchoices",
+      "duration_ms": 2669930,
+      "explicit": false,
+      "external_urls": {
+        "spotify": "https://open.spotify.com/episode/3NsHBdOmcGV6t2kOmXqwTD"
+      },
+      "href": "https://api.spotify.com/v1/episodes/3NsHBdOmcGV6t2kOmXqwTD",
+      "html_description": "<p>Dan Schreiber, James Harkin, Anna Ptaszynski and Andrew Hunter Murray from &#39;No Such Thing As a Fish&#39; face questions about farcical facials, rapid rides and steep smiles.</p><p>LATERAL is a comedy panel game podcast about weird questions with wonderful answers, hosted by Tom Scott. For business enquiries, contestant appearances or question submissions, visit https://lateralcast.com.</p><p>HOST: Tom Scott. QUESTION PRODUCER: David Bodycombe. EDITED BY: Julie Hassett at The Podcast Studios, Dublin. MUSIC: Karl-Ola Kjellholm (&#39;Private Detective&#39;/&#39;Agrumes&#39;, courtesy of epidemicsound.com). ADDITIONAL QUESTIONS: Marc Lesan, Marcio Barcelos. FORMAT: Pad 26 Limited/Labyrinth Games Ltd. EXECUTIVE PRODUCERS: David Bodycombe and Tom Scott. © Pad 26 Limited (https://www.pad26.com) / Labyrinth Games Ltd. 2024.</p><p> </p><p>Learn more about your ad choices. Visit <a href=\"https://megaphone.fm/adchoices\" rel=\"nofollow\">megaphone.fm/adchoices</a></p>",
+      "id": "3NsHBdOmcGV6t2kOmXqwTD",
+      "images": [
+        {
+          "height": 640,
+          "url": "https://i.scdn.co/image/ab6765630000ba8a849a3ae60bb7dce7f64684a0",
+          "width": 640
+        },
+        {
+          "height": 300,
+          "url": "https://i.scdn.co/image/ab67656300005f1f849a3ae60bb7dce7f64684a0",
+          "width": 300
+        },
+        {
+          "height": 64,
+          "url": "https://i.scdn.co/image/ab6765630000f68d849a3ae60bb7dce7f64684a0",
+          "width": 64
+        }
+      ],
+      "is_externally_hosted": false,
+      "is_playable": true,
+      "language": "en",
+      "languages": [
+        "en"
+      ],
+      "name": "100: Painting the shark",
+      "release_date": "2024-09-06",
+      "release_date_precision": "day",
+      "resume_point": {
+        "fully_played": true,
+        "resume_position_ms": 0
+      },
+      "type": "episode",
+      "uri": "spotify:episode:3NsHBdOmcGV6t2kOmXqwTD"
+    },
+    {
+      "audio_preview_url": "https://podz-content.spotifycdn.com/audio/clips/7crqsBziNRl7FqIUlGd4Wz/clip_206000_272240.mp3",
+      "description": "Corry Will, Luke Cutforth and Jordan Harrod face questions about animated ants, badminton brilliance and peculiar products.BOOK OUT NOW: https://www.lateralcast.com/bookLATERAL is a comedy panel game podcast about weird questions with wonderful answers, hosted by Tom Scott. For business enquiries, contestant appearances or question submissions, visit https://lateralcast.com.HOST: Tom Scott. QUESTION PRODUCER: David Bodycombe. EDITED BY: Julie Hassett at The Podcast Studios, Dublin. MUSIC: Karl-Ola Kjellholm ('Private Detective'/'Agrumes', courtesy of epidemicsound.com). ADDITIONAL QUESTIONS: Quinn, Ari, Daniel Edgardo, Tams, Tom, Randy Bruder. FORMAT: Pad 26 Limited/Labyrinth Games Ltd. EXECUTIVE PRODUCERS: David Bodycombe and Tom Scott. © Pad 26 Limited (https://www.pad26.com) / Labyrinth Games Ltd. 2024. Learn more about your ad choices. Visit megaphone.fm/adchoices",
+      "duration_ms": 2614890,
+      "explicit": false,
+      "external_urls": {
+        "spotify": "https://open.spotify.com/episode/63ViSDaKKzxgjn7ZjZulSD"
+      },
+      "href": "https://api.spotify.com/v1/episodes/63ViSDaKKzxgjn7ZjZulSD",
+      "html_description": "<p>Corry Will, Luke Cutforth and Jordan Harrod face questions about animated ants, badminton brilliance and peculiar products.</p><p>BOOK OUT NOW: https://www.lateralcast.com/book</p><p>LATERAL is a comedy panel game podcast about weird questions with wonderful answers, hosted by Tom Scott. For business enquiries, contestant appearances or question submissions, visit https://lateralcast.com.</p><p>HOST: Tom Scott. QUESTION PRODUCER: David Bodycombe. EDITED BY: Julie Hassett at The Podcast Studios, Dublin. MUSIC: Karl-Ola Kjellholm (&#39;Private Detective&#39;/&#39;Agrumes&#39;, courtesy of epidemicsound.com). ADDITIONAL QUESTIONS: Quinn, Ari, Daniel Edgardo, Tams, Tom, Randy Bruder. FORMAT: Pad 26 Limited/Labyrinth Games Ltd. EXECUTIVE PRODUCERS: David Bodycombe and Tom Scott. © Pad 26 Limited (https://www.pad26.com) / Labyrinth Games Ltd. 2024.</p><p> </p><p>Learn more about your ad choices. Visit <a href=\"https://megaphone.fm/adchoices\" rel=\"nofollow\">megaphone.fm/adchoices</a></p>",
+      "id": "63ViSDaKKzxgjn7ZjZulSD",
+      "images": [
+        {
+          "height": 640,
+          "url": "https://i.scdn.co/image/ab6765630000ba8abdd6b6d387c12b7bf51e22c7",
+          "width": 640
+        },
+        {
+          "height": 300,
+          "url": "https://i.scdn.co/image/ab67656300005f1fbdd6b6d387c12b7bf51e22c7",
+          "width": 300
+        },
+        {
+          "height": 64,
+          "url": "https://i.scdn.co/image/ab6765630000f68dbdd6b6d387c12b7bf51e22c7",
+          "width": 64
+        }
+      ],
+      "is_externally_hosted": false,
+      "is_playable": true,
+      "language": "en",
+      "languages": [
+        "en"
+      ],
+      "name": "101: George Washington and boxing",
+      "release_date": "2024-09-13",
+      "release_date_precision": "day",
+      "resume_point": {
+        "fully_played": true,
+        "resume_position_ms": 0
+      },
+      "type": "episode",
+      "uri": "spotify:episode:63ViSDaKKzxgjn7ZjZulSD"
+    },
+    {
+      "audio_preview_url": "https://podz-content.spotifycdn.com/audio/clips/6weY2dUaZOe9g4E12eOExG/clip_964000_1029720.mp3",
+      "description": "Hank Green, Ceri Riley and Daniel Peake face questions about fake facts, ridiculous roads and wrongful words.PRE-ORDER THE BOOK: https://www.lateralcast.com/bookLATERAL is a comedy panel game podcast about weird questions with wonderful answers, hosted by Tom Scott. For business enquiries, contestant appearances or question submissions, visit https://lateralcast.com.HOST: Tom Scott. QUESTION PRODUCER: David Bodycombe. EDITED BY: Julie Hassett at The Podcast Studios, Dublin. MUSIC: Karl-Ola Kjellholm ('Private Detective'/'Agrumes') and Josef Bel Habib ('Next to Our House'), courtesy of epidemicsound.com. ADDITIONAL QUESTIONS: Cherimoya, Alex, Chris Schulz. FORMAT: Pad 26 Limited/Labyrinth Games Ltd. EXECUTIVE PRODUCERS: David Bodycombe and Tom Scott. © Pad 26 Limited (https://www.pad26.com) / Labyrinth Games Ltd. 2024. Learn more about your ad choices. Visit megaphone.fm/adchoices",
+      "duration_ms": 2536063,
+      "explicit": false,
+      "external_urls": {
+        "spotify": "https://open.spotify.com/episode/4GmmDzhgyhN1G6Wd0xakFr"
+      },
+      "href": "https://api.spotify.com/v1/episodes/4GmmDzhgyhN1G6Wd0xakFr",
+      "html_description": "<p>Hank Green, Ceri Riley and Daniel Peake face questions about fake facts, ridiculous roads and wrongful words.</p><p>PRE-ORDER THE BOOK: https://www.lateralcast.com/book</p><p>LATERAL is a comedy panel game podcast about weird questions with wonderful answers, hosted by Tom Scott. For business enquiries, contestant appearances or question submissions, visit https://lateralcast.com.</p><p>HOST: Tom Scott. QUESTION PRODUCER: David Bodycombe. EDITED BY: Julie Hassett at The Podcast Studios, Dublin. MUSIC: Karl-Ola Kjellholm (&#39;Private Detective&#39;/&#39;Agrumes&#39;) and Josef Bel Habib (&#39;Next to Our House&#39;), courtesy of epidemicsound.com. ADDITIONAL QUESTIONS: Cherimoya, Alex, Chris Schulz. FORMAT: Pad 26 Limited/Labyrinth Games Ltd. EXECUTIVE PRODUCERS: David Bodycombe and Tom Scott. © Pad 26 Limited (https://www.pad26.com) / Labyrinth Games Ltd. 2024.</p><p> </p><p>Learn more about your ad choices. Visit <a href=\"https://megaphone.fm/adchoices\" rel=\"nofollow\">megaphone.fm/adchoices</a></p>",
+      "id": "4GmmDzhgyhN1G6Wd0xakFr",
+      "images": [
+        {
+          "height": 640,
+          "url": "https://i.scdn.co/image/ab6765630000ba8abb55b68ac9ed6a28a84891e0",
+          "width": 640
+        },
+        {
+          "height": 300,
+          "url": "https://i.scdn.co/image/ab67656300005f1fbb55b68ac9ed6a28a84891e0",
+          "width": 300
+        },
+        {
+          "height": 64,
+          "url": "https://i.scdn.co/image/ab6765630000f68dbb55b68ac9ed6a28a84891e0",
+          "width": 64
+        }
+      ],
+      "is_externally_hosted": false,
+      "is_playable": true,
+      "language": "en",
+      "languages": [
+        "en"
+      ],
+      "name": "102: A greengrocer's book",
+      "release_date": "2024-09-20",
+      "release_date_precision": "day",
+      "resume_point": {
+        "fully_played": true,
+        "resume_position_ms": 357000
+      },
+      "type": "episode",
+      "uri": "spotify:episode:4GmmDzhgyhN1G6Wd0xakFr"
+    },
+    {
+      "audio_preview_url": "https://podz-content.spotifycdn.com/audio/clips/5J3grGFrOdR91kRpN72Hd4/clip_1131700_1181200.mp3",
+      "description": "Ólafur Waage, Evan Edinger and Hannah Witton face questions about humble hills, landmark LPs and supplemented signs.PRE-ORDER THE BOOK: https://www.lateralcast.com/bookLATERAL is a comedy panel game podcast about weird questions with wonderful answers, hosted by Tom Scott. For business enquiries, contestant appearances or question submissions, visit https://lateralcast.com.HOST: Tom Scott. QUESTION PRODUCER: David Bodycombe. EDITED BY: Julie Hassett at The Podcast Studios, Dublin. MUSIC: Karl-Ola Kjellholm ('Private Detective'/'Agrumes', courtesy of epidemicsound.com). ADDITIONAL QUESTIONS: Michael Crowley, Jovi Thorne, Adam Aaronson, Bradley Momberger. FORMAT: Pad 26 Limited/Labyrinth Games Ltd. EXECUTIVE PRODUCERS: David Bodycombe and Tom Scott. © Pad 26 Limited (https://www.pad26.com) / Labyrinth Games Ltd. 2024. Learn more about your ad choices. Visit megaphone.fm/adchoices",
+      "duration_ms": 2647817,
+      "explicit": false,
+      "external_urls": {
+        "spotify": "https://open.spotify.com/episode/3zwnn0cssvqEtVLhvlBdab"
+      },
+      "href": "https://api.spotify.com/v1/episodes/3zwnn0cssvqEtVLhvlBdab",
+      "html_description": "<p>Ólafur Waage, Evan Edinger and Hannah Witton face questions about humble hills, landmark LPs and supplemented signs.</p><p>PRE-ORDER THE BOOK: https://www.lateralcast.com/book</p><p>LATERAL is a comedy panel game podcast about weird questions with wonderful answers, hosted by Tom Scott. For business enquiries, contestant appearances or question submissions, visit https://lateralcast.com.</p><p>HOST: Tom Scott. QUESTION PRODUCER: David Bodycombe. EDITED BY: Julie Hassett at The Podcast Studios, Dublin. MUSIC: Karl-Ola Kjellholm (&#39;Private Detective&#39;/&#39;Agrumes&#39;, courtesy of epidemicsound.com). ADDITIONAL QUESTIONS: Michael Crowley, Jovi Thorne, Adam Aaronson, Bradley Momberger. FORMAT: Pad 26 Limited/Labyrinth Games Ltd. EXECUTIVE PRODUCERS: David Bodycombe and Tom Scott. © Pad 26 Limited (https://www.pad26.com) / Labyrinth Games Ltd. 2024.</p><p> </p><p>Learn more about your ad choices. Visit <a href=\"https://megaphone.fm/adchoices\" rel=\"nofollow\">megaphone.fm/adchoices</a></p>",
+      "id": "3zwnn0cssvqEtVLhvlBdab",
+      "images": [
+        {
+          "height": 640,
+          "url": "https://i.scdn.co/image/ab6765630000ba8a044c47a172ac10f2a6722fde",
+          "width": 640
+        },
+        {
+          "height": 300,
+          "url": "https://i.scdn.co/image/ab67656300005f1f044c47a172ac10f2a6722fde",
+          "width": 300
+        },
+        {
+          "height": 64,
+          "url": "https://i.scdn.co/image/ab6765630000f68d044c47a172ac10f2a6722fde",
+          "width": 64
+        }
+      ],
+      "is_externally_hosted": false,
+      "is_playable": true,
+      "language": "en",
+      "languages": [
+        "en"
+      ],
+      "name": "103: Polo pitch invaders",
+      "release_date": "2024-09-27",
+      "release_date_precision": "day",
+      "resume_point": {
+        "fully_played": true,
+        "resume_position_ms": 1792000
+      },
+      "type": "episode",
+      "uri": "spotify:episode:3zwnn0cssvqEtVLhvlBdab"
+    },
+    {
+      "audio_preview_url": "https://podz-content.spotifycdn.com/audio/clips/1j6x72agMSpp9rkzBCIQ0Z/clip_141000_203720.mp3",
+      "description": "Ella Hubber, Caroline Roper and Tom Lum face questions about creative credits, baffling borders and racing research.PRE-ORDER THE BOOK: https://www.lateralcast.com/bookLATERAL is a comedy panel game podcast about weird questions with wonderful answers, hosted by Tom Scott. For business enquiries, contestant appearances or question submissions, visit https://lateralcast.com.HOST: Tom Scott. QUESTION PRODUCER: David Bodycombe. EDITED BY: Julie Hassett at The Podcast Studios, Dublin. MUSIC: Karl-Ola Kjellholm ('Private Detective'/'Agrumes', courtesy of epidemicsound.com). ADDITIONAL QUESTIONS: Jabberblock, Owen R., Scott Mitchell, Paul Thorp. FORMAT: Pad 26 Limited/Labyrinth Games Ltd. EXECUTIVE PRODUCERS: David Bodycombe and Tom Scott. © Pad 26 Limited (https://www.pad26.com) / Labyrinth Games Ltd. 2024. Learn more about your ad choices. Visit megaphone.fm/adchoices",
+      "duration_ms": 2561728,
+      "explicit": false,
+      "external_urls": {
+        "spotify": "https://open.spotify.com/episode/6qan15k4JuPCWG9U8q2DLX"
+      },
+      "href": "https://api.spotify.com/v1/episodes/6qan15k4JuPCWG9U8q2DLX",
+      "html_description": "<p>Ella Hubber, Caroline Roper and Tom Lum face questions about creative credits, baffling borders and racing research.</p><p>PRE-ORDER THE BOOK: https://www.lateralcast.com/book</p><p>LATERAL is a comedy panel game podcast about weird questions with wonderful answers, hosted by Tom Scott. For business enquiries, contestant appearances or question submissions, visit https://lateralcast.com.</p><p>HOST: Tom Scott. QUESTION PRODUCER: David Bodycombe. EDITED BY: Julie Hassett at The Podcast Studios, Dublin. MUSIC: Karl-Ola Kjellholm (&#39;Private Detective&#39;/&#39;Agrumes&#39;, courtesy of epidemicsound.com). ADDITIONAL QUESTIONS: Jabberblock, Owen R., Scott Mitchell, Paul Thorp. FORMAT: Pad 26 Limited/Labyrinth Games Ltd. EXECUTIVE PRODUCERS: David Bodycombe and Tom Scott. © Pad 26 Limited (https://www.pad26.com) / Labyrinth Games Ltd. 2024.</p><p> </p><p>Learn more about your ad choices. Visit <a href=\"https://megaphone.fm/adchoices\" rel=\"nofollow\">megaphone.fm/adchoices</a></p>",
+      "id": "6qan15k4JuPCWG9U8q2DLX",
+      "images": [
+        {
+          "height": 640,
+          "url": "https://i.scdn.co/image/ab6765630000ba8a074aabfdcb2059831089d7a2",
+          "width": 640
+        },
+        {
+          "height": 300,
+          "url": "https://i.scdn.co/image/ab67656300005f1f074aabfdcb2059831089d7a2",
+          "width": 300
+        },
+        {
+          "height": 64,
+          "url": "https://i.scdn.co/image/ab6765630000f68d074aabfdcb2059831089d7a2",
+          "width": 64
+        }
+      ],
+      "is_externally_hosted": false,
+      "is_playable": true,
+      "language": "en",
+      "languages": [
+        "en"
+      ],
+      "name": "104: Hannibal's horns",
+      "release_date": "2024-10-04",
+      "release_date_precision": "day",
+      "resume_point": {
+        "fully_played": true,
+        "resume_position_ms": 0
+      },
+      "type": "episode",
+      "uri": "spotify:episode:6qan15k4JuPCWG9U8q2DLX"
+    },
+    {
+      "audio_preview_url": "https://podz-content.spotifycdn.com/audio/clips/3tA3pdDdFgLMsTtiKTGi4E/clip_329000_391000.mp3",
+      "description": "Sabrina Cruz, Melissa Fernandes and Taha Khan from 'Answer in Progress' face questions about witty workwear, tongue ticks and wartime warnings.PRE-ORDER THE BOOK: https://www.lateralcast.com/bookLATERAL is a comedy panel game podcast about weird questions with wonderful answers, hosted by Tom Scott. For business enquiries, contestant appearances or question submissions, visit https://lateralcast.com.HOST: Tom Scott. QUESTION PRODUCER: David Bodycombe. EDITED BY: Julie Hassett at The Podcast Studios, Dublin. MUSIC: Karl-Ola Kjellholm ('Private Detective'/'Agrumes', courtesy of epidemicsound.com). ADDITIONAL QUESTIONS: David R., Suvi Jänkälä, Ava, dratini0. FORMAT: Pad 26 Limited/Labyrinth Games Ltd. EXECUTIVE PRODUCERS: David Bodycombe and Tom Scott. © Pad 26 Limited (https://www.pad26.com) / Labyrinth Games Ltd. 2024. Learn more about your ad choices. Visit megaphone.fm/adchoices",
+      "duration_ms": 2501555,
+      "explicit": false,
+      "external_urls": {
+        "spotify": "https://open.spotify.com/episode/3LpuNmXcyfWAvH8YHgBLy1"
+      },
+      "href": "https://api.spotify.com/v1/episodes/3LpuNmXcyfWAvH8YHgBLy1",
+      "html_description": "<p>Sabrina Cruz, Melissa Fernandes and Taha Khan from &#39;Answer in Progress&#39; face questions about witty workwear, tongue ticks and wartime warnings.</p><p>PRE-ORDER THE BOOK: https://www.lateralcast.com/book</p><p>LATERAL is a comedy panel game podcast about weird questions with wonderful answers, hosted by Tom Scott. For business enquiries, contestant appearances or question submissions, visit https://lateralcast.com.</p><p>HOST: Tom Scott. QUESTION PRODUCER: David Bodycombe. EDITED BY: Julie Hassett at The Podcast Studios, Dublin. MUSIC: Karl-Ola Kjellholm (&#39;Private Detective&#39;/&#39;Agrumes&#39;, courtesy of epidemicsound.com). ADDITIONAL QUESTIONS: David R., Suvi Jänkälä, Ava, dratini0. FORMAT: Pad 26 Limited/Labyrinth Games Ltd. EXECUTIVE PRODUCERS: David Bodycombe and Tom Scott. © Pad 26 Limited (https://www.pad26.com) / Labyrinth Games Ltd. 2024.</p><p> </p><p>Learn more about your ad choices. Visit <a href=\"https://megaphone.fm/adchoices\" rel=\"nofollow\">megaphone.fm/adchoices</a></p>",
+      "id": "3LpuNmXcyfWAvH8YHgBLy1",
+      "images": [
+        {
+          "height": 640,
+          "url": "https://i.scdn.co/image/ab6765630000ba8a58efbb5483f0d8b08ad3c795",
+          "width": 640
+        },
+        {
+          "height": 300,
+          "url": "https://i.scdn.co/image/ab67656300005f1f58efbb5483f0d8b08ad3c795",
+          "width": 300
+        },
+        {
+          "height": 64,
+          "url": "https://i.scdn.co/image/ab6765630000f68d58efbb5483f0d8b08ad3c795",
+          "width": 64
+        }
+      ],
+      "is_externally_hosted": false,
+      "is_playable": true,
+      "language": "en",
+      "languages": [
+        "en"
+      ],
+      "name": "105: Unused toy boats",
+      "release_date": "2024-10-11",
+      "release_date_precision": "day",
+      "resume_point": {
+        "fully_played": true,
+        "resume_position_ms": 0
+      },
+      "type": "episode",
+      "uri": "spotify:episode:3LpuNmXcyfWAvH8YHgBLy1"
+    },
+    {
+      "audio_preview_url": "https://podz-content.spotifycdn.com/audio/clips/5i0WyZabn2cVbJ6Bu5SYWg/clip_152000_212520.mp3",
+      "description": "Dan Schreiber, James Harkin, Anna Ptaszynski and Andrew Hunter Murray from 'No Such Thing as a Fish' face questions about technical translations, missing movies and gesture guesstimates.PRE-ORDER THE BOOK: https://www.lateralcast.com/bookLATERAL is a comedy panel game podcast about weird questions with wonderful answers, hosted by Tom Scott. For business enquiries, contestant appearances or question submissions, visit https://lateralcast.com.HOST: Tom Scott. QUESTION PRODUCER: David Bodycombe. EDITED BY: Julie Hassett at The Podcast Studios, Dublin. MUSIC: Karl-Ola Kjellholm ('Private Detective'/'Agrumes', courtesy of epidemicsound.com). ADDITIONAL QUESTIONS: Reith Humphreys, Bab Chunko, Arnau, Joe. FORMAT: Pad 26 Limited/Labyrinth Games Ltd. EXECUTIVE PRODUCERS: David Bodycombe and Tom Scott. © Pad 26 Limited (https://www.pad26.com) / Labyrinth Games Ltd. 2024. Learn more about your ad choices. Visit megaphone.fm/adchoices",
+      "duration_ms": 2824637,
+      "explicit": false,
+      "external_urls": {
+        "spotify": "https://open.spotify.com/episode/4rxD8BoNJdOg5Ariwcahzx"
+      },
+      "href": "https://api.spotify.com/v1/episodes/4rxD8BoNJdOg5Ariwcahzx",
+      "html_description": "<p>Dan Schreiber, James Harkin, Anna Ptaszynski and Andrew Hunter Murray from &#39;No Such Thing as a Fish&#39; face questions about technical translations, missing movies and gesture guesstimates.</p><p>PRE-ORDER THE BOOK: https://www.lateralcast.com/book</p><p>LATERAL is a comedy panel game podcast about weird questions with wonderful answers, hosted by Tom Scott. For business enquiries, contestant appearances or question submissions, visit https://lateralcast.com.</p><p>HOST: Tom Scott. QUESTION PRODUCER: David Bodycombe. EDITED BY: Julie Hassett at The Podcast Studios, Dublin. MUSIC: Karl-Ola Kjellholm (&#39;Private Detective&#39;/&#39;Agrumes&#39;, courtesy of epidemicsound.com). ADDITIONAL QUESTIONS: Reith Humphreys, Bab Chunko, Arnau, Joe. FORMAT: Pad 26 Limited/Labyrinth Games Ltd. EXECUTIVE PRODUCERS: David Bodycombe and Tom Scott. © Pad 26 Limited (https://www.pad26.com) / Labyrinth Games Ltd. 2024.</p><p> </p><p>Learn more about your ad choices. Visit <a href=\"https://megaphone.fm/adchoices\" rel=\"nofollow\">megaphone.fm/adchoices</a></p>",
+      "id": "4rxD8BoNJdOg5Ariwcahzx",
+      "images": [
+        {
+          "height": 640,
+          "url": "https://i.scdn.co/image/ab6765630000ba8ae7af0a513346692d3acf9a0b",
+          "width": 640
+        },
+        {
+          "height": 300,
+          "url": "https://i.scdn.co/image/ab67656300005f1fe7af0a513346692d3acf9a0b",
+          "width": 300
+        },
+        {
+          "height": 64,
+          "url": "https://i.scdn.co/image/ab6765630000f68de7af0a513346692d3acf9a0b",
+          "width": 64
+        }
+      ],
+      "is_externally_hosted": false,
+      "is_playable": true,
+      "language": "en",
+      "languages": [
+        "en"
+      ],
+      "name": "106: Calorie-free oil",
+      "release_date": "2024-10-18",
+      "release_date_precision": "day",
+      "resume_point": {
+        "fully_played": false,
+        "resume_position_ms": 2072000
+      },
+      "type": "episode",
+      "uri": "spotify:episode:4rxD8BoNJdOg5Ariwcahzx"
+    },
+    {
+      "audio_preview_url": "https://podz-content.spotifycdn.com/audio/clips/4Owp7rLx0pIsQJb5y8TjDe/clip_457000_519480.mp3",
+      "description": "Lucy Rogers, Molly Edwards and Trace Dominguez face questions about religious roads, secret services and transport thingamyjigs.PRE-ORDER THE BOOK: https://www.lateralcast.com/bookLATERAL is a comedy panel game podcast about weird questions with wonderful answers, hosted by Tom Scott. For business enquiries, contestant appearances or question submissions, visit https://lateralcast.com.HOST: Tom Scott. QUESTION PRODUCER: David Bodycombe. EDITED BY: Julie Hassett at The Podcast Studios, Dublin. MUSIC: Karl-Ola Kjellholm ('Private Detective'/'Agrumes', courtesy of epidemicsound.com). ADDITIONAL QUESTIONS: Peter Scandrett, Nate, Michael. FORMAT: Pad 26 Limited/Labyrinth Games Ltd. EXECUTIVE PRODUCERS: David Bodycombe and Tom Scott. © Pad 26 Limited (https://www.pad26.com) / Labyrinth Games Ltd. 2024. Learn more about your ad choices. Visit megaphone.fm/adchoices",
+      "duration_ms": 2694373,
+      "explicit": false,
+      "external_urls": {
+        "spotify": "https://open.spotify.com/episode/69RkLMWMAXNKtrKrCjwlK3"
+      },
+      "href": "https://api.spotify.com/v1/episodes/69RkLMWMAXNKtrKrCjwlK3",
+      "html_description": "<p>Lucy Rogers, Molly Edwards and Trace Dominguez face questions about religious roads, secret services and transport thingamyjigs.</p><p>PRE-ORDER THE BOOK: https://www.lateralcast.com/book</p><p>LATERAL is a comedy panel game podcast about weird questions with wonderful answers, hosted by Tom Scott. For business enquiries, contestant appearances or question submissions, visit https://lateralcast.com.</p><p>HOST: Tom Scott. QUESTION PRODUCER: David Bodycombe. EDITED BY: Julie Hassett at The Podcast Studios, Dublin. MUSIC: Karl-Ola Kjellholm (&#39;Private Detective&#39;/&#39;Agrumes&#39;, courtesy of epidemicsound.com). ADDITIONAL QUESTIONS: Peter Scandrett, Nate, Michael. FORMAT: Pad 26 Limited/Labyrinth Games Ltd. EXECUTIVE PRODUCERS: David Bodycombe and Tom Scott. © Pad 26 Limited (https://www.pad26.com) / Labyrinth Games Ltd. 2024.</p><p> </p><p>Learn more about your ad choices. Visit <a href=\"https://megaphone.fm/adchoices\" rel=\"nofollow\">megaphone.fm/adchoices</a></p>",
+      "id": "69RkLMWMAXNKtrKrCjwlK3",
+      "images": [
+        {
+          "height": 640,
+          "url": "https://i.scdn.co/image/ab6765630000ba8ae1127db1fd80083bdd6854c4",
+          "width": 640
+        },
+        {
+          "height": 300,
+          "url": "https://i.scdn.co/image/ab67656300005f1fe1127db1fd80083bdd6854c4",
+          "width": 300
+        },
+        {
+          "height": 64,
+          "url": "https://i.scdn.co/image/ab6765630000f68de1127db1fd80083bdd6854c4",
+          "width": 64
+        }
+      ],
+      "is_externally_hosted": false,
+      "is_playable": true,
+      "language": "en",
+      "languages": [
+        "en"
+      ],
+      "name": "107: The DVD of anger",
+      "release_date": "2024-10-25",
+      "release_date_precision": "day",
+      "resume_point": {
+        "fully_played": false,
+        "resume_position_ms": 0
+      },
+      "type": "episode",
+      "uri": "spotify:episode:69RkLMWMAXNKtrKrCjwlK3"
+    },
+    {
+      "audio_preview_url": "https://podz-content.spotifycdn.com/audio/clips/1ZLVSBiccNcJLAkV9Bpslc/clip_227000_287000.mp3",
+      "description": "Sophie Ward, Julian Huguet and Tina Huang face questions about moving monuments, passed-over paintings and easy exams.PRE-ORDER THE BOOK: https://www.lateralcast.com/bookLATERAL is a comedy panel game podcast about weird questions with wonderful answers, hosted by Tom Scott. For business enquiries, contestant appearances or question submissions, visit https://lateralcast.com.HOST: Tom Scott. QUESTION PRODUCER: David Bodycombe. EDITED BY: Julie Hassett at The Podcast Studios, Dublin. MUSIC: Karl-Ola Kjellholm ('Private Detective'/'Agrumes', courtesy of epidemicsound.com). ADDITIONAL QUESTIONS: Gemma, Manuel Omil, Mauricio Herrera, Bryce, Daniel Rogers. FORMAT: Pad 26 Limited/Labyrinth Games Ltd. EXECUTIVE PRODUCERS: David Bodycombe and Tom Scott. © Pad 26 Limited (https://www.pad26.com) / Labyrinth Games Ltd. 2024. Learn more about your ad choices. Visit megaphone.fm/adchoices",
+      "duration_ms": 2622656,
+      "explicit": false,
+      "external_urls": {
+        "spotify": "https://open.spotify.com/episode/6zGHslQXb8XTR1oQPgk10G"
+      },
+      "href": "https://api.spotify.com/v1/episodes/6zGHslQXb8XTR1oQPgk10G",
+      "html_description": "<p>Sophie Ward, Julian Huguet and Tina Huang face questions about moving monuments, passed-over paintings and easy exams.</p><p>PRE-ORDER THE BOOK: https://www.lateralcast.com/book</p><p>LATERAL is a comedy panel game podcast about weird questions with wonderful answers, hosted by Tom Scott. For business enquiries, contestant appearances or question submissions, visit https://lateralcast.com.</p><p>HOST: Tom Scott. QUESTION PRODUCER: David Bodycombe. EDITED BY: Julie Hassett at The Podcast Studios, Dublin. MUSIC: Karl-Ola Kjellholm (&#39;Private Detective&#39;/&#39;Agrumes&#39;, courtesy of epidemicsound.com). ADDITIONAL QUESTIONS: Gemma, Manuel Omil, Mauricio Herrera, Bryce, Daniel Rogers. FORMAT: Pad 26 Limited/Labyrinth Games Ltd. EXECUTIVE PRODUCERS: David Bodycombe and Tom Scott. © Pad 26 Limited (https://www.pad26.com) / Labyrinth Games Ltd. 2024.</p><p> </p><p>Learn more about your ad choices. Visit <a href=\"https://megaphone.fm/adchoices\" rel=\"nofollow\">megaphone.fm/adchoices</a></p>",
+      "id": "6zGHslQXb8XTR1oQPgk10G",
+      "images": [
+        {
+          "height": 640,
+          "url": "https://i.scdn.co/image/ab6765630000ba8a206b81c1e58abce2a2670926",
+          "width": 640
+        },
+        {
+          "height": 300,
+          "url": "https://i.scdn.co/image/ab67656300005f1f206b81c1e58abce2a2670926",
+          "width": 300
+        },
+        {
+          "height": 64,
+          "url": "https://i.scdn.co/image/ab6765630000f68d206b81c1e58abce2a2670926",
+          "width": 64
+        }
+      ],
+      "is_externally_hosted": false,
+      "is_playable": true,
+      "language": "en",
+      "languages": [
+        "en"
+      ],
+      "name": "108: A very helpful beach",
+      "release_date": "2024-11-01",
+      "release_date_precision": "day",
+      "resume_point": {
+        "fully_played": false,
+        "resume_position_ms": 2383000
+      },
+      "type": "episode",
+      "uri": "spotify:episode:6zGHslQXb8XTR1oQPgk10G"
+    },
+    {
+      "audio_preview_url": "https://podz-content.spotifycdn.com/audio/clips/4A7rlhQGV8zhJiOzswUsU4/clip_249000_309400.mp3",
+      "description": "Julian O’Shea, Bill Sunderland and Dani Siller face questions about astronautical activities, appliance actions and Allen's abilities.PRE-ORDER THE BOOK: https://www.lateralcast.com/bookLATERAL is a comedy panel game podcast about weird questions with wonderful answers, hosted by Tom Scott. For business enquiries, contestant appearances or question submissions, visit https://lateralcast.com.HOST: Tom Scott. QUESTION PRODUCER: David Bodycombe. EDITED BY: Julie Hassett at The Podcast Studios, Dublin. MUSIC: Karl-Ola Kjellholm ('Private Detective'/'Agrumes', courtesy of epidemicsound.com). ADDITIONAL QUESTIONS: Jovi Thorne, Dave Matthews, Jeff. FORMAT: Pad 26 Limited/Labyrinth Games Ltd. EXECUTIVE PRODUCERS: David Bodycombe and Tom Scott. © Pad 26 Limited (https://www.pad26.com) / Labyrinth Games Ltd. 2024. Learn more about your ad choices. Visit megaphone.fm/adchoices",
+      "duration_ms": 2790643,
+      "explicit": false,
+      "external_urls": {
+        "spotify": "https://open.spotify.com/episode/2QpC72FnGn9EfUFJ6mG2Ii"
+      },
+      "href": "https://api.spotify.com/v1/episodes/2QpC72FnGn9EfUFJ6mG2Ii",
+      "html_description": "<p>Julian O’Shea, Bill Sunderland and Dani Siller face questions about astronautical activities, appliance actions and Allen&#39;s abilities.</p><p>PRE-ORDER THE BOOK: https://www.lateralcast.com/book</p><p>LATERAL is a comedy panel game podcast about weird questions with wonderful answers, hosted by Tom Scott. For business enquiries, contestant appearances or question submissions, visit https://lateralcast.com.</p><p>HOST: Tom Scott. QUESTION PRODUCER: David Bodycombe. EDITED BY: Julie Hassett at The Podcast Studios, Dublin. MUSIC: Karl-Ola Kjellholm (&#39;Private Detective&#39;/&#39;Agrumes&#39;, courtesy of epidemicsound.com). ADDITIONAL QUESTIONS: Jovi Thorne, Dave Matthews, Jeff. FORMAT: Pad 26 Limited/Labyrinth Games Ltd. EXECUTIVE PRODUCERS: David Bodycombe and Tom Scott. © Pad 26 Limited (https://www.pad26.com) / Labyrinth Games Ltd. 2024.</p><p> </p><p>Learn more about your ad choices. Visit <a href=\"https://megaphone.fm/adchoices\" rel=\"nofollow\">megaphone.fm/adchoices</a></p>",
+      "id": "2QpC72FnGn9EfUFJ6mG2Ii",
+      "images": [
+        {
+          "height": 640,
+          "url": "https://i.scdn.co/image/ab6765630000ba8a35f6cfde290481a821f173f4",
+          "width": 640
+        },
+        {
+          "height": 300,
+          "url": "https://i.scdn.co/image/ab67656300005f1f35f6cfde290481a821f173f4",
+          "width": 300
+        },
+        {
+          "height": 64,
+          "url": "https://i.scdn.co/image/ab6765630000f68d35f6cfde290481a821f173f4",
+          "width": 64
+        }
+      ],
+      "is_externally_hosted": false,
+      "is_playable": true,
+      "language": "en",
+      "languages": [
+        "en"
+      ],
+      "name": "109: The blue room",
+      "release_date": "2024-11-08",
+      "release_date_precision": "day",
+      "resume_point": {
+        "fully_played": true,
+        "resume_position_ms": 0
+      },
+      "type": "episode",
+      "uri": "spotify:episode:2QpC72FnGn9EfUFJ6mG2Ii"
+    },
+    {
+      "audio_preview_url": "https://podz-content.spotifycdn.com/audio/clips/7pDw8uJPX7GXSohxwm6NcE/clip_555000_615400.mp3",
+      "description": "Ella Hubber, Caroline Roper and Tom Lum from 'Let's Learn Everything!' face questions about concealed clocks, unique units and sneaky shoplifting.BOOK OUT NOW: https://www.lateralcast.com/bookLATERAL is a comedy panel game podcast about weird questions with wonderful answers, hosted by Tom Scott. For business enquiries, contestant appearances or question submissions, visit https://lateralcast.com.HOST: Tom Scott. QUESTION PRODUCER: David Bodycombe. EDITED BY: Julie Hassett at The Podcast Studios, Dublin. MUSIC: Karl-Ola Kjellholm ('Private Detective'/'Agrumes', courtesy of epidemicsound.com). ADDITIONAL QUESTIONS: Nate, Joseph Gallear, Adam Matthews, Sam Walsh, Matthew, Martijn Pennings, Chris Shenton, Ólafur Waage, Chopin, Katie Waning, Ondrej. FORMAT: Pad 26 Limited/Labyrinth Games Ltd. EXECUTIVE PRODUCERS: David Bodycombe and Tom Scott. © Pad 26 Limited (https://www.pad26.com) / Labyrinth Games Ltd. 2024. Learn more about your ad choices. Visit megaphone.fm/adchoices",
+      "duration_ms": 2901653,
+      "explicit": false,
+      "external_urls": {
+        "spotify": "https://open.spotify.com/episode/0vPQBitWx0JaU50ptBEGlp"
+      },
+      "href": "https://api.spotify.com/v1/episodes/0vPQBitWx0JaU50ptBEGlp",
+      "html_description": "<p>Ella Hubber, Caroline Roper and Tom Lum from &#39;Let&#39;s Learn Everything!&#39; face questions about concealed clocks, unique units and sneaky shoplifting.</p><p>BOOK OUT NOW: https://www.lateralcast.com/book</p><p>LATERAL is a comedy panel game podcast about weird questions with wonderful answers, hosted by Tom Scott. For business enquiries, contestant appearances or question submissions, visit https://lateralcast.com.</p><p>HOST: Tom Scott. QUESTION PRODUCER: David Bodycombe. EDITED BY: Julie Hassett at The Podcast Studios, Dublin. MUSIC: Karl-Ola Kjellholm (&#39;Private Detective&#39;/&#39;Agrumes&#39;, courtesy of epidemicsound.com). ADDITIONAL QUESTIONS: Nate, Joseph Gallear, Adam Matthews, Sam Walsh, Matthew, Martijn Pennings, Chris Shenton, Ólafur Waage, Chopin, Katie Waning, Ondrej. FORMAT: Pad 26 Limited/Labyrinth Games Ltd. EXECUTIVE PRODUCERS: David Bodycombe and Tom Scott. © Pad 26 Limited (https://www.pad26.com) / Labyrinth Games Ltd. 2024.</p><p> </p><p>Learn more about your ad choices. Visit <a href=\"https://megaphone.fm/adchoices\" rel=\"nofollow\">megaphone.fm/adchoices</a></p>",
+      "id": "0vPQBitWx0JaU50ptBEGlp",
+      "images": [
+        {
+          "height": 640,
+          "url": "https://i.scdn.co/image/ab6765630000ba8a284e80c3d85e4c19eb383745",
+          "width": 640
+        },
+        {
+          "height": 300,
+          "url": "https://i.scdn.co/image/ab67656300005f1f284e80c3d85e4c19eb383745",
+          "width": 300
+        },
+        {
+          "height": 64,
+          "url": "https://i.scdn.co/image/ab6765630000f68d284e80c3d85e4c19eb383745",
+          "width": 64
+        }
+      ],
+      "is_externally_hosted": false,
+      "is_playable": true,
+      "language": "en",
+      "languages": [
+        "en"
+      ],
+      "name": "110: A very 'odd' race",
+      "release_date": "2024-11-15",
+      "release_date_precision": "day",
+      "resume_point": {
+        "fully_played": true,
+        "resume_position_ms": 2562000
+      },
+      "type": "episode",
+      "uri": "spotify:episode:0vPQBitWx0JaU50ptBEGlp"
+    },
+    {
+      "audio_preview_url": "https://podz-content.spotifycdn.com/audio/clips/5eVucd5tdvoicnIp2RvVqF/clip_480000_540760.mp3",
+      "description": "Karen Kavett, Francis Heaney and Sam Meeps face questions about audacious accessories, cunning cricketers and digital designs.BOOK OUT NOW!: https://www.lateralcast.com/bookLATERAL is a comedy panel game podcast about weird questions with wonderful answers, hosted by Tom Scott. For business enquiries, contestant appearances or question submissions, visit https://lateralcast.com.HOST: Tom Scott. QUESTION PRODUCER: David Bodycombe. EDITED BY: Julie Hassett at The Podcast Studios, Dublin. MUSIC: Karl-Ola Kjellholm ('Private Detective'/'Agrumes', courtesy of epidemicsound.com). ADDITIONAL QUESTIONS: Jerry Depew, Emily Sparks-Welch, Alex Bowen, Luke Mackenzie. FORMAT: Pad 26 Limited/Labyrinth Games Ltd. EXECUTIVE PRODUCERS: David Bodycombe and Tom Scott. © Pad 26 Limited (https://www.pad26.com) / Labyrinth Games Ltd. 2024. Learn more about your ad choices. Visit megaphone.fm/adchoices",
+      "duration_ms": 2403285,
+      "explicit": false,
+      "external_urls": {
+        "spotify": "https://open.spotify.com/episode/3dWuWfg60jwd9osRtz1uat"
+      },
+      "href": "https://api.spotify.com/v1/episodes/3dWuWfg60jwd9osRtz1uat",
+      "html_description": "<p>Karen Kavett, Francis Heaney and Sam Meeps face questions about audacious accessories, cunning cricketers and digital designs.</p><p>BOOK OUT NOW!: https://www.lateralcast.com/book</p><p>LATERAL is a comedy panel game podcast about weird questions with wonderful answers, hosted by Tom Scott. For business enquiries, contestant appearances or question submissions, visit https://lateralcast.com.</p><p>HOST: Tom Scott. QUESTION PRODUCER: David Bodycombe. EDITED BY: Julie Hassett at The Podcast Studios, Dublin. MUSIC: Karl-Ola Kjellholm (&#39;Private Detective&#39;/&#39;Agrumes&#39;, courtesy of epidemicsound.com). ADDITIONAL QUESTIONS: Jerry Depew, Emily Sparks-Welch, Alex Bowen, Luke Mackenzie. FORMAT: Pad 26 Limited/Labyrinth Games Ltd. EXECUTIVE PRODUCERS: David Bodycombe and Tom Scott. © Pad 26 Limited (https://www.pad26.com) / Labyrinth Games Ltd. 2024.</p><p> </p><p>Learn more about your ad choices. Visit <a href=\"https://megaphone.fm/adchoices\" rel=\"nofollow\">megaphone.fm/adchoices</a></p>",
+      "id": "3dWuWfg60jwd9osRtz1uat",
+      "images": [
+        {
+          "height": 640,
+          "url": "https://i.scdn.co/image/ab6765630000ba8a52eaf409de04b2116205cb57",
+          "width": 640
+        },
+        {
+          "height": 300,
+          "url": "https://i.scdn.co/image/ab67656300005f1f52eaf409de04b2116205cb57",
+          "width": 300
+        },
+        {
+          "height": 64,
+          "url": "https://i.scdn.co/image/ab6765630000f68d52eaf409de04b2116205cb57",
+          "width": 64
+        }
+      ],
+      "is_externally_hosted": false,
+      "is_playable": true,
+      "language": "en",
+      "languages": [
+        "en"
+      ],
+      "name": "111: The life-changing drink",
+      "release_date": "2024-11-22",
+      "release_date_precision": "day",
+      "resume_point": {
+        "fully_played": false,
+        "resume_position_ms": 1758000
+      },
+      "type": "episode",
+      "uri": "spotify:episode:3dWuWfg60jwd9osRtz1uat"
+    },
+    {
+      "audio_preview_url": "https://podz-content.spotifycdn.com/audio/clips/0woVIFwNHAI6qSKnTTO0FL/clip_369000_432560.mp3",
+      "description": "Abby Cox, Matt Gray and Iszi Lawrence face questions about mendacious mugs, biblical blurting and nifty notes.BOOK OUT NOW!: https://www.lateralcast.com/bookLATERAL is a comedy panel game podcast about weird questions with wonderful answers, hosted by Tom Scott. For business enquiries, contestant appearances or question submissions, visit https://lateralcast.com.HOST: Tom Scott. QUESTION PRODUCER: David Bodycombe. EDITED BY: Julie Hassett at The Podcast Studios, Dublin. MUSIC: Karl-Ola Kjellholm ('Private Detective'/'Agrumes', courtesy of epidemicsound.com). ADDITIONAL QUESTIONS: Adam Thomas, Syauqi. FORMAT: Pad 26 Limited/Labyrinth Games Ltd. EXECUTIVE PRODUCERS: David Bodycombe and Tom Scott. © Pad 26 Limited (https://www.pad26.com) / Labyrinth Games Ltd. 2024. Learn more about your ad choices. Visit megaphone.fm/adchoices",
+      "duration_ms": 2510053,
+      "explicit": false,
+      "external_urls": {
+        "spotify": "https://open.spotify.com/episode/2qqfZN5EdSwLsbz17UY6Dq"
+      },
+      "href": "https://api.spotify.com/v1/episodes/2qqfZN5EdSwLsbz17UY6Dq",
+      "html_description": "<p>Abby Cox, Matt Gray and Iszi Lawrence face questions about mendacious mugs, biblical blurting and nifty notes.</p><p>BOOK OUT NOW!: https://www.lateralcast.com/book</p><p>LATERAL is a comedy panel game podcast about weird questions with wonderful answers, hosted by Tom Scott. For business enquiries, contestant appearances or question submissions, visit https://lateralcast.com.</p><p>HOST: Tom Scott. QUESTION PRODUCER: David Bodycombe. EDITED BY: Julie Hassett at The Podcast Studios, Dublin. MUSIC: Karl-Ola Kjellholm (&#39;Private Detective&#39;/&#39;Agrumes&#39;, courtesy of epidemicsound.com). ADDITIONAL QUESTIONS: Adam Thomas, Syauqi. FORMAT: Pad 26 Limited/Labyrinth Games Ltd. EXECUTIVE PRODUCERS: David Bodycombe and Tom Scott. © Pad 26 Limited (https://www.pad26.com) / Labyrinth Games Ltd. 2024.</p><p> </p><p>Learn more about your ad choices. Visit <a href=\"https://megaphone.fm/adchoices\" rel=\"nofollow\">megaphone.fm/adchoices</a></p>",
+      "id": "2qqfZN5EdSwLsbz17UY6Dq",
+      "images": [
+        {
+          "height": 640,
+          "url": "https://i.scdn.co/image/ab6765630000ba8af558963953b9ae3149dcf552",
+          "width": 640
+        },
+        {
+          "height": 300,
+          "url": "https://i.scdn.co/image/ab67656300005f1ff558963953b9ae3149dcf552",
+          "width": 300
+        },
+        {
+          "height": 64,
+          "url": "https://i.scdn.co/image/ab6765630000f68df558963953b9ae3149dcf552",
+          "width": 64
+        }
+      ],
+      "is_externally_hosted": false,
+      "is_playable": true,
+      "language": "en",
+      "languages": [
+        "en"
+      ],
+      "name": "112: Driving in both lanes",
+      "release_date": "2024-11-29",
+      "release_date_precision": "day",
+      "resume_point": {
+        "fully_played": false,
+        "resume_position_ms": 2000000
+      },
+      "type": "episode",
+      "uri": "spotify:episode:2qqfZN5EdSwLsbz17UY6Dq"
+    },
+    {
+      "audio_preview_url": "https://podz-content.spotifycdn.com/audio/clips/2LdmhTqBj3v4xo8XzCvCyt/clip_281000_341440.mp3",
+      "description": "Tom Crawford, Katelyn Heling and Evan Heling face questions about hockey hat tricks, glass gaffes and security SIMs.BOOK OUT NOW!: https://www.lateralcast.com/bookLATERAL is a comedy panel game podcast about weird questions with wonderful answers, hosted by Tom Scott. For business enquiries, contestant appearances or question submissions, visit https://lateralcast.com.HOST: Tom Scott. QUESTION PRODUCER: David Bodycombe. EDITED BY: Julie Hassett at The Podcast Studios, Dublin. MUSIC: Karl-Ola Kjellholm ('Private Detective'/'Agrumes', courtesy of epidemicsound.com). ADDITIONAL QUESTIONS: Anson Wong, A.W., Greg Weller. FORMAT: Pad 26 Limited/Labyrinth Games Ltd. EXECUTIVE PRODUCERS: David Bodycombe and Tom Scott. © Pad 26 Limited (https://www.pad26.com) / Labyrinth Games Ltd. 2024. Learn more about your ad choices. Visit megaphone.fm/adchoices",
+      "duration_ms": 2632260,
+      "explicit": false,
+      "external_urls": {
+        "spotify": "https://open.spotify.com/episode/25HOP1GvQYAiyF2BPUP0Nc"
+      },
+      "href": "https://api.spotify.com/v1/episodes/25HOP1GvQYAiyF2BPUP0Nc",
+      "html_description": "<p>Tom Crawford, Katelyn Heling and Evan Heling face questions about hockey hat tricks, glass gaffes and security SIMs.</p><p>BOOK OUT NOW!: https://www.lateralcast.com/book</p><p>LATERAL is a comedy panel game podcast about weird questions with wonderful answers, hosted by Tom Scott. For business enquiries, contestant appearances or question submissions, visit https://lateralcast.com.</p><p>HOST: Tom Scott. QUESTION PRODUCER: David Bodycombe. EDITED BY: Julie Hassett at The Podcast Studios, Dublin. MUSIC: Karl-Ola Kjellholm (&#39;Private Detective&#39;/&#39;Agrumes&#39;, courtesy of epidemicsound.com). ADDITIONAL QUESTIONS: Anson Wong, A.W., Greg Weller. FORMAT: Pad 26 Limited/Labyrinth Games Ltd. EXECUTIVE PRODUCERS: David Bodycombe and Tom Scott. © Pad 26 Limited (https://www.pad26.com) / Labyrinth Games Ltd. 2024.</p><p> </p><p>Learn more about your ad choices. Visit <a href=\"https://megaphone.fm/adchoices\" rel=\"nofollow\">megaphone.fm/adchoices</a></p>",
+      "id": "25HOP1GvQYAiyF2BPUP0Nc",
+      "images": [
+        {
+          "height": 640,
+          "url": "https://i.scdn.co/image/ab6765630000ba8a9f995378a0643c8751cf17e1",
+          "width": 640
+        },
+        {
+          "height": 300,
+          "url": "https://i.scdn.co/image/ab67656300005f1f9f995378a0643c8751cf17e1",
+          "width": 300
+        },
+        {
+          "height": 64,
+          "url": "https://i.scdn.co/image/ab6765630000f68d9f995378a0643c8751cf17e1",
+          "width": 64
+        }
+      ],
+      "is_externally_hosted": false,
+      "is_playable": true,
+      "language": "en",
+      "languages": [
+        "en"
+      ],
+      "name": "113: 'Sheep' or 'Book'?",
+      "release_date": "2024-12-06",
+      "release_date_precision": "day",
+      "resume_point": {
+        "fully_played": true,
+        "resume_position_ms": 0
+      },
+      "type": "episode",
+      "uri": "spotify:episode:25HOP1GvQYAiyF2BPUP0Nc"
+    },
+    {
+      "audio_preview_url": "https://podz-content.spotifycdn.com/audio/clips/3JANqOypuL0vtH6KhHxsvu/clip_562000_625680.mp3",
+      "description": "Ólafur Waage, Kip Heath and Carson Woody face questions about stressful starters, successful speculation and sequential scores.BOOK OUT NOW!: https://www.lateralcast.com/bookLATERAL is a comedy panel game podcast about weird questions with wonderful answers, hosted by Tom Scott. For business enquiries, contestant appearances or question submissions, visit https://lateralcast.com.HOST: Tom Scott. QUESTION PRODUCER: David Bodycombe. EDITED BY: Julie Hassett at The Podcast Studios, Dublin. MUSIC: Karl-Ola Kjellholm ('Private Detective'/'Agrumes', courtesy of epidemicsound.com). ADDITIONAL QUESTIONS: Kevin, Daniel W., Moritz Lauer, Daniel Hurst, Nate, Joe Partridge. FORMAT: Pad 26 Limited/Labyrinth Games Ltd. EXECUTIVE PRODUCERS: David Bodycombe and Tom Scott. © Pad 26 Limited (https://www.pad26.com) / Labyrinth Games Ltd. 2024. Learn more about your ad choices. Visit megaphone.fm/adchoices",
+      "duration_ms": 2547136,
+      "explicit": false,
+      "external_urls": {
+        "spotify": "https://open.spotify.com/episode/5PSwOBT3fbIwL0aCy9bO5u"
+      },
+      "href": "https://api.spotify.com/v1/episodes/5PSwOBT3fbIwL0aCy9bO5u",
+      "html_description": "<p>Ólafur Waage, Kip Heath and Carson Woody face questions about stressful starters, successful speculation and sequential scores.</p><p>BOOK OUT NOW!: https://www.lateralcast.com/book</p><p>LATERAL is a comedy panel game podcast about weird questions with wonderful answers, hosted by Tom Scott. For business enquiries, contestant appearances or question submissions, visit https://lateralcast.com.</p><p>HOST: Tom Scott. QUESTION PRODUCER: David Bodycombe. EDITED BY: Julie Hassett at The Podcast Studios, Dublin. MUSIC: Karl-Ola Kjellholm (&#39;Private Detective&#39;/&#39;Agrumes&#39;, courtesy of epidemicsound.com). ADDITIONAL QUESTIONS: Kevin, Daniel W., Moritz Lauer, Daniel Hurst, Nate, Joe Partridge. FORMAT: Pad 26 Limited/Labyrinth Games Ltd. EXECUTIVE PRODUCERS: David Bodycombe and Tom Scott. © Pad 26 Limited (https://www.pad26.com) / Labyrinth Games Ltd. 2024.</p><p> </p><p>Learn more about your ad choices. Visit <a href=\"https://megaphone.fm/adchoices\" rel=\"nofollow\">megaphone.fm/adchoices</a></p>",
+      "id": "5PSwOBT3fbIwL0aCy9bO5u",
+      "images": [
+        {
+          "height": 640,
+          "url": "https://i.scdn.co/image/ab6765630000ba8ab7eee022d9ff12310c6aca30",
+          "width": 640
+        },
+        {
+          "height": 300,
+          "url": "https://i.scdn.co/image/ab67656300005f1fb7eee022d9ff12310c6aca30",
+          "width": 300
+        },
+        {
+          "height": 64,
+          "url": "https://i.scdn.co/image/ab6765630000f68db7eee022d9ff12310c6aca30",
+          "width": 64
+        }
+      ],
+      "is_externally_hosted": false,
+      "is_playable": true,
+      "language": "en",
+      "languages": [
+        "en"
+      ],
+      "name": "114: Lawnmowing cleaners",
+      "release_date": "2024-12-13",
+      "release_date_precision": "day",
+      "resume_point": {
+        "fully_played": true,
+        "resume_position_ms": 0
+      },
+      "type": "episode",
+      "uri": "spotify:episode:5PSwOBT3fbIwL0aCy9bO5u"
+    },
+    {
+      "audio_preview_url": "https://podz-content.spotifycdn.com/audio/clips/24BWX71IUPosZAcdEDcqNz/clip_261000_322040.mp3",
+      "description": "Bec Hill, Stuart Goldsmith and Lizzy Skrzypiec face questions about suspicious surgeons, holey headwear and carbonized creatures. Recorded at the Clapham Grand, London, as part of the Cheerful Earful festival.BOOK OUT NOW!: https://www.lateralcast.com/bookLATERAL is a comedy panel game podcast about weird questions with wonderful answers, hosted by Tom Scott. For business enquiries, contestant appearances or question submissions, visit https://lateralcast.com.HOST: Tom Scott. QUESTION PRODUCER: David Bodycombe. EDITED BY: Julie Hassett at The Podcast Studios, Dublin. MUSIC: Karl-Ola Kjellholm ('Private Detective'/'Agrumes', courtesy of epidemicsound.com). ADDITIONAL QUESTIONS: Kyle Sutton, Noot Bootsma, Nate, Zach Chism, Brian J. Devine. FORMAT: Pad 26 Limited/Labyrinth Games Ltd. EXECUTIVE PRODUCERS: David Bodycombe and Tom Scott. © Pad 26 Limited (https://www.pad26.com) / Labyrinth Games Ltd. 2024. Learn more about your ad choices. Visit megaphone.fm/adchoices",
+      "duration_ms": 3096607,
+      "explicit": false,
+      "external_urls": {
+        "spotify": "https://open.spotify.com/episode/1TD7xtp5aHmn2XmlikUtUS"
+      },
+      "href": "https://api.spotify.com/v1/episodes/1TD7xtp5aHmn2XmlikUtUS",
+      "html_description": "<p>Bec Hill, Stuart Goldsmith and Lizzy Skrzypiec face questions about suspicious surgeons, holey headwear and carbonized creatures. Recorded at the Clapham Grand, London, as part of the Cheerful Earful festival.</p><p>BOOK OUT NOW!: https://www.lateralcast.com/book</p><p>LATERAL is a comedy panel game podcast about weird questions with wonderful answers, hosted by Tom Scott. For business enquiries, contestant appearances or question submissions, visit https://lateralcast.com.</p><p>HOST: Tom Scott. QUESTION PRODUCER: David Bodycombe. EDITED BY: Julie Hassett at The Podcast Studios, Dublin. MUSIC: Karl-Ola Kjellholm (&#39;Private Detective&#39;/&#39;Agrumes&#39;, courtesy of epidemicsound.com). ADDITIONAL QUESTIONS: Kyle Sutton, Noot Bootsma, Nate, Zach Chism, Brian J. Devine. FORMAT: Pad 26 Limited/Labyrinth Games Ltd. EXECUTIVE PRODUCERS: David Bodycombe and Tom Scott. © Pad 26 Limited (https://www.pad26.com) / Labyrinth Games Ltd. 2024.</p><p> </p><p>Learn more about your ad choices. Visit <a href=\"https://megaphone.fm/adchoices\" rel=\"nofollow\">megaphone.fm/adchoices</a></p>",
+      "id": "1TD7xtp5aHmn2XmlikUtUS",
+      "images": [
+        {
+          "height": 640,
+          "url": "https://i.scdn.co/image/ab6765630000ba8a58fcea140632bef1f6e62489",
+          "width": 640
+        },
+        {
+          "height": 300,
+          "url": "https://i.scdn.co/image/ab67656300005f1f58fcea140632bef1f6e62489",
+          "width": 300
+        },
+        {
+          "height": 64,
+          "url": "https://i.scdn.co/image/ab6765630000f68d58fcea140632bef1f6e62489",
+          "width": 64
+        }
+      ],
+      "is_externally_hosted": false,
+      "is_playable": true,
+      "language": "en",
+      "languages": [
+        "en"
+      ],
+      "name": "115: Pants on fire [LIVE]",
+      "release_date": "2024-12-20",
+      "release_date_precision": "day",
+      "resume_point": {
+        "fully_played": true,
+        "resume_position_ms": 0
+      },
+      "type": "episode",
+      "uri": "spotify:episode:1TD7xtp5aHmn2XmlikUtUS"
+    },
+    {
+      "audio_preview_url": "https://podz-content.spotifycdn.com/audio/clips/43AxvT6MxgmteQfGaaigWr/clip_284000_344360.mp3",
+      "description": "Lucy Rogers, Molly Edwards and Trace Dominguez face questions about helpful handles, game show gambits and relevant roads.LATERAL is a comedy panel game podcast about weird questions with wonderful answers, hosted by Tom Scott. For business enquiries, contestant appearances or question submissions, visit https://lateralcast.com.HOST: Tom Scott. QUESTION PRODUCER: David Bodycombe. EDITED BY: Julie Hassett at The Podcast Studios, Dublin. MUSIC: Karl-Ola Kjellholm ('Private Detective'/'Agrumes', courtesy of epidemicsound.com). ADDITIONAL QUESTIONS: Dorian Lidell, Leonie Mercedes, Matthew, Jay, Erik. FORMAT: Pad 26 Limited/Labyrinth Games Ltd. EXECUTIVE PRODUCERS: David Bodycombe and Tom Scott. © Pad 26 Limited (https://www.pad26.com) / Labyrinth Games Ltd. 2024. Learn more about your ad choices. Visit megaphone.fm/adchoices",
+      "duration_ms": 2461013,
+      "explicit": false,
+      "external_urls": {
+        "spotify": "https://open.spotify.com/episode/2GMf8PYQSNqomSTxS0mLq6"
+      },
+      "href": "https://api.spotify.com/v1/episodes/2GMf8PYQSNqomSTxS0mLq6",
+      "html_description": "<p>Lucy Rogers, Molly Edwards and Trace Dominguez face questions about helpful handles, game show gambits and relevant roads.</p><p>LATERAL is a comedy panel game podcast about weird questions with wonderful answers, hosted by Tom Scott. For business enquiries, contestant appearances or question submissions, visit https://lateralcast.com.</p><p>HOST: Tom Scott. QUESTION PRODUCER: David Bodycombe. EDITED BY: Julie Hassett at The Podcast Studios, Dublin. MUSIC: Karl-Ola Kjellholm (&#39;Private Detective&#39;/&#39;Agrumes&#39;, courtesy of epidemicsound.com). ADDITIONAL QUESTIONS: Dorian Lidell, Leonie Mercedes, Matthew, Jay, Erik. FORMAT: Pad 26 Limited/Labyrinth Games Ltd. EXECUTIVE PRODUCERS: David Bodycombe and Tom Scott. © Pad 26 Limited (https://www.pad26.com) / Labyrinth Games Ltd. 2024.</p><p> </p><p>Learn more about your ad choices. Visit <a href=\"https://megaphone.fm/adchoices\" rel=\"nofollow\">megaphone.fm/adchoices</a></p>",
+      "id": "2GMf8PYQSNqomSTxS0mLq6",
+      "images": [
+        {
+          "height": 640,
+          "url": "https://i.scdn.co/image/ab6765630000ba8a619975fe3d22f0f314192a93",
+          "width": 640
+        },
+        {
+          "height": 300,
+          "url": "https://i.scdn.co/image/ab67656300005f1f619975fe3d22f0f314192a93",
+          "width": 300
+        },
+        {
+          "height": 64,
+          "url": "https://i.scdn.co/image/ab6765630000f68d619975fe3d22f0f314192a93",
+          "width": 64
+        }
+      ],
+      "is_externally_hosted": false,
+      "is_playable": true,
+      "language": "en",
+      "languages": [
+        "en"
+      ],
+      "name": "116: 7 inches apart",
+      "release_date": "2024-12-27",
+      "release_date_precision": "day",
+      "resume_point": {
+        "fully_played": false,
+        "resume_position_ms": 0
+      },
+      "type": "episode",
+      "uri": "spotify:episode:2GMf8PYQSNqomSTxS0mLq6"
+    },
+    {
+      "audio_preview_url": "https://podz-content.spotifycdn.com/audio/clips/2toUnqF9NQCDvXto00CN9S/clip_281000_341360.mp3",
+      "description": "Sophie Ward, Julian Huguet and Tina Huang face questions about peculiar pirouettes, popstar pages and passport problems.LATERAL is a comedy panel game podcast about weird questions with wonderful answers, hosted by Tom Scott. For business enquiries, contestant appearances or question submissions, visit https://lateralcast.com.HOST: Tom Scott. QUESTION PRODUCER: David Bodycombe. EDITED BY: Julie Hassett at The Podcast Studios, Dublin. MUSIC: Karl-Ola Kjellholm ('Private Detective'/'Agrumes', courtesy of epidemicsound.com). ADDITIONAL QUESTIONS: Adam, Jane Doe, Nate, Oscar, Ghrian. FORMAT: Pad 26 Limited/Labyrinth Games Ltd. EXECUTIVE PRODUCERS: David Bodycombe and Tom Scott. © Pad 26 Limited (https://www.pad26.com) / Labyrinth Games Ltd. 2025. Learn more about your ad choices. Visit megaphone.fm/adchoices",
+      "duration_ms": 2875744,
+      "explicit": false,
+      "external_urls": {
+        "spotify": "https://open.spotify.com/episode/57bDATD22b4zJoyPsokpfD"
+      },
+      "href": "https://api.spotify.com/v1/episodes/57bDATD22b4zJoyPsokpfD",
+      "html_description": "<p>Sophie Ward, Julian Huguet and Tina Huang face questions about peculiar pirouettes, popstar pages and passport problems.</p><p>LATERAL is a comedy panel game podcast about weird questions with wonderful answers, hosted by Tom Scott. For business enquiries, contestant appearances or question submissions, visit https://lateralcast.com.</p><p>HOST: Tom Scott. QUESTION PRODUCER: David Bodycombe. EDITED BY: Julie Hassett at The Podcast Studios, Dublin. MUSIC: Karl-Ola Kjellholm (&#39;Private Detective&#39;/&#39;Agrumes&#39;, courtesy of epidemicsound.com). ADDITIONAL QUESTIONS: Adam, Jane Doe, Nate, Oscar, Ghrian. FORMAT: Pad 26 Limited/Labyrinth Games Ltd. EXECUTIVE PRODUCERS: David Bodycombe and Tom Scott. © Pad 26 Limited (https://www.pad26.com) / Labyrinth Games Ltd. 2025.</p><p> </p><p>Learn more about your ad choices. Visit <a href=\"https://megaphone.fm/adchoices\" rel=\"nofollow\">megaphone.fm/adchoices</a></p>",
+      "id": "57bDATD22b4zJoyPsokpfD",
+      "images": [
+        {
+          "height": 640,
+          "url": "https://i.scdn.co/image/ab6765630000ba8a2a065d69721b4ebc95b79f09",
+          "width": 640
+        },
+        {
+          "height": 300,
+          "url": "https://i.scdn.co/image/ab67656300005f1f2a065d69721b4ebc95b79f09",
+          "width": 300
+        },
+        {
+          "height": 64,
+          "url": "https://i.scdn.co/image/ab6765630000f68d2a065d69721b4ebc95b79f09",
+          "width": 64
+        }
+      ],
+      "is_externally_hosted": false,
+      "is_playable": true,
+      "language": "en",
+      "languages": [
+        "en"
+      ],
+      "name": "117: Dull white powder",
+      "release_date": "2025-01-03",
+      "release_date_precision": "day",
+      "resume_point": {
+        "fully_played": false,
+        "resume_position_ms": 207000
+      },
+      "type": "episode",
+      "uri": "spotify:episode:57bDATD22b4zJoyPsokpfD"
+    },
+    {
+      "audio_preview_url": "https://podz-content.spotifycdn.com/audio/clips/183Z348m6izZ9ak16HEe2p/clip_325000_386080.mp3",
+      "description": "Karen Kavett, Francis Heaney and Sam Meeps face questions about corporate coincidences, language lapses and overfamiliar organists.LATERAL is a comedy panel game podcast about weird questions with wonderful answers, hosted by Tom Scott. For business enquiries, contestant appearances or question submissions, visit https://lateralcast.com.HOST: Tom Scott. QUESTION PRODUCER: David Bodycombe. EDITED BY: Julie Hassett at The Podcast Studios, Dublin. MUSIC: Karl-Ola Kjellholm ('Private Detective'/'Agrumes', courtesy of epidemicsound.com). ADDITIONAL QUESTIONS: Jagannath, Yong, Jeff, Azure Fennec, Scott O'Brien, Sangwang. FORMAT: Pad 26 Limited/Labyrinth Games Ltd. EXECUTIVE PRODUCERS: David Bodycombe and Tom Scott. © Pad 26 Limited (https://www.pad26.com) / Labyrinth Games Ltd. 2025. Learn more about your ad choices. Visit megaphone.fm/adchoices",
+      "duration_ms": 2104341,
+      "explicit": false,
+      "external_urls": {
+        "spotify": "https://open.spotify.com/episode/2OcsbZmwFB0GBiuLQHsEQU"
+      },
+      "href": "https://api.spotify.com/v1/episodes/2OcsbZmwFB0GBiuLQHsEQU",
+      "html_description": "<p>Karen Kavett, Francis Heaney and Sam Meeps face questions about corporate coincidences, language lapses and overfamiliar organists.</p><p>LATERAL is a comedy panel game podcast about weird questions with wonderful answers, hosted by Tom Scott. For business enquiries, contestant appearances or question submissions, visit https://lateralcast.com.</p><p>HOST: Tom Scott. QUESTION PRODUCER: David Bodycombe. EDITED BY: Julie Hassett at The Podcast Studios, Dublin. MUSIC: Karl-Ola Kjellholm (&#39;Private Detective&#39;/&#39;Agrumes&#39;, courtesy of epidemicsound.com). ADDITIONAL QUESTIONS: Jagannath, Yong, Jeff, Azure Fennec, Scott O&#39;Brien, Sangwang. FORMAT: Pad 26 Limited/Labyrinth Games Ltd. EXECUTIVE PRODUCERS: David Bodycombe and Tom Scott. © Pad 26 Limited (https://www.pad26.com) / Labyrinth Games Ltd. 2025.</p><p> </p><p>Learn more about your ad choices. Visit <a href=\"https://megaphone.fm/adchoices\" rel=\"nofollow\">megaphone.fm/adchoices</a></p>",
+      "id": "2OcsbZmwFB0GBiuLQHsEQU",
+      "images": [
+        {
+          "height": 640,
+          "url": "https://i.scdn.co/image/ab6765630000ba8ab0db6d9f02d20a4a644c1b3a",
+          "width": 640
+        },
+        {
+          "height": 300,
+          "url": "https://i.scdn.co/image/ab67656300005f1fb0db6d9f02d20a4a644c1b3a",
+          "width": 300
+        },
+        {
+          "height": 64,
+          "url": "https://i.scdn.co/image/ab6765630000f68db0db6d9f02d20a4a644c1b3a",
+          "width": 64
+        }
+      ],
+      "is_externally_hosted": false,
+      "is_playable": true,
+      "language": "en",
+      "languages": [
+        "en"
+      ],
+      "name": "118: The wrong way wheel",
+      "release_date": "2025-01-10",
+      "release_date_precision": "day",
+      "resume_point": {
+        "fully_played": true,
+        "resume_position_ms": 0
+      },
+      "type": "episode",
+      "uri": "spotify:episode:2OcsbZmwFB0GBiuLQHsEQU"
+    },
+    null
+  ],
+  "limit": 50,
+  "next": null,
+  "offset": 100,
+  "previous": "https://api.spotify.com/v1/shows/1TthQOE4Fx6gBPW8l48cfN/episodes?offset=50&limit=50",
+  "total": 120
+}

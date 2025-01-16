@@ -1,0 +1,12 @@
+[package]
+name = "debugging"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rspotify = "0.14.0"
+serde = "1.0.217"
+serde_json = "1.0.135"
+
+[lints]
+workspace = true
