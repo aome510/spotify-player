@@ -1409,14 +1409,31 @@ impl Client {
         let show = self.get_a_show(show_id, None).await?;
         let first_page = show.episodes.clone();
 
+        // Copy first_page but use Page<Option<SimplifiedEpisode>> instead of Page<SimplifiedEpisode>
+        // This is a temporary fix for https://github.com/aome510/spotify-player/issues/663
+        let first_page_tmp_fix = rspotify::model::Page {
+            items: first_page
+                .items
+                .iter()
+                .map(|page| Some(page.clone()))
+                .collect(),
+            href: first_page.href,
+            limit: first_page.limit,
+            next: first_page.next,
+            offset: first_page.offset,
+            previous: first_page.previous,
+            total: first_page.total,
+        };
+
         // converts `rspotify::model::FullShow` into `state::Show`
         let show: Show = show.into();
 
         // get the show's episodes
         let episodes = self
-            .all_paging_items(first_page, &Query::new())
+            .all_paging_items(first_page_tmp_fix, &Query::new())
             .await?
             .into_iter()
+            .filter_map(|maybe_episode| maybe_episode) // Filter out Nones
             .map(std::convert::Into::into)
             .collect::<Vec<_>>();
 
