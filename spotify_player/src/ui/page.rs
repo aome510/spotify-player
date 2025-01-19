@@ -9,11 +9,13 @@ use ratatui::text::Line;
 use crate::{state::Episode, utils::format_duration};
 
 use super::{
-    config, utils, utils::construct_and_render_block, Album, Artist, ArtistFocusState, Borders,
-    BrowsePageUIState, Cell, Constraint, Context, ContextPageUIState, DataReadGuard, Frame, Id,
-    Layout, LibraryFocusState, MutableWindowState, Orientation, PageState, Paragraph,
-    PlaylistFolderItem, Rect, Row, SearchFocusState, SharedState, Style, Table, Track,
-    UIStateGuard,
+    config,
+    playback::play_animation,
+    utils::{self, construct_and_render_block},
+    Album, Artist, ArtistFocusState, Borders, BrowsePageUIState, Cell, Constraint, Context,
+    ContextPageUIState, DataReadGuard, Frame, Id, Layout, LibraryFocusState, MutableWindowState,
+    Orientation, PageState, Paragraph, PlaylistFolderItem, Rect, Row, SearchFocusState,
+    SharedState, Style, Table, Track, UIStateGuard,
 };
 use crate::state::BidiDisplay;
 use crate::ui::utils::to_bidi_string;
@@ -972,6 +974,7 @@ fn render_track_table(
     // get the current playing track's URI to decorate such track (if exists) in the track table
     let mut playing_track_uri = String::new();
     let mut playing_id = "";
+    let play_icon = play_animation(vec!["󰕿".to_string(), "󰖀".to_string(), "󰕾".to_string()]);
     if let Some(ref playback) = state.player.read().playback {
         if let Some(rspotify::model::PlayableItem::Track(ref track)) = playback.item {
             playing_track_uri = track
@@ -981,7 +984,7 @@ fn render_track_table(
                 .unwrap_or_default();
 
             playing_id = if playback.is_playing {
-                &configs.app_config.play_icon
+                &play_icon
             } else {
                 &configs.app_config.pause_icon
             };
@@ -1099,12 +1102,13 @@ fn render_episode_table(
     // get the current playing episode's URI to decorate such episode (if exists) in the episode table
     let mut playing_episode_uri = String::new();
     let mut playing_id = "";
+    let play_icon = play_animation(vec!["󰕿".to_string(), "󰖀".to_string(), "󰕾".to_string()]);
     if let Some(ref playback) = state.player.read().playback {
         if let Some(rspotify::model::PlayableItem::Episode(ref episode)) = playback.item {
             playing_episode_uri = episode.id.uri();
 
             playing_id = if playback.is_playing {
-                &configs.app_config.play_icon
+                &play_icon
             } else {
                 &configs.app_config.pause_icon
             };
