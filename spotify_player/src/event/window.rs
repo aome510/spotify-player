@@ -1,5 +1,6 @@
 use super::page::handle_navigation_command;
 use super::*;
+use crate::utils::sort_albums_by_type;
 use crate::{
     command::{
         construct_album_actions, construct_artist_actions, construct_playlist_actions,
@@ -163,13 +164,17 @@ pub fn handle_command_for_focused_context_window(
                 };
 
                 match focus {
-                    ArtistFocusState::Albums => handle_command_for_album_list_window(
-                        command,
-                        &ui.search_filtered_items(albums),
-                        &data,
-                        ui,
-                        client_pub,
-                    ),
+                    ArtistFocusState::Albums => {
+                        let sorted_albums = sort_albums_by_type(&ui.search_filtered_items(albums));
+
+                        handle_command_for_album_list_window(
+                            command,
+                            &sorted_albums,
+                            &data,
+                            ui,
+                            client_pub,
+                        )
+                    }
                     ArtistFocusState::RelatedArtists => Ok(handle_command_for_artist_list_window(
                         command,
                         &ui.search_filtered_items(related_artists),

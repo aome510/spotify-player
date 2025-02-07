@@ -5,8 +5,6 @@ use std::{
 
 use tui::text::Line;
 
-use crate::{state::Episode, utils::format_duration};
-
 use super::{
     config, utils, utils::construct_and_render_block, Album, Artist, ArtistFocusState, Borders,
     BrowsePageUIState, Cell, Constraint, Context, ContextPageUIState, DataReadGuard, Frame, Id,
@@ -14,6 +12,8 @@ use super::{
     PlaylistFolderItem, Rect, Row, SearchFocusState, SharedState, Style, Table, Track,
     UIStateGuard,
 };
+use crate::utils::sort_albums_by_type;
+use crate::{state::Episode, utils::format_duration};
 
 const COMMAND_TABLE_CONSTRAINTS: [Constraint; 3] = [
     Constraint::Percentage(25),
@@ -800,7 +800,6 @@ fn render_artist_context_page_windows(
     rect: Rect,
     artist_data: (&[Track], &[Album], &[Artist]),
 ) {
-    let configs = config::get_config();
     // 1. Get data
     let (tracks, mut albums, artists) = (
         ui.search_filtered_items(artist_data.0),
@@ -835,18 +834,7 @@ fn render_artist_context_page_windows(
 
     // 3. Construct the page's widgets
     // album table
-    if configs.app_config.sort_artist_albums_by_type {
-        fn get_priority(album_type: &str) -> usize {
-            match album_type {
-                "album" => 0,
-                "single" => 1,
-                "appears_on" => 2,
-                "compilation" => 3,
-                _ => 4,
-            }
-        }
-        albums.sort_by_key(|a| get_priority(&a.album_type()));
-    }
+    albums = sort_albums_by_type(&albums);
 
     let is_albums_active = is_active && focus_state == ArtistFocusState::Albums;
     let n_albums = albums.len();

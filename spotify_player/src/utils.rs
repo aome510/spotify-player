@@ -1,3 +1,5 @@
+use crate::config;
+use crate::state::Album;
 use std::borrow::Cow;
 
 /// formats a time duration into a "{minutes}:{seconds}" format
@@ -48,4 +50,20 @@ pub fn parse_uri(uri: &str) -> Cow<str> {
     } else {
         Cow::Borrowed(uri)
     }
+}
+
+pub fn sort_albums_by_type<'a>(albums: &[&'a Album]) -> Vec<&'a Album> {
+    let mut sorted_albums = albums.to_vec();
+
+    if config::get_config().app_config.sort_artist_albums_by_type {
+        sorted_albums.sort_by_key(|a| match a.album_type().as_str() {
+            "album" => 0,
+            "single" => 1,
+            "appears_on" => 2,
+            "compilation" => 3,
+            _ => 4,
+        });
+    }
+
+    sorted_albums
 }
