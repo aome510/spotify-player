@@ -92,6 +92,8 @@ impl Spotify {
     // TODO: implement caching
     pub async fn access_token_from_user_client_id(&self) -> Result<String> {
         let session = self.session().await;
+    
+        
         let token = token::get_token_librespot(&session, &self.user_client_id).await?;
     
         // Check if the token is expired
@@ -99,12 +101,12 @@ impl Spotify {
             tracing::warn!("Token expired, refreshing...");
             self.refresh_token().await?;
     
-            // After refresh, try again
-            let new_token = self.token.lock().await.unwrap().as_ref().ok_or_else(|| {
+            
+            let new_token = self.token.lock().await.unwrap().clone().ok_or_else(|| {
                 anyhow!("Failed to get refreshed token")
             })?;
     
-            // Ensure the new token is valid
+            
             if new_token.is_expired() {
                 return Err(anyhow!("Refreshed token is still expired!"));
             }
@@ -114,6 +116,7 @@ impl Spotify {
     
         Ok(token.access_token)
     }
+
 
 }
 
