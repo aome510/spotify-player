@@ -178,18 +178,7 @@ impl BaseClient for Spotify {
                     token.expires_at
                 );
     
-                // Restart librespot to use the new token
-                tracing::warn!("Restarting librespot streaming connection due to token refresh");
-    
-                if let Some(spirc) = self.stream_conn.lock().as_mut() {
-                    spirc.shutdown();
-                }
-    
-                self.new_streaming_connection(state.clone(), session.clone(), creds.clone())
-                    .await?;
-    
-                tracing::info!("Restarted streaming connection with new token");
-    
+                // Return the new token, but don't restart streaming here.
                 Ok(Some(token))
             }
             Err(err) => {
@@ -198,6 +187,7 @@ impl BaseClient for Spotify {
             }
         }
     }
+    
     
 }
 
