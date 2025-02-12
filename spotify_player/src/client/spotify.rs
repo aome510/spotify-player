@@ -93,8 +93,28 @@ impl Spotify {
     pub async fn access_token_from_user_client_id(&self) -> Result<String> {
         let session = self.session().await;
         let token = token::get_token_librespot(&session, &self.user_client_id).await?;
+    
+        // Check if the token is expired
+        if token.is_expired() {
+            tracing::warn!("Token expired, refreshing...");
+            self.refresh_token().await?;
+    
+            // After refresh, try again
+            let new_token = self.token.lock().await.unwrap().as_ref().ok_or_else(|| {
+                anyhow!("Failed to get refreshed token")
+            })?;
+    
+            // Ensure the new token is valid
+            if new_token.is_expired() {
+                return Err(anyhow!("Refreshed token is still expired!"));
+            }
+    
+            return Ok(new_token.access_token.clone());
+        }
+    
         Ok(token.access_token)
     }
+
 }
 
 // TODO: remove the below uses of `maybe_async` crate once
