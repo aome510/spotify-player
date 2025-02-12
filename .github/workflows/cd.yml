@@ -51,9 +51,17 @@ jobs:
             ;;
           esac;
 
-      - name: Release
-        uses: softprops/action-gh-release@v1
+      - name: Archive package
+        uses: actions/upload-artifact@v4
         with:
-          files: target/${{ matrix.target }}/release/spotify_player-*
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: spotify_player-${{ matrix.target }}
+          path: target/${{ matrix.target }}/release/spotify_player-${{ matrix.target }}.*
+
+        
+
+      # - name: Release
+      #   uses: softprops/action-gh-release@v1
+      #   with:
+      #     files: target/${{ matrix.target }}/release/spotify_player-*
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
