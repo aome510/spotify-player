@@ -1,9 +1,7 @@
 name: CD
 
 on:
-  push:
-    tags:
-      - "v*.*.*"
+  workflow_dispatch:
 
 jobs:
   publish:
