@@ -72,21 +72,31 @@ impl Spotify {
     /// The function may retrieve a new token and update the current token
     /// stored inside the client if the old one is expired.
     pub async fn access_token(&self) -> Result<String> {
-        let should_update = match self.token.lock().await.unwrap().as_ref() {
-            Some(token) => token.is_expired(),
-            None => true,
-        };
-        if should_update {
+        let mut token_guard = self.token.lock().await.unwrap();
+    
+        if let Some(token) = token_guard.as_ref() {
+            tracing::info!(
+                "Current token: {}, expires at: {:?}",
+                token.access_token,
+                token.expires_at
+            );
+        } else {
+            tracing::warn!("No token is currently stored.");
+        }
+    
+        // If the token is expired, we get a new one
+        if token_guard.as_ref().map(|t| t.is_expired()).unwrap_or(true) {
+            tracing::info!("Token expired, refreshing...");
             self.refresh_token().await?;
         }
-
-        match self.token.lock().await.unwrap().as_ref() {
-            Some(token) => Ok(token.access_token.clone()),
-            None => Err(anyhow!(
-                "failed to get the authentication token stored inside the client."
-            )),
+    
+        if let Some(token) = token_guard.as_ref() {
+            Ok(token.access_token.clone())
+        } else {
+            Err(anyhow!("Failed to retrieve an authentication token."))
         }
     }
+    
 
     /// Get a Spotify access token based on a user-provided client ID
     // TODO: implement caching
@@ -144,20 +154,51 @@ impl BaseClient for Spotify {
     async fn refetch_token(&self) -> ClientResult<Option<Token>> {
         let session = self.session().await;
         let old_token = self.token.lock().await.unwrap().clone();
-
+    
+        tracing::info!(
+            "Attempting to refresh token. Old token: {:?}",
+            old_token.as_ref().map(|t| &t.access_token)
+        );
+    
         if session.is_invalid() {
-            tracing::error!("Failed to get a new token: invalid session");
+            tracing::error!("Session is invalid! Cannot refresh token.");
             return Ok(old_token);
         }
-
+    
         match token::get_token_rspotify(&session, SPOTIFY_CLIENT_ID).await {
-            Ok(token) => Ok(Some(token)),
+            Ok(token) => {
+                {
+                    let mut token_guard = self.token.lock().await.unwrap();
+                    *token_guard = Some(token.clone());
+                }
+    
+                tracing::info!(
+                    "New token retrieved: {} (expires at {:?})",
+                    token.access_token,
+                    token.expires_at
+                );
+    
+                // Restart librespot to use the new token
+                tracing::warn!("Restarting librespot streaming connection due to token refresh");
+    
+                if let Some(spirc) = self.stream_conn.lock().as_mut() {
+                    spirc.shutdown();
+                }
+    
+                self.new_streaming_connection(state.clone(), session.clone(), creds.clone())
+                    .await?;
+    
+                tracing::info!("Restarted streaming connection with new token");
+    
+                Ok(Some(token))
+            }
             Err(err) => {
                 tracing::error!("Failed to get a new token: {err:#}");
                 Ok(old_token)
             }
         }
     }
+    
 }
 
 /// Implement `OAuthClient` trait for `Spotify` struct
