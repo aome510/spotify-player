@@ -140,7 +140,7 @@ impl BaseClient for Spotify {
         );
     
         if session.is_invalid() {
-            tracing::error!("Session is invalid! Cannot refresh token.");
+            tracing::error!("Failed to get a new token: invalid session");
             return Ok(old_token);
         }
     
@@ -151,13 +151,8 @@ impl BaseClient for Spotify {
                     *token_guard = Some(token.clone());
                 }
     
-                tracing::info!(
-                    "New token retrieved: {} (expires at {:?})",
-                    token.access_token,
-                    token.expires_at
-                );
+                tracing::info!("Got new token: {token:?}");
     
-                // Return the new token, but don't restart streaming here.
                 Ok(Some(token))
             }
             Err(err) => {
