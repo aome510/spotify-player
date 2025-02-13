@@ -86,8 +86,10 @@ impl Spotify {
     
         // If the token is expired, we get a new one
         if token_guard.as_ref().map(|t| t.is_expired()).unwrap_or(true) {
-            tracing::info!("Token expired, refreshing...");
-            self.refresh_token().await?;
+            tracing::info!("Token expired, restarting session...");
+            //trying out this awful hack
+            self.session.shutdown();
+            //self.refresh_token().await?;
         }
     
         if let Some(token) = token_guard.as_ref() {
