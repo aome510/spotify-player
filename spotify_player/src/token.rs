@@ -53,16 +53,14 @@ pub async fn get_token_rspotify(session: &Session, client_id: &str) -> Result<rs
     let token =
         match tokio::time::timeout(std::time::Duration::from_secs(TIMEOUT_IN_SECS), fut).await {
             Ok(Ok(token)) => token,
-            Ok(Err(err)) => {
-                tracing::error!("Failed to get token from librespot: {:?}", err);
-                anyhow::bail!("Failed to get the token: {:?}", err);
-            }
+            Ok(Err(err)) => anyhow::bail!("failed to get the token: {:?}", err),
             Err(_) => {
-                tracing::error!("Token request timed out! Shutting down session.");
+                // The timeout likely happens because of the "corrupted" session,
+                // shutdown it to force re-initializing.
                 if !session.is_invalid() {
                     session.shutdown();
                 }
-                anyhow::bail!("Timeout when getting the token.");
+                anyhow::bail!("timeout when getting the token");
             }
         };
 
@@ -80,12 +78,7 @@ pub async fn get_token_rspotify(session: &Session, client_id: &str) -> Result<rs
         refresh_token: None,
     };
 
-    tracing::info!(
-        "Successfully retrieved new token: {} (expires at {:?})",
-        token.access_token,
-        expires_at
-    );
+    tracing::info!("Got new token: {token:?}");
 
     Ok(token)
 }
-
