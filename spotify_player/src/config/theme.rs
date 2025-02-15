@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use anyhow::Result;
 use serde::Deserialize;
-use tui::style;
+use ratatui::style;
 
 #[derive(Clone, Debug, Deserialize)]
 /// Application theme configurations.

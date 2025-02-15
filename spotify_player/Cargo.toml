@@ -6,7 +6,7 @@ edition = "2021"
 license = "MIT"
 description = "A Spotify player in the terminal with full feature parity"
 repository = "https://github.com/aome510/spotify-player"
-keywords = ["spotify", "tui", "player"]
+keywords = ["spotify", "tui", "ratatui", "player"]
 readme = "../README.md"
 
 [dependencies]
@@ -32,7 +32,7 @@ tokio = { version = "1.41.1", features = [
 	"time",
 ] }
 toml = "0.8.19"
-tui = { package = "ratatui", version = "0.29.0" }
+ratatui = { version = "0.29.0" }
 rand = "0.8.5"
 maybe-async = "0.2.10"
 async-trait = "0.1.83"

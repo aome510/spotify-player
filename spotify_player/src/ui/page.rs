@@ -3,7 +3,7 @@ use std::{
     fmt::Display,
 };
 
-use tui::text::Line;
+use ratatui::text::Line;
 
 use crate::{state::Episode, utils::format_duration};
 
