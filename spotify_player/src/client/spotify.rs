@@ -72,7 +72,7 @@ impl Spotify {
     /// The function may retrieve a new token and update the current token
     /// stored inside the client if the old one is expired.
     pub async fn access_token(&self) -> Result<String> {
-        let mut token_guard = self.token.lock().await.unwrap();
+        let token_guard = self.token.lock().await.unwrap();
     
         if let Some(token) = token_guard.as_ref() {
             tracing::info!(
