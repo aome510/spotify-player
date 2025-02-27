@@ -85,7 +85,7 @@ impl Spotify {
         }
 
         // If the token is expired, we get a new one
-        if token_guard.as_ref().map(|t| t.is_expired()).unwrap_or(true) {
+        if token_guard.as_ref().map_or(true, rspotify::Token::is_expired) {
             tracing::info!("Token expired, restarting session...");
             //trying out this awful hack
 
