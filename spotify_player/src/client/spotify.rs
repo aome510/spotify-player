@@ -97,7 +97,7 @@ impl Spotify {
         if let Some(token) = token_guard.as_ref() {
             Ok(token.access_token.clone())
         } else {
-            Err(anyhow!("Failed to retrieve an authentication token."))
+            Err(anyhow!("Failed to get the authentication token stored inside the client."))
         }
     }
     
