@@ -139,7 +139,7 @@ impl BaseClient for Spotify {
         let old_token = self.token.lock().await.unwrap().clone();
     
         tracing::info!(
-            "Attempting to refresh token. Old token: {:?}",
+            "Attempting to refresh token. Current token is: {:?}",
             old_token.as_ref().map(|t| &t.access_token)
         );
     
