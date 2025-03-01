@@ -113,6 +113,12 @@ cd /usr/pkgsrc/audio/spotify-player
 make install
 ```
 
+### NixOS
+
+[spotify-player](https://search.nixos.org/packages?channel=unstable&show=spotify-player&from=0&size=50&sort=relevance&type=packages&query=spotify-player) is available as a Nix package and can be installed via `nix-shell -p spotify-player` or as part of your system configuration.
+
+If you want to build the source locally you can run `nix-shell` in the root of a checkout of the source code. The provided `shell.nix` file will install the build prerequisites.
+
 ### Docker
 
 **Note**: [streaming](#streaming) feature is disabled when using the docker image.
