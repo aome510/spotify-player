@@ -10,6 +10,7 @@ pub enum PlayerRequest {
     Resume,
     Pause,
     ResumePause,
+    PlayCurrentPlaylist,
     SeekTrack(chrono::Duration),
     Repeat,
     Shuffle,

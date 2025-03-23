@@ -80,6 +80,7 @@ pub enum Command {
     MovePlaylistItemDown,
 
     CreatePlaylist,
+    PlaySelectedPlaylist,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize)]
@@ -102,6 +103,7 @@ pub enum Action {
     CopyLink,
     Follow,
     Unfollow,
+    PlayContext,
 }
 
 #[derive(Debug)]
@@ -214,6 +216,7 @@ pub fn construct_track_actions(track: &Track, data: &DataReadGuard) -> Vec<Actio
 /// constructs a list of actions on an album
 pub fn construct_album_actions(album: &Album, data: &DataReadGuard) -> Vec<Action> {
     let mut actions = vec![
+        Action::PlayContext,
         Action::GoToArtist,
         Action::GoToRadio,
         Action::ShowActionsOnArtist,
@@ -230,7 +233,11 @@ pub fn construct_album_actions(album: &Album, data: &DataReadGuard) -> Vec<Actio
 
 /// constructs a list of actions on an artist
 pub fn construct_artist_actions(artist: &Artist, data: &DataReadGuard) -> Vec<Action> {
-    let mut actions = vec![Action::GoToRadio, Action::CopyLink];
+    let mut actions = vec![
+        Action::PlayContext,
+        Action::GoToRadio,
+        Action::CopyLink,
+    ];
 
     if data
         .user_data
@@ -247,7 +254,11 @@ pub fn construct_artist_actions(artist: &Artist, data: &DataReadGuard) -> Vec<Ac
 
 /// constructs a list of actions on an playlist
 pub fn construct_playlist_actions(playlist: &Playlist, data: &DataReadGuard) -> Vec<Action> {
-    let mut actions = vec![Action::GoToRadio, Action::CopyLink];
+    let mut actions = vec![
+        Action::PlayContext,
+        Action::GoToRadio,
+        Action::CopyLink,
+    ];
 
     if data
         .user_data
@@ -264,7 +275,10 @@ pub fn construct_playlist_actions(playlist: &Playlist, data: &DataReadGuard) -> 
 
 /// constructs a list of actions on a show
 pub fn construct_show_actions(show: &Show, data: &DataReadGuard) -> Vec<Action> {
-    let mut actions = vec![Action::CopyLink];
+    let mut actions = vec![
+        Action::PlayContext,
+        Action::CopyLink,
+    ];
     if data.user_data.saved_shows.iter().any(|s| s.id == show.id) {
         actions.push(Action::DeleteFromLibrary);
     } else {
@@ -356,6 +370,7 @@ impl Command {
             Self::MovePlaylistItemUp => "move playlist item up one position",
             Self::MovePlaylistItemDown => "move playlist item down one position",
             Self::CreatePlaylist => "create a new playlist",
+            Self::PlaySelectedPlaylist => "play the selected playlist",
             Self::VolumeChange { offset: _ } => unreachable!(),
         }
         .to_string()

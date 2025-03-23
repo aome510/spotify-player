@@ -118,6 +118,14 @@ fn handle_key_event(
         }
     };
 
+    // Example key binding: Alt+P to play the current playlist
+    if &key_sequence.keys[..] == [Key::Alt(crossterm::event::KeyCode::Char('p'))] {
+        client_pub.send(ClientRequest::Player(PlayerRequest::PlayCurrentPlaylist))?;
+        // Mark this event as handled and reset the key sequence
+        ui.input_key_sequence.keys.clear();
+        return Ok(());
+    }
+
     // if the key sequence is not handled, let the global handler handle it
     let handled = if handled {
         true
@@ -253,6 +261,14 @@ pub fn handle_action_in_context(
                 ui.popup = None;
                 Ok(true)
             }
+            Action::PlayContext => {
+                client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
+                    Playback::URIs(vec![track.id.clone().into()], None),
+                    None,
+                )))?;
+                ui.popup = None;
+                Ok(true)
+            }
             _ => Ok(false),
         },
         ActionContext::Album(album) => match action {
@@ -295,6 +311,15 @@ pub fn handle_action_in_context(
                 ui.popup = None;
                 Ok(true)
             }
+            Action::PlayContext => {
+                let context_id = ContextId::Album(album.id.clone());
+                client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
+                    Playback::Context(context_id, None),
+                    None,
+                )))?;
+                ui.popup = None;
+                Ok(true)
+            }
             _ => Ok(false),
         },
         ActionContext::Artist(artist) => match action {
@@ -322,6 +347,15 @@ pub fn handle_action_in_context(
                     seed_uri: uri,
                     seed_name: name,
                 })?;
+                Ok(true)
+            }
+            Action::PlayContext => {
+                let context_id = ContextId::Artist(artist.id.clone());
+                client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
+                    Playback::Context(context_id, None),
+                    None,
+                )))?;
+                ui.popup = None;
                 Ok(true)
             }
             _ => Ok(false),
@@ -356,6 +390,15 @@ pub fn handle_action_in_context(
                 ui.popup = None;
                 Ok(true)
             }
+            Action::PlayContext => {
+                let context_id = ContextId::Playlist(playlist.id.clone());
+                client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
+                    Playback::Context(context_id, None),
+                    None,
+                )))?;
+                ui.popup = None;
+                Ok(true)
+            }
             _ => Ok(false),
         },
         ActionContext::Show(show) => match action {
@@ -372,6 +415,15 @@ pub fn handle_action_in_context(
             }
             Action::DeleteFromLibrary => {
                 client_pub.send(ClientRequest::DeleteFromLibrary(ItemId::Show(show.id)))?;
+                ui.popup = None;
+                Ok(true)
+            }
+            Action::PlayContext => {
+                let context_id = ContextId::Show(show.id.clone());
+                client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
+                    Playback::Context(context_id, None),
+                    None,
+                )))?;
                 ui.popup = None;
                 Ok(true)
             }
@@ -427,6 +479,22 @@ pub fn handle_action_in_context(
                     return Ok(true);
                 }
                 Ok(false)
+            }
+            Action::PlayContext => {
+                if let Some(show) = &episode.show {
+                    let context_id = ContextId::Show(show.id.clone());
+                    client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
+                        Playback::Context(context_id, Some(rspotify::model::Offset::Uri(episode.id.uri()))),
+                        None,
+                    )))?;
+                } else {
+                    client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
+                        Playback::URIs(vec![episode.id.clone().into()], None),
+                        None,
+                    )))?;
+                }
+                ui.popup = None;
+                Ok(true)
             }
             _ => Ok(false),
         },
