@@ -1,5 +1,5 @@
 use crossterm::event::KeyCode;
-use tui::widgets::Widget;
+use ratatui::widgets::Widget;
 
 use super::{Line, Modifier, Paragraph, Span, Style};
 use crate::key::Key;
