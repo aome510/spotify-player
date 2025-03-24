@@ -424,4 +424,4 @@ The application stores logs inside the `$APP_CACHE_FOLDER/spotify-player-*.log` 
 
 ## Acknowledgement
 
-`spotify_player` is written in [Rust](https://www.rust-lang.org) and is built on top of awesome libraries such as [tui-rs](https://github.com/fdehau/tui-rs), [rspotify](https://github.com/ramsayleung/rspotify), [librespot](https://github.com/librespot-org/librespot), and [many more](spotify_player/Cargo.toml). It's highly inspired by [spotify-tui](https://github.com/Rigellute/spotify-tui) and [ncspot](https://github.com/hrkfdn/ncspot).
+`spotify_player` is written in [Rust](https://www.rust-lang.org) and is built on top of awesome libraries such as [ratatui](https://github.com/ratatui/ratatui), [rspotify](https://github.com/ramsayleung/rspotify), [librespot](https://github.com/librespot-org/librespot), and [many more](spotify_player/Cargo.toml). It's highly inspired by [spotify-tui](https://github.com/Rigellute/spotify-tui) and [ncspot](https://github.com/hrkfdn/ncspot).
