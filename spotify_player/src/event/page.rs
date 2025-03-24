@@ -1,6 +1,8 @@
 use anyhow::Context as _;
 use command::CommandOrAction;
 
+use crate::state::AlbumOrder;
+
 use super::*;
 
 pub fn handle_key_sequence_for_page(
@@ -90,15 +92,26 @@ fn handle_command_for_library_page(
 ) -> Result<bool> {
     if command == Command::Search {
         ui.new_search_popup();
-        Ok(true)
-    } else {
-        let data = state.data.read();
-        let (focus_state, folder_id) = match ui.current_page() {
-            PageState::Library { state } => (state.focus, state.playlist_folder_id),
-            _ => anyhow::bail!("expect a library page state"),
-        };
-        match focus_state {
-            LibraryFocusState::Playlists => Ok(window::handle_command_for_playlist_list_window(
+        return Ok(true);
+    }
+
+    let (focus_state, folder_id) = match ui.current_page() {
+        PageState::Library { state } => (state.focus, state.playlist_folder_id),
+        _ => anyhow::bail!("expect a library page state"),
+    };
+
+    match focus_state {
+        LibraryFocusState::Playlists => {
+            // Handle playlist-specific commands
+            if command == Command::SortPlaylistAlphabetically {
+                let mut data = state.data.write();
+                let items = &mut data.user_data.playlists;
+                items.sort_by(|a, b| a.to_string().to_lowercase().cmp(&b.to_string().to_lowercase()));
+                return Ok(true);
+            }
+
+            let data = state.data.read();
+            Ok(window::handle_command_for_playlist_list_window(
                 command,
                 &ui.search_filtered_items(&data.user_data.folder_playlists_items(folder_id))
                     .into_iter()
@@ -106,22 +119,46 @@ fn handle_command_for_library_page(
                     .collect::<Vec<_>>(),
                 &data,
                 ui,
-            )),
-            LibraryFocusState::SavedAlbums => window::handle_command_for_album_list_window(
+            ))
+        }
+        LibraryFocusState::SavedAlbums => {
+            // Handle album sorting commands
+            let order = match command {
+                Command::SortAlbumAlphabetically => Some(AlbumOrder::AlbumName),
+                Command::SortAlbumByReleaseDate => Some(AlbumOrder::AlbumReleaseDate),
+                _ => None,
+            };
+
+            if let Some(order) = order {
+                {
+                    // Acquire the write lock only for sorting
+                    let mut data = state.data.write();
+                    data.user_data.saved_albums.sort_by(|x, y| order.compare(x, y));
+                    data.user_data
+                        .persist_sorted_albums(&config::get_config().cache_folder)?;
+                } // Release the write lock immediately after sorting
+                return Ok(true);
+            }
+
+            // Use a read lock for the function call
+            let data = state.data.read();
+            window::handle_command_for_album_list_window(
                 command,
                 &ui.search_filtered_items(&data.user_data.saved_albums),
                 &data,
                 ui,
                 client_pub,
-            ),
-            LibraryFocusState::FollowedArtists => {
-                Ok(window::handle_command_for_artist_list_window(
-                    command,
-                    &ui.search_filtered_items(&data.user_data.followed_artists),
-                    &data,
-                    ui,
-                ))
-            }
+            )
+        }
+        LibraryFocusState::FollowedArtists => {
+            // Handle artist-specific commands
+            let data = state.data.read();
+            Ok(window::handle_command_for_artist_list_window(
+                command,
+                &ui.search_filtered_items(&data.user_data.followed_artists),
+                &data,
+                ui,
+            ))
         }
     }
 }

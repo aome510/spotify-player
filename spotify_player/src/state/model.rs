@@ -75,6 +75,22 @@ pub struct SearchResults {
 }
 
 #[derive(Debug)]
+/// An album order
+pub enum AlbumOrder {
+    AlbumName,
+    AlbumReleaseDate,
+}
+
+impl AlbumOrder {
+    pub fn compare(&self, x: &Album, y: &Album) -> std::cmp::Ordering {
+        match *self {
+            Self::AlbumName => x.name.to_lowercase().cmp(&y.name.to_lowercase()),
+            Self::AlbumReleaseDate => x.release_date.cmp(&y.release_date),
+        }
+    }
+}
+
+#[derive(Debug)]
 /// A track order
 pub enum TrackOrder {
     AddedAt,

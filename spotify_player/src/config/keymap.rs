@@ -301,6 +301,18 @@ impl Default for KeymapConfig {
                     command: Command::ReverseTrackOrder,
                 },
                 Keymap {
+                    key_sequence: "S a".into(),
+                    command: Command::SortPlaylistAlphabetically,
+                },
+                Keymap {
+                    key_sequence: "S A".into(),
+                    command: Command::SortAlbumAlphabetically,
+                },
+                Keymap {
+                    key_sequence: "S r".into(),
+                    command: Command::SortAlbumByReleaseDate,
+                },
+                Keymap {
                     key_sequence: "C-k".into(),
                     command: Command::MovePlaylistItemUp,
                 },
