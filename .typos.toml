@@ -3,3 +3,4 @@
 iterm = "iterm"
 Iterm = "Iterm"
 typ = "typ"
+ratatui = "ratatui"
