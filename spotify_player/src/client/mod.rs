@@ -1831,10 +1831,24 @@ PlayerRequest::PlayCurrentPlaylist => todo!(),
 
     /// Process a list of albums, which includes
     /// - sort albums by the release date
+    /// - sort albums by the type if `sort_artist_albums_by_type` config is enabled
     fn process_artist_albums(albums: Vec<Album>) -> Vec<Album> {
         let mut albums = albums.into_iter().collect::<Vec<_>>();
 
         albums.sort_by(|x, y| x.release_date.partial_cmp(&y.release_date).unwrap());
+
+        if config::get_config().app_config.sort_artist_albums_by_type {
+            fn get_priority(album_type: &str) -> usize {
+                match album_type {
+                    "album" => 0,
+                    "single" => 1,
+                    "appears_on" => 2,
+                    "compilation" => 3,
+                    _ => 4,
+                }
+            }
+            albums.sort_by_key(|a| get_priority(&a.album_type()));
+        }
 
         albums.reverse();
 
