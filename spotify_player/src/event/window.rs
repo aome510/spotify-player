@@ -297,9 +297,7 @@ fn handle_command_for_track_table_window(
     match command {
         Command::PlayRandom | Command::ChooseSelected => {
             let uri = if command == Command::PlayRandom {
-                tracks[rand::thread_rng().gen_range(0..tracks.len())]
-                    .id
-                    .uri()
+                tracks[rand::rng().random_range(0..tracks.len())].id.uri()
             } else {
                 filtered_tracks[id].id.uri()
             };

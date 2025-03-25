@@ -1379,6 +1379,7 @@ impl Client {
             .filter_map(Track::try_from_full_track)
             .collect::<Vec<_>>();
 
+        #[allow(deprecated)]
         let related_artists = self
             .artist_related_artists(artist_id.as_ref())
             .await
