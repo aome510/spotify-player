@@ -365,7 +365,7 @@ async fn handle_playback_request(
             };
 
             if random {
-                let mut rng = rand::thread_rng();
+                let mut rng = rand::rng();
                 ids.shuffle(&mut rng);
             }
 
