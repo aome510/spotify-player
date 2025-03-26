@@ -302,15 +302,11 @@ impl Default for KeymapConfig {
                 },
                 Keymap {
                     key_sequence: "S a".into(),
-                    command: Command::SortPlaylistAlphabetically,
-                },
-                Keymap {
-                    key_sequence: "S A".into(),
-                    command: Command::SortAlbumAlphabetically,
+                    command: Command::SortLibraryAlphabetically,
                 },
                 Keymap {
                     key_sequence: "S r".into(),
-                    command: Command::SortAlbumByReleaseDate,
+                    command: Command::SortLibraryByRecent,
                 },
                 Keymap {
                     key_sequence: "C-k".into(),

@@ -76,9 +76,8 @@ pub enum Command {
     SortTrackByAddedDate,
     ReverseTrackOrder,
 
-    SortAlbumAlphabetically,
-    SortAlbumByReleaseDate,
-    SortPlaylistAlphabetically,
+    SortLibraryAlphabetically,
+    SortLibraryByRecent,
 
     MovePlaylistItemUp,
     MovePlaylistItemDown,
@@ -357,9 +356,8 @@ impl Command {
             Self::SortTrackByDuration => "sort the track table (if any) by track's duration",
             Self::SortTrackByAddedDate => "sort the track table (if any) by track's added date",
             Self::ReverseTrackOrder => "reverse the order of the track table (if any)",
-            Self::SortAlbumAlphabetically => "sort the album table (if any) alphabetically",
-            Self::SortAlbumByReleaseDate => "sort the album table (if any) by release date",
-            Self::SortPlaylistAlphabetically => "sort the playlist table (if any) alphabetically",
+            Self::SortLibraryAlphabetically => "sort the library (playlists and albums) alphabetically",
+            Self::SortLibraryByRecent => "sort the library by recently added items",
             Self::MovePlaylistItemUp => "move playlist item up one position",
             Self::MovePlaylistItemDown => "move playlist item down one position",
             Self::CreatePlaylist => "create a new playlist",

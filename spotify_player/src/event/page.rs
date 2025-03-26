@@ -1,8 +1,6 @@
 use anyhow::Context as _;
 use command::CommandOrAction;
 
-use crate::state::AlbumOrder;
-
 use super::*;
 
 pub fn handle_key_sequence_for_page(
@@ -100,16 +98,45 @@ fn handle_command_for_library_page(
         _ => anyhow::bail!("expect a library page state"),
     };
 
+    if command == Command::SortLibraryAlphabetically {
+        let mut data = state.data.write();
+
+        // Sort playlists alphabetically
+        data.user_data.playlists.sort_by(|a, b| {
+            a.to_string().to_lowercase().cmp(&b.to_string().to_lowercase())
+        });
+
+        // Sort albums alphabetically
+        data.user_data.saved_albums.sort_by(|x, y| {
+            x.name.to_lowercase().cmp(&y.name.to_lowercase())
+        });
+
+        data.user_data
+            .persist_sorted_albums(&config::get_config().cache_folder)?;
+    }
+
+    if command == Command::SortLibraryByRecent {
+        let mut data = state.data.write();
+
+        // Sort playlists by ascending snapshot_id
+        data.user_data.playlists.sort_by(|a, b| {
+            match (a, b) {
+                (PlaylistFolderItem::Playlist(p1), PlaylistFolderItem::Playlist(p2)) => {
+                    p1.snapshot_id.cmp(&p2.snapshot_id) // Sort ascending by `snapshot_id`
+                }
+                _ => std::cmp::Ordering::Equal, // Keep folders in place
+            }
+        });
+
+        // Sort albums by recent addition
+        data.user_data.saved_albums.sort_by(|a, b| a.added_at.cmp(&b.added_at));
+
+        data.user_data
+            .persist_sorted_albums(&config::get_config().cache_folder)?;
+    }
+
     match focus_state {
         LibraryFocusState::Playlists => {
-            // Handle playlist-specific commands
-            if command == Command::SortPlaylistAlphabetically {
-                let mut data = state.data.write();
-                let items = &mut data.user_data.playlists;
-                items.sort_by(|a, b| a.to_string().to_lowercase().cmp(&b.to_string().to_lowercase()));
-                return Ok(true);
-            }
-
             let data = state.data.read();
             Ok(window::handle_command_for_playlist_list_window(
                 command,
@@ -122,24 +149,6 @@ fn handle_command_for_library_page(
             ))
         }
         LibraryFocusState::SavedAlbums => {
-            // Handle album sorting commands
-            let order = match command {
-                Command::SortAlbumAlphabetically => Some(AlbumOrder::AlbumName),
-                Command::SortAlbumByReleaseDate => Some(AlbumOrder::AlbumReleaseDate),
-                _ => None,
-            };
-
-            if let Some(order) = order {
-                {
-                    // Acquire the write lock only for sorting
-                    let mut data = state.data.write();
-                    data.user_data.saved_albums.sort_by(|x, y| order.compare(x, y));
-                    data.user_data
-                        .persist_sorted_albums(&config::get_config().cache_folder)?;
-                } // Release the write lock immediately after sorting
-                return Ok(true);
-            }
-
             // Use a read lock for the function call
             let data = state.data.read();
             window::handle_command_for_album_list_window(

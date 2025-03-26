@@ -75,22 +75,6 @@ pub struct SearchResults {
 }
 
 #[derive(Debug)]
-/// An album order
-pub enum AlbumOrder {
-    AlbumName,
-    AlbumReleaseDate,
-}
-
-impl AlbumOrder {
-    pub fn compare(&self, x: &Album, y: &Album) -> std::cmp::Ordering {
-        match *self {
-            Self::AlbumName => x.name.to_lowercase().cmp(&y.name.to_lowercase()),
-            Self::AlbumReleaseDate => x.release_date.cmp(&y.release_date),
-        }
-    }
-}
-
-#[derive(Debug)]
 /// A track order
 pub enum TrackOrder {
     AddedAt,
@@ -163,6 +147,7 @@ pub struct Album {
     pub name: String,
     pub artists: Vec<Artist>,
     pub typ: Option<rspotify::model::AlbumType>,
+    pub added_at: u64,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -183,6 +168,7 @@ pub struct Playlist {
     /// which folder id the playlist refers to
     #[serde(default)]
     pub current_folder_id: usize,
+    pub snapshot_id: String,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -422,6 +408,7 @@ impl Album {
                     "compilation" => Some(rspotify::model::AlbumType::Compilation),
                     _ => None,
                 }),
+            added_at: 0,
         })
     }
 
@@ -451,6 +438,7 @@ impl From<rspotify::model::FullAlbum> for Album {
             release_date: album.release_date,
             artists: from_simplified_artists_to_artists(album.artists),
             typ: Some(album.album_type),
+            added_at: 0,
         }
     }
 }
@@ -515,6 +503,7 @@ impl From<rspotify::model::SimplifiedPlaylist> for Playlist {
             ),
             desc: String::new(),
             current_folder_id: 0,
+            snapshot_id: String::new(),
         }
     }
 }
@@ -536,6 +525,7 @@ impl From<rspotify::model::FullPlaylist> for Playlist {
             ),
             desc,
             current_folder_id: 0,
+            snapshot_id: playlist.snapshot_id,
         }
     }
 }
