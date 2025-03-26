@@ -2,7 +2,7 @@ use crate::{
     state::model::{Category, ContextId},
     ui::single_line_input::LineInput,
 };
-use tui::widgets::{ListState, TableState};
+use ratatui::widgets::{ListState, TableState};
 
 #[derive(Clone, Debug)]
 pub enum PageState {
