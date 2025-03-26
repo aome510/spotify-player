@@ -236,71 +236,71 @@ impl Client {
             PlayerRequest::NextTrack => self.next_track(device_id).await?,
             PlayerRequest::PreviousTrack => self.previous_track(device_id).await?,
             PlayerRequest::Resume => {
-                        if !playback.is_playing {
-                            self.resume_playback(device_id, None).await?;
-                            playback.is_playing = true;
-                        }
-                    }
+                if !playback.is_playing {
+                    self.resume_playback(device_id, None).await?;
+                    playback.is_playing = true;
+                }
+            }
             PlayerRequest::Pause => {
-                        if playback.is_playing {
-                            self.pause_playback(device_id).await?;
-                            playback.is_playing = false;
-                        }
-                    }
+                if playback.is_playing {
+                    self.pause_playback(device_id).await?;
+                    playback.is_playing = false;
+                }
+            }
             PlayerRequest::ResumePause => {
-                        if playback.is_playing {
-                            self.pause_playback(device_id).await?;
-                        } else {
-                            self.resume_playback(device_id, None).await?;
-                        }
-                        playback.is_playing = !playback.is_playing;
-                    }
+                if playback.is_playing {
+                    self.pause_playback(device_id).await?;
+                } else {
+                    self.resume_playback(device_id, None).await?;
+                }
+                playback.is_playing = !playback.is_playing;
+            }
             PlayerRequest::SeekTrack(position_ms) => {
-                        self.seek_track(position_ms, device_id).await?;
-                    }
+                self.seek_track(position_ms, device_id).await?;
+            }
             PlayerRequest::Repeat => {
-                        let next_repeat_state = match playback.repeat_state {
-                            rspotify::model::RepeatState::Off => rspotify::model::RepeatState::Track,
-                            rspotify::model::RepeatState::Track => rspotify::model::RepeatState::Context,
-                            rspotify::model::RepeatState::Context => rspotify::model::RepeatState::Off,
-                        };
+                let next_repeat_state = match playback.repeat_state {
+                    rspotify::model::RepeatState::Off => rspotify::model::RepeatState::Track,
+                    rspotify::model::RepeatState::Track => rspotify::model::RepeatState::Context,
+                    rspotify::model::RepeatState::Context => rspotify::model::RepeatState::Off,
+                };
 
-                        self.repeat(next_repeat_state, device_id).await?;
+                self.repeat(next_repeat_state, device_id).await?;
 
-                        playback.repeat_state = next_repeat_state;
-                    }
+                playback.repeat_state = next_repeat_state;
+            }
             PlayerRequest::Shuffle => {
-                        self.shuffle(!playback.shuffle_state, device_id).await?;
+                self.shuffle(!playback.shuffle_state, device_id).await?;
 
-                        playback.shuffle_state = !playback.shuffle_state;
-                    }
+                playback.shuffle_state = !playback.shuffle_state;
+            }
             PlayerRequest::Volume(volume) => {
-                        self.volume(volume, device_id).await?;
+                self.volume(volume, device_id).await?;
 
-                        playback.volume = Some(u32::from(volume));
-                        playback.mute_state = None;
-                    }
+                playback.volume = Some(u32::from(volume));
+                playback.mute_state = None;
+            }
             PlayerRequest::ToggleMute => {
-                        let new_mute_state = match playback.mute_state {
-                            None => {
-                                self.volume(0, device_id).await?;
-                                Some(playback.volume.unwrap_or_default())
-                            }
-                            Some(volume) => {
-                                self.volume(volume as u8, device_id).await?;
-                                None
-                            }
-                        };
+                let new_mute_state = match playback.mute_state {
+                    None => {
+                        self.volume(0, device_id).await?;
+                        Some(playback.volume.unwrap_or_default())
+                    }
+                    Some(volume) => {
+                        self.volume(volume as u8, device_id).await?;
+                        None
+                    }
+                };
 
-                        playback.mute_state = new_mute_state;
-                    }
+                playback.mute_state = new_mute_state;
+            }
             PlayerRequest::StartPlayback(..) => {
-                        anyhow::bail!("`StartPlayback` should be handled earlier")
-                    }
+                anyhow::bail!("`StartPlayback` should be handled earlier")
+            }
             PlayerRequest::TransferPlayback(..) => {
-                        anyhow::bail!("`TransferPlayback` should be handled earlier")
-                    }
-PlayerRequest::PlayCurrentPlaylist => todo!(),
+                anyhow::bail!("`TransferPlayback` should be handled earlier")
+            }
+            PlayerRequest::PlayCurrentPlaylist => todo!(),
         };
 
         Ok(Some(playback))

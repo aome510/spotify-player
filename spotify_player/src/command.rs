@@ -233,11 +233,7 @@ pub fn construct_album_actions(album: &Album, data: &DataReadGuard) -> Vec<Actio
 
 /// constructs a list of actions on an artist
 pub fn construct_artist_actions(artist: &Artist, data: &DataReadGuard) -> Vec<Action> {
-    let mut actions = vec![
-        Action::PlayContext,
-        Action::GoToRadio,
-        Action::CopyLink,
-    ];
+    let mut actions = vec![Action::PlayContext, Action::GoToRadio, Action::CopyLink];
 
     if data
         .user_data
@@ -254,11 +250,7 @@ pub fn construct_artist_actions(artist: &Artist, data: &DataReadGuard) -> Vec<Ac
 
 /// constructs a list of actions on an playlist
 pub fn construct_playlist_actions(playlist: &Playlist, data: &DataReadGuard) -> Vec<Action> {
-    let mut actions = vec![
-        Action::PlayContext,
-        Action::GoToRadio,
-        Action::CopyLink,
-    ];
+    let mut actions = vec![Action::PlayContext, Action::GoToRadio, Action::CopyLink];
 
     if data
         .user_data
@@ -275,10 +267,7 @@ pub fn construct_playlist_actions(playlist: &Playlist, data: &DataReadGuard) -> 
 
 /// constructs a list of actions on a show
 pub fn construct_show_actions(show: &Show, data: &DataReadGuard) -> Vec<Action> {
-    let mut actions = vec![
-        Action::PlayContext,
-        Action::CopyLink,
-    ];
+    let mut actions = vec![Action::PlayContext, Action::CopyLink];
     if data.user_data.saved_shows.iter().any(|s| s.id == show.id) {
         actions.push(Action::DeleteFromLibrary);
     } else {

@@ -484,7 +484,10 @@ pub fn handle_action_in_context(
                 if let Some(show) = &episode.show {
                     let context_id = ContextId::Show(show.id.clone());
                     client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
-                        Playback::Context(context_id, Some(rspotify::model::Offset::Uri(episode.id.uri()))),
+                        Playback::Context(
+                            context_id,
+                            Some(rspotify::model::Offset::Uri(episode.id.uri())),
+                        ),
                         None,
                     )))?;
                 } else {
