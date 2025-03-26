@@ -241,7 +241,6 @@ impl Client {
                     playback.is_playing = true;
                 }
             }
-
             PlayerRequest::Pause => {
                 if playback.is_playing {
                     self.pause_playback(device_id).await?;
@@ -301,6 +300,7 @@ impl Client {
             PlayerRequest::TransferPlayback(..) => {
                 anyhow::bail!("`TransferPlayback` should be handled earlier")
             }
+            PlayerRequest::PlayCurrentPlaylist => todo!(),
         };
 
         Ok(Some(playback))

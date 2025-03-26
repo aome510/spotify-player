@@ -298,6 +298,25 @@ fn handle_command_for_context_page(
             ui.new_search_popup();
             Ok(true)
         }
+        Command::PlaySelectedPlaylist => {
+            if let PageState::Context {
+                context_page_type: ContextPageType::Browsing(context_id),
+                ..
+            } = ui.current_page()
+            {
+                if let ContextId::Playlist(_) = context_id {
+                    client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
+                        Playback::Context(context_id.clone(), None),
+                        None,
+                    )))?;
+                    Ok(true)
+                } else {
+                    Ok(false)
+                }
+            } else {
+                Ok(false)
+            }
+        }
         _ => window::handle_command_for_focused_context_window(command, client_pub, ui, state),
     }
 }
