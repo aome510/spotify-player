@@ -129,7 +129,7 @@ fn handle_command_for_library_page(
         });
 
         // Sort albums by recent addition
-        data.user_data.saved_albums.sort_by(|a, b| a.added_at.cmp(&b.added_at));
+        data.user_data.saved_albums.sort_by(|a, b| b.added_at.cmp(&a.added_at));
 
         data.user_data
             .persist_sorted_albums(&config::get_config().cache_folder)?;
