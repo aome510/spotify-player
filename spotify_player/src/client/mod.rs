@@ -1430,7 +1430,7 @@ impl Client {
 
         // get the show's episodes
         let episodes = self
-            .all_paging_items(first_page_tmp_fix, &Query::new())
+            .all_paging_items(first_page, &Query::new())
             .await?
             .into_iter()
             .flatten()
