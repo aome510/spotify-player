@@ -111,18 +111,24 @@ fn handle_command_for_library_page(
             x.name.to_lowercase().cmp(&y.name.to_lowercase())
         });
 
-        data.user_data
-            .persist_sorted_albums(&config::get_config().cache_folder)?;
+        // Sort artists alphabetically
+        data.user_data.followed_artists.sort_by(|x, y| {
+            x.name.to_lowercase().cmp(&y.name.to_lowercase())
+        });
     }
 
     if command == Command::SortLibraryByRecent {
         let mut data = state.data.write();
 
-        // Sort playlists by ascending snapshot_id
+        // Sort playlists by `current_folder_id` and then by `snapshot_id`
         data.user_data.playlists.sort_by(|a, b| {
             match (a, b) {
                 (PlaylistFolderItem::Playlist(p1), PlaylistFolderItem::Playlist(p2)) => {
-                    p1.snapshot_id.cmp(&p2.snapshot_id) // Sort ascending by `snapshot_id`
+                    if p1.current_folder_id != p2.current_folder_id {
+                        p1.current_folder_id.cmp(&p2.current_folder_id)
+                    } else {
+                        p1.snapshot_id.cmp(&p2.snapshot_id)
+                    }
                 }
                 _ => std::cmp::Ordering::Equal, // Keep folders in place
             }
@@ -130,9 +136,6 @@ fn handle_command_for_library_page(
 
         // Sort albums by recent addition
         data.user_data.saved_albums.sort_by(|a, b| b.added_at.cmp(&a.added_at));
-
-        data.user_data
-            .persist_sorted_albums(&config::get_config().cache_folder)?;
     }
 
     match focus_state {

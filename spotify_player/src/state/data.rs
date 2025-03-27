@@ -140,11 +140,6 @@ impl UserData {
         }
     }
 
-    /// Add a method to persist the sorted state of saved_albums
-    pub fn persist_sorted_albums(&self, cache_folder: &Path) -> std::io::Result<()> {
-        store_data_into_file_cache(FileCacheKey::SavedAlbums, cache_folder, &self.saved_albums)
-    }
-
     /// Get a list of playlist items that are **possibly** modifiable by user
     ///
     /// If `folder_id` is provided, returns items in the given folder id.

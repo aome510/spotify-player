@@ -774,6 +774,8 @@ impl Client {
 
     /// Get all playlists of the current user
     pub async fn current_user_playlists(&self) -> Result<Vec<Playlist>> {
+        // TODO: this should use `rspotify::current_user_playlists_manual` API instead of `internal_call`
+        // See: https://github.com/ramsayleung/rspotify/issues/459
         // Fetch the first page of playlists
         let first_page = self
             .http_get::<rspotify::model::Page<rspotify::model::SimplifiedPlaylist>>(
@@ -782,18 +784,16 @@ impl Client {
                 false,
             )
             .await?;
+        // let first_page = self
+        //     .current_user_playlists_manual(Some(50), None)
+        //     .await?;
 
         // Fetch all pages of playlists
         let playlists = self.all_paging_items(first_page, &Query::new()).await?;
 
-        // Map `SimplifiedPlaylist` to `Playlist` and include `added_at` information
         Ok(playlists
             .into_iter()
-            .map(|simplified_playlist| {
-                let mut playlist: Playlist = simplified_playlist.clone().into();
-                playlist.snapshot_id = simplified_playlist.snapshot_id.clone();
-                playlist
-            })
+            .map(std::convert::Into::into)
             .collect())
     }
 
@@ -833,15 +833,8 @@ impl Client {
 
         let albums = self.all_paging_items(first_page, &Query::new()).await?;
 
-        // Convert `added_at` from `DateTime<Utc>` to `u64` (UNIX timestamp)
-        Ok(albums
-            .into_iter()
-            .map(|saved_album| {
-                let mut album: Album = saved_album.album.into();
-                album.added_at = saved_album.added_at.timestamp() as u64;
-                album
-            })
-            .collect())
+        // Converts `rspotify::model::SavedAlbum` into `state::Album`
+        Ok(albums.into_iter().map(Album::from).collect())
     }
 
     /// Get all saved shows of the current user

@@ -443,6 +443,14 @@ impl From<rspotify::model::FullAlbum> for Album {
     }
 }
 
+impl From<rspotify::model::SavedAlbum> for Album {
+    fn from(saved_album: rspotify::model::SavedAlbum) -> Self {
+        let mut album: Album = saved_album.album.into();
+        album.added_at = saved_album.added_at.timestamp() as u64;
+        album
+    }
+}
+
 impl std::fmt::Display for Album {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
@@ -503,7 +511,7 @@ impl From<rspotify::model::SimplifiedPlaylist> for Playlist {
             ),
             desc: String::new(),
             current_folder_id: 0,
-            snapshot_id: String::new(),
+            snapshot_id: playlist.snapshot_id,
         }
     }
 }

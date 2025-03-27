@@ -446,7 +446,7 @@ pub fn render_library_page(
     // Construct the saved album window
     let (album_list, n_albums) = utils::construct_list_widget(
         &ui.theme,
-        ui.search_filtered_items(&data.user_data.saved_albums) // Reflects sorted albums
+        ui.search_filtered_items(&data.user_data.saved_albums) 
             .into_iter()
             .map(|a| (a.to_string(), curr_context_uri == Some(a.id.uri())))
             .collect(),
