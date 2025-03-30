@@ -126,10 +126,10 @@ fn handle_command_for_library_page(
         data.user_data.playlists.sort_by(|a, b| {
             match (a, b) {
                 (PlaylistFolderItem::Playlist(p1), PlaylistFolderItem::Playlist(p2)) => {
-                    if p1.current_folder_id != p2.current_folder_id {
-                        p1.current_folder_id.cmp(&p2.current_folder_id)
-                    } else {
+                    if p1.current_folder_id == p2.current_folder_id {
                         p1.snapshot_id.cmp(&p2.snapshot_id)
+                    } else {
+                        p1.current_folder_id.cmp(&p2.current_folder_id)
                     }
                 }
                 _ => std::cmp::Ordering::Equal, // Keep folders in place
