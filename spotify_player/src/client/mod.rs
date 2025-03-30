@@ -1382,6 +1382,7 @@ impl Client {
             .filter_map(Track::try_from_full_track)
             .collect::<Vec<_>>();
 
+        #[allow(deprecated)]
         let related_artists = self
             .artist_related_artists(artist_id.as_ref())
             .await
@@ -1838,7 +1839,7 @@ impl Client {
     fn process_artist_albums(albums: Vec<Album>) -> Vec<Album> {
         let mut albums = albums.into_iter().collect::<Vec<_>>();
 
-        albums.sort_by(|x, y| x.release_date.partial_cmp(&y.release_date).unwrap());
+        albums.sort_by(|x, y| y.release_date.partial_cmp(&x.release_date).unwrap());
 
         if config::get_config().app_config.sort_artist_albums_by_type {
             fn get_priority(album_type: &str) -> usize {
@@ -1852,8 +1853,6 @@ impl Client {
             }
             albums.sort_by_key(|a| get_priority(&a.album_type()));
         }
-
-        albums.reverse();
 
         albums
     }
