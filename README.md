@@ -370,6 +370,8 @@ List of supported commands:
 | `SortTrackByAlbum`             | sort the track table (if any) by track's album                    | `s A`              |
 | `SortTrackByAddedDate`         | sort the track table (if any) by track's added date               | `s D`              |
 | `SortTrackByDuration`          | sort the track table (if any) by track's duration                 | `s d`              |
+| `SortLibraryAlphabetically`    | sort the library alphabetically                                   | `s l a`            |
+| `SortLibraryByRecent`          | sort the library (playlists and albums) by recently added items   | `s l r`            |
 | `ReverseOrder`                 | reverse the order of the track table (if any)                     | `s r`              |
 | `MovePlaylistItemUp`           | move playlist item up one position                                | `C-k`              |
 | `MovePlaylistItemDown`         | move playlist item down one position                              | `C-j`              |
