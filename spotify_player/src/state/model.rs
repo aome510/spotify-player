@@ -147,6 +147,7 @@ pub struct Album {
     pub name: String,
     pub artists: Vec<Artist>,
     pub typ: Option<rspotify::model::AlbumType>,
+    pub added_at: u64,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -167,6 +168,7 @@ pub struct Playlist {
     /// which folder id the playlist refers to
     #[serde(default)]
     pub current_folder_id: usize,
+    pub snapshot_id: String,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -406,6 +408,7 @@ impl Album {
                     "compilation" => Some(rspotify::model::AlbumType::Compilation),
                     _ => None,
                 }),
+            added_at: 0,
         })
     }
 
@@ -435,7 +438,16 @@ impl From<rspotify::model::FullAlbum> for Album {
             release_date: album.release_date,
             artists: from_simplified_artists_to_artists(album.artists),
             typ: Some(album.album_type),
+            added_at: 0,
         }
+    }
+}
+
+impl From<rspotify::model::SavedAlbum> for Album {
+    fn from(saved_album: rspotify::model::SavedAlbum) -> Self {
+        let mut album: Album = saved_album.album.into();
+        album.added_at = saved_album.added_at.timestamp() as u64;
+        album
     }
 }
 
@@ -499,6 +511,7 @@ impl From<rspotify::model::SimplifiedPlaylist> for Playlist {
             ),
             desc: String::new(),
             current_folder_id: 0,
+            snapshot_id: playlist.snapshot_id,
         }
     }
 }
@@ -520,6 +533,7 @@ impl From<rspotify::model::FullPlaylist> for Playlist {
             ),
             desc,
             current_folder_id: 0,
+            snapshot_id: playlist.snapshot_id,
         }
     }
 }
