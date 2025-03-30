@@ -357,7 +357,9 @@ impl Command {
             Self::SortTrackByAddedDate => "sort the track table (if any) by track's added date",
             Self::ReverseTrackOrder => "reverse the order of the track table (if any)",
             Self::SortLibraryAlphabetically => "sort the library alphabetically",
-            Self::SortLibraryByRecent => "sort the library (playlists and albums) by recently added items",
+            Self::SortLibraryByRecent => {
+                "sort the library (playlists and albums) by recently added items"
+            }
             Self::MovePlaylistItemUp => "move playlist item up one position",
             Self::MovePlaylistItemDown => "move playlist item down one position",
             Self::CreatePlaylist => "create a new playlist",

@@ -301,11 +301,11 @@ impl Default for KeymapConfig {
                     command: Command::ReverseTrackOrder,
                 },
                 Keymap {
-                    key_sequence: "S a".into(),
+                    key_sequence: "s l a".into(),
                     command: Command::SortLibraryAlphabetically,
                 },
                 Keymap {
-                    key_sequence: "S r".into(),
+                    key_sequence: "s l r".into(),
                     command: Command::SortLibraryByRecent,
                 },
                 Keymap {
