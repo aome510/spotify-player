@@ -287,14 +287,24 @@ pub fn render_context_page(
     let data = state.data.read();
     match data.caches.context.get(&id.uri()) {
         Some(context) => {
-            // render context description
-            let chunks = Layout::vertical([Constraint::Length(1), Constraint::Fill(0)]).split(rect);
+            let chunks = Layout::vertical([Constraint::Length(2), Constraint::Fill(0)]).split(rect);
+            // Render context description
             frame.render_widget(
                 Paragraph::new(context.description()).style(ui.theme.page_desc()),
                 chunks[0],
             );
-            let rect = chunks[1];
 
+            // Insert a "Play Context" button
+            let button_rect = Layout::horizontal([Constraint::Length(14), Constraint::Fill(0)])
+                .split(chunks[0])[0];
+            frame.render_widget(
+                Paragraph::new("Playing")
+                    .alignment(tui::layout::Alignment::Center)
+                    .style(ui.theme.app()),
+                button_rect,
+            );
+
+            let rect = chunks[1];
             match context {
                 Context::Artist {
                     top_tracks,
