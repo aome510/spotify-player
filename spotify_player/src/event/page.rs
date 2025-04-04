@@ -171,21 +171,25 @@ fn handle_command_for_library_page(
                 &data,
                 ui,
                 client_pub,
-            ),
-            LibraryFocusState::FollowedArtists => {
-                Ok(window::handle_command_for_artist_list_window(
-                    command,
-                    &ui.search_filtered_items(&data.user_data.followed_artists),
-                    &data,
-                    ui,
-                ))
-            }
-            LibraryFocusState::SavedShows => Ok(window::handle_command_for_show_list_window(
+            )
+        }
+        LibraryFocusState::FollowedArtists => {
+            let data = state.data.read();
+            Ok(window::handle_command_for_artist_list_window(
+                command,
+                &ui.search_filtered_items(&data.user_data.followed_artists),
+                &data,
+                ui,
+            ))
+        }
+        LibraryFocusState::SavedShows => {
+            let data = state.data.read();
+            Ok(window::handle_command_for_show_list_window(
                 command,
                 &ui.search_filtered_items(&data.user_data.saved_shows),
                 &data,
                 ui,
-            )),
+            ))
         }
     }
 }
