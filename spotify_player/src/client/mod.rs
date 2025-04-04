@@ -776,6 +776,7 @@ impl Client {
     pub async fn current_user_playlists(&self) -> Result<Vec<Playlist>> {
         // TODO: this should use `rspotify::current_user_playlists_manual` API instead of `internal_call`
         // See: https://github.com/ramsayleung/rspotify/issues/459
+        // Fetch the first page of playlists
         let first_page = self
             .http_get::<rspotify::model::Page<rspotify::model::SimplifiedPlaylist>>(
                 &format!("{SPOTIFY_API_ENDPOINT}/me/playlists"),
@@ -787,7 +788,9 @@ impl Client {
         //     .current_user_playlists_manual(Some(50), None)
         //     .await?;
 
+        // Fetch all pages of playlists
         let playlists = self.all_paging_items(first_page, &Query::new()).await?;
+
         Ok(playlists
             .into_iter()
             .map(std::convert::Into::into)
@@ -830,8 +833,8 @@ impl Client {
 
         let albums = self.all_paging_items(first_page, &Query::new()).await?;
 
-        // converts `rspotify::model::SavedAlbum` into `state::Album`
-        Ok(albums.into_iter().map(|a| a.album.into()).collect())
+        // Converts `rspotify::model::SavedAlbum` into `state::Album`
+        Ok(albums.into_iter().map(Album::from).collect())
     }
 
     /// Get all saved shows of the current user
@@ -1379,6 +1382,7 @@ impl Client {
             .filter_map(Track::try_from_full_track)
             .collect::<Vec<_>>();
 
+        #[allow(deprecated)]
         let related_artists = self
             .artist_related_artists(artist_id.as_ref())
             .await
@@ -1835,7 +1839,7 @@ impl Client {
     fn process_artist_albums(albums: Vec<Album>) -> Vec<Album> {
         let mut albums = albums.into_iter().collect::<Vec<_>>();
 
-        albums.sort_by(|x, y| x.release_date.partial_cmp(&y.release_date).unwrap());
+        albums.sort_by(|x, y| y.release_date.partial_cmp(&x.release_date).unwrap());
 
         if config::get_config().app_config.sort_artist_albums_by_type {
             fn get_priority(album_type: &str) -> usize {
@@ -1849,8 +1853,6 @@ impl Client {
             }
             albums.sort_by_key(|a| get_priority(&a.album_type()));
         }
-
-        albums.reverse();
 
         albums
     }
