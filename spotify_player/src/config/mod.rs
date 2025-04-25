@@ -421,7 +421,7 @@ impl AppConfig {
         }
     }
 
-    /// Returns stdout of `client_id_command` if set, otherwise it returns the the value of `client_id`
+    /// Returns stdout of `client_id_command` if set, otherwise it returns the value of `client_id`
     pub fn get_client_id(&self) -> Result<String> {
         match self.client_id_command {
             Some(ref cmd) => cmd.execute(None).map(|out| out.trim().into()),
