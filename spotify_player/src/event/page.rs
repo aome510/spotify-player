@@ -501,15 +501,15 @@ pub fn handle_navigation_command(
 
     let configs = config::get_config();
     match command {
-        Command::SelectNextOrScrollDown => {
-            if id + 1 < len {
-                page.select(id + 1);
+        Command::SelectNextOrScrollDown { count } => {
+            if id + count < len {
+                page.select(id + count);
             }
             true
         }
-        Command::SelectPreviousOrScrollUp => {
-            if id > 0 {
-                page.select(id - 1);
+        Command::SelectPreviousOrScrollUp { count } => {
+            if id - count > 0 {
+                page.select(id - count);
             }
             true
         }

@@ -436,16 +436,20 @@ fn handle_command_for_list_popup(
     let current_id = popup.list_selected().unwrap_or_default();
 
     match command {
-        Command::SelectPreviousOrScrollUp => {
-            if current_id > 0 {
-                popup.list_select(Some(current_id - 1));
-                on_select_func(ui, current_id - 1);
+        Command::SelectPreviousOrScrollUp { count } => {
+            let step = count.min(current_id);
+            if step > 0 {
+                let new_id = current_id - step;
+                popup.list_select(Some(new_id));
+                on_select_func(ui, new_id);
             }
         }
-        Command::SelectNextOrScrollDown => {
-            if current_id + 1 < n_items {
-                popup.list_select(Some(current_id + 1));
-                on_select_func(ui, current_id + 1);
+        Command::SelectNextOrScrollDown { count } => {
+            let step = count.min(n_items.saturating_sub(current_id + 1));
+            if step > 0 {
+                let new_id = current_id + step;
+                popup.list_select(Some(new_id));
+                on_select_func(ui, new_id)
             }
         }
         Command::ChooseSelected => {

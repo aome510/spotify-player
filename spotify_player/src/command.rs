@@ -27,8 +27,12 @@ pub enum Command {
     OpenCommandHelp,
     ClosePopup,
 
-    SelectNextOrScrollDown,
-    SelectPreviousOrScrollUp,
+    SelectNextOrScrollDown {
+        count: usize,
+    },
+    SelectPreviousOrScrollUp {
+        count: usize,
+    },
     PageSelectNextOrScrollDown,
     PageSelectPreviousOrScrollUp,
     SelectFirstOrScrollToTop,
@@ -308,8 +312,10 @@ impl Command {
             Self::ClosePopup => "close a popup",
             #[cfg(feature = "streaming")]
             Self::RestartIntegratedClient => "restart the integrated client",
-            Self::SelectNextOrScrollDown => "select the next item in a list/table or scroll down",
-            Self::SelectPreviousOrScrollUp => {
+            Self::SelectNextOrScrollDown { count: _ } => {
+                "select the next item in a list/table or scroll down"
+            }
+            Self::SelectPreviousOrScrollUp { count: _ } => {
                 "select the previous item in a list/table or scroll up"
             }
             Self::PageSelectNextOrScrollDown => {

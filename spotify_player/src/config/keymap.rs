@@ -32,299 +32,322 @@ pub struct ActionMap {
 
 impl Default for KeymapConfig {
     fn default() -> Self {
+        // Generate keymaps for `j` and `k` keys with a count in front
+        // i.e. 4 j -> SelectNextOrScrollDown { count: 4 }
+        fn generate_keymap_for_up_and_down() -> Vec<Keymap> {
+            let mut keymaps = vec![];
+
+            for i in 1..=9 {
+                keymaps.push(Keymap {
+                    key_sequence: format!("{i} j").as_str().into(),
+                    command: Command::SelectNextOrScrollDown { count: i },
+                });
+                keymaps.push(Keymap {
+                    key_sequence: format!("{i} k").as_str().into(),
+                    command: Command::SelectPreviousOrScrollUp { count: i },
+                });
+            }
+
+            keymaps
+        }
+
+        let mut keymaps = vec![
+            Keymap {
+                key_sequence: "n".into(),
+                command: Command::NextTrack,
+            },
+            Keymap {
+                key_sequence: "p".into(),
+                command: Command::PreviousTrack,
+            },
+            Keymap {
+                key_sequence: ".".into(),
+                command: Command::PlayRandom,
+            },
+            Keymap {
+                key_sequence: "space".into(),
+                command: Command::ResumePause,
+            },
+            Keymap {
+                key_sequence: "C-r".into(),
+                command: Command::Repeat,
+            },
+            Keymap {
+                key_sequence: "M-r".into(),
+                command: Command::ToggleFakeTrackRepeatMode,
+            },
+            Keymap {
+                key_sequence: "C-s".into(),
+                command: Command::Shuffle,
+            },
+            Keymap {
+                key_sequence: "+".into(),
+                command: Command::VolumeChange { offset: 5 },
+            },
+            Keymap {
+                key_sequence: "-".into(),
+                command: Command::VolumeChange { offset: -5 },
+            },
+            Keymap {
+                key_sequence: "_".into(),
+                command: Command::Mute,
+            },
+            Keymap {
+                key_sequence: ">".into(),
+                command: Command::SeekForward,
+            },
+            Keymap {
+                key_sequence: "<".into(),
+                command: Command::SeekBackward,
+            },
+            Keymap {
+                key_sequence: "enter".into(),
+                command: Command::ChooseSelected,
+            },
+            Keymap {
+                key_sequence: "r".into(),
+                command: Command::RefreshPlayback,
+            },
+            Keymap {
+                key_sequence: "/".into(),
+                command: Command::Search,
+            },
+            Keymap {
+                key_sequence: "z".into(),
+                command: Command::Queue,
+            },
+            Keymap {
+                key_sequence: "C-z".into(),
+                command: Command::AddSelectedItemToQueue,
+            },
+            Keymap {
+                key_sequence: "Z".into(),
+                command: Command::AddSelectedItemToQueue,
+            },
+            Keymap {
+                key_sequence: "C-space".into(),
+                command: Command::ShowActionsOnSelectedItem,
+            },
+            Keymap {
+                key_sequence: "g a".into(),
+                command: Command::ShowActionsOnSelectedItem,
+            },
+            Keymap {
+                key_sequence: "a".into(),
+                command: Command::ShowActionsOnCurrentTrack,
+            },
+            #[cfg(feature = "streaming")]
+            Keymap {
+                key_sequence: "R".into(),
+                command: Command::RestartIntegratedClient,
+            },
+            Keymap {
+                key_sequence: "tab".into(),
+                command: Command::FocusNextWindow,
+            },
+            Keymap {
+                key_sequence: "backtab".into(),
+                command: Command::FocusPreviousWindow,
+            },
+            Keymap {
+                key_sequence: "T".into(),
+                command: Command::SwitchTheme,
+            },
+            Keymap {
+                key_sequence: "D".into(),
+                command: Command::SwitchDevice,
+            },
+            Keymap {
+                key_sequence: "u p".into(),
+                command: Command::BrowseUserPlaylists,
+            },
+            Keymap {
+                key_sequence: "u a".into(),
+                command: Command::BrowseUserFollowedArtists,
+            },
+            Keymap {
+                key_sequence: "u A".into(),
+                command: Command::BrowseUserSavedAlbums,
+            },
+            Keymap {
+                key_sequence: "g space".into(),
+                command: Command::CurrentlyPlayingContextPage,
+            },
+            Keymap {
+                key_sequence: "g t".into(),
+                command: Command::TopTrackPage,
+            },
+            Keymap {
+                key_sequence: "g r".into(),
+                command: Command::RecentlyPlayedTrackPage,
+            },
+            Keymap {
+                key_sequence: "g y".into(),
+                command: Command::LikedTrackPage,
+            },
+            Keymap {
+                key_sequence: "g L".into(),
+                command: Command::LyricsPage,
+            },
+            Keymap {
+                key_sequence: "l".into(),
+                command: Command::LyricsPage,
+            },
+            Keymap {
+                key_sequence: "g l".into(),
+                command: Command::LibraryPage,
+            },
+            Keymap {
+                key_sequence: "g s".into(),
+                command: Command::SearchPage,
+            },
+            Keymap {
+                key_sequence: "g b".into(),
+                command: Command::BrowsePage,
+            },
+            Keymap {
+                key_sequence: "backspace".into(),
+                command: Command::PreviousPage,
+            },
+            Keymap {
+                key_sequence: "C-q".into(),
+                command: Command::PreviousPage,
+            },
+            Keymap {
+                key_sequence: "O".into(),
+                command: Command::OpenSpotifyLinkFromClipboard,
+            },
+            Keymap {
+                key_sequence: "?".into(),
+                command: Command::OpenCommandHelp,
+            },
+            Keymap {
+                key_sequence: "C-h".into(),
+                command: Command::OpenCommandHelp,
+            },
+            Keymap {
+                key_sequence: "q".into(),
+                command: Command::Quit,
+            },
+            Keymap {
+                key_sequence: "C-c".into(),
+                command: Command::Quit,
+            },
+            Keymap {
+                key_sequence: "esc".into(),
+                command: Command::ClosePopup,
+            },
+            Keymap {
+                key_sequence: "j".into(),
+                command: Command::SelectNextOrScrollDown { count: 1 },
+            },
+            Keymap {
+                key_sequence: "C-n".into(),
+                command: Command::SelectNextOrScrollDown { count: 1 },
+            },
+            Keymap {
+                key_sequence: "down".into(),
+                command: Command::SelectNextOrScrollDown { count: 1 },
+            },
+            Keymap {
+                key_sequence: "k".into(),
+                command: Command::SelectPreviousOrScrollUp { count: 1 },
+            },
+            Keymap {
+                key_sequence: "C-p".into(),
+                command: Command::SelectPreviousOrScrollUp { count: 1 },
+            },
+            Keymap {
+                key_sequence: "up".into(),
+                command: Command::SelectPreviousOrScrollUp { count: 1 },
+            },
+            Keymap {
+                key_sequence: "page_up".into(),
+                command: Command::PageSelectPreviousOrScrollUp,
+            },
+            Keymap {
+                key_sequence: "C-b".into(),
+                command: Command::PageSelectPreviousOrScrollUp,
+            },
+            Keymap {
+                key_sequence: "page_down".into(),
+                command: Command::PageSelectNextOrScrollDown,
+            },
+            Keymap {
+                key_sequence: "C-f".into(),
+                command: Command::PageSelectNextOrScrollDown,
+            },
+            Keymap {
+                key_sequence: "g g".into(),
+                command: Command::SelectFirstOrScrollToTop,
+            },
+            Keymap {
+                key_sequence: "home".into(),
+                command: Command::SelectFirstOrScrollToTop,
+            },
+            Keymap {
+                key_sequence: "G".into(),
+                command: Command::SelectLastOrScrollToBottom,
+            },
+            Keymap {
+                key_sequence: "end".into(),
+                command: Command::SelectLastOrScrollToBottom,
+            },
+            Keymap {
+                key_sequence: "s t".into(),
+                command: Command::SortTrackByTitle,
+            },
+            Keymap {
+                key_sequence: "s a".into(),
+                command: Command::SortTrackByArtists,
+            },
+            Keymap {
+                key_sequence: "s A".into(),
+                command: Command::SortTrackByAlbum,
+            },
+            Keymap {
+                key_sequence: "s d".into(),
+                command: Command::SortTrackByDuration,
+            },
+            Keymap {
+                key_sequence: "s D".into(),
+                command: Command::SortTrackByAddedDate,
+            },
+            Keymap {
+                key_sequence: "s r".into(),
+                command: Command::ReverseTrackOrder,
+            },
+            Keymap {
+                key_sequence: "s l a".into(),
+                command: Command::SortLibraryAlphabetically,
+            },
+            Keymap {
+                key_sequence: "s l r".into(),
+                command: Command::SortLibraryByRecent,
+            },
+            Keymap {
+                key_sequence: "C-k".into(),
+                command: Command::MovePlaylistItemUp,
+            },
+            Keymap {
+                key_sequence: "C-j".into(),
+                command: Command::MovePlaylistItemDown,
+            },
+            Keymap {
+                key_sequence: "N".into(),
+                command: Command::CreatePlaylist,
+            },
+            Keymap {
+                key_sequence: "g c".into(),
+                command: Command::JumpToCurrentTrackInContext,
+            },
+        ];
+
+        keymaps.extend(generate_keymap_for_up_and_down());
+
         KeymapConfig {
             actions: vec![],
-            keymaps: vec![
-                Keymap {
-                    key_sequence: "n".into(),
-                    command: Command::NextTrack,
-                },
-                Keymap {
-                    key_sequence: "p".into(),
-                    command: Command::PreviousTrack,
-                },
-                Keymap {
-                    key_sequence: ".".into(),
-                    command: Command::PlayRandom,
-                },
-                Keymap {
-                    key_sequence: "space".into(),
-                    command: Command::ResumePause,
-                },
-                Keymap {
-                    key_sequence: "C-r".into(),
-                    command: Command::Repeat,
-                },
-                Keymap {
-                    key_sequence: "M-r".into(),
-                    command: Command::ToggleFakeTrackRepeatMode,
-                },
-                Keymap {
-                    key_sequence: "C-s".into(),
-                    command: Command::Shuffle,
-                },
-                Keymap {
-                    key_sequence: "+".into(),
-                    command: Command::VolumeChange { offset: 5 },
-                },
-                Keymap {
-                    key_sequence: "-".into(),
-                    command: Command::VolumeChange { offset: -5 },
-                },
-                Keymap {
-                    key_sequence: "_".into(),
-                    command: Command::Mute,
-                },
-                Keymap {
-                    key_sequence: ">".into(),
-                    command: Command::SeekForward,
-                },
-                Keymap {
-                    key_sequence: "<".into(),
-                    command: Command::SeekBackward,
-                },
-                Keymap {
-                    key_sequence: "enter".into(),
-                    command: Command::ChooseSelected,
-                },
-                Keymap {
-                    key_sequence: "r".into(),
-                    command: Command::RefreshPlayback,
-                },
-                Keymap {
-                    key_sequence: "/".into(),
-                    command: Command::Search,
-                },
-                Keymap {
-                    key_sequence: "z".into(),
-                    command: Command::Queue,
-                },
-                Keymap {
-                    key_sequence: "C-z".into(),
-                    command: Command::AddSelectedItemToQueue,
-                },
-                Keymap {
-                    key_sequence: "Z".into(),
-                    command: Command::AddSelectedItemToQueue,
-                },
-                Keymap {
-                    key_sequence: "C-space".into(),
-                    command: Command::ShowActionsOnSelectedItem,
-                },
-                Keymap {
-                    key_sequence: "g a".into(),
-                    command: Command::ShowActionsOnSelectedItem,
-                },
-                Keymap {
-                    key_sequence: "a".into(),
-                    command: Command::ShowActionsOnCurrentTrack,
-                },
-                #[cfg(feature = "streaming")]
-                Keymap {
-                    key_sequence: "R".into(),
-                    command: Command::RestartIntegratedClient,
-                },
-                Keymap {
-                    key_sequence: "tab".into(),
-                    command: Command::FocusNextWindow,
-                },
-                Keymap {
-                    key_sequence: "backtab".into(),
-                    command: Command::FocusPreviousWindow,
-                },
-                Keymap {
-                    key_sequence: "T".into(),
-                    command: Command::SwitchTheme,
-                },
-                Keymap {
-                    key_sequence: "D".into(),
-                    command: Command::SwitchDevice,
-                },
-                Keymap {
-                    key_sequence: "u p".into(),
-                    command: Command::BrowseUserPlaylists,
-                },
-                Keymap {
-                    key_sequence: "u a".into(),
-                    command: Command::BrowseUserFollowedArtists,
-                },
-                Keymap {
-                    key_sequence: "u A".into(),
-                    command: Command::BrowseUserSavedAlbums,
-                },
-                Keymap {
-                    key_sequence: "g space".into(),
-                    command: Command::CurrentlyPlayingContextPage,
-                },
-                Keymap {
-                    key_sequence: "g t".into(),
-                    command: Command::TopTrackPage,
-                },
-                Keymap {
-                    key_sequence: "g r".into(),
-                    command: Command::RecentlyPlayedTrackPage,
-                },
-                Keymap {
-                    key_sequence: "g y".into(),
-                    command: Command::LikedTrackPage,
-                },
-                Keymap {
-                    key_sequence: "g L".into(),
-                    command: Command::LyricsPage,
-                },
-                Keymap {
-                    key_sequence: "l".into(),
-                    command: Command::LyricsPage,
-                },
-                Keymap {
-                    key_sequence: "g l".into(),
-                    command: Command::LibraryPage,
-                },
-                Keymap {
-                    key_sequence: "g s".into(),
-                    command: Command::SearchPage,
-                },
-                Keymap {
-                    key_sequence: "g b".into(),
-                    command: Command::BrowsePage,
-                },
-                Keymap {
-                    key_sequence: "backspace".into(),
-                    command: Command::PreviousPage,
-                },
-                Keymap {
-                    key_sequence: "C-q".into(),
-                    command: Command::PreviousPage,
-                },
-                Keymap {
-                    key_sequence: "O".into(),
-                    command: Command::OpenSpotifyLinkFromClipboard,
-                },
-                Keymap {
-                    key_sequence: "?".into(),
-                    command: Command::OpenCommandHelp,
-                },
-                Keymap {
-                    key_sequence: "C-h".into(),
-                    command: Command::OpenCommandHelp,
-                },
-                Keymap {
-                    key_sequence: "q".into(),
-                    command: Command::Quit,
-                },
-                Keymap {
-                    key_sequence: "C-c".into(),
-                    command: Command::Quit,
-                },
-                Keymap {
-                    key_sequence: "esc".into(),
-                    command: Command::ClosePopup,
-                },
-                Keymap {
-                    key_sequence: "j".into(),
-                    command: Command::SelectNextOrScrollDown,
-                },
-                Keymap {
-                    key_sequence: "C-n".into(),
-                    command: Command::SelectNextOrScrollDown,
-                },
-                Keymap {
-                    key_sequence: "down".into(),
-                    command: Command::SelectNextOrScrollDown,
-                },
-                Keymap {
-                    key_sequence: "k".into(),
-                    command: Command::SelectPreviousOrScrollUp,
-                },
-                Keymap {
-                    key_sequence: "C-p".into(),
-                    command: Command::SelectPreviousOrScrollUp,
-                },
-                Keymap {
-                    key_sequence: "up".into(),
-                    command: Command::SelectPreviousOrScrollUp,
-                },
-                Keymap {
-                    key_sequence: "page_up".into(),
-                    command: Command::PageSelectPreviousOrScrollUp,
-                },
-                Keymap {
-                    key_sequence: "C-b".into(),
-                    command: Command::PageSelectPreviousOrScrollUp,
-                },
-                Keymap {
-                    key_sequence: "page_down".into(),
-                    command: Command::PageSelectNextOrScrollDown,
-                },
-                Keymap {
-                    key_sequence: "C-f".into(),
-                    command: Command::PageSelectNextOrScrollDown,
-                },
-                Keymap {
-                    key_sequence: "g g".into(),
-                    command: Command::SelectFirstOrScrollToTop,
-                },
-                Keymap {
-                    key_sequence: "home".into(),
-                    command: Command::SelectFirstOrScrollToTop,
-                },
-                Keymap {
-                    key_sequence: "G".into(),
-                    command: Command::SelectLastOrScrollToBottom,
-                },
-                Keymap {
-                    key_sequence: "end".into(),
-                    command: Command::SelectLastOrScrollToBottom,
-                },
-                Keymap {
-                    key_sequence: "s t".into(),
-                    command: Command::SortTrackByTitle,
-                },
-                Keymap {
-                    key_sequence: "s a".into(),
-                    command: Command::SortTrackByArtists,
-                },
-                Keymap {
-                    key_sequence: "s A".into(),
-                    command: Command::SortTrackByAlbum,
-                },
-                Keymap {
-                    key_sequence: "s d".into(),
-                    command: Command::SortTrackByDuration,
-                },
-                Keymap {
-                    key_sequence: "s D".into(),
-                    command: Command::SortTrackByAddedDate,
-                },
-                Keymap {
-                    key_sequence: "s r".into(),
-                    command: Command::ReverseTrackOrder,
-                },
-                Keymap {
-                    key_sequence: "s l a".into(),
-                    command: Command::SortLibraryAlphabetically,
-                },
-                Keymap {
-                    key_sequence: "s l r".into(),
-                    command: Command::SortLibraryByRecent,
-                },
-                Keymap {
-                    key_sequence: "C-k".into(),
-                    command: Command::MovePlaylistItemUp,
-                },
-                Keymap {
-                    key_sequence: "C-j".into(),
-                    command: Command::MovePlaylistItemDown,
-                },
-                Keymap {
-                    key_sequence: "N".into(),
-                    command: Command::CreatePlaylist,
-                },
-                Keymap {
-                    key_sequence: "g c".into(),
-                    command: Command::JumpToCurrentTrackInContext,
-                },
-            ],
+            keymaps,
         }
     }
 }
