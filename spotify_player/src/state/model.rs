@@ -1,11 +1,11 @@
+use crate::utils::map_join;
+use html_escape::decode_html_entities;
 pub use rspotify::model::{
     AlbumId, ArtistId, EpisodeId, Id, PlayableId, PlaylistId, ShowId, TrackId, UserId,
 };
-
-use crate::utils::map_join;
-use html_escape::decode_html_entities;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
+use std::fmt::Write;
 
 #[derive(Serialize, Clone, Debug)]
 #[serde(untagged)]
@@ -234,22 +234,26 @@ impl Context {
                 ref album,
                 ref tracks,
             } => {
+                let album_length = play_time(tracks);
                 format!(
-                    "{} | {} | {} songs",
+                    "{} | {} | {} songs | {}",
                     album.name,
                     album.release_date,
-                    tracks.len()
+                    tracks.len(),
+                    album_length,
                 )
             }
             Context::Playlist {
                 ref playlist,
                 tracks,
             } => {
+                let playlist_length = play_time(tracks);
                 format!(
-                    "{} | {} | {} songs",
+                    "{} | {} | {} songs | {}",
                     playlist.name,
                     playlist.owner.0,
-                    tracks.len()
+                    tracks.len(),
+                    playlist_length,
                 )
             }
             Context::Artist { ref artist, .. } => artist.name.to_string(),
@@ -260,6 +264,31 @@ impl Context {
             } => format!("{} | {} episodes", show.name, episodes.len()),
         }
     }
+}
+
+fn play_time(tracks: &[Track]) -> String {
+    let duration = tracks
+        .iter()
+        .map(|t| t.duration)
+        .sum::<std::time::Duration>();
+
+    let mut output = String::new();
+
+    let seconds = duration.as_secs() % 60;
+    let minutes = (duration.as_secs() / 60) % 60;
+    let hours = duration.as_secs() / 3600;
+
+    if hours > 0 {
+        write!(output, "{hours}h ").unwrap();
+    }
+
+    if minutes > 0 {
+        write!(output, "{minutes}m ").unwrap();
+    }
+
+    write!(output, "{seconds}s").unwrap();
+
+    output
 }
 
 impl ContextId {
