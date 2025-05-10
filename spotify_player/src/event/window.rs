@@ -238,7 +238,7 @@ fn handle_playlist_modify_command(
                     snapshot_id: None,
                 })?;
                 ui.current_page_mut().select(id + 1);
-            };
+            }
             return Ok(true);
         }
         Command::ShowActionsOnSelectedItem => {
@@ -480,7 +480,7 @@ pub fn handle_command_for_playlist_list_window(
                             state.playlist_folder_id = f.target_id;
                         }
                         _ => return false,
-                    };
+                    }
                 }
                 PlaylistFolderItem::Playlist(p) => {
                     let context_id = ContextId::Playlist(p.id.clone());

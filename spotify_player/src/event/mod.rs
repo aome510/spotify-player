@@ -509,7 +509,7 @@ fn handle_global_action(
                 }
             }
         }
-    };
+    }
 
     Ok(false)
 }
