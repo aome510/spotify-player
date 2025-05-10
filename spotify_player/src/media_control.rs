@@ -60,7 +60,7 @@ fn update_control_metadata(
                         *prev_info = episode_info;
                     }
                 }
-            };
+            }
         }
     }
 
