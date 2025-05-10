@@ -276,7 +276,7 @@ page_desc = { fg = "Cyan", modifiers = ["Bold"] }
 playlist_desc = { fg = "BrightBlack", modifiers = ["Dim"] }
 table_header = { fg = "Blue" }
 secondary_row = {}
-like = {]
+like = {}
 lyrics_played = { modifiers = ["Dim"] }
 ```
 
