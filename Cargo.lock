@@ -5251,7 +5251,6 @@ dependencies = [
  "log",
  "maybe-async",
  "notify-rust",
- "once_cell",
  "parking_lot",
  "rand 0.9.0",
  "ratatui",

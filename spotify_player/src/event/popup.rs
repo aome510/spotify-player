@@ -457,7 +457,7 @@ fn handle_command_for_list_popup(
             on_close_func(ui);
         }
         _ => return Ok(false),
-    };
+    }
     Ok(true)
 }
 
