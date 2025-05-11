@@ -15,15 +15,15 @@ native-tls = ["reqwest/native-tls"]
 
 [dependencies]
 reqwest = { version = "0.12.15", features = ["json", "native-tls-alpn"], default-features = false }
-anyhow = "1.0.97"
+anyhow = "1.0.98"
 serde = { version = "1.0.219", features = ["derive"] }
 html5ever = "=0.27.0"
 markup5ever_rcdom = "0.3.0"
 log = "0.4.27"
 
 [dev-dependencies]
-tokio = { version = "1.44.1", features = ["rt", "rt-multi-thread", "macros"] }
-env_logger = { version = "0.11.7", default-features = false }
+tokio = { version = "1.45.0", features = ["rt", "rt-multi-thread", "macros"] }
+env_logger = { version = "0.11.8", default-features = false }
 
 [[example]]
 name = "lyric-finder"
