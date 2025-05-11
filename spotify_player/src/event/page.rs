@@ -101,11 +101,18 @@ fn handle_command_for_library_page(
     if command == Command::SortLibraryAlphabetically {
         let mut data = state.data.write();
 
-        // Sort playlists alphabetically
-        data.user_data.playlists.sort_by(|a, b| {
-            a.to_string()
+        // Sort playlists alphabetically, keeping folders on top
+        data.user_data.playlists.sort_by(|a, b| match (a, b) {
+            (PlaylistFolderItem::Folder(_), PlaylistFolderItem::Playlist(_)) => {
+                std::cmp::Ordering::Less
+            }
+            (PlaylistFolderItem::Playlist(_), PlaylistFolderItem::Folder(_)) => {
+                std::cmp::Ordering::Greater
+            }
+            _ => a
+                .to_string()
                 .to_lowercase()
-                .cmp(&b.to_string().to_lowercase())
+                .cmp(&b.to_string().to_lowercase()),
         });
 
         // Sort albums alphabetically
@@ -131,6 +138,12 @@ fn handle_command_for_library_page(
                     } else {
                         p1.current_folder_id.cmp(&p2.current_folder_id)
                     }
+                }
+                (PlaylistFolderItem::Folder(_), PlaylistFolderItem::Playlist(_)) => {
+                    std::cmp::Ordering::Less
+                }
+                (PlaylistFolderItem::Playlist(_), PlaylistFolderItem::Folder(_)) => {
+                    std::cmp::Ordering::Greater
                 }
                 _ => std::cmp::Ordering::Equal, // Keep folders in place
             }
