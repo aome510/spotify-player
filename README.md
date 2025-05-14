@@ -88,9 +88,9 @@ Run `scoop install spotify-player` to install the application.
 
 Run `cargo install spotify_player --locked` to install the application from [crates.io](https://crates.io/crates/spotify_player).
 
-### AUR
+### Arch Linux
 
-Run `yay -S spotify-player` to install the application as an AUR package.
+Run `pacman -S spotify-player` to install the application.
 
 Alternatively, run `yay -S spotify-player-full` to install an AUR package compiled with full feature support and Pulseaudio/Pipewire instead of rodio.
 
