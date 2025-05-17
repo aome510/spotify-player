@@ -23,39 +23,39 @@ All configuration files should be placed inside the application's configuration 
 
 `spotify_player` uses `app.toml` to configure general application configurations:
 
-| Option                            | Description                                                                              | Default                                                 |
-| --------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| `client_id`                       | the Spotify client's ID                                                                  | `65b708073fc0480ea92a077233ca87bd`                      |
-| `client_id_command`               | a shell command that prints the Spotify client ID to stdout (overrides `client_id`)      | `None`                                                  |
-| `login_redirect_uri`              | the redirect URI for authenticating the application                                      | `http://127.0.0.1:8989/login`                           |
-| `client_port`                     | the port that the application's client is running on to handle CLI commands              | `8080`                                                  |
-| `tracks_playback_limit`           | the limit for the number of tracks played in a **tracks** playback                       | `50`                                                    |
-| `playback_format`                 | the format of the text in the playback's window                                          | `{status} {track} • {artists}\n{album}\n{metadata}`     |
-| `notify_format`                   | the format of a notification (`notify` feature only)                                     | `{ summary = "{track} • {artists}", body = "{album}" }` |
-| `notify_timeout_in_secs`          | the timeout (in seconds) of a notification (`notify` feature only)                       | `0` (no timeout)                                        |
-| `player_event_hook_command`       | the hook command executed when there is a new player event                               | `None`                                                  |
-| `ap_port`                         | the application's Spotify session connection port                                        | `None`                                                  |
-| `proxy`                           | the application's Spotify session connection proxy                                       | `None`                                                  |
-| `theme`                           | the application's theme                                                                  | `default`                                               |
-| `app_refresh_duration_in_ms`      | the duration (in ms) between two consecutive application refreshes                       | `32`                                                    |
-| `playback_refresh_duration_in_ms` | the duration (in ms) between two consecutive playback refreshes                          | `0`                                                     |
-| `page_size_in_rows`               | a page's size expressed as a number of rows (for page-navigation commands)               | `20`                                                    |
-| `enable_media_control`            | enable application media control support (`media-control` feature only)                  | `true` (Linux), `false` (Windows and MacOS)             |
-| `enable_streaming`                | enable streaming (`streaming` feature only)                                              | `Always`                                                |
-| `enable_notify`                   | enable notification (`notify` feature only)                                              | `true`                                                  |
-| `enable_cover_image_cache`        | store album's cover images in the cache folder                                           | `true`                                                  |
-| `notify_streaming_only`           | only send notification when streaming is enabled (`streaming` and `notify` feature only) | `false`                                                 |
-| `default_device`                  | the default device to connect to on startup if no playing device found                   | `spotify-player`                                        |
-| `play_icon`                       | the icon to indicate playing state of a Spotify item                                     | `▶`                                                    |
-| `pause_icon`                      | the icon to indicate pause state of a Spotify item                                       | `▌▌`                                                    |
-| `liked_icon`                      | the icon to indicate the liked state of a song                                           | `♥`                                                    |
-| `border_type`                     | the type of the application's borders                                                    | `Plain`                                                 |
-| `progress_bar_type`               | the type of the playback progress bar                                                    | `Rectangle`                                             |
-| `cover_img_width`                 | the width of the cover image (`image` feature only)                                      | `5`                                                     |
-| `cover_img_length`                | the length of the cover image (`image` feature only)                                     | `9`                                                     |
-| `cover_img_scale`                 | the scale of the cover image (`image` feature only)                                      | `1.0`                                                   |
-| `seek_duration_secs`              | the duration (in seconds) to seek when using `SeekForward` and `SeekBackward` commands   | `5`                                                     |
-| `sort_artist_albums_by_type`      | sort albums on artist's pages by type, i.e. album or single                              | `false`                                                 |
+| Option                            | Description                                                                              | Default                                                     |
+| --------------------------------- | ---------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| `client_id`                       | the Spotify client's ID                                                                  | `65b708073fc0480ea92a077233ca87bd`                          |
+| `client_id_command`               | a shell command that prints the Spotify client ID to stdout (overrides `client_id`)      | `None`                                                      |
+| `login_redirect_uri`              | the redirect URI for authenticating the application                                      | `http://127.0.0.1:8989/login`                               |
+| `client_port`                     | the port that the application's client is running on to handle CLI commands              | `8080`                                                      |
+| `tracks_playback_limit`           | the limit for the number of tracks played in a **tracks** playback                       | `50`                                                        |
+| `playback_format`                 | the format of the text in the playback's window                                          | `{status} {track} • {artists} {liked}\n{album}\n{metadata}` |
+| `notify_format`                   | the format of a notification (`notify` feature only)                                     | `{ summary = "{track} • {artists}", body = "{album}" }`     |
+| `notify_timeout_in_secs`          | the timeout (in seconds) of a notification (`notify` feature only)                       | `0` (no timeout)                                            |
+| `player_event_hook_command`       | the hook command executed when there is a new player event                               | `None`                                                      |
+| `ap_port`                         | the application's Spotify session connection port                                        | `None`                                                      |
+| `proxy`                           | the application's Spotify session connection proxy                                       | `None`                                                      |
+| `theme`                           | the application's theme                                                                  | `default`                                                   |
+| `app_refresh_duration_in_ms`      | the duration (in ms) between two consecutive application refreshes                       | `32`                                                        |
+| `playback_refresh_duration_in_ms` | the duration (in ms) between two consecutive playback refreshes                          | `0`                                                         |
+| `page_size_in_rows`               | a page's size expressed as a number of rows (for page-navigation commands)               | `20`                                                        |
+| `enable_media_control`            | enable application media control support (`media-control` feature only)                  | `true` (Linux), `false` (Windows and MacOS)                 |
+| `enable_streaming`                | enable streaming (`streaming` feature only)                                              | `Always`                                                    |
+| `enable_notify`                   | enable notification (`notify` feature only)                                              | `true`                                                      |
+| `enable_cover_image_cache`        | store album's cover images in the cache folder                                           | `true`                                                      |
+| `notify_streaming_only`           | only send notification when streaming is enabled (`streaming` and `notify` feature only) | `false`                                                     |
+| `default_device`                  | the default device to connect to on startup if no playing device found                   | `spotify-player`                                            |
+| `play_icon`                       | the icon to indicate playing state of a Spotify item                                     | `▶`                                                         |
+| `pause_icon`                      | the icon to indicate pause state of a Spotify item                                       | `▌▌`                                                        |
+| `liked_icon`                      | the icon to indicate the liked state of a song                                           | `♥`                                                         |
+| `border_type`                     | the type of the application's borders                                                    | `Plain`                                                     |
+| `progress_bar_type`               | the type of the playback progress bar                                                    | `Rectangle`                                                 |
+| `cover_img_width`                 | the width of the cover image (`image` feature only)                                      | `5`                                                         |
+| `cover_img_length`                | the length of the cover image (`image` feature only)                                     | `9`                                                         |
+| `cover_img_scale`                 | the scale of the cover image (`image` feature only)                                      | `1.0`                                                       |
+| `seek_duration_secs`              | the duration (in seconds) to seek when using `SeekForward` and `SeekBackward` commands   | `5`                                                         |
+| `sort_artist_albums_by_type`      | sort albums on artist's pages by type, i.e. album or single                              | `false`                                                     |
 
 ### Notes
 
