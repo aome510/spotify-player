@@ -14,7 +14,7 @@ rustls-tls = ["reqwest/rustls-tls"]
 native-tls = ["reqwest/native-tls"]
 
 [dependencies]
-reqwest = { version = "0.12.15", features = ["json", "native-tls-alpn"], default-features = false }
+reqwest = { version = "0.12.15", features = ["json", "native-tls-alpn", "http2"], default-features = false }
 anyhow = "1.0.98"
 serde = { version = "1.0.219", features = ["derive"] }
 html5ever = "=0.27.0"
