@@ -69,6 +69,15 @@ A Spotify Premium account is **required**.
     ```shell
     sudo apt install libssl-dev libasound2-dev libdbus-1-dev
     ```
+  - On RHEL/Fedora based systems, run the below command to install application's dependencies :
+
+    ```shell
+    sudo dnf install openssl-devel alsa-lib-devel dbus-devel
+    ```
+    or if you're using `yum`:
+    ```shell
+    sudo yum install openssl-devel alsa-lib-devel dbus-devel
+    ```
 
 ### Binaries
 
