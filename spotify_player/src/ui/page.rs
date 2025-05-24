@@ -1,4 +1,5 @@
 use std::{
+    cmp::Ordering,
     collections::{btree_map::Entry, BTreeMap},
     fmt::Display,
 };
@@ -610,12 +611,10 @@ pub fn render_lyrics_page(
         .lines
         .iter()
         .enumerate()
-        .map(|(id, (_, line))| {
-            if id < last_played_line_id {
-                Line::styled(line, ui.theme.lyrics_played())
-            } else {
-                Line::raw(line)
-            }
+        .map(|(id, (_, line))| match (id + 1).cmp(&last_played_line_id) {
+            Ordering::Equal => Line::styled(line, ui.theme.lyrics_playing()),
+            Ordering::Less => Line::styled(line, ui.theme.lyrics_played()),
+            Ordering::Greater => Line::raw(line),
         })
         .collect::<Vec<_>>();
 
