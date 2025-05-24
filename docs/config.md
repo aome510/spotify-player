@@ -245,6 +245,7 @@ To define application's component styles, the user can specify any of the below 
 - `secondary_row`
 - `like`
 - `lyrics_played`
+- `lyrics_playing`
 
 A field in `component_style` is a struct with three **optional** fields: `fg` (foreground), `bg` (background) and `modifiers` (terminal effects):
 
@@ -278,6 +279,7 @@ table_header = { fg = "Blue" }
 secondary_row = {}
 like = {}
 lyrics_played = { modifiers = ["Dim"] }
+lyrics_playing = { fg = "Green", modifiers = ["Bold"] }
 ```
 
 ## Keymaps

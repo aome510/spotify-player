@@ -79,6 +79,7 @@ struct ComponentStyle {
     secondary_row: Option<Style>,
     like: Option<Style>,
     lyrics_played: Option<Style>,
+    lyrics_playing: Option<Style>,
 }
 
 #[derive(Default, Clone, Debug, Deserialize)]
@@ -345,6 +346,18 @@ impl Theme {
             .lyrics_played
             .as_ref()
             .unwrap_or(&Style::default().modifiers([StyleModifier::Dim]))
+            .style(&self.palette)
+    }
+
+    pub fn lyrics_playing(&self) -> style::Style {
+        self.component_style
+            .lyrics_playing
+            .as_ref()
+            .unwrap_or(
+                &Style::default()
+                    .fg(StyleColor::Green)
+                    .modifiers([StyleModifier::Bold]),
+            )
             .style(&self.palette)
     }
 }
