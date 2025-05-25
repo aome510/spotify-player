@@ -611,8 +611,8 @@ pub fn render_lyrics_page(
         .iter()
         .enumerate()
         .map(|(id, (_, line))| match (id + 1).cmp(&last_played_line_id) {
-            std::cmp::Ordering::Equal => Line::styled(line, ui.theme.lyrics_playing()),
             std::cmp::Ordering::Less => Line::styled(line, ui.theme.lyrics_played()),
+            std::cmp::Ordering::Equal => Line::styled(line, ui.theme.lyrics_playing()),
             std::cmp::Ordering::Greater => Line::raw(line),
         })
         .collect::<Vec<_>>();
