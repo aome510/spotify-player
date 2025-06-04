@@ -1,8 +1,8 @@
 use std::str::FromStr;
 
 use anyhow::Result;
+use ratatui::style;
 use serde::Deserialize;
-use tui::style;
 
 #[derive(Clone, Debug, Deserialize)]
 /// Application theme configurations.

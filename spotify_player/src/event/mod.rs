@@ -23,7 +23,7 @@ use crate::utils::map_join;
 use anyhow::{Context as _, Result};
 
 use clipboard::{execute_copy_command, get_clipboard_content};
-use tui::widgets::ListState;
+use ratatui::widgets::ListState;
 
 mod clipboard;
 mod page;
@@ -509,7 +509,7 @@ fn handle_global_action(
                 }
             }
         }
-    };
+    }
 
     Ok(false)
 }
