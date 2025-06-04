@@ -238,7 +238,7 @@ fn handle_playlist_modify_command(
                     snapshot_id: None,
                 })?;
                 ui.current_page_mut().select(id + 1);
-            };
+            }
             return Ok(true);
         }
         Command::ShowActionsOnSelectedItem => {
@@ -297,9 +297,7 @@ fn handle_command_for_track_table_window(
     match command {
         Command::PlayRandom | Command::ChooseSelected => {
             let uri = if command == Command::PlayRandom {
-                tracks[rand::thread_rng().gen_range(0..tracks.len())]
-                    .id
-                    .uri()
+                tracks[rand::rng().random_range(0..tracks.len())].id.uri()
             } else {
                 filtered_tracks[id].id.uri()
             };
@@ -482,7 +480,7 @@ pub fn handle_command_for_playlist_list_window(
                             state.playlist_folder_id = f.target_id;
                         }
                         _ => return false,
-                    };
+                    }
                 }
                 PlaylistFolderItem::Playlist(p) => {
                     let context_id = ContextId::Playlist(p.id.clone());

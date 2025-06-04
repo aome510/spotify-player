@@ -1,11 +1,11 @@
+use crate::utils::map_join;
+use html_escape::decode_html_entities;
 pub use rspotify::model::{
     AlbumId, ArtistId, EpisodeId, Id, PlayableId, PlaylistId, ShowId, TrackId, UserId,
 };
-
-use crate::utils::map_join;
-use html_escape::decode_html_entities;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
+use std::fmt::Write;
 
 #[derive(Serialize, Clone, Debug)]
 #[serde(untagged)]
@@ -147,6 +147,7 @@ pub struct Album {
     pub name: String,
     pub artists: Vec<Artist>,
     pub typ: Option<rspotify::model::AlbumType>,
+    pub added_at: u64,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -167,6 +168,7 @@ pub struct Playlist {
     /// which folder id the playlist refers to
     #[serde(default)]
     pub current_folder_id: usize,
+    pub snapshot_id: String,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -232,22 +234,26 @@ impl Context {
                 ref album,
                 ref tracks,
             } => {
+                let album_length = play_time(tracks);
                 format!(
-                    "{} | {} | {} songs",
+                    "{} | {} | {} songs | {}",
                     album.name,
                     album.release_date,
-                    tracks.len()
+                    tracks.len(),
+                    album_length,
                 )
             }
             Context::Playlist {
                 ref playlist,
                 tracks,
             } => {
+                let playlist_length = play_time(tracks);
                 format!(
-                    "{} | {} | {} songs",
+                    "{} | {} | {} songs | {}",
                     playlist.name,
                     playlist.owner.0,
-                    tracks.len()
+                    tracks.len(),
+                    playlist_length,
                 )
             }
             Context::Artist { ref artist, .. } => artist.name.to_string(),
@@ -258,6 +264,31 @@ impl Context {
             } => format!("{} | {} episodes", show.name, episodes.len()),
         }
     }
+}
+
+fn play_time(tracks: &[Track]) -> String {
+    let duration = tracks
+        .iter()
+        .map(|t| t.duration)
+        .sum::<std::time::Duration>();
+
+    let mut output = String::new();
+
+    let seconds = duration.as_secs() % 60;
+    let minutes = (duration.as_secs() / 60) % 60;
+    let hours = duration.as_secs() / 3600;
+
+    if hours > 0 {
+        write!(output, "{hours}h ").unwrap();
+    }
+
+    if minutes > 0 {
+        write!(output, "{minutes}m ").unwrap();
+    }
+
+    write!(output, "{seconds}s").unwrap();
+
+    output
 }
 
 impl ContextId {
@@ -406,6 +437,7 @@ impl Album {
                     "compilation" => Some(rspotify::model::AlbumType::Compilation),
                     _ => None,
                 }),
+            added_at: 0,
         })
     }
 
@@ -435,7 +467,16 @@ impl From<rspotify::model::FullAlbum> for Album {
             release_date: album.release_date,
             artists: from_simplified_artists_to_artists(album.artists),
             typ: Some(album.album_type),
+            added_at: 0,
         }
+    }
+}
+
+impl From<rspotify::model::SavedAlbum> for Album {
+    fn from(saved_album: rspotify::model::SavedAlbum) -> Self {
+        let mut album: Album = saved_album.album.into();
+        album.added_at = saved_album.added_at.timestamp() as u64;
+        album
     }
 }
 
@@ -499,6 +540,7 @@ impl From<rspotify::model::SimplifiedPlaylist> for Playlist {
             ),
             desc: String::new(),
             current_folder_id: 0,
+            snapshot_id: playlist.snapshot_id,
         }
     }
 }
@@ -520,6 +562,7 @@ impl From<rspotify::model::FullPlaylist> for Playlist {
             ),
             desc,
             current_folder_id: 0,
+            snapshot_id: playlist.snapshot_id,
         }
     }
 }

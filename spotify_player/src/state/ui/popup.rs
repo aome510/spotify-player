@@ -3,7 +3,7 @@ use crate::{
     state::model::{Album, Artist, Episode, EpisodeId, Playlist, Show, Track, TrackId},
     ui::single_line_input::LineInput,
 };
-use tui::widgets::ListState;
+use ratatui::widgets::ListState;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PlaylistCreateCurrentField {

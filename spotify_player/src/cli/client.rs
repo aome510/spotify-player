@@ -1,5 +1,6 @@
 use std::{
     collections::HashSet,
+    fmt::Write as _,
     fs::{create_dir_all, remove_dir_all},
     io::Write,
     net::SocketAddr,
@@ -365,7 +366,7 @@ async fn handle_playback_request(
             };
 
             if random {
-                let mut rng = rand::thread_rng();
+                let mut rng = rand::rng();
                 ids.shuffle(&mut rng);
             }
 
@@ -511,7 +512,7 @@ async fn handle_playlist_request(client: &Client, command: PlaylistCommand) -> R
 
             let mut out = String::new();
             for pl in resp {
-                out += &format!("{}: {}\n", pl.id.id(), pl.name);
+                writeln!(out, "{}: {}", pl.id.id(), pl.name).unwrap();
             }
             out = out.trim().to_string();
 
@@ -587,10 +588,7 @@ async fn handle_playlist_request(client: &Client, command: PlaylistCommand) -> R
                     }
                 } else {
                     remove_dir_all(&to_dir)?;
-                    result += &format!(
-                        "Not following playlist '{}'. Deleted its import data in the cache folder...\n",
-                        to_id.id()
-                    );
+                    writeln!(result, "Not following playlist '{}'. Deleted its import data in the cache folder...", to_id.id()).unwrap();
                 }
             }
 
@@ -656,13 +654,15 @@ async fn playlist_import(
     let mut new_tracks_hash_set = &from_hash_set - &to_hash_set;
 
     let mut result = String::new();
-    result += &format!(
-        "Importing from {}:{} to {}:{}...\n",
+    writeln!(
+        result,
+        "Importing from {}:{} to {}:{}...",
         import_from.id(),
         from_name,
         import_to.id(),
         to_name
-    );
+    )
+    .unwrap();
 
     let mut track_buff = Vec::new();
     if from_file.exists() {
@@ -700,17 +700,21 @@ async fn playlist_import(
                     .playlist_remove_all_occurrences_of_items(import_to.as_ref(), track_buff, None)
                     .await?;
             }
-            result += &format!("Tracks deleted from {from_name}: \n");
+            writeln!(result, "Tracks deleted from {from_name}: \n").unwrap();
         } else {
-            result += &format!("Tracks that are no longer in {from_name} since last import: \n");
+            writeln!(
+                result,
+                "Tracks that are no longer in {from_name} since last import: "
+            )
+            .unwrap();
         }
 
         for t in &deleted_hash_set {
-            result += &format!("    {}: {}\n", t.id.id(), t.name);
+            writeln!(result, "    {}: {}", t.id.id(), t.name).unwrap();
         }
     }
 
-    result += &format!("New tracks imported to {to_name}: \n");
+    writeln!(result, "New tracks imported to {to_name}: ").unwrap();
 
     track_buff = Vec::new();
     for t in &new_tracks_hash_set {
@@ -723,7 +727,7 @@ async fn playlist_import(
             track_buff = Vec::new();
         }
 
-        result += &format!("    {}: {}\n", t.id.id(), t.name);
+        writeln!(result, "    {}: {}", t.id.id(), t.name).unwrap();
     }
 
     if !track_buff.is_empty() {
