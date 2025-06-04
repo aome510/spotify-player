@@ -21,6 +21,7 @@ use crate::{
 
 use crate::utils::map_join;
 use anyhow::{Context as _, Result};
+use crossterm::event::KeyCode;
 
 use clipboard::{execute_copy_command, get_clipboard_content};
 use ratatui::widgets::ListState;
@@ -99,6 +100,20 @@ fn handle_key_event(
     let key: Key = event.into();
     let mut ui = state.ui.lock();
 
+    // Check if the key is a digit and handle count prefix
+    if let Key::None(KeyCode::Char(c)) = key {
+        if c.is_ascii_digit() {
+            let digit = c.to_digit(10).unwrap() as usize;
+            // If we have an existing count prefix, append the digit
+            // Otherwise, start a new count (but ignore leading zeros)
+            ui.count_prefix = match ui.count_prefix {
+                Some(count) => Some(count * 10 + digit),
+                None => if digit > 0 { Some(digit) } else { None },
+            };
+            return Ok(());
+        }
+    }
+
     let mut key_sequence = ui.input_key_sequence.clone();
     key_sequence.keys.push(key);
 
@@ -109,7 +124,7 @@ fn handle_key_event(
         key_sequence = KeySequence { keys: vec![key] };
     }
 
-    tracing::debug!("Handling key event: {event:?}, current key sequence: {key_sequence:?}");
+    tracing::debug!("Handling key event: {event:?}, current key sequence: {key_sequence:?}, count prefix: {:?}", ui.count_prefix);
     let handled = {
         if ui.popup.is_none() {
             page::handle_key_sequence_for_page(&key_sequence, client_pub, state, &mut ui)?
@@ -133,12 +148,17 @@ fn handle_key_event(
         }
     };
 
-    // if handled, clear the key sequence
+    // if handled, clear the key sequence and count prefix
     // otherwise, the current key sequence can be a prefix of a command's shortcut
     if handled {
         ui.input_key_sequence.keys = vec![];
+        ui.count_prefix = None;
     } else {
         ui.input_key_sequence = key_sequence;
+        // If we didn't handle the key and it wasn't a digit, clear the count prefix
+        if !matches!(key, Key::None(KeyCode::Char(c)) if c.is_ascii_digit()) {
+            ui.count_prefix = None;
+        }
     }
     Ok(())
 }
