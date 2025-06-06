@@ -101,11 +101,18 @@ fn handle_command_for_library_page(
     if command == Command::SortLibraryAlphabetically {
         let mut data = state.data.write();
 
-        // Sort playlists alphabetically
-        data.user_data.playlists.sort_by(|a, b| {
-            a.to_string()
+        // Sort playlists alphabetically, keeping folders on top
+        data.user_data.playlists.sort_by(|a, b| match (a, b) {
+            (PlaylistFolderItem::Folder(_), PlaylistFolderItem::Playlist(_)) => {
+                std::cmp::Ordering::Less
+            }
+            (PlaylistFolderItem::Playlist(_), PlaylistFolderItem::Folder(_)) => {
+                std::cmp::Ordering::Greater
+            }
+            _ => a
+                .to_string()
                 .to_lowercase()
-                .cmp(&b.to_string().to_lowercase())
+                .cmp(&b.to_string().to_lowercase()),
         });
 
         // Sort albums alphabetically
@@ -131,6 +138,12 @@ fn handle_command_for_library_page(
                     } else {
                         p1.current_folder_id.cmp(&p2.current_folder_id)
                     }
+                }
+                (PlaylistFolderItem::Folder(_), PlaylistFolderItem::Playlist(_)) => {
+                    std::cmp::Ordering::Less
+                }
+                (PlaylistFolderItem::Playlist(_), PlaylistFolderItem::Folder(_)) => {
+                    std::cmp::Ordering::Greater
                 }
                 _ => std::cmp::Ordering::Equal, // Keep folders in place
             }
@@ -425,42 +438,40 @@ fn handle_command_for_browse_page(
         return Ok(true);
     }
     match command {
-        Command::ChooseSelected => {
-            match page_state {
-                PageState::Browse { state } => match state {
-                    BrowsePageUIState::CategoryList { .. } => {
-                        let categories = ui.search_filtered_items(&data.browse.categories);
-                        client_pub.send(ClientRequest::GetBrowseCategoryPlaylists(
-                            categories[selected].clone(),
-                        ))?;
-                        ui.new_page(PageState::Browse {
-                            state: BrowsePageUIState::CategoryPlaylistList {
-                                category: categories[selected].clone(),
-                                state: ListState::default(),
-                            },
-                        });
-                    }
-                    BrowsePageUIState::CategoryPlaylistList { category, .. } => {
-                        let playlists =
-                            data.browse
-                                .category_playlists
-                                .get(&category.id)
-                                .context(format!(
-                                    "expect to have playlists data for {category} category"
-                                ))?;
-                        let context_id = ContextId::Playlist(
-                            ui.search_filtered_items(playlists)[selected].id.clone(),
-                        );
-                        ui.new_page(PageState::Context {
-                            id: None,
-                            context_page_type: ContextPageType::Browsing(context_id),
-                            state: None,
-                        });
-                    }
-                },
-                _ => anyhow::bail!("expect a browse page state"),
-            };
-        }
+        Command::ChooseSelected => match page_state {
+            PageState::Browse { state } => match state {
+                BrowsePageUIState::CategoryList { .. } => {
+                    let categories = ui.search_filtered_items(&data.browse.categories);
+                    client_pub.send(ClientRequest::GetBrowseCategoryPlaylists(
+                        categories[selected].clone(),
+                    ))?;
+                    ui.new_page(PageState::Browse {
+                        state: BrowsePageUIState::CategoryPlaylistList {
+                            category: categories[selected].clone(),
+                            state: ListState::default(),
+                        },
+                    });
+                }
+                BrowsePageUIState::CategoryPlaylistList { category, .. } => {
+                    let playlists =
+                        data.browse
+                            .category_playlists
+                            .get(&category.id)
+                            .context(format!(
+                                "expect to have playlists data for {category} category"
+                            ))?;
+                    let context_id = ContextId::Playlist(
+                        ui.search_filtered_items(playlists)[selected].id.clone(),
+                    );
+                    ui.new_page(PageState::Context {
+                        id: None,
+                        context_page_type: ContextPageType::Browsing(context_id),
+                        state: None,
+                    });
+                }
+            },
+            _ => anyhow::bail!("expect a browse page state"),
+        },
         Command::Search => {
             ui.new_search_popup();
         }

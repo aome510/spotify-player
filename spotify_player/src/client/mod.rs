@@ -301,7 +301,7 @@ impl Client {
             PlayerRequest::TransferPlayback(..) => {
                 anyhow::bail!("`TransferPlayback` should be handled earlier")
             }
-        };
+        }
 
         Ok(Some(playback))
     }
@@ -592,7 +592,7 @@ impl Client {
                 )
                 .await?;
             }
-        };
+        }
 
         tracing::info!(
             "Successfully handled the client request, took: {}ms",
@@ -1768,7 +1768,7 @@ impl Client {
                             text += &episode.show.name;
                         }
                     },
-                    _ => continue,
+                    &_ => {}
                 }
             }
             if ptr < format_str.len() {
