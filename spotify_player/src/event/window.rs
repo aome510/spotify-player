@@ -297,7 +297,7 @@ fn handle_command_for_track_table_window(
                 track.id == selected_track.id
             }).unwrap();
 
-            // Move selection and chnage the offset so selection is at the top
+            // Move selection and change the offset so selection is at the top
             ui.current_page_mut().select(location.0);
             match ui.current_page_mut().focus_window_state_mut().unwrap() {
                 MutableWindowState::Table(table) => *table.offset_mut() = location.0,
