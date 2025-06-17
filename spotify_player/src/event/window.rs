@@ -5,7 +5,7 @@ use crate::{
         construct_album_actions, construct_artist_actions, construct_playlist_actions,
         construct_show_actions,
     },
-    state::{Episode, Show, UIStateGuard},
+    state::{Episode, MutableWindowState, Show, UIStateGuard},
 };
 use command::Action;
 use rand::Rng;
@@ -287,6 +287,24 @@ fn handle_command_for_track_table_window(
             )?
         {
             return Ok(true);
+        }
+
+        // Find a track from the filtered serach and select it in the playlist context
+        if command == Command::JumpToSelectedTrackInPlaylist {
+            ui.popup = None;
+            let selected_track = filtered_tracks[id];
+            let location = tracks.iter().enumerate().find(|(_, track)| {
+                track.id == selected_track.id
+            }).unwrap();
+
+            // Move selection and chnage the offset so selection is at the top
+            ui.current_page_mut().select(location.0);
+            match ui.current_page_mut().focus_window_state_mut().unwrap() {
+                MutableWindowState::Table(table) => *table.offset_mut() = location.0,
+                _ => unreachable!("playlist context should be a table")
+            }
+
+            return Ok(true)
         }
     }
 
