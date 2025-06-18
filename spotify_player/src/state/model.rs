@@ -6,6 +6,7 @@ pub use rspotify::model::{
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::fmt::Write;
+use unicode_bidi::BidiInfo;
 
 #[derive(Serialize, Clone, Debug)]
 #[serde(untagged)]
@@ -729,6 +730,8 @@ pub struct Lyrics {
 
 impl From<librespot_metadata::lyrics::Lyrics> for Lyrics {
     fn from(value: librespot_metadata::lyrics::Lyrics) -> Self {
+
+
         let mut lines = value
             .lyrics
             .lines
@@ -737,7 +740,17 @@ impl From<librespot_metadata::lyrics::Lyrics> for Lyrics {
                 let t = chrono::Duration::milliseconds(
                     l.start_time_ms.parse::<i64>().expect("invalid number"),
                 );
-                (t, l.words)
+
+                // Some songs use multiple languages and may contain some rtl and ltr text.
+                let bidi_info = BidiInfo::new(&l.words, None);
+
+                let words = if bidi_info.has_rtl() && bidi_info.paragraphs.len() > 0 {
+                    bidi_info.reorder_line(&bidi_info.paragraphs[0], 0..l.words.len()).into_owned()
+                } else { 
+                    l.words
+                };
+
+                (t, words)
             })
             .collect::<Vec<_>>();
         lines.sort_by_key(|l| l.0);
