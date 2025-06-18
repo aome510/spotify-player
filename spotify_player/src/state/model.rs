@@ -741,7 +741,8 @@ impl From<librespot_metadata::lyrics::Lyrics> for Lyrics {
                     l.start_time_ms.parse::<i64>().expect("invalid number"),
                 );
 
-                // Some songs use multiple languages and may contain some rtl and ltr text.
+                // Some songs use multiple languages and may contain a mix of rtl and ltr text.
+                // Therefore rtl formatting needs to be done on a per-line basis.
                 let bidi_info = BidiInfo::new(&l.words, None);
 
                 let words = if bidi_info.has_rtl() && bidi_info.paragraphs.len() > 0 {
