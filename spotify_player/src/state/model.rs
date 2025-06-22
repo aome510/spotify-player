@@ -743,7 +743,7 @@ impl From<librespot_metadata::lyrics::Lyrics> for Lyrics {
                 // Therefore rtl formatting needs to be done on a per-line basis.
                 let bidi_info = BidiInfo::new(&l.words, None);
 
-                let words = if bidi_info.has_rtl() && bidi_info.paragraphs.len() > 0 {
+                let words = if bidi_info.has_rtl() && !bidi_info.paragraphs.is_empty() {
                     bidi_info
                         .reorder_line(&bidi_info.paragraphs[0], 0..l.words.len())
                         .into_owned()
