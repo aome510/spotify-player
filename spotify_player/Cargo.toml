@@ -56,6 +56,7 @@ which = "7.0.3"
 fuzzy-matcher = { version = "0.3.7", optional = true }
 html-escape = "0.2.13"
 rustls = { version = "0.23.27", default-features = false, features = ["ring"] }
+unicode-bidi = "0.3.18"
 
 [target.'cfg(any(target_os = "windows", target_os = "macos"))'.dependencies.winit]
 version = "0.30.10"
