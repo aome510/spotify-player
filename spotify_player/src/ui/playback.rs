@@ -2,6 +2,7 @@
 use crate::state::ImageRenderInfo;
 #[cfg(feature = "image")]
 use anyhow::{Context, Result};
+use rspotify::model::Id;
 
 use super::{
     config, utils::construct_and_render_block, Borders, Constraint, Frame, Gauge, Layout, Line,
@@ -126,7 +127,7 @@ pub fn render_playback_window(
             };
 
             if let Some(ref playback) = player.buffered_playback {
-                let playback_text = construct_playback_text(ui, item, playback);
+                let playback_text = construct_playback_text(ui, state, item, playback);
                 let playback_desc = Paragraph::new(playback_text);
                 frame.render_widget(playback_desc, metadata_rect);
             }
@@ -188,6 +189,7 @@ fn clear_area(frame: &mut Frame, rect: Rect, theme: &config::Theme) {
 
 fn construct_playback_text(
     ui: &UIStateGuard,
+    state: &SharedState,
     playable: &rspotify::model::PlayableItem,
     playback: &PlaybackMetadata,
 ) -> Text<'static> {
@@ -195,6 +197,7 @@ fn construct_playback_text(
     // based on a user-configurable format string (app_config.playback_format)
     let configs = config::get_config();
     let format_str = &configs.app_config.playback_format;
+    let data = state.data.read();
 
     let mut playback_text = Text::default();
     let mut spans = vec![];
@@ -228,6 +231,19 @@ fn construct_playback_text(
                 .to_owned(),
                 ui.theme.playback_status(),
             ),
+            "{liked}" => match playable {
+                rspotify::model::PlayableItem::Track(track) => match &track.id {
+                    Some(id) => {
+                        if data.user_data.saved_tracks.contains_key(&id.uri()) {
+                            (configs.app_config.liked_icon.clone(), ui.theme.like())
+                        } else {
+                            continue;
+                        }
+                    }
+                    None => continue,
+                },
+                rspotify::model::PlayableItem::Episode(_) => continue,
+            },
             "{track}" => match playable {
                 rspotify::model::PlayableItem::Track(track) => (
                     if track.explicit {

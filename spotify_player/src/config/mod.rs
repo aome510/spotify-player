@@ -265,7 +265,9 @@ impl Default for AppConfig {
 
             tracks_playback_limit: 50,
 
-            playback_format: String::from("{status} {track} • {artists}\n{album}\n{metadata}"),
+            playback_format: String::from(
+                "{status} {track} • {artists} {liked}\n{album}\n{metadata}",
+            ),
             #[cfg(feature = "notify")]
             notify_format: NotifyFormat {
                 summary: String::from("{track} • {artists}"),
