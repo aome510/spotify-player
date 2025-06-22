@@ -235,7 +235,7 @@ fn construct_playback_text(
                 rspotify::model::PlayableItem::Track(track) => match &track.id {
                     Some(id) => {
                         if data.user_data.saved_tracks.contains_key(&id.uri()) {
-                            ((&configs.app_config.liked_icon).to_owned(), ui.theme.like())
+                            (configs.app_config.liked_icon.clone(), ui.theme.like())
                         } else {
                             continue;
                         }
