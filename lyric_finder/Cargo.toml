@@ -14,7 +14,7 @@ rustls-tls = ["reqwest/rustls-tls"]
 native-tls = ["reqwest/native-tls"]
 
 [dependencies]
-reqwest = { version = "0.12.15", features = ["json", "native-tls-alpn", "http2"], default-features = false }
+reqwest = { version = "0.12.20", features = ["json", "native-tls-alpn", "http2"], default-features = false }
 anyhow = "1.0.98"
 serde = { version = "1.0.219", features = ["derive"] }
 html5ever = "=0.27.0"
@@ -22,7 +22,7 @@ markup5ever_rcdom = "0.3.0"
 log = "0.4.27"
 
 [dev-dependencies]
-tokio = { version = "1.45.0", features = ["rt", "rt-multi-thread", "macros"] }
+tokio = { version = "1.45.1", features = ["rt", "rt-multi-thread", "macros"] }
 env_logger = { version = "0.11.8", default-features = false }
 
 [[example]]
