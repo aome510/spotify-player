@@ -185,6 +185,14 @@ impl UserData {
     pub fn is_liked_track(&self, track: &Track) -> bool {
         self.saved_tracks.contains_key(&track.id.uri())
     }
+
+    /// Check if a playlist is followed
+    pub fn is_followed_playlist(&self, playlist: &Playlist) -> bool {
+        self.playlists.iter().any(|x| match x {
+            PlaylistFolderItem::Playlist(p) => p.id == playlist.id,
+            PlaylistFolderItem::Folder(_) => false,
+        })
+    }
 }
 
 pub fn store_data_into_file_cache<T: Serialize>(
