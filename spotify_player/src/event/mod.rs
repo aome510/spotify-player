@@ -108,7 +108,13 @@ fn handle_key_event(
             // Otherwise, start a new count (but ignore leading zeros)
             ui.count_prefix = match ui.count_prefix {
                 Some(count) => Some(count * 10 + digit),
-                None => if digit > 0 { Some(digit) } else { None },
+                None => {
+                    if digit > 0 {
+                        Some(digit)
+                    } else {
+                        None
+                    }
+                }
             };
             return Ok(());
         }
@@ -124,7 +130,10 @@ fn handle_key_event(
         key_sequence = KeySequence { keys: vec![key] };
     }
 
-    tracing::debug!("Handling key event: {event:?}, current key sequence: {key_sequence:?}, count prefix: {:?}", ui.count_prefix);
+    tracing::debug!(
+        "Handling key event: {event:?}, current key sequence: {key_sequence:?}, count prefix: {:?}",
+        ui.count_prefix
+    );
     let handled = {
         if ui.popup.is_none() {
             page::handle_key_sequence_for_page(&key_sequence, client_pub, state, &mut ui)?

@@ -291,7 +291,13 @@ fn handle_command_for_track_table_window(
     }
 
     let count = ui.count_prefix;
-    if handle_navigation_command(command, ui.current_page_mut(), id, filtered_tracks.len(), count) {
+    if handle_navigation_command(
+        command,
+        ui.current_page_mut(),
+        id,
+        filtered_tracks.len(),
+        count,
+    ) {
         return Ok(true);
     }
 
