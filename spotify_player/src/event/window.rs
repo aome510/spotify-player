@@ -289,7 +289,7 @@ fn handle_command_for_track_table_window(
             return Ok(true);
         }
 
-        // Find a track from the filtered serach and select it in the playlist context
+        // Find a track from the filtered search and select it in the playlist context
         if command == Command::JumpToSelectedTrackInPlaylist {
             ui.popup = None;
             let selected_track = filtered_tracks[id];
