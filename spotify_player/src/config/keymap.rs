@@ -108,8 +108,8 @@ impl Default for KeymapConfig {
                     command: Command::AddSelectedItemToQueue,
                 },
                 Keymap {
-                    key_sequence: "C-j".into(),
-                    command: Command::JumpToSelectedTrackInPlaylist,
+                    key_sequence: "C-g".into(),
+                    command: Command::JumpToHighlightTrackInContext,
                 },
                 Keymap {
                     key_sequence: "C-space".into(),

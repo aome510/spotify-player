@@ -53,7 +53,7 @@ pub enum Command {
     ShowActionsOnSelectedItem,
     ShowActionsOnCurrentTrack,
     AddSelectedItemToQueue,
-    JumpToSelectedTrackInPlaylist,
+    JumpToHighlightTrackInContext,
 
     BrowseUserPlaylists,
     BrowseUserFollowedArtists,
@@ -331,7 +331,7 @@ impl Command {
             Self::ShowActionsOnSelectedItem => "open a popup showing actions on a selected item",
             Self::ShowActionsOnCurrentTrack => "open a popup showing actions on the current track",
             Self::AddSelectedItemToQueue => "add the selected item to queue",
-            Self::JumpToSelectedTrackInPlaylist => "jump to the currently selected search result in the playlist",
+            Self::JumpToHighlightTrackInContext => "jump to the currently highlighted search result in the context",
             Self::FocusNextWindow => "focus the next focusable window (if any)",
             Self::FocusPreviousWindow => "focus the previous focusable window (if any)",
             Self::SwitchTheme => "open a popup for switching theme",
