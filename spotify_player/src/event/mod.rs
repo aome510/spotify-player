@@ -101,22 +101,25 @@ fn handle_key_event(
     let mut ui = state.ui.lock();
 
     // Check if the key is a digit and handle count prefix
-    if let Key::None(KeyCode::Char(c)) = key {
-        if c.is_ascii_digit() {
-            let digit = c.to_digit(10).unwrap() as usize;
-            // If we have an existing count prefix, append the digit
-            // Otherwise, start a new count (but ignore leading zeros)
-            ui.count_prefix = match ui.count_prefix {
-                Some(count) => Some(count * 10 + digit),
-                None => {
-                    if digit > 0 {
-                        Some(digit)
-                    } else {
-                        None
+    // Only handle vim motions when not in a popup to avoid interfering with action selection
+    if ui.popup.is_none() {
+        if let Key::None(KeyCode::Char(c)) = key {
+            if c.is_ascii_digit() {
+                let digit = c.to_digit(10).unwrap() as usize;
+                // If we have an existing count prefix, append the digit
+                // Otherwise, start a new count (but ignore leading zeros)
+                ui.count_prefix = match ui.count_prefix {
+                    Some(count) => Some(count * 10 + digit),
+                    None => {
+                        if digit > 0 {
+                            Some(digit)
+                        } else {
+                            None
+                        }
                     }
-                }
-            };
-            return Ok(());
+                };
+                return Ok(());
+            }
         }
     }
 
