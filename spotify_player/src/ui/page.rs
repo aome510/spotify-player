@@ -1,8 +1,10 @@
 use std::{
     collections::{btree_map::Entry, BTreeMap},
     fmt::Display,
+    time::{Duration, UNIX_EPOCH},
 };
-
+use chrono::{DateTime, Utc};
+use chrono_humanize::HumanTime;
 use ratatui::text::Line;
 
 use crate::{state::Episode, utils::format_duration};
@@ -348,6 +350,7 @@ pub fn render_context_page(
                         state,
                         ui.search_filtered_items(tracks),
                         ui,
+                        true,
                         &data,
                     );
                 }
@@ -359,6 +362,7 @@ pub fn render_context_page(
                         state,
                         ui.search_filtered_items(tracks),
                         ui,
+                        false,
                         &data,
                     );
                 }
@@ -903,6 +907,7 @@ fn render_artist_context_page_windows(
         state,
         tracks,
         ui,
+        false,
         data,
     );
 
@@ -936,6 +941,7 @@ fn render_track_table(
     state: &SharedState,
     tracks: Vec<&Track>,
     ui: &mut UIStateGuard,
+    playlist: bool,
     data: &DataReadGuard,
 ) {
     let configs = config::get_config();
@@ -978,6 +984,15 @@ fn render_track_table(
                 Cell::from(t.display_name()),
                 Cell::from(t.artists_info()),
                 Cell::from(t.album_info()),
+
+                if playlist {
+                    let time = UNIX_EPOCH + Duration::from_secs(t.added_at);
+                    
+                    Cell::from(HumanTime::from(time).to_string())
+                } else {
+                    Cell::from("")
+                },
+                
                 Cell::from(format!(
                     "{}:{:02}",
                     t.duration.as_secs() / 60,
@@ -995,6 +1010,13 @@ fn render_track_table(
             Constraint::Fill(4),
             Constraint::Fill(3),
             Constraint::Fill(5),
+
+            if playlist {
+                Constraint::Fill(2)
+            } else {
+                Constraint::Fill(0)
+            },
+
             Constraint::Fill(1),
         ],
     )
@@ -1005,6 +1027,13 @@ fn render_track_table(
             Cell::from("Title"),
             Cell::from("Artists"),
             Cell::from("Album"),
+
+            if playlist {
+                Cell::from("Added")
+            } else {
+                Cell::from("")
+            },
+
             Cell::from("Duration"),
         ])
         .style(ui.theme.table_header()),
