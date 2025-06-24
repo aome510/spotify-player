@@ -31,6 +31,7 @@ All configuration files should be placed inside the application's configuration 
 | `client_port`                     | the port that the application's client is running on to handle CLI commands              | `8080`                                                      |
 | `tracks_playback_limit`           | the limit for the number of tracks played in a **tracks** playback                       | `50`                                                        |
 | `playback_format`                 | the format of the text in the playback's window                                          | `{status} {track} • {artists} {liked}\n{album}\n{metadata}` |
+| `playback_metadata_fields`        | (optional) list of metadata fields to display in the playback UI's `{metadata}` section. Possible values: `"repeat"`, `"shuffle"`, `"volume"`, `"device"` | `["repeat", "shuffle", "volume", "device"]` |
 | `notify_format`                   | the format of a notification (`notify` feature only)                                     | `{ summary = "{track} • {artists}", body = "{album}" }`     |
 | `notify_timeout_in_secs`          | the timeout (in seconds) of a notification (`notify` feature only)                       | `0` (no timeout)                                            |
 | `player_event_hook_command`       | the hook command executed when there is a new player event                               | `None`                                                      |
@@ -326,3 +327,11 @@ target = "PlayingTrack"
 action="ToggleLiked"
 key_sequence="C-l"
 ```
+
+- `playback_metadata_fields` lets you control which metadata fields are shown in the `{metadata}` section of the playback UI. For example, to show only repeat, shuffle, and volume, add:
+
+  ```toml
+  playback_metadata_fields = ["repeat", "shuffle", "volume"]
+  ```
+
+  You can use any combination and order of: `"repeat"`, `"shuffle"`, `"volume"`, `"device"`.

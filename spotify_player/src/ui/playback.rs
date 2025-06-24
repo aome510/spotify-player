@@ -279,24 +279,38 @@ fn construct_playback_text(
                     (episode.show.name.clone(), ui.theme.playback_album())
                 }
             },
-            "{metadata}" => (
-                format!(
-                    "repeat: {} | shuffle: {} | volume: {} | device: {}",
-                    if playback.fake_track_repeat_state {
-                        "track (fake)"
-                    } else {
-                        <&'static str>::from(playback.repeat_state)
-                    },
-                    playback.shuffle_state,
-                    if let Some(volume) = playback.mute_state {
-                        format!("{volume}% (muted)")
-                    } else {
-                        format!("{}%", playback.volume.unwrap_or_default())
-                    },
-                    playback.device_name,
-                ),
-                ui.theme.playback_metadata(),
-            ),
+            "{metadata}" => {
+                let fields = configs.app_config
+                    .playback_metadata_fields
+                    .as_ref()
+                    .cloned()
+                    .unwrap_or_else(|| vec![
+                        "repeat".to_string(),
+                        "shuffle".to_string(),
+                        "volume".to_string(),
+                        "device".to_string(),
+                    ]);
+                let mut parts = vec![];
+                for field in &fields {
+                    match field.as_str() {
+                        "repeat" => parts.push(format!("repeat: {}", if playback.fake_track_repeat_state {
+                            "track (fake)"
+                        } else {
+                            <&'static str>::from(playback.repeat_state)
+                        })),
+                        "shuffle" => parts.push(format!("shuffle: {}", playback.shuffle_state)),
+                        "volume" => parts.push(format!("volume: {}", if let Some(volume) = playback.mute_state {
+                            format!("{volume}% (muted)")
+                        } else {
+                            format!("{}%", playback.volume.unwrap_or_default())
+                        })),
+                        "device" => parts.push(format!("device: {}", playback.device_name)),
+                        _ => {}
+                    }
+                }
+                let metadata_str = parts.join(" | ");
+                (metadata_str, ui.theme.playback_metadata())
+            },
             _ => continue,
         };
 
