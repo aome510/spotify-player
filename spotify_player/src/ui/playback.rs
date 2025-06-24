@@ -282,32 +282,38 @@ fn construct_playback_text(
             "{metadata}" => {
                 let fields = configs.app_config
                     .playback_metadata_fields
-                    .as_ref()
-                    .cloned()
+                    .clone()
                     .unwrap_or_else(|| vec![
                         "repeat".to_string(),
                         "shuffle".to_string(),
                         "volume".to_string(),
                         "device".to_string(),
                     ]);
+
+                let repeat_value = if playback.fake_track_repeat_state {
+                    "track (fake)".to_string()
+                } else {
+                    <&'static str>::from(playback.repeat_state).to_string()
+                };
+
+                let volume_value = if let Some(volume) = playback.mute_state {
+                    format!("{volume}% (muted)")
+                } else {
+                    format!("{}%", playback.volume.unwrap_or_default())
+                };
+
                 let mut parts = vec![];
+
                 for field in &fields {
                     match field.as_str() {
-                        "repeat" => parts.push(format!("repeat: {}", if playback.fake_track_repeat_state {
-                            "track (fake)"
-                        } else {
-                            <&'static str>::from(playback.repeat_state)
-                        })),
+                        "repeat" => parts.push(format!("repeat: {}", repeat_value)),
                         "shuffle" => parts.push(format!("shuffle: {}", playback.shuffle_state)),
-                        "volume" => parts.push(format!("volume: {}", if let Some(volume) = playback.mute_state {
-                            format!("{volume}% (muted)")
-                        } else {
-                            format!("{}%", playback.volume.unwrap_or_default())
-                        })),
+                        "volume" => parts.push(format!("volume: {}", volume_value)),
                         "device" => parts.push(format!("device: {}", playback.device_name)),
                         _ => {}
                     }
                 }
+
                 let metadata_str = parts.join(" | ");
                 (metadata_str, ui.theme.playback_metadata())
             },
