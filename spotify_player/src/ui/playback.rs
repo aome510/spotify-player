@@ -280,15 +280,16 @@ fn construct_playback_text(
                 }
             },
             "{metadata}" => {
+                let default_fields = vec![
+                    "repeat".to_string(),
+                    "shuffle".to_string(),
+                    "volume".to_string(),
+                    "device".to_string(),
+                ];
                 let fields = configs.app_config
                     .playback_metadata_fields
-                    .clone()
-                    .unwrap_or_else(|| vec![
-                        "repeat".to_string(),
-                        "shuffle".to_string(),
-                        "volume".to_string(),
-                        "device".to_string(),
-                    ]);
+                    .as_ref()
+                    .unwrap_or(&default_fields);
 
                 let repeat_value = if playback.fake_track_repeat_state {
                     "track (fake)".to_string()
@@ -304,7 +305,7 @@ fn construct_playback_text(
 
                 let mut parts = vec![];
 
-                for field in &fields {
+                for field in fields {
                     match field.as_str() {
                         "repeat" => parts.push(format!("repeat: {}", repeat_value)),
                         "shuffle" => parts.push(format!("shuffle: {}", playback.shuffle_state)),
