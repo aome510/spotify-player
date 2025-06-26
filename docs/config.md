@@ -328,10 +328,3 @@ action="ToggleLiked"
 key_sequence="C-l"
 ```
 
-- `playback_metadata_fields` lets you control which metadata fields are shown in the `{metadata}` section of the playback UI. For example, to show only repeat, shuffle, and volume, add:
-
-  ```toml
-  playback_metadata_fields = ["repeat", "shuffle", "volume"]
-  ```
-
-  You can use any combination and order of: `"repeat"`, `"shuffle"`, `"volume"`, `"device"`.
