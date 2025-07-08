@@ -92,7 +92,7 @@ notify = ["notify-rust"]
 daemon = ["daemonize", "streaming"]
 fzf = ["fuzzy-matcher"]
 
-default = ["rodio-backend", "media-control"]
+default = ["rodio-backend", "media-control", "image"]
 
 [package.metadata.binstall]
 pkg-url = "{ repo }/releases/download/v{ version }/{ name }_{ target }{ archive-suffix }"
