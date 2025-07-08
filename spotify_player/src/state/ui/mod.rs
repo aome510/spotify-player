@@ -38,6 +38,9 @@ pub struct UIState {
     /// which is mainly used to handle mouse click events (for seeking command)
     pub playback_progress_bar_rect: ratatui::layout::Rect,
 
+    /// Count prefix for vim-style navigation (e.g., 5j, 10k)
+    pub count_prefix: Option<usize>,
+
     #[cfg(feature = "image")]
     pub last_cover_image_render_info: ImageRenderInfo,
 }
@@ -154,6 +157,8 @@ impl Default for UIState {
             popup: None,
 
             playback_progress_bar_rect: Rect::default(),
+
+            count_prefix: None,
 
             #[cfg(feature = "image")]
             last_cover_image_render_info: ImageRenderInfo::default(),

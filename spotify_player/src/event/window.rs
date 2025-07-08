@@ -290,7 +290,14 @@ fn handle_command_for_track_table_window(
         }
     }
 
-    if handle_navigation_command(command, ui.current_page_mut(), id, filtered_tracks.len()) {
+    let count = ui.count_prefix;
+    if handle_navigation_command(
+        command,
+        ui.current_page_mut(),
+        id,
+        filtered_tracks.len(),
+        count,
+    ) {
         return Ok(true);
     }
 
@@ -347,7 +354,8 @@ pub fn handle_command_for_track_list_window(
         return Ok(false);
     }
 
-    if handle_navigation_command(command, ui.current_page_mut(), id, tracks.len()) {
+    let count = ui.count_prefix;
+    if handle_navigation_command(command, ui.current_page_mut(), id, tracks.len(), count) {
         return Ok(true);
     }
     match command {
@@ -390,7 +398,8 @@ pub fn handle_command_for_artist_list_window(
         return false;
     }
 
-    if handle_navigation_command(command, ui.current_page_mut(), id, artists.len()) {
+    let count = ui.count_prefix;
+    if handle_navigation_command(command, ui.current_page_mut(), id, artists.len(), count) {
         return true;
     }
     match command {
@@ -426,7 +435,8 @@ pub fn handle_command_for_album_list_window(
         return Ok(false);
     }
 
-    if handle_navigation_command(command, ui.current_page_mut(), id, albums.len()) {
+    let count = ui.count_prefix;
+    if handle_navigation_command(command, ui.current_page_mut(), id, albums.len(), count) {
         return Ok(true);
     }
     match command {
@@ -464,7 +474,8 @@ pub fn handle_command_for_playlist_list_window(
         return false;
     }
 
-    if handle_navigation_command(command, ui.current_page_mut(), id, playlists.len()) {
+    let count = ui.count_prefix;
+    if handle_navigation_command(command, ui.current_page_mut(), id, playlists.len(), count) {
         return true;
     }
     match command {
@@ -517,7 +528,8 @@ pub fn handle_command_for_show_list_window(
         return false;
     }
 
-    if handle_navigation_command(command, ui.current_page_mut(), id, shows.len()) {
+    let count = ui.count_prefix;
+    if handle_navigation_command(command, ui.current_page_mut(), id, shows.len(), count) {
         return true;
     }
     match command {
@@ -553,7 +565,8 @@ pub fn handle_command_for_episode_list_window(
         return Ok(false);
     }
 
-    if handle_navigation_command(command, ui.current_page_mut(), id, episodes.len()) {
+    let count = ui.count_prefix;
+    if handle_navigation_command(command, ui.current_page_mut(), id, episodes.len(), count) {
         return Ok(true);
     }
     match command {
@@ -593,7 +606,8 @@ fn handle_command_for_episode_table_window(
         return Ok(false);
     }
 
-    if handle_navigation_command(command, ui.current_page_mut(), id, episodes.len()) {
+    let count = ui.count_prefix;
+    if handle_navigation_command(command, ui.current_page_mut(), id, episodes.len(), count) {
         return Ok(true);
     }
     match command {

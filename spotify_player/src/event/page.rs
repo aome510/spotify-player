@@ -428,13 +428,14 @@ fn handle_command_for_browse_page(
         _ => anyhow::bail!("expect a browse page state"),
     };
 
+    let count = ui.count_prefix;
     let page_state = ui.current_page_mut();
     let selected = page_state.selected().unwrap_or_default();
     if selected >= len {
         return Ok(false);
     }
 
-    if handle_navigation_command(command, page_state, selected, len) {
+    if handle_navigation_command(command, page_state, selected, len, count) {
         return Ok(true);
     }
     match command {
@@ -485,7 +486,8 @@ fn handle_command_for_queue_page(command: Command, ui: &mut UIStateGuard) -> boo
         PageState::Queue { scroll_offset } => *scroll_offset,
         _ => return false,
     };
-    handle_navigation_command(command, ui.current_page_mut(), scroll_offset, 10000)
+    let count = ui.count_prefix;
+    handle_navigation_command(command, ui.current_page_mut(), scroll_offset, 10000, count)
 }
 
 fn handle_command_for_command_help_page(command: Command, ui: &mut UIStateGuard) -> bool {
@@ -497,7 +499,8 @@ fn handle_command_for_command_help_page(command: Command, ui: &mut UIStateGuard)
         ui.new_search_popup();
         return true;
     }
-    handle_navigation_command(command, ui.current_page_mut(), scroll_offset, 10000)
+    let count = ui.count_prefix;
+    handle_navigation_command(command, ui.current_page_mut(), scroll_offset, 10000, count)
 }
 
 pub fn handle_navigation_command(
@@ -505,6 +508,7 @@ pub fn handle_navigation_command(
     page: &mut PageState,
     id: usize,
     len: usize,
+    count: Option<usize>,
 ) -> bool {
     if len == 0 {
         return false;
@@ -513,26 +517,25 @@ pub fn handle_navigation_command(
     let configs = config::get_config();
     match command {
         Command::SelectNextOrScrollDown => {
-            if id + 1 < len {
-                page.select(id + 1);
-            }
+            let offset = count.unwrap_or(1);
+            page.select(std::cmp::min(id + offset, len - 1));
             true
         }
         Command::SelectPreviousOrScrollUp => {
-            if id > 0 {
-                page.select(id - 1);
-            }
+            let offset = count.unwrap_or(1);
+            page.select(id.saturating_sub(offset));
             true
         }
         Command::PageSelectNextOrScrollDown => {
-            page.select(std::cmp::min(
-                id + configs.app_config.page_size_in_rows,
-                len - 1,
-            ));
+            let page_size = configs.app_config.page_size_in_rows;
+            let offset = count.unwrap_or(1) * page_size;
+            page.select(std::cmp::min(id + offset, len - 1));
             true
         }
         Command::PageSelectPreviousOrScrollUp => {
-            page.select(id.saturating_sub(configs.app_config.page_size_in_rows));
+            let page_size = configs.app_config.page_size_in_rows;
+            let offset = count.unwrap_or(1) * page_size;
+            page.select(id.saturating_sub(offset));
             true
         }
         Command::SelectLastOrScrollToBottom => {
