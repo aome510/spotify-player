@@ -289,8 +289,23 @@ pub fn render_context_page(
         Some(context) => {
             // render context description
             let chunks = Layout::vertical([Constraint::Length(1), Constraint::Fill(0)]).split(rect);
+            let is_followed_string = if let Context::Playlist { playlist, .. } = context {
+                if data.user_data.is_followed_playlist(playlist) {
+                    "Followed"
+                } else {
+                    "Not Followed"
+                }
+            } else {
+                ""
+            };
+
             frame.render_widget(
-                Paragraph::new(context.description()).style(ui.theme.page_desc()),
+                Paragraph::new(format!(
+                    "{} | {}",
+                    context.description(),
+                    is_followed_string
+                ))
+                .style(ui.theme.page_desc()),
                 chunks[0],
             );
             let rect = chunks[1];
@@ -610,12 +625,10 @@ pub fn render_lyrics_page(
         .lines
         .iter()
         .enumerate()
-        .map(|(id, (_, line))| {
-            if id < last_played_line_id {
-                Line::styled(line, ui.theme.lyrics_played())
-            } else {
-                Line::raw(line)
-            }
+        .map(|(id, (_, line))| match (id + 1).cmp(&last_played_line_id) {
+            std::cmp::Ordering::Less => Line::styled(line, ui.theme.lyrics_played()),
+            std::cmp::Ordering::Equal => Line::styled(line, ui.theme.lyrics_playing()),
+            std::cmp::Ordering::Greater => Line::raw(line),
         })
         .collect::<Vec<_>>();
 
