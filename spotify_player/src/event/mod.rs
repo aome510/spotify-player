@@ -106,8 +106,10 @@ fn handle_key_event(
         if c.is_ascii_digit() {
             // Don't capture digits as count prefix if we're in search input mode
             let is_search_input = matches!(ui.current_page(), PageState::Search { state, .. } if state.focus == SearchFocusState::Input);
+            let is_search_popup = matches!(ui.popup, Some(PopupState::Search { .. }));
+            let is_playlist_create_popup = matches!(ui.popup, Some(PopupState::PlaylistCreate { .. }));
             
-            if !is_search_input {
+            if !is_search_input && !is_search_popup && !is_playlist_create_popup {
                 let digit = c.to_digit(10).unwrap() as usize;
                 // If we have an existing count prefix, append the digit
                 // Otherwise, start a new count (but ignore leading zeros)
