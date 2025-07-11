@@ -101,22 +101,28 @@ fn handle_key_event(
     let mut ui = state.ui.lock();
 
     // Check if the key is a digit and handle count prefix
+    // But only if we're not currently in search input mode
     if let Key::None(KeyCode::Char(c)) = key {
         if c.is_ascii_digit() {
-            let digit = c.to_digit(10).unwrap() as usize;
-            // If we have an existing count prefix, append the digit
-            // Otherwise, start a new count (but ignore leading zeros)
-            ui.count_prefix = match ui.count_prefix {
-                Some(count) => Some(count * 10 + digit),
-                None => {
-                    if digit > 0 {
-                        Some(digit)
-                    } else {
-                        None
+            // Don't capture digits as count prefix if we're in search input mode
+            let is_search_input = matches!(ui.current_page(), PageState::Search { state, .. } if state.focus == SearchFocusState::Input);
+            
+            if !is_search_input {
+                let digit = c.to_digit(10).unwrap() as usize;
+                // If we have an existing count prefix, append the digit
+                // Otherwise, start a new count (but ignore leading zeros)
+                ui.count_prefix = match ui.count_prefix {
+                    Some(count) => Some(count * 10 + digit),
+                    None => {
+                        if digit > 0 {
+                            Some(digit)
+                        } else {
+                            None
+                        }
                     }
-                }
-            };
-            return Ok(());
+                };
+                return Ok(());
+            }
         }
     }
 
