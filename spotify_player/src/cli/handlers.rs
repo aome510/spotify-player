@@ -132,6 +132,9 @@ fn handle_playback_subcommand(args: &ArgMatches) -> Result<Request> {
                 .expect("position_offset_ms is required");
             Command::Seek(*position_offset_ms)
         }
+        "state" => {
+            return Ok(Request::Get(GetRequest::Key(Key::Playback)));
+        }
         _ => unreachable!(),
     };
 
