@@ -58,6 +58,12 @@ pub enum IdOrName {
     Name(String),
 }
 
+#[derive(Debug, Serialize, Deserialize, clap::ValueEnum, Clone)]
+pub enum EditAction {
+    Add,
+    Delete,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub enum PlaylistCommand {
     New {
@@ -81,6 +87,11 @@ pub enum PlaylistCommand {
     Sync {
         id: Option<PlaylistId<'static>>,
         delete: bool,
+    },
+    Edit {
+        playlist_id: PlaylistId<'static>,
+        action: EditAction,
+        track_id: TrackId<'static>,
     },
 }
 

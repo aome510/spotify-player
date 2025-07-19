@@ -23,7 +23,7 @@ use crate::{
 use rspotify::prelude::{BaseClient, OAuthClient};
 
 use super::{
-    Command, Deserialize, GetRequest, IdOrName, ItemId, ItemType, Key, PlaylistCommand, Response,
+    Command, Deserialize, EditAction, GetRequest, IdOrName, ItemId, ItemType, Key, PlaylistCommand, Response,
     Serialize, MAX_REQUEST_SIZE,
 };
 
@@ -593,6 +593,42 @@ async fn handle_playlist_request(client: &Client, command: PlaylistCommand) -> R
             }
 
             Ok(result)
+        }
+        PlaylistCommand::Edit {
+            playlist_id,
+            action,
+            track_id,
+        } => {
+            match action {
+                EditAction::Add => {
+                    client
+                        .playlist_add_items(
+                            playlist_id.clone(),
+                            [rspotify::model::PlayableId::Track(track_id.as_ref())],
+                            None,
+                        )
+                        .await?;
+                    Ok(format!(
+                        "Track '{}' added to playlist '{}'",
+                        track_id.id(),
+                        playlist_id.id()
+                    ))
+                }
+                EditAction::Delete => {
+                    client
+                        .playlist_remove_all_occurrences_of_items(
+                            playlist_id.clone(),
+                            [rspotify::model::PlayableId::Track(track_id.as_ref())],
+                            None,
+                        )
+                        .await?;
+                    Ok(format!(
+                        "Track '{}' removed from playlist '{}'",
+                        track_id.id(),
+                        playlist_id.id()
+                    ))
+                }
+            }
         }
     }
 }
