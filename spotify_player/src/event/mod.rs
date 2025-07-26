@@ -100,29 +100,6 @@ fn handle_key_event(
     let key: Key = event.into();
     let mut ui = state.ui.lock();
 
-    // Check if the key is a digit and handle count prefix
-    // Only handle vim motions when not in a popup to avoid interfering with action selection
-    if ui.popup.is_none() {
-        if let Key::None(KeyCode::Char(c)) = key {
-            if c.is_ascii_digit() {
-                let digit = c.to_digit(10).unwrap() as usize;
-                // If we have an existing count prefix, append the digit
-                // Otherwise, start a new count (but ignore leading zeros)
-                ui.count_prefix = match ui.count_prefix {
-                    Some(count) => Some(count * 10 + digit),
-                    None => {
-                        if digit > 0 {
-                            Some(digit)
-                        } else {
-                            None
-                        }
-                    }
-                };
-                return Ok(());
-            }
-        }
-    }
-
     let mut key_sequence = ui.input_key_sequence.clone();
     key_sequence.keys.push(key);
 
@@ -166,10 +143,26 @@ fn handle_key_event(
         ui.input_key_sequence.keys = vec![];
         ui.count_prefix = None;
     } else {
-        ui.input_key_sequence = key_sequence;
-        // If we didn't handle the key and it wasn't a digit, clear the count prefix
-        if !matches!(key, Key::None(KeyCode::Char(c)) if c.is_ascii_digit()) {
-            ui.count_prefix = None;
+        // update the count prefix if the key is a digit
+        match key {
+            Key::None(KeyCode::Char(c)) if c.is_ascii_digit() => {
+                let digit = c.to_digit(10).unwrap() as usize;
+                ui.input_key_sequence.keys = vec![];
+                ui.count_prefix = match ui.count_prefix {
+                    Some(count) => Some(count * 10 + digit),
+                    None => {
+                        if digit > 0 {
+                            Some(digit)
+                        } else {
+                            None
+                        }
+                    }
+                };
+            }
+            _ => {
+                ui.input_key_sequence = key_sequence;
+                ui.count_prefix = None;
+            }
         }
     }
     Ok(())
