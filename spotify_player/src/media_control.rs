@@ -192,7 +192,7 @@ mod windows {
                     ..Default::default()
                 };
 
-                if RegisterClassExW(&wnd_class) == 0 {
+                if RegisterClassExW(&raw const wnd_class) == 0 {
                     return Err(format!(
                         "Registering class failed: {}",
                         Error::last_os_error()
@@ -246,14 +246,14 @@ mod windows {
     pub fn pump_event_queue() -> bool {
         unsafe {
             let mut msg: MSG = std::mem::zeroed();
-            let mut has_message = PeekMessageW(&mut msg, None, 0, 0, PM_REMOVE).as_bool();
+            let mut has_message = PeekMessageW(&raw mut msg, None, 0, 0, PM_REMOVE).as_bool();
             while msg.message != WM_QUIT && has_message {
-                if !IsDialogMessageW(GetAncestor(msg.hwnd, GA_ROOT), &msg).as_bool() {
-                    let _ = TranslateMessage(&msg);
-                    let _ = DispatchMessageW(&msg);
+                if !IsDialogMessageW(GetAncestor(msg.hwnd, GA_ROOT), &raw const msg).as_bool() {
+                    let _ = TranslateMessage(&raw const msg);
+                    let _ = DispatchMessageW(&raw const msg);
                 }
 
-                has_message = PeekMessageW(&mut msg, None, 0, 0, PM_REMOVE).as_bool();
+                has_message = PeekMessageW(&raw mut msg, None, 0, 0, PM_REMOVE).as_bool();
             }
 
             msg.message == WM_QUIT
