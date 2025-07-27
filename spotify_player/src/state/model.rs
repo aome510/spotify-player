@@ -1,3 +1,4 @@
+use crate::ui::utils::to_bidi_string;
 use crate::utils::map_join;
 use html_escape::decode_html_entities;
 pub use rspotify::model::{
@@ -6,7 +7,6 @@ pub use rspotify::model::{
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::fmt::{Display, Write};
-use crate::ui::utils::to_bidi_string;
 
 /// A trait similar to Display but with bidirectional text support
 pub trait BidiDisplay: Display {
