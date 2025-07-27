@@ -242,31 +242,27 @@ impl Context {
             Context::Album {
                 ref album,
                 ref tracks,
-            } => {
-                let album_length = play_time(tracks);
-                format!(
-                    "{} | {} | {} songs | {}",
-                    album.name,
-                    album.release_date,
-                    tracks.len(),
-                    album_length,
-                )
-            }
+            } => format!(
+                "{} | {} | {} songs | {}",
+                album.name,
+                album.release_date,
+                tracks.len(),
+                play_time(tracks),
+            ),
             Context::Playlist {
                 ref playlist,
                 tracks,
-            } => {
-                let playlist_length = play_time(tracks);
-                format!(
-                    "{} | {} | {} songs | {}",
-                    playlist.name,
-                    playlist.owner.0,
-                    tracks.len(),
-                    playlist_length,
-                )
-            }
+            } => format!(
+                "{} | {} | {} songs | {}",
+                playlist.name,
+                playlist.owner.0,
+                tracks.len(),
+                play_time(tracks),
+            ),
             Context::Artist { ref artist, .. } => artist.name.to_string(),
-            Context::Tracks { desc, tracks } => format!("{} | {} songs", desc, tracks.len()),
+            Context::Tracks { desc, tracks } => {
+                format!("{} | {} songs | {}", desc, tracks.len(), play_time(tracks))
+            }
             Context::Show {
                 ref show,
                 ref episodes,
