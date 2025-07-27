@@ -293,16 +293,18 @@ pub fn render_context_page(
             // render context description
             let chunks = Layout::vertical([Constraint::Length(1), Constraint::Fill(0)]).split(rect);
 
-            let mut description = context.description();
-            if let Context::Playlist { playlist, .. } = context {
-                description += &format!(
-                    " | {}",
+            let description = if let Context::Playlist { playlist, .. } = context {
+                format!(
+                    "{} | {}",
+                    context.description(),
                     if data.user_data.is_followed_playlist(playlist) {
                         "Followed"
                     } else {
                         "Not Followed"
                     }
-                );
+                )
+            } else {
+                context.description()
             };
 
             frame.render_widget(
