@@ -2,6 +2,7 @@ use super::{
     config, Block, BorderType, Borders, Frame, List, ListItem, ListState, Rect, Span, Style, Table,
     TableState,
 };
+use unicode_bidi::BidiInfo;
 
 /// Construct and render a block.
 ///
@@ -117,4 +118,20 @@ pub fn render_table_window(
 ) {
     adjust_table_state(state, len);
     frame.render_stateful_widget(widget, rect, state);
+}
+
+/// Convert a string to a bidirectional string.
+/// Used to handle RTL text properly in the UI.
+pub fn to_bidi_string(s: &str) -> String {
+    let bidi_info = BidiInfo::new(s, None);
+
+    let bidi_string = if bidi_info.has_rtl() && !bidi_info.paragraphs.is_empty() {
+        bidi_info
+            .reorder_line(&bidi_info.paragraphs[0], 0..s.len())
+            .into_owned()
+    } else {
+        s.to_string()
+    };
+
+    bidi_string
 }
