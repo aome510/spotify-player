@@ -101,7 +101,8 @@ Run `cargo install spotify_player --locked` to install the application from [cra
 
 Run `pacman -S spotify-player` to install the application.
 
-Alternatively, run `yay -S spotify-player-full` to install an AUR package compiled with full feature support and Pulseaudio/Pipewire instead of rodio.
+**Note**: Defaults to PulseAudio / Pipewire audio backend. For a different one, please consider modifying the [official PKGBUILD](https://gitlab.archlinux.org/archlinux/packaging/packages/spotify-player) and rebuilding it manually. See [Audio Backends](#audio-backend) for a list of options.
+
 
 ### Void Linux
 
