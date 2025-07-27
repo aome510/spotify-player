@@ -286,24 +286,34 @@ fn construct_playback_text(
                     ui.theme.playback_album(),
                 ),
             },
-            "{metadata}" => (
-                format!(
-                    "repeat: {} | shuffle: {} | volume: {} | device: {}",
-                    if playback.fake_track_repeat_state {
-                        "track (fake)"
-                    } else {
-                        <&'static str>::from(playback.repeat_state)
-                    },
-                    playback.shuffle_state,
-                    if let Some(volume) = playback.mute_state {
-                        format!("{volume}% (muted)")
-                    } else {
-                        format!("{}%", playback.volume.unwrap_or_default())
-                    },
-                    playback.device_name,
-                ),
-                ui.theme.playback_metadata(),
-            ),
+            "{metadata}" => {
+                let repeat_value = if playback.fake_track_repeat_state {
+                    "track (fake)".to_string()
+                } else {
+                    <&'static str>::from(playback.repeat_state).to_string()
+                };
+
+                let volume_value = if let Some(volume) = playback.mute_state {
+                    format!("{volume}% (muted)")
+                } else {
+                    format!("{}%", playback.volume.unwrap_or_default())
+                };
+
+                let mut parts = vec![];
+
+                for field in &configs.app_config.playback_metadata_fields {
+                    match field.as_str() {
+                        "repeat" => parts.push(format!("repeat: {repeat_value}")),
+                        "shuffle" => parts.push(format!("shuffle: {}", playback.shuffle_state)),
+                        "volume" => parts.push(format!("volume: {volume_value}")),
+                        "device" => parts.push(format!("device: {}", playback.device_name)),
+                        _ => {}
+                    }
+                }
+
+                let metadata_str = parts.join(" | ");
+                (metadata_str, ui.theme.playback_metadata())
+            }
             _ => continue,
         };
 

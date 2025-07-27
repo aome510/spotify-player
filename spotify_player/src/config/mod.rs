@@ -60,6 +60,7 @@ pub struct AppConfig {
     pub player_event_hook_command: Option<Command>,
 
     pub playback_format: String,
+    pub playback_metadata_fields: Vec<String>,
     #[cfg(feature = "notify")]
     pub notify_format: NotifyFormat,
     #[cfg(feature = "notify")]
@@ -268,6 +269,12 @@ impl Default for AppConfig {
             playback_format: String::from(
                 "{status} {track} • {artists} {liked}\n{album}\n{metadata}",
             ),
+            playback_metadata_fields: vec![
+                "repeat".to_string(),
+                "shuffle".to_string(),
+                "volume".to_string(),
+                "device".to_string(),
+            ],
             #[cfg(feature = "notify")]
             notify_format: NotifyFormat {
                 summary: String::from("{track} • {artists}"),
