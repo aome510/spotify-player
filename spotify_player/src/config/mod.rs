@@ -37,7 +37,7 @@ pub struct Configs {
 impl Configs {
     pub fn new(config_folder: &std::path::Path, cache_folder: &std::path::Path) -> Result<Self> {
         Ok(Self {
-            app_config: AppConfig::new(config_folder)?,
+            app_config: AppConfig::new(config_folder, cache_folder)?,
             keymap_config: KeymapConfig::new(config_folder)?,
             theme_config: ThemeConfig::new(config_folder)?,
             cache_folder: cache_folder.to_path_buf(),
@@ -56,6 +56,8 @@ pub struct AppConfig {
     pub client_port: u16,
 
     pub login_redirect_uri: String,
+
+    pub log_folder: Option<PathBuf>,
 
     pub player_event_hook_command: Option<Command>,
 
@@ -264,6 +266,9 @@ impl Default for AppConfig {
 
             login_redirect_uri: "http://127.0.0.1:8989/login".to_string(),
 
+            // If this is None, the log folder will be set to the default cache folder.
+            log_folder: None,
+
             tracks_playback_limit: 50,
 
             playback_format: String::from(
@@ -378,10 +383,14 @@ impl LayoutConfig {
 }
 
 impl AppConfig {
-    pub fn new(path: &Path) -> Result<Self> {
+    pub fn new(cfg_file_path: &Path, default_log_folder: &Path) -> Result<Self> {
         let mut config = Self::default();
-        if !config.parse_config_file(path)? {
-            config.write_config_file(path)?;
+        if !config.parse_config_file(cfg_file_path)? {
+            config.write_config_file(cfg_file_path)?;
+        }
+
+        if config.log_folder.is_none() {
+            config.log_folder = Some(PathBuf::from(default_log_folder));
         }
 
         config.layout.check_values()?;
