@@ -1,8 +1,8 @@
 use crate::{auth::AuthConfig, client};
 
 use super::{
-    config, init_cli, start_socket, Command, ContextType, GetRequest, IdOrName, ItemType, Key,
-    PlaylistCommand, PlaylistId, Request, Response, MAX_REQUEST_SIZE,
+    config, init_cli, start_socket, Command, ContextType, EditAction, GetRequest, IdOrName, ItemType, Key,
+    PlaylistCommand, PlaylistId, Request, Response, TrackId, AlbumId, MAX_REQUEST_SIZE,
 };
 use anyhow::{Context, Result};
 use clap::{ArgMatches, Id};
@@ -313,6 +313,41 @@ fn handle_playlist_subcommand(args: &ArgMatches) -> Result<Request> {
             };
 
             PlaylistCommand::Sync { id: pid, delete }
+        }
+        "edit" => {
+            let playlist_id_str = args
+                .get_one::<String>("playlist_id")
+                .expect("playlist_id arg is required")
+                .to_owned();
+
+            let action_str = args
+                .get_one::<String>("action")
+                .expect("action arg is required");
+
+            let playlist_id = PlaylistId::from_id(playlist_id_str)?;
+            
+            let action = match action_str.as_str() {
+                "add" => EditAction::Add,
+                "delete" => EditAction::Delete,
+                _ => unreachable!(),
+            };
+
+            let track_id = args
+                .get_one::<String>("track_id")
+                .map(|s| TrackId::from_id(s.to_owned()))
+                .transpose()?;
+
+            let album_id = args
+                .get_one::<String>("album_id")
+                .map(|s| AlbumId::from_id(s.to_owned()))
+                .transpose()?;
+
+            PlaylistCommand::Edit {
+                playlist_id,
+                action,
+                track_id,
+                album_id,
+            }
         }
         _ => unreachable!(),
     };
