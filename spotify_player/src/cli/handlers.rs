@@ -2,7 +2,7 @@ use crate::{auth::AuthConfig, client};
 
 use super::{
     config, init_cli, start_socket, Command, ContextType, EditAction, GetRequest, IdOrName, ItemType, Key,
-    PlaylistCommand, PlaylistId, Request, Response, TrackId, MAX_REQUEST_SIZE,
+    PlaylistCommand, PlaylistId, Request, Response, TrackId, AlbumId, MAX_REQUEST_SIZE,
 };
 use anyhow::{Context, Result};
 use clap::{ArgMatches, Id};
@@ -324,13 +324,7 @@ fn handle_playlist_subcommand(args: &ArgMatches) -> Result<Request> {
                 .get_one::<String>("action")
                 .expect("action arg is required");
 
-            let track_id_str = args
-                .get_one::<String>("track_id")
-                .expect("track_id arg is required")
-                .to_owned();
-
             let playlist_id = PlaylistId::from_id(playlist_id_str)?;
-            let track_id = TrackId::from_id(track_id_str)?;
             
             let action = match action_str.as_str() {
                 "add" => EditAction::Add,
@@ -338,10 +332,21 @@ fn handle_playlist_subcommand(args: &ArgMatches) -> Result<Request> {
                 _ => unreachable!(),
             };
 
+            let track_id = args
+                .get_one::<String>("track_id")
+                .map(|s| TrackId::from_id(s.to_owned()))
+                .transpose()?;
+
+            let album_id = args
+                .get_one::<String>("album_id")
+                .map(|s| AlbumId::from_id(s.to_owned()))
+                .transpose()?;
+
             PlaylistCommand::Edit {
                 playlist_id,
                 action,
                 track_id,
+                album_id,
             }
         }
         _ => unreachable!(),
