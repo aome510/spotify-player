@@ -89,10 +89,12 @@ pub enum PlaylistCommand {
         delete: bool,
     },
     Edit {
-        playlist_id: PlaylistId<'static>,
+        playlist_id_or_name: IdOrName,
         action: EditAction,
         track_id: Option<TrackId<'static>>,
+        track_name: Option<String>,
         album_id: Option<AlbumId<'static>>,
+        album_name: Option<String>,
     },
 }
 

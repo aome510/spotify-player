@@ -595,14 +595,32 @@ async fn handle_playlist_request(client: &Client, command: PlaylistCommand) -> R
             Ok(result)
         }
         PlaylistCommand::Edit {
-            playlist_id,
+            playlist_id_or_name,
             action,
             track_id,
+            track_name,
             album_id,
+            album_name,
         } => {
+            let playlist_id = match get_spotify_id(client, ItemType::Playlist, playlist_id_or_name).await? {
+                ItemId::Playlist(id) => id,
+                _ => unreachable!(),
+            };
+
             match action {
                 EditAction::Add => {
-                    if let Some(track_id) = track_id {
+                    if track_id.is_some() || track_name.is_some() {
+                        let track_id = if let Some(track_id) = track_id {
+                            track_id
+                        } else if let Some(track_name) = track_name {
+                            match get_spotify_id(client, ItemType::Track, IdOrName::Name(track_name)).await? {
+                                ItemId::Track(id) => id,
+                                _ => unreachable!(),
+                            }
+                        } else {
+                            unreachable!()
+                        };
+
                         client
                             .playlist_add_items(
                                 playlist_id.clone(),
@@ -615,7 +633,18 @@ async fn handle_playlist_request(client: &Client, command: PlaylistCommand) -> R
                             track_id.id(),
                             playlist_id.id()
                         ))
-                    } else if let Some(album_id) = album_id {
+                    } else if album_id.is_some() || album_name.is_some() {
+                        let album_id = if let Some(album_id) = album_id {
+                            album_id
+                        } else if let Some(album_name) = album_name {
+                            match get_spotify_id(client, ItemType::Album, IdOrName::Name(album_name)).await? {
+                                ItemId::Album(id) => id,
+                                _ => unreachable!(),
+                            }
+                        } else {
+                            unreachable!()
+                        };
+
                         let album = client.album(album_id.clone(), None).await?;
                         let track_count = album.tracks.items.len();
                         let track_ids: Vec<rspotify::model::PlayableId> = album
@@ -638,11 +667,22 @@ async fn handle_playlist_request(client: &Client, command: PlaylistCommand) -> R
                             playlist_id.id()
                         ))
                     } else {
-                        anyhow::bail!("Either track_id or album_id must be provided")
+                        anyhow::bail!("Either track or album must be provided")
                     }
                 }
                 EditAction::Delete => {
-                    if let Some(track_id) = track_id {
+                    if track_id.is_some() || track_name.is_some() {
+                        let track_id = if let Some(track_id) = track_id {
+                            track_id
+                        } else if let Some(track_name) = track_name {
+                            match get_spotify_id(client, ItemType::Track, IdOrName::Name(track_name)).await? {
+                                ItemId::Track(id) => id,
+                                _ => unreachable!(),
+                            }
+                        } else {
+                            unreachable!()
+                        };
+
                         client
                             .playlist_remove_all_occurrences_of_items(
                                 playlist_id.clone(),
@@ -655,7 +695,18 @@ async fn handle_playlist_request(client: &Client, command: PlaylistCommand) -> R
                             track_id.id(),
                             playlist_id.id()
                         ))
-                    } else if let Some(album_id) = album_id {
+                    } else if album_id.is_some() || album_name.is_some() {
+                        let album_id = if let Some(album_id) = album_id {
+                            album_id
+                        } else if let Some(album_name) = album_name {
+                            match get_spotify_id(client, ItemType::Album, IdOrName::Name(album_name)).await? {
+                                ItemId::Album(id) => id,
+                                _ => unreachable!(),
+                            }
+                        } else {
+                            unreachable!()
+                        };
+
                         let album = client.album(album_id.clone(), None).await?;
                         let track_count = album.tracks.items.len();
                         let track_ids: Vec<rspotify::model::PlayableId> = album
@@ -682,7 +733,7 @@ async fn handle_playlist_request(client: &Client, command: PlaylistCommand) -> R
                             playlist_id.id()
                         ))
                     } else {
-                        anyhow::bail!("Either track_id or album_id must be provided")
+                        anyhow::bail!("Either track or album must be provided")
                     }
                 }
             }
