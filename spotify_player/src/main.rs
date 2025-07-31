@@ -36,7 +36,12 @@ fn init_spotify(
     Ok(())
 }
 
-fn init_logging(cache_folder: &std::path::Path) -> Result<()> {
+fn init_logging(log_folder: &std::path::Path) -> Result<()> {
+    if std::env::var_os("RUST_LOG").is_some_and(|x| x == "off") {
+        // Don't create log files if logging is disabled.
+        return Ok(());
+    }
+
     let log_prefix = format!(
         "spotify-player-{}",
         chrono::Local::now().format("%y-%m-%d-%H-%M")
@@ -47,7 +52,10 @@ fn init_logging(cache_folder: &std::path::Path) -> Result<()> {
         // default to log the current crate and librespot crates
         std::env::set_var("RUST_LOG", "spotify_player=info,librespot=info");
     }
-    let log_file = std::fs::File::create(cache_folder.join(format!("{log_prefix}.log")))
+    if !log_folder.exists() {
+        std::fs::create_dir_all(log_folder)?;
+    }
+    let log_file = std::fs::File::create(log_folder.join(format!("{log_prefix}.log")))
         .context("failed to create log file")?;
     tracing_subscriber::fmt::fmt()
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
@@ -56,9 +64,8 @@ fn init_logging(cache_folder: &std::path::Path) -> Result<()> {
         .init();
 
     // initialize the application's panic backtrace
-    let backtrace_file =
-        std::fs::File::create(cache_folder.join(format!("{log_prefix}.backtrace")))
-            .context("failed to create backtrace file")?;
+    let backtrace_file = std::fs::File::create(log_folder.join(format!("{log_prefix}.backtrace")))
+        .context("failed to create backtrace file")?;
     let backtrace_file = std::sync::Mutex::new(backtrace_file);
     std::panic::set_hook(Box::new(move |info| {
         let mut file = backtrace_file.lock().unwrap();
@@ -262,7 +269,13 @@ fn main() -> Result<()> {
     match args.subcommand() {
         None => {
             // initialize the application's log
-            init_logging(&cache_folder).context("failed to initialize application's logging")?;
+            let log_folder = config::get_config()
+                .app_config
+                .log_folder
+                .as_deref()
+                .expect("this Option has been initialized with a value");
+
+            init_logging(log_folder).context("failed to initialize application's logging")?;
 
             // log the application's configurations
             tracing::info!("Configurations: {:?}", config::get_config());
