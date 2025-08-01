@@ -3,10 +3,6 @@ use std::{
     fmt::Display,
 };
 
-use ratatui::text::Line;
-
-use crate::{state::Episode, utils::format_duration};
-
 use super::{
     config, utils, utils::construct_and_render_block, Album, Artist, ArtistFocusState, Borders,
     BrowsePageUIState, Cell, Constraint, Context, ContextPageUIState, DataReadGuard, Frame, Id,
@@ -14,6 +10,10 @@ use super::{
     PlaylistFolderItem, Rect, Row, SearchFocusState, SharedState, Style, Table, Track,
     UIStateGuard,
 };
+use crate::state::BidiDisplay;
+use crate::ui::utils::to_bidi_string;
+use crate::{state::Episode, utils::format_duration};
+use ratatui::text::Line;
 
 const COMMAND_TABLE_CONSTRAINTS: [Constraint; 3] = [
     Constraint::Percentage(25),
@@ -36,7 +36,10 @@ pub fn render_search_page(
     rect: Rect,
 ) {
     fn search_items<T: Display>(items: &[T]) -> Vec<(String, bool)> {
-        items.iter().map(|i| (i.to_string(), false)).collect()
+        items
+            .iter()
+            .map(|i| (to_bidi_string(&i.to_string()), false))
+            .collect()
     }
 
     // 1. Get data
@@ -289,23 +292,23 @@ pub fn render_context_page(
         Some(context) => {
             // render context description
             let chunks = Layout::vertical([Constraint::Length(1), Constraint::Fill(0)]).split(rect);
-            let is_followed_string = if let Context::Playlist { playlist, .. } = context {
-                if data.user_data.is_followed_playlist(playlist) {
-                    "Followed"
-                } else {
-                    "Not Followed"
-                }
+
+            let description = if let Context::Playlist { playlist, .. } = context {
+                format!(
+                    "{} | {}",
+                    context.description(),
+                    if data.user_data.is_followed_playlist(playlist) {
+                        "Followed"
+                    } else {
+                        "Not Followed"
+                    }
+                )
             } else {
-                ""
+                context.description()
             };
 
             frame.render_widget(
-                Paragraph::new(format!(
-                    "{} | {}",
-                    context.description(),
-                    is_followed_string
-                ))
-                .style(ui.theme.page_desc()),
+                Paragraph::new(description).style(ui.theme.page_desc()),
                 chunks[0],
             );
             let rect = chunks[1];
@@ -445,9 +448,9 @@ pub fn render_library_page(
         .into_iter()
         .map(|item| match item {
             PlaylistFolderItem::Playlist(p) => {
-                (p.to_string(), curr_context_uri == Some(p.id.uri()))
+                (p.to_bidi_string(), curr_context_uri == Some(p.id.uri()))
             }
-            PlaylistFolderItem::Folder(f) => (f.to_string(), false),
+            PlaylistFolderItem::Folder(f) => (f.to_bidi_string(), false),
         })
         .collect::<Vec<_>>();
 
@@ -463,7 +466,7 @@ pub fn render_library_page(
         &ui.theme,
         ui.search_filtered_items(&data.user_data.saved_albums)
             .into_iter()
-            .map(|a| (a.to_string(), curr_context_uri == Some(a.id.uri())))
+            .map(|a| (a.to_bidi_string(), curr_context_uri == Some(a.id.uri())))
             .collect(),
         is_active && focus_state == LibraryFocusState::SavedAlbums,
     );
@@ -472,7 +475,7 @@ pub fn render_library_page(
         &ui.theme,
         ui.search_filtered_items(&data.user_data.followed_artists)
             .into_iter()
-            .map(|a| (a.to_string(), curr_context_uri == Some(a.id.uri())))
+            .map(|a| (a.to_bidi_string(), curr_context_uri == Some(a.id.uri())))
             .collect(),
         is_active && focus_state == LibraryFocusState::FollowedArtists,
     );
@@ -606,8 +609,10 @@ pub fn render_lyrics_page(
 
     // 4. Render the page's widgets
     // render lyric page description text
+    let bidi_track = to_bidi_string(track);
+    let bidi_artists = to_bidi_string(artists);
     frame.render_widget(
-        Paragraph::new(format!("{track} by {artists}")).style(ui.theme.page_desc()),
+        Paragraph::new(format!("{bidi_track} by {bidi_artists}")).style(ui.theme.page_desc()),
         chunks[0],
     );
 
@@ -975,9 +980,9 @@ fn render_track_table(
                     Cell::from("")
                 },
                 Cell::from(id),
-                Cell::from(t.display_name()),
-                Cell::from(t.artists_info()),
-                Cell::from(t.album_info()),
+                Cell::from(to_bidi_string(&t.display_name())),
+                Cell::from(to_bidi_string(&t.artists_info())),
+                Cell::from(to_bidi_string(&t.album_info())),
                 Cell::from(format!(
                     "{}:{:02}",
                     t.duration.as_secs() / 60,
@@ -1067,7 +1072,7 @@ fn render_episode_table(
             };
             Row::new(vec![
                 Cell::from(id),
-                Cell::from(e.name.clone()),
+                Cell::from(to_bidi_string(&e.name)),
                 Cell::from(e.release_date.clone()),
                 Cell::from(format!(
                     "{}:{:02}",

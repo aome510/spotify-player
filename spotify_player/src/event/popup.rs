@@ -214,7 +214,7 @@ pub fn handle_key_sequence_for_popup(
                 command,
                 ui,
                 &artist_uris,
-                rspotify::model::Type::Artist,
+                &rspotify::model::Type::Artist,
             )
         }
         PopupState::UserSavedAlbumList(_) => {
@@ -231,7 +231,7 @@ pub fn handle_key_sequence_for_popup(
                 command,
                 ui,
                 &album_uris,
-                rspotify::model::Type::Album,
+                &rspotify::model::Type::Album,
             )
         }
         PopupState::ThemeList(themes, _) => {
@@ -379,7 +379,7 @@ fn handle_command_for_context_browsing_list_popup(
     command: Command,
     ui: &mut UIStateGuard,
     uris: &[String],
-    context_type: rspotify::model::Type,
+    context_type: &rspotify::model::Type,
 ) -> Result<bool> {
     handle_command_for_list_popup(
         command,
