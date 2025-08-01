@@ -124,6 +124,7 @@ pub fn init_playback_subcommand() -> Command {
                         .required(true),
                 ),
         )
+        .subcommand(Command::new("state").about("Get current playback state"))
 }
 
 pub fn init_search_command() -> Command {
