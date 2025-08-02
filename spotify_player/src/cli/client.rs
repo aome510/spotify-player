@@ -598,35 +598,92 @@ async fn handle_playlist_request(client: &Client, command: PlaylistCommand) -> R
             playlist_id,
             action,
             track_id,
+            album_id,
         } => {
             match action {
                 EditAction::Add => {
-                    client
-                        .playlist_add_items(
-                            playlist_id.clone(),
-                            [rspotify::model::PlayableId::Track(track_id.as_ref())],
-                            None,
-                        )
-                        .await?;
-                    Ok(format!(
-                        "Track '{}' added to playlist '{}'",
-                        track_id.id(),
-                        playlist_id.id()
-                    ))
+                    if let Some(track_id) = track_id {
+                        client
+                            .playlist_add_items(
+                                playlist_id.clone(),
+                                [rspotify::model::PlayableId::Track(track_id.as_ref())],
+                                None,
+                            )
+                            .await?;
+                        Ok(format!(
+                            "Track '{}' added to playlist '{}'",
+                            track_id.id(),
+                            playlist_id.id()
+                        ))
+                    } else if let Some(album_id) = album_id {
+                        let album = client.album(album_id.clone(), None).await?;
+                        let track_count = album.tracks.items.len();
+                        let track_ids: Vec<rspotify::model::PlayableId> = album
+                            .tracks
+                            .items
+                            .into_iter()
+                            .filter_map(|t| t.id.map(|id| rspotify::model::PlayableId::Track(id)))
+                            .collect();
+                        
+                        if !track_ids.is_empty() {
+                            client
+                                .playlist_add_items(playlist_id.clone(), track_ids, None)
+                                .await?;
+                        }
+                        
+                        Ok(format!(
+                            "Album '{}' ({} tracks) added to playlist '{}'",
+                            album.name,
+                            track_count,
+                            playlist_id.id()
+                        ))
+                    } else {
+                        anyhow::bail!("Either track_id or album_id must be provided")
+                    }
                 }
                 EditAction::Delete => {
-                    client
-                        .playlist_remove_all_occurrences_of_items(
-                            playlist_id.clone(),
-                            [rspotify::model::PlayableId::Track(track_id.as_ref())],
-                            None,
-                        )
-                        .await?;
-                    Ok(format!(
-                        "Track '{}' removed from playlist '{}'",
-                        track_id.id(),
-                        playlist_id.id()
-                    ))
+                    if let Some(track_id) = track_id {
+                        client
+                            .playlist_remove_all_occurrences_of_items(
+                                playlist_id.clone(),
+                                [rspotify::model::PlayableId::Track(track_id.as_ref())],
+                                None,
+                            )
+                            .await?;
+                        Ok(format!(
+                            "Track '{}' removed from playlist '{}'",
+                            track_id.id(),
+                            playlist_id.id()
+                        ))
+                    } else if let Some(album_id) = album_id {
+                        let album = client.album(album_id.clone(), None).await?;
+                        let track_count = album.tracks.items.len();
+                        let track_ids: Vec<rspotify::model::PlayableId> = album
+                            .tracks
+                            .items
+                            .into_iter()
+                            .filter_map(|t| t.id.map(|id| rspotify::model::PlayableId::Track(id)))
+                            .collect();
+                        
+                        if !track_ids.is_empty() {
+                            client
+                                .playlist_remove_all_occurrences_of_items(
+                                    playlist_id.clone(), 
+                                    track_ids, 
+                                    None
+                                )
+                                .await?;
+                        }
+                        
+                        Ok(format!(
+                            "Album '{}' ({} tracks) removed from playlist '{}'",
+                            album.name,
+                            track_count,
+                            playlist_id.id()
+                        ))
+                    } else {
+                        anyhow::bail!("Either track_id or album_id must be provided")
+                    }
                 }
             }
         }

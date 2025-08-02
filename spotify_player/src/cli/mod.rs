@@ -91,7 +91,8 @@ pub enum PlaylistCommand {
     Edit {
         playlist_id: PlaylistId<'static>,
         action: EditAction,
-        track_id: TrackId<'static>,
+        track_id: Option<TrackId<'static>>,
+        album_id: Option<AlbumId<'static>>,
     },
 }
 
