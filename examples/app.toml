@@ -4,6 +4,7 @@ login_redirect_uri = "http://127.0.0.1:8989/login"
 client_port = 8080
 tracks_playback_limit = 50
 playback_format = "{status} {track} • {artists}\n{album}\n{metadata}"
+playback_metadata_fields = ["repeat", "shuffle", "volume", "device"]
 notify_format = { summary = "{track} • {artists}", body = "{album}" }
 notify_timeout_in_secs = 0
 app_refresh_duration_in_ms = 32

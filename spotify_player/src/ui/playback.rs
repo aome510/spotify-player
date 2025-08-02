@@ -1,14 +1,14 @@
-#[cfg(feature = "image")]
-use crate::state::ImageRenderInfo;
-#[cfg(feature = "image")]
-use anyhow::{Context, Result};
-use rspotify::model::Id;
-
 use super::{
     config, utils::construct_and_render_block, Borders, Constraint, Frame, Gauge, Layout, Line,
     LineGauge, Modifier, Paragraph, PlaybackMetadata, Rect, SharedState, Span, Style, Text,
     UIStateGuard, Wrap,
 };
+#[cfg(feature = "image")]
+use crate::state::ImageRenderInfo;
+use crate::ui::utils::to_bidi_string;
+#[cfg(feature = "image")]
+use anyhow::{Context, Result};
+use rspotify::model::Id;
 
 /// Render a playback window showing information about the current playback, which includes
 /// - track title, artists, album
@@ -246,25 +246,31 @@ fn construct_playback_text(
             },
             "{track}" => match playable {
                 rspotify::model::PlayableItem::Track(track) => (
-                    if track.explicit {
-                        format!("{} (E)", track.name)
-                    } else {
-                        track.name.clone()
+                    {
+                        let bidi_string = to_bidi_string(&track.name);
+                        if track.explicit {
+                            format!("{bidi_string} (E)")
+                        } else {
+                            bidi_string
+                        }
                     },
                     ui.theme.playback_track(),
                 ),
                 rspotify::model::PlayableItem::Episode(episode) => (
-                    if episode.explicit {
-                        format!("{} (E)", episode.name)
-                    } else {
-                        episode.name.clone()
+                    {
+                        let bidi_string = to_bidi_string(&episode.name);
+                        if episode.explicit {
+                            format!("{bidi_string} (E)")
+                        } else {
+                            bidi_string
+                        }
                     },
                     ui.theme.playback_track(),
                 ),
             },
             "{artists}" => match playable {
                 rspotify::model::PlayableItem::Track(track) => (
-                    crate::utils::map_join(&track.artists, |a| &a.name, ", "),
+                    to_bidi_string(&crate::utils::map_join(&track.artists, |a| &a.name, ", ")),
                     ui.theme.playback_artists(),
                 ),
                 rspotify::model::PlayableItem::Episode(episode) => {
@@ -273,30 +279,41 @@ fn construct_playback_text(
             },
             "{album}" => match playable {
                 rspotify::model::PlayableItem::Track(track) => {
-                    (track.album.name.clone(), ui.theme.playback_album())
+                    (to_bidi_string(&track.album.name), ui.theme.playback_album())
                 }
-                rspotify::model::PlayableItem::Episode(episode) => {
-                    (episode.show.name.clone(), ui.theme.playback_album())
-                }
-            },
-            "{metadata}" => (
-                format!(
-                    "repeat: {} | shuffle: {} | volume: {} | device: {}",
-                    if playback.fake_track_repeat_state {
-                        "track (fake)"
-                    } else {
-                        <&'static str>::from(playback.repeat_state)
-                    },
-                    playback.shuffle_state,
-                    if let Some(volume) = playback.mute_state {
-                        format!("{volume}% (muted)")
-                    } else {
-                        format!("{}%", playback.volume.unwrap_or_default())
-                    },
-                    playback.device_name,
+                rspotify::model::PlayableItem::Episode(episode) => (
+                    to_bidi_string(&episode.show.name),
+                    ui.theme.playback_album(),
                 ),
-                ui.theme.playback_metadata(),
-            ),
+            },
+            "{metadata}" => {
+                let repeat_value = if playback.fake_track_repeat_state {
+                    "track (fake)".to_string()
+                } else {
+                    <&'static str>::from(playback.repeat_state).to_string()
+                };
+
+                let volume_value = if let Some(volume) = playback.mute_state {
+                    format!("{volume}% (muted)")
+                } else {
+                    format!("{}%", playback.volume.unwrap_or_default())
+                };
+
+                let mut parts = vec![];
+
+                for field in &configs.app_config.playback_metadata_fields {
+                    match field.as_str() {
+                        "repeat" => parts.push(format!("repeat: {repeat_value}")),
+                        "shuffle" => parts.push(format!("shuffle: {}", playback.shuffle_state)),
+                        "volume" => parts.push(format!("volume: {volume_value}")),
+                        "device" => parts.push(format!("device: {}", playback.device_name)),
+                        _ => {}
+                    }
+                }
+
+                let metadata_str = parts.join(" | ");
+                (metadata_str, ui.theme.playback_metadata())
+            }
             _ => continue,
         };
 
