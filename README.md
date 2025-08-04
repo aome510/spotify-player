@@ -247,6 +247,22 @@ Examples of image rendering:
 
 ![others](https://user-images.githubusercontent.com/40011582/172967325-d2098037-e19e-440a-a38a-5b076253ecb1.png)
 
+#### Pixelate
+
+If your terminal supports high-res images, but you like the pixelated look you can enable the `pixelate` feature, which also enables the `image` feature:
+
+```shell
+cargo install spotify_player --features pixelate
+```
+
+The amount of pixelation can be tweaked via the `cover_img_pixels` config option.
+
+| `cover_img_pixels` | 8 | 16 | 32 |
+|--------------------|---|----|----|
+|       example      |  |  |  |
+
+To temporarily disable the `pixelate` feature just set `cover_img_pixels` to a high value like `512`.
+
 ### Notify
 
 To enable desktop notification support, `spotify_player` needs to be built/installed with `notify` feature (**disabled** by default). To install the application with `notify` feature included, run:

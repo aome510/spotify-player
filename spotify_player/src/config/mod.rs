@@ -95,6 +95,8 @@ pub struct AppConfig {
     pub cover_img_width: usize,
     #[cfg(feature = "image")]
     pub cover_img_scale: f32,
+    #[cfg(feature = "pixelate")]
+    pub cover_img_pixels: u32,
 
     #[cfg(feature = "media-control")]
     pub enable_media_control: bool,
@@ -307,6 +309,8 @@ impl Default for AppConfig {
             cover_img_width: 5,
             #[cfg(feature = "image")]
             cover_img_scale: 1.0,
+            #[cfg(feature = "pixelate")]
+            cover_img_pixels: 16,
 
             // Because of the "creating new window and stealing focus" behaviour
             // when running the media control event loop on startup,
