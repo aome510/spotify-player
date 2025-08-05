@@ -212,6 +212,7 @@ pub fn handle_action_in_context(
                     PlaylistPopupAction::AddTrack {
                         folder_id: 0,
                         track_id: track.id,
+                        search_query: String::new(),
                     },
                     ListState::default(),
                 ));
@@ -434,6 +435,7 @@ pub fn handle_action_in_context(
                     PlaylistPopupAction::AddEpisode {
                         folder_id: 0,
                         episode_id: episode.id,
+                        search_query: String::new(),
                     },
                     ListState::default(),
                 ));
