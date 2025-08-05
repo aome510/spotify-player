@@ -1635,6 +1635,38 @@ impl AppClient {
             track_or_episode.clone()
         };
 
+        // retrieve current artist for genres if not in cache
+        let curr_artist = match &curr_item {
+            rspotify::model::PlayableItem::Track(full_track) => {
+                let cached = state
+                    .data
+                    .read()
+                    .caches
+                    .genres
+                    .contains_key(&full_track.artists[0].name);
+
+                if cached {
+                    None
+                } else {
+                    match &full_track.artists[0].id {
+                        Some(id) => self.spotify.artist(id.clone()).await.ok(),
+                        None => None,
+                    }
+                }
+            }
+            rspotify::model::PlayableItem::Episode(_) => None,
+        };
+
+        if let Some(artist) = curr_artist {
+            if !artist.genres.is_empty() {
+                state.data.write().caches.genres.insert(
+                    artist.name,
+                    artist.genres,
+                    *TTL_CACHE_DURATION,
+                );
+            }
+        }
+
         let url = match curr_item {
             rspotify::model::PlayableItem::Track(ref track) => {
                 crate::utils::get_track_album_image_url(track)
