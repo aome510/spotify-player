@@ -1673,14 +1673,7 @@ impl Client {
 
             #[cfg(feature = "pixelate")]
             {
-                let pixels = config::get_config().app_config.cover_img_pixels;
-                let pixelated_image =
-                    image.resize(pixels, pixels, image::imageops::FilterType::Nearest);
-                image = pixelated_image.resize(
-                    image.width(),
-                    image.height(),
-                    image::imageops::FilterType::Nearest,
-                );
+                Self::pixelate_image(&mut image);
             }
 
             state
@@ -1849,6 +1842,17 @@ impl Client {
         }
 
         Ok(bytes.to_vec())
+    }
+
+    #[cfg(feature = "pixelate")]
+    fn pixelate_image(image: &mut image::DynamicImage) {
+        let pixels = config::get_config().app_config.cover_img_pixels;
+        let pixelated_image = image.resize(pixels, pixels, image::imageops::FilterType::Nearest);
+        *image = pixelated_image.resize(
+            image.width(),
+            image.height(),
+            image::imageops::FilterType::Nearest,
+        );
     }
 
     /// Process a list of albums, which includes
