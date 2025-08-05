@@ -1663,8 +1663,19 @@ impl Client {
         #[cfg(feature = "image")]
         if !state.data.read().caches.images.contains_key(url) {
             let bytes = self.retrieve_image(url, &path, false).await?;
+
+            #[cfg(not(feature = "pixelate"))]
             let image =
                 image::load_from_memory(&bytes).context("Failed to load image from memory")?;
+            #[cfg(feature = "pixelate")]
+            let mut image =
+                image::load_from_memory(&bytes).context("Failed to load image from memory")?;
+
+            #[cfg(feature = "pixelate")]
+            {
+                Self::pixelate_image(&mut image);
+            }
+
             state
                 .data
                 .write()
@@ -1831,6 +1842,17 @@ impl Client {
         }
 
         Ok(bytes.to_vec())
+    }
+
+    #[cfg(feature = "pixelate")]
+    fn pixelate_image(image: &mut image::DynamicImage) {
+        let pixels = config::get_config().app_config.cover_img_pixels;
+        let pixelated_image = image.resize(pixels, pixels, image::imageops::FilterType::Nearest);
+        *image = pixelated_image.resize(
+            image.width(),
+            image.height(),
+            image::imageops::FilterType::Nearest,
+        );
     }
 
     /// Process a list of albums, which includes
