@@ -355,8 +355,8 @@ List of supported commands:
 | `Shuffle`                      | toggle the shuffle mode                                                                            | `C-s`              |
 | `VolumeChange`                 | change playback volume by an offset (default shortcuts use 5%)                                     | `+`, `-`           |
 | `Mute`                         | toggle playback volume between 0% and previous level                                               | `_`                |
-| `SeekForward`                  | seek forward by 5s                                                                                 | `>`                |
-| `SeekBackward`                 | seek backward by 5s                                                                                | `<`                |
+| `SeekForward`                  | seek forward by a duration in seconds (default is 5s)                                              | `>`                |
+| `SeekBackward`                 | seek backward by a duration in seconds (default is 5s)                                             | `<`                |
 | `Quit`                         | quit the application                                                                               | `C-c`, `q`         |
 | `ClosePopup`                   | close a popup                                                                                      | `esc`              |
 | `SelectNextOrScrollDown`       | select the next item in a list/table or scroll down (supports vim-style count: 5j)                 | `j`, `C-n`, `down` |

@@ -307,6 +307,12 @@ key_sequence = "q"
 [[keymaps]]
 command = { VolumeChange = { offset = 1 } }
 key_sequence = "-"
+[[keymaps]]
+command = { SeekForward = { duration = 10 } }
+key_sequence = "E"
+[[keymaps]]
+command = { SeekBackward = { } }
+key_sequence = "Q"
 ```
 
 ## Actions
