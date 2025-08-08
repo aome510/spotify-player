@@ -289,7 +289,7 @@ fn construct_playback_text(
             "{genres}" => match playable {
                 rspotify::model::PlayableItem::Track(full_track) => {
                     let genre = match data.caches.genres.get(&full_track.artists[0].name) {
-                        Some(genres) => &format_genres(genres),
+                        Some(genres) => &format_genres(genres, configs.app_config.genre_num),
                         None => "no genre",
                     };
                     (to_bidi_string(genre), ui.theme.playback_genres())
@@ -470,15 +470,14 @@ fn split_rect_for_playback_window(rect: Rect) -> (Rect, Rect) {
     }
 }
 
-/// formats genres depending on the number of genres and the `genre_num` config option
+/// formats genres depending on the number of genres and `genre_num`
 ///
 /// Examples for `genre_num = 2`
 /// - 1 genre: "genre1"
 /// - 2 genres: "genre1, genre2"
 /// - \>= 3 genres: "genre1, genre2, ..."
-fn format_genres(genres: &[String]) -> String {
+fn format_genres(genres: &[String], genre_num: u8) -> String {
     let mut genre_str = String::with_capacity(64);
-    let genre_num = config::get_config().app_config.genre_num;
 
     if genre_num > 0 {
         for i in 0..genres.len() {
