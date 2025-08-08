@@ -128,7 +128,7 @@ fn fuzzy_search_items<'a, T: std::fmt::Display>(items: &'a [T], query: &str) -> 
         .iter()
         .filter_map(|t| {
             matcher
-                .fuzzy(&t.to_string(), &query, false)
+                .fuzzy(&t.to_string(), query, false)
                 .map(|(score, _)| (t, score))
         })
         .collect::<Vec<_>>();

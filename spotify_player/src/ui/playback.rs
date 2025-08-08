@@ -286,6 +286,18 @@ fn construct_playback_text(
                     ui.theme.playback_album(),
                 ),
             },
+            "{genres}" => match playable {
+                rspotify::model::PlayableItem::Track(full_track) => {
+                    let genre = match data.caches.genres.get(&full_track.artists[0].name) {
+                        Some(genres) => &format_genres(genres, configs.app_config.genre_num),
+                        None => "no genre",
+                    };
+                    (to_bidi_string(genre), ui.theme.playback_genres())
+                }
+                rspotify::model::PlayableItem::Episode(_) => {
+                    (to_bidi_string("no genre"), ui.theme.playback_genres())
+                }
+            },
             "{metadata}" => {
                 let repeat_value = if playback.fake_track_repeat_state {
                     "track (fake)".to_string()
@@ -456,4 +468,31 @@ fn split_rect_for_playback_window(rect: Rect) -> (Rect, Rect) {
             (chunks[1], chunks[0])
         }
     }
+}
+
+/// formats genres depending on the number of genres and `genre_num`
+///
+/// Examples for `genre_num = 2`
+/// - 1 genre: "genre1"
+/// - 2 genres: "genre1, genre2"
+/// - \>= 3 genres: "genre1, genre2, ..."
+fn format_genres(genres: &[String], genre_num: u8) -> String {
+    let mut genre_str = String::with_capacity(64);
+
+    if genre_num > 0 {
+        for i in 0..genres.len() {
+            genre_str.push_str(&genres[i]);
+
+            if i + 1 != genres.len() {
+                genre_str.push_str(", ");
+
+                if i + 1 >= genre_num as usize {
+                    genre_str.push_str("...");
+                    break;
+                }
+            }
+        }
+    }
+
+    genre_str
 }

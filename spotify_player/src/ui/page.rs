@@ -276,15 +276,12 @@ pub fn render_context_page(
     );
 
     // 3+4. Construct and render the page's widgets
-    let id = match id {
-        None => {
-            frame.render_widget(
-                Paragraph::new("Cannot determine the current page's context"),
-                rect,
-            );
-            return;
-        }
-        Some(id) => id,
+    let Some(id) = id else {
+        frame.render_widget(
+            Paragraph::new("Cannot determine the current page's context"),
+            rect,
+        );
+        return;
     };
 
     let data = state.data.read();

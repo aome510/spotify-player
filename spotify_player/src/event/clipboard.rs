@@ -109,7 +109,7 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
         #[cfg(not(target_os = "windows"))]
         {
             tracing::warn!("No clipboard provider found! Fallback to a NOP clipboard provider.");
-            return Box::new(NopProvider {});
+            Box::new(NopProvider {})
         }
     }
 }

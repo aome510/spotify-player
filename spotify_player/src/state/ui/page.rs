@@ -164,7 +164,7 @@ impl PageState {
     }
 
     /// The currently focused window state of the page.
-    pub fn focus_window_state_mut(&mut self) -> Option<MutableWindowState> {
+    pub fn focus_window_state_mut(&mut self) -> Option<MutableWindowState<'_>> {
         match self {
             Self::Library {
                 state:
