@@ -46,7 +46,7 @@ pub struct Client {
     spotify: Arc<spotify::Spotify>,
     auth_config: AuthConfig,
     #[cfg(feature = "streaming")]
-    stream_conn: Arc<Mutex<Option<librespot_connect::spirc::Spirc>>>,
+    stream_conn: Arc<Mutex<Option<librespot_connect::Spirc>>>,
 }
 
 impl Deref for Client {

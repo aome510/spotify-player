@@ -54,7 +54,7 @@ dependencies = [
  "getrandom 0.3.3",
  "once_cell",
  "version_check",
- "zerocopy 0.8.26",
+ "zerocopy",
 ]
 
 [[package]]
@@ -935,7 +935,7 @@ dependencies = [
  "core-foundation-sys",
  "coreaudio-rs",
  "dasp_sample",
- "jack",
+ "jack 0.11.4",
  "jni",
  "js-sys",
  "libc",
@@ -1803,20 +1803,23 @@ dependencies = [
 
 [[package]]
 name = "governor"
-version = "0.6.3"
+version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "68a7f542ee6b35af73b06abc0dad1c1bae89964e4e253bc4b587b91c9637867b"
+checksum = "be93b4ec2e4710b04d9264c0c7350cdd62a8c20e5e4ac732552ebb8f0debe8eb"
 dependencies = [
  "cfg-if",
- "futures",
+ "futures-sink",
  "futures-timer",
+ "futures-util",
+ "getrandom 0.3.3",
  "no-std-compat",
  "nonzero_ext",
  "parking_lot",
  "portable-atomic",
- "rand 0.8.5",
+ "rand 0.9.2",
  "smallvec",
  "spinning_top",
+ "web-time",
 ]
 
 [[package]]
@@ -2208,6 +2211,7 @@ dependencies = [
  "tokio-rustls 0.25.0",
  "tower-service",
  "webpki",
+ "webpki-roots 0.26.11",
 ]
 
 [[package]]
@@ -2241,6 +2245,7 @@ dependencies = [
  "tokio",
  "tokio-rustls 0.25.0",
  "tower-service",
+ "webpki-roots 0.26.11",
 ]
 
 [[package]]
@@ -2557,6 +2562,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "is-docker"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "928bae27f42bc99b60d9ac7334e3a21d10ad8f1835a4e12ec3ec0464765ed1b3"
+dependencies = [
+ "once_cell",
+]
+
+[[package]]
+name = "is-wsl"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "173609498df190136aa7dea1a91db051746d339e18476eed5ca40521f02d7aa5"
+dependencies = [
+ "is-docker",
+ "once_cell",
+]
+
+[[package]]
 name = "is_terminal_polyfill"
 version = "1.70.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2602,6 +2626,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0e5a18a3c2aefb354fb77111ade228b20267bdc779de84e7a4ccf7ea96b9a6cd"
 dependencies = [
  "bitflags 1.3.2",
+ "jack-sys",
+ "lazy_static",
+ "libc",
+ "log",
+]
+
+[[package]]
+name = "jack"
+version = "0.13.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f70ca699f44c04a32d419fc9ed699aaea89657fc09014bf3fa238e91d13041b9"
+dependencies = [
+ "bitflags 2.9.1",
  "jack-sys",
  "lazy_static",
  "libc",
@@ -2803,9 +2840,8 @@ dependencies = [
 
 [[package]]
 name = "librespot-audio"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7e07566fe7553042936c61bbdd9bedb524114a904aa7f9738e266c641468bab8"
+version = "0.6.0-dev"
+source = "git+https://github.com/librespot-org/librespot.git?branch=dev#ba3d501b08345aadf207d09b3a0713853228ba64"
 dependencies = [
  "aes",
  "bytes",
@@ -2818,17 +2854,15 @@ dependencies = [
  "log",
  "parking_lot",
  "tempfile",
- "thiserror 1.0.69",
+ "thiserror 2.0.12",
  "tokio",
 ]
 
 [[package]]
 name = "librespot-connect"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "67ce3a5634669ce051a425cff5437a474831111df045fd5a2bb37fabe316fa60"
+version = "0.6.0-dev"
+source = "git+https://github.com/librespot-org/librespot.git?branch=dev#ba3d501b08345aadf207d09b3a0713853228ba64"
 dependencies = [
- "form_urlencoded",
  "futures-util",
  "librespot-core",
  "librespot-playback",
@@ -2836,24 +2870,24 @@ dependencies = [
  "log",
  "protobuf",
  "rand 0.8.5",
- "serde",
  "serde_json",
- "thiserror 1.0.69",
+ "thiserror 2.0.12",
  "tokio",
  "tokio-stream",
+ "uuid",
 ]
 
 [[package]]
 name = "librespot-core"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c4c76303efcf949a59f9380220ca420c4d72fa32dbb3641a0079f429cc5e44e7"
+version = "0.6.0-dev"
+source = "git+https://github.com/librespot-org/librespot.git?branch=dev#ba3d501b08345aadf207d09b3a0713853228ba64"
 dependencies = [
  "aes",
  "base64 0.22.1",
  "byteorder",
  "bytes",
  "data-encoding",
+ "flate2",
  "form_urlencoded",
  "futures-core",
  "futures-util",
@@ -2880,7 +2914,8 @@ dependencies = [
  "pin-project-lite",
  "priority-queue",
  "protobuf",
- "quick-xml 0.36.2",
+ "protobuf-json-mapping",
+ "quick-xml",
  "rand 0.8.5",
  "rsa",
  "serde",
@@ -2888,7 +2923,7 @@ dependencies = [
  "sha1",
  "shannon",
  "sysinfo",
- "thiserror 1.0.69",
+ "thiserror 2.0.12",
  "time",
  "tokio",
  "tokio-stream",
@@ -2901,9 +2936,8 @@ dependencies = [
 
 [[package]]
 name = "librespot-metadata"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7cf6d5c46a401b1dd3e062ebdce959aa694bbae1039841756545d2e9c4f8be5f"
+version = "0.6.0-dev"
+source = "git+https://github.com/librespot-org/librespot.git?branch=dev#ba3d501b08345aadf207d09b3a0713853228ba64"
 dependencies = [
  "async-trait",
  "bytes",
@@ -2913,27 +2947,26 @@ dependencies = [
  "protobuf",
  "serde",
  "serde_json",
- "thiserror 1.0.69",
+ "thiserror 2.0.12",
  "uuid",
 ]
 
 [[package]]
 name = "librespot-oauth"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "00dcad779aa6c3b442e493e2a40ca83a5c5fcf38a65c05b026c3587bd4f8d14f"
+version = "0.6.0-dev"
+source = "git+https://github.com/librespot-org/librespot.git?branch=dev#ba3d501b08345aadf207d09b3a0713853228ba64"
 dependencies = [
  "log",
  "oauth2",
- "thiserror 1.0.69",
+ "open",
+ "thiserror 2.0.12",
  "url",
 ]
 
 [[package]]
 name = "librespot-playback"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4ed1f776a04c8c9275407f8d4df034f2615ea729ec6c6d0fa69f423fc571df64"
+version = "0.6.0-dev"
+source = "git+https://github.com/librespot-org/librespot.git?branch=dev#ba3d501b08345aadf207d09b3a0713853228ba64"
 dependencies = [
  "alsa",
  "cpal",
@@ -2941,7 +2974,7 @@ dependencies = [
  "gstreamer",
  "gstreamer-app",
  "gstreamer-audio",
- "jack",
+ "jack 0.13.3",
  "libpulse-binding",
  "libpulse-simple-binding",
  "librespot-audio",
@@ -2949,6 +2982,7 @@ dependencies = [
  "librespot-metadata",
  "log",
  "parking_lot",
+ "portable-atomic",
  "portaudio-rs",
  "rand 0.8.5",
  "rand_distr",
@@ -2956,16 +2990,15 @@ dependencies = [
  "sdl2",
  "shell-words",
  "symphonia",
- "thiserror 1.0.69",
+ "thiserror 2.0.12",
  "tokio",
- "zerocopy 0.7.35",
+ "zerocopy",
 ]
 
 [[package]]
 name = "librespot-protocol"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "80802f52b5a1b3a2157454e6aca483a627fbf7b942e0a5fea037ebf3ed8b0546"
+version = "0.6.0-dev"
+source = "git+https://github.com/librespot-org/librespot.git?branch=dev#ba3d501b08345aadf207d09b3a0713853228ba64"
 dependencies = [
  "protobuf",
  "protobuf-codegen",
@@ -3780,6 +3813,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a4895175b425cb1f87721b59f0f286c2092bd4af812243672510e1ac53e2e0ad"
 
 [[package]]
+name = "open"
+version = "5.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e2483562e62ea94312f3576a7aca397306df7990b8d89033e18766744377ef95"
+dependencies = [
+ "is-wsl",
+ "libc",
+ "pathdiff",
+]
+
+[[package]]
 name = "openssl"
 version = "0.10.73"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3893,6 +3937,12 @@ name = "paste"
 version = "1.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
+
+[[package]]
+name = "pathdiff"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "df94ce210e5bc13cb6651479fa48d14f601d9858cfe0467f43ae157023b938d3"
 
 [[package]]
 name = "pbkdf2"
@@ -4101,7 +4151,7 @@ version = "0.2.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "85eae3c4ed2f50dcfe72643da4befc30deadb458a9b590d720cde2f2b1e97da9"
 dependencies = [
- "zerocopy 0.8.26",
+ "zerocopy",
 ]
 
 [[package]]
@@ -4195,6 +4245,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "protobuf-json-mapping"
+version = "3.7.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e0d6e4be637b310d8a5c02fa195243328e2d97fa7df1127a27281ef1187fcb1d"
+dependencies = [
+ "protobuf",
+ "protobuf-support",
+ "thiserror 1.0.69",
+]
+
+[[package]]
 name = "protobuf-parse"
 version = "3.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4236,21 +4297,12 @@ checksum = "a993555f31e5a609f617c12db6250dedcac1b0a85076912c436e6fc9b2c8e6a3"
 
 [[package]]
 name = "quick-xml"
-version = "0.36.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f7649a7b4df05aed9ea7ec6f628c67c9953a43869b8bc50929569b2999d443fe"
-dependencies = [
- "memchr",
- "serde",
-]
-
-[[package]]
-name = "quick-xml"
 version = "0.37.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "331e97a1af0bf59823e6eadffe373d7b27f485be8748f71471c662c1f269b7fb"
 dependencies = [
  "memchr",
+ "serde",
 ]
 
 [[package]]
@@ -4672,12 +4724,11 @@ dependencies = [
 
 [[package]]
 name = "rodio"
-version = "0.19.0"
+version = "0.20.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6006a627c1a38d37f3d3a85c6575418cfe34a5392d60a686d0071e1c8d427acb"
+checksum = "e7ceb6607dd738c99bc8cb28eff249b7cd5c8ec88b9db96c0608c1480d140fb1"
 dependencies = [
  "cpal",
- "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -5639,15 +5690,15 @@ dependencies = [
 
 [[package]]
 name = "sysinfo"
-version = "0.31.4"
+version = "0.33.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "355dbe4f8799b304b05e1b0f05fc59b2a18d36645cf169607da45bde2f69a1be"
+checksum = "4fc858248ea01b66f19d8e8a6d55f41deaf91e9d495246fd01368d99935c6c01"
 dependencies = [
  "core-foundation-sys",
  "libc",
  "memchr",
  "ntapi",
- "windows 0.57.0",
+ "windows 0.54.0",
 ]
 
 [[package]]
@@ -5736,7 +5787,7 @@ version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b1e66e07de489fe43a46678dd0b8df65e0c973909df1b60ba33874e297ba9b9"
 dependencies = [
- "quick-xml 0.37.5",
+ "quick-xml",
  "thiserror 2.0.12",
  "windows 0.61.3",
  "windows-version",
@@ -6024,6 +6075,7 @@ dependencies = [
  "tokio",
  "tokio-rustls 0.26.2",
  "tungstenite",
+ "webpki-roots 0.26.11",
 ]
 
 [[package]]
@@ -6355,7 +6407,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3cf4199d1e5d15ddd86a694e4d0dffa9c323ce759fea589f00fef9d81cc1931d"
 dependencies = [
  "getrandom 0.3.3",
+ "js-sys",
  "rand 0.9.2",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -6652,7 +6706,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "896fdafd5d28145fce7958917d69f2fd44469b1d4e861cb5961bcbeebc6d1484"
 dependencies = [
  "proc-macro2",
- "quick-xml 0.37.5",
+ "quick-xml",
  "quote",
 ]
 
@@ -6703,6 +6757,15 @@ name = "webpki-roots"
 version = "0.25.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5f20c57d8d7db6d3b86154206ae5d8fba62dd39573114de97c2cb0578251f8e1"
+
+[[package]]
+name = "webpki-roots"
+version = "0.26.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "521bc38abb08001b01866da9f51eb7c5d647a19260e00054a8c7fd5f9e57f7a9"
+dependencies = [
+ "webpki-roots 1.0.2",
+]
 
 [[package]]
 name = "webpki-roots"
@@ -6794,16 +6857,6 @@ dependencies = [
 
 [[package]]
 name = "windows"
-version = "0.57.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "12342cb4d8e3b046f3d80effd474a7a02447231330ef77d71daa6fbc40681143"
-dependencies = [
- "windows-core 0.57.0",
- "windows-targets 0.52.6",
-]
-
-[[package]]
-name = "windows"
 version = "0.58.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dd04d41d93c4992d421894c18c8b43496aa748dd4c081bac0dc93eb0489272b6"
@@ -6840,18 +6893,6 @@ version = "0.54.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "12661b9c89351d684a50a8a643ce5f608e20243b9fb84687800163429f161d65"
 dependencies = [
- "windows-result 0.1.2",
- "windows-targets 0.52.6",
-]
-
-[[package]]
-name = "windows-core"
-version = "0.57.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d2ed2439a290666cd67ecce2b0ffaad89c2a56b976b736e6ece670297897832d"
-dependencies = [
- "windows-implement 0.57.0",
- "windows-interface 0.57.0",
  "windows-result 0.1.2",
  "windows-targets 0.52.6",
 ]
@@ -6895,17 +6936,6 @@ dependencies = [
 
 [[package]]
 name = "windows-implement"
-version = "0.57.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9107ddc059d5b6fbfbffdfa7a7fe3e22a226def0b2608f72e9d552763d3e1ad7"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
-name = "windows-implement"
 version = "0.58.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2bbd5b46c938e506ecbce286b6628a02171d56153ba733b6c741fc627ec9579b"
@@ -6920,17 +6950,6 @@ name = "windows-implement"
 version = "0.60.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a47fddd13af08290e67f4acabf4b459f647552718f683a7b415d290ac744a836"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
-name = "windows-interface"
-version = "0.57.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "29bee4b38ea3cde66011baa44dba677c432a78593e202392d1e9070cf2a7fca7"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -7523,32 +7542,11 @@ dependencies = [
 
 [[package]]
 name = "zerocopy"
-version = "0.7.35"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b9b4fd18abc82b8136838da5d50bae7bdea537c574d8dc1a34ed098d6c166f0"
-dependencies = [
- "byteorder",
- "zerocopy-derive 0.7.35",
-]
-
-[[package]]
-name = "zerocopy"
 version = "0.8.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1039dd0d3c310cf05de012d8a39ff557cb0d23087fd44cad61df08fc31907a2f"
 dependencies = [
- "zerocopy-derive 0.8.26",
-]
-
-[[package]]
-name = "zerocopy-derive"
-version = "0.7.35"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fa4f8080344d4671fb4e831a13ad1e68092748387dfc4f55e356242fae12ce3e"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
+ "zerocopy-derive",
 ]
 
 [[package]]
