@@ -35,8 +35,8 @@ pub async fn get_token_librespot(
         anyhow::bail!("Session has no stored credentials for login5 token acquisition");
     }
     
-    let token = session.login5().auth_token().await;
-    token.map_err(|e| anyhow::anyhow!(e))
+    let token = session.login5().auth_token().await.unwrap();
+    Ok(token)
 }
 
 pub async fn get_token_rspotify(session: &Session, client_id: &str) -> Result<rspotify::Token> {
