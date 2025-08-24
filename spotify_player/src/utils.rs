@@ -37,7 +37,7 @@ pub fn get_episode_show_image_url(episode: &rspotify::model::FullEpisode) -> Opt
     }
 }
 
-pub fn parse_uri(uri: &str) -> Cow<str> {
+pub fn parse_uri(uri: &str) -> Cow<'_, str> {
     let parts = uri.split(':').collect::<Vec<_>>();
     // The below URI probably has a format of `spotify:user:{user_id}:{type}:{id}`,
     // but `rspotify` library expects to receive an URI of format `spotify:{type}:{id}`.

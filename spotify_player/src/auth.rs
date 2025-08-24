@@ -101,9 +101,7 @@ pub fn get_creds(auth_config: &AuthConfig, reauth: bool, use_cached: bool) -> Re
                     &auth_config.login_redirect_uri,
                     OAUTH_SCOPES.to_vec(),
                 );
-
                 let oauth_client = client_builder.build()?;
-
                 oauth_client
                     .get_access_token()
                     .map(|t| Credentials::with_access_token(t.access_token))?

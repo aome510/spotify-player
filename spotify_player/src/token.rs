@@ -6,34 +6,15 @@ use librespot_core::session::Session;
 
 const TIMEOUT_IN_SECS: u64 = 5;
 
-/// The application authentication token's permission scopes
-const SCOPES: [&str; 15] = [
-    "user-read-recently-played",
-    "user-top-read",
-    "user-read-playback-position",
-    "user-read-playback-state",
-    "user-modify-playback-state",
-    "user-read-currently-playing",
-    "streaming",
-    "playlist-read-private",
-    "playlist-modify-private",
-    "playlist-modify-public",
-    "playlist-read-collaborative",
-    "user-follow-read",
-    "user-follow-modify",
-    "user-library-read",
-    "user-library-modify",
-];
-
 pub async fn get_token_librespot(
     session: &Session,
     _client_id: &str,
 ) -> Result<librespot_core::token::Token> {
+    // TODO: figure out how to support custom client_id for Spotify Connect
     let auth_data = session.auth_data();
     if auth_data.is_empty() {
         anyhow::bail!("Session has no stored credentials for login5 token acquisition");
     }
-
     let token = session.login5().auth_token().await.unwrap();
     Ok(token)
 }
