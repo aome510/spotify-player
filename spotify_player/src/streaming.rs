@@ -1,6 +1,6 @@
 use crate::{client::Client, config, state::SharedState};
 use anyhow::Context;
-use librespot_connect::{config::ConnectConfig, spirc::Spirc};
+use librespot_connect::{ConnectConfig, Spirc};
 use librespot_core::authentication::Credentials;
 use librespot_core::Session;
 use librespot_core::{config::DeviceType, spotify_id};
@@ -156,17 +156,20 @@ pub async fn new_connection(
     let connect_config = ConnectConfig {
         name: device.name.clone(),
         device_type: device.device_type.parse::<DeviceType>().unwrap_or_default(),
-        initial_volume: Some(volume),
+        initial_volume: volume,
 
         // non-configurable fields, use default values.
         // We may allow users to configure these fields in a future release
-        has_volume_ctrl: true,
         is_group: false,
+        disable_volume: false,
+        volume_steps: 64,
     };
 
     tracing::info!("Application's connect configurations: {:?}", connect_config);
 
-    let mixer = Arc::new(mixer::softmixer::SoftMixer::open(MixerConfig::default()));
+    let mixer = Arc::new(
+        mixer::softmixer::SoftMixer::open(MixerConfig::default()).context("opening softmixer")?,
+    );
     mixer.set_volume(volume);
 
     let backend = audio_backend::find(None).expect("should be able to find an audio backend");
