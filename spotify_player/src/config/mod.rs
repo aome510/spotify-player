@@ -101,7 +101,6 @@ pub struct AppConfig {
     #[cfg(feature = "media-control")]
     pub enable_media_control: bool,
 
-    #[cfg(feature = "streaming")]
     pub enable_streaming: StreamingType,
 
     #[cfg(feature = "notify")]
@@ -323,7 +322,6 @@ impl Default for AppConfig {
             #[cfg(all(unix, not(target_os = "macos")))]
             enable_media_control: true,
 
-            #[cfg(feature = "streaming")]
             enable_streaming: StreamingType::Always,
 
             #[cfg(feature = "notify")]
