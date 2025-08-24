@@ -167,7 +167,9 @@ pub async fn new_connection(
 
     tracing::info!("Application's connect configurations: {:?}", connect_config);
 
-    let mixer = Arc::new(mixer::softmixer::SoftMixer::open(MixerConfig::default()).context("opening softmixer")?);
+    let mixer = Arc::new(
+        mixer::softmixer::SoftMixer::open(MixerConfig::default()).context("opening softmixer")?,
+    );
     mixer.set_volume(volume);
 
     let backend = audio_backend::find(None).expect("should be able to find an audio backend");

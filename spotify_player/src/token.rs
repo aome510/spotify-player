@@ -25,7 +25,6 @@ const SCOPES: [&str; 15] = [
     "user-library-modify",
 ];
 
-
 pub async fn get_token_librespot(
     session: &Session,
     _client_id: &str,
@@ -34,7 +33,7 @@ pub async fn get_token_librespot(
     if auth_data.is_empty() {
         anyhow::bail!("Session has no stored credentials for login5 token acquisition");
     }
-    
+
     let token = session.login5().auth_token().await.unwrap();
     Ok(token)
 }
