@@ -19,7 +19,7 @@ struct PlayerEventHandlerState {
 /// starts the client's request handler
 pub async fn start_client_handler(
     state: SharedState,
-    client: super::Client,
+    client: super::AppClient,
     client_sub: flume::Receiver<ClientRequest>,
 ) {
     while let Ok(request) = client_sub.recv_async().await {
