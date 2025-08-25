@@ -47,7 +47,7 @@ pub struct AppClient {
     auth_config: AuthConfig,
     #[cfg(feature = "streaming")]
     stream_conn: Arc<Mutex<Option<librespot_connect::Spirc>>>,
-    user_client: Option<(rspotify::AuthCodePkceSpotify, String)>,
+    user_client: Option<rspotify::AuthCodePkceSpotify>,
 }
 
 impl Deref for AppClient {
@@ -63,31 +63,34 @@ fn market_query() -> Query<'static> {
 
 impl AppClient {
     /// Construct a new client
-    pub fn new() -> Result<Self> {
+    pub async fn new() -> Result<Self> {
         let configs = config::get_config();
         let auth_config = AuthConfig::new(configs)?;
 
-        let user_client = configs
-            .app_config
-            .get_client_id()?
-            .clone()
-            .map(|id| {
-                let creds = rspotify::Credentials { id, secret: None };
-                let oauth = rspotify::OAuth {
-                    scopes: rspotify::scopes!("user-read-playback-state"),
-                    redirect_uri: configs.app_config.login_redirect_uri.clone(),
-                    ..Default::default()
-                };
-                let config = rspotify::Config {
-                    token_cached: true,
-                    cache_path: configs.cache_folder.join("user_client_token.json"),
-                    ..Default::default()
-                };
-                let mut client = rspotify::AuthCodePkceSpotify::with_config(creds, oauth, config);
-                let url = client.get_authorize_url(None)?;
-                Ok::<_, anyhow::Error>((client, url))
-            })
-            .transpose()?;
+        let mut user_client = configs.app_config.get_client_id()?.clone().map(|id| {
+            let creds = rspotify::Credentials { id, secret: None };
+            let oauth = rspotify::OAuth {
+                scopes: rspotify::scopes!("user-read-playback-state"),
+                redirect_uri: configs.app_config.login_redirect_uri.clone(),
+                ..Default::default()
+            };
+            let config = rspotify::Config {
+                token_cached: true,
+                cache_path: configs.cache_folder.join("user_client_token.json"),
+                ..Default::default()
+            };
+            rspotify::AuthCodePkceSpotify::with_config(creds, oauth, config)
+        });
+
+        if let Some(client) = &mut user_client {
+            let url = client
+                .get_authorize_url(None)
+                .context("get authorize URL for user-provided client")?;
+            client
+                .prompt_for_token(&url)
+                .await
+                .context("get token for user-provided client")?;
+        }
 
         Ok(Self {
             spotify: Arc::new(spotify::Spotify::new()),
@@ -649,14 +652,11 @@ impl AppClient {
     pub async fn available_devices(&self) -> Result<Vec<rspotify::model::Device>> {
         match &self.user_client {
             None => {
-                tracing::warn!("User client integration is not enabled, no device found.");
+                tracing::warn!("User-provided client integration is not enabled, no device found.");
                 tracing::warn!("Please make sure you setup Spotify Connect as described in https://github.com/aome510/spotify-player#spotify-connect.");
                 Ok(vec![])
             }
-            Some((client, url)) => {
-                client.prompt_for_token(url).await?;
-                Ok(client.device().await?)
-            }
+            Some(client) => Ok(client.device().await?),
         }
     }
 
