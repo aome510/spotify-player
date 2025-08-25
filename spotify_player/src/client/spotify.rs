@@ -72,19 +72,34 @@ impl Spotify {
     /// The function may retrieve a new token and update the current token
     /// stored inside the client if the old one is expired.
     pub async fn access_token(&self) -> Result<String> {
-        let should_update = match self.token.lock().await.unwrap().as_ref() {
-            Some(token) => token.is_expired(),
-            None => true,
-        };
-        if should_update {
-            self.refresh_token().await?;
+        let token_guard = self.token.lock().await.unwrap();
+
+        if let Some(token) = token_guard.as_ref() {
+            tracing::info!(
+                "Current token: {}, expires at: {:?}",
+                token.access_token,
+                token.expires_at
+            );
+        } else {
+            tracing::warn!("No token is currently stored.");
         }
 
-        match self.token.lock().await.unwrap().as_ref() {
-            Some(token) => Ok(token.access_token.clone()),
-            None => Err(anyhow!(
-                "failed to get the authentication token stored inside the client."
-            )),
+        // If the token is expired, we get a new one
+        if token_guard.as_ref().is_none_or(rspotify::Token::is_expired) {
+            tracing::info!("Token expired, restarting session...");
+            //trying out this awful hack
+
+            self.refresh_token().await?;
+            let session = self.session().await;
+            session.shutdown();
+        }
+
+        if let Some(token) = token_guard.as_ref() {
+            Ok(token.access_token.clone())
+        } else {
+            Err(anyhow!(
+                "Failed to get the authentication token stored inside the client."
+            ))
         }
     }
 
@@ -122,13 +137,27 @@ impl BaseClient for Spotify {
         let session = self.session().await;
         let old_token = self.token.lock().await.unwrap().clone();
 
+        tracing::info!(
+            "Attempting to refresh token. Current token is: {:?}",
+            old_token.as_ref().map(|t| &t.access_token)
+        );
+
         if session.is_invalid() {
             tracing::error!("Failed to get a new token: invalid session");
             return Ok(old_token);
         }
 
         match token::get_token_rspotify(&session, SPOTIFY_CLIENT_ID).await {
-            Ok(token) => Ok(Some(token)),
+            Ok(token) => {
+                {
+                    let mut token_guard = self.token.lock().await.unwrap();
+                    *token_guard = Some(token.clone());
+                }
+
+                tracing::info!("Got new token: {token:?}");
+
+                Ok(Some(token))
+            }
             Err(err) => {
                 tracing::error!("Failed to get a new token: {err:#}");
                 Ok(old_token)
