@@ -173,11 +173,12 @@ fn try_connect_to_client(socket: &UdpSocket, configs: &config::Configs) -> Resul
             // no running `spotify_player` instance found,
             // initialize a new client to handle the current CLI command
 
-            let auth_config = AuthConfig::new(configs)?;
             let rt = tokio::runtime::Runtime::new()?;
 
             // create a Spotify API client
-            let client = client::Client::new(auth_config);
+            let client = rt
+                .block_on(client::AppClient::new())
+                .context("construct app client")?;
             rt.block_on(client.new_session(None, false))
                 .context("new session")?;
 

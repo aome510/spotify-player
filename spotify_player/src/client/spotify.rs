@@ -9,7 +9,7 @@ use rspotify::{
 };
 use std::{fmt, sync::Arc};
 
-use crate::{auth::SPOTIFY_CLIENT_ID, config, token};
+use crate::token;
 
 #[derive(Clone, Default)]
 /// A Spotify client to interact with Spotify API server
@@ -19,12 +19,6 @@ pub struct Spotify {
     config: Config,
     token: Arc<Mutex<Option<Token>>>,
     http: HttpClient,
-    /// User-provided client ID
-    ///
-    /// This client ID is mainly used to support Spotify Connect feature
-    /// because Spotify client ID doesn't have access to user available devices
-    /// (<https://developer.spotify.com/documentation/web-api/reference/get-a-users-available-devices>)
-    user_client_id: String,
     pub(crate) session: Arc<tokio::sync::Mutex<Option<Session>>>,
 }
 
@@ -52,10 +46,6 @@ impl Spotify {
             },
             token: Arc::new(Mutex::new(None)),
             http: HttpClient::default(),
-            user_client_id: config::get_config()
-                .app_config
-                .get_client_id()
-                .expect("get client_id"),
             session: Arc::new(tokio::sync::Mutex::new(None)),
         }
     }
@@ -86,14 +76,6 @@ impl Spotify {
                 "failed to get the authentication token stored inside the client."
             )),
         }
-    }
-
-    /// Get a Spotify access token based on a user-provided client ID
-    // TODO: implement caching
-    pub async fn access_token_from_user_client_id(&self) -> Result<String> {
-        let session = self.session().await;
-        let token = token::get_token_librespot(&session, &self.user_client_id).await?;
-        Ok(token.access_token)
     }
 }
 
@@ -127,7 +109,7 @@ impl BaseClient for Spotify {
             return Ok(old_token);
         }
 
-        match token::get_token_rspotify(&session, SPOTIFY_CLIENT_ID).await {
+        match token::get_token_rspotify(&session).await {
             Ok(token) => Ok(Some(token)),
             Err(err) => {
                 tracing::error!("Failed to get a new token: {err:#}");

@@ -23,7 +23,7 @@ librespot-metadata = "0.7.0"
 log = "0.4.27"
 chrono = "0.4.41"
 reqwest = { version = "0.12.22", features = ["json"] }
-rspotify = "0.15.0"
+rspotify = {version = "0.15.0", features = ["cli"] }
 serde = { version = "1.0.219", features = ["derive"] }
 tokio = { version = "1.47.0", features = [
 	"rt",
