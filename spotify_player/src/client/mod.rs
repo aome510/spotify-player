@@ -45,9 +45,9 @@ pub struct AppClient {
     http: reqwest::Client,
     spotify: Arc<spotify::Spotify>,
     auth_config: AuthConfig,
+    user_client: Option<rspotify::AuthCodePkceSpotify>,
     #[cfg(feature = "streaming")]
     stream_conn: Arc<Mutex<Option<librespot_connect::Spirc>>>,
-    user_client: Option<rspotify::AuthCodePkceSpotify>,
 }
 
 impl Deref for AppClient {
@@ -67,7 +67,10 @@ impl AppClient {
         let configs = config::get_config();
         let auth_config = AuthConfig::new(configs)?;
 
-        let mut user_client = configs.app_config.get_client_id()?.clone().map(|id| {
+        // Construct user-provided client.
+        // This custom client is needed for Spotify Connect integration because the Spotify client (`AppConfig::spotify`),
+        // which `spotify-player` uses to retrieve Spotify data, doesn't have access to user available devices
+        let mut user_client = configs.app_config.get_user_client_id()?.clone().map(|id| {
             let creds = rspotify::Credentials { id, secret: None };
             let oauth = rspotify::OAuth {
                 scopes: rspotify::scopes!("user-read-playback-state"),

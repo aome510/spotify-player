@@ -432,7 +432,7 @@ impl AppConfig {
     }
 
     /// Returns stdout of `client_id_command` if set, otherwise it returns the the value of `client_id`
-    pub fn get_client_id(&self) -> Result<Option<String>> {
+    pub fn get_user_client_id(&self) -> Result<Option<String>> {
         match self.client_id_command {
             Some(ref cmd) => cmd.execute(None).map(|out| Some(out.trim().to_string())),
             None => Ok(self.client_id.clone()),
