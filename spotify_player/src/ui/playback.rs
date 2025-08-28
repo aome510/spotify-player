@@ -5,7 +5,7 @@ use super::{
 };
 #[cfg(feature = "image")]
 use crate::state::ImageRenderInfo;
-use crate::ui::utils::to_bidi_string;
+use crate::ui::utils::{format_genres, to_bidi_string};
 #[cfg(feature = "image")]
 use anyhow::{Context, Result};
 use rspotify::model::Id;
@@ -468,31 +468,4 @@ fn split_rect_for_playback_window(rect: Rect) -> (Rect, Rect) {
             (chunks[1], chunks[0])
         }
     }
-}
-
-/// formats genres depending on the number of genres and `genre_num`
-///
-/// Examples for `genre_num = 2`
-/// - 1 genre: "genre1"
-/// - 2 genres: "genre1, genre2"
-/// - \>= 3 genres: "genre1, genre2, ..."
-fn format_genres(genres: &[String], genre_num: u8) -> String {
-    let mut genre_str = String::with_capacity(64);
-
-    if genre_num > 0 {
-        for i in 0..genres.len() {
-            genre_str.push_str(&genres[i]);
-
-            if i + 1 != genres.len() {
-                genre_str.push_str(", ");
-
-                if i + 1 >= genre_num as usize {
-                    genre_str.push_str("...");
-                    break;
-                }
-            }
-        }
-    }
-
-    genre_str
 }
