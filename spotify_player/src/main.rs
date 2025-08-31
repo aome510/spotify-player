@@ -20,7 +20,7 @@ use std::io::Write;
 
 fn init_spotify(
     client_pub: &flume::Sender<client::ClientRequest>,
-    client: &client::Client,
+    client: &client::AppClient,
     state: &state::SharedState,
 ) -> Result<()> {
     client.initialize_playback(state);
@@ -122,8 +122,9 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
     }
 
     // create a Spotify API client
-    let auth_config = auth::AuthConfig::new(configs)?;
-    let client = client::Client::new(auth_config);
+    let client = client::AppClient::new()
+        .await
+        .context("construct app client")?;
     client
         .new_session(Some(state), true)
         .await
