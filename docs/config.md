@@ -53,14 +53,13 @@ All configuration files should be placed inside the application's configuration 
 | `border_type`                     | the type of the application's borders                                                                                                                  | `Plain`                                                        |
 | `progress_bar_type`               | the type of the playback progress bar                                                                                                                  | `Rectangle`                                                    |
 | `progress_bar_position`           | the position of the playback progress bar                                                                                                              | `Bottom`                                                       |
-
-| `genre_num` | the maximum number of genres to display in the playback text (if `{genres}` is used) | `2` |
-| `cover_img_width` | the width of the cover image (`image` feature only) | `5` |
-| `cover_img_length` | the length of the cover image (`image` feature only) | `9` |
-| `cover_img_scale` | the scale of the cover image (`image` feature only) | `1.0` |
-| `cover_img_pixels` | the amount of pixels per side of the cover image (`image` and `pixelate` feature only) | `16` |
-| `seek_duration_secs` | the duration (in seconds) to seek when using `SeekForward` and `SeekBackward` commands | `5` |
-| `sort_artist_albums_by_type` | sort albums on artist's pages by type, i.e. album or single | `false` |
+| `genre_num`                       | the maximum number of genres to display in the playback text (if `{genres}` is used)                                                                   | `2`                                                            |
+| `cover_img_width`                 | the width of the cover image (`image` feature only)                                                                                                    | `5`                                                            |
+| `cover_img_length`                | the length of the cover image (`image` feature only)                                                                                                   | `9`                                                            |
+| `cover_img_scale`                 | the scale of the cover image (`image` feature only)                                                                                                    | `1.0`                                                          |
+| `cover_img_pixels`                | the amount of pixels per side of the cover image (`image` and `pixelate` feature only)                                                                 | `16`                                                           |
+| `seek_duration_secs`              | the duration (in seconds) to seek when using `SeekForward` and `SeekBackward` commands                                                                 | `5`                                                            |
+| `sort_artist_albums_by_type`      | sort albums on artist's pages by type, i.e. album or single                                                                                            | `false`                                                        |
 
 ### Notes
 
