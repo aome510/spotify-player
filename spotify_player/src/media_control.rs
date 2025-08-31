@@ -30,6 +30,7 @@ fn update_control_metadata(
             }
 
             match item {
+                rspotify::model::PlayableItem::Unknown(_) => {}
                 rspotify::model::PlayableItem::Track(track) => {
                     // only update metadata when the track information is changed
                     let track_info = format!("{}/{}", track.name, track.album.name);

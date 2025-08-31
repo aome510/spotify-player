@@ -54,6 +54,7 @@ pub fn render_playback_window(
                         rspotify::model::PlayableItem::Episode(episode) => {
                             crate::utils::get_episode_show_image_url(episode).map(String::from)
                         }
+                        rspotify::model::PlayableItem::Unknown(_) => None,
                     };
                     if let Some(url) = url {
                         let needs_clear = if ui.last_cover_image_render_info.url != url
@@ -121,6 +122,10 @@ pub fn render_playback_window(
             let duration = match item {
                 rspotify::model::PlayableItem::Track(track) => track.duration,
                 rspotify::model::PlayableItem::Episode(episode) => episode.duration,
+                rspotify::model::PlayableItem::Unknown(item) => {
+                    log::warn!("Unknown playback item: {item:?}");
+                    return other_rect;
+                }
             };
 
             let progress = std::cmp::min(
@@ -250,7 +255,8 @@ fn construct_playback_text(
                     }
                     None => continue,
                 },
-                rspotify::model::PlayableItem::Episode(_) => continue,
+                rspotify::model::PlayableItem::Episode(_)
+                | rspotify::model::PlayableItem::Unknown(_) => continue,
             },
             "{track}" => match playable {
                 rspotify::model::PlayableItem::Track(track) => (
@@ -275,6 +281,9 @@ fn construct_playback_text(
                     },
                     ui.theme.playback_track(),
                 ),
+                rspotify::model::PlayableItem::Unknown(_) => {
+                    continue;
+                }
             },
             "{artists}" => match playable {
                 rspotify::model::PlayableItem::Track(track) => (
@@ -283,6 +292,9 @@ fn construct_playback_text(
                 ),
                 rspotify::model::PlayableItem::Episode(episode) => {
                     (episode.show.publisher.clone(), ui.theme.playback_artists())
+                }
+                rspotify::model::PlayableItem::Unknown(_) => {
+                    continue;
                 }
             },
             "{album}" => match playable {
@@ -293,6 +305,9 @@ fn construct_playback_text(
                     to_bidi_string(&episode.show.name),
                     ui.theme.playback_album(),
                 ),
+                rspotify::model::PlayableItem::Unknown(_) => {
+                    continue;
+                }
             },
             "{genres}" => match playable {
                 rspotify::model::PlayableItem::Track(full_track) => {
@@ -304,6 +319,9 @@ fn construct_playback_text(
                 }
                 rspotify::model::PlayableItem::Episode(_) => {
                     (to_bidi_string("no genre"), ui.theme.playback_genres())
+                }
+                rspotify::model::PlayableItem::Unknown(_) => {
+                    continue;
                 }
             },
             "{metadata}" => {

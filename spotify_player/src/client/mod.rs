@@ -1573,7 +1573,7 @@ impl AppClient {
             let prev_name = match prev_item {
                 Some(rspotify::model::PlayableItem::Track(track)) => track.name.clone(),
                 Some(rspotify::model::PlayableItem::Episode(episode)) => episode.name.clone(),
-                None => String::new(),
+                Some(rspotify::model::PlayableItem::Unknown(_)) | None => String::new(),
             };
 
             player.playback = playback;
@@ -1584,7 +1584,7 @@ impl AppClient {
             let curr_name = match curr_item {
                 Some(rspotify::model::PlayableItem::Track(track)) => track.name.clone(),
                 Some(rspotify::model::PlayableItem::Episode(episode)) => episode.name.clone(),
-                None => String::new(),
+                Some(rspotify::model::PlayableItem::Unknown(_)) | None => String::new(),
             };
 
             let new_playback = prev_name != curr_name && !curr_name.is_empty();
@@ -1654,7 +1654,8 @@ impl AppClient {
                     }
                 }
             }
-            rspotify::model::PlayableItem::Episode(_) => None,
+            rspotify::model::PlayableItem::Episode(_)
+            | rspotify::model::PlayableItem::Unknown(_) => None,
         };
 
         if let Some(artist) = curr_artist {
@@ -1676,6 +1677,7 @@ impl AppClient {
                 crate::utils::get_episode_show_image_url(episode)
                     .ok_or(anyhow::anyhow!("missing image"))?
             }
+            rspotify::model::PlayableItem::Unknown(_) => return Ok(()),
         };
 
         let filename = (match curr_item {
@@ -1697,6 +1699,7 @@ impl AppClient {
                     &episode.show.id.as_ref().id()[..6]
                 )
             }
+            rspotify::model::PlayableItem::Unknown(_) => return Ok(()),
         })
         .replace('/', ""); // remove invalid characters from the file's name
         let path = configs.cache_folder.join("image").join(filename);
@@ -1808,6 +1811,7 @@ impl AppClient {
                         let name = match playable {
                             rspotify::model::PlayableItem::Track(ref track) => &track.name,
                             rspotify::model::PlayableItem::Episode(ref episode) => &episode.name,
+                            rspotify::model::PlayableItem::Unknown(_) => continue,
                         };
                         text += name;
                     }
@@ -1823,6 +1827,7 @@ impl AppClient {
                         rspotify::model::PlayableItem::Episode(ref episode) => {
                             text += &episode.show.name;
                         }
+                        rspotify::model::PlayableItem::Unknown(_) => {}
                     },
                     &_ => {}
                 }
