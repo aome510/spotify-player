@@ -1,38 +1,35 @@
+use crate::config;
 use anyhow::Result;
 use librespot_core::{authentication::Credentials, cache::Cache, config::SessionConfig, Session};
-use librespot_oauth::get_access_token;
-
-use crate::config;
+use librespot_oauth::OAuthClientBuilder;
 
 pub const SPOTIFY_CLIENT_ID: &str = "65b708073fc0480ea92a077233ca87bd";
-// based on https://github.com/librespot-org/librespot/blob/f96f36c064795011f9fee912291eecb1aa46fff6/src/main.rs#L173
+// based on https://developer.spotify.com/documentation/web-api/concepts/scopes#list-of-scopes
 const OAUTH_SCOPES: &[&str] = &[
+    // Spotify Connect
+    "user-read-playback-state",
+    "user-modify-playback-state",
+    "user-read-currently-playing",
+    // Playback
     "app-remote-control",
-    "playlist-modify",
+    "streaming",
+    // Playlists
+    "playlist-read-private",
+    "playlist-read-collaborative",
     "playlist-modify-private",
     "playlist-modify-public",
-    "playlist-read",
-    "playlist-read-collaborative",
-    "playlist-read-private",
-    "streaming",
-    "ugc-image-upload",
+    // Follow
     "user-follow-modify",
     "user-follow-read",
+    // Listening History
+    "user-read-playback-position",
+    "user-top-read",
+    "user-read-recently-played",
+    // Library
     "user-library-modify",
     "user-library-read",
-    "user-modify",
-    "user-modify-playback-state",
-    "user-modify-private",
+    // Users
     "user-personalized",
-    "user-read-birthdate",
-    "user-read-currently-playing",
-    "user-read-email",
-    "user-read-play-history",
-    "user-read-playback-position",
-    "user-read-playback-state",
-    "user-read-private",
-    "user-read-recently-played",
-    "user-top-read",
 ];
 
 #[derive(Clone)]
@@ -98,12 +95,17 @@ pub fn get_creds(auth_config: &AuthConfig, reauth: bool, use_cached: bool) -> Re
             let msg = "No cached credentials found, please authenticate the application first.";
             if reauth {
                 eprintln!("{msg}");
-                get_access_token(
+
+                let client_builder = OAuthClientBuilder::new(
                     SPOTIFY_CLIENT_ID,
                     &auth_config.login_redirect_uri,
                     OAUTH_SCOPES.to_vec(),
                 )
-                .map(|t| Credentials::with_access_token(t.access_token))?
+                .open_in_browser();
+                let oauth_client = client_builder.build()?;
+                oauth_client
+                    .get_access_token()
+                    .map(|t| Credentials::with_access_token(t.access_token))?
             } else {
                 anyhow::bail!(msg);
             }
