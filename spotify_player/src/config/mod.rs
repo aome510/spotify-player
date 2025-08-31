@@ -383,10 +383,10 @@ impl LayoutConfig {
 }
 
 impl AppConfig {
-    pub fn new(cfg_file_path: &Path) -> Result<Self> {
+    pub fn new(path: &Path) -> Result<Self> {
         let mut config = Self::default();
-        if !config.parse_config_file(cfg_file_path)? {
-            config.write_config_file(cfg_file_path)?;
+        if !config.parse_config_file(path)? {
+            config.write_config_file(path)?;
         }
 
         config.layout.check_values()?;
