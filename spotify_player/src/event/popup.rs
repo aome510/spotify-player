@@ -1,5 +1,5 @@
 use super::*;
-use crate::command::construct_artist_actions;
+use crate::{command::construct_artist_actions, utils::filtered_items_from_query};
 use anyhow::Context;
 
 pub fn handle_key_sequence_for_popup(
@@ -140,25 +140,15 @@ pub fn handle_key_sequence_for_popup(
                 let track_id = track_id.clone();
                 let data = state.data.read();
                 let items = data.user_data.modifiable_playlist_items(Some(*folder_id));
-
-                // Filter items based on search query (same logic as UI filtering)
-                let items = if search_query.is_empty() {
-                    items
-                } else {
-                    let query_lower = search_query.to_lowercase();
-                    items
-                        .into_iter()
-                        .filter(|item| item.to_string().to_lowercase().contains(&query_lower))
-                        .collect()
-                };
+                let filtered_items = filtered_items_from_query(&search_query, &items);
 
                 handle_command_for_list_popup(
                     command,
                     ui,
-                    items.len(),
+                    filtered_items.len(),
                     |_, _| {},
                     |ui: &mut UIStateGuard, id: usize| -> Result<()> {
-                        ui.popup = match items.get(id).expect("invalid index") {
+                        ui.popup = match filtered_items.get(id).expect("invalid index") {
                             PlaylistFolderItem::Folder(f) => Some(PopupState::UserPlaylistList(
                                 PlaylistPopupAction::AddTrack {
                                     folder_id: f.target_id,
@@ -191,25 +181,15 @@ pub fn handle_key_sequence_for_popup(
                 let episode_id = episode_id.clone();
                 let data = state.data.read();
                 let items = data.user_data.modifiable_playlist_items(Some(*folder_id));
-
-                // Filter items based on search query (same logic as UI filtering)
-                let items = if search_query.is_empty() {
-                    items
-                } else {
-                    let query_lower = search_query.to_lowercase();
-                    items
-                        .into_iter()
-                        .filter(|item| item.to_string().to_lowercase().contains(&query_lower))
-                        .collect()
-                };
+                let filtered_items = filtered_items_from_query(&search_query, &items);
 
                 handle_command_for_list_popup(
                     command,
                     ui,
-                    items.len(),
+                    filtered_items.len(),
                     |_, _| {},
                     |ui: &mut UIStateGuard, id: usize| -> Result<()> {
-                        ui.popup = match items.get(id).expect("invalid index") {
+                        ui.popup = match filtered_items.get(id).expect("invalid index") {
                             PlaylistFolderItem::Folder(f) => Some(PopupState::UserPlaylistList(
                                 PlaylistPopupAction::AddEpisode {
                                     folder_id: f.target_id,

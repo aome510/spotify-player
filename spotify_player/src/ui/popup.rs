@@ -1,3 +1,5 @@
+use crate::utils::filtered_items_from_query;
+
 use super::{
     config, utils, utils::construct_and_render_block, Borders, Cell, Constraint, Frame, Layout,
     Paragraph, PlaylistCreateCurrentField, PlaylistPopupAction, PopupState, Rect, Row, SharedState,
@@ -124,24 +126,12 @@ pub fn render_popup(
                         ..
                     } => (
                         data.user_data.modifiable_playlist_items(Some(*folder_id)),
-                        Some(search_query),
+                        Some(search_query.as_str()),
                     ),
                 };
 
                 // Filter items based on search query if present
-                let filtered_items: Vec<_> = if let Some(query) = search_query {
-                    if query.is_empty() {
-                        items.into_iter().collect()
-                    } else {
-                        let query_lower = query.to_lowercase();
-                        items
-                            .into_iter()
-                            .filter(|item| item.to_string().to_lowercase().contains(&query_lower))
-                            .collect()
-                    }
-                } else {
-                    items.into_iter().collect()
-                };
+                let filtered_items = filtered_items_from_query(search_query.unwrap_or(""), &items);
 
                 let display_items = filtered_items
                     .iter()

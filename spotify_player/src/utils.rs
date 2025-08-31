@@ -49,3 +49,30 @@ pub fn parse_uri(uri: &str) -> Cow<'_, str> {
         Cow::Borrowed(uri)
     }
 }
+
+/// Get a list of items filtered by a search query.
+pub fn filtered_items_from_query<'a, T: std::fmt::Display>(
+    query: &str,
+    items: &'a [T],
+) -> Vec<&'a T> {
+    let query = query.to_lowercase();
+
+    #[cfg(feature = "fzf")]
+    return fuzzy_search_items(items, &query);
+
+    #[cfg(not(feature = "fzf"))]
+    items
+        .iter()
+        .filter(|t| {
+            if query.is_empty() {
+                true
+            } else {
+                let t = t.to_string().to_lowercase();
+                query
+                    .split(' ')
+                    .filter(|q| !q.is_empty())
+                    .all(|q| t.contains(q))
+            }
+        })
+        .collect::<Vec<_>>()
+}

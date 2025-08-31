@@ -2,6 +2,7 @@ use crate::{
     config::{self, Theme},
     key,
     ui::{self, Orientation},
+    utils::filtered_items_from_query,
 };
 
 pub type UIStateGuard<'a> = parking_lot::MutexGuard<'a, UIState>;
@@ -90,28 +91,7 @@ impl UIState {
     /// Get a list of items possibly filtered by a search query if exists a search popup
     pub fn search_filtered_items<'a, T: std::fmt::Display>(&self, items: &'a [T]) -> Vec<&'a T> {
         match self.popup {
-            Some(PopupState::Search { ref query }) => {
-                let query = query.to_lowercase();
-
-                #[cfg(feature = "fzf")]
-                return fuzzy_search_items(items, &query);
-
-                #[cfg(not(feature = "fzf"))]
-                items
-                    .iter()
-                    .filter(|t| {
-                        if query.is_empty() {
-                            true
-                        } else {
-                            let t = t.to_string().to_lowercase();
-                            query
-                                .split(' ')
-                                .filter(|q| !q.is_empty())
-                                .all(|q| t.contains(q))
-                        }
-                    })
-                    .collect::<Vec<_>>()
-            }
+            Some(PopupState::Search { ref query }) => filtered_items_from_query(query, items),
             _ => items.iter().collect::<Vec<_>>(),
         }
     }
