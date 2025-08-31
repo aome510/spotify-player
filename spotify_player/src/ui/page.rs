@@ -3,6 +3,11 @@ use std::{
     fmt::Display,
 };
 
+use chrono_humanize::HumanTime;
+use ratatui::text::Line;
+
+use crate::{state::Episode, utils::format_duration};
+
 use super::{
     config, utils, utils::construct_and_render_block, Album, Artist, ArtistFocusState, Borders,
     BrowsePageUIState, Cell, Constraint, Context, ContextPageUIState, DataReadGuard, Frame, Id,
@@ -12,8 +17,6 @@ use super::{
 };
 use crate::state::BidiDisplay;
 use crate::ui::utils::to_bidi_string;
-use crate::{state::Episode, utils::format_duration};
-use ratatui::text::Line;
 
 const COMMAND_TABLE_CONSTRAINTS: [Constraint; 3] = [
     Constraint::Percentage(25),
@@ -960,6 +963,9 @@ fn render_track_table(
         }
     }
 
+    // enable Added column if any track in the table has added_at field specified
+    let added_at_enabled = tracks.iter().any(|t| t.added_at > 0);
+
     let n_tracks = tracks.len();
     let rows = tracks
         .into_iter()
@@ -980,6 +986,19 @@ fn render_track_table(
                 Cell::from(to_bidi_string(&t.display_name())),
                 Cell::from(to_bidi_string(&t.artists_info())),
                 Cell::from(to_bidi_string(&t.album_info())),
+                if added_at_enabled {
+                    // added_at is in seconds resolution
+                    let time =
+                        chrono::DateTime::from_timestamp_nanos(t.added_at as i64 * 1_000_000_000);
+                    // use absolute date format if the track is added more than a month ago, otherwise use relative date
+                    Cell::from(if chrono::Utc::now() > time + chrono::Duration::days(30) {
+                        time.format("%b %d, %Y").to_string()
+                    } else {
+                        HumanTime::from(time).to_string()
+                    })
+                } else {
+                    Cell::from("")
+                },
                 Cell::from(format!(
                     "{}:{:02}",
                     t.duration.as_secs() / 60,
@@ -997,6 +1016,11 @@ fn render_track_table(
             Constraint::Fill(4),
             Constraint::Fill(3),
             Constraint::Fill(5),
+            if added_at_enabled {
+                Constraint::Fill(2)
+            } else {
+                Constraint::Fill(0)
+            },
             Constraint::Fill(1),
         ],
     )
@@ -1007,6 +1031,11 @@ fn render_track_table(
             Cell::from("Title"),
             Cell::from("Artists"),
             Cell::from("Album"),
+            if added_at_enabled {
+                Cell::from("Added")
+            } else {
+                Cell::from("")
+            },
             Cell::from("Duration"),
         ])
         .style(ui.theme.table_header()),
