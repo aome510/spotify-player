@@ -5,7 +5,7 @@ use super::{
 };
 #[cfg(feature = "image")]
 use crate::state::ImageRenderInfo;
-use crate::ui::utils::to_bidi_string;
+use crate::ui::utils::{format_genres, to_bidi_string};
 #[cfg(feature = "image")]
 use anyhow::{Context, Result};
 use rspotify::model::Id;
@@ -285,6 +285,18 @@ fn construct_playback_text(
                     to_bidi_string(&episode.show.name),
                     ui.theme.playback_album(),
                 ),
+            },
+            "{genres}" => match playable {
+                rspotify::model::PlayableItem::Track(full_track) => {
+                    let genre = match data.caches.genres.get(&full_track.artists[0].name) {
+                        Some(genres) => &format_genres(genres, configs.app_config.genre_num),
+                        None => "no genre",
+                    };
+                    (to_bidi_string(genre), ui.theme.playback_genres())
+                }
+                rspotify::model::PlayableItem::Episode(_) => {
+                    (to_bidi_string("no genre"), ui.theme.playback_genres())
+                }
             },
             "{metadata}" => {
                 let repeat_value = if playback.fake_track_repeat_state {

@@ -135,3 +135,30 @@ pub fn to_bidi_string(s: &str) -> String {
 
     bidi_string
 }
+
+/// formats genres depending on the number of genres and `genre_num`
+///
+/// Examples for `genre_num = 2`
+/// - 1 genre: "genre1"
+/// - 2 genres: "genre1, genre2"
+/// - \>= 3 genres: "genre1, genre2, ..."
+pub fn format_genres(genres: &[String], genre_num: u8) -> String {
+    let mut genre_str = String::with_capacity(64);
+
+    if genre_num > 0 {
+        for i in 0..genres.len() {
+            genre_str.push_str(&genres[i]);
+
+            if i + 1 != genres.len() {
+                genre_str.push_str(", ");
+
+                if i + 1 >= genre_num as usize {
+                    genre_str.push_str("...");
+                    break;
+                }
+            }
+        }
+    }
+
+    genre_str
+}

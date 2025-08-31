@@ -2,7 +2,7 @@ theme = "default"
 login_redirect_uri = "http://127.0.0.1:8989/login"
 client_port = 8080
 tracks_playback_limit = 50
-playback_format = "{status} {track} • {artists}\n{album}\n{metadata}"
+playback_format = "{status} {track} • {artists}\n{album} • {genres}\n{metadata}"
 playback_metadata_fields = ["repeat", "shuffle", "volume", "device"]
 notify_format = { summary = "{track} • {artists}", body = "{album}" }
 notify_timeout_in_secs = 0
@@ -18,6 +18,7 @@ default_device = "spotify-player"
 play_icon = "▶"
 pause_icon = "▌▌"
 liked_icon = "♥"
+genre_num = 2
 cover_img_length = 9
 cover_img_width = 5
 cover_img_pixels = 16
