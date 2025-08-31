@@ -1,5 +1,4 @@
 theme = "default"
-client_id = "65b708073fc0480ea92a077233ca87bd"
 login_redirect_uri = "http://127.0.0.1:8989/login"
 client_port = 8080
 tracks_playback_limit = 50
@@ -21,6 +20,7 @@ pause_icon = "▌▌"
 liked_icon = "♥"
 cover_img_length = 9
 cover_img_width = 5
+cover_img_pixels = 16
 seek_duration_secs = 5
 
 [device]
