@@ -164,6 +164,7 @@ fn split_rect_for_progress_bar(rect: Rect) -> (Rect, Rect) {
     (chunks[0], chunks[1])
 }
 
+#[cfg(feature = "image")]
 fn split_rect_for_cover_img(rect: Rect) -> (Rect, Rect) {
     let configs = config::get_config();
     let hor_chunks = Layout::horizontal([
@@ -174,7 +175,6 @@ fn split_rect_for_cover_img(rect: Rect) -> (Rect, Rect) {
     .split(rect);
     let ver_chunks = Layout::vertical([
         Constraint::Length(configs.app_config.cover_img_width as u16), // cover_img_rect
-                                                                       // Constraint::Fill(0), // empty space
     ])
     .split(hor_chunks[0]);
 
@@ -457,12 +457,12 @@ fn split_rect_for_playback_window(rect: Rect) -> (Rect, Rect) {
     #[cfg(feature = "image")]
     let playback_width = std::cmp::max(configs.app_config.cover_img_width + 1, playback_width);
 
-    // add lines for top/bottom borders
-    let bold_border = match configs.app_config.progress_bar_position {
-        config::ProgressBarPosition::Bottom => true,
-        config::ProgressBarPosition::Right => false,
+    // add lines for top/bottom borders depending on the progress bar's position
+    let num_lines = match configs.app_config.progress_bar_position {
+        config::ProgressBarPosition::Bottom => 2,
+        config::ProgressBarPosition::Right => 1,
     };
-    let playback_width = (playback_width + if bold_border { 2 } else { 1 }) as u16;
+    let playback_width = (playback_width + num_lines) as u16;
 
     match configs.app_config.layout.playback_window_position {
         config::Position::Top => {
