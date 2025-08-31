@@ -58,7 +58,7 @@ pub enum IdOrName {
     Name(String),
 }
 
-#[derive(Debug, Serialize, Deserialize, clap::ValueEnum, Clone)]
+#[derive(Debug, Serialize, Deserialize, clap::ValueEnum, Clone, Copy)]
 pub enum EditAction {
     Add,
     Delete,
@@ -89,8 +89,8 @@ pub enum PlaylistCommand {
         delete: bool,
     },
     Edit {
-        playlist_id: PlaylistId<'static>,
         action: EditAction,
+        playlist_id: PlaylistId<'static>,
         track_id: Option<TrackId<'static>>,
         album_id: Option<AlbumId<'static>>,
     },

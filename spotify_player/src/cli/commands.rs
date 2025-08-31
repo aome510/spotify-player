@@ -1,6 +1,8 @@
 use clap::{builder::EnumValueParser, value_parser, Arg, ArgAction, ArgGroup, Command};
 use clap_complete::Shell;
 
+use crate::cli::EditAction;
+
 use super::{ContextType, ItemType, Key};
 
 pub fn init_connect_subcommand() -> Command {
@@ -208,14 +210,14 @@ pub fn init_playlist_subcommand() -> Command {
                 .action(clap::ArgAction::SetTrue)
                 .help("Deletes any previously imported tracks that are no longer in an imported playlist since last import.")))
         .subcommand(Command::new("edit").about("Add or remove tracks or albums from a playlist.")
+            .arg(Arg::new("action")
+                .help("Action to perform")
+                .required(true)
+                .value_parser(EnumValueParser::<EditAction>::new()))
             .arg(Arg::new("playlist_id")
                 .help("Playlist ID")
                 .required(true)
                 .value_parser(clap::builder::NonEmptyStringValueParser::new()))
-            .arg(Arg::new("action")
-                .help("Action to perform")
-                .required(true)
-                .value_parser(["add", "delete"]))
             .arg(Arg::new("track_id")
                 .long("track-id")
                 .short('t')
