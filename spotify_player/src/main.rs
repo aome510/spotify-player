@@ -260,6 +260,10 @@ fn main() -> Result<()> {
     // initialize the application configs
     {
         let mut configs = config::Configs::new(&config_folder, &cache_folder)?;
+        if configs.app_config.log_folder.is_none() {
+            // set the log folder to be the cache folder if it is not set
+            configs.app_config.log_folder = Some(cache_folder);
+        }
         if let Some(theme) = args.get_one::<String>("theme") {
             // override the theme config if user specifies a `theme` cli argument
             theme.clone_into(&mut configs.app_config.theme);
@@ -274,7 +278,7 @@ fn main() -> Result<()> {
                 .app_config
                 .log_folder
                 .as_deref()
-                .expect("this Option has been initialized with a value");
+                .expect("log_folder is set");
 
             init_logging(log_folder).context("failed to initialize application's logging")?;
 
