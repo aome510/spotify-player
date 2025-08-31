@@ -50,6 +50,7 @@ pub struct MemoryCaches {
     pub context: ttl_cache::TtlCache<String, Context>,
     pub search: ttl_cache::TtlCache<String, SearchResults>,
     pub lyrics: ttl_cache::TtlCache<String, Option<Lyrics>>,
+    pub genres: ttl_cache::TtlCache<String, Vec<String>>,
     #[cfg(feature = "image")]
     pub images: ttl_cache::TtlCache<String, image::DynamicImage>,
 }
@@ -67,6 +68,7 @@ impl MemoryCaches {
             context: ttl_cache::TtlCache::new(64),
             search: ttl_cache::TtlCache::new(64),
             lyrics: ttl_cache::TtlCache::new(64),
+            genres: ttl_cache::TtlCache::new(64),
             #[cfg(feature = "image")]
             images: ttl_cache::TtlCache::new(64),
         }

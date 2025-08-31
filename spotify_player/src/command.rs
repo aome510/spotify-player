@@ -20,8 +20,12 @@ pub enum Command {
         offset: i32,
     },
     Mute,
-    SeekForward,
-    SeekBackward,
+    SeekForward {
+        duration: Option<u16>,
+    },
+    SeekBackward {
+        duration: Option<u16>,
+    },
 
     Quit,
     OpenCommandHelp,
@@ -303,8 +307,8 @@ impl Command {
             Self::ToggleFakeTrackRepeatMode => "toggle fake track repeat mode",
             Self::Shuffle => "toggle the shuffle mode",
             Self::Mute => "toggle playback volume between 0% and previous level",
-            Self::SeekForward => "seek forward by 5s",
-            Self::SeekBackward => "seek backward by 5s",
+            Self::SeekForward { duration } => { return format!("seek forward by {}s", duration.unwrap_or(5)) },
+            Self::SeekBackward { duration } => { return format!("seek backward by {}s", duration.unwrap_or(5)) },
             Self::Quit => "quit the application",
             Self::ClosePopup => "close a popup",
             #[cfg(feature = "streaming")]

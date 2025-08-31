@@ -212,6 +212,7 @@ pub fn handle_action_in_context(
                     PlaylistPopupAction::AddTrack {
                         folder_id: 0,
                         track_id: track.id,
+                        search_query: String::new(),
                     },
                     ListState::default(),
                 ));
@@ -434,6 +435,7 @@ pub fn handle_action_in_context(
                     PlaylistPopupAction::AddEpisode {
                         folder_id: 0,
                         episode_id: episode.id,
+                        search_query: String::new(),
                     },
                     ListState::default(),
                 ));
@@ -582,17 +584,19 @@ fn handle_global_command(
         Command::Mute => {
             client_pub.send(ClientRequest::Player(PlayerRequest::ToggleMute))?;
         }
-        Command::SeekForward => {
+        Command::SeekForward { duration } => {
             if let Some(progress) = state.player.read().playback_progress() {
-                let duration = config::get_config().app_config.seek_duration_secs;
+                let duration =
+                    duration.unwrap_or(config::get_config().app_config.seek_duration_secs);
                 client_pub.send(ClientRequest::Player(PlayerRequest::SeekTrack(
                     progress + chrono::Duration::try_seconds(i64::from(duration)).unwrap(),
                 )))?;
             }
         }
-        Command::SeekBackward => {
+        Command::SeekBackward { duration } => {
             if let Some(progress) = state.player.read().playback_progress() {
-                let duration = config::get_config().app_config.seek_duration_secs;
+                let duration =
+                    duration.unwrap_or(config::get_config().app_config.seek_duration_secs);
                 client_pub.send(ClientRequest::Player(PlayerRequest::SeekTrack(
                     std::cmp::max(
                         chrono::Duration::zero(),
@@ -642,7 +646,10 @@ fn handle_global_command(
         Command::BrowseUserPlaylists => {
             client_pub.send(ClientRequest::GetUserPlaylists)?;
             ui.popup = Some(PopupState::UserPlaylistList(
-                PlaylistPopupAction::Browse { folder_id: 0 },
+                PlaylistPopupAction::Browse {
+                    folder_id: 0,
+                    search_query: String::new(),
+                },
                 ListState::default(),
             ));
         }
