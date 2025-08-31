@@ -45,6 +45,7 @@ pub enum ActionListItem {
 pub enum PlaylistPopupAction {
     Browse {
         folder_id: usize,
+        search_query: String,
     },
     AddTrack {
         folder_id: usize,

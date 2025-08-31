@@ -112,9 +112,13 @@ pub fn render_popup(
             PopupState::UserPlaylistList(action, _) => {
                 let data = state.data.read();
                 let (items, search_query) = match action {
-                    PlaylistPopupAction::Browse { folder_id } => {
-                        (data.user_data.folder_playlists_items(*folder_id), None)
-                    }
+                    PlaylistPopupAction::Browse {
+                        folder_id,
+                        search_query,
+                    } => (
+                        data.user_data.folder_playlists_items(*folder_id),
+                        search_query,
+                    ),
                     PlaylistPopupAction::AddTrack {
                         folder_id,
                         search_query,
@@ -126,53 +130,39 @@ pub fn render_popup(
                         ..
                     } => (
                         data.user_data.modifiable_playlist_items(Some(*folder_id)),
-                        Some(search_query.as_str()),
+                        search_query,
                     ),
                 };
 
                 // Filter items based on search query if present
-                let filtered_items = filtered_items_from_query(search_query.unwrap_or(""), &items);
+                let filtered_items = filtered_items_from_query(search_query, &items);
 
                 let display_items = filtered_items
                     .iter()
                     .map(|p| (p.to_string(), false))
                     .collect();
 
-                // If we have a search query, show search input box
-                if let Some(query) = search_query {
-                    let chunks = Layout::vertical([
-                        Constraint::Length(3),
-                        Constraint::Fill(0),
-                        Constraint::Length(10),
-                    ])
-                    .split(rect);
+                let chunks = Layout::vertical([
+                    Constraint::Length(3),
+                    Constraint::Fill(0),
+                    Constraint::Length(10),
+                ])
+                .split(rect);
 
-                    // Render search input
-                    let search_rect = construct_and_render_block(
-                        "Search Playlists (type to search, backspace on empty to close)",
-                        &ui.theme,
-                        Borders::ALL,
-                        frame,
-                        chunks[0],
-                    );
-                    frame.render_widget(Paragraph::new(format!("🔍 {query}")), search_rect);
+                // Render search input
+                let search_rect = construct_and_render_block(
+                    "Search Playlists (type to search, backspace on empty to close)",
+                    &ui.theme,
+                    Borders::ALL,
+                    frame,
+                    chunks[0],
+                );
+                frame.render_widget(Paragraph::new(format!("🔍 {search_query}")), search_rect);
 
-                    // Render filtered playlist list
-                    let rect = render_list_popup(
-                        frame,
-                        chunks[2],
-                        "User Playlists",
-                        display_items,
-                        10,
-                        ui,
-                    );
-                    (rect, false)
-                } else {
-                    // Regular rendering without search input
-                    let rect =
-                        render_list_popup(frame, rect, "User Playlists", display_items, 10, ui);
-                    (rect, false)
-                }
+                // Render filtered playlist list
+                let rect =
+                    render_list_popup(frame, chunks[2], "User Playlists", display_items, 10, ui);
+                (rect, false)
             }
             PopupState::UserFollowedArtistList { .. } => {
                 let items = state

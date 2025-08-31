@@ -25,10 +25,7 @@ pub fn handle_key_sequence_for_popup(
                 ui,
             );
         }
-        PopupState::UserPlaylistList(
-            PlaylistPopupAction::AddTrack { .. } | PlaylistPopupAction::AddEpisode { .. },
-            _,
-        ) => {
+        PopupState::UserPlaylistList(..) => {
             if handle_key_sequence_for_playlist_search_popup(key_sequence, ui) {
                 return Ok(true);
             }
@@ -93,21 +90,27 @@ pub fn handle_key_sequence_for_popup(
             )
         }
         PopupState::UserPlaylistList(action, _) => match action {
-            PlaylistPopupAction::Browse { folder_id } => {
+            PlaylistPopupAction::Browse {
+                folder_id,
+                search_query,
+            } => {
+                let search_query = search_query.clone();
                 let data = state.data.read();
                 let items = data.user_data.folder_playlists_items(*folder_id);
+                let filtered_items = filtered_items_from_query(&search_query, &items);
 
                 handle_command_for_list_popup(
                     command,
                     ui,
-                    items.len(),
+                    filtered_items.len(),
                     |_, _| {},
                     |ui: &mut UIStateGuard, id: usize| -> Result<()> {
-                        match items.get(id).expect("invalid index") {
+                        match filtered_items.get(id).expect("invalid index") {
                             PlaylistFolderItem::Folder(f) => {
                                 ui.popup = Some(PopupState::UserPlaylistList(
                                     PlaylistPopupAction::Browse {
                                         folder_id: f.target_id,
+                                        search_query: search_query.clone(),
                                     },
                                     ListState::default(),
                                 ));
@@ -562,8 +565,8 @@ fn handle_key_sequence_for_playlist_search_popup(
 
     let search_query = match action {
         PlaylistPopupAction::AddTrack { search_query, .. }
-        | PlaylistPopupAction::AddEpisode { search_query, .. } => search_query,
-        PlaylistPopupAction::Browse { .. } => return false, // Browse doesn't support search
+        | PlaylistPopupAction::AddEpisode { search_query, .. }
+        | PlaylistPopupAction::Browse { search_query, .. } => search_query,
     };
 
     if key_sequence.keys.len() == 1 {
