@@ -88,6 +88,7 @@ pub struct AppConfig {
     // layout configs
     pub border_type: BorderType,
     pub progress_bar_type: ProgressBarType,
+    pub progress_bar_position: ProgressBarPosition,
 
     pub layout: LayoutConfig,
 
@@ -147,6 +148,13 @@ pub enum ProgressBarType {
     Rectangle,
 }
 config_parser_impl!(ProgressBarType);
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub enum ProgressBarPosition {
+    Bottom,
+    Right,
+}
+config_parser_impl!(ProgressBarPosition);
 
 #[derive(Debug, Deserialize, Serialize, ConfigParse, Clone)]
 pub struct Command {
@@ -306,6 +314,7 @@ impl Default for AppConfig {
 
             border_type: BorderType::Plain,
             progress_bar_type: ProgressBarType::Rectangle,
+            progress_bar_position: ProgressBarPosition::Bottom,
 
             layout: LayoutConfig::default(),
 
