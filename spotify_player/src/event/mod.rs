@@ -77,7 +77,7 @@ fn handle_mouse_event(
             let duration = match player.currently_playing() {
                 Some(rspotify::model::PlayableItem::Track(track)) => Some(track.duration),
                 Some(rspotify::model::PlayableItem::Episode(episode)) => Some(episode.duration),
-                None => None,
+                Some(rspotify::model::PlayableItem::Unknown(_)) | None => None,
             };
             if let Some(duration) = duration {
                 let position_ms =
@@ -534,6 +534,9 @@ fn handle_global_action(
                         ui,
                     );
                 }
+                rspotify::model::PlayableItem::Unknown(_) => {
+                    return Ok(false);
+                }
             }
         }
     }
@@ -633,6 +636,7 @@ fn handle_global_command(
                             ListState::default(),
                         ));
                     }
+                    rspotify::model::PlayableItem::Unknown(_) => {}
                 }
             }
         }
@@ -831,7 +835,7 @@ fn handle_global_command(
                 Some(rspotify::model::PlayableItem::Episode(episode)) => {
                     PlayableId::Episode(episode.id.clone())
                 }
-                None => return Ok(false),
+                Some(rspotify::model::PlayableItem::Unknown(_)) | None => return Ok(false),
             };
 
             if let PageState::Context {

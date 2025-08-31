@@ -727,9 +727,9 @@ pub fn render_queue_page(
     fn get_playable_name(item: &PlayableItem) -> String {
         match item {
             PlayableItem::Track(FullTrack { ref name, .. })
-            | PlayableItem::Episode(FullEpisode { ref name, .. }) => name,
+            | PlayableItem::Episode(FullEpisode { ref name, .. }) => name.to_string(),
+            PlayableItem::Unknown(_) => String::new(),
         }
-        .to_string()
     }
     fn get_playable_artists(item: &PlayableItem) -> String {
         match item {
@@ -739,12 +739,14 @@ pub fn render_queue_page(
                 .collect::<Vec<_>>()
                 .join(", "),
             PlayableItem::Episode(FullEpisode { ref show, .. }) => show.publisher.clone(),
+            PlayableItem::Unknown(_) => String::new(),
         }
     }
     fn get_playable_duration(item: &PlayableItem) -> String {
         match item {
             PlayableItem::Track(FullTrack { ref duration, .. })
             | PlayableItem::Episode(FullEpisode { ref duration, .. }) => format_duration(duration),
+            PlayableItem::Unknown(_) => String::new(),
         }
     }
 
