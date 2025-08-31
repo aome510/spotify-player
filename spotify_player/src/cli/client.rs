@@ -127,7 +127,7 @@ async fn handle_socket_request(
             let id = match data {
                 IdOrName::Id(id) => id,
                 IdOrName::Name(name) => {
-                    let devices = client.device().await?;
+                    let devices = client.available_devices().await?;
                     match devices
                         .into_iter()
                         .find(|d| d.name == name)
@@ -188,7 +188,7 @@ async fn handle_get_key_request(
             serde_json::to_vec(&playback)?
         }
         Key::Devices => {
-            let devices = client.device().await?;
+            let devices = client.available_devices().await?;
             serde_json::to_vec(&devices)?
         }
         Key::UserPlaylists => {
