@@ -584,17 +584,19 @@ fn handle_global_command(
         Command::Mute => {
             client_pub.send(ClientRequest::Player(PlayerRequest::ToggleMute))?;
         }
-        Command::SeekForward => {
+        Command::SeekForward { duration } => {
             if let Some(progress) = state.player.read().playback_progress() {
-                let duration = config::get_config().app_config.seek_duration_secs;
+                let duration =
+                    duration.unwrap_or(config::get_config().app_config.seek_duration_secs);
                 client_pub.send(ClientRequest::Player(PlayerRequest::SeekTrack(
                     progress + chrono::Duration::try_seconds(i64::from(duration)).unwrap(),
                 )))?;
             }
         }
-        Command::SeekBackward => {
+        Command::SeekBackward { duration } => {
             if let Some(progress) = state.player.read().playback_progress() {
-                let duration = config::get_config().app_config.seek_duration_secs;
+                let duration =
+                    duration.unwrap_or(config::get_config().app_config.seek_duration_secs);
                 client_pub.send(ClientRequest::Player(PlayerRequest::SeekTrack(
                     std::cmp::max(
                         chrono::Duration::zero(),
