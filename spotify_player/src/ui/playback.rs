@@ -110,7 +110,6 @@ pub fn render_playback_window(
                     let chunks = split_rect_for_progress_bar(rect);
                     (chunks.0, chunks.1)
                 }
-
             };
 
             if let Some(ref playback) = player.buffered_playback {
@@ -161,11 +160,7 @@ pub fn render_playback_window(
 }
 
 fn split_rect_for_progress_bar(rect: Rect) -> (Rect, Rect) {
-    let chunks = Layout::vertical([
-        Constraint::Fill(0),
-        Constraint::Length(1),
-    ])
-    .split(rect);
+    let chunks = Layout::vertical([Constraint::Fill(0), Constraint::Length(1)]).split(rect);
     (chunks[0], chunks[1])
 }
 
@@ -179,7 +174,7 @@ fn split_rect_for_cover_img(rect: Rect) -> (Rect, Rect) {
     .split(rect);
     let ver_chunks = Layout::vertical([
         Constraint::Length(configs.app_config.cover_img_width as u16), // cover_img_rect
-        // Constraint::Fill(0), // empty space
+                                                                       // Constraint::Fill(0), // empty space
     ])
     .split(hor_chunks[0]);
 
