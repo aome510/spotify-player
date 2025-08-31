@@ -8,10 +8,8 @@ pub fn handle_key_sequence_for_popup(
     state: &SharedState,
     ui: &mut UIStateGuard,
 ) -> Result<bool> {
-    let popup = ui.popup.as_ref().context("empty popup")?;
-
     // handle popups that need reading the raw key sequence instead of the matched command
-    match popup {
+    match ui.popup.as_ref().context("empty popup")? {
         PopupState::Search { .. } => {
             return handle_key_sequence_for_search_popup(key_sequence, client_pub, state, ui);
         }
@@ -31,12 +29,9 @@ pub fn handle_key_sequence_for_popup(
             PlaylistPopupAction::AddTrack { .. } | PlaylistPopupAction::AddEpisode { .. },
             _,
         ) => {
-            return handle_key_sequence_for_playlist_search_popup(
-                key_sequence,
-                client_pub,
-                state,
-                ui,
-            );
+            if handle_key_sequence_for_playlist_search_popup(key_sequence, ui) {
+                return Ok(true);
+            }
         }
         _ => {}
     }
@@ -48,7 +43,7 @@ pub fn handle_key_sequence_for_popup(
         return Ok(false);
     };
 
-    match popup {
+    match ui.popup.as_ref().context("empty popup")? {
         PopupState::Search { .. } => anyhow::bail!("search popup should be handled before"),
         PopupState::PlaylistCreate { .. } => {
             anyhow::bail!("create playlist popup should be handled before")
@@ -146,6 +141,17 @@ pub fn handle_key_sequence_for_popup(
                 let data = state.data.read();
                 let items = data.user_data.modifiable_playlist_items(Some(*folder_id));
 
+                // Filter items based on search query (same logic as UI filtering)
+                let items = if search_query.is_empty() {
+                    items
+                } else {
+                    let query_lower = search_query.to_lowercase();
+                    items
+                        .into_iter()
+                        .filter(|item| item.to_string().to_lowercase().contains(&query_lower))
+                        .collect()
+                };
+
                 handle_command_for_list_popup(
                     command,
                     ui,
@@ -185,6 +191,17 @@ pub fn handle_key_sequence_for_popup(
                 let episode_id = episode_id.clone();
                 let data = state.data.read();
                 let items = data.user_data.modifiable_playlist_items(Some(*folder_id));
+
+                // Filter items based on search query (same logic as UI filtering)
+                let items = if search_query.is_empty() {
+                    items
+                } else {
+                    let query_lower = search_query.to_lowercase();
+                    items
+                        .into_iter()
+                        .filter(|item| item.to_string().to_lowercase().contains(&query_lower))
+                        .collect()
+                };
 
                 handle_command_for_list_popup(
                     command,
@@ -556,19 +573,17 @@ pub fn handle_item_action(
 /// Handle key sequence for playlist search popup (AddTrack/AddEpisode)
 fn handle_key_sequence_for_playlist_search_popup(
     key_sequence: &KeySequence,
-    client_pub: &flume::Sender<ClientRequest>,
-    state: &SharedState,
     ui: &mut UIStateGuard,
-) -> Result<bool> {
+) -> bool {
     // Handle user's input that updates the search query
     let Some(PopupState::UserPlaylistList(ref mut action, _)) = &mut ui.popup else {
-        return Ok(false);
+        return false;
     };
 
     let search_query = match action {
         PlaylistPopupAction::AddTrack { search_query, .. }
         | PlaylistPopupAction::AddEpisode { search_query, .. } => search_query,
-        PlaylistPopupAction::Browse { .. } => return Ok(false), // Browse doesn't support search
+        PlaylistPopupAction::Browse { .. } => return false, // Browse doesn't support search
     };
 
     if key_sequence.keys.len() == 1 {
@@ -580,7 +595,7 @@ fn handle_key_sequence_for_playlist_search_popup(
                     if let Some(popup) = &mut ui.popup {
                         popup.list_select(Some(0));
                     }
-                    return Ok(true);
+                    return true;
                 }
                 crossterm::event::KeyCode::Backspace => {
                     if search_query.is_empty() {
@@ -593,129 +608,12 @@ fn handle_key_sequence_for_playlist_search_popup(
                             popup.list_select(Some(0));
                         }
                     }
-                    return Ok(true);
+                    return true;
                 }
                 _ => {}
             }
         }
     }
 
-    // Handle navigation commands (arrow keys, enter, etc.)
-    let Some(command) = config::get_config()
-        .keymap_config
-        .find_command_from_key_sequence(key_sequence)
-    else {
-        return Ok(false);
-    };
-
-    // Get the current action details for command handling
-    let popup = ui.popup.as_ref().context("empty popup")?;
-    match popup {
-        PopupState::UserPlaylistList(action, _) => match action {
-            PlaylistPopupAction::AddTrack {
-                folder_id,
-                track_id,
-                search_query,
-            } => {
-                let track_id = track_id.clone();
-                let search_query = search_query.clone();
-                let data = state.data.read();
-                let all_items = data.user_data.modifiable_playlist_items(Some(*folder_id));
-
-                // Filter items based on search query (same logic as UI filtering)
-                let filtered_items: Vec<_> = if search_query.is_empty() {
-                    all_items.into_iter().collect()
-                } else {
-                    let query_lower = search_query.to_lowercase();
-                    all_items
-                        .into_iter()
-                        .filter(|item| item.to_string().to_lowercase().contains(&query_lower))
-                        .collect()
-                };
-
-                handle_command_for_list_popup(
-                    command,
-                    ui,
-                    filtered_items.len(),
-                    |_, _| {},
-                    |ui: &mut UIStateGuard, id: usize| -> Result<()> {
-                        ui.popup = match filtered_items.get(id).expect("invalid index") {
-                            PlaylistFolderItem::Folder(f) => Some(PopupState::UserPlaylistList(
-                                PlaylistPopupAction::AddTrack {
-                                    folder_id: f.target_id,
-                                    track_id,
-                                    search_query: search_query.clone(),
-                                },
-                                ListState::default(),
-                            )),
-                            PlaylistFolderItem::Playlist(p) => {
-                                client_pub.send(ClientRequest::AddPlayableToPlaylist(
-                                    p.id.clone(),
-                                    track_id.into(),
-                                ))?;
-                                None
-                            }
-                        };
-                        Ok(())
-                    },
-                    |ui: &mut UIStateGuard| {
-                        ui.popup = None;
-                    },
-                )
-            }
-            PlaylistPopupAction::AddEpisode {
-                folder_id,
-                episode_id,
-                search_query,
-            } => {
-                let episode_id = episode_id.clone();
-                let search_query = search_query.clone();
-                let data = state.data.read();
-                let all_items = data.user_data.modifiable_playlist_items(Some(*folder_id));
-
-                // Filter items based on search query (same logic as UI filtering)
-                let filtered_items: Vec<_> = if search_query.is_empty() {
-                    all_items.into_iter().collect()
-                } else {
-                    let query_lower = search_query.to_lowercase();
-                    all_items
-                        .into_iter()
-                        .filter(|item| item.to_string().to_lowercase().contains(&query_lower))
-                        .collect()
-                };
-
-                handle_command_for_list_popup(
-                    command,
-                    ui,
-                    filtered_items.len(),
-                    |_, _| {},
-                    |ui: &mut UIStateGuard, id: usize| -> Result<()> {
-                        ui.popup = match filtered_items.get(id).expect("invalid index") {
-                            PlaylistFolderItem::Folder(f) => Some(PopupState::UserPlaylistList(
-                                PlaylistPopupAction::AddEpisode {
-                                    folder_id: f.target_id,
-                                    episode_id,
-                                    search_query: search_query.clone(),
-                                },
-                                ListState::default(),
-                            )),
-                            PlaylistFolderItem::Playlist(p) => {
-                                client_pub.send(ClientRequest::AddPlayableToPlaylist(
-                                    p.id.clone(),
-                                    episode_id.into(),
-                                ))?;
-                                None
-                            }
-                        };
-                        Ok(())
-                    },
-                    |ui: &mut UIStateGuard| {
-                        ui.popup = None;
-                    },
-                )
-            }
-            PlaylistPopupAction::Browse { .. } => Ok(false),
-        },
-        _ => Ok(false),
-    }
+    false
 }
