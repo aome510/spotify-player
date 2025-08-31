@@ -1,8 +1,8 @@
 use crate::{auth::AuthConfig, client};
 
 use super::{
-    config, init_cli, start_socket, Command, ContextType, GetRequest, IdOrName, ItemType, Key,
-    PlaylistCommand, PlaylistId, Request, Response, MAX_REQUEST_SIZE,
+    config, init_cli, start_socket, Command, ContextType, EditAction, GetRequest, IdOrName, ItemType, Key,
+    PlaylistCommand, PlaylistId, Request, Response, TrackId, AlbumId, MAX_REQUEST_SIZE,
 };
 use anyhow::{Context, Result};
 use clap::{ArgMatches, Id};
@@ -43,6 +43,26 @@ fn get_id_or_name(args: &ArgMatches) -> IdOrName {
                 .to_owned(),
         ),
         id => panic!("unknown id: {id}"),
+    }
+}
+
+fn get_playlist_id_or_name(args: &ArgMatches) -> IdOrName {
+    match args
+        .get_one::<Id>("playlist_id_or_name")
+        .expect("playlist_id_or_name group is required")
+        .as_str()
+    {
+        "playlist_name" => IdOrName::Name(
+            args.get_one::<String>("playlist_name")
+                .expect("playlist_name should be specified")
+                .to_owned(),
+        ),
+        "playlist_id" => IdOrName::Id(
+            args.get_one::<String>("playlist_id")
+                .expect("playlist_id should be specified")
+                .to_owned(),
+        ),
+        id => panic!("unknown playlist id: {id}"),
     }
 }
 
@@ -314,6 +334,46 @@ fn handle_playlist_subcommand(args: &ArgMatches) -> Result<Request> {
             };
 
             PlaylistCommand::Sync { id: pid, delete }
+        }
+        "edit" => {
+            let playlist_id_or_name = get_playlist_id_or_name(args);
+
+            let action_str = args
+                .get_one::<String>("action")
+                .expect("action arg is required");
+            
+            let action = match action_str.as_str() {
+                "add" => EditAction::Add,
+                "delete" => EditAction::Delete,
+                _ => unreachable!(),
+            };
+
+            let track_id = args
+                .get_one::<String>("track_id")
+                .map(|s| TrackId::from_id(s.to_owned()))
+                .transpose()?;
+
+            let track_name = args
+                .get_one::<String>("track_name")
+                .map(|s| s.to_owned());
+
+            let album_id = args
+                .get_one::<String>("album_id")
+                .map(|s| AlbumId::from_id(s.to_owned()))
+                .transpose()?;
+
+            let album_name = args
+                .get_one::<String>("album_name")
+                .map(|s| s.to_owned());
+
+            PlaylistCommand::Edit {
+                playlist_id_or_name,
+                action,
+                track_id,
+                track_name,
+                album_id,
+                album_name,
+            }
         }
         _ => unreachable!(),
     };
