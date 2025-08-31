@@ -77,11 +77,11 @@ impl Default for KeymapConfig {
                 },
                 Keymap {
                     key_sequence: ">".into(),
-                    command: Command::SeekForward,
+                    command: Command::SeekForward { duration: None },
                 },
                 Keymap {
                     key_sequence: "<".into(),
-                    command: Command::SeekBackward,
+                    command: Command::SeekBackward { duration: None },
                 },
                 Keymap {
                     key_sequence: "enter".into(),

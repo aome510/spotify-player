@@ -13,7 +13,7 @@ use tracing::Instrument;
 
 use crate::{
     cli::Request,
-    client::{Client, PlayerRequest},
+    client::{AppClient, PlayerRequest},
     config::get_cache_folder_path,
     state::{
         AlbumId, ArtistId, Context, ContextId, Id, PlayableId, Playback, PlaybackMetadata,
@@ -27,7 +27,7 @@ use super::{
     Serialize, MAX_REQUEST_SIZE,
 };
 
-pub async fn start_socket(client: Client, socket: UdpSocket, state: Option<SharedState>) {
+pub async fn start_socket(client: AppClient, socket: UdpSocket, state: Option<SharedState>) {
     let mut buf = [0; MAX_REQUEST_SIZE];
 
     loop {
@@ -92,7 +92,7 @@ async fn send_response(
 }
 
 async fn current_playback(
-    client: &Client,
+    client: &AppClient,
     state: Option<&SharedState>,
 ) -> Result<Option<rspotify::model::CurrentPlaybackContext>> {
     // get current playback from the application's state, if exists, or by making an API request
@@ -106,7 +106,7 @@ async fn current_playback(
 }
 
 async fn handle_socket_request(
-    client: &Client,
+    client: &AppClient,
     state: Option<&SharedState>,
     request: super::Request,
 ) -> Result<Vec<u8>> {
@@ -178,7 +178,7 @@ async fn handle_socket_request(
 }
 
 async fn handle_get_key_request(
-    client: &Client,
+    client: &AppClient,
     state: Option<&SharedState>,
     key: Key,
 ) -> Result<Vec<u8>> {
@@ -219,7 +219,7 @@ async fn handle_get_key_request(
 }
 
 /// Get a Spotify item's ID from its `IdOrName` representation
-async fn get_spotify_id(client: &Client, typ: ItemType, id_or_name: IdOrName) -> Result<ItemId> {
+async fn get_spotify_id(client: &AppClient, typ: ItemType, id_or_name: IdOrName) -> Result<ItemId> {
     // For `IdOrName::Name`, we search for the first item matching the name and return its Spotify id.
     // The item's id is then used to retrieve the item's data.
 
@@ -304,7 +304,7 @@ async fn get_spotify_id(client: &Client, typ: ItemType, id_or_name: IdOrName) ->
 }
 
 async fn handle_get_item_request(
-    client: &Client,
+    client: &AppClient,
     item_type: ItemType,
     id_or_name: IdOrName,
 ) -> Result<Vec<u8>> {
@@ -317,14 +317,14 @@ async fn handle_get_item_request(
     })
 }
 
-async fn handle_search_request(client: &Client, query: String) -> Result<Vec<u8>> {
+async fn handle_search_request(client: &AppClient, query: String) -> Result<Vec<u8>> {
     let search_result = client.search(&query).await?;
 
     Ok(serde_json::to_vec(&search_result)?)
 }
 
 async fn handle_playback_request(
-    client: &Client,
+    client: &AppClient,
     state: Option<&SharedState>,
     command: Command,
 ) -> Result<()> {
@@ -465,7 +465,7 @@ async fn handle_playback_request(
     Ok(())
 }
 
-async fn handle_playlist_request(client: &Client, command: PlaylistCommand) -> Result<String> {
+async fn handle_playlist_request(client: &AppClient, command: PlaylistCommand) -> Result<String> {
     let uid = client.current_user().await?.id;
 
     match command {
@@ -699,7 +699,7 @@ const TRACK_BUFFER_CAP: usize = 100;
 /// The state of `import_from` playlist is stored into a cache file to add/delete the differed tracks between
 /// subsequent imports of the same two playlists.
 async fn playlist_import(
-    client: &Client,
+    client: &AppClient,
     import_from: PlaylistId<'static>,
     import_to: PlaylistId<'static>,
     delete: bool,
