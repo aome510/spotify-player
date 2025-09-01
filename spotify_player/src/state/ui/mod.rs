@@ -97,25 +97,7 @@ impl UIState {
     }
 }
 
-#[cfg(feature = "fzf")]
-use fuzzy_matcher::skim::SkimMatcherV2;
 use ratatui::layout::Rect;
-
-#[cfg(feature = "fzf")]
-fn fuzzy_search_items<'a, T: std::fmt::Display>(items: &'a [T], query: &str) -> Vec<&'a T> {
-    let matcher = SkimMatcherV2::default();
-    let mut result = items
-        .iter()
-        .filter_map(|t| {
-            matcher
-                .fuzzy(&t.to_string(), query, false)
-                .map(|(score, _)| (t, score))
-        })
-        .collect::<Vec<_>>();
-
-    result.sort_by(|(_, a), (_, b)| b.cmp(a));
-    result.into_iter().map(|(t, _)| t).collect::<Vec<_>>()
-}
 
 impl Default for UIState {
     fn default() -> Self {

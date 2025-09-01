@@ -50,6 +50,26 @@ pub fn parse_uri(uri: &str) -> Cow<'_, str> {
     }
 }
 
+
+#[cfg(feature = "fzf")]
+use fuzzy_matcher::skim::SkimMatcherV2;
+
+#[cfg(feature = "fzf")]
+pub fn fuzzy_search_items<'a, T: std::fmt::Display>(items: &'a [T], query: &str) -> Vec<&'a T> {
+    let matcher = SkimMatcherV2::default();
+    let mut result = items
+        .iter()
+        .filter_map(|t| {
+            matcher
+                .fuzzy(&t.to_string(), query, false)
+                .map(|(score, _)| (t, score))
+        })
+        .collect::<Vec<_>>();
+
+    result.sort_by(|(_, a), (_, b)| b.cmp(a));
+    result.into_iter().map(|(t, _)| t).collect::<Vec<_>>()
+}
+
 /// Get a list of items filtered by a search query.
 pub fn filtered_items_from_query<'a, T: std::fmt::Display>(
     query: &str,
