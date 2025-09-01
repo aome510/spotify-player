@@ -50,7 +50,6 @@ pub fn parse_uri(uri: &str) -> Cow<'_, str> {
     }
 }
 
-
 #[cfg(feature = "fzf")]
 use fuzzy_matcher::skim::SkimMatcherV2;
 
