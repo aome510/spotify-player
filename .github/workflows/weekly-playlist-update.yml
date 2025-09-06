@@ -1,0 +1,88 @@
+name: Weekly Afera Playlist Update
+
+on:
+  schedule:
+    # Run every Monday at 10:00 AM UTC
+    - cron: '0 10 * * 1'
+  workflow_dispatch: # Allow manual triggering
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_FEATURES: "rodio-backend,media-control,image,notify"
+
+jobs:
+  update-playlist:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libssl-dev libasound2-dev libdbus-1-dev libxcb-shape0-dev libxcb-xfixes0-dev tcl tcl-tls
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo deps
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build spotify_player
+        run: cargo build --release --no-default-features --features ${{ env.RUST_FEATURES }}
+
+      - name: Set up Spotify credentials
+        env:
+          SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
+          SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
+          SPOTIFY_REFRESH_TOKEN: ${{ secrets.SPOTIFY_REFRESH_TOKEN }}
+        run: |
+          # Create config directory if it doesn't exist
+          mkdir -p ~/.config/spotify-player
+          
+          # Create config file with credentials
+          cat > ~/.config/spotify-player/app.toml << EOF
+          [application]
+          client_id = "$SPOTIFY_CLIENT_ID"
+          
+          [authentication]
+          client_secret = "$SPOTIFY_CLIENT_SECRET"
+          refresh_token = "$SPOTIFY_REFRESH_TOKEN"
+          EOF
+
+      - name: Make scripts executable
+        run: |
+          chmod +x playlist_scraper.tcl
+          chmod +x playlist_generator.tcl
+
+      - name: Scrape and create playlist
+        run: |
+          echo "Scraping Afera website..."
+          ./playlist_scraper.tcl https://www.afera.com.pl/muzyka > scraped_content.txt
+          
+          echo "Content scraped:"
+          cat scraped_content.txt
+          
+          echo "Creating playlist..."
+          cat scraped_content.txt | ./playlist_generator.tcl > playlist_commands.txt
+          
+          echo "Generated commands:"
+          cat playlist_commands.txt
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playlist-update-logs
+          path: |
+            scraped_content.txt
+            playlist_commands.txt
+          retention-days: 30
