@@ -521,8 +521,18 @@ pub fn handle_navigation_command(
             page.select(std::cmp::min(id + offset, len - 1));
             true
         }
+        Command::SelectNextOrScrollDown10 => {
+            let offset = count.unwrap_or(10);
+            page.select(std::cmp::min(id + offset, len - 1));
+            true
+        }
         Command::SelectPreviousOrScrollUp => {
             let offset = count.unwrap_or(1);
+            page.select(id.saturating_sub(offset));
+            true
+        }
+        Command::SelectPreviousOrScrollUp10 => {
+            let offset = count.unwrap_or(10);
             page.select(id.saturating_sub(offset));
             true
         }

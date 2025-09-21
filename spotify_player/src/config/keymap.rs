@@ -237,6 +237,10 @@ impl Default for KeymapConfig {
                     command: Command::SelectNextOrScrollDown,
                 },
                 Keymap {
+                    key_sequence: "C-down".into(),
+                    command: Command::SelectNextOrScrollDown10,
+                },
+                Keymap {
                     key_sequence: "k".into(),
                     command: Command::SelectPreviousOrScrollUp,
                 },
@@ -247,6 +251,10 @@ impl Default for KeymapConfig {
                 Keymap {
                     key_sequence: "up".into(),
                     command: Command::SelectPreviousOrScrollUp,
+                },
+                Keymap {
+                    key_sequence: "C-up".into(),
+                    command: Command::SelectPreviousOrScrollUp10,
                 },
                 Keymap {
                     key_sequence: "page_up".into(),
