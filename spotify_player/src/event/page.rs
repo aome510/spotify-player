@@ -519,17 +519,7 @@ pub fn handle_navigation_command(
         Command::SelectNextOrScrollDown => {
             let offset = count.unwrap_or(1);
             let temp = id + offset;
-            if (temp > len - 1) {
-                page.select(0 + temp - len);
-            } else {
-                page.select(id + offset);
-            }
-            true
-        }
-        Command::SelectNextOrScrollDown10 => {
-            let offset = count.unwrap_or(10);
-            let temp = id + offset;
-            if (temp > len - 1) {
+            if temp > len - 1 {
                 page.select(0 + temp - len);
             } else {
                 page.select(id + offset);
@@ -539,17 +529,7 @@ pub fn handle_navigation_command(
         Command::SelectPreviousOrScrollUp => {
             let offset = count.unwrap_or(1);
             let temp = id as isize - offset as isize;
-            if (temp < 0) {
-                page.select((len as isize + temp) as usize);
-            } else {
-                page.select(temp as usize);
-            }
-            true
-        }
-        Command::SelectPreviousOrScrollUp10 => {
-            let offset = count.unwrap_or(10);
-            let temp = id as isize - offset as isize;
-            if (temp < 0) {
+            if temp < 0 {
                 page.select((len as isize + temp) as usize);
             } else {
                 page.select(temp as usize);

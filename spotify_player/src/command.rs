@@ -32,9 +32,7 @@ pub enum Command {
     ClosePopup,
 
     SelectNextOrScrollDown,
-    SelectNextOrScrollDown10,
     SelectPreviousOrScrollUp,
-    SelectPreviousOrScrollUp10,
     PageSelectNextOrScrollDown,
     PageSelectPreviousOrScrollUp,
     SelectFirstOrScrollToTop,
@@ -316,9 +314,7 @@ impl Command {
             #[cfg(feature = "streaming")]
             Self::RestartIntegratedClient => "restart the integrated client",
             Self::SelectNextOrScrollDown => "select the next item in a list/table or scroll down (supports vim-style count: 5j)",
-            Self::SelectNextOrScrollDown10 => "select the 10th next item in a list/table or scroll down (supports vim-style count: 5j)",
             Self::SelectPreviousOrScrollUp => "select the previous item in a list/table or scroll up (supports vim-style count: 10k)",
-            Self::SelectPreviousOrScrollUp10 => "select the previous item in a list/table or scroll up (supports vim-style count: 10k)",
             Self::PageSelectNextOrScrollDown => "select the next page item in a list/table or scroll a page down (supports vim-style count: 3C-f)",
             Self::PageSelectPreviousOrScrollUp => "select the previous page item in a list/table or scroll a page up (supports vim-style count: 2C-b)",
             Self::SelectFirstOrScrollToTop => "select the first item in a list/table or scroll to the top",
