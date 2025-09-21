@@ -95,7 +95,7 @@ fn spotify_id_to_playable_id(id: spotify_id::SpotifyId) -> anyhow::Result<Playab
             let uri = id.to_uri()?;
             Ok(EpisodeId::from_uri(&uri)?.into_static().into())
         }
-        _ => anyhow::bail!("unexpected spotify_id {:?}", id),
+        _ => anyhow::bail!("unexpected spotify_id {id:?}"),
     }
 }
 
