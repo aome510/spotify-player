@@ -319,18 +319,10 @@ impl Command {
             Self::SelectNextOrScrollDown10 => "select the 10th next item in a list/table or scroll down (supports vim-style count: 5j)",
             Self::SelectPreviousOrScrollUp => "select the previous item in a list/table or scroll up (supports vim-style count: 10k)",
             Self::SelectPreviousOrScrollUp10 => "select the previous item in a list/table or scroll up (supports vim-style count: 10k)",
-            Self::PageSelectNextOrScrollDown => {
-                "select the next page item in a list/table or scroll a page down (supports vim-style count: 3C-f)"
-            }
-            Self::PageSelectPreviousOrScrollUp => {
-                "select the previous page item in a list/table or scroll a page up (supports vim-style count: 2C-b)"
-            }
-            Self::SelectFirstOrScrollToTop => {
-                "select the first item in a list/table or scroll to the top"
-            }
-            Self::SelectLastOrScrollToBottom => {
-                "select the last item in a list/table or scroll to the bottom"
-            }
+            Self::PageSelectNextOrScrollDown => "select the next page item in a list/table or scroll a page down (supports vim-style count: 3C-f)",
+            Self::PageSelectPreviousOrScrollUp => "select the previous page item in a list/table or scroll a page up (supports vim-style count: 2C-b)",
+            Self::SelectFirstOrScrollToTop => "select the first item in a list/table or scroll to the top",
+            Self::SelectLastOrScrollToBottom => "select the last item in a list/table or scroll to the bottom",
             Self::ChooseSelected => "choose the selected item and act on it",
             Self::JumpToCurrentTrackInContext => "jump to the current track in the context",
             Self::RefreshPlayback => "manually refresh the current playback",
@@ -365,9 +357,7 @@ impl Command {
             Self::SortTrackByAddedDate => "sort the track table (if any) by track's added date",
             Self::ReverseTrackOrder => "reverse the order of the track table (if any)",
             Self::SortLibraryAlphabetically => "sort the library alphabetically",
-            Self::SortLibraryByRecent => {
-                "sort the library (playlists and albums) by recently added items"
-            }
+            Self::SortLibraryByRecent => "sort the library (playlists and albums) by recently added items",
             Self::MovePlaylistItemUp => "move playlist item up one position",
             Self::MovePlaylistItemDown => "move playlist item down one position",
             Self::CreatePlaylist => "create a new playlist",
