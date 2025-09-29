@@ -70,7 +70,7 @@ impl AppClient {
         // Construct user-provided client.
         // This custom client is needed for Spotify Connect integration because the Spotify client (`AppConfig::spotify`),
         // which `spotify-player` uses to retrieve Spotify data, doesn't have access to user available devices
-        let mut user_client = configs.app_config.get_user_client_id()?.clone().map(|id| {
+        let mut user_client = configs.app_config.get_user_client_id(&configs.config_folder)?.clone().map(|id| {
             let creds = rspotify::Credentials { id, secret: None };
             let oauth = rspotify::OAuth {
                 scopes: rspotify::scopes!("user-read-playback-state"),
