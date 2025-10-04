@@ -9,10 +9,10 @@ use ratatui::text::Line;
 use crate::{state::Episode, utils::format_duration};
 
 use super::{
-    config, utils, utils::construct_and_render_block, Album, Artist, ArtistFocusState, Borders,
-    BrowsePageUIState, Cell, Constraint, Context, ContextPageUIState, DataReadGuard, Frame, Id,
-    Layout, LibraryFocusState, MutableWindowState, Orientation, PageState, Paragraph,
-    PlaylistFolderItem, Rect, Row, SearchFocusState, SharedState, Style, Table, Track,
+    config, utils, utils::construct_and_render_block, Album, Alignment, Artist, ArtistFocusState,
+    Borders, BrowsePageUIState, Cell, Constraint, Context, ContextPageUIState, DataReadGuard,
+    Frame, Id, Layout, LibraryFocusState, MutableWindowState, Orientation, PageState, Paragraph,
+    PlaylistFolderItem, Rect, Row, SearchFocusState, SharedState, Style, Table, Text, Track,
     UIStateGuard,
 };
 use crate::state::BidiDisplay;
@@ -972,10 +972,11 @@ fn render_track_table(
         .into_iter()
         .enumerate()
         .map(|(id, t)| {
-            let (id, style) = if playing_track_uri == t.id.uri() {
+            let track_no = (id + 1).to_string();
+            let (play_pause, style) = if playing_track_uri == t.id.uri() {
                 (playing_id.to_string(), ui.theme.current_playing())
             } else {
-                ((id + 1).to_string(), Style::default())
+                (String::new(), Style::default())
             };
             Row::new(vec![
                 if data.user_data.is_liked_track(t) {
@@ -983,7 +984,8 @@ fn render_track_table(
                 } else {
                     Cell::from("")
                 },
-                Cell::from(id),
+                Cell::from(Text::from(track_no).alignment(Alignment::Right)),
+                Cell::from(play_pause),
                 Cell::from(to_bidi_string(&t.display_name())),
                 Cell::from(to_bidi_string(&t.artists_info())),
                 Cell::from(to_bidi_string(&t.album_info())),
@@ -1009,11 +1011,18 @@ fn render_track_table(
             .style(style)
         })
         .collect::<Vec<_>>();
+
+    let n_play_pause_chars = std::cmp::max(
+        configs.app_config.play_icon.chars().count(),
+        configs.app_config.pause_icon.chars().count(),
+    ) as u16;
+    let n_track_digits = (n_tracks.ilog10() + 1) as u16;
     let track_table = Table::new(
         rows,
         [
             Constraint::Length(configs.app_config.liked_icon.chars().count() as u16),
-            Constraint::Length(4),
+            Constraint::Length(n_track_digits),
+            Constraint::Length(n_play_pause_chars),
             Constraint::Fill(4),
             Constraint::Fill(3),
             Constraint::Fill(5),
@@ -1028,7 +1037,8 @@ fn render_track_table(
     .header(
         Row::new(vec![
             Cell::from(""),
-            Cell::from("#"),
+            Cell::from(Text::from("#").alignment(Alignment::Right)),
+            Cell::from(""),
             Cell::from("Title"),
             Cell::from("Artists"),
             Cell::from("Album"),
