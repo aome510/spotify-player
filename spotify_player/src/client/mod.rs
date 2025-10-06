@@ -70,20 +70,24 @@ impl AppClient {
         // Construct user-provided client.
         // This custom client is needed for Spotify Connect integration because the Spotify client (`AppConfig::spotify`),
         // which `spotify-player` uses to retrieve Spotify data, doesn't have access to user available devices
-        let mut user_client = configs.app_config.get_user_client_id(&configs.config_folder)?.clone().map(|id| {
-            let creds = rspotify::Credentials { id, secret: None };
-            let oauth = rspotify::OAuth {
-                scopes: rspotify::scopes!("user-read-playback-state"),
-                redirect_uri: configs.app_config.login_redirect_uri.clone(),
-                ..Default::default()
-            };
-            let config = rspotify::Config {
-                token_cached: true,
-                cache_path: configs.cache_folder.join("user_client_token.json"),
-                ..Default::default()
-            };
-            rspotify::AuthCodePkceSpotify::with_config(creds, oauth, config)
-        });
+        let mut user_client = configs
+            .app_config
+            .get_user_client_id(&configs.config_folder)?
+            .clone()
+            .map(|id| {
+                let creds = rspotify::Credentials { id, secret: None };
+                let oauth = rspotify::OAuth {
+                    scopes: rspotify::scopes!("user-read-playback-state"),
+                    redirect_uri: configs.app_config.login_redirect_uri.clone(),
+                    ..Default::default()
+                };
+                let config = rspotify::Config {
+                    token_cached: true,
+                    cache_path: configs.cache_folder.join("user_client_token.json"),
+                    ..Default::default()
+                };
+                rspotify::AuthCodePkceSpotify::with_config(creds, oauth, config)
+            });
 
         if let Some(client) = &mut user_client {
             let url = client
