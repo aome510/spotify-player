@@ -1,4 +1,4 @@
-use crate::utils::filtered_items_from_query;
+use crate::{command::Command, utils::filtered_items_from_query};
 
 use super::{
     config, utils, utils::construct_and_render_block, Borders, Cell, Constraint, Frame, Layout,
@@ -244,7 +244,7 @@ pub fn render_shortcut_help_popup(frame: &mut Frame, ui: &mut UIStateGuard, rect
                     keymap.key_sequence.keys.drain(0..input.keys.len());
                     keymap
                 })
-                .filter(|keymap| !keymap.key_sequence.keys.is_empty())
+                .filter(|keymap| !keymap.key_sequence.keys.is_empty() && keymap.command != Command::None)
                 .collect::<Vec<_>>()
         }
     };
