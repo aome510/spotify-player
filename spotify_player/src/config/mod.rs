@@ -67,6 +67,7 @@ pub struct AppConfig {
     pub notify_format: NotifyFormat,
     #[cfg(feature = "notify")]
     pub notify_timeout_in_secs: u64,
+    pub notify_transient: bool,
 
     pub tracks_playback_limit: usize,
 
@@ -298,6 +299,7 @@ impl Default for AppConfig {
             },
             #[cfg(feature = "notify")]
             notify_timeout_in_secs: 0,
+            notify_transient: false,
 
             player_event_hook_command: None,
 

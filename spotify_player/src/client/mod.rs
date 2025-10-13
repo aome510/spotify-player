@@ -1789,6 +1789,7 @@ impl AppClient {
         cover_img_path: &std::path::Path,
     ) -> Result<()> {
         let mut n = notify_rust::Notification::new();
+        use notify_rust::Hint;
 
         let re = regex::Regex::new(r"\{.*?\}").unwrap();
         // Generate a text described a track from a format string.
@@ -1855,6 +1856,9 @@ impl AppClient {
             n.timeout(std::time::Duration::from_secs(
                 configs.app_config.notify_timeout_in_secs,
             ));
+        }
+        if configs.app_config.notify_transient {
+            n.hint(Hint::Transient(true));
         }
         n.show()?;
 
