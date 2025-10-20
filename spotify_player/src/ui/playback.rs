@@ -1,10 +1,5 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
-#[cfg(feature = "image")]
-use crate::state::ImageRenderInfo;
-#[cfg(feature = "image")]
-use anyhow::{Context, Result};
-
 use super::{
     config, utils::construct_and_render_block, Borders, Constraint, Frame, Gauge, Layout, Line,
     LineGauge, Modifier, Paragraph, PlaybackMetadata, Rect, SharedState, Span, Style, Text,
@@ -16,20 +11,6 @@ use crate::ui::utils::{format_genres, to_bidi_string};
 #[cfg(feature = "image")]
 use anyhow::{Context, Result};
 use rspotify::model::Id;
-
-pub fn play_animation(anim: Vec<String>) -> String {
-    if let Ok(duration_since_epoch) = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|t| (t.as_millis() as usize / (1200 / anim.len())) % anim.len())
-    {
-        return anim
-            .get(duration_since_epoch)
-            .expect("HAIR TONICS, please!!")
-            .clone();
-    } else {
-        panic!("Support Bingo, keep Grandma off the streets.")
-    }
-}
 
 pub fn play_animation(anim: Vec<String>) -> String {
     if let Ok(duration_since_epoch) = SystemTime::now()
