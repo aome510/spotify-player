@@ -68,6 +68,7 @@ struct ComponentStyle {
     playback_track: Option<Style>,
     playback_artists: Option<Style>,
     playback_album: Option<Style>,
+    playback_genres: Option<Style>,
     playback_metadata: Option<Style>,
     playback_progress_bar: Option<Style>,
     playback_progress_bar_unfilled: Option<Style>,
@@ -79,6 +80,7 @@ struct ComponentStyle {
     secondary_row: Option<Style>,
     like: Option<Style>,
     lyrics_played: Option<Style>,
+    lyrics_playing: Option<Style>,
 }
 
 #[derive(Default, Clone, Debug, Deserialize)]
@@ -252,6 +254,18 @@ impl Theme {
             .style(&self.palette)
     }
 
+    pub fn playback_genres(&self) -> style::Style {
+        self.component_style
+            .playback_genres
+            .as_ref()
+            .unwrap_or(
+                &Style::default()
+                    .fg(StyleColor::BrightBlack)
+                    .modifiers([StyleModifier::Italic]),
+            )
+            .style(&self.palette)
+    }
+
     pub fn playback_metadata(&self) -> style::Style {
         self.component_style
             .playback_metadata
@@ -345,6 +359,18 @@ impl Theme {
             .lyrics_played
             .as_ref()
             .unwrap_or(&Style::default().modifiers([StyleModifier::Dim]))
+            .style(&self.palette)
+    }
+
+    pub fn lyrics_playing(&self) -> style::Style {
+        self.component_style
+            .lyrics_playing
+            .as_ref()
+            .unwrap_or(
+                &Style::default()
+                    .fg(StyleColor::Green)
+                    .modifiers([StyleModifier::Bold]),
+            )
             .style(&self.palette)
     }
 }

@@ -1,11 +1,20 @@
+use crate::ui::utils::to_bidi_string;
+use crate::utils::map_join;
+use html_escape::decode_html_entities;
 pub use rspotify::model::{
     AlbumId, ArtistId, EpisodeId, Id, PlayableId, PlaylistId, ShowId, TrackId, UserId,
 };
-
-use crate::utils::map_join;
-use html_escape::decode_html_entities;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
+use std::fmt::{Display, Write};
+
+/// A trait similar to Display but with bidirectional text support
+pub trait BidiDisplay: Display {
+    fn to_bidi_string(&self) -> String {
+        let disp_str = self.to_string();
+        to_bidi_string(&disp_str)
+    }
+}
 
 #[derive(Serialize, Clone, Debug)]
 #[serde(untagged)]
@@ -233,33 +242,58 @@ impl Context {
             Context::Album {
                 ref album,
                 ref tracks,
-            } => {
-                format!(
-                    "{} | {} | {} songs",
-                    album.name,
-                    album.release_date,
-                    tracks.len()
-                )
-            }
+            } => format!(
+                "{} | {} | {} songs | {}",
+                album.name,
+                album.release_date,
+                tracks.len(),
+                play_time(tracks),
+            ),
             Context::Playlist {
                 ref playlist,
                 tracks,
-            } => {
-                format!(
-                    "{} | {} | {} songs",
-                    playlist.name,
-                    playlist.owner.0,
-                    tracks.len()
-                )
-            }
+            } => format!(
+                "{} | {} | {} songs | {}",
+                playlist.name,
+                playlist.owner.0,
+                tracks.len(),
+                play_time(tracks),
+            ),
             Context::Artist { ref artist, .. } => artist.name.to_string(),
-            Context::Tracks { desc, tracks } => format!("{} | {} songs", desc, tracks.len()),
+            Context::Tracks { desc, tracks } => {
+                format!("{} | {} songs | {}", desc, tracks.len(), play_time(tracks))
+            }
             Context::Show {
                 ref show,
                 ref episodes,
             } => format!("{} | {} episodes", show.name, episodes.len()),
         }
     }
+}
+
+fn play_time(tracks: &[Track]) -> String {
+    let duration = tracks
+        .iter()
+        .map(|t| t.duration)
+        .sum::<std::time::Duration>();
+
+    let mut output = String::new();
+
+    let seconds = duration.as_secs() % 60;
+    let minutes = (duration.as_secs() / 60) % 60;
+    let hours = duration.as_secs() / 3600;
+
+    if hours > 0 {
+        write!(output, "{hours}h ").unwrap();
+    }
+
+    if minutes > 0 {
+        write!(output, "{minutes}m ").unwrap();
+    }
+
+    write!(output, "{seconds}s").unwrap();
+
+    output
 }
 
 impl ContextId {
@@ -391,6 +425,8 @@ impl std::fmt::Display for Track {
     }
 }
 
+impl BidiDisplay for Track {}
+
 impl Album {
     /// tries to convert from a `rspotify::model::SimplifiedAlbum` into `Album`
     pub fn try_from_simplified_album(album: rspotify::model::SimplifiedAlbum) -> Option<Self> {
@@ -463,6 +499,8 @@ impl std::fmt::Display for Album {
     }
 }
 
+impl BidiDisplay for Album {}
+
 impl Artist {
     /// tries to convert from a `rspotify::model::SimplifiedArtist` into `Artist`
     pub fn try_from_simplified_artist(artist: rspotify::model::SimplifiedArtist) -> Option<Self> {
@@ -498,6 +536,8 @@ fn from_simplified_artists_to_artists(
         .filter_map(Artist::try_from_simplified_artist)
         .collect()
 }
+
+impl BidiDisplay for Artist {}
 
 impl From<rspotify::model::SimplifiedPlaylist> for Playlist {
     fn from(playlist: rspotify::model::SimplifiedPlaylist) -> Self {
@@ -544,6 +584,8 @@ impl std::fmt::Display for Playlist {
     }
 }
 
+impl BidiDisplay for Playlist {}
+
 impl From<rspotify::model::SimplifiedShow> for Show {
     fn from(show: rspotify::model::SimplifiedShow) -> Self {
         Self {
@@ -567,6 +609,8 @@ impl std::fmt::Display for Show {
         write!(f, "{}", self.name)
     }
 }
+
+impl BidiDisplay for Show {}
 
 impl From<rspotify::model::SimplifiedEpisode> for Episode {
     fn from(episode: rspotify::model::SimplifiedEpisode) -> Self {
@@ -610,6 +654,8 @@ impl std::fmt::Display for PlaylistFolder {
     }
 }
 
+impl BidiDisplay for PlaylistFolder {}
+
 impl std::fmt::Display for PlaylistFolderItem {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -618,6 +664,8 @@ impl std::fmt::Display for PlaylistFolderItem {
         }
     }
 }
+
+impl BidiDisplay for PlaylistFolderItem {}
 
 impl From<rspotify::model::category::Category> for Category {
     fn from(c: rspotify::model::category::Category) -> Self {
@@ -708,7 +756,8 @@ impl From<librespot_metadata::lyrics::Lyrics> for Lyrics {
                 let t = chrono::Duration::milliseconds(
                     l.start_time_ms.parse::<i64>().expect("invalid number"),
                 );
-                (t, l.words)
+
+                (t, to_bidi_string(&l.words))
             })
             .collect::<Vec<_>>();
         lines.sort_by_key(|l| l.0);

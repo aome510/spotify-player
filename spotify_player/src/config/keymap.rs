@@ -77,11 +77,11 @@ impl Default for KeymapConfig {
                 },
                 Keymap {
                     key_sequence: ">".into(),
-                    command: Command::SeekForward,
+                    command: Command::SeekForward { duration: None },
                 },
                 Keymap {
                     key_sequence: "<".into(),
-                    command: Command::SeekBackward,
+                    command: Command::SeekBackward { duration: None },
                 },
                 Keymap {
                     key_sequence: "enter".into(),
@@ -106,6 +106,10 @@ impl Default for KeymapConfig {
                 Keymap {
                     key_sequence: "Z".into(),
                     command: Command::AddSelectedItemToQueue,
+                },
+                Keymap {
+                    key_sequence: "C-g".into(),
+                    command: Command::JumpToHighlightTrackInContext,
                 },
                 Keymap {
                     key_sequence: "C-space".into(),

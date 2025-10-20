@@ -1,5 +1,6 @@
 use std::{
     collections::HashSet,
+    fmt::Write as _,
     fs::{create_dir_all, remove_dir_all},
     io::Write,
     net::SocketAddr,
@@ -12,7 +13,7 @@ use tracing::Instrument;
 
 use crate::{
     cli::Request,
-    client::{Client, PlayerRequest},
+    client::{AppClient, PlayerRequest},
     config::get_cache_folder_path,
     state::{
         AlbumId, ArtistId, Context, ContextId, Id, PlayableId, Playback, PlaybackMetadata,
@@ -22,11 +23,11 @@ use crate::{
 use rspotify::prelude::{BaseClient, OAuthClient};
 
 use super::{
-    Command, Deserialize, GetRequest, IdOrName, ItemId, ItemType, Key, PlaylistCommand, Response,
-    Serialize, MAX_REQUEST_SIZE,
+    Command, Deserialize, EditAction, GetRequest, IdOrName, ItemId, ItemType, Key, PlaylistCommand,
+    Response, Serialize, MAX_REQUEST_SIZE,
 };
 
-pub async fn start_socket(client: Client, socket: UdpSocket, state: Option<SharedState>) {
+pub async fn start_socket(client: AppClient, socket: UdpSocket, state: Option<SharedState>) {
     let mut buf = [0; MAX_REQUEST_SIZE];
 
     loop {
@@ -91,7 +92,7 @@ async fn send_response(
 }
 
 async fn current_playback(
-    client: &Client,
+    client: &AppClient,
     state: Option<&SharedState>,
 ) -> Result<Option<rspotify::model::CurrentPlaybackContext>> {
     // get current playback from the application's state, if exists, or by making an API request
@@ -105,7 +106,7 @@ async fn current_playback(
 }
 
 async fn handle_socket_request(
-    client: &Client,
+    client: &AppClient,
     state: Option<&SharedState>,
     request: super::Request,
 ) -> Result<Vec<u8>> {
@@ -126,7 +127,7 @@ async fn handle_socket_request(
             let id = match data {
                 IdOrName::Id(id) => id,
                 IdOrName::Name(name) => {
-                    let devices = client.device().await?;
+                    let devices = client.available_devices().await?;
                     match devices
                         .into_iter()
                         .find(|d| d.name == name)
@@ -177,7 +178,7 @@ async fn handle_socket_request(
 }
 
 async fn handle_get_key_request(
-    client: &Client,
+    client: &AppClient,
     state: Option<&SharedState>,
     key: Key,
 ) -> Result<Vec<u8>> {
@@ -187,7 +188,7 @@ async fn handle_get_key_request(
             serde_json::to_vec(&playback)?
         }
         Key::Devices => {
-            let devices = client.device().await?;
+            let devices = client.available_devices().await?;
             serde_json::to_vec(&devices)?
         }
         Key::UserPlaylists => {
@@ -218,7 +219,7 @@ async fn handle_get_key_request(
 }
 
 /// Get a Spotify item's ID from its `IdOrName` representation
-async fn get_spotify_id(client: &Client, typ: ItemType, id_or_name: IdOrName) -> Result<ItemId> {
+async fn get_spotify_id(client: &AppClient, typ: ItemType, id_or_name: IdOrName) -> Result<ItemId> {
     // For `IdOrName::Name`, we search for the first item matching the name and return its Spotify id.
     // The item's id is then used to retrieve the item's data.
 
@@ -303,7 +304,7 @@ async fn get_spotify_id(client: &Client, typ: ItemType, id_or_name: IdOrName) ->
 }
 
 async fn handle_get_item_request(
-    client: &Client,
+    client: &AppClient,
     item_type: ItemType,
     id_or_name: IdOrName,
 ) -> Result<Vec<u8>> {
@@ -316,14 +317,14 @@ async fn handle_get_item_request(
     })
 }
 
-async fn handle_search_request(client: &Client, query: String) -> Result<Vec<u8>> {
+async fn handle_search_request(client: &AppClient, query: String) -> Result<Vec<u8>> {
     let search_result = client.search(&query).await?;
 
     Ok(serde_json::to_vec(&search_result)?)
 }
 
 async fn handle_playback_request(
-    client: &Client,
+    client: &AppClient,
     state: Option<&SharedState>,
     command: Command,
 ) -> Result<()> {
@@ -464,7 +465,7 @@ async fn handle_playback_request(
     Ok(())
 }
 
-async fn handle_playlist_request(client: &Client, command: PlaylistCommand) -> Result<String> {
+async fn handle_playlist_request(client: &AppClient, command: PlaylistCommand) -> Result<String> {
     let uid = client.current_user().await?.id;
 
     match command {
@@ -511,7 +512,7 @@ async fn handle_playlist_request(client: &Client, command: PlaylistCommand) -> R
 
             let mut out = String::new();
             for pl in resp {
-                out += &format!("{}: {}\n", pl.id.id(), pl.name);
+                writeln!(out, "{}: {}", pl.id.id(), pl.name).unwrap();
             }
             out = out.trim().to_string();
 
@@ -587,15 +588,103 @@ async fn handle_playlist_request(client: &Client, command: PlaylistCommand) -> R
                     }
                 } else {
                     remove_dir_all(&to_dir)?;
-                    result += &format!(
-                        "Not following playlist '{}'. Deleted its import data in the cache folder...\n",
-                        to_id.id()
-                    );
+                    writeln!(result, "Not following playlist '{}'. Deleted its import data in the cache folder...", to_id.id()).unwrap();
                 }
             }
 
             Ok(result)
         }
+        PlaylistCommand::Edit {
+            playlist_id,
+            action,
+            track_id,
+            album_id,
+        } => match action {
+            EditAction::Add => {
+                if let Some(track_id) = track_id {
+                    client
+                        .playlist_add_items(
+                            playlist_id.clone(),
+                            [rspotify::model::PlayableId::Track(track_id.as_ref())],
+                            None,
+                        )
+                        .await?;
+                    Ok(format!(
+                        "Track '{}' added to playlist '{}'",
+                        track_id.id(),
+                        playlist_id.id()
+                    ))
+                } else if let Some(album_id) = album_id {
+                    let album = client.album(album_id, None).await?;
+                    let track_ids: Vec<rspotify::model::PlayableId> = album
+                        .tracks
+                        .items
+                        .into_iter()
+                        .filter_map(|t| t.id.map(rspotify::model::PlayableId::Track))
+                        .collect();
+                    let track_count = track_ids.len();
+
+                    if !track_ids.is_empty() {
+                        client
+                            .playlist_add_items(playlist_id.clone(), track_ids, None)
+                            .await?;
+                    }
+
+                    Ok(format!(
+                        "Album '{}' ({} tracks) added to playlist '{}'",
+                        album.name,
+                        track_count,
+                        playlist_id.id()
+                    ))
+                } else {
+                    anyhow::bail!("Either track_id or album_id must be provided")
+                }
+            }
+            EditAction::Delete => {
+                if let Some(track_id) = track_id {
+                    client
+                        .playlist_remove_all_occurrences_of_items(
+                            playlist_id.clone(),
+                            [rspotify::model::PlayableId::Track(track_id.as_ref())],
+                            None,
+                        )
+                        .await?;
+                    Ok(format!(
+                        "Track '{}' removed from playlist '{}'",
+                        track_id.id(),
+                        playlist_id.id()
+                    ))
+                } else if let Some(album_id) = album_id {
+                    let album = client.album(album_id, None).await?;
+                    let track_ids: Vec<rspotify::model::PlayableId> = album
+                        .tracks
+                        .items
+                        .into_iter()
+                        .filter_map(|t| t.id.map(rspotify::model::PlayableId::Track))
+                        .collect();
+                    let track_count = track_ids.len();
+
+                    if !track_ids.is_empty() {
+                        client
+                            .playlist_remove_all_occurrences_of_items(
+                                playlist_id.clone(),
+                                track_ids,
+                                None,
+                            )
+                            .await?;
+                    }
+
+                    Ok(format!(
+                        "Album '{}' ({} tracks) removed from playlist '{}'",
+                        album.name,
+                        track_count,
+                        playlist_id.id()
+                    ))
+                } else {
+                    anyhow::bail!("Either track_id or album_id must be provided")
+                }
+            }
+        },
     }
 }
 
@@ -608,7 +697,7 @@ const TRACK_BUFFER_CAP: usize = 100;
 /// The state of `import_from` playlist is stored into a cache file to add/delete the differed tracks between
 /// subsequent imports of the same two playlists.
 async fn playlist_import(
-    client: &Client,
+    client: &AppClient,
     import_from: PlaylistId<'static>,
     import_to: PlaylistId<'static>,
     delete: bool,
@@ -656,13 +745,15 @@ async fn playlist_import(
     let mut new_tracks_hash_set = &from_hash_set - &to_hash_set;
 
     let mut result = String::new();
-    result += &format!(
-        "Importing from {}:{} to {}:{}...\n",
+    writeln!(
+        result,
+        "Importing from {}:{} to {}:{}...",
         import_from.id(),
         from_name,
         import_to.id(),
         to_name
-    );
+    )
+    .unwrap();
 
     let mut track_buff = Vec::new();
     if from_file.exists() {
@@ -700,17 +791,21 @@ async fn playlist_import(
                     .playlist_remove_all_occurrences_of_items(import_to.as_ref(), track_buff, None)
                     .await?;
             }
-            result += &format!("Tracks deleted from {from_name}: \n");
+            writeln!(result, "Tracks deleted from {from_name}: \n").unwrap();
         } else {
-            result += &format!("Tracks that are no longer in {from_name} since last import: \n");
+            writeln!(
+                result,
+                "Tracks that are no longer in {from_name} since last import: "
+            )
+            .unwrap();
         }
 
         for t in &deleted_hash_set {
-            result += &format!("    {}: {}\n", t.id.id(), t.name);
+            writeln!(result, "    {}: {}", t.id.id(), t.name).unwrap();
         }
     }
 
-    result += &format!("New tracks imported to {to_name}: \n");
+    writeln!(result, "New tracks imported to {to_name}: ").unwrap();
 
     track_buff = Vec::new();
     for t in &new_tracks_hash_set {
@@ -723,7 +818,7 @@ async fn playlist_import(
             track_buff = Vec::new();
         }
 
-        result += &format!("    {}: {}\n", t.id.id(), t.name);
+        writeln!(result, "    {}: {}", t.id.id(), t.name).unwrap();
     }
 
     if !track_buff.is_empty() {

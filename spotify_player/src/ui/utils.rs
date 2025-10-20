@@ -2,6 +2,7 @@ use super::{
     config, Block, BorderType, Borders, Frame, List, ListItem, ListState, Rect, Span, Style, Table,
     TableState,
 };
+use unicode_bidi::BidiInfo;
 
 /// Construct and render a block.
 ///
@@ -117,4 +118,47 @@ pub fn render_table_window(
 ) {
     adjust_table_state(state, len);
     frame.render_stateful_widget(widget, rect, state);
+}
+
+/// Convert a string to a bidirectional string.
+/// Used to handle RTL text properly in the UI.
+pub fn to_bidi_string(s: &str) -> String {
+    let bidi_info = BidiInfo::new(s, None);
+
+    let bidi_string = if bidi_info.has_rtl() && !bidi_info.paragraphs.is_empty() {
+        bidi_info
+            .reorder_line(&bidi_info.paragraphs[0], 0..s.len())
+            .into_owned()
+    } else {
+        s.to_string()
+    };
+
+    bidi_string
+}
+
+/// formats genres depending on the number of genres and `genre_num`
+///
+/// Examples for `genre_num = 2`
+/// - 1 genre: "genre1"
+/// - 2 genres: "genre1, genre2"
+/// - \>= 3 genres: "genre1, genre2, ..."
+pub fn format_genres(genres: &[String], genre_num: u8) -> String {
+    let mut genre_str = String::with_capacity(64);
+
+    if genre_num > 0 {
+        for i in 0..genres.len() {
+            genre_str.push_str(&genres[i]);
+
+            if i + 1 != genres.len() {
+                genre_str.push_str(", ");
+
+                if i + 1 >= genre_num as usize {
+                    genre_str.push_str("...");
+                    break;
+                }
+            }
+        }
+    }
+
+    genre_str
 }

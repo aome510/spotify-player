@@ -2,6 +2,7 @@ use crate::{
     config::{self, Theme},
     key,
     ui::{self, Orientation},
+    utils::filtered_items_from_query,
 };
 
 pub type UIStateGuard<'a> = parking_lot::MutexGuard<'a, UIState>;
@@ -37,6 +38,9 @@ pub struct UIState {
     /// The rectangle representing the playback progress bar,
     /// which is mainly used to handle mouse click events (for seeking command)
     pub playback_progress_bar_rect: ratatui::layout::Rect,
+
+    /// Count prefix for vim-style navigation (e.g., 5j, 10k)
+    pub count_prefix: Option<usize>,
 
     #[cfg(feature = "image")]
     pub last_cover_image_render_info: ImageRenderInfo,
@@ -87,52 +91,13 @@ impl UIState {
     /// Get a list of items possibly filtered by a search query if exists a search popup
     pub fn search_filtered_items<'a, T: std::fmt::Display>(&self, items: &'a [T]) -> Vec<&'a T> {
         match self.popup {
-            Some(PopupState::Search { ref query }) => {
-                let query = query.to_lowercase();
-
-                #[cfg(feature = "fzf")]
-                return fuzzy_search_items(items, &query);
-
-                #[cfg(not(feature = "fzf"))]
-                items
-                    .iter()
-                    .filter(|t| {
-                        if query.is_empty() {
-                            true
-                        } else {
-                            let t = t.to_string().to_lowercase();
-                            query
-                                .split(' ')
-                                .filter(|q| !q.is_empty())
-                                .all(|q| t.contains(q))
-                        }
-                    })
-                    .collect::<Vec<_>>()
-            }
+            Some(PopupState::Search { ref query }) => filtered_items_from_query(query, items),
             _ => items.iter().collect::<Vec<_>>(),
         }
     }
 }
 
-#[cfg(feature = "fzf")]
-use fuzzy_matcher::skim::SkimMatcherV2;
 use ratatui::layout::Rect;
-
-#[cfg(feature = "fzf")]
-fn fuzzy_search_items<'a, T: std::fmt::Display>(items: &'a [T], query: &str) -> Vec<&'a T> {
-    let matcher = SkimMatcherV2::default();
-    let mut result = items
-        .iter()
-        .filter_map(|t| {
-            matcher
-                .fuzzy(&t.to_string(), &query, false)
-                .map(|(score, _)| (t, score))
-        })
-        .collect::<Vec<_>>();
-
-    result.sort_by(|(_, a), (_, b)| b.cmp(a));
-    result.into_iter().map(|(t, _)| t).collect::<Vec<_>>()
-}
 
 impl Default for UIState {
     fn default() -> Self {
@@ -154,6 +119,8 @@ impl Default for UIState {
             popup: None,
 
             playback_progress_bar_rect: Rect::default(),
+
+            count_prefix: None,
 
             #[cfg(feature = "image")]
             last_cover_image_render_info: ImageRenderInfo::default(),

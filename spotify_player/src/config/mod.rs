@@ -50,16 +50,19 @@ impl Configs {
 /// Application configurations
 pub struct AppConfig {
     pub theme: String,
-    pub client_id: String,
+    pub client_id: Option<String>,
     pub client_id_command: Option<Command>,
 
     pub client_port: u16,
 
     pub login_redirect_uri: String,
 
+    pub log_folder: Option<PathBuf>,
+
     pub player_event_hook_command: Option<Command>,
 
     pub playback_format: String,
+    pub playback_metadata_fields: Vec<String>,
     #[cfg(feature = "notify")]
     pub notify_format: NotifyFormat,
     #[cfg(feature = "notify")]
@@ -85,8 +88,11 @@ pub struct AppConfig {
     // layout configs
     pub border_type: BorderType,
     pub progress_bar_type: ProgressBarType,
+    pub progress_bar_position: ProgressBarPosition,
 
     pub layout: LayoutConfig,
+
+    pub genre_num: u8,
 
     #[cfg(feature = "image")]
     pub cover_img_length: usize,
@@ -94,11 +100,12 @@ pub struct AppConfig {
     pub cover_img_width: usize,
     #[cfg(feature = "image")]
     pub cover_img_scale: f32,
+    #[cfg(feature = "pixelate")]
+    pub cover_img_pixels: u32,
 
     #[cfg(feature = "media-control")]
     pub enable_media_control: bool,
 
-    #[cfg(feature = "streaming")]
     pub enable_streaming: StreamingType,
 
     #[cfg(feature = "notify")]
@@ -141,6 +148,13 @@ pub enum ProgressBarType {
     Rectangle,
 }
 config_parser_impl!(ProgressBarType);
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub enum ProgressBarPosition {
+    Bottom,
+    Right,
+}
+config_parser_impl!(ProgressBarPosition);
 
 #[derive(Debug, Deserialize, Serialize, ConfigParse, Clone)]
 pub struct Command {
@@ -202,6 +216,7 @@ pub struct LibraryLayoutConfig {
     pub album_percent: u16,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 #[serde(from = "StreamingTypeOrBool")]
 pub enum StreamingType {
@@ -219,6 +234,7 @@ enum RawStreamingType {
     Never,
 }
 
+#[allow(dead_code)]
 #[derive(Deserialize)]
 #[serde(untagged)]
 enum StreamingTypeOrBool {
@@ -255,17 +271,26 @@ impl Default for AppConfig {
     fn default() -> Self {
         Self {
             theme: "dracula".to_owned(),
-            // official Spotify web app's client id
-            client_id: "65b708073fc0480ea92a077233ca87bd".to_string(),
+            client_id: None,
             client_id_command: None,
 
             client_port: 8080,
 
             login_redirect_uri: "http://127.0.0.1:8989/login".to_string(),
 
+            log_folder: None,
+
             tracks_playback_limit: 50,
 
-            playback_format: String::from("{status} {track} • {artists}\n{album}\n{metadata}"),
+            playback_format: String::from(
+                "{status} {track} • {artists} {liked}\n{album} • {genres}\n{metadata}",
+            ),
+            playback_metadata_fields: vec![
+                "repeat".to_string(),
+                "shuffle".to_string(),
+                "volume".to_string(),
+                "device".to_string(),
+            ],
             #[cfg(feature = "notify")]
             notify_format: NotifyFormat {
                 summary: String::from("{track} • {artists}"),
@@ -289,8 +314,11 @@ impl Default for AppConfig {
 
             border_type: BorderType::Plain,
             progress_bar_type: ProgressBarType::Rectangle,
+            progress_bar_position: ProgressBarPosition::Bottom,
 
             layout: LayoutConfig::default(),
+
+            genre_num: 2,
 
             #[cfg(feature = "image")]
             cover_img_length: 9,
@@ -298,6 +326,8 @@ impl Default for AppConfig {
             cover_img_width: 5,
             #[cfg(feature = "image")]
             cover_img_scale: 1.0,
+            #[cfg(feature = "pixelate")]
+            cover_img_pixels: 16,
 
             // Because of the "creating new window and stealing focus" behaviour
             // when running the media control event loop on startup,
@@ -310,7 +340,6 @@ impl Default for AppConfig {
             #[cfg(all(unix, not(target_os = "macos")))]
             enable_media_control: true,
 
-            #[cfg(feature = "streaming")]
             enable_streaming: StreamingType::Always,
 
             #[cfg(feature = "notify")]
@@ -422,9 +451,9 @@ impl AppConfig {
     }
 
     /// Returns stdout of `client_id_command` if set, otherwise it returns the the value of `client_id`
-    pub fn get_client_id(&self) -> Result<String> {
+    pub fn get_user_client_id(&self) -> Result<Option<String>> {
         match self.client_id_command {
-            Some(ref cmd) => cmd.execute(None).map(|out| out.trim().into()),
+            Some(ref cmd) => cmd.execute(None).map(|out| Some(out.trim().to_string())),
             None => Ok(self.client_id.clone()),
         }
     }

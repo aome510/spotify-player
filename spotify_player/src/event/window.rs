@@ -5,7 +5,7 @@ use crate::{
         construct_album_actions, construct_artist_actions, construct_playlist_actions,
         construct_show_actions,
     },
-    state::{Episode, Show, UIStateGuard},
+    state::{Episode, MutableWindowState, Show, UIStateGuard},
 };
 use command::Action;
 use rand::Rng;
@@ -238,7 +238,7 @@ fn handle_playlist_modify_command(
                     snapshot_id: None,
                 })?;
                 ui.current_page_mut().select(id + 1);
-            };
+            }
             return Ok(true);
         }
         Command::ShowActionsOnSelectedItem => {
@@ -290,7 +290,14 @@ fn handle_command_for_track_table_window(
         }
     }
 
-    if handle_navigation_command(command, ui.current_page_mut(), id, filtered_tracks.len()) {
+    let count = ui.count_prefix;
+    if handle_navigation_command(
+        command,
+        ui.current_page_mut(),
+        id,
+        filtered_tracks.len(),
+        count,
+    ) {
         return Ok(true);
     }
 
@@ -330,6 +337,22 @@ fn handle_command_for_track_table_window(
                 filtered_tracks[id].id.clone().into(),
             ))?;
         }
+        Command::JumpToHighlightTrackInContext => {
+            ui.popup = None;
+            let selected_track = filtered_tracks[id];
+            let location = tracks
+                .iter()
+                .enumerate()
+                .find(|(_, track)| track.id == selected_track.id)
+                .unwrap();
+
+            // Move selection and change the offset so selection is at the top
+            ui.current_page_mut().select(location.0);
+            match ui.current_page_mut().focus_window_state_mut().unwrap() {
+                MutableWindowState::Table(table) => *table.offset_mut() = location.0,
+                _ => unreachable!("playlist context should be a table"),
+            }
+        }
         _ => return Ok(false),
     }
     Ok(true)
@@ -347,7 +370,8 @@ pub fn handle_command_for_track_list_window(
         return Ok(false);
     }
 
-    if handle_navigation_command(command, ui.current_page_mut(), id, tracks.len()) {
+    let count = ui.count_prefix;
+    if handle_navigation_command(command, ui.current_page_mut(), id, tracks.len(), count) {
         return Ok(true);
     }
     match command {
@@ -390,7 +414,8 @@ pub fn handle_command_for_artist_list_window(
         return false;
     }
 
-    if handle_navigation_command(command, ui.current_page_mut(), id, artists.len()) {
+    let count = ui.count_prefix;
+    if handle_navigation_command(command, ui.current_page_mut(), id, artists.len(), count) {
         return true;
     }
     match command {
@@ -426,7 +451,8 @@ pub fn handle_command_for_album_list_window(
         return Ok(false);
     }
 
-    if handle_navigation_command(command, ui.current_page_mut(), id, albums.len()) {
+    let count = ui.count_prefix;
+    if handle_navigation_command(command, ui.current_page_mut(), id, albums.len(), count) {
         return Ok(true);
     }
     match command {
@@ -464,7 +490,8 @@ pub fn handle_command_for_playlist_list_window(
         return false;
     }
 
-    if handle_navigation_command(command, ui.current_page_mut(), id, playlists.len()) {
+    let count = ui.count_prefix;
+    if handle_navigation_command(command, ui.current_page_mut(), id, playlists.len(), count) {
         return true;
     }
     match command {
@@ -480,7 +507,7 @@ pub fn handle_command_for_playlist_list_window(
                             state.playlist_folder_id = f.target_id;
                         }
                         _ => return false,
-                    };
+                    }
                 }
                 PlaylistFolderItem::Playlist(p) => {
                     let context_id = ContextId::Playlist(p.id.clone());
@@ -517,7 +544,8 @@ pub fn handle_command_for_show_list_window(
         return false;
     }
 
-    if handle_navigation_command(command, ui.current_page_mut(), id, shows.len()) {
+    let count = ui.count_prefix;
+    if handle_navigation_command(command, ui.current_page_mut(), id, shows.len(), count) {
         return true;
     }
     match command {
@@ -553,7 +581,8 @@ pub fn handle_command_for_episode_list_window(
         return Ok(false);
     }
 
-    if handle_navigation_command(command, ui.current_page_mut(), id, episodes.len()) {
+    let count = ui.count_prefix;
+    if handle_navigation_command(command, ui.current_page_mut(), id, episodes.len(), count) {
         return Ok(true);
     }
     match command {
@@ -593,7 +622,8 @@ fn handle_command_for_episode_table_window(
         return Ok(false);
     }
 
-    if handle_navigation_command(command, ui.current_page_mut(), id, episodes.len()) {
+    let count = ui.count_prefix;
+    if handle_navigation_command(command, ui.current_page_mut(), id, episodes.len(), count) {
         return Ok(true);
     }
     match command {

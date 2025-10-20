@@ -1,8 +1,8 @@
 use std::io::{BufReader, BufWriter};
 use std::{collections::HashMap, path::Path};
 
-use once_cell::sync::Lazy;
 use serde::{de::DeserializeOwned, Serialize};
+use std::sync::LazyLock;
 
 use super::model::{
     Album, Artist, Category, Context, ContextId, Id, Playlist, PlaylistFolderItem,
@@ -23,8 +23,8 @@ pub enum FileCacheKey {
 }
 
 /// default time-to-live cache duration
-pub static TTL_CACHE_DURATION: Lazy<std::time::Duration> =
-    Lazy::new(|| std::time::Duration::from_secs(60 * 60));
+pub static TTL_CACHE_DURATION: LazyLock<std::time::Duration> =
+    LazyLock::new(|| std::time::Duration::from_secs(60 * 60));
 
 /// the application's data
 pub struct AppData {
@@ -50,6 +50,7 @@ pub struct MemoryCaches {
     pub context: ttl_cache::TtlCache<String, Context>,
     pub search: ttl_cache::TtlCache<String, SearchResults>,
     pub lyrics: ttl_cache::TtlCache<String, Option<Lyrics>>,
+    pub genres: ttl_cache::TtlCache<String, Vec<String>>,
     #[cfg(feature = "image")]
     pub images: ttl_cache::TtlCache<String, image::DynamicImage>,
 }
@@ -67,6 +68,7 @@ impl MemoryCaches {
             context: ttl_cache::TtlCache::new(64),
             search: ttl_cache::TtlCache::new(64),
             lyrics: ttl_cache::TtlCache::new(64),
+            genres: ttl_cache::TtlCache::new(64),
             #[cfg(feature = "image")]
             images: ttl_cache::TtlCache::new(64),
         }
@@ -184,6 +186,14 @@ impl UserData {
     /// Check if a track is a liked track
     pub fn is_liked_track(&self, track: &Track) -> bool {
         self.saved_tracks.contains_key(&track.id.uri())
+    }
+
+    /// Check if a playlist is followed
+    pub fn is_followed_playlist(&self, playlist: &Playlist) -> bool {
+        self.playlists.iter().any(|x| match x {
+            PlaylistFolderItem::Playlist(p) => p.id == playlist.id,
+            PlaylistFolderItem::Folder(_) => false,
+        })
     }
 }
 

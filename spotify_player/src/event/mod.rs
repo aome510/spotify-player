@@ -21,6 +21,7 @@ use crate::{
 
 use crate::utils::map_join;
 use anyhow::{Context as _, Result};
+use crossterm::event::KeyCode;
 
 use clipboard::{execute_copy_command, get_clipboard_content};
 use ratatui::widgets::ListState;
@@ -76,7 +77,7 @@ fn handle_mouse_event(
             let duration = match player.currently_playing() {
                 Some(rspotify::model::PlayableItem::Track(track)) => Some(track.duration),
                 Some(rspotify::model::PlayableItem::Episode(episode)) => Some(episode.duration),
-                None => None,
+                Some(rspotify::model::PlayableItem::Unknown(_)) | None => None,
             };
             if let Some(duration) = duration {
                 let position_ms =
@@ -109,7 +110,10 @@ fn handle_key_event(
         key_sequence = KeySequence { keys: vec![key] };
     }
 
-    tracing::debug!("Handling key event: {event:?}, current key sequence: {key_sequence:?}");
+    tracing::debug!(
+        "Handling key event: {event:?}, current key sequence: {key_sequence:?}, count prefix: {:?}",
+        ui.count_prefix
+    );
     let handled = {
         if ui.popup.is_none() {
             page::handle_key_sequence_for_page(&key_sequence, client_pub, state, &mut ui)?
@@ -133,12 +137,33 @@ fn handle_key_event(
         }
     };
 
-    // if handled, clear the key sequence
+    // if handled, clear the key sequence and count prefix
     // otherwise, the current key sequence can be a prefix of a command's shortcut
     if handled {
         ui.input_key_sequence.keys = vec![];
+        ui.count_prefix = None;
     } else {
-        ui.input_key_sequence = key_sequence;
+        // update the count prefix if the key is a digit
+        match key {
+            Key::None(KeyCode::Char(c)) if c.is_ascii_digit() => {
+                let digit = c.to_digit(10).unwrap() as usize;
+                ui.input_key_sequence.keys = vec![];
+                ui.count_prefix = match ui.count_prefix {
+                    Some(count) => Some(count * 10 + digit),
+                    None => {
+                        if digit > 0 {
+                            Some(digit)
+                        } else {
+                            None
+                        }
+                    }
+                };
+            }
+            _ => {
+                ui.input_key_sequence = key_sequence;
+                ui.count_prefix = None;
+            }
+        }
     }
     Ok(())
 }
@@ -187,6 +212,7 @@ pub fn handle_action_in_context(
                     PlaylistPopupAction::AddTrack {
                         folder_id: 0,
                         track_id: track.id,
+                        search_query: String::new(),
                     },
                     ListState::default(),
                 ));
@@ -409,6 +435,7 @@ pub fn handle_action_in_context(
                     PlaylistPopupAction::AddEpisode {
                         folder_id: 0,
                         episode_id: episode.id,
+                        search_query: String::new(),
                     },
                     ListState::default(),
                 ));
@@ -507,9 +534,12 @@ fn handle_global_action(
                         ui,
                     );
                 }
+                rspotify::model::PlayableItem::Unknown(_) => {
+                    return Ok(false);
+                }
             }
         }
-    };
+    }
 
     Ok(false)
 }
@@ -557,17 +587,19 @@ fn handle_global_command(
         Command::Mute => {
             client_pub.send(ClientRequest::Player(PlayerRequest::ToggleMute))?;
         }
-        Command::SeekForward => {
+        Command::SeekForward { duration } => {
             if let Some(progress) = state.player.read().playback_progress() {
-                let duration = config::get_config().app_config.seek_duration_secs;
+                let duration =
+                    duration.unwrap_or(config::get_config().app_config.seek_duration_secs);
                 client_pub.send(ClientRequest::Player(PlayerRequest::SeekTrack(
                     progress + chrono::Duration::try_seconds(i64::from(duration)).unwrap(),
                 )))?;
             }
         }
-        Command::SeekBackward => {
+        Command::SeekBackward { duration } => {
             if let Some(progress) = state.player.read().playback_progress() {
-                let duration = config::get_config().app_config.seek_duration_secs;
+                let duration =
+                    duration.unwrap_or(config::get_config().app_config.seek_duration_secs);
                 client_pub.send(ClientRequest::Player(PlayerRequest::SeekTrack(
                     std::cmp::max(
                         chrono::Duration::zero(),
@@ -604,6 +636,7 @@ fn handle_global_command(
                             ListState::default(),
                         ));
                     }
+                    rspotify::model::PlayableItem::Unknown(_) => {}
                 }
             }
         }
@@ -617,7 +650,10 @@ fn handle_global_command(
         Command::BrowseUserPlaylists => {
             client_pub.send(ClientRequest::GetUserPlaylists)?;
             ui.popup = Some(PopupState::UserPlaylistList(
-                PlaylistPopupAction::Browse { folder_id: 0 },
+                PlaylistPopupAction::Browse {
+                    folder_id: 0,
+                    search_query: String::new(),
+                },
                 ListState::default(),
             ));
         }
@@ -799,7 +835,7 @@ fn handle_global_command(
                 Some(rspotify::model::PlayableItem::Episode(episode)) => {
                     PlayableId::Episode(episode.id.clone())
                 }
-                None => return Ok(false),
+                Some(rspotify::model::PlayableItem::Unknown(_)) | None => return Ok(false),
             };
 
             if let PageState::Context {

@@ -30,6 +30,7 @@ fn update_control_metadata(
             }
 
             match item {
+                rspotify::model::PlayableItem::Unknown(_) => {}
                 rspotify::model::PlayableItem::Track(track) => {
                     // only update metadata when the track information is changed
                     let track_info = format!("{}/{}", track.name, track.album.name);
@@ -60,7 +61,7 @@ fn update_control_metadata(
                         *prev_info = episode_info;
                     }
                 }
-            };
+            }
         }
     }
 
@@ -182,7 +183,7 @@ mod windows {
 
             unsafe {
                 let instance = GetModuleHandleW(None)
-                    .map_err(|e| (format!("Getting module handle failed: {e}")))?;
+                    .map_err(|e| format!("Getting module handle failed: {e}"))?;
 
                 let wnd_class = WNDCLASSEXW {
                     cbSize: mem::size_of::<WNDCLASSEXW>() as u32,
@@ -192,7 +193,7 @@ mod windows {
                     ..Default::default()
                 };
 
-                if RegisterClassExW(&wnd_class) == 0 {
+                if RegisterClassExW(&raw const wnd_class) == 0 {
                     return Err(format!(
                         "Registering class failed: {}",
                         Error::last_os_error()
@@ -213,7 +214,7 @@ mod windows {
                     instance,
                     None,
                 )
-                .map_err(|e| (format!("Failed to create window: {e}")))?;
+                .map_err(|e| format!("Failed to create window: {e}"))?;
 
                 if handle.0.is_null() {
                     Err(format!(
@@ -246,14 +247,14 @@ mod windows {
     pub fn pump_event_queue() -> bool {
         unsafe {
             let mut msg: MSG = std::mem::zeroed();
-            let mut has_message = PeekMessageW(&mut msg, None, 0, 0, PM_REMOVE).as_bool();
+            let mut has_message = PeekMessageW(&raw mut msg, None, 0, 0, PM_REMOVE).as_bool();
             while msg.message != WM_QUIT && has_message {
-                if !IsDialogMessageW(GetAncestor(msg.hwnd, GA_ROOT), &msg).as_bool() {
-                    let _ = TranslateMessage(&msg);
-                    let _ = DispatchMessageW(&msg);
+                if !IsDialogMessageW(GetAncestor(msg.hwnd, GA_ROOT), &raw const msg).as_bool() {
+                    let _ = TranslateMessage(&raw const msg);
+                    let _ = DispatchMessageW(&raw const msg);
                 }
 
-                has_message = PeekMessageW(&mut msg, None, 0, 0, PM_REMOVE).as_bool();
+                has_message = PeekMessageW(&raw mut msg, None, 0, 0, PM_REMOVE).as_bool();
             }
 
             msg.message == WM_QUIT
