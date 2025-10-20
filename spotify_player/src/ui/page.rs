@@ -395,7 +395,6 @@ pub fn render_library_page(
     // 1. Get data
     let curr_context_uri = state.player.read().playing_context_id().map(|c| c.uri());
     let data = state.data.read();
-    let configs = config::get_config();
 
     let (focus_state, playlist_folder_id) = match ui.current_page() {
         PageState::Library { state } => (state.focus, state.playlist_folder_id),
