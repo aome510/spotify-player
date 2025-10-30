@@ -4,7 +4,7 @@ use crate::{
         self, construct_artist_actions, Action, ActionContext, ActionTarget, Command,
         CommandOrAction,
     },
-    config,
+    config::{self, ProgressBarType},
     key::{Key, KeySequence},
     state::{
         ActionListItem, Album, AlbumId, Artist, ArtistFocusState, ArtistId, ArtistPopupAction,
@@ -90,8 +90,15 @@ fn handle_mouse_event(
         }
         // a left click event
         crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left) => {
-            let rect = state.ui.lock().playback_progress_bar_rect;
-            if event.row == rect.y {
+            let (progress_row, progress_width) = if let ProgressBarType::Terminal =
+                config::get_config().app_config.progress_bar_type
+            {
+                (0, crossterm::terminal::window_size()?.columns)
+            } else {
+                let rect = state.ui.lock().playback_progress_bar_rect;
+                (rect.y, rect.width)
+            };
+            if event.row == progress_row {
                 // calculate the seek position (in ms) based on the mouse click position,
                 // the progress bar's width and the track's duration (in ms)
                 let player = state.player.read();
@@ -102,7 +109,7 @@ fn handle_mouse_event(
                 };
                 if let Some(duration) = duration {
                     let position_ms = (duration.num_milliseconds()) * i64::from(event.column)
-                        / i64::from(rect.width);
+                        / i64::from(progress_width);
                     client_pub.send(ClientRequest::Player(PlayerRequest::SeekTrack(
                         chrono::Duration::try_milliseconds(position_ms).unwrap(),
                     )))?;

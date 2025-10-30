@@ -153,6 +153,7 @@ config_parser_impl!(BorderType);
 pub enum ProgressBarType {
     Line,
     Rectangle,
+    Terminal,
 }
 config_parser_impl!(ProgressBarType);
 

@@ -90,6 +90,9 @@ fn init_ui() -> Result<Terminal> {
 
 /// Clean up UI resources before quitting the application
 fn clean_up(mut terminal: Terminal) -> Result<()> {
+    // disable ConEmu progress bar
+    print!("\x1b]9;4;0\x07");
+
     crossterm::terminal::disable_raw_mode()?;
     crossterm::execute!(
         terminal.backend_mut(),
