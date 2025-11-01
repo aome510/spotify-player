@@ -391,11 +391,33 @@ impl AppClient {
                 self.retrieve_current_playback(state, true).await?;
             }
             ClientRequest::GetDevices => {
-                let devices = self.available_devices().await?;
-                state.player.write().devices = devices
+                let mut devices: Vec<Device> = self
+                    .available_devices()
+                    .await?
                     .into_iter()
                     .filter_map(Device::try_from_device)
                     .collect();
+
+                // Include the local streaming device when the streaming feature is enabled.
+                // This ensures the device list is never empty when using integrated playback,
+                // even if the user hasn't configured a custom client_id or if the Spotify API
+                // hasn't registered the device yet.
+                #[cfg(feature = "streaming")]
+                {
+                    let configs = config::get_config();
+                    let session = self.session().await;
+                    let local_device = Device {
+                        id: session.device_id().to_string(),
+                        name: configs.app_config.device.name.clone(),
+                    };
+
+                    // Only add if not already in the list (avoid duplicates)
+                    if !devices.iter().any(|d| d.id == local_device.id) {
+                        devices.push(local_device);
+                    }
+                }
+
+                state.player.write().devices = devices;
             }
             ClientRequest::GetUserPlaylists => {
                 let playlists = self.current_user_playlists().await?;
