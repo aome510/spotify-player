@@ -30,6 +30,7 @@ fn update_control_metadata(
             }
 
             match item {
+                rspotify::model::PlayableItem::Unknown(_) => {}
                 rspotify::model::PlayableItem::Track(track) => {
                     // only update metadata when the track information is changed
                     let track_info = format!("{}/{}", track.name, track.album.name);
@@ -182,7 +183,7 @@ mod windows {
 
             unsafe {
                 let instance = GetModuleHandleW(None)
-                    .map_err(|e| (format!("Getting module handle failed: {e}")))?;
+                    .map_err(|e| format!("Getting module handle failed: {e}"))?;
 
                 let wnd_class = WNDCLASSEXW {
                     cbSize: mem::size_of::<WNDCLASSEXW>() as u32,
@@ -213,7 +214,7 @@ mod windows {
                     instance,
                     None,
                 )
-                .map_err(|e| (format!("Failed to create window: {e}")))?;
+                .map_err(|e| format!("Failed to create window: {e}"))?;
 
                 if handle.0.is_null() {
                     Err(format!(

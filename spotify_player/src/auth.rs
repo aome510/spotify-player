@@ -1,31 +1,35 @@
+use crate::config;
 use anyhow::Result;
 use librespot_core::{authentication::Credentials, cache::Cache, config::SessionConfig, Session};
-use librespot_oauth::get_access_token;
-
-use crate::config;
+use librespot_oauth::OAuthClientBuilder;
 
 pub const SPOTIFY_CLIENT_ID: &str = "c7e3680def2641118ef2b0983de21ca8";
 // based on https://github.com/librespot-org/librespot/blob/f96f36c064795011f9fee912291eecb1aa46fff6/src/main.rs#L173
 const OAUTH_SCOPES: &[&str] = &[
-    "app-remote-control",
-    "playlist-modify-private",
-    "playlist-modify-public",
-    "playlist-read-collaborative",
-    "playlist-read-private",
-    "streaming",
-    "ugc-image-upload",
-    "user-follow-modify",
-    "user-follow-read",
-    "user-library-modify",
-    "user-library-read",
+    // Spotify Connect
+    "user-read-playback-state",
     "user-modify-playback-state",
     "user-read-currently-playing",
-    "user-read-email",
+    // Playback
+    "app-remote-control",
+    "streaming",
+    // Playlists
+    "playlist-read-private",
+    "playlist-read-collaborative",
+    "playlist-modify-private",
+    "playlist-modify-public",
+    // Follow
+    "user-follow-modify",
+    "user-follow-read",
+    // Listening History
     "user-read-playback-position",
-    "user-read-playback-state",
-    "user-read-private",
-    "user-read-recently-played",
     "user-top-read",
+    "user-read-recently-played",
+    // Library
+    "user-library-modify",
+    "user-library-read",
+    // Users
+    "user-personalized",
 ];
 
 #[derive(Clone)]
@@ -91,12 +95,17 @@ pub fn get_creds(auth_config: &AuthConfig, reauth: bool, use_cached: bool) -> Re
             let msg = "No cached credentials found, please authenticate the application first.";
             if reauth {
                 eprintln!("{msg}");
-                get_access_token(
+
+                let client_builder = OAuthClientBuilder::new(
                     SPOTIFY_CLIENT_ID,
                     &auth_config.login_redirect_uri,
                     OAUTH_SCOPES.to_vec(),
                 )
-                .map(|t| Credentials::with_access_token(t.access_token))?
+                .open_in_browser();
+                let oauth_client = client_builder.build()?;
+                oauth_client
+                    .get_access_token()
+                    .map(|t| Credentials::with_access_token(t.access_token))?
             } else {
                 anyhow::bail!(msg);
             }
