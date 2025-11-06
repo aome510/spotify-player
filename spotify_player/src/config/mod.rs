@@ -257,7 +257,7 @@ impl Default for AppConfig {
         Self {
             theme: "dracula".to_owned(),
             // official Spotify web app's client id
-            client_id: "65b708073fc0480ea92a077233ca87bd".to_string(),
+            client_id: "c7e3680def2641118ef2b0983de21ca8".to_string(),
             client_id_command: None,
 
             client_port: 8080,

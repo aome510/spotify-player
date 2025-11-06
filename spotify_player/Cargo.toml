@@ -1,7 +1,7 @@
 [package]
 name = "spotify_player"
-version = "0.20.7"
-authors = ["Thang Pham <phamducthang1234@gmail.com>"]
+version = "0.21.0"
+authors = ["Thang Pham <phamducthang1234@gmail.com>", "Alexis Opolka <contact@alexis-opolka.dev>"]
 edition = "2021"
 license = "MIT"
 description = "A Spotify player in the terminal with full feature parity"
@@ -55,7 +55,7 @@ clap_complete = "4.5.55"
 which = "8.0.0"
 fuzzy-matcher = { version = "0.3.7", optional = true }
 html-escape = "0.2.13"
-rustls = { version = "0.23.30", default-features = false, features = ["ring"] }
+rustls = { version = "0.23.29", default-features = false, features = ["ring"] }
 unicode-bidi = "0.3.18"
 
 [target.'cfg(any(target_os = "windows", target_os = "macos"))'.dependencies.winit]

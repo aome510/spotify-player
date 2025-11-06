@@ -5371,7 +5371,7 @@ dependencies = [
 
 [[package]]
 name = "spotify_player"
-version = "0.20.7"
+version = "0.21.0"
 dependencies = [
  "anyhow",
  "async-trait",
