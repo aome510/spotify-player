@@ -106,26 +106,26 @@ impl PlayerEvent {
                 playable_id: spotify_id_to_playable_id(audio_item.track_id)?,
             }),
             player::PlayerEvent::Playing {
-                track_id: track_uri,
+                track_id,
                 position_ms,
                 ..
             } => Some(PlayerEvent::Playing {
-                playable_id: spotify_id_to_playable_id(track_uri)?,
+                playable_id: spotify_id_to_playable_id(track_id)?,
                 position_ms,
             }),
             player::PlayerEvent::Paused {
-                track_id: track_uri,
+                track_id,
                 position_ms,
                 ..
             } => Some(PlayerEvent::Paused {
-                playable_id: spotify_id_to_playable_id(track_uri)?,
+                playable_id: spotify_id_to_playable_id(track_id)?,
                 position_ms,
             }),
             player::PlayerEvent::EndOfTrack {
-                track_id: track_uri,
+                track_id,
                 ..
             } => Some(PlayerEvent::EndOfTrack {
-                playable_id: spotify_id_to_playable_id(track_uri)?,
+                playable_id: spotify_id_to_playable_id(track_id)?,
             }),
             _ => None,
         })
