@@ -19,6 +19,7 @@ use std::io::Write;
 use anyhow::Context as _;
 use anyhow::Result;
 
+use librespot_core::SpotifyUri;
 #[cfg(feature = "streaming")]
 use parking_lot::Mutex;
 
@@ -638,16 +639,21 @@ impl AppClient {
     /// Get lyrics of a given track, return None if no lyrics is available
     pub async fn lyrics(&self, track_id: TrackId<'static>) -> Result<Option<Lyrics>> {
         let session = self.session().await;
-        let id = librespot_core::spotify_id::SpotifyId::from_uri(&track_id.uri())?;
-        match librespot_metadata::Lyrics::get(&session, &id).await {
-            Ok(lyrics) => Ok(Some(lyrics.into())),
-            Err(err) => {
-                if err.to_string().to_lowercase().contains("not found") {
-                    Ok(None)
-                } else {
-                    Err(err.into())
+        let uri = SpotifyUri::from_uri(&track_id.uri())?;
+        match uri {
+            SpotifyUri::Track { id } => {
+                match librespot_metadata::Lyrics::get(&session, &id).await {
+                    Ok(lyrics) => Ok(Some(lyrics.into())),
+                    Err(err) => {
+                        if err.to_string().to_lowercase().contains("not found") {
+                            Ok(None)
+                        } else {
+                            Err(err.into())
+                        }
+                    }
                 }
             }
+            _ => Ok(None),
         }
     }
 

@@ -2,8 +2,8 @@ use crate::{client::AppClient, config, state::SharedState};
 use anyhow::Context;
 use librespot_connect::{ConnectConfig, Spirc};
 use librespot_core::authentication::Credentials;
-use librespot_core::Session;
-use librespot_core::{config::DeviceType, spotify_id};
+use librespot_core::config::DeviceType;
+use librespot_core::{spotify_uri, Session, SpotifyUri};
 use librespot_playback::mixer::MixerConfig;
 use librespot_playback::{
     audio_backend,
@@ -85,17 +85,17 @@ impl PlayerEvent {
     }
 }
 
-fn spotify_id_to_playable_id(id: spotify_id::SpotifyId) -> anyhow::Result<PlayableId<'static>> {
-    match id.item_type {
-        spotify_id::SpotifyItemType::Track => {
-            let uri = id.to_uri()?;
+fn spotify_id_to_playable_id(uri: spotify_uri::SpotifyUri) -> anyhow::Result<PlayableId<'static>> {
+    match uri {
+        SpotifyUri::Track { .. } => {
+            let uri = uri.to_uri()?;
             Ok(TrackId::from_uri(&uri)?.into_static().into())
         }
-        spotify_id::SpotifyItemType::Episode => {
-            let uri = id.to_uri()?;
+        SpotifyUri::Episode { .. } => {
+            let uri = uri.to_uri()?;
             Ok(EpisodeId::from_uri(&uri)?.into_static().into())
         }
-        _ => anyhow::bail!("unexpected spotify_id {id:?}"),
+        _ => anyhow::bail!("unexpected spotify_id {uri:?}"),
     }
 }
 
@@ -106,23 +106,26 @@ impl PlayerEvent {
                 playable_id: spotify_id_to_playable_id(audio_item.track_id)?,
             }),
             player::PlayerEvent::Playing {
-                track_id,
+                track_id: track_uri,
                 position_ms,
                 ..
             } => Some(PlayerEvent::Playing {
-                playable_id: spotify_id_to_playable_id(track_id)?,
+                playable_id: spotify_id_to_playable_id(track_uri)?,
                 position_ms,
             }),
             player::PlayerEvent::Paused {
-                track_id,
+                track_id: track_uri,
                 position_ms,
                 ..
             } => Some(PlayerEvent::Paused {
-                playable_id: spotify_id_to_playable_id(track_id)?,
+                playable_id: spotify_id_to_playable_id(track_uri)?,
                 position_ms,
             }),
-            player::PlayerEvent::EndOfTrack { track_id, .. } => Some(PlayerEvent::EndOfTrack {
-                playable_id: spotify_id_to_playable_id(track_id)?,
+            player::PlayerEvent::EndOfTrack {
+                track_id: track_uri,
+                ..
+            } => Some(PlayerEvent::EndOfTrack {
+                playable_id: spotify_id_to_playable_id(track_uri)?,
             }),
             _ => None,
         })
