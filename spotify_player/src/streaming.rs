@@ -85,7 +85,7 @@ impl PlayerEvent {
     }
 }
 
-fn spotify_id_to_playable_id(uri: spotify_uri::SpotifyUri) -> anyhow::Result<PlayableId<'static>> {
+fn spotify_id_to_playable_id(uri: &spotify_uri::SpotifyUri) -> anyhow::Result<PlayableId<'static>> {
     match uri {
         SpotifyUri::Track { .. } => {
             let uri = uri.to_uri()?;
@@ -103,14 +103,14 @@ impl PlayerEvent {
     pub fn from_librespot_player_event(e: player::PlayerEvent) -> anyhow::Result<Option<Self>> {
         Ok(match e {
             player::PlayerEvent::TrackChanged { audio_item } => Some(PlayerEvent::Changed {
-                playable_id: spotify_id_to_playable_id(audio_item.track_id)?,
+                playable_id: spotify_id_to_playable_id(&audio_item.track_id)?,
             }),
             player::PlayerEvent::Playing {
                 track_id,
                 position_ms,
                 ..
             } => Some(PlayerEvent::Playing {
-                playable_id: spotify_id_to_playable_id(track_id)?,
+                playable_id: spotify_id_to_playable_id(&track_id)?,
                 position_ms,
             }),
             player::PlayerEvent::Paused {
@@ -118,14 +118,11 @@ impl PlayerEvent {
                 position_ms,
                 ..
             } => Some(PlayerEvent::Paused {
-                playable_id: spotify_id_to_playable_id(track_id)?,
+                playable_id: spotify_id_to_playable_id(&track_id)?,
                 position_ms,
             }),
-            player::PlayerEvent::EndOfTrack {
-                track_id,
-                ..
-            } => Some(PlayerEvent::EndOfTrack {
-                playable_id: spotify_id_to_playable_id(track_id)?,
+            player::PlayerEvent::EndOfTrack { track_id, .. } => Some(PlayerEvent::EndOfTrack {
+                playable_id: spotify_id_to_playable_id(&track_id)?,
             }),
             _ => None,
         })
