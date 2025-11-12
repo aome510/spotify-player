@@ -5,7 +5,10 @@ use super::{
 };
 #[cfg(feature = "image")]
 use crate::state::ImageRenderInfo;
-use crate::ui::utils::{format_genres, to_bidi_string};
+use crate::{
+    state::{Context, ContextId, DataReadGuard, PlayerState},
+    ui::utils::{format_genres, to_bidi_string},
+};
 #[cfg(feature = "image")]
 use anyhow::{Context, Result};
 use rspotify::model::Id;
@@ -114,7 +117,8 @@ pub fn render_playback_window(
             };
 
             if let Some(ref playback) = player.buffered_playback {
-                let playback_text = construct_playback_text(ui, state, item, playback);
+                let playback_text =
+                    construct_playback_text(ui, &player, &state.data.read(), item, playback);
                 let playback_desc = Paragraph::new(playback_text);
                 frame.render_widget(playback_desc, metadata_rect);
             }
@@ -202,7 +206,8 @@ fn clear_area(frame: &mut Frame, rect: Rect, theme: &config::Theme) {
 
 fn construct_playback_text(
     ui: &UIStateGuard,
-    state: &SharedState,
+    player: &PlayerState,
+    data: &DataReadGuard,
     playable: &rspotify::model::PlayableItem,
     playback: &PlaybackMetadata,
 ) -> Text<'static> {
@@ -210,7 +215,6 @@ fn construct_playback_text(
     // based on a user-configurable format string (app_config.playback_format)
     let configs = config::get_config();
     let format_str = &configs.app_config.playback_format;
-    let data = state.data.read();
 
     let mut playback_text = Text::default();
     let mut spans = vec![];
@@ -351,6 +355,25 @@ fn construct_playback_text(
 
                 let metadata_str = parts.join(" | ");
                 (metadata_str, ui.theme.playback_metadata())
+            }
+            "{context}" => {
+                let context_id_opt = player.playing_context_id();
+                let context_name = if let Some(current_context_id) = context_id_opt {
+                    if let Some(context) = data.caches.context.get(&current_context_id.uri()) {
+                        match context {
+                            Context::Playlist { playlist, .. } => playlist.name.clone(),
+                            Context::Album { album, .. } => album.name.clone(),
+                            Context::Artist { artist, .. } => artist.name.clone(),
+                            Context::Tracks { .. } => String::from("Tracks"),
+                            Context::Show { show, .. } => show.name.clone(),
+                        }
+                    } else {
+                        String::from("unknown")
+                    }
+                } else {
+                    String::from("unknown")
+                };
+                (context_name, ui.theme.playback_metadata())
             }
             _ => continue,
         };
