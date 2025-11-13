@@ -6,7 +6,7 @@ use super::{
 #[cfg(feature = "image")]
 use crate::state::ImageRenderInfo;
 use crate::{
-    state::{Context, ContextId, DataReadGuard, PlayerState},
+    state::{Context, DataReadGuard, PlayerState},
     ui::utils::{format_genres, to_bidi_string},
 };
 #[cfg(feature = "image")]
@@ -361,19 +361,22 @@ fn construct_playback_text(
                 let context_name = if let Some(current_context_id) = context_id_opt {
                     if let Some(context) = data.caches.context.get(&current_context_id.uri()) {
                         match context {
-                            Context::Playlist { playlist, .. } => playlist.name.clone(),
-                            Context::Album { album, .. } => album.name.clone(),
-                            Context::Artist { artist, .. } => artist.name.clone(),
-                            Context::Tracks { .. } => String::from("Tracks"),
-                            Context::Show { show, .. } => show.name.clone(),
+                            Context::Playlist { playlist, .. } => Some(playlist.name.clone()),
+                            Context::Album { album, .. } => Some(album.name.clone()),
+                            Context::Artist { artist, .. } => Some(artist.name.clone()),
+                            Context::Tracks { desc, .. } => Some(desc.clone()),
+                            Context::Show { show, .. } => Some(show.name.clone()),
                         }
                     } else {
-                        String::from("unknown")
+                        None
                     }
                 } else {
-                    String::from("unknown")
+                    None
                 };
-                (context_name, ui.theme.playback_metadata())
+                (
+                    context_name.unwrap_or(String::from("unknown")),
+                    ui.theme.playback_metadata(),
+                )
             }
             _ => continue,
         };

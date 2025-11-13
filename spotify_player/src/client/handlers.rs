@@ -106,6 +106,10 @@ fn handle_playback_change_event(
         }
     }
 
+    if let Some(context_id) = player.playing_context_id() {
+        client_pub.send(ClientRequest::GetContext(context_id))?;
+    }
+
     Ok(())
 }
 
