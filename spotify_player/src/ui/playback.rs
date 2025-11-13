@@ -357,26 +357,21 @@ fn construct_playback_text(
                 (metadata_str, ui.theme.playback_metadata())
             }
             "{context}" => {
-                let context_id_opt = player.playing_context_id();
-                let context_name = if let Some(current_context_id) = context_id_opt {
-                    if let Some(context) = data.caches.context.get(&current_context_id.uri()) {
+                let context_name = player
+                    .playing_context_id()
+                    .and_then(|id| data.caches.context.get(&id.uri()))
+                    .map(|context| {
                         match context {
-                            Context::Playlist { playlist, .. } => Some(playlist.name.clone()),
-                            Context::Album { album, .. } => Some(album.name.clone()),
-                            Context::Artist { artist, .. } => Some(artist.name.clone()),
-                            Context::Tracks { desc, .. } => Some(desc.clone()),
-                            Context::Show { show, .. } => Some(show.name.clone()),
+                            Context::Playlist { playlist, .. } => &playlist.name,
+                            Context::Album { album, .. } => &album.name,
+                            Context::Artist { artist, .. } => &artist.name,
+                            Context::Tracks { desc, .. } => &desc,
+                            Context::Show { show, .. } => &show.name,
                         }
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                };
-                (
-                    context_name.unwrap_or(String::from("unknown")),
-                    ui.theme.playback_metadata(),
-                )
+                        .clone()
+                    })
+                    .unwrap_or(String::from("unknown"));
+                (context_name, ui.theme.playback_metadata())
             }
             _ => continue,
         };
