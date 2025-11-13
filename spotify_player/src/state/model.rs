@@ -259,7 +259,7 @@ impl Context {
                 tracks.len(),
                 play_time(tracks),
             ),
-            Context::Artist { ref artist, .. } => artist.name.to_string(),
+            Context::Artist { ref artist, .. } => artist.name.clone(),
             Context::Tracks { desc, tracks } => {
                 format!("{} | {} songs | {}", desc, tracks.len(), play_time(tracks))
             }
