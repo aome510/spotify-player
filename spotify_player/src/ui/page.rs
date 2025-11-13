@@ -337,8 +337,7 @@ pub fn render_context_page(
                         let chunks = Layout::vertical([Constraint::Length(1), Constraint::Fill(0)])
                             .split(rect);
                         frame.render_widget(
-                            Paragraph::new(playlist.desc.to_string())
-                                .style(ui.theme.playlist_desc()),
+                            Paragraph::new(playlist.desc.clone()).style(ui.theme.playlist_desc()),
                             chunks[0],
                         );
                         chunks[1]
@@ -727,7 +726,7 @@ pub fn render_queue_page(
     fn get_playable_name(item: &PlayableItem) -> String {
         match item {
             PlayableItem::Track(FullTrack { ref name, .. })
-            | PlayableItem::Episode(FullEpisode { ref name, .. }) => name.to_string(),
+            | PlayableItem::Episode(FullEpisode { ref name, .. }) => name.clone(),
             PlayableItem::Unknown(_) => String::new(),
         }
     }
