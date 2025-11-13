@@ -371,7 +371,7 @@ fn construct_playback_text(
                         .clone()
                     })
                     .unwrap_or(String::from("unknown"));
-                (context_name, ui.theme.playback_metadata())
+                (context_name, ui.theme.playback_context())
             }
             _ => continue,
         };

@@ -70,6 +70,7 @@ struct ComponentStyle {
     playback_album: Option<Style>,
     playback_genres: Option<Style>,
     playback_metadata: Option<Style>,
+    playback_context: Option<Style>,
     playback_progress_bar: Option<Style>,
     playback_progress_bar_unfilled: Option<Style>,
     current_playing: Option<Style>,
@@ -269,6 +270,14 @@ impl Theme {
     pub fn playback_metadata(&self) -> style::Style {
         self.component_style
             .playback_metadata
+            .as_ref()
+            .unwrap_or(&Style::default().fg(StyleColor::BrightBlack))
+            .style(&self.palette)
+    }
+
+    pub fn playback_context(&self) -> style::Style {
+        self.component_style
+            .playback_context
             .as_ref()
             .unwrap_or(&Style::default().fg(StyleColor::BrightBlack))
             .style(&self.palette)
