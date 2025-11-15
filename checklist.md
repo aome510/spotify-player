@@ -2,7 +2,7 @@
 
 ## Pre-release checklist
 
-- [ ] change the `version` value defined in `main.rs` and `Cargo.toml`.
+- [ ] change the `version` value defined in `main.rs`, `Cargo.toml` and `default.nix`.
 - [ ] run `cargo clippy` to check the codes as well as to update `Cargo.lock`
 - [ ] run `cargo publish` in the `spotify_player` folder to publish the package
 - [ ] create a new release in [`github`](https://github.com/aome510/spotify-player/releases/new)
