@@ -76,6 +76,14 @@ impl Default for KeymapConfig {
                     command: Command::Mute,
                 },
                 Keymap {
+                    key_sequence: "0".into(),
+                    command: Command::SeekStart,
+                },
+                Keymap {
+                    key_sequence: "home".into(),
+                    command: Command::SeekStart,
+                },
+                Keymap {
                     key_sequence: ">".into(),
                     command: Command::SeekForward { duration: None },
                 },
@@ -266,10 +274,6 @@ impl Default for KeymapConfig {
                 },
                 Keymap {
                     key_sequence: "g g".into(),
-                    command: Command::SelectFirstOrScrollToTop,
-                },
-                Keymap {
-                    key_sequence: "home".into(),
                     command: Command::SelectFirstOrScrollToTop,
                 },
                 Keymap {
