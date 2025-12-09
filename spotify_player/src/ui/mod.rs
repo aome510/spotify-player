@@ -106,7 +106,7 @@ fn render_application(frame: &mut Frame, state: &SharedState, ui: &mut UIStateGu
         let height = title.lines().count() as u16;
         let chunks = Layout::vertical([Constraint::Length(height), Constraint::Min(0)]).split(rect);
 
-        let title_widget = Paragraph::new(title.as_str()).style(ui.theme.app());
+        let title_widget = Paragraph::new(title.as_str()).style(ui.theme.app().fg(ratatui::style::Color::Green));
         frame.render_widget(title_widget, chunks[0]);
 
         chunks[1]
