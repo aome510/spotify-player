@@ -102,6 +102,18 @@ fn clean_up(mut terminal: Terminal) -> Result<()> {
 
 /// Render the application
 fn render_application(frame: &mut Frame, state: &SharedState, ui: &mut UIStateGuard, rect: Rect) {
+    let rect = if let Some(ref title) = config::get_config().app_config.title {
+        let height = title.lines().count() as u16;
+        let chunks = Layout::vertical([Constraint::Length(height), Constraint::Min(0)]).split(rect);
+
+        let title_widget = Paragraph::new(title.as_str()).style(ui.theme.app());
+        frame.render_widget(title_widget, chunks[0]);
+
+        chunks[1]
+    } else {
+        rect
+    };
+
     // rendering order: playback window -> shortcut help popup -> other popups -> main layout
 
     // render playback window before other popups and windows to ensure nothing is rendered on top
