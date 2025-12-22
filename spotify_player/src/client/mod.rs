@@ -416,6 +416,7 @@ impl AppClient {
                 self.retrieve_current_playback(state, true).await?;
             }
             ClientRequest::GetDevices => {
+                #[allow(unused_mut)]
                 let mut devices: Vec<Device> = self
                     .available_devices()
                     .await?
