@@ -430,7 +430,7 @@ impl AppClient {
                 #[cfg(feature = "streaming")]
                 {
                     let configs = config::get_config();
-                    let session = self.session().await;
+                    let session = self.spotify.session().await;
                     let local_device = Device {
                         id: session.device_id().to_string(),
                         name: configs.app_config.device.name.clone(),
