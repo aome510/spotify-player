@@ -244,7 +244,9 @@ pub fn render_shortcut_help_popup(frame: &mut Frame, ui: &mut UIStateGuard, rect
                     keymap.key_sequence.keys.drain(0..input.keys.len());
                     keymap
                 })
-                .filter(|keymap| !keymap.key_sequence.keys.is_empty() && keymap.command != Command::None)
+                .filter(|keymap| {
+                    !keymap.key_sequence.keys.is_empty() && keymap.command != Command::None
+                })
                 .collect::<Vec<_>>()
         }
     };
