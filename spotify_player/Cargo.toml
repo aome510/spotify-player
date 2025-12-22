@@ -97,7 +97,7 @@ fzf = ["fuzzy-matcher"]
 default = ["rodio-backend", "media-control"]
 
 [package.metadata.binstall]
-pkg-url = "{ repo }/releases/download/v{ version }/{ name }_{ target }{ archive-suffix }"
+pkg-url = "{ repo }/releases/download/v{ version }/{ name }-{ target }{ archive-suffix }"
 
 [lints]
 workspace = true
