@@ -123,6 +123,10 @@ impl Default for KeymapConfig {
                     key_sequence: "a".into(),
                     command: Command::ShowActionsOnCurrentTrack,
                 },
+                Keymap {
+                    key_sequence: "A".into(),
+                    command: Command::ShowActionsOnCurrentContext,
+                },
                 #[cfg(feature = "streaming")]
                 Keymap {
                     key_sequence: "R".into(),
