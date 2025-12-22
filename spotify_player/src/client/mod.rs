@@ -54,8 +54,8 @@ pub struct AppClient {
 }
 
 impl Deref for AppClient {
-    // TODO: this should use `spotify` to get full API access
-    // user-provided client has limited scopes
+    // this should use `spotify` to get full API access because user-provided client has limited scopes
+    // TODO: revert after https://github.com/aome510/spotify-player/issues/890 is resolved
     type Target = rspotify::AuthCodePkceSpotify;
     fn deref(&self) -> &Self::Target {
         self.user_client.as_ref().unwrap()
