@@ -1,4 +1,3 @@
-use anyhow::{anyhow, Result};
 use librespot_core::session::Session;
 use maybe_async::maybe_async;
 use rspotify::{
@@ -19,7 +18,7 @@ pub struct Spotify {
     config: Config,
     token: Arc<Mutex<Option<Token>>>,
     http: HttpClient,
-    pub(crate) session: Arc<tokio::sync::Mutex<Option<Session>>>,
+    session: Arc<tokio::sync::Mutex<Option<Session>>>,
 }
 
 #[allow(clippy::missing_fields_in_debug)] // Seems like not all fields are necessary in debug
@@ -50,32 +49,16 @@ impl Spotify {
         }
     }
 
+    pub async fn set_session(&self, session: Session) {
+        *self.session.lock().await = Some(session);
+    }
+
     pub async fn session(&self) -> Session {
         self.session
             .lock()
             .await
             .clone()
             .expect("non-empty Spotify session")
-    }
-
-    /// Get a Spotify access token.
-    /// The function may retrieve a new token and update the current token
-    /// stored inside the client if the old one is expired.
-    pub async fn access_token(&self) -> Result<String> {
-        let should_update = match self.token.lock().await.unwrap().as_ref() {
-            Some(token) => token.is_expired(),
-            None => true,
-        };
-        if should_update {
-            self.refresh_token().await?;
-        }
-
-        match self.token.lock().await.unwrap().as_ref() {
-            Some(token) => Ok(token.access_token.clone()),
-            None => Err(anyhow!(
-                "failed to get the authentication token stored inside the client."
-            )),
-        }
     }
 }
 

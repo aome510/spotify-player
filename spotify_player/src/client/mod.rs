@@ -107,6 +107,19 @@ impl AppClient {
         })
     }
 
+    async fn token(&self) -> Result<String> {
+        self.auto_reauth().await?;
+        Ok(self
+            .get_token()
+            .lock()
+            .await
+            .unwrap()
+            .as_ref()
+            .context("no access token")?
+            .access_token
+            .clone())
+    }
+
     /// Initialize the application's playback upon creating a new session or during startup
     pub fn initialize_playback(&self, state: &SharedState) {
         tokio::task::spawn({
@@ -163,7 +176,7 @@ impl AppClient {
     pub async fn new_session(&self, state: Option<&SharedState>, reauth: bool) -> Result<()> {
         let session = self.auth_config.session();
         let creds = auth::get_creds(&self.auth_config, reauth, true).context("get credentials")?;
-        *self.session.lock().await = Some(session.clone());
+        self.spotify.set_session(session.clone()).await;
 
         #[allow(unused_mut)]
         let mut connected = false;
@@ -201,7 +214,7 @@ impl AppClient {
 
     /// Check if the current session is valid and if invalid, create a new session
     pub async fn check_valid_session(&self, state: &SharedState) -> Result<()> {
-        if self.session().await.is_invalid() {
+        if self.spotify.session().await.is_invalid() {
             tracing::info!("Client's current session is invalid, creating a new session...");
             self.new_session(Some(state), false)
                 .await
@@ -638,7 +651,7 @@ impl AppClient {
 
     /// Get lyrics of a given track, return None if no lyrics is available
     pub async fn lyrics(&self, track_id: TrackId<'static>) -> Result<Option<Lyrics>> {
-        let session = self.session().await;
+        let session = self.spotify.session().await;
         let uri = SpotifyUri::from_uri(&track_id.uri())?;
         match uri {
             SpotifyUri::Track { id } => {
@@ -736,7 +749,7 @@ impl AppClient {
         //    access to user's active devices.
         #[cfg(feature = "streaming")]
         {
-            let session = self.session().await;
+            let session = self.spotify.session().await;
             devices.push((
                 configs.app_config.device.name.clone(),
                 session.device_id().to_string(),
@@ -831,7 +844,7 @@ impl AppClient {
     /// Get all followed artists of the current user
     pub async fn current_user_followed_artists(&self) -> Result<Vec<Artist>> {
         let first_page = self
-            .spotify
+            .deref()
             .current_user_followed_artists(None, None)
             .await?;
 
@@ -957,7 +970,7 @@ impl AppClient {
             tracks: Vec<TrackData>,
         }
 
-        let session = self.session().await;
+        let session = self.spotify.session().await;
 
         // Get an autoplay URI from the seed URI.
         // The return URI is a Spotify station's URI
@@ -1085,7 +1098,7 @@ impl AppClient {
         typ: rspotify::model::SearchType,
     ) -> Result<rspotify::model::SearchResult> {
         Ok(self
-            .spotify
+            .deref()
             .search(query, typ, None, None, None, None)
             .await?)
     }
@@ -1319,7 +1332,7 @@ impl AppClient {
     /// Get a track data
     pub async fn track(&self, track_id: TrackId<'_>) -> Result<Track> {
         Track::try_from_full_track(
-            self.spotify
+            self.deref()
                 .track(track_id, Some(rspotify::model::Market::FromToken))
                 .await?,
         )
@@ -1487,7 +1500,7 @@ impl AppClient {
                 .replace("\"name\":null", "\"name\":\"\"")
         }
 
-        let access_token = self.access_token().await?;
+        let access_token = self.token().await.context("get token")?;
         tracing::debug!("{access_token} {url}");
 
         let response = self
@@ -1655,7 +1668,7 @@ impl AppClient {
                     None
                 } else {
                     match &full_track.artists[0].id {
-                        Some(id) => self.spotify.artist(id.clone()).await.ok(),
+                        Some(id) => self.artist(id.clone()).await.ok(),
                         None => None,
                     }
                 }
