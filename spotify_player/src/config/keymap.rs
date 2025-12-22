@@ -80,10 +80,6 @@ impl Default for KeymapConfig {
                     command: Command::SeekStart,
                 },
                 Keymap {
-                    key_sequence: "home".into(),
-                    command: Command::SeekStart,
-                },
-                Keymap {
                     key_sequence: ">".into(),
                     command: Command::SeekForward { duration: None },
                 },
