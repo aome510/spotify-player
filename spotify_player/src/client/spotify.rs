@@ -11,7 +11,7 @@ use std::{fmt, sync::Arc};
 use crate::token;
 
 #[derive(Clone, Default)]
-/// A Spotify client to interact with Spotify API server
+/// A custom Spotify client to interact with Spotify API server using librespot session
 pub struct Spotify {
     creds: Credentials,
     oauth: OAuth,

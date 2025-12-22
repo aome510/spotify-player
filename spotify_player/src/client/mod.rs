@@ -52,9 +52,9 @@ pub struct AppClient {
 }
 
 impl Deref for AppClient {
-    type Target = spotify::Spotify;
+    type Target = rspotify::AuthCodePkceSpotify;
     fn deref(&self) -> &Self::Target {
-        self.spotify.as_ref()
+        self.user_client.as_ref().unwrap()
     }
 }
 
@@ -74,7 +74,6 @@ impl AppClient {
         let mut user_client = configs.app_config.get_user_client_id()?.clone().map(|id| {
             let creds = rspotify::Credentials { id, secret: None };
             let oauth = rspotify::OAuth {
-                scopes: rspotify::scopes!("user-read-playback-state"),
                 redirect_uri: configs.app_config.login_redirect_uri.clone(),
                 ..Default::default()
             };
