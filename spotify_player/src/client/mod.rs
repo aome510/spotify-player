@@ -44,14 +44,18 @@ const PLAYBACK_TYPES: [&rspotify::model::AdditionalType; 2] = [
 #[derive(Clone)]
 pub struct AppClient {
     http: reqwest::Client,
+    /// The integrated Spotify client used by the application
     spotify: Arc<spotify::Spotify>,
     auth_config: AuthConfig,
+    /// The user-provided Spotify client, mainly for Spotify Connect integration
     user_client: Option<rspotify::AuthCodePkceSpotify>,
     #[cfg(feature = "streaming")]
     stream_conn: Arc<Mutex<Option<librespot_connect::Spirc>>>,
 }
 
 impl Deref for AppClient {
+    // TODO: this should use `spotify` to get full API access
+    // user-provided client has limited scopes
     type Target = rspotify::AuthCodePkceSpotify;
     fn deref(&self) -> &Self::Target {
         self.user_client.as_ref().unwrap()
@@ -69,8 +73,8 @@ impl AppClient {
         let auth_config = AuthConfig::new(configs)?;
 
         // Construct user-provided client.
-        // This custom client is needed for Spotify Connect integration because the Spotify client (`AppConfig::spotify`),
-        // which `spotify-player` uses to retrieve Spotify data, doesn't have access to user available devices
+        // This custom client is needed for Spotify Connect integration because the custom Spotify client (`AppClient::spotify`),
+        // which `spotify-player` uses to retrieve Spotify data from official API server, doesn't have access to user available devices
         let mut user_client = configs.app_config.get_user_client_id()?.clone().map(|id| {
             let creds = rspotify::Credentials { id, secret: None };
             let oauth = rspotify::OAuth {
