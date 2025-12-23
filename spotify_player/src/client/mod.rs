@@ -76,26 +76,30 @@ impl AppClient {
         // Construct user-provided client.
         // This custom client is needed for Spotify Connect integration because the custom Spotify client (`AppClient::spotify`),
         // which `spotify-player` uses to retrieve Spotify data from official API server, doesn't have access to user available devices
-        let mut user_client = configs.app_config.get_user_client_id(&configs.config_folder)?.clone().map(|id| {
-            let creds = rspotify::Credentials { id, secret: None };
-            let mut scopes = auth::OAUTH_SCOPES
-                .iter()
-                .map(ToString::to_string)
-                .collect::<HashSet<_>>();
-            // `user-personalized` scope is not supported by user-provided client and only available to the official Spotify client
-            scopes.remove("user-personalized");
-            let oauth = rspotify::OAuth {
-                redirect_uri: configs.app_config.login_redirect_uri.clone(),
-                scopes,
-                ..Default::default()
-            };
-            let config = rspotify::Config {
-                token_cached: true,
-                cache_path: configs.cache_folder.join("user_client_token.json"),
-                ..Default::default()
-            };
-            rspotify::AuthCodePkceSpotify::with_config(creds, oauth, config)
-        });
+        let mut user_client = configs
+            .app_config
+            .get_user_client_id(&configs.config_folder)?
+            .clone()
+            .map(|id| {
+                let creds = rspotify::Credentials { id, secret: None };
+                let mut scopes = auth::OAUTH_SCOPES
+                    .iter()
+                    .map(ToString::to_string)
+                    .collect::<HashSet<_>>();
+                // `user-personalized` scope is not supported by user-provided client and only available to the official Spotify client
+                scopes.remove("user-personalized");
+                let oauth = rspotify::OAuth {
+                    redirect_uri: configs.app_config.login_redirect_uri.clone(),
+                    scopes,
+                    ..Default::default()
+                };
+                let config = rspotify::Config {
+                    token_cached: true,
+                    cache_path: configs.cache_folder.join("user_client_token.json"),
+                    ..Default::default()
+                };
+                rspotify::AuthCodePkceSpotify::with_config(creds, oauth, config)
+            });
 
         if let Some(client) = &mut user_client {
             let url = client
