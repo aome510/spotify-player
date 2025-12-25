@@ -336,6 +336,7 @@ fn handle_command_for_track_table_window(
             client_pub.send(ClientRequest::AddPlayableToQueue(
                 filtered_tracks[id].id.clone().into(),
             ))?;
+            ui.popup = Some(PopupState::AddedToQueue { frames_left: 120 });
         }
         Command::JumpToHighlightTrackInContext => {
             ui.popup = None;
