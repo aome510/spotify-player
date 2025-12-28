@@ -20,6 +20,7 @@ pub enum Command {
         offset: i32,
     },
     Mute,
+    SeekStart,
     SeekForward {
         duration: Option<u16>,
     },
@@ -308,6 +309,7 @@ impl Command {
             Self::ToggleFakeTrackRepeatMode => "toggle fake track repeat mode",
             Self::Shuffle => "toggle the shuffle mode",
             Self::Mute => "toggle playback volume between 0% and previous level",
+            Self::SeekStart => "seek to track start",
             Self::SeekForward { duration } => { return format!("seek forward by {}s", duration.unwrap_or(5)) },
             Self::SeekBackward { duration } => { return format!("seek backward by {}s", duration.unwrap_or(5)) },
             Self::Quit => "quit the application",
