@@ -6,6 +6,7 @@ playback_format = "{status} {track} • {artists}\n{album} • {genres}\n{metada
 playback_metadata_fields = ["repeat", "shuffle", "volume", "device"]
 notify_format = { summary = "{track} • {artists}", body = "{album}" }
 notify_timeout_in_secs = 0
+notify_transient = false
 app_refresh_duration_in_ms = 32
 playback_refresh_duration_in_ms = 0
 page_size_in_rows = 20

@@ -1909,6 +1909,11 @@ impl AppClient {
                 configs.app_config.notify_timeout_in_secs,
             ));
         }
+        #[cfg(all(unix, not(target_os = "macos")))]
+        if configs.app_config.notify_transient {
+            use notify_rust::Hint;
+            n.hint(Hint::Transient(true));
+        }
         n.show()?;
 
         Ok(())
