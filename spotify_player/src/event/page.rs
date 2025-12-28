@@ -1,6 +1,8 @@
 use anyhow::Context as _;
 use command::CommandOrAction;
 
+use crate::command::{construct_album_actions, construct_playlist_actions, construct_show_actions};
+
 use super::*;
 
 pub fn handle_key_sequence_for_page(
@@ -363,6 +365,55 @@ fn handle_command_for_context_page(
         Command::Search => {
             ui.new_search_popup();
             Ok(true)
+        }
+        Command::ShowActionsOnCurrentContext => {
+            let context_id = match ui.current_page() {
+                PageState::Context { id, .. } => match id {
+                    None => return Ok(false),
+                    Some(id) => id,
+                },
+                _ => anyhow::bail!("expect a context page"),
+            };
+            let data = state.data.read();
+
+            match data.caches.context.get(&context_id.uri()) {
+                Some(context) => match context {
+                    Context::Playlist { playlist, .. } => {
+                        let actions = construct_playlist_actions(playlist, &data);
+                        ui.popup = Some(PopupState::ActionList(
+                            Box::new(ActionListItem::Playlist(playlist.clone(), actions)),
+                            ListState::default(),
+                        ));
+                        Ok(true)
+                    }
+                    Context::Album { album, .. } => {
+                        let actions = construct_album_actions(album, &data);
+                        ui.popup = Some(PopupState::ActionList(
+                            Box::new(ActionListItem::Album(album.clone(), actions)),
+                            ListState::default(),
+                        ));
+                        Ok(true)
+                    }
+                    Context::Artist { artist, .. } => {
+                        let actions = construct_artist_actions(artist, &data);
+                        ui.popup = Some(PopupState::ActionList(
+                            Box::new(ActionListItem::Artist(artist.clone(), actions)),
+                            ListState::default(),
+                        ));
+                        Ok(true)
+                    }
+                    Context::Show { show, .. } => {
+                        let actions = construct_show_actions(show, &data);
+                        ui.popup = Some(PopupState::ActionList(
+                            Box::new(ActionListItem::Show(show.clone(), actions)),
+                            ListState::default(),
+                        ));
+                        Ok(true)
+                    }
+                    Context::Tracks { tracks: _, desc: _ } => Ok(false),
+                },
+                None => Ok(false),
+            }
         }
         _ => window::handle_command_for_focused_context_window(command, client_pub, ui, state),
     }

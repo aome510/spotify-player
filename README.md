@@ -359,6 +359,7 @@ List of supported commands:
 | `Shuffle`                       | toggle the shuffle mode                                                                            | `C-s`              |
 | `VolumeChange`                  | change playback volume by an offset (default shortcuts use 5%)                                     | `+`, `-`           |
 | `Mute`                          | toggle playback volume between 0% and previous level                                               | `_`                |
+| `SeekStart`                     | seek start of current track                                                                        | `0`                |
 | `SeekForward`                   | seek forward by a duration in seconds (defaults to `seek_duration_secs`)                           | `>`                |
 | `SeekBackward`                  | seek backward by a duration in seconds (defaults to `seek_duration_secs`)                          | `<`                |
 | `Quit`                          | quit the application                                                                               | `C-c`, `q`         |
@@ -374,6 +375,7 @@ List of supported commands:
 | `RestartIntegratedClient`       | restart the integrated client (`streaming` feature only)                                           | `R`                |
 | `ShowActionsOnSelectedItem`     | open a popup showing actions on a selected item                                                    | `g a`, `C-space`   |
 | `ShowActionsOnCurrentTrack`     | open a popup showing actions on the current track                                                  | `a`                |
+| `ShowActionsOnCurrentContext`   | open a popup showing actions on the current context                                                | `A`                |
 | `AddSelectedItemToQueue`        | add the selected item to queue                                                                     | `Z`, `C-z`         |
 | `FocusNextWindow`               | focus the next focusable window (if any)                                                           | `tab`              |
 | `FocusPreviousWindow`           | focus the previous focusable window (if any)                                                       | `backtab`          |
