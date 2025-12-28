@@ -195,6 +195,10 @@ pub fn handle_cli_subcommand(cmd: &str, args: &ArgMatches) -> Result<()> {
             generate(gen, &mut cmd, name, &mut std::io::stdout());
             std::process::exit(0);
         }
+        "features" => {
+            print_features();
+            std::process::exit(0);
+        }
         _ => {}
     }
 
@@ -348,4 +352,37 @@ fn handle_playlist_subcommand(args: &ArgMatches) -> Result<Request> {
     };
 
     Ok(Request::Playlist(command))
+}
+
+macro_rules! print_feature {
+    ($feature:literal) => {
+        #[cfg(feature = $feature)]
+        println!("  ✓ {}", $feature);
+        #[cfg(not(feature = $feature))]
+        println!("  ✗ {}", $feature);
+    };
+}
+
+fn print_features() {
+
+    println!("Compile-time features:");
+
+    print_feature!("daemon");
+    print_feature!("streaming");
+    print_feature!("media-control");
+    print_feature!("image");
+    print_feature!("viuer");
+    print_feature!("sixel");
+    print_feature!("pixelate");
+    print_feature!("notify");
+    print_feature!("fzf");
+
+    // Audio backends
+    print_feature!("pulseaudio-backend");
+    print_feature!("alsa-backend");
+    print_feature!("rodio-backend");
+    print_feature!("jackaudio-backend");
+    print_feature!("sdl-backend");
+    print_feature!("gstreamer-backend");
+
 }
