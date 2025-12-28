@@ -589,7 +589,7 @@ fn handle_global_command(
         }
         Command::SeekStart => {
             client_pub.send(ClientRequest::Player(PlayerRequest::SeekTrack(
-                chrono::TimeDelta::try_seconds(0).unwrap()
+                chrono::TimeDelta::try_seconds(0).unwrap(),
             )))?;
         }
         Command::SeekForward { duration } => {
