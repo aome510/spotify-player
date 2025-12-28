@@ -364,7 +364,6 @@ macro_rules! print_feature {
 }
 
 fn print_features() {
-
     println!("Compile-time features:");
 
     print_feature!("daemon");
@@ -384,5 +383,4 @@ fn print_features() {
     print_feature!("jackaudio-backend");
     print_feature!("sdl-backend");
     print_feature!("gstreamer-backend");
-
 }
