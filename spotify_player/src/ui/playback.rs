@@ -285,6 +285,16 @@ fn construct_playback_text(
                     continue;
                 }
             },
+            "{track_number}" => match playable {
+                rspotify::model::PlayableItem::Track(track) => (
+                    { to_bidi_string(&track.track_number.to_string()) },
+                    ui.theme.playback_track(),
+                ),
+                rspotify::model::PlayableItem::Episode(_)
+                | rspotify::model::PlayableItem::Unknown(_) => {
+                    continue;
+                }
+            },
             "{artists}" => match playable {
                 rspotify::model::PlayableItem::Track(track) => (
                     to_bidi_string(&crate::utils::map_join(&track.artists, |a| &a.name, ", ")),
