@@ -45,7 +45,11 @@ assert lib.assertOneOf "withAudioBackend" withAudioBackend [
 
 rustPlatform.buildRustPackage rec {
   pname = "spotify-player";
-  version = "0.21.2";
+  version =
+    let
+      toml = builtins.fromTOML (builtins.readFile ./spotify_player/Cargo.toml);
+    in
+    toml.package.version;
 
   src = ./.;
 
