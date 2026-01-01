@@ -17,6 +17,9 @@
   dbus,
   fontconfig,
   libsixel,
+  autoconf,
+  automake,
+  libtool,
 
   # build options
   withStreaming ? true,
@@ -60,6 +63,9 @@ rustPlatform.buildRustPackage rec {
     cmake
     rustPlatform.bindgenHook
     installShellFiles
+    autoconf
+    automake
+    libtool
     # Tries to access $HOME when installing shell files, and on Darwin
     writableTmpDirAsHomeHook
   ]
