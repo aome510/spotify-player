@@ -83,13 +83,13 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
 
     if !state.is_daemon {
         #[cfg(feature = "image")]
-        {
+        tokio::task::spawn_blocking(||{
             // initialize `viuer` supports for kitty, iterm2, and sixel
             viuer::get_kitty_support();
             viuer::is_iterm_supported();
             #[cfg(feature = "sixel")]
             viuer::is_sixel_supported();
-        }
+        });
     }
 
     // client channels
