@@ -28,6 +28,7 @@ pub enum PopupState {
         desc: LineInput,
         current_field: PlaylistCreateCurrentField,
     },
+    AddedToQueue { frames_left: u16 }
 }
 
 #[derive(Debug, Clone)]
@@ -77,7 +78,10 @@ impl PopupState {
             | Self::ArtistList(.., list_state)
             | Self::ThemeList(.., list_state)
             | Self::ActionList(.., list_state) => Some(list_state),
-            Self::Search { .. } | Self::PlaylistCreate { .. } => None,
+
+            Self::Search { .. } 
+            | Self::PlaylistCreate { .. } 
+            | Self::AddedToQueue { frames_left: _ } => None,
         }
     }
 
@@ -91,7 +95,10 @@ impl PopupState {
             | Self::ArtistList(.., list_state)
             | Self::ThemeList(.., list_state)
             | Self::ActionList(.., list_state) => Some(list_state),
-            Self::Search { .. } | Self::PlaylistCreate { .. } => None,
+            
+            Self::Search { .. } 
+            | Self::PlaylistCreate { .. }
+            | Self::AddedToQueue { frames_left: _ } => None,
         }
     }
 
