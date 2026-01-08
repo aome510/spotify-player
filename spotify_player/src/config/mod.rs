@@ -274,7 +274,10 @@ impl Default for AppConfig {
     fn default() -> Self {
         Self {
             theme: "dracula".to_owned(),
-            client_id: None,
+            // NOTE: this is a workaround for people who cannot create their own Spotify application
+            // due to current Spotify restrictions.
+            // TODO: remove this once https://github.com/aome510/spotify-player/issues/890 is resolved.
+            client_id: Some("b28a574d8ad44fc7b5a89994431a8f88".to_string()),
             client_id_command: None,
 
             client_port: 8080,
