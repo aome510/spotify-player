@@ -1,6 +1,6 @@
 [package]
 name = "spotify_player"
-version = "0.21.2"
+version = "0.21.3"
 authors = ["Thang Pham <phamducthang1234@gmail.com>"]
 edition = "2021"
 license = "MIT"
