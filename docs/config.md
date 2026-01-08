@@ -130,7 +130,10 @@ esac
 
 ### Client id command
 
-If you prefer not to include your own `client_id` directly in your configuration, you can retrieve it at runtime using the `client_id_command` option.
+If you prefer not to include your own `client_id` directly in your configuration, you have two options:
+
+1. you can create a file called `client_id` with the value of the client_id in the [config folder](../README.md#configurations), which will be picked up if it is not empty.
+2. you can retrieve it at runtime using the `client_id_command` option.
 
 If specified, `client_id_command` should be an object with two fields `command` and `args`, just like `player_event_hook_command`.
 For example to read your client_id from a file your could use `client_id_command = { command = "cat", args = ["/path/to/file"] }`
