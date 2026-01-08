@@ -569,12 +569,22 @@ pub fn handle_navigation_command(
     match command {
         Command::SelectNextOrScrollDown => {
             let offset = count.unwrap_or(1);
-            page.select(std::cmp::min(id + offset, len - 1));
+            let temp = id + offset;
+            if temp > len - 1 {
+                page.select(0 + temp - len);
+            } else {
+                page.select(id + offset);
+            }
             true
         }
         Command::SelectPreviousOrScrollUp => {
             let offset = count.unwrap_or(1);
-            page.select(id.saturating_sub(offset));
+            let temp = id as isize - offset as isize;
+            if temp < 0 {
+                page.select((len as isize + temp) as usize);
+            } else {
+                page.select(temp as usize);
+            }
             true
         }
         Command::PageSelectNextOrScrollDown => {
