@@ -1,5 +1,5 @@
 use crate::{
-    state::model::{Category, ContextId},
+    state::{InputMode, model::{Category, ContextId}},
     ui::single_line_input::LineInput,
 };
 use ratatui::widgets::{ListState, TableState};
@@ -18,6 +18,7 @@ pub enum PageState {
         line_input: LineInput,
         current_query: String,
         state: SearchPageUIState,
+        mode: Option<InputMode>,
     },
     Lyrics {
         track_uri: String,

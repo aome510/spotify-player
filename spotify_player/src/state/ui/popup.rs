@@ -11,10 +11,27 @@ pub enum PlaylistCreateCurrentField {
     Desc,
 }
 
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub enum InputMode {
+    #[default]
+    Insert,
+    Normal,
+}
+
+impl InputMode {
+    pub fn toggle(&mut self) {
+        *self = match self {
+            InputMode::Insert => InputMode::Normal,
+            InputMode::Normal => InputMode::Insert,
+        };
+    }
+}
+
 #[derive(Debug)]
 pub enum PopupState {
     Search {
         query: String,
+        mode: Option<InputMode>,
     },
     UserPlaylistList(PlaylistPopupAction, ListState),
     UserFollowedArtistList(ListState),
