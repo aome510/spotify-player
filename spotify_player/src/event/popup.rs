@@ -485,20 +485,20 @@ fn handle_key_sequence_for_action_list_popup(
     state: &SharedState,
     ui: &mut UIStateGuard,
 ) -> Result<bool> {
+    if let Some(Key::None(crossterm::event::KeyCode::Char(c))) = key_sequence.keys.first() {
+        if let Some(id) = c.to_digit(10) {
+            let id = id as usize;
+            if id < n_actions {
+                handle_item_action(id, client_pub, state, ui)?;
+                return Ok(true);
+            }
+        }
+    }
+
     let Some(command) = config::get_config()
         .keymap_config
         .find_command_from_key_sequence(key_sequence)
     else {
-        // handle selecting an action by pressing a key from '0' to '9'
-        if let Some(Key::None(crossterm::event::KeyCode::Char(c))) = key_sequence.keys.first() {
-            if let Some(id) = c.to_digit(10) {
-                let id = id as usize;
-                if id < n_actions {
-                    handle_item_action(id, client_pub, state, ui)?;
-                    return Ok(true);
-                }
-            }
-        }
         return Ok(false);
     };
 
