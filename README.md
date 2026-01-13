@@ -164,7 +164,7 @@ docker run --rm \
 
 To enable a full [Spotify connect](https://www.spotify.com/us/connect/) support, users will need to enable a _"user-provided client integration"_.
 
-This integration can be done by following [this documentation](https://developer.spotify.com/documentation/general/guides/authorization/app-settings/) to register a Spotify app and then specifying the app's `client_id` in the [general configuration file](docs/config.md#general). **NOTE**: please make sure that you specify `http://127.0.0.1:8989/login` (default value of `login_redirect_uri` config option) in the **Redirect URI** section when creating the app.
+This integration can be done by following [this documentation](https://developer.spotify.com/documentation/general/guides/authorization/app-settings/) to register a Spotify app and then specifying the app's `client_id` in the [general configuration file](docs/config.md#general). You can also create a file called `client_id` in the [config folder](#configurations) and put the ID there. **NOTE**: please make sure that you specify `http://127.0.0.1:8989/login` (default value of `login_redirect_uri` config option) in the **Redirect URI** section when creating the app.
 
 Upon running `spotify_player` with a user-provided `client_id`, user will be prompted to authenticate the app described earlier. **NOTE** that this prompt is different from the prompt to authenticate `spotify_player`. Upon accepting the authentication request, `spotify_player` will retrieve an access token of the app to finish setting up the integration.
 

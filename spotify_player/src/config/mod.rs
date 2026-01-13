@@ -31,6 +31,7 @@ pub struct Configs {
     pub app_config: AppConfig,
     pub keymap_config: KeymapConfig,
     pub theme_config: ThemeConfig,
+    pub config_folder: std::path::PathBuf,
     pub cache_folder: std::path::PathBuf,
 }
 
@@ -40,6 +41,7 @@ impl Configs {
             app_config: AppConfig::new(config_folder)?,
             keymap_config: KeymapConfig::new(config_folder)?,
             theme_config: ThemeConfig::new(config_folder)?,
+            config_folder: config_folder.to_path_buf(),
             cache_folder: cache_folder.to_path_buf(),
         })
     }
@@ -459,8 +461,19 @@ impl AppConfig {
         }
     }
 
-    /// Returns stdout of `client_id_command` if set, otherwise it returns the the value of `client_id`
-    pub fn get_user_client_id(&self) -> Result<Option<String>> {
+    /// Returns the user's client ID by checking the following sources in order:
+    /// 1. `client_id` file in the config folder (if it exists and is not empty)
+    /// 2. stdout of `client_id_command` if set
+    /// 3. the value of `client_id` field
+    pub fn get_user_client_id(&self, config_folder: &Path) -> Result<Option<String>> {
+        let client_id_file = config_folder.join("client_id");
+        if let Ok(file_content) = std::fs::read_to_string(&client_id_file) {
+            let trimmed = file_content.trim();
+            if !trimmed.is_empty() {
+                return Ok(Some(trimmed.to_string()));
+            }
+        }
+
         match self.client_id_command {
             Some(ref cmd) => cmd.execute(None).map(|out| Some(out.trim().to_string())),
             None => Ok(self.client_id.clone()),
