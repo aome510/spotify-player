@@ -77,6 +77,7 @@ pub struct AppConfig {
     // duration configs
     pub app_refresh_duration_in_ms: u64,
     pub playback_refresh_duration_in_ms: u64,
+    pub added_to_queue_popup_duration_in_frames: u16,
 
     pub page_size_in_rows: usize,
 
@@ -305,6 +306,7 @@ impl Default for AppConfig {
             ap_port: None,
             app_refresh_duration_in_ms: 32,
             playback_refresh_duration_in_ms: 0,
+            added_to_queue_popup_duration_in_frames: 45,
 
             page_size_in_rows: 20,
 

@@ -21,7 +21,7 @@ pub fn render_popup(
     ui: &mut UIStateGuard,
     rect: Rect,
 ) -> (Rect, bool) {
-    match ui.popup.as_mut() {
+    match ui.popup {
         None => (rect, true),
         Some(ref popup) => match popup {
             PopupState::PlaylistCreate {
@@ -196,7 +196,7 @@ pub fn render_popup(
                 let rect = render_list_popup(frame, rect, "Artists", items, 5, ui);
                 (rect, false)
             }
-            PopupState::AddedToQueue {frames_left } => {
+            PopupState::AddedToQueue { .. } => {
                 let chunks =
                     Layout::vertical([Constraint::Fill(0), Constraint::Length(3)]).split(rect);
 
@@ -212,11 +212,6 @@ pub fn render_popup(
                     Paragraph::new("✔ Item added to queue!"),
                     popup_rect,
                 );
-
-                *frames_left -= 1;
-                if *frames_left <= 0 {
-                    ui.popup = None;
-                }
 
                 (chunks[0], true)
             }
