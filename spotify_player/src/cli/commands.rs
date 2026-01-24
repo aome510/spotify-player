@@ -234,3 +234,7 @@ pub fn init_playlist_subcommand() -> Command {
                     .required(true)
             ))
 }
+
+pub fn init_print_features_command() -> Command {
+    Command::new("features").about("Print compiled in features")
+}

@@ -589,6 +589,11 @@ fn handle_global_command(
         Command::Mute => {
             client_pub.send(ClientRequest::Player(PlayerRequest::ToggleMute))?;
         }
+        Command::SeekStart => {
+            client_pub.send(ClientRequest::Player(PlayerRequest::SeekTrack(
+                chrono::TimeDelta::try_seconds(0).unwrap(),
+            )))?;
+        }
         Command::SeekForward { duration } => {
             if let Some(progress) = state.player.read().playback_progress() {
                 let duration =

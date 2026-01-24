@@ -11,6 +11,8 @@
 
 # Env file
 .env
+.envrc
+.direnv/
 
 # Cache files
 .*cache.*

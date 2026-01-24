@@ -1459,15 +1459,18 @@ impl AppClient {
             .filter_map(Track::try_from_full_track)
             .collect::<Vec<_>>();
 
-        #[allow(deprecated)]
-        let related_artists = self
-            .artist_related_artists(artist_id.as_ref())
-            .await
-            .context("get related artists")?;
-        let related_artists = related_artists
-            .into_iter()
-            .map(std::convert::Into::into)
-            .collect::<Vec<_>>();
+        // temporarily disable related-artists due to a rate-limiting issue
+        // TODO: revert after https://github.com/aome510/spotify-player/issues/890 is resolved
+        // #[allow(deprecated)]
+        // let related_artists = self
+        //     .artist_related_artists(artist_id.as_ref())
+        //     .await
+        //     .context("get related artists")?;
+        // let related_artists = related_artists
+        //     .into_iter()
+        //     .map(std::convert::Into::into)
+        //     .collect::<Vec<_>>();
+        let related_artists = Vec::new();
 
         let albums = self
             .artist_albums(artist_id.as_ref())
@@ -1908,6 +1911,11 @@ impl AppClient {
             n.timeout(std::time::Duration::from_secs(
                 configs.app_config.notify_timeout_in_secs,
             ));
+        }
+        #[cfg(all(unix, not(target_os = "macos")))]
+        if configs.app_config.notify_transient {
+            use notify_rust::Hint;
+            n.hint(Hint::Transient(true));
         }
         n.show()?;
 
