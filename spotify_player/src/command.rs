@@ -20,6 +20,7 @@ pub enum Command {
         offset: i32,
     },
     Mute,
+    SeekStart,
     SeekForward {
         duration: Option<u16>,
     },
@@ -56,6 +57,7 @@ pub enum Command {
 
     ShowActionsOnSelectedItem,
     ShowActionsOnCurrentTrack,
+    ShowActionsOnCurrentContext,
     AddSelectedItemToQueue,
     JumpToHighlightTrackInContext,
 
@@ -307,6 +309,7 @@ impl Command {
             Self::ToggleFakeTrackRepeatMode => "toggle fake track repeat mode",
             Self::Shuffle => "toggle the shuffle mode",
             Self::Mute => "toggle playback volume between 0% and previous level",
+            Self::SeekStart => "seek to track start",
             Self::SeekForward { duration } => { return format!("seek forward by {}s", duration.unwrap_or(5)) },
             Self::SeekBackward { duration } => { return format!("seek backward by {}s", duration.unwrap_or(5)) },
             Self::Quit => "quit the application",
@@ -324,6 +327,7 @@ impl Command {
             Self::RefreshPlayback => "manually refresh the current playback",
             Self::ShowActionsOnSelectedItem => "open a popup showing actions on a selected item",
             Self::ShowActionsOnCurrentTrack => "open a popup showing actions on the current track",
+            Self::ShowActionsOnCurrentContext => "open a popup showing actions on the current context",
             Self::AddSelectedItemToQueue => "add the selected item to queue",
             Self::JumpToHighlightTrackInContext => "jump to the currently highlighted search result in the context",
             Self::FocusNextWindow => "focus the next focusable window (if any)",

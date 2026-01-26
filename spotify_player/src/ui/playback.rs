@@ -285,6 +285,16 @@ fn construct_playback_text(
                     continue;
                 }
             },
+            "{track_number}" => match playable {
+                rspotify::model::PlayableItem::Track(track) => (
+                    { to_bidi_string(&track.track_number.to_string()) },
+                    ui.theme.playback_track(),
+                ),
+                rspotify::model::PlayableItem::Episode(_)
+                | rspotify::model::PlayableItem::Unknown(_) => {
+                    continue;
+                }
+            },
             "{artists}" => match playable {
                 rspotify::model::PlayableItem::Track(track) => (
                     to_bidi_string(&crate::utils::map_join(&track.artists, |a| &a.name, ", ")),
@@ -416,23 +426,6 @@ fn render_playback_progress_bar(
 
 #[cfg(feature = "image")]
 fn render_playback_cover_image(state: &SharedState, ui: &mut UIStateGuard) -> Result<()> {
-    fn remove_temp_files() -> Result<()> {
-        // Clean up temp files created by `viuer`'s kitty printer to avoid
-        // possible freeze because of too many temp files in the temp folder.
-        // Context: https://github.com/aome510/spotify-player/issues/148
-        let tmp_dir = std::env::temp_dir();
-        for path in (std::fs::read_dir(tmp_dir)?).flatten() {
-            let path = path.path();
-            if path.display().to_string().contains(".tmp.viuer") {
-                std::fs::remove_file(path)?;
-            }
-        }
-
-        Ok(())
-    }
-
-    remove_temp_files().context("remove temp files")?;
-
     let data = state.data.read();
     if let Some(image) = data.caches.images.get(&ui.last_cover_image_render_info.url) {
         let rect = ui.last_cover_image_render_info.render_area;
