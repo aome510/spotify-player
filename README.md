@@ -352,7 +352,7 @@ List of supported commands:
 | `Shuffle`                       | toggle the shuffle mode                                                                            | `C-s`              |
 | `VolumeChange`                  | change playback volume by an offset (default shortcuts use 5%)                                     | `+`, `-`           |
 | `Mute`                          | toggle playback volume between 0% and previous level                                               | `_`                |
-| `SeekStart`                     | seek start of current track                                                                        | `0`                |
+| `SeekStart`                     | seek start of current track                                                                        | `^`                |
 | `SeekForward`                   | seek forward by a duration in seconds (defaults to `seek_duration_secs`)                           | `>`                |
 | `SeekBackward`                  | seek backward by a duration in seconds (defaults to `seek_duration_secs`)                          | `<`                |
 | `Quit`                          | quit the application                                                                               | `C-c`, `q`         |
