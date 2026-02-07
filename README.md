@@ -63,7 +63,6 @@ A Spotify Premium account is **required**.
 
 - [Rust and cargo](https://www.rust-lang.org/tools/install) as the build dependencies
 - install `openssl`, `alsa-lib` (`streaming` feature), `libdbus` (`media-control` feature).
-
   - For example, on Debian based systems, run the below command to install application's dependencies:
 
     ```shell
@@ -162,13 +161,7 @@ docker run --rm \
 
 ### Spotify Connect
 
-To enable a full [Spotify connect](https://www.spotify.com/us/connect/) support, users will need to enable a _"user-provided client integration"_.
-
-This integration can be done by following [this documentation](https://developer.spotify.com/documentation/general/guides/authorization/app-settings/) to register a Spotify app and then specifying the app's `client_id` in the [general configuration file](docs/config.md#general). **NOTE**: please make sure that you specify `http://127.0.0.1:8989/login` (default value of `login_redirect_uri` config option) in the **Redirect URI** section when creating the app.
-
-Upon running `spotify_player` with a user-provided `client_id`, user will be prompted to authenticate the app described earlier. **NOTE** that this prompt is different from the prompt to authenticate `spotify_player`. Upon accepting the authentication request, `spotify_player` will retrieve an access token of the app to finish setting up the integration.
-
-After the user-provided client is successfully integrated, press **D** (default shortcut for `SwitchDevice` command) to get the list of available devices, then press **enter** (default shortcut for `ChooseSelected` command) to connect to the selected device.
+`spotify-player` supports remote control with [Spotify Connect](https://support.spotify.com/us/article/spotify-connect/). To connect to a device running Spotify, press **D** (default shortcut for `SwitchDevice` command) to get the list of available devices, then press **enter** (default shortcut for `ChooseSelected` command) to connect to the selected device.
 
 ### Streaming
 

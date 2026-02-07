@@ -45,21 +45,21 @@ const PLAYBACK_TYPES: [&rspotify::model::AdditionalType; 2] = [
 #[derive(Clone)]
 pub struct AppClient {
     http: reqwest::Client,
-    /// The integrated Spotify client used by the application
+    /// The integrated Spotify client, mainly used for streaming and librespot integration
     spotify: Arc<spotify::Spotify>,
     auth_config: AuthConfig,
-    /// The user-provided Spotify client, mainly for Spotify Connect integration
+    /// The user-provided Spotify client, mainly used for interacting with Spotify Web APIs
     user_client: Option<rspotify::AuthCodePkceSpotify>,
     #[cfg(feature = "streaming")]
     stream_conn: Arc<Mutex<Option<librespot_connect::Spirc>>>,
 }
 
 impl Deref for AppClient {
-    // this should use `spotify` to get full API access because user-provided client has limited scopes
-    // TODO: revert after https://github.com/aome510/spotify-player/issues/890 is resolved
     type Target = rspotify::AuthCodePkceSpotify;
     fn deref(&self) -> &Self::Target {
-        self.user_client.as_ref().unwrap()
+        self.user_client
+            .as_ref()
+            .expect("user-provided client should be initialized")
     }
 }
 
@@ -73,9 +73,6 @@ impl AppClient {
         let configs = config::get_config();
         let auth_config = AuthConfig::new(configs)?;
 
-        // Construct user-provided client.
-        // This custom client is needed for Spotify Connect integration because the custom Spotify client (`AppClient::spotify`),
-        // which `spotify-player` uses to retrieve Spotify data from official API server, doesn't have access to user available devices
         let mut user_client = configs.app_config.get_user_client_id()?.clone().map(|id| {
             let creds = rspotify::Credentials { id, secret: None };
             let mut scopes = auth::OAUTH_SCOPES
@@ -706,14 +703,7 @@ impl AppClient {
 
     /// Get user available devices
     pub async fn available_devices(&self) -> Result<Vec<rspotify::model::Device>> {
-        match &self.user_client {
-            None => {
-                tracing::warn!("User-provided client integration is not enabled, no device found.");
-                tracing::warn!("Please make sure you setup Spotify Connect as described in https://github.com/aome510/spotify-player#spotify-connect.");
-                Ok(vec![])
-            }
-            Some(client) => Ok(client.device().await?),
-        }
+        Ok(self.device().await?)
     }
 
     pub fn update_playback(&self, state: &SharedState) {
@@ -1459,18 +1449,16 @@ impl AppClient {
             .filter_map(Track::try_from_full_track)
             .collect::<Vec<_>>();
 
-        // temporarily disable related-artists due to a rate-limiting issue
-        // TODO: revert after https://github.com/aome510/spotify-player/issues/890 is resolved
-        // #[allow(deprecated)]
-        // let related_artists = self
-        //     .artist_related_artists(artist_id.as_ref())
-        //     .await
-        //     .context("get related artists")?;
-        // let related_artists = related_artists
-        //     .into_iter()
-        //     .map(std::convert::Into::into)
-        //     .collect::<Vec<_>>();
-        let related_artists = Vec::new();
+        #[allow(deprecated)]
+        let related_artists = self
+            .artist_related_artists(artist_id.as_ref())
+            .await
+            .ok()
+            .unwrap_or_default();
+        let related_artists = related_artists
+            .into_iter()
+            .map(std::convert::Into::into)
+            .collect::<Vec<_>>();
 
         let albums = self
             .artist_albums(artist_id.as_ref())
