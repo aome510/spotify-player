@@ -739,11 +739,41 @@ impl AppClient {
 
     /// Get Spotify's available browse playlists of a given category
     pub async fn browse_category_playlists(&self, category_id: &str) -> Result<Vec<Playlist>> {
-        let first_page = self
-            .category_playlists_manual(category_id, None, Some(50), None)
-            .await?;
+        // TODO: this should use `rspotify::category_playlists_manual` API instead of `http_get`
+        // The current implementation is a workaround for https://github.com/ramsayleung/rspotify/issues/535
 
-        Ok(first_page.items.into_iter().map(Playlist::from).collect())
+        // Ok(self
+        //     .category_playlists_manual(
+        //         category_id,
+        //         Some(rspotify::model::Market::FromToken),
+        //         Some(50),
+        //         None,
+        //     )
+        //     .await?
+        //     .items
+        //     .into_iter()
+        //     .map(Into::into)
+        //     .collect())
+
+        #[derive(Deserialize, Debug)]
+        struct BrowseCategoryPlaylistsResponse {
+            playlists: rspotify::model::Page<serde_json::Value>,
+        }
+
+        Ok(self
+            .http_get::<BrowseCategoryPlaylistsResponse>(
+                &format!("{SPOTIFY_API_ENDPOINT}/browse/categories/{category_id}/playlists"),
+                &Query::from([("limit", "50")]),
+            )
+            .await?
+            .playlists
+            .items
+            .into_iter()
+            .filter_map(|item| {
+                serde_json::from_value::<rspotify::model::SimplifiedPlaylist>(item).ok()
+            })
+            .map(Into::into)
+            .collect())
     }
 
     /// Find an available device. If found, return the device's ID.
@@ -843,18 +873,7 @@ impl AppClient {
 
     /// Get all playlists of the current user
     pub async fn current_user_playlists(&self) -> Result<Vec<Playlist>> {
-        // TODO: this should use `rspotify::current_user_playlists_manual` API instead of `internal_call`
-        // See: https://github.com/ramsayleung/rspotify/issues/459
-        // Fetch the first page of playlists
-        let first_page = self
-            .http_get::<rspotify::model::Page<rspotify::model::SimplifiedPlaylist>>(
-                &format!("{SPOTIFY_API_ENDPOINT}/me/playlists"),
-                &Query::from([("limit", "50")]),
-            )
-            .await?;
-        // let first_page = self
-        //     .current_user_playlists_manual(Some(50), None)
-        //     .await?;
+        let first_page = self.current_user_playlists_manual(Some(50), None).await?;
 
         // Fetch all pages of playlists
         let playlists = self.all_paging_items(first_page, &Query::new()).await?;
@@ -1368,16 +1387,8 @@ impl AppClient {
         let playlist_uri = playlist_id.uri();
         tracing::info!("Get playlist context: {}", playlist_uri);
 
-        // TODO: this should use `rspotify::playlist` API instead of `internal_call`
-        // See: https://github.com/ramsayleung/rspotify/issues/459
-        // let playlist = self
-        //     .playlist(playlist_id, None, Some(Market::FromToken))
-        //     .await?;
         let playlist = self
-            .http_get::<rspotify::model::FullPlaylist>(
-                &format!("{SPOTIFY_API_ENDPOINT}/playlists/{}", playlist_id.id()),
-                &market_query(),
-            )
+            .playlist(playlist_id, None, Some(rspotify::model::Market::FromToken))
             .await?;
 
         // get the playlist's tracks
@@ -1518,11 +1529,7 @@ impl AppClient {
         /// This function is mainly used to patch upstream API bugs , resulting in
         /// a type error when a third-party library like `rspotify` parses the response
         fn process_spotify_api_response(text: &str) -> String {
-            // See: https://github.com/ramsayleung/rspotify/issues/459
-            text.replace("\"images\":null", "\"images\":[]")
-                // See: https://github.com/aome510/spotify-player/issues/494
-                // an item's name can be null while Spotify requires it to be available
-                .replace("\"name\":null", "\"name\":\"\"")
+            text.to_string()
         }
 
         let access_token = self.token().await.context("get token")?;
