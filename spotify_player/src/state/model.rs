@@ -345,9 +345,9 @@ impl Track {
     }
 
     /// gets the track's name, including an explicit label
-    pub fn display_name(&self) -> Cow<'_, str> {
+    pub fn display_name(&self, explicit_icon: &str) -> Cow<'_, str> {
         if self.explicit {
-            Cow::Owned(format!("{} (E)", self.name))
+            Cow::Owned(format!("{} {}", self.name, explicit_icon))
         } else {
             Cow::Borrowed(self.name.as_str())
         }
@@ -418,7 +418,7 @@ impl std::fmt::Display for Track {
         write!(
             f,
             "{} • {} ▎ {}",
-            self.display_name(),
+            self.display_name("(E)"),
             self.artists_info(),
             self.album_info(),
         )
