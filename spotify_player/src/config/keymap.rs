@@ -76,7 +76,7 @@ impl Default for KeymapConfig {
                     command: Command::Mute,
                 },
                 Keymap {
-                    key_sequence: "0".into(),
+                    key_sequence: "^".into(),
                     command: Command::SeekStart,
                 },
                 Keymap {
