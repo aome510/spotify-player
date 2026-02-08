@@ -986,7 +986,7 @@ fn render_track_table(
                 },
                 Cell::from(Text::from(track_no).alignment(Alignment::Right)),
                 Cell::from(play_pause),
-                Cell::from(to_bidi_string(&t.display_name(&configs.app_config.explicit_icon))),
+                Cell::from(to_bidi_string(&t.display_name())),
                 Cell::from(to_bidi_string(&t.artists_info())),
                 Cell::from(to_bidi_string(&t.album_info())),
                 if added_at_enabled {

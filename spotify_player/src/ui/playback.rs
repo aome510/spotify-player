@@ -5,7 +5,7 @@ use super::{
 };
 #[cfg(feature = "image")]
 use crate::state::ImageRenderInfo;
-use crate::ui::utils::{format_genres, to_bidi_string};
+use crate::{state::Track, ui::utils::{format_genres, to_bidi_string}};
 #[cfg(feature = "image")]
 use anyhow::{Context, Result};
 use rspotify::model::Id;
@@ -260,12 +260,8 @@ fn construct_playback_text(
             "{track}" => match playable {
                 rspotify::model::PlayableItem::Track(track) => (
                     {
-                        let bidi_string = to_bidi_string(&track.name);
-                        if track.explicit {
-                            format!("{bidi_string} (E)")
-                        } else {
-                            bidi_string
-                        }
+                        let track = Track::try_from_full_track(track.clone()).unwrap();
+                        to_bidi_string(&track.display_name())
                     },
                     ui.theme.playback_track(),
                 ),

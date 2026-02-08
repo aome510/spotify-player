@@ -1,3 +1,4 @@
+use crate::config;
 use crate::ui::utils::to_bidi_string;
 use crate::utils::map_join;
 use html_escape::decode_html_entities;
@@ -345,9 +346,9 @@ impl Track {
     }
 
     /// gets the track's name, including an explicit label
-    pub fn display_name(&self, explicit_icon: &str) -> Cow<'_, str> {
+    pub fn display_name(&self) -> Cow<'_, str> {
         if self.explicit {
-            Cow::Owned(format!("{} {}", self.name, explicit_icon))
+            Cow::Owned(format!("{} {}", self.name, config::get_config().app_config.explicit_icon))
         } else {
             Cow::Borrowed(self.name.as_str())
         }
@@ -418,7 +419,7 @@ impl std::fmt::Display for Track {
         write!(
             f,
             "{} • {} ▎ {}",
-            self.display_name("(E)"),
+            self.display_name(),
             self.artists_info(),
             self.album_info(),
         )
