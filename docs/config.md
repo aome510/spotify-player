@@ -51,6 +51,7 @@ All configuration files should be placed inside the application's configuration 
 | `play_icon`                       | the icon to indicate playing state of a Spotify item                                                                                                   | `▶`                                                            |
 | `pause_icon`                      | the icon to indicate pause state of a Spotify item                                                                                                     | `▌▌`                                                           |
 | `liked_icon`                      | the icon to indicate the liked state of a song                                                                                                         | `♥`                                                            |
+| `explicit_icon`                      | the icon indicating that a song is explicit                                                                                                         | `(E)`                                                            |
 | `border_type`                     | the type of the application's borders                                                                                                                  | `Plain`                                                        |
 | `progress_bar_type`               | the type of the playback progress bar                                                                                                                  | `Rectangle`                                                    |
 | `progress_bar_position`           | the position of the playback progress bar                                                                                                              | `Bottom`                                                       |
@@ -88,7 +89,7 @@ All configuration files should be placed inside the application's configuration 
 - `progress_bar_type` can be either `Rectangle` or `Line`.
 - `progress_bar_position` can be either `Bottom` or `Right`.
 - `notify_streaming_only=true` and `enable_streaming=DaemonOnly` can be set to avoid sending multiple notifications when both daemon and UI are running.
-
+- `explicit_icon` can be set to some unicode char like `🅴` or `🇪` (depending on what looks good in your terminal) or to an empty string to deactivate markers for explicit songs entirely
 #### Media control
 
 Media control support (`enable_media_control` option) is enabled by default on Linux but disabled by default on MacOS and Windows.
