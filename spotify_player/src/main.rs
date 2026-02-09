@@ -79,8 +79,6 @@ fn init_logging(log_folder: &std::path::Path) -> Result<()> {
 
 #[tokio::main]
 async fn start_app(state: &state::SharedState) -> Result<()> {
-    let configs = config::get_config();
-
     if !state.is_daemon {
         #[cfg(feature = "image")]
         {
@@ -150,21 +148,21 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
         }
     });
 
-    // player event watchers task
+    // player event watcher task
     std::thread::Builder::new()
-        .name("player-event-watchers".to_string())
+        .name("player-event-watcher".to_string())
         .spawn({
             let state = state.clone();
             let client_pub = client_pub.clone();
             move || {
-                client::start_player_event_watchers(&state, &client_pub);
+                client::start_player_event_watcher(&state, &client_pub);
             }
         })?;
 
     if !state.is_daemon {
         // terminal event handler task
         std::thread::Builder::new()
-            .name("event-handler".to_string())
+            .name("terminal-event-handler".to_string())
             .spawn({
                 let client_pub = client_pub.clone();
                 let state = state.clone();
@@ -181,7 +179,7 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
     }
 
     #[cfg(feature = "media-control")]
-    if configs.app_config.enable_media_control {
+    if config::get_config().app_config.enable_media_control {
         // media control task
         std::thread::Builder::new()
             .name("media-control".to_string())

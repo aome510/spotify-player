@@ -1,3 +1,5 @@
+use std::time::{Duration, Instant};
+
 use anyhow::Context;
 use rspotify::model::Id;
 use tracing::Instrument;
@@ -12,7 +14,8 @@ use crate::utils::map_join;
 use super::ClientRequest;
 
 struct PlayerEventHandlerState {
-    get_context_timer: std::time::Instant,
+    get_context_timer: Instant,
+    last_playback_refresh_timer: Instant,
 }
 
 /// starts the client's request handler
@@ -134,11 +137,10 @@ fn handle_page_change_event(
                 if !matches!(id, ContextId::Tracks(_))
                     && !state.data.read().caches.context.contains_key(&id.uri())
                     && (new_id
-                        || handler_state.get_context_timer.elapsed()
-                            > std::time::Duration::from_secs(5))
+                        || handler_state.get_context_timer.elapsed() > Duration::from_secs(5))
                 {
                     client_pub.send(ClientRequest::GetContext(id.clone()))?;
-                    handler_state.get_context_timer = std::time::Instant::now();
+                    handler_state.get_context_timer = Instant::now();
                 }
             }
         }
@@ -182,40 +184,33 @@ fn handle_player_event(
     Ok(())
 }
 
-/// Starts multiple event watchers listening to events and
-/// notifying the client to make update requests if needed
-pub fn start_player_event_watchers(state: &SharedState, client_pub: &flume::Sender<ClientRequest>) {
+/// Starts event watcher listening to events and making update requests to the client if needed
+pub fn start_player_event_watcher(state: &SharedState, client_pub: &flume::Sender<ClientRequest>) {
     let configs = config::get_config();
 
-    // Start a watcher task that updates the playback every `playback_refresh_duration_in_ms` ms.
-    // A positive value of `playback_refresh_duration_in_ms` is required to start the watcher.
-    if configs.app_config.playback_refresh_duration_in_ms > 0 {
-        std::thread::Builder::new()
-            .name("playback-refresh".to_string())
-            .spawn({
-                let client_pub = client_pub.clone();
-                let playback_refresh_duration = std::time::Duration::from_millis(
-                    configs.app_config.playback_refresh_duration_in_ms,
-                );
-                move || loop {
-                    client_pub
-                        .send(ClientRequest::GetCurrentPlayback)
-                        .unwrap_or_default();
-                    std::thread::sleep(playback_refresh_duration);
-                }
-            })
-            .expect("failed to spawn thread");
-    }
-
-    let refresh_duration = std::time::Duration::from_millis(100);
+    let refresh_duration = Duration::from_millis(100);
+    let playback_refresh_duration =
+        Duration::from_millis(configs.app_config.playback_refresh_duration_in_ms);
     let mut handler_state = PlayerEventHandlerState {
-        get_context_timer: std::time::Instant::now(),
+        get_context_timer: Instant::now(),
+        last_playback_refresh_timer: Instant::now(),
     };
 
     loop {
-        std::thread::sleep(refresh_duration);
+        // periodically refresh the playback state (if enabled in config)
+        if configs.app_config.playback_refresh_duration_in_ms > 0
+            && handler_state.last_playback_refresh_timer.elapsed() >= playback_refresh_duration
+        {
+            client_pub
+                .send(ClientRequest::GetCurrentPlayback)
+                .unwrap_or_default();
+            handler_state.last_playback_refresh_timer = Instant::now();
+        }
+
         if let Err(err) = handle_player_event(state, client_pub, &mut handler_state) {
             tracing::error!("Encounter error when handling player event: {err:#}");
         }
+
+        std::thread::sleep(refresh_duration);
     }
 }
