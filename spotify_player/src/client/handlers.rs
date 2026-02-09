@@ -12,7 +12,6 @@ use crate::utils::map_join;
 use super::ClientRequest;
 
 struct PlayerEventHandlerState {
-    add_track_to_queue_req_timer: std::time::Instant,
     get_context_timer: std::time::Instant,
 }
 
@@ -46,23 +45,20 @@ pub async fn start_client_handler(
 fn handle_playback_change_event(
     state: &SharedState,
     client_pub: &flume::Sender<ClientRequest>,
-    handler_state: &mut PlayerEventHandlerState,
 ) -> anyhow::Result<()> {
     let player = state.player.read();
-    let (playback, id, name, duration) = match (
+    let (playback, id, duration) = match (
         player.buffered_playback.as_ref(),
         player.currently_playing(),
     ) {
         (Some(playback), Some(rspotify::model::PlayableItem::Track(track))) => (
             playback,
             PlayableId::Track(track.id.clone().expect("null track_id")),
-            &track.name,
             track.duration,
         ),
         (Some(playback), Some(rspotify::model::PlayableItem::Episode(episode))) => (
             playback,
             PlayableId::Episode(episode.id.clone()),
-            &episode.name,
             episode.duration,
         ),
         _ => return Ok(()),
@@ -84,26 +80,6 @@ fn handle_playback_change_event(
         }
     } else {
         client_pub.send(ClientRequest::GetCurrentUserQueue)?;
-    }
-
-    // handle fake track repeat mode
-    if playback.fake_track_repeat_state {
-        if let Some(progress) = player.playback_progress() {
-            // re-queue the current track if it's about to end while
-            // ensuring that only one `AddTrackToQueue` request is made
-            if progress + chrono::TimeDelta::seconds(5) >= duration
-                && playback.is_playing
-                && handler_state.add_track_to_queue_req_timer.elapsed()
-                    > std::time::Duration::from_secs(10)
-            {
-                tracing::info!(
-                    "fake track repeat mode is enabled, add the current track ({}) to queue",
-                    name
-                );
-                client_pub.send(ClientRequest::AddPlayableToQueue(id))?;
-                handler_state.add_track_to_queue_req_timer = std::time::Instant::now();
-            }
-        }
     }
 
     Ok(())
@@ -201,8 +177,7 @@ fn handle_player_event(
 ) -> anyhow::Result<()> {
     handle_page_change_event(state, client_pub, handler_state)
         .context("handle page change event")?;
-    handle_playback_change_event(state, client_pub, handler_state)
-        .context("handle playback change event")?;
+    handle_playback_change_event(state, client_pub).context("handle playback change event")?;
 
     Ok(())
 }
@@ -235,9 +210,8 @@ pub async fn start_player_event_watchers(
         });
     }
 
-    let refresh_duration = std::time::Duration::from_secs(1);
+    let refresh_duration = std::time::Duration::from_millis(100);
     let mut handler_state = PlayerEventHandlerState {
-        add_track_to_queue_req_timer: std::time::Instant::now(),
         get_context_timer: std::time::Instant::now(),
     };
 
