@@ -17,12 +17,12 @@ struct PlayerEventHandlerState {
 
 /// starts the client's request handler
 pub async fn start_client_handler(
-    state: SharedState,
-    client: super::AppClient,
-    client_sub: flume::Receiver<ClientRequest>,
+    state: &SharedState,
+    client: &super::AppClient,
+    client_sub: &flume::Receiver<ClientRequest>,
 ) {
     while let Ok(request) = client_sub.recv_async().await {
-        if let Err(err) = client.check_valid_session(&state).await {
+        if let Err(err) = client.check_valid_session(state).await {
             tracing::error!("{err:#}");
             continue;
         }
@@ -184,30 +184,27 @@ fn handle_player_event(
 
 /// Starts multiple event watchers listening to events and
 /// notifying the client to make update requests if needed
-pub async fn start_player_event_watchers(
-    state: SharedState,
-    client_pub: flume::Sender<ClientRequest>,
-) {
+pub fn start_player_event_watchers(state: &SharedState, client_pub: &flume::Sender<ClientRequest>) {
     let configs = config::get_config();
 
     // Start a watcher task that updates the playback every `playback_refresh_duration_in_ms` ms.
     // A positive value of `playback_refresh_duration_in_ms` is required to start the watcher.
     if configs.app_config.playback_refresh_duration_in_ms > 0 {
-        tokio::task::spawn({
-            let client_pub = client_pub.clone();
-            let playback_refresh_duration = std::time::Duration::from_millis(
-                configs.app_config.playback_refresh_duration_in_ms,
-            );
-            async move {
-                loop {
+        std::thread::Builder::new()
+            .name("playback-refresh".to_string())
+            .spawn({
+                let client_pub = client_pub.clone();
+                let playback_refresh_duration = std::time::Duration::from_millis(
+                    configs.app_config.playback_refresh_duration_in_ms,
+                );
+                move || loop {
                     client_pub
-                        .send_async(ClientRequest::GetCurrentPlayback)
-                        .await
+                        .send(ClientRequest::GetCurrentPlayback)
                         .unwrap_or_default();
-                    tokio::time::sleep(playback_refresh_duration).await;
+                    std::thread::sleep(playback_refresh_duration);
                 }
-            }
-        });
+            })
+            .expect("failed to spawn thread");
     }
 
     let refresh_duration = std::time::Duration::from_millis(100);
@@ -216,8 +213,8 @@ pub async fn start_player_event_watchers(
     };
 
     loop {
-        tokio::time::sleep(refresh_duration).await;
-        if let Err(err) = handle_player_event(&state, &client_pub, &mut handler_state) {
+        std::thread::sleep(refresh_duration);
+        if let Err(err) = handle_player_event(state, client_pub, &mut handler_state) {
             tracing::error!("Encounter error when handling player event: {err:#}");
         }
     }

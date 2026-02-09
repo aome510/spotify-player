@@ -14,7 +14,7 @@ use tracing::Instrument;
 use crate::{
     cli::Request,
     client::{AppClient, PlayerRequest},
-    config::get_cache_folder_path,
+    config::{self, get_cache_folder_path},
     state::{
         AlbumId, ArtistId, Context, ContextId, Id, PlayableId, Playback, PlaybackMetadata,
         PlaylistId, SharedState, TrackId,
@@ -27,7 +27,20 @@ use super::{
     Response, Serialize, MAX_REQUEST_SIZE,
 };
 
-pub async fn start_socket(client: AppClient, socket: UdpSocket, state: Option<SharedState>) {
+pub async fn start_socket(client: &AppClient, state: Option<&SharedState>) {
+    let configs = config::get_config();
+
+    let port = configs.app_config.client_port;
+    tracing::info!("Starting a client socket at 127.0.0.1:{port}");
+
+    let socket = match tokio::net::UdpSocket::bind(("127.0.0.1", port)).await {
+        Ok(socket) => socket,
+        Err(err) => {
+            tracing::warn!("Failed to create a client socket for handling CLI commands: {err:#}");
+            return;
+        }
+    };
+
     let mut buf = [0; MAX_REQUEST_SIZE];
 
     loop {
@@ -52,15 +65,14 @@ pub async fn start_socket(client: AppClient, socket: UdpSocket, state: Option<Sh
                 let span = tracing::info_span!("socket_request", request = ?request, dest_addr = ?dest_addr);
 
                 async {
-                    let response =
-                        match handle_socket_request(&client, state.as_ref(), request).await {
-                            Err(err) => {
-                                tracing::error!("Failed to handle socket request: {err:#}");
-                                let msg = format!("Bad request: {err:#}");
-                                Response::Err(msg.into_bytes())
-                            }
-                            Ok(data) => Response::Ok(data),
-                        };
+                    let response = match handle_socket_request(client, state, request).await {
+                        Err(err) => {
+                            tracing::error!("Failed to handle socket request: {err:#}");
+                            let msg = format!("Bad request: {err:#}");
+                            Response::Err(msg.into_bytes())
+                        }
+                        Ok(data) => Response::Ok(data),
+                    };
                     send_response(response, &socket, dest_addr)
                         .await
                         .unwrap_or_default();
