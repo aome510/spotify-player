@@ -56,10 +56,6 @@ impl Default for KeymapConfig {
                     command: Command::Repeat,
                 },
                 Keymap {
-                    key_sequence: "M-r".into(),
-                    command: Command::ToggleFakeTrackRepeatMode,
-                },
-                Keymap {
                     key_sequence: "C-s".into(),
                     command: Command::Shuffle,
                 },

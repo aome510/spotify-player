@@ -1657,7 +1657,6 @@ impl AppClient {
                             playback.volume = Some(volume);
                         }
                         playback.mute_state = bp.mute_state;
-                        playback.fake_track_repeat_state = bp.fake_track_repeat_state;
                     }
                     playback
                 });

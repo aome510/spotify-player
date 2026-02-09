@@ -14,7 +14,6 @@ pub enum Command {
     ResumePause,
     PlayRandom,
     Repeat,
-    ToggleFakeTrackRepeatMode,
     Shuffle,
     VolumeChange {
         offset: i32,
@@ -306,7 +305,6 @@ impl Command {
             Self::ResumePause => "resume/pause based on the current playback",
             Self::PlayRandom => "play a random track in the current context",
             Self::Repeat => "cycle the repeat mode",
-            Self::ToggleFakeTrackRepeatMode => "toggle fake track repeat mode",
             Self::Shuffle => "toggle the shuffle mode",
             Self::Mute => "toggle playback volume between 0% and previous level",
             Self::SeekStart => "seek to track start",

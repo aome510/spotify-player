@@ -1016,7 +1016,11 @@ fn render_track_table(
         configs.app_config.play_icon.chars().count(),
         configs.app_config.pause_icon.chars().count(),
     ) as u16;
-    let n_track_digits = (n_tracks.ilog10() + 1) as u16;
+    let n_track_digits = if n_tracks > 0 {
+        (n_tracks.ilog10() + 1) as u16
+    } else {
+        1
+    };
     let track_table = Table::new(
         rows,
         [
