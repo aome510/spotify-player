@@ -63,10 +63,6 @@ impl Deref for AppClient {
     }
 }
 
-fn market_query() -> Query<'static> {
-    Query::from([("market", "from_token")])
-}
-
 impl AppClient {
     /// Construct a new client
     pub async fn new() -> Result<Self> {
@@ -826,14 +822,13 @@ impl AppClient {
 
     /// Get the saved (liked) tracks of the current user
     pub async fn current_user_saved_tracks(&self) -> Result<Vec<Track>> {
-        let first_page = self
-            .current_user_saved_tracks_manual(
-                Some(rspotify::model::Market::FromToken),
-                Some(50),
-                None,
+        let tracks = self
+            .all_paging_items::<rspotify::model::SavedTrack>(
+                &format!("{SPOTIFY_API_ENDPOINT}/me/tracks"),
+                0, // we don't know the total number of saved tracks beforehand
             )
             .await?;
-        let tracks = self.all_paging_items(first_page, &market_query()).await?;
+
         Ok(tracks
             .into_iter()
             .filter_map(|t| Track::try_from_full_track(t.track))
@@ -860,11 +855,13 @@ impl AppClient {
 
     /// Get the top tracks of the current user
     pub async fn current_user_top_tracks(&self) -> Result<Vec<Track>> {
-        let first_page = self
-            .current_user_top_tracks_manual(None, Some(50), None)
+        let tracks = self
+            .all_paging_items::<rspotify::model::FullTrack>(
+                &format!("{SPOTIFY_API_ENDPOINT}/me/top/tracks"),
+                0, // we don't know the total number of top tracks beforehand
+            )
             .await?;
 
-        let tracks = self.all_paging_items(first_page, &Query::new()).await?;
         Ok(tracks
             .into_iter()
             .filter_map(Track::try_from_full_track)
@@ -873,10 +870,12 @@ impl AppClient {
 
     /// Get all playlists of the current user
     pub async fn current_user_playlists(&self) -> Result<Vec<Playlist>> {
-        let first_page = self.current_user_playlists_manual(Some(50), None).await?;
-
-        // Fetch all pages of playlists
-        let playlists = self.all_paging_items(first_page, &Query::new()).await?;
+        let playlists = self
+            .all_paging_items::<rspotify::model::SimplifiedPlaylist>(
+                &format!("{SPOTIFY_API_ENDPOINT}/me/playlists"),
+                0, // we don't know the total number of playlists beforehand
+            )
+            .await?;
 
         Ok(playlists
             .into_iter()
@@ -910,15 +909,12 @@ impl AppClient {
 
     /// Get all saved albums of the current user
     pub async fn current_user_saved_albums(&self) -> Result<Vec<Album>> {
-        let first_page = self
-            .current_user_saved_albums_manual(
-                Some(rspotify::model::Market::FromToken),
-                Some(50),
-                None,
+        let albums = self
+            .all_paging_items::<rspotify::model::SavedAlbum>(
+                &format!("{SPOTIFY_API_ENDPOINT}/me/albums"),
+                0, // we don't know the total number of saved albums beforehand
             )
             .await?;
-
-        let albums = self.all_paging_items(first_page, &Query::new()).await?;
 
         // Converts `rspotify::model::SavedAlbum` into `state::Album`
         Ok(albums.into_iter().map(Album::from).collect())
@@ -926,46 +922,31 @@ impl AppClient {
 
     /// Get all saved shows of the current user
     pub async fn current_user_saved_shows(&self) -> Result<Vec<Show>> {
-        let first_page = self.get_saved_show_manual(Some(50), None).await?;
-        let shows = self.all_paging_items(first_page, &Query::new()).await?;
+        let shows = self
+            .all_paging_items::<rspotify::model::Show>(
+                &format!("{SPOTIFY_API_ENDPOINT}/me/shows"),
+                0, // we don't know the total number of saved shows beforehand
+            )
+            .await?;
+
         Ok(shows.into_iter().map(|s| s.show.into()).collect())
     }
 
     /// Get all albums of an artist
     pub async fn artist_albums(&self, artist_id: ArtistId<'_>) -> Result<Vec<Album>> {
-        let payload = market_query();
-
-        let mut singles = {
-            let first_page = self
-                .artist_albums_manual(
-                    artist_id.as_ref(),
-                    Some(rspotify::model::AlbumType::Single),
-                    Some(rspotify::model::Market::FromToken),
-                    Some(50),
-                    None,
-                )
-                .await?;
-            self.all_paging_items(first_page, &payload).await
-        }?;
-        let mut albums = {
-            let first_page = self
-                .artist_albums_manual(
-                    artist_id.as_ref(),
-                    Some(rspotify::model::AlbumType::Album),
-                    Some(rspotify::model::Market::FromToken),
-                    Some(50),
-                    None,
-                )
-                .await?;
-            self.all_paging_items(first_page, &payload).await
-        }?;
-        albums.append(&mut singles);
-
-        // converts `rspotify::model::SimplifiedAlbum` into `state::Album`
-        let albums = albums
+        let albums = self
+            .all_paging_items::<rspotify::model::SimplifiedAlbum>(
+                &format!(
+                    "{SPOTIFY_API_ENDPOINT}/artists/{}/albums?include_groups=album,single",
+                    artist_id.id()
+                ),
+                0, // we don't know the total number of artist albums beforehand
+            )
+            .await?
             .into_iter()
             .filter_map(Album::try_from_simplified_album)
             .collect();
+
         Ok(AppClient::process_artist_albums(albums))
     }
 
@@ -1396,10 +1377,13 @@ impl AppClient {
             .await?;
 
         let tracks = self
-            .all_paging_items2(&format!(
-                "{SPOTIFY_API_ENDPOINT}/playlists/{}/tracks",
-                playlist_id.id(),
-            ))
+            .all_paging_items(
+                &format!(
+                    "{SPOTIFY_API_ENDPOINT}/playlists/{}/tracks",
+                    playlist_id.id(),
+                ),
+                playlist.tracks.total as usize,
+            )
             .await?
             .into_iter()
             .filter_map(Track::try_from_playlist_item)
@@ -1417,16 +1401,20 @@ impl AppClient {
         tracing::info!("Get album context: {}", album_uri);
 
         let album = self
-            .album(album_id, Some(rspotify::model::Market::FromToken))
+            .album(album_id.clone(), Some(rspotify::model::Market::FromToken))
             .await?;
-        let first_page = album.tracks.clone();
+
+        let total_tracks = album.tracks.total as usize;
 
         // converts `rspotify::model::FullAlbum` into `state::Album`
         let album: Album = album.into();
 
         // get the album's tracks
         let tracks = self
-            .all_paging_items(first_page, &Query::new())
+            .all_paging_items(
+                &format!("{SPOTIFY_API_ENDPOINT}/albums/{}/tracks", album_id.id()),
+                total_tracks,
+            )
             .await?
             .into_iter()
             .filter_map(|t| {
@@ -1459,8 +1447,7 @@ impl AppClient {
         let top_tracks = self
             .artist_top_tracks(artist_id.as_ref(), Some(rspotify::model::Market::FromToken))
             .await
-            .context("get artist's top tracks")?;
-        let top_tracks = top_tracks
+            .context("get artist's top tracks")?
             .into_iter()
             .filter_map(Track::try_from_full_track)
             .collect::<Vec<_>>();
@@ -1470,8 +1457,7 @@ impl AppClient {
             .artist_related_artists(artist_id.as_ref())
             .await
             .ok()
-            .unwrap_or_default();
-        let related_artists = related_artists
+            .unwrap_or_default()
             .into_iter()
             .map(std::convert::Into::into)
             .collect::<Vec<_>>();
@@ -1494,32 +1480,21 @@ impl AppClient {
         let show_uri = show_id.uri();
         tracing::info!("Get show context: {}", show_uri);
 
-        let show = self.get_a_show(show_id, None).await?;
-        let first_page = show.episodes.clone();
-
-        // Copy first_page but use Page<Option<SimplifiedEpisode>> instead of Page<SimplifiedEpisode>
-        // This is a temporary fix for https://github.com/aome510/spotify-player/issues/663
-        let first_page = rspotify::model::Page {
-            items: first_page.items.into_iter().map(Some).collect(),
-            href: first_page.href,
-            limit: first_page.limit,
-            next: first_page.next,
-            offset: first_page.offset,
-            previous: first_page.previous,
-            total: first_page.total,
-        };
-
-        // converts `rspotify::model::FullShow` into `state::Show`
-        let show: Show = show.into();
+        let show = self.get_a_show(show_id.clone(), None).await?;
 
         // get the show's episodes
         let episodes = self
-            .all_paging_items(first_page, &Query::new())
+            .all_paging_items::<rspotify::model::SimplifiedEpisode>(
+                &format!("{SPOTIFY_API_ENDPOINT}/shows/{}/episodes", show_id.id()),
+                show.episodes.total as usize,
+            )
             .await?
             .into_iter()
-            .flatten()
             .map(std::convert::Into::into)
             .collect::<Vec<_>>();
+
+        // converts `rspotify::model::FullShow` into `state::Show`
+        let show: Show = show.into();
 
         Ok(Context::Show { show, episodes })
     }
@@ -1562,21 +1537,27 @@ impl AppClient {
         Ok(serde_json::from_str(&text)?)
     }
 
-    async fn all_paging_items2<T>(&self, base_url: &str) -> Result<Vec<T>>
+    async fn all_paging_items<T>(&self, base_url: &str, mut count: usize) -> Result<Vec<T>>
     where
         T: serde::de::DeserializeOwned + std::fmt::Debug,
     {
         const PAGE_LIMIT: usize = 50;
-        const MAX_PARALLEL: usize = 10;
+        const MAX_PARALLEL: usize = 8;
 
         let mut all_items = Vec::new();
         let mut offset = 0;
 
-        loop {
-            let mut futures = Vec::new();
+        // if count is 0 (i.e., unknown), set it to usize::MAX to fetch until no more items
+        if count == 0 {
+            count = usize::MAX;
+        }
 
-            // Create up to MAX_PARALLEL requests
-            for i in 0..MAX_PARALLEL {
+        while offset < count {
+            let n_jobs = std::cmp::min(MAX_PARALLEL, (count - offset).div_ceil(PAGE_LIMIT));
+
+            let mut futures = Vec::with_capacity(n_jobs);
+
+            for i in 0..n_jobs {
                 let current_offset = offset + i * PAGE_LIMIT;
                 let limit_str = PAGE_LIMIT.to_string();
                 let offset_str = current_offset.to_string();
@@ -1607,35 +1588,10 @@ impl AppClient {
                 break;
             }
 
-            offset += MAX_PARALLEL * PAGE_LIMIT;
+            offset += n_jobs * PAGE_LIMIT;
         }
 
         Ok(all_items)
-    }
-
-    /// Get all paging items starting from a pagination object of the first page
-    async fn all_paging_items<T>(
-        &self,
-        first_page: rspotify::model::Page<T>,
-        payload: &Query<'_>,
-    ) -> Result<Vec<T>>
-    where
-        T: serde::de::DeserializeOwned,
-    {
-        let mut items = first_page.items;
-        let mut maybe_next = first_page.next;
-
-        while let Some(url) = maybe_next {
-            let mut next_page = self
-                .http_get::<rspotify::model::Page<T>>(&url, payload)
-                .await?;
-            if next_page.items.is_empty() {
-                break;
-            }
-            items.append(&mut next_page.items);
-            maybe_next = next_page.next;
-        }
-        Ok(items)
     }
 
     /// Get all cursor-based paging items starting from a pagination object of the first page
@@ -2019,9 +1975,7 @@ impl AppClient {
     /// Process a list of albums, which includes
     /// - sort albums by the release date
     /// - sort albums by the type if `sort_artist_albums_by_type` config is enabled
-    fn process_artist_albums(albums: Vec<Album>) -> Vec<Album> {
-        let mut albums = albums.into_iter().collect::<Vec<_>>();
-
+    fn process_artist_albums(mut albums: Vec<Album>) -> Vec<Album> {
         albums.sort_by(|x, y| y.release_date.partial_cmp(&x.release_date).unwrap());
 
         if config::get_config().app_config.sort_artist_albums_by_type {
