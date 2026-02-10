@@ -103,6 +103,7 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
             std::env::set_var("PULSE_PROP_application.icon_name", "spotify");
         }
         if std::env::var("PULSE_PROP_stream.description").is_err() {
+            let configs = config::get_config();
             std::env::set_var(
                 "PULSE_PROP_stream.description",
                 format!(
@@ -205,6 +206,28 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
             let event_loop = winit::event_loop::EventLoop::new()?;
             #[allow(deprecated)]
             event_loop.run(move |_, _| {})?;
+        }
+
+        // On Linux, we need to keep the main thread alive while the UI is running
+        #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+        {
+            loop {
+                if !state.ui.lock().is_running {
+                    break;
+                }
+                std::thread::sleep(std::time::Duration::from_millis(100));
+            }
+        }
+    }
+
+    // If media-control is disabled, we still need to keep the main thread alive
+    #[cfg(not(feature = "media-control"))]
+    if !state.is_daemon {
+        loop {
+            if !state.ui.lock().is_running {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(100));
         }
     }
 
