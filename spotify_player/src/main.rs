@@ -103,6 +103,7 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
             std::env::set_var("PULSE_PROP_application.icon_name", "spotify");
         }
         if std::env::var("PULSE_PROP_stream.description").is_err() {
+            let configs = config::get_config();
             std::env::set_var(
                 "PULSE_PROP_stream.description",
                 format!(
@@ -208,7 +209,10 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
         }
     }
 
-    Ok(())
+    // infinite loop to keep the main thread alive
+    loop {
+        std::thread::sleep(std::time::Duration::from_secs(1));
+    }
 }
 
 fn main() -> Result<()> {
