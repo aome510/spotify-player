@@ -106,4 +106,4 @@ pkg-url = "{ repo }/releases/download/v{ version }/{ name }-{ target }{ archive-
 workspace = true
 
 [package.metadata.cargo-machete]
-ignored = ["async-trait"]
+ignored = ["async-trait", "vergen"]
