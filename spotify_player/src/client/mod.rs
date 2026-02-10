@@ -1388,13 +1388,18 @@ impl AppClient {
         tracing::info!("Get playlist context: {}", playlist_uri);
 
         let playlist = self
-            .playlist(playlist_id, None, Some(rspotify::model::Market::FromToken))
+            .playlist(
+                playlist_id.clone(),
+                None,
+                Some(rspotify::model::Market::FromToken),
+            )
             .await?;
 
-        // get the playlist's tracks
-        let first_page = playlist.tracks.clone();
         let tracks = self
-            .all_paging_items(first_page, &market_query())
+            .all_paging_items2(&format!(
+                "{SPOTIFY_API_ENDPOINT}/playlists/{}/tracks",
+                playlist_id.id(),
+            ))
             .await?
             .into_iter()
             .filter_map(Track::try_from_playlist_item)
@@ -1555,6 +1560,57 @@ impl AppClient {
         }
 
         Ok(serde_json::from_str(&text)?)
+    }
+
+    async fn all_paging_items2<T>(&self, base_url: &str) -> Result<Vec<T>>
+    where
+        T: serde::de::DeserializeOwned + std::fmt::Debug,
+    {
+        const PAGE_LIMIT: usize = 50;
+        const MAX_PARALLEL: usize = 10;
+
+        let mut all_items = Vec::new();
+        let mut offset = 0;
+
+        loop {
+            let mut futures = Vec::new();
+
+            // Create up to MAX_PARALLEL requests
+            for i in 0..MAX_PARALLEL {
+                let current_offset = offset + i * PAGE_LIMIT;
+                let limit_str = PAGE_LIMIT.to_string();
+                let offset_str = current_offset.to_string();
+
+                futures.push(async move {
+                    let params = Query::from([
+                        ("market", "from_token"),
+                        ("limit", &limit_str),
+                        ("offset", &offset_str),
+                    ]);
+                    self.http_get::<rspotify::model::Page<T>>(base_url, &params)
+                        .await
+                });
+            }
+
+            let results = futures::future::try_join_all(futures).await?;
+
+            let mut found_empty = false;
+            for mut page in results {
+                if page.items.is_empty() {
+                    found_empty = true;
+                    break;
+                }
+                all_items.append(&mut page.items);
+            }
+
+            if found_empty {
+                break;
+            }
+
+            offset += MAX_PARALLEL * PAGE_LIMIT;
+        }
+
+        Ok(all_items)
     }
 
     /// Get all paging items starting from a pagination object of the first page
