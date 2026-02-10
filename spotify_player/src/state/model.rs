@@ -343,7 +343,11 @@ impl Track {
     /// gets the track's name, including an explicit label
     pub fn display_name(&self) -> Cow<'_, str> {
         if self.explicit {
-            Cow::Owned(format!("{} {}", self.name, config::get_config().app_config.explicit_icon))
+            Cow::Owned(format!(
+                "{} {}",
+                self.name,
+                config::get_config().app_config.explicit_icon
+            ))
         } else {
             Cow::Borrowed(self.name.as_str())
         }
