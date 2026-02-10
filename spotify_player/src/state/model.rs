@@ -1,3 +1,4 @@
+use crate::config;
 use crate::ui::utils::to_bidi_string;
 use crate::utils::map_join;
 use html_escape::decode_html_entities;
@@ -342,7 +343,11 @@ impl Track {
     /// gets the track's name, including an explicit label
     pub fn display_name(&self) -> Cow<'_, str> {
         if self.explicit {
-            Cow::Owned(format!("{} (E)", self.name))
+            Cow::Owned(format!(
+                "{} {}",
+                self.name,
+                config::get_config().app_config.explicit_icon
+            ))
         } else {
             Cow::Borrowed(self.name.as_str())
         }
