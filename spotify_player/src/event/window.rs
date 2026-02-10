@@ -8,7 +8,7 @@ use crate::{
     state::{Episode, MutableWindowState, Show, UIStateGuard},
 };
 use command::Action;
-use rand::Rng;
+use rand::RngExt;
 
 pub fn handle_action_for_focused_context_page(
     action: Action,
