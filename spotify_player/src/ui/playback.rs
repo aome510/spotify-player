@@ -330,11 +330,7 @@ fn construct_playback_text(
                 }
             },
             "{metadata}" => {
-                let repeat_value = if playback.fake_track_repeat_state {
-                    "track (fake)".to_string()
-                } else {
-                    <&'static str>::from(playback.repeat_state).to_string()
-                };
+                let repeat_value = <&'static str>::from(playback.repeat_state).to_string();
 
                 let volume_value = if let Some(volume) = playback.mute_state {
                     format!("{volume}% (muted)")
