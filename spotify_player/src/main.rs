@@ -207,31 +207,12 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
             #[allow(deprecated)]
             event_loop.run(move |_, _| {})?;
         }
-
-        // On Linux, we need to keep the main thread alive while the UI is running
-        #[cfg(not(any(target_os = "macos", target_os = "windows")))]
-        {
-            loop {
-                if !state.ui.lock().is_running {
-                    break;
-                }
-                std::thread::sleep(std::time::Duration::from_millis(100));
-            }
-        }
     }
 
-    // If media-control is disabled, we still need to keep the main thread alive
-    #[cfg(not(feature = "media-control"))]
-    if !state.is_daemon {
-        loop {
-            if !state.ui.lock().is_running {
-                break;
-            }
-            std::thread::sleep(std::time::Duration::from_millis(100));
-        }
+    // infinite loop to keep the main thread alive
+    loop {
+        std::thread::sleep(std::time::Duration::from_secs(1));
     }
-
-    Ok(())
 }
 
 fn main() -> Result<()> {
