@@ -28,7 +28,7 @@
 **Features**
 
 - Minimalist UI with an intuitive paging and popup system.
-- Highly [configurable](docs/config.md)
+- Highly [configurable](https://github.com/aome510/spotify-player/blob/master/docs/config.md)
 - Feature parity with the official Spotify application.
 - Support remote control with [Spotify Connect](#spotify-connect).
 - Support [streaming](#streaming) songs directly from the terminal.
@@ -43,7 +43,7 @@
 
 A demo of `spotify_player` `v0.5.0-pre-release` on [youtube](https://www.youtube.com/watch/Jbfe9GLNWbA) or on [asciicast](https://asciinema.org/a/446913):
 
-Checkout [examples/README.md](./examples/README.md) for more examples.
+Checkout [examples/README.md](https://github.com/aome510/spotify-player/blob/master/examples/README.md) for more examples.
 
 ## Installation
 
@@ -201,7 +201,7 @@ cargo install spotify_player --no-default-features
 
 ### Media Control
 
-To enable media control support, `spotify_player` needs to be built/installed with `media-control` feature (**enabled** by default) and set the `enable_media_control` config option to `true` in the [general configuration file](docs/config.md#media-control).
+To enable media control support, `spotify_player` needs to be built/installed with `media-control` feature (**enabled** by default) and set the `enable_media_control` config option to `true` in the [general configuration file](https://github.com/aome510/spotify-player/blob/master/docs/config.md#media-control).
 
 Media control support is implemented using [MPRIS DBus](https://wiki.archlinux.org/title/MPRIS) on Linux and OS window event listener on Windows and MacOS.
 
@@ -403,7 +403,7 @@ List of supported commands:
 | `JumpToCurrentTrackInContext`   | jump to the current track in the context                                                           | `g c`              |
 | `JumpToHighlightTrackInContext` | jump to the currently highlighted search result in the context                                     | `C-g`              |
 
-To add new shortcuts or modify the default shortcuts, please refer to the [keymaps section](docs/config.md#keymaps) in the configuration documentation.
+To add new shortcuts or modify the default shortcuts, please refer to the [keymaps section](https://github.com/aome510/spotify-player/blob/master/docs/config.md#keymaps) in the configuration documentation.
 
 ### Actions
 
@@ -429,7 +429,7 @@ List of available actions:
 - `Follow`
 - `Unfollow`
 
-These actions can also be bound to a shortcut. To add new shortcuts, please refer to the [actions section](docs/config.md#actions) in the configuration documentation.
+These actions can also be bound to a shortcut. To add new shortcuts, please refer to the [actions section](https://github.com/aome510/spotify-player/blob/master/docs/config.md#actions) in the configuration documentation.
 
 ### Search Page
 
@@ -443,7 +443,7 @@ By default, `spotify_player` will look into `$HOME/.config/spotify-player` for a
 
 If an application configuration file is not found, one will be created with default values.
 
-Please refer to [the configuration documentation](docs/config.md) for more details on the configuration options.
+Please refer to [the configuration documentation](https://github.com/aome510/spotify-player/blob/master/docs/config.md) for more details on the configuration options.
 
 ## Caches
 
@@ -457,4 +457,4 @@ The application stores logs inside the `$APP_CACHE_FOLDER/spotify-player-*.log` 
 
 ## Acknowledgement
 
-`spotify_player` is written in [Rust](https://www.rust-lang.org) and is built on top of awesome libraries such as [ratatui](https://github.com/ratatui/ratatui), [rspotify](https://github.com/ramsayleung/rspotify), [librespot](https://github.com/librespot-org/librespot), and [many more](spotify_player/Cargo.toml). It's highly inspired by [spotify-tui](https://github.com/Rigellute/spotify-tui) and [ncspot](https://github.com/hrkfdn/ncspot).
+`spotify_player` is written in [Rust](https://www.rust-lang.org) and is built on top of awesome libraries such as [ratatui](https://github.com/ratatui/ratatui), [rspotify](https://github.com/ramsayleung/rspotify), [librespot](https://github.com/librespot-org/librespot), and [many more](https://github.com/aome510/spotify-player/blob/master/spotify_player/Cargo.toml). It's highly inspired by [spotify-tui](https://github.com/Rigellute/spotify-tui) and [ncspot](https://github.com/hrkfdn/ncspot).
