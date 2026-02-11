@@ -196,6 +196,25 @@ pub fn render_popup(
                 let rect = render_list_popup(frame, rect, "Artists", items, 5, ui);
                 (rect, false)
             }
+            PopupState::AddedToQueue { .. } => {
+                let chunks =
+                    Layout::vertical([Constraint::Fill(0), Constraint::Length(3)]).split(rect);
+
+                let popup_rect = construct_and_render_block(
+                    "Queued",
+                    &ui.theme,
+                    Borders::ALL,
+                    frame,
+                    chunks[1],
+                );
+
+                frame.render_widget(
+                    Paragraph::new("✔ Item added to queue!"),
+                    popup_rect,
+                );
+
+                (chunks[0], true)
+            }
         },
     }
 }
