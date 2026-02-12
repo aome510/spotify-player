@@ -391,7 +391,7 @@ async fn handle_open_request(
             .context("invalid Spotify URL")?
             .collect();
         if segments.len() != 2 {
-            anyhow::bail!("Unknown Spotify URL: {}", uri);
+            anyhow::bail!("Unknown Spotify URL: {uri}");
         }
         format!("spotify:{}:{}", segments[0], segments[1])
     } else {
@@ -416,7 +416,7 @@ async fn handle_open_request(
             None,
         )
     } else {
-        anyhow::bail!("Unknown or unsupported URI/URL: {}", uri);
+        anyhow::bail!("Unknown or unsupported URI/URL: {uri}");
     };
 
     let playback = if let Some(state) = state {
