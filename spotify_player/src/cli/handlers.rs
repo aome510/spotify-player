@@ -163,8 +163,15 @@ fn try_connect_to_client(socket: &UdpSocket, configs: &config::Configs) -> Resul
             rt.block_on(client.new_session(None, false))
                 .context("new session")?;
 
+            // create a client socket for handling CLI commands
+            // NOTE: the socket must be bound *before* spawning the thread to avoid a
+            // race condition where the caller sends a request before the socket is ready.
+            let client_socket = rt.block_on(tokio::net::UdpSocket::bind(("127.0.0.1", port)))?;
+
             // spawn a thread to handle the CLI request
-            std::thread::spawn(move || rt.block_on(start_socket(&client, None)));
+            std::thread::spawn(move || {
+                rt.block_on(start_socket(&client, None, Some(client_socket)));
+            });
         } else {
             return Err(err.into());
         }
