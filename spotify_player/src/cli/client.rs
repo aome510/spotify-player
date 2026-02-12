@@ -27,17 +27,26 @@ use super::{
     Response, Serialize, MAX_REQUEST_SIZE,
 };
 
-pub async fn start_socket(client: &AppClient, state: Option<&SharedState>) {
-    let configs = config::get_config();
+pub async fn start_socket(
+    client: &AppClient,
+    state: Option<&SharedState>,
+    socket: Option<tokio::net::UdpSocket>,
+) {
+    let socket = if let Some(s) = socket {
+        s
+    } else {
+        let configs = config::get_config();
+        let port = configs.app_config.client_port;
+        tracing::info!("Starting a client socket at 127.0.0.1:{port}");
 
-    let port = configs.app_config.client_port;
-    tracing::info!("Starting a client socket at 127.0.0.1:{port}");
-
-    let socket = match tokio::net::UdpSocket::bind(("127.0.0.1", port)).await {
-        Ok(socket) => socket,
-        Err(err) => {
-            tracing::warn!("Failed to create a client socket for handling CLI commands: {err:#}");
-            return;
+        match tokio::net::UdpSocket::bind(("127.0.0.1", port)).await {
+            Ok(socket) => socket,
+            Err(err) => {
+                tracing::warn!(
+                    "Failed to create a client socket for handling CLI commands: {err:#}"
+                );
+                return;
+            }
         }
     };
 
