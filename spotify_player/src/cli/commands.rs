@@ -238,3 +238,11 @@ pub fn init_playlist_subcommand() -> Command {
 pub fn init_print_features_command() -> Command {
     Command::new("features").about("Print compiled in features")
 }
+
+pub fn init_open_command() -> Command {
+    Command::new("open").about("Open a Spotify link/uri").arg(
+        Arg::new("uri_or_url")
+            .help("Spotify URI or URL")
+            .required(true),
+    )
+}

@@ -186,6 +186,10 @@ async fn handle_socket_request(
             let resp = handle_search_request(client, query).await?;
             Ok(resp)
         }
+        Request::Open { uri } => {
+            handle_open_request(client, state, uri).await?;
+            Ok(Vec::new())
+        }
     }
 }
 
@@ -335,6 +339,96 @@ async fn handle_search_request(client: &AppClient, query: String) -> Result<Vec<
     Ok(serde_json::to_vec(&search_result)?)
 }
 
+/// Executes a player request, handling both TUI-connected and standalone modes.
+async fn execute_player_request(
+    client: &AppClient,
+    state: Option<&SharedState>,
+    player_request: PlayerRequest,
+    playback: Option<PlaybackMetadata>,
+) -> Result<()> {
+    if let Some(state) = state {
+        // A non-null application's state indicates there is a running application instance.
+        // To reduce the latency of the CLI command, the player request is handled asynchronously
+        // knowing that the application will outlive the asynchronous task.
+        tokio::task::spawn({
+            let client = client.clone();
+            let state = state.clone();
+            async move {
+                match client.handle_player_request(player_request, playback).await {
+                    Ok(playback) => {
+                        // update application's states
+                        state.player.write().buffered_playback = playback;
+                        client.update_playback(&state);
+                    }
+                    Err(err) => {
+                        tracing::warn!(
+                            "Failed to handle a player request for playback CLI command: {err:#}"
+                        );
+                    }
+                }
+            }
+        });
+    } else {
+        // Handles the player request synchronously
+        client
+            .handle_player_request(player_request, playback)
+            .await?;
+    }
+    Ok(())
+}
+
+async fn handle_open_request(
+    client: &AppClient,
+    state: Option<&SharedState>,
+    uri: String,
+) -> Result<()> {
+    // Handle Spotify URLs by converting them to URIs
+    // e.g. https://open.spotify.com/track/4cOdK2wGLETKBW3PvgPWqT -> spotify:track:4cOdK2wGLETKBW3PvgPWqT
+    let uri = if uri.starts_with("http") {
+        let url = reqwest::Url::parse(&uri).context("invalid Spotify URL")?;
+        let segments: Vec<&str> = url
+            .path_segments()
+            .context("invalid Spotify URL")?
+            .collect();
+        if segments.len() != 2 {
+            anyhow::bail!("Unknown Spotify URL: {}", uri);
+        }
+        format!("spotify:{}:{}", segments[0], segments[1])
+    } else {
+        uri
+    };
+
+    let player_request = if let Ok(id) = TrackId::from_uri(&uri) {
+        PlayerRequest::StartPlayback(Playback::URIs(vec![id.into_static().into()], None), None)
+    } else if let Ok(id) = AlbumId::from_uri(&uri) {
+        PlayerRequest::StartPlayback(
+            Playback::Context(ContextId::Album(id.into_static()), None),
+            None,
+        )
+    } else if let Ok(id) = ArtistId::from_uri(&uri) {
+        PlayerRequest::StartPlayback(
+            Playback::Context(ContextId::Artist(id.into_static()), None),
+            None,
+        )
+    } else if let Ok(id) = PlaylistId::from_uri(&uri) {
+        PlayerRequest::StartPlayback(
+            Playback::Context(ContextId::Playlist(id.into_static()), None),
+            None,
+        )
+    } else {
+        anyhow::bail!("Unknown or unsupported URI/URL: {}", uri);
+    };
+
+    let playback = if let Some(state) = state {
+        state.player.read().buffered_playback.clone()
+    } else {
+        let playback = client.current_playback2().await?;
+        playback.as_ref().map(PlaybackMetadata::from_playback)
+    };
+
+    execute_player_request(client, state, player_request, playback).await
+}
+
 async fn handle_playback_request(
     client: &AppClient,
     state: Option<&SharedState>,
@@ -446,35 +540,7 @@ async fn handle_playback_request(
         }
     };
 
-    if let Some(state) = state {
-        // A non-null application's state indicates there is a running application instance.
-        // To reduce the latency of the CLI command, the player request is handled asynchronously
-        // knowing that the application will outlive the asynchronous task.
-        tokio::task::spawn({
-            let client = client.clone();
-            let state = state.clone();
-            async move {
-                match client.handle_player_request(player_request, playback).await {
-                    Ok(playback) => {
-                        // update application's states
-                        state.player.write().buffered_playback = playback;
-                        client.update_playback(&state);
-                    }
-                    Err(err) => {
-                        tracing::warn!(
-                            "Failed to handle a player request for playback CLI command: {err:#}"
-                        );
-                    }
-                }
-            }
-        });
-    } else {
-        // Handles the player request synchronously
-        client
-            .handle_player_request(player_request, playback)
-            .await?;
-    }
-    Ok(())
+    execute_player_request(client, state, player_request, playback).await
 }
 
 async fn handle_playlist_request(client: &AppClient, command: PlaylistCommand) -> Result<String> {
