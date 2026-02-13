@@ -65,28 +65,48 @@ fn handle_mouse_event(
     client_pub: &flume::Sender<ClientRequest>,
     state: &SharedState,
 ) -> Result<()> {
-    // a left click event
-    if let crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left) = event.kind
-    {
-        tracing::debug!("Handling mouse event: {event:?}");
-        let rect = state.ui.lock().playback_progress_bar_rect;
-        if event.row == rect.y {
-            // calculate the seek position (in ms) based on the mouse click position,
-            // the progress bar's width and the track's duration (in ms)
-            let player = state.player.read();
-            let duration = match player.currently_playing() {
-                Some(rspotify::model::PlayableItem::Track(track)) => Some(track.duration),
-                Some(rspotify::model::PlayableItem::Episode(episode)) => Some(episode.duration),
-                Some(rspotify::model::PlayableItem::Unknown(_)) | None => None,
-            };
-            if let Some(duration) = duration {
-                let position_ms =
-                    (duration.num_milliseconds()) * i64::from(event.column) / i64::from(rect.width);
-                client_pub.send(ClientRequest::Player(PlayerRequest::SeekTrack(
-                    chrono::Duration::try_milliseconds(position_ms).unwrap(),
-                )))?;
+    tracing::debug!("Handling mouse event: {event:?}");
+
+    match event.kind {
+        crossterm::event::MouseEventKind::ScrollUp => {
+            let key_sequence: KeySequence = "m s u".into();
+            let keymap_config = &config::get_config().keymap_config;
+            if keymap_config
+                .find_command_or_action_from_key_sequence(&key_sequence)
+                .is_some()
+            {
+                let _ = client_pub.try_send(ClientRequest::Player(PlayerRequest::VolumeUp));
             }
         }
+        crossterm::event::MouseEventKind::ScrollDown => {
+            let key_sequence: KeySequence = "m s d".into();
+            let keymap_config = &config::get_config().keymap_config;
+            if keymap_config
+                .find_command_or_action_from_key_sequence(&key_sequence)
+                .is_some()
+            {
+                let _ = client_pub.try_send(ClientRequest::Player(PlayerRequest::VolumeDown));
+            }
+        }
+        crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left) => {
+            let rect = state.ui.lock().playback_progress_bar_rect;
+            if event.row == rect.y {
+                let player = state.player.read();
+                let duration = match player.currently_playing() {
+                    Some(rspotify::model::PlayableItem::Track(track)) => Some(track.duration),
+                    Some(rspotify::model::PlayableItem::Episode(episode)) => Some(episode.duration),
+                    Some(rspotify::model::PlayableItem::Unknown(_)) | None => None,
+                };
+                if let Some(duration) = duration {
+                    let position_ms = (duration.num_milliseconds()) * i64::from(event.column)
+                        / i64::from(rect.width);
+                    client_pub.send(ClientRequest::Player(PlayerRequest::SeekTrack(
+                        chrono::Duration::try_milliseconds(position_ms).unwrap(),
+                    )))?;
+                }
+            }
+        }
+        _ => {}
     }
     Ok(())
 }
@@ -577,6 +597,12 @@ fn handle_global_command(
                     client_pub.send(ClientRequest::Player(PlayerRequest::Volume(volume as u8)))?;
                 }
             }
+        }
+        Command::VolumeUp => {
+            client_pub.send(ClientRequest::Player(PlayerRequest::VolumeUp))?;
+        }
+        Command::VolumeDown => {
+            client_pub.send(ClientRequest::Player(PlayerRequest::VolumeDown))?;
         }
         Command::Mute => {
             client_pub.send(ClientRequest::Player(PlayerRequest::ToggleMute))?;
