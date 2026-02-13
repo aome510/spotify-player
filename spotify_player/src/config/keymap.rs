@@ -68,6 +68,14 @@ impl Default for KeymapConfig {
                     command: Command::VolumeChange { offset: -5 },
                 },
                 Keymap {
+                    key_sequence: "m s u".into(),
+                    command: Command::VolumeUp,
+                },
+                Keymap {
+                    key_sequence: "m s d".into(),
+                    command: Command::VolumeDown,
+                },
+                Keymap {
                     key_sequence: "_".into(),
                     command: Command::Mute,
                 },

@@ -14,6 +14,8 @@ pub enum PlayerRequest {
     Repeat,
     Shuffle,
     Volume(u8),
+    VolumeUp,
+    VolumeDown,
     ToggleMute,
     TransferPlayback(String, bool),
     StartPlayback(Playback, Option<bool>),
