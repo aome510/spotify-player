@@ -5,6 +5,7 @@ use super::{
     Paragraph, PlaylistCreateCurrentField, PlaylistPopupAction, PopupState, Rect, Row, SharedState,
     Table, UIStateGuard,
 };
+use crate::state::InputMode;
 
 const SHORTCUT_TABLE_N_COLUMNS: usize = 3;
 const SHORTCUT_TABLE_CONSTRAINS: [Constraint; SHORTCUT_TABLE_N_COLUMNS] =
@@ -62,14 +63,21 @@ pub fn render_popup(
                 );
                 (chunks[0], true)
             }
-            PopupState::Search { query } => {
+            PopupState::Search { query, mode } => {
                 let chunks =
                     Layout::vertical([Constraint::Fill(0), Constraint::Length(3)]).split(rect);
 
                 let rect =
                     construct_and_render_block("Search", &ui.theme, Borders::ALL, frame, chunks[1]);
 
-                frame.render_widget(Paragraph::new(format!("/{query}")), rect);
+                match mode {
+                    Some(InputMode::Insert) | None => {
+                        frame.render_widget(Paragraph::new(format!("/{query}")), rect);
+                    }
+                    Some(InputMode::Normal) => {
+                        frame.render_widget(Paragraph::new(query.to_string()), rect);
+                    }
+                }
                 (chunks[0], true)
             }
             PopupState::ActionList(item, _) => {

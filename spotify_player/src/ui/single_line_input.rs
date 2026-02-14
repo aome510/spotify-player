@@ -98,11 +98,23 @@ impl LineInput {
 
         let text_style = Style::default();
         let cursor_style = Style::default().add_modifier(Modifier::REVERSED);
-        let formatted_line = Line::from(vec![
+        let mut text_parts = vec![
             Span::styled(before_cursor, text_style),
             Span::styled(cursor, cursor_style),
             Span::styled(after_cursor, text_style),
-        ]);
+        ];
+
+        if is_active && crate::config::get_config().app_config.modal_search {
+            text_parts.splice(
+                0..0,
+                [Span::styled(
+                    "/",
+                    Style::default().fg(ratatui::style::Color::DarkGray),
+                )],
+            );
+        }
+
+        let formatted_line = Line::from(text_parts);
 
         Paragraph::new(formatted_line)
     }

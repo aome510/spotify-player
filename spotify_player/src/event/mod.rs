@@ -9,8 +9,8 @@ use crate::{
     state::{
         ActionListItem, Album, AlbumId, Artist, ArtistFocusState, ArtistId, ArtistPopupAction,
         BrowsePageUIState, Context, ContextId, ContextPageType, ContextPageUIState, DataReadGuard,
-        Focusable, Id, Item, ItemId, LibraryFocusState, LibraryPageUIState, PageState, PageType,
-        PlayableId, Playback, PlaylistCreateCurrentField, PlaylistFolderItem, PlaylistId,
+        Focusable, Id, InputMode, Item, ItemId, LibraryFocusState, LibraryPageUIState, PageState,
+        PageType, PlayableId, Playback, PlaylistCreateCurrentField, PlaylistFolderItem, PlaylistId,
         PlaylistPopupAction, PopupState, SearchFocusState, SearchPageUIState, SharedState, ShowId,
         Track, TrackId, TrackOrder, UIStateGuard, USER_LIKED_TRACKS_ID,
         USER_RECENTLY_PLAYED_TRACKS_ID, USER_TOP_TRACKS_ID,
@@ -704,6 +704,11 @@ fn handle_global_command(
                 line_input: LineInput::default(),
                 current_query: String::new(),
                 state: SearchPageUIState::new(),
+                mode: if config::get_config().app_config.modal_search {
+                    Some(InputMode::default())
+                } else {
+                    None
+                },
             });
         }
         Command::BrowsePage => {
@@ -854,6 +859,18 @@ fn handle_global_command(
             }
         }
         Command::ClosePopup => {
+            if let Some(PopupState::Search { ref mut mode, .. }) = ui.popup {
+                if let Some(InputMode::Insert) = mode {
+                    *mode = Some(InputMode::Normal);
+                    return Ok(true);
+                }
+            } else if config::get_config().app_config.modal_search
+                && ui.popup.is_none()
+                && ui.history.len() > 1
+            {
+                ui.history.pop();
+            }
+
             ui.popup = None;
         }
         _ => return Ok(false),

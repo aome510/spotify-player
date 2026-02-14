@@ -354,15 +354,49 @@ fn handle_key_sequence_for_search_popup(
     state: &SharedState,
     ui: &mut UIStateGuard,
 ) -> Result<bool> {
+    let conf = config::get_config();
+
     // handle user's input that updates the search query
-    let Some(PopupState::Search { ref mut query }) = &mut ui.popup else {
+    let Some(PopupState::Search {
+        query,
+        ref mut mode,
+    }) = &mut ui.popup
+    else {
         return Ok(false);
     };
+
+    match conf
+        .keymap_config
+        .find_command_from_key_sequence(key_sequence)
+    {
+        Some(Command::Search) => {
+            if let Some(InputMode::Normal) = mode {
+                *mode = Some(InputMode::Insert);
+                return Ok(true);
+            }
+        }
+        Some(Command::FocusNextWindow | Command::FocusPreviousWindow) => {
+            if let Some(mode) = mode.as_mut() {
+                mode.toggle()
+            }
+
+            return Ok(true);
+        }
+        Some(Command::ChooseSelected) => {
+            if let Some(InputMode::Insert) = mode {
+                *mode = Some(InputMode::Normal);
+            }
+        }
+        _ => {}
+    }
+
     if key_sequence.keys.len() == 1 {
         if let Key::None(c) = key_sequence.keys[0] {
             match c {
-                crossterm::event::KeyCode::Char(c) => {
-                    query.push(c);
+                crossterm::event::KeyCode::Char(ch)
+                    if matches!(mode, None | Some(InputMode::Insert)) =>
+                {
+                    query.push(ch);
                     ui.current_page_mut().select(0);
                     return Ok(true);
                 }
