@@ -129,6 +129,7 @@ pub struct AppConfig {
     pub sort_artist_albums_by_type: bool,
 
     pub volume_scroll_step: u8,
+    pub enable_mouse_scroll_volume: bool,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -376,6 +377,7 @@ impl Default for AppConfig {
             sort_artist_albums_by_type: false,
 
             volume_scroll_step: 5,
+            enable_mouse_scroll_volume: true,
         }
     }
 }

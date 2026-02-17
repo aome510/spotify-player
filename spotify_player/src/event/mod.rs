@@ -67,30 +67,33 @@ fn handle_mouse_event(
 ) -> Result<()> {
     tracing::debug!("Handling mouse event: {event:?}");
 
+    let enable_scroll = config::get_config().app_config.enable_mouse_scroll_volume;
+
     match event.kind {
-        crossterm::event::MouseEventKind::ScrollUp => {
-            let key_sequence: KeySequence = "m s u".into();
-            let keymap_config = &config::get_config().keymap_config;
-            if keymap_config
-                .find_command_or_action_from_key_sequence(&key_sequence)
-                .is_some()
-            {
-                let _ = client_pub.try_send(ClientRequest::Player(PlayerRequest::VolumeUp));
+        crossterm::event::MouseEventKind::ScrollUp if enable_scroll => {
+            let step = i32::from(config::get_config().app_config.volume_scroll_step);
+            if let Some(ref playback) = state.player.read().buffered_playback {
+                if let Some(volume) = playback.volume {
+                    let new_volume = std::cmp::min(volume as i32 + step, 100_i32) as u8;
+                    client_pub.send(ClientRequest::Player(PlayerRequest::Volume(new_volume)))?;
+                }
             }
         }
-        crossterm::event::MouseEventKind::ScrollDown => {
-            let key_sequence: KeySequence = "m s d".into();
-            let keymap_config = &config::get_config().keymap_config;
-            if keymap_config
-                .find_command_or_action_from_key_sequence(&key_sequence)
-                .is_some()
-            {
-                let _ = client_pub.try_send(ClientRequest::Player(PlayerRequest::VolumeDown));
+        crossterm::event::MouseEventKind::ScrollDown if enable_scroll => {
+            let step = i32::from(config::get_config().app_config.volume_scroll_step);
+            if let Some(ref playback) = state.player.read().buffered_playback {
+                if let Some(volume) = playback.volume {
+                    let new_volume = std::cmp::max(volume as i32 - step, 0_i32) as u8;
+                    client_pub.send(ClientRequest::Player(PlayerRequest::Volume(new_volume)))?;
+                }
             }
         }
+        // a left click event
         crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left) => {
             let rect = state.ui.lock().playback_progress_bar_rect;
             if event.row == rect.y {
+                // calculate the seek position (in ms) based on the mouse click position,
+                // the progress bar's width and the track's duration (in ms)
                 let player = state.player.read();
                 let duration = match player.currently_playing() {
                     Some(rspotify::model::PlayableItem::Track(track)) => Some(track.duration),
@@ -597,12 +600,6 @@ fn handle_global_command(
                     client_pub.send(ClientRequest::Player(PlayerRequest::Volume(volume as u8)))?;
                 }
             }
-        }
-        Command::VolumeUp => {
-            client_pub.send(ClientRequest::Player(PlayerRequest::VolumeUp))?;
-        }
-        Command::VolumeDown => {
-            client_pub.send(ClientRequest::Player(PlayerRequest::VolumeDown))?;
         }
         Command::Mute => {
             client_pub.send(ClientRequest::Player(PlayerRequest::ToggleMute))?;

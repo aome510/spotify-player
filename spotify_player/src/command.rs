@@ -18,8 +18,6 @@ pub enum Command {
     VolumeChange {
         offset: i32,
     },
-    VolumeUp,
-    VolumeDown,
     Mute,
     SeekStart,
     SeekForward {
@@ -308,8 +306,6 @@ impl Command {
             Self::PlayRandom => "play a random track in the current context",
             Self::Repeat => "cycle the repeat mode",
             Self::Shuffle => "toggle the shuffle mode",
-            Self::VolumeUp => "increase playback volume",
-            Self::VolumeDown => "decrease playback volume",
             Self::Mute => "toggle playback volume between 0% and previous level",
             Self::SeekStart => "seek to track start",
             Self::SeekForward { duration } => { return format!("seek forward by {}s", duration.unwrap_or(5)) },

@@ -332,22 +332,6 @@ impl AppClient {
                 playback.volume = Some(u32::from(volume));
                 playback.mute_state = None;
             }
-            PlayerRequest::VolumeUp => {
-                let step = u32::from(config::get_config().app_config.volume_scroll_step);
-                let volume = std::cmp::min(playback.volume.unwrap_or_default() + step, 100_u32);
-                self.volume(volume as u8, device_id).await?;
-
-                playback.volume = Some(volume);
-                playback.mute_state = None;
-            }
-            PlayerRequest::VolumeDown => {
-                let step = u32::from(config::get_config().app_config.volume_scroll_step);
-                let volume = playback.volume.unwrap_or_default().saturating_sub(step);
-                self.volume(volume as u8, device_id).await?;
-
-                playback.volume = Some(volume);
-                playback.mute_state = None;
-            }
             PlayerRequest::ToggleMute => {
                 let new_mute_state = match playback.mute_state {
                     None => {
