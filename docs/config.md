@@ -51,7 +51,7 @@ All configuration files should be placed inside the application's configuration 
 | `play_icon`                       | the icon to indicate playing state of a Spotify item                                                                                                   | `▶`                                                            |
 | `pause_icon`                      | the icon to indicate pause state of a Spotify item                                                                                                     | `▌▌`                                                           |
 | `liked_icon`                      | the icon to indicate the liked state of a song                                                                                                         | `♥`                                                            |
-| `explicit_icon`                      | the icon indicating that a song is explicit                                                                                                         | `(E)`                                                            |
+| `explicit_icon`                   | the icon indicating that a song is explicit                                                                                                            | `(E)`                                                          |
 | `border_type`                     | the type of the application's borders                                                                                                                  | `Plain`                                                        |
 | `progress_bar_type`               | the type of the playback progress bar                                                                                                                  | `Rectangle`                                                    |
 | `progress_bar_position`           | the position of the playback progress bar                                                                                                              | `Bottom`                                                       |
@@ -90,6 +90,7 @@ All configuration files should be placed inside the application's configuration 
 - `progress_bar_position` can be either `Bottom` or `Right`.
 - `notify_streaming_only=true` and `enable_streaming=DaemonOnly` can be set to avoid sending multiple notifications when both daemon and UI are running.
 - `explicit_icon` can be set to some unicode char like `🅴` or `🇪` (depending on what looks good in your terminal) or to an empty string to deactivate markers for explicit songs entirely
+
 #### Media control
 
 Media control support (`enable_media_control` option) is enabled by default on Linux but disabled by default on MacOS and Windows.
@@ -186,9 +187,79 @@ playback_window_position = "Top"
 
 The application's theme can be modified by setting the `theme` config option in `app.toml` or by specifying the `-t <THEME>` (`--theme <THEME>`) CLI option when running the player.
 
-A theme has three main components: `name` (the theme's name), `palette` (the theme's color palette), `component_style` (styles for specific application's components).
+A theme has three main components:
 
-`name` is required when defining a new theme. If `palette` is not set, a palette based on the terminal's colors will be used. If `component_style` is not set, a set of predefined component styles will be used.
+- `name`: the theme's name (required)
+- `palette`: the theme's color palette (optional)
+- `component_style`: styles for specific application's components (optional)
+
+If `palette` is not set, a palette based on the terminal's colors will be used. If `component_style` is not set, a set of predefined component styles will be used.
+
+### Component Styles
+
+The `component_style` section allows you to customize the appearance of specific UI components. Each field is optional and can be omitted to use the default style. The available component styles are:
+
+| Field                            | Description                                                 |
+| -------------------------------- | ----------------------------------------------------------- |
+| `block_title`                    | Style for block titles                                      |
+| `border`                         | Style for borders                                           |
+| `playback_status`                | Style for the playback status indicator                     |
+| `playback_track`                 | Style for the currently playing track name                  |
+| `playback_artists`               | Style for the artist(s) of the current track                |
+| `playback_album`                 | Style for the album name of the current track               |
+| `playback_genres`                | Style for the genres of the current track                   |
+| `playback_metadata`              | Style for the metadata section in playback                  |
+| `playback_progress_bar`          | Style for the filled portion of the playback progress bar   |
+| `playback_progress_bar_unfilled` | Style for the unfilled portion of the playback progress bar |
+| `current_playing`                | Style for the currently playing item in lists               |
+| `page_desc`                      | Style for the page description                              |
+| `playlist_desc`                  | Style for the playlist description                          |
+| `table_header`                   | Style for table headers                                     |
+| `selection`                      | Style for selected items                                    |
+| `secondary_row`                  | Style for secondary rows in tables/lists                    |
+| `like`                           | Style for the like indicator                                |
+| `lyrics_played`                  | Style for played lyrics lines                               |
+| `lyrics_playing`                 | Style for the currently playing lyrics line                 |
+
+Each style can be defined as a struct with the following fields:
+
+- `fg`: Foreground color (see below for accepted values)
+- `bg`: Background color (see below for accepted values)
+- `modifiers`: List of style modifiers (see below)
+
+#### Example
+
+```toml
+[ [themes] ]
+name = "my_theme"
+[themes.component_style]
+block_title = { fg = "Magenta", modifiers = ["Bold"] }
+border = { fg = "White" }
+selection = { modifiers = ["Reversed", "Bold"] }
+```
+
+#### Accepted Colors
+
+You can use any of the following color names:
+
+- Black, Blue, Cyan, Green, Magenta, Red, White, Yellow
+- BrightBlack, BrightWhite, BrightRed, BrightMagenta, BrightGreen, BrightCyan, BrightBlue, BrightYellow
+- Hex color codes in the form `#RRGGBB` (e.g., `#ff0000` for red)
+
+#### Style Modifiers
+
+The following modifiers are supported:
+
+- Bold
+- Dim
+- Italic
+- Underlined
+- RapidBlink
+- Reversed
+- Hidden
+- CrossedOut
+
+You can specify multiple modifiers as a list, e.g. `modifiers = ["Bold", "Underlined"]`.
 
 ### Use script to add theme
 
