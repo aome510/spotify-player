@@ -71,19 +71,19 @@ fn handle_mouse_event(
 
     match event.kind {
         crossterm::event::MouseEventKind::ScrollUp if enable_scroll => {
-            let step = i32::from(config::get_config().app_config.volume_scroll_step);
+            let step = config::get_config().app_config.volume_scroll_step;
             if let Some(ref playback) = state.player.read().buffered_playback {
                 if let Some(volume) = playback.volume {
-                    let new_volume = std::cmp::min(volume as i32 + step, 100_i32) as u8;
+                    let new_volume = std::cmp::min(volume as u8 + step, 100);
                     client_pub.send(ClientRequest::Player(PlayerRequest::Volume(new_volume)))?;
                 }
             }
         }
         crossterm::event::MouseEventKind::ScrollDown if enable_scroll => {
-            let step = i32::from(config::get_config().app_config.volume_scroll_step);
+            let step = config::get_config().app_config.volume_scroll_step;
             if let Some(ref playback) = state.player.read().buffered_playback {
                 if let Some(volume) = playback.volume {
-                    let new_volume = std::cmp::max(volume as i32 - step, 0_i32) as u8;
+                    let new_volume = (volume as u8).saturating_sub(step);
                     client_pub.send(ClientRequest::Player(PlayerRequest::Volume(new_volume)))?;
                 }
             }
