@@ -101,7 +101,14 @@ fn handle_page_change_event(
         } => {
             let expected_id = match context_page_type {
                 ContextPageType::Browsing(context_id) => Some(context_id.clone()),
-                ContextPageType::CurrentPlaying => state.player.read().playing_context_id(),
+                ContextPageType::CurrentPlaying { tracks_id } => {
+                    // If we have a stored tracks_id, use it; otherwise get from player
+                    if let Some(tracks_id) = tracks_id {
+                        Some(ContextId::Tracks(tracks_id.clone()))
+                    } else {
+                        state.player.read().playing_context_id()
+                    }
+                }
             };
 
             let new_id = if *id == expected_id {

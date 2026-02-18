@@ -1,5 +1,5 @@
 use crate::{
-    state::model::{Category, ContextId},
+    state::model::{Category, ContextId, TracksId},
     ui::single_line_input::LineInput,
 };
 use ratatui::widgets::{ListState, TableState};
@@ -68,7 +68,7 @@ pub struct SearchPageUIState {
 
 #[derive(Clone, Debug)]
 pub enum ContextPageType {
-    CurrentPlaying,
+    CurrentPlaying { tracks_id: Option<TracksId> },
     Browsing(ContextId),
 }
 
@@ -268,7 +268,7 @@ impl SearchPageUIState {
 impl ContextPageType {
     pub fn title(&self) -> String {
         match self {
-            ContextPageType::CurrentPlaying => String::from("Current Playing"),
+            ContextPageType::CurrentPlaying { .. } => String::from("Current Playing"),
             ContextPageType::Browsing(id) => match id {
                 ContextId::Playlist(_) => String::from("Playlist"),
                 ContextId::Album(_) => String::from("Album"),
