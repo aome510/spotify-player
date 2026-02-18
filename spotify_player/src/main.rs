@@ -137,7 +137,7 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
         let client = client.clone();
         let state = state.clone();
         async move {
-            cli::start_socket(&client, Some(&state)).await;
+            cli::start_socket(&client, Some(&state), None).await;
         }
     });
 
