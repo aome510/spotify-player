@@ -735,10 +735,10 @@ fn handle_global_command(
                     // for track link, play the song
                     "track" => {
                         let id = TrackId::from_id(id)?.into_static();
-                        
+
                         // Clear Tracks context when playing from clipboard link
                         ui.currently_playing_tracks_id = None;
-                        
+
                         client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
                             Playback::URIs(vec![id.into()], None),
                             None,

@@ -391,10 +391,10 @@ pub fn handle_command_for_track_list_window(
             // This is different from the track table, which handles
             // `ChooseSelected` by starting a `URIs` playback
             // containing all the tracks in the table.
-            
+
             // Track lists are used for search results, so clear the Tracks context
             ui.currently_playing_tracks_id = None;
-            
+
             client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
                 Playback::URIs(vec![tracks[id].id.clone().into()], None),
                 None,
@@ -603,7 +603,7 @@ pub fn handle_command_for_episode_list_window(
         Command::ChooseSelected => {
             // Episodes don't have a Tracks context, so clear it
             ui.currently_playing_tracks_id = None;
-            
+
             client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
                 Playback::URIs(vec![episodes[id].id.clone().into()], None),
                 None,
@@ -646,10 +646,10 @@ fn handle_command_for_episode_table_window(
     match command {
         Command::ChooseSelected => {
             let uri = episodes[id].id.uri();
-            
+
             // Show context doesn't have a Tracks context, so clear it
             ui.currently_playing_tracks_id = None;
-            
+
             client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
                 Playback::Context(
                     ContextId::Show(show_id.clone_static()),
