@@ -42,6 +42,9 @@ pub struct UIState {
     /// Count prefix for vim-style navigation (e.g., 5j, 10k)
     pub count_prefix: Option<usize>,
 
+    /// The currently playing Tracks context
+    pub currently_playing_tracks_id: Option<TracksId>,
+
     #[cfg(feature = "image")]
     pub last_cover_image_render_info: ImageRenderInfo,
 }
@@ -121,6 +124,8 @@ impl Default for UIState {
             playback_progress_bar_rect: Rect::default(),
 
             count_prefix: None,
+
+            currently_playing_tracks_id: None,
 
             #[cfg(feature = "image")]
             last_cover_image_render_info: ImageRenderInfo::default(),
