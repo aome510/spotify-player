@@ -138,7 +138,9 @@ fn handle_key_event(
         ui.count_prefix
     );
     let handled = {
-        if ui.popup.is_none() {
+        if ui.popup.is_none()
+            || matches!(ui.popup, Some(PopupState::AddedToQueue { frames_left: _ })) 
+        {
             page::handle_key_sequence_for_page(&key_sequence, client_pub, state, &mut ui)?
         } else {
             popup::handle_key_sequence_for_popup(&key_sequence, client_pub, state, &mut ui)?

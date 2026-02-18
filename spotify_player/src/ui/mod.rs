@@ -47,6 +47,8 @@ pub fn run(state: &SharedState) -> Result<()> {
                 std::process::exit(0);
             }
 
+            update_ui_state(&mut ui);
+
             let terminal_size = terminal.size()?;
             if Some(terminal_size) != last_terminal_size {
                 last_terminal_size = Some(terminal_size);
@@ -86,6 +88,19 @@ fn init_ui() -> Result<Terminal> {
     let mut terminal = ratatui::Terminal::new(backend)?;
     terminal.clear()?;
     Ok(terminal)
+}
+
+// Perform per-frame updates to the UI state
+fn update_ui_state(ui: &mut UIStateGuard) {
+    match &mut ui.popup {
+        Some(PopupState::AddedToQueue { frames_left }) => {
+            *frames_left -= 1;
+            if *frames_left <= 0 {
+                ui.popup = None;
+            }
+        }
+        _ => {}
+    }
 }
 
 /// Clean up UI resources before quitting the application
