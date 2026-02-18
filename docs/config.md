@@ -64,6 +64,8 @@ A sample `app.toml` is available at [examples/app.toml](../examples/app.toml).
 | `cover_img_pixels`                | Pixels per side for cover image (requires `pixelate` feature).                                 | `16`                                                                   |
 | `seek_duration_secs`              | Seek duration in seconds for seek commands.                                                    | `5`                                                                    |
 | `sort_artist_albums_by_type`      | Sort albums by type on artist pages.                                                           | `false`                                                                |
+| `volume_scroll_step`              | Volume change step when using mouse scroll.                                                    | `5`                                                                    |
+| `enable_mouse_scroll_volume`      | Enable volume control via mouse scroll.                                                        | `true`                                                                 |
 | `device`                          | Device configuration (see below).                                                              | See below                                                              |
 
 ### Notes
