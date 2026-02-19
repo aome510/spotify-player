@@ -224,6 +224,13 @@ pub fn handle_cli_subcommand(cmd: &str, args: &ArgMatches) -> Result<()> {
                 .expect("query is required")
                 .to_owned(),
         },
+        "open" => {
+            let uri = args
+                .get_one::<String>("uri_or_url")
+                .expect("uri_or_url arg is required")
+                .to_owned();
+            Request::Open { uri }
+        }
         _ => unreachable!(),
     };
 
