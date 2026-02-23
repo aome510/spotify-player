@@ -63,7 +63,7 @@ Do you have a theme collection you'd like to share with the community? Submit a 
 ### [Your Theme Collection Name](https://github.com/yourusername/your-repo)
 **Author**: [@yourusername](https://github.com/yourusername)
 **Description**: A brief description of your theme collection and what it offers.
-**Themes**: [Number] themes across [categories/categories]
+**Themes**: [Number] themes across [Number] categories
 **Install**: [Installation command or instructions]
 **Categories**: [Optional: List of theme categories]
 ```
