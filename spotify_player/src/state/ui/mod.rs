@@ -10,8 +10,6 @@ pub type UIStateGuard<'a> = parking_lot::MutexGuard<'a, UIState>;
 mod page;
 mod popup;
 
-use super::TracksId;
-
 pub use page::*;
 pub use popup::*;
 
@@ -42,9 +40,6 @@ pub struct UIState {
     /// Count prefix for vim-style navigation (e.g., 5j, 10k)
     pub count_prefix: Option<usize>,
 
-    /// The currently playing Tracks context
-    pub currently_playing_tracks_id: Option<TracksId>,
-
     #[cfg(feature = "image")]
     pub last_cover_image_render_info: ImageRenderInfo,
 }
@@ -68,17 +63,6 @@ impl UIState {
     pub fn new_page(&mut self, page: PageState) {
         self.history.push(page);
         self.popup = None;
-    }
-
-    pub fn new_radio_page(&mut self, uri: &str) {
-        self.new_page(PageState::Context {
-            id: None,
-            context_page_type: ContextPageType::Browsing(super::ContextId::Tracks(TracksId::new(
-                format!("radio:{uri}"),
-                "Recommendations",
-            ))),
-            state: None,
-        });
     }
 
     /// Return whether there exists a focused popup.
@@ -124,8 +108,6 @@ impl Default for UIState {
             playback_progress_bar_rect: Rect::default(),
 
             count_prefix: None,
-
-            currently_playing_tracks_id: None,
 
             #[cfg(feature = "image")]
             last_cover_image_render_info: ImageRenderInfo::default(),
