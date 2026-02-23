@@ -663,12 +663,9 @@ fn handle_global_command(
             }
         }
         Command::CurrentlyPlayingContextPage => {
-            // Use the currently playing Tracks context if available
-            let tracks_id = ui.currently_playing_tracks_id.clone();
-
             ui.new_page(PageState::Context {
                 id: None,
-                context_page_type: ContextPageType::CurrentPlaying { tracks_id },
+                context_page_type: ContextPageType::CurrentPlaying,
                 state: None,
             });
         }
@@ -760,7 +757,7 @@ fn handle_global_command(
                         let id = TrackId::from_id(id)?.into_static();
 
                         // Clear Tracks context when playing from clipboard link
-                        ui.currently_playing_tracks_id = None;
+                        state.player.write().currently_playing_tracks_id = None;
 
                         client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
                             Playback::URIs(vec![id.into()], None),

@@ -177,7 +177,7 @@ pub fn handle_command_for_focused_context_window(
                         ui,
                     )),
                     ArtistFocusState::TopTracks => handle_command_for_track_table_window(
-                        command, client_pub, None, top_tracks, &data, ui,
+                        command, client_pub, None, top_tracks, &data, ui, state,
                     ),
                 }
             }
@@ -190,6 +190,7 @@ pub fn handle_command_for_focused_context_window(
                 tracks,
                 &data,
                 ui,
+                state,
             ),
             Context::Show { show, episodes } => handle_command_for_episode_table_window(
                 command,
@@ -198,6 +199,7 @@ pub fn handle_command_for_focused_context_window(
                 &ui.search_filtered_items(episodes),
                 &data,
                 ui,
+                state,
             ),
         },
         None => Ok(false),
@@ -263,6 +265,7 @@ fn handle_command_for_track_table_window(
     tracks: &[Track],
     data: &DataReadGuard,
     ui: &mut UIStateGuard,
+    state: &SharedState,
 ) -> Result<bool> {
     let id = ui.current_page_mut().selected().unwrap_or_default();
     let filtered_tracks = ui.search_filtered_items(tracks);
@@ -312,10 +315,10 @@ fn handle_command_for_track_table_window(
             // Update currently_playing_tracks_id based on the context
             match context_id {
                 Some(ContextId::Tracks(ref tracks_id)) => {
-                    ui.currently_playing_tracks_id = Some(tracks_id.clone());
+                    state.player.write().currently_playing_tracks_id = Some(tracks_id.clone());
                 }
                 _ => {
-                    ui.currently_playing_tracks_id = None;
+                    state.player.write().currently_playing_tracks_id = None;
                 }
             }
 
@@ -374,6 +377,7 @@ pub fn handle_command_for_track_list_window(
     tracks: &[&Track],
     data: &DataReadGuard,
     ui: &mut UIStateGuard,
+    state: &SharedState,
 ) -> Result<bool> {
     let id = ui.current_page_mut().selected().unwrap_or_default();
     if id >= tracks.len() {
@@ -393,7 +397,7 @@ pub fn handle_command_for_track_list_window(
             // containing all the tracks in the table.
 
             // Track lists are used for search results, so clear the Tracks context
-            ui.currently_playing_tracks_id = None;
+            state.player.write().currently_playing_tracks_id = None;
 
             client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
                 Playback::URIs(vec![tracks[id].id.clone().into()], None),
@@ -589,6 +593,7 @@ pub fn handle_command_for_episode_list_window(
     episodes: &[&Episode],
     data: &DataReadGuard,
     ui: &mut UIStateGuard,
+    state: &SharedState,
 ) -> Result<bool> {
     let id = ui.current_page_mut().selected().unwrap_or_default();
     if id >= episodes.len() {
@@ -602,7 +607,7 @@ pub fn handle_command_for_episode_list_window(
     match command {
         Command::ChooseSelected => {
             // Episodes don't have a Tracks context, so clear it
-            ui.currently_playing_tracks_id = None;
+            state.player.write().currently_playing_tracks_id = None;
 
             client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
                 Playback::URIs(vec![episodes[id].id.clone().into()], None),
@@ -633,6 +638,7 @@ fn handle_command_for_episode_table_window(
     episodes: &[&Episode],
     data: &DataReadGuard,
     ui: &mut UIStateGuard,
+    state: &SharedState,
 ) -> Result<bool> {
     let id = ui.current_page_mut().selected().unwrap_or_default();
     if id >= episodes.len() {
@@ -648,7 +654,7 @@ fn handle_command_for_episode_table_window(
             let uri = episodes[id].id.uri();
 
             // Show context doesn't have a Tracks context, so clear it
-            ui.currently_playing_tracks_id = None;
+            state.player.write().currently_playing_tracks_id = None;
 
             client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
                 Playback::Context(

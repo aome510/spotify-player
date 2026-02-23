@@ -247,7 +247,7 @@ fn handle_key_sequence_for_search_page(
 
             match found_keymap {
                 CommandOrAction::Command(command) => window::handle_command_for_track_list_window(
-                    command, client_pub, &tracks, &data, ui,
+                    command, client_pub, &tracks, &data, ui, state,
                 ),
                 CommandOrAction::Action(action, ActionTarget::SelectedItem) => {
                     window::handle_action_for_selected_item(action, &tracks, &data, ui, client_pub)
@@ -341,7 +341,7 @@ fn handle_key_sequence_for_search_page(
             match found_keymap {
                 CommandOrAction::Command(command) => {
                     window::handle_command_for_episode_list_window(
-                        command, client_pub, &episodes, &data, ui,
+                        command, client_pub, &episodes, &data, ui, state,
                     )
                 }
                 CommandOrAction::Action(action, ActionTarget::SelectedItem) => {

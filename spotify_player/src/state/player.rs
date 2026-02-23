@@ -1,4 +1,4 @@
-use super::model::{AlbumId, ArtistId, ContextId, Device, PlaybackMetadata, PlaylistId, ShowId};
+use super::model::{AlbumId, ArtistId, ContextId, Device, PlaybackMetadata, PlaylistId, ShowId, TracksId};
 
 /// Player state
 #[derive(Default, Debug)]
@@ -12,6 +12,9 @@ pub struct PlayerState {
     pub buffered_playback: Option<PlaybackMetadata>,
 
     pub queue: Option<rspotify::model::CurrentUserQueue>,
+
+    /// The currently playing Tracks context (for contexts not tracked by Spotify's playback, e.g. liked/top tracks)
+    pub currently_playing_tracks_id: Option<TracksId>,
 }
 
 impl PlayerState {
@@ -89,7 +92,10 @@ impl PlayerState {
                         _ => None,
                     }
                 }
-                None => None,
+                None => self
+                    .currently_playing_tracks_id
+                    .clone()
+                    .map(ContextId::Tracks),
             },
             None => None,
         }
