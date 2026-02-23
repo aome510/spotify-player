@@ -144,8 +144,18 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
     // client event handler task
     tokio::task::spawn({
         let state = state.clone();
+        let client = client.clone();
         async move {
             client::start_client_handler(&state, &client, &client_sub).await;
+        }
+    });
+
+    // queue feeder task: auto-determines and pre-adds the next track to the Spotify queue
+    tokio::task::spawn({
+        let state = state.clone();
+        let client_pub = client_pub.clone();
+        async move {
+            client::start_queue_feeder(state, &client_pub).await;
         }
     });
 

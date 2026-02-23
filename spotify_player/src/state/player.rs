@@ -1,4 +1,6 @@
-use super::model::{AlbumId, ArtistId, ContextId, Device, PlaybackMetadata, PlaylistId, ShowId};
+use super::model::{
+    AlbumId, ArtistId, ContextCursor, ContextId, Device, PlaybackMetadata, PlaylistId, ShowId,
+};
 
 /// Player state
 #[derive(Default, Debug)]
@@ -12,6 +14,12 @@ pub struct PlayerState {
     pub buffered_playback: Option<PlaybackMetadata>,
 
     pub queue: Option<rspotify::model::CurrentUserQueue>,
+
+    // --- Queue feeder state ---
+    /// Tracks the feeder's position within the currently playing context
+    pub context_cursor: Option<ContextCursor>,
+    /// URI of the track the feeder last processed; used to detect track transitions
+    pub queue_feeder_last_seen_track: Option<String>,
 }
 
 impl PlayerState {
@@ -69,6 +77,7 @@ impl PlayerState {
     }
 
     pub fn playing_context_id(&self) -> Option<ContextId> {
+        // TODO: handle tracks context
         match self.playback {
             Some(ref playback) => match playback.context {
                 Some(ref context) => {

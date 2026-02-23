@@ -125,6 +125,20 @@ pub struct PlaybackMetadata {
 }
 
 #[derive(Debug, Clone)]
+/// Tracks the queue feeder's position within a playing context's track list.
+/// Updated on each track transition to determine what should play next.
+pub struct ContextCursor {
+    /// ID of the context this cursor is tracking
+    pub context_id: ContextId,
+    /// All playable items in the context, in their natural order
+    pub ids: Vec<PlayableId<'static>>,
+    /// Pre-shuffled remaining play order (indices into `ids`).
+    /// `None` when shuffle is off; rebuilt when shuffle is toggled on or the
+    /// context changes with shuffle already on.
+    pub shuffle_ids: Option<Vec<usize>>,
+}
+
+#[derive(Debug, Clone)]
 /// A Spotify device
 pub struct Device {
     pub id: String,
