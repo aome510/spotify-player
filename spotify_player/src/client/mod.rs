@@ -10,8 +10,8 @@ use crate::{
         store_data_into_file_cache, Album, AlbumId, Artist, ArtistId, Category, Context, ContextId,
         Device, FileCacheKey, Item, ItemId, MemoryCaches, Playback, PlaybackMetadata, Playlist,
         PlaylistFolderItem, PlaylistId, SearchResults, SharedState, Show, ShowId, Track, TrackId,
-        UserId, TTL_CACHE_DURATION, USER_LIKED_TRACKS_ID, USER_RECENTLY_PLAYED_TRACKS_ID,
-        USER_TOP_TRACKS_ID,
+        UserId, TTL_CACHE_DURATION, USER_LIKED_TRACKS_URI, USER_RECENTLY_PLAYED_TRACKS_URI,
+        USER_TOP_TRACKS_URI,
     },
 };
 
@@ -487,72 +487,52 @@ impl AppClient {
                 .context("store user's saved shows into the cache folder")?;
                 state.data.write().user_data.saved_shows = shows;
             }
-            ClientRequest::GetUserTopTracks => {
-                let uri = &USER_TOP_TRACKS_ID.uri;
-                if !state.data.read().caches.context.contains_key(uri) {
-                    let tracks = self.current_user_top_tracks().await?;
-                    state.data.write().caches.context.insert(
-                        uri.to_owned(),
-                        Context::Tracks {
-                            tracks,
-                            desc: "User's top tracks".to_string(),
-                        },
-                        *TTL_CACHE_DURATION,
-                    );
-                }
-            }
-            ClientRequest::GetUserSavedTracks => {
-                let tracks = self.current_user_saved_tracks().await?;
-                let tracks_hm = tracks
-                    .iter()
-                    .map(|t| (t.id.uri(), t.clone()))
-                    .collect::<HashMap<_, _>>();
-                store_data_into_file_cache(
-                    FileCacheKey::SavedTracks,
-                    &config::get_config().cache_folder,
-                    &tracks_hm,
-                )
-                .context("store user's saved tracks into the cache folder")?;
-
-                let mut data = state.data.write();
-                data.user_data.saved_tracks = tracks_hm;
-                data.caches.context.insert(
-                    USER_LIKED_TRACKS_ID.uri.clone(),
-                    Context::Tracks {
-                        tracks,
-                        desc: "User's liked tracks".to_string(),
-                    },
-                    *TTL_CACHE_DURATION,
-                );
-            }
-            ClientRequest::GetUserRecentlyPlayedTracks => {
-                let uri = &USER_RECENTLY_PLAYED_TRACKS_ID.uri;
-                if !state.data.read().caches.context.contains_key(uri) {
-                    let tracks = self.current_user_recently_played_tracks().await?;
-                    state.data.write().caches.context.insert(
-                        uri.to_owned(),
-                        Context::Tracks {
-                            tracks,
-                            desc: "User's recently played tracks".to_string(),
-                        },
-                        *TTL_CACHE_DURATION,
-                    );
-                }
-            }
             ClientRequest::GetContext(context) => {
                 let uri = context.uri();
-                if !state.data.read().caches.context.contains_key(&uri) {
-                    let context = match context {
+                // Liked tracks must always be refreshed to keep user_data.saved_tracks in sync.
+                let cache_miss = uri != USER_LIKED_TRACKS_URI
+                    && !state.data.read().caches.context.contains_key(&uri);
+                let is_liked = uri == USER_LIKED_TRACKS_URI;
+                if cache_miss || is_liked {
+                    let ctx = match context {
                         ContextId::Playlist(playlist_id) => {
                             self.playlist_context(playlist_id).await?
                         }
                         ContextId::Album(album_id) => self.album_context(album_id).await?,
                         ContextId::Artist(artist_id) => self.artist_context(artist_id).await?,
-                        ContextId::Tracks(_) => {
-                            anyhow::bail!(
-                                "`GetContext` request for `tracks` context is not supported!"
-                            );
-                        }
+                        ContextId::Tracks(tracks_id) => match tracks_id.uri.as_str() {
+                            USER_TOP_TRACKS_URI => Context::Tracks {
+                                tracks: self.current_user_top_tracks().await?,
+                                desc: "User's top tracks".to_string(),
+                            },
+                            USER_RECENTLY_PLAYED_TRACKS_URI => Context::Tracks {
+                                tracks: self.current_user_recently_played_tracks().await?,
+                                desc: "User's recently played tracks".to_string(),
+                            },
+                            USER_LIKED_TRACKS_URI => {
+                                let tracks = self.current_user_saved_tracks().await?;
+                                let tracks_hm = tracks
+                                    .iter()
+                                    .map(|t| (t.id.uri(), t.clone()))
+                                    .collect::<HashMap<_, _>>();
+                                store_data_into_file_cache(
+                                    FileCacheKey::SavedTracks,
+                                    &config::get_config().cache_folder,
+                                    &tracks_hm,
+                                )
+                                .context("store user's saved tracks into the cache folder")?;
+                                state.data.write().user_data.saved_tracks = tracks_hm;
+                                Context::Tracks {
+                                    tracks,
+                                    desc: "User's liked tracks".to_string(),
+                                }
+                            }
+                            u if u.starts_with("radio:") => Context::Tracks {
+                                tracks: self.radio_tracks(u["radio:".len()..].to_string()).await?,
+                                desc: tracks_id.kind.clone(),
+                            },
+                            uri => anyhow::bail!("unsupported Tracks context: {uri}"),
+                        },
                         ContextId::Show(show_id) => self.show_context(show_id).await?,
                     };
 
@@ -561,7 +541,7 @@ impl AppClient {
                         .write()
                         .caches
                         .context
-                        .insert(uri, context, *TTL_CACHE_DURATION);
+                        .insert(uri, ctx, *TTL_CACHE_DURATION);
                 }
             }
             ClientRequest::Search(query) => {
@@ -576,24 +556,7 @@ impl AppClient {
                         .insert(query, results, *TTL_CACHE_DURATION);
                 }
             }
-            ClientRequest::GetRadioTracks {
-                seed_uri: uri,
-                seed_name: name,
-            } => {
-                let radio_uri = format!("radio:{uri}");
-                if !state.data.read().caches.context.contains_key(&radio_uri) {
-                    let tracks = self.radio_tracks(uri).await?;
 
-                    state.data.write().caches.context.insert(
-                        radio_uri,
-                        Context::Tracks {
-                            tracks,
-                            desc: format!("{name} Radio"),
-                        },
-                        *TTL_CACHE_DURATION,
-                    );
-                }
-            }
             ClientRequest::AddPlayableToQueue(playable_id) => {
                 self.add_item_to_queue(playable_id, None).await?;
             }

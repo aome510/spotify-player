@@ -12,7 +12,7 @@ use crate::{
         Focusable, Id, Item, ItemId, LibraryFocusState, LibraryPageUIState, PageState, PageType,
         PlayableId, Playback, PlaylistCreateCurrentField, PlaylistFolderItem, PlaylistId,
         PlaylistPopupAction, PopupState, SearchFocusState, SearchPageUIState, SharedState, ShowId,
-        Track, TrackId, TrackOrder, UIStateGuard, USER_LIKED_TRACKS_ID,
+        Track, TrackId, TrackOrder, TracksId, UIStateGuard, USER_LIKED_TRACKS_ID,
         USER_RECENTLY_PLAYED_TRACKS_ID, USER_TOP_TRACKS_ID,
     },
     ui::{single_line_input::LineInput, Orientation},
@@ -261,13 +261,7 @@ pub fn handle_action_in_context(
                 Ok(true)
             }
             Action::GoToRadio => {
-                let uri = track.id.uri();
-                let name = track.name;
-                ui.new_radio_page(&uri);
-                client_pub.send(ClientRequest::GetRadioTracks {
-                    seed_uri: uri,
-                    seed_name: name,
-                })?;
+                handle_go_to_radio(&track.id.uri(), &track.name, ui, client_pub)?;
                 Ok(true)
             }
             Action::ShowActionsOnArtist => {
@@ -310,13 +304,7 @@ pub fn handle_action_in_context(
                 Ok(true)
             }
             Action::GoToRadio => {
-                let uri = album.id.uri();
-                let name = album.name;
-                ui.new_radio_page(&uri);
-                client_pub.send(ClientRequest::GetRadioTracks {
-                    seed_uri: uri,
-                    seed_name: name,
-                })?;
+                handle_go_to_radio(&album.id.uri(), &album.name, ui, client_pub)?;
                 Ok(true)
             }
             Action::ShowActionsOnArtist => {
@@ -364,13 +352,7 @@ pub fn handle_action_in_context(
                 Ok(true)
             }
             Action::GoToRadio => {
-                let uri = artist.id.uri();
-                let name = artist.name;
-                ui.new_radio_page(&uri);
-                client_pub.send(ClientRequest::GetRadioTracks {
-                    seed_uri: uri,
-                    seed_name: name,
-                })?;
+                handle_go_to_radio(&artist.id.uri(), &artist.name, ui, client_pub)?;
                 Ok(true)
             }
             _ => Ok(false),
@@ -382,13 +364,7 @@ pub fn handle_action_in_context(
                 Ok(true)
             }
             Action::GoToRadio => {
-                let uri = playlist.id.uri();
-                let name = playlist.name;
-                ui.new_radio_page(&uri);
-                client_pub.send(ClientRequest::GetRadioTracks {
-                    seed_uri: uri,
-                    seed_name: name,
-                })?;
+                handle_go_to_radio(&playlist.id.uri(), &playlist.name, ui, client_pub)?;
                 Ok(true)
             }
             Action::CopyLink => {
@@ -483,6 +459,22 @@ pub fn handle_action_in_context(
         // TODO: support actions for playlist folders
         ActionContext::PlaylistFolder(_) => Ok(false),
     }
+}
+
+fn handle_go_to_radio(
+    seed_uri: &str,
+    seed_name: &str,
+    ui: &mut UIStateGuard,
+    client_pub: &flume::Sender<ClientRequest>,
+) -> anyhow::Result<()> {
+    let radio_id = TracksId::new(format!("radio:{seed_uri}"), format!("{seed_name} Radio"));
+    ui.new_page(PageState::Context {
+        id: None,
+        context_page_type: ContextPageType::Browsing(ContextId::Tracks(radio_id.clone())),
+        state: None,
+    });
+    client_pub.send(ClientRequest::GetContext(ContextId::Tracks(radio_id)))?;
+    Ok(())
 }
 
 fn handle_go_to_artist(artists: Vec<Artist>, ui: &mut UIStateGuard) {
@@ -695,7 +687,9 @@ fn handle_global_command(
                 )),
                 state: None,
             });
-            client_pub.send(ClientRequest::GetUserTopTracks)?;
+            client_pub.send(ClientRequest::GetContext(ContextId::Tracks(
+                USER_TOP_TRACKS_ID.to_owned(),
+            )))?;
         }
         Command::RecentlyPlayedTrackPage => {
             ui.new_page(PageState::Context {
@@ -705,7 +699,9 @@ fn handle_global_command(
                 )),
                 state: None,
             });
-            client_pub.send(ClientRequest::GetUserRecentlyPlayedTracks)?;
+            client_pub.send(ClientRequest::GetContext(ContextId::Tracks(
+                USER_RECENTLY_PLAYED_TRACKS_ID.to_owned(),
+            )))?;
         }
         Command::LikedTrackPage => {
             ui.new_page(PageState::Context {
@@ -715,7 +711,9 @@ fn handle_global_command(
                 )),
                 state: None,
             });
-            client_pub.send(ClientRequest::GetUserSavedTracks)?;
+            client_pub.send(ClientRequest::GetContext(ContextId::Tracks(
+                USER_LIKED_TRACKS_ID.to_owned(),
+            )))?;
         }
         Command::LibraryPage => {
             ui.new_page(PageState::Library {

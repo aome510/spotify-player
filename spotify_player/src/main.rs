@@ -30,7 +30,9 @@ fn init_spotify(
     client_pub.send(client::ClientRequest::GetUserPlaylists)?;
     client_pub.send(client::ClientRequest::GetUserFollowedArtists)?;
     client_pub.send(client::ClientRequest::GetUserSavedAlbums)?;
-    client_pub.send(client::ClientRequest::GetUserSavedTracks)?;
+    client_pub.send(client::ClientRequest::GetContext(state::ContextId::Tracks(
+        state::USER_LIKED_TRACKS_ID.to_owned(),
+    )))?;
     client_pub.send(client::ClientRequest::GetUserSavedShows)?;
 
     Ok(())
