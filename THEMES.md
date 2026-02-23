@@ -38,11 +38,11 @@ For more details on theme configuration, see the [Configuration Documentation](.
 
 **Description**: 4 Catppuccin themes for spotify-player
 
-**Themes**: 
-    🌻 Latte
-    🪴 Frappé
-    🌺 Macchiato
-    🌿 Mocha
+**Themes**:
+- 🌻 Latte
+- 🪴 Frappé
+- 🌺 Macchiato
+- 🌿 Mocha
 
 ## Submit Your Theme Collection
 
