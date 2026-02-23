@@ -1,4 +1,6 @@
-use super::model::{AlbumId, ArtistId, ContextId, Device, PlaybackMetadata, PlaylistId, ShowId, TracksId};
+use super::model::{
+    AlbumId, ArtistId, ContextId, Device, PlaybackMetadata, PlaylistId, ShowId, TracksId,
+};
 
 /// Player state
 #[derive(Default, Debug)]
