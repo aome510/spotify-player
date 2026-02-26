@@ -1,3 +1,4 @@
+use crate::config;
 use crate::ui::utils::to_bidi_string;
 use crate::utils::map_join;
 use html_escape::decode_html_entities;
@@ -121,11 +122,6 @@ pub struct PlaybackMetadata {
     pub repeat_state: rspotify::model::RepeatState,
     pub shuffle_state: bool,
     pub mute_state: Option<u32>,
-    /// Indicate if fake track repeat mode is enabled.
-    /// This mode is a workaround for a librespot's [limitation] that doesn't support `track` repeat.
-    ///
-    /// [limitation]: https://github.com/librespot-org/librespot/issues/19
-    pub fake_track_repeat_state: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -259,7 +255,7 @@ impl Context {
                 tracks.len(),
                 play_time(tracks),
             ),
-            Context::Artist { ref artist, .. } => artist.name.to_string(),
+            Context::Artist { ref artist, .. } => artist.name.clone(),
             Context::Tracks { desc, tracks } => {
                 format!("{} | {} songs | {}", desc, tracks.len(), play_time(tracks))
             }
@@ -347,7 +343,11 @@ impl Track {
     /// gets the track's name, including an explicit label
     pub fn display_name(&self) -> Cow<'_, str> {
         if self.explicit {
-            Cow::Owned(format!("{} (E)", self.name))
+            Cow::Owned(format!(
+                "{} {}",
+                self.name,
+                config::get_config().app_config.explicit_icon
+            ))
         } else {
             Cow::Borrowed(self.name.as_str())
         }
@@ -735,7 +735,6 @@ impl PlaybackMetadata {
             repeat_state: p.repeat_state,
             shuffle_state: p.shuffle_state,
             mute_state: None,
-            fake_track_repeat_state: false,
         }
     }
 }

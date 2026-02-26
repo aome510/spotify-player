@@ -8,21 +8,16 @@ authors = ["Thang Pham <phamducthang1234@gmail.com>"]
 repository = "https://github.com/aome510/spotify-player/tree/master/lyric_finder"
 keywords = ["lyric", "song", "track"]
 
-[features]
-default = ["rustls-tls"]
-rustls-tls = ["reqwest/rustls-tls"]
-native-tls = ["reqwest/native-tls"]
-
 [dependencies]
-reqwest = { version = "0.12.23", features = ["json", "native-tls-alpn", "http2"], default-features = false }
-anyhow = "1.0.100"
-serde = { version = "1.0.226", features = ["derive"] }
+reqwest = { version = "0.12.28", features = ["json", "http2"], default-features = false }
+anyhow = "1.0.101"
+serde = { version = "1.0.228", features = ["derive"] }
 html5ever = "=0.27.0"
 markup5ever_rcdom = "0.3.0"
-log = "0.4.28"
+log = "0.4.29"
 
 [dev-dependencies]
-tokio = { version = "1.47.1", features = ["rt", "rt-multi-thread", "macros"] }
+tokio = { version = "1.49.0", features = ["rt", "rt-multi-thread", "macros"] }
 env_logger = { version = "0.11.8", default-features = false }
 
 [[example]]

@@ -7,7 +7,10 @@ use super::{
 };
 #[cfg(feature = "image")]
 use crate::state::ImageRenderInfo;
-use crate::ui::utils::{format_genres, to_bidi_string};
+use crate::{
+    state::Track,
+    ui::utils::{format_genres, to_bidi_string},
+};
 #[cfg(feature = "image")]
 use anyhow::{Context, Result};
 use rspotify::model::Id;
@@ -170,8 +173,7 @@ pub fn render_playback_window(
     frame.render_widget(
             Paragraph::new(
                 "No playback found. Please start a new playback.\n \
-                 Make sure there is a running Spotify device and try to connect to one using the `SwitchDevice` command.\n \
-                 You may also need to set up Spotify Connect to see available devices as in https://github.com/aome510/spotify-player#spotify-connect."
+                 Make sure there is a running Spotify device and try to connect to one using the `SwitchDevice` command."
             )
             .wrap(Wrap { trim: true }),
             rect,
@@ -279,12 +281,8 @@ fn construct_playback_text(
             "{track}" => match playable {
                 rspotify::model::PlayableItem::Track(track) => (
                     {
-                        let bidi_string = to_bidi_string(&track.name);
-                        if track.explicit {
-                            format!("{bidi_string} (E)")
-                        } else {
-                            bidi_string
-                        }
+                        let track = Track::try_from_full_track(track.clone()).unwrap();
+                        to_bidi_string(&track.display_name())
                     },
                     ui.theme.playback_track(),
                 ),
@@ -300,6 +298,16 @@ fn construct_playback_text(
                     ui.theme.playback_track(),
                 ),
                 rspotify::model::PlayableItem::Unknown(_) => {
+                    continue;
+                }
+            },
+            "{track_number}" => match playable {
+                rspotify::model::PlayableItem::Track(track) => (
+                    { to_bidi_string(&track.track_number.to_string()) },
+                    ui.theme.playback_track(),
+                ),
+                rspotify::model::PlayableItem::Episode(_)
+                | rspotify::model::PlayableItem::Unknown(_) => {
                     continue;
                 }
             },
@@ -343,11 +351,7 @@ fn construct_playback_text(
                 }
             },
             "{metadata}" => {
-                let repeat_value = if playback.fake_track_repeat_state {
-                    "track (fake)".to_string()
-                } else {
-                    <&'static str>::from(playback.repeat_state).to_string()
-                };
+                let repeat_value = <&'static str>::from(playback.repeat_state).to_string();
 
                 let volume_value = if let Some(volume) = playback.mute_state {
                     format!("{volume}% (muted)")
@@ -434,23 +438,6 @@ fn render_playback_progress_bar(
 
 #[cfg(feature = "image")]
 fn render_playback_cover_image(state: &SharedState, ui: &mut UIStateGuard) -> Result<()> {
-    fn remove_temp_files() -> Result<()> {
-        // Clean up temp files created by `viuer`'s kitty printer to avoid
-        // possible freeze because of too many temp files in the temp folder.
-        // Context: https://github.com/aome510/spotify-player/issues/148
-        let tmp_dir = std::env::temp_dir();
-        for path in (std::fs::read_dir(tmp_dir)?).flatten() {
-            let path = path.path();
-            if path.display().to_string().contains(".tmp.viuer") {
-                std::fs::remove_file(path)?;
-            }
-        }
-
-        Ok(())
-    }
-
-    remove_temp_files().context("remove temp files")?;
-
     let data = state.data.read();
     if let Some(image) = data.caches.images.get(&ui.last_cover_image_render_info.url) {
         let rect = ui.last_cover_image_render_info.render_area;

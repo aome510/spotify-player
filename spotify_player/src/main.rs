@@ -30,7 +30,9 @@ fn init_spotify(
     client_pub.send(client::ClientRequest::GetUserPlaylists)?;
     client_pub.send(client::ClientRequest::GetUserFollowedArtists)?;
     client_pub.send(client::ClientRequest::GetUserSavedAlbums)?;
-    client_pub.send(client::ClientRequest::GetUserSavedTracks)?;
+    client_pub.send(client::ClientRequest::GetContext(state::ContextId::Tracks(
+        state::USER_LIKED_TRACKS_ID.to_owned(),
+    )))?;
     client_pub.send(client::ClientRequest::GetUserSavedShows)?;
 
     Ok(())
@@ -79,8 +81,6 @@ fn init_logging(log_folder: &std::path::Path) -> Result<()> {
 
 #[tokio::main]
 async fn start_app(state: &state::SharedState) -> Result<()> {
-    let configs = config::get_config();
-
     if !state.is_daemon {
         #[cfg(feature = "image")]
         {
@@ -105,6 +105,7 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
             std::env::set_var("PULSE_PROP_application.icon_name", "spotify");
         }
         if std::env::var("PULSE_PROP_stream.description").is_err() {
+            let configs = config::get_config();
             std::env::set_var(
                 "PULSE_PROP_stream.description",
                 format!(
@@ -133,76 +134,68 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
     // initialize Spotify-related stuff
     init_spotify(&client_pub, &client, state).context("Failed to initialize the Spotify data")?;
 
-    // Spawn application's tasks
-    let mut tasks = Vec::new();
-
     // client socket task (for handling CLI commands)
-    tasks.push(tokio::task::spawn({
+    tokio::task::spawn({
         let client = client.clone();
         let state = state.clone();
         async move {
-            let port = configs.app_config.client_port;
-            tracing::info!("Starting a client socket at 127.0.0.1:{port}");
-            match tokio::net::UdpSocket::bind(("127.0.0.1", port)).await {
-                Ok(socket) => cli::start_socket(client, socket, Some(state)).await,
-                Err(err) => {
-                    tracing::warn!(
-                        "Failed to create a client socket for handling CLI commands: {err:#}"
-                    );
-                }
-            }
+            cli::start_socket(&client, Some(&state), None).await;
         }
-    }));
+    });
 
     // client event handler task
-    tasks.push(tokio::task::spawn({
+    tokio::task::spawn({
         let state = state.clone();
         async move {
-            client::start_client_handler(state, client, client_sub).await;
+            client::start_client_handler(&state, &client, &client_sub).await;
         }
-    }));
+    });
 
     // player event watcher task
-    tasks.push(tokio::task::spawn({
-        let state = state.clone();
-        let client_pub = client_pub.clone();
-        async move {
-            client::start_player_event_watchers(state, client_pub).await;
-        }
-    }));
+    std::thread::Builder::new()
+        .name("player-event-watcher".to_string())
+        .spawn({
+            let state = state.clone();
+            let client_pub = client_pub.clone();
+            move || {
+                client::start_player_event_watcher(&state, &client_pub);
+            }
+        })?;
 
     if !state.is_daemon {
-        // spawn tasks needed for running the application UI
-
         // terminal event handler task
-        tokio::task::spawn_blocking({
-            let client_pub = client_pub.clone();
-            let state = state.clone();
-            move || {
-                event::start_event_handler(&state, &client_pub);
-            }
-        });
+        std::thread::Builder::new()
+            .name("terminal-event-handler".to_string())
+            .spawn({
+                let client_pub = client_pub.clone();
+                let state = state.clone();
+                move || {
+                    event::start_event_handler(&state, &client_pub);
+                }
+            })?;
 
         // application UI task
-        tokio::task::spawn_blocking({
+        std::thread::Builder::new().name("ui".to_string()).spawn({
             let state = state.clone();
             move || ui::run(&state)
-        });
+        })?;
     }
 
     #[cfg(feature = "media-control")]
-    if configs.app_config.enable_media_control {
+    if config::get_config().app_config.enable_media_control {
         // media control task
-        tokio::task::spawn_blocking({
-            let state = state.clone();
-            move || {
-                if let Err(err) = media_control::start_event_watcher(&state, client_pub) {
-                    tracing::error!(
-                        "Failed to start the application's media control event watcher: err={err:#?}"
-                    );
+        std::thread::Builder::new()
+            .name("media-control".to_string())
+            .spawn({
+                let state = state.clone();
+                move || {
+                    if let Err(err) = media_control::start_event_watcher(&state, client_pub) {
+                        tracing::error!(
+                            "Failed to start the application's media control event watcher: err={err:#?}"
+                        );
+                    }
                 }
-            }
-        });
+            })?;
 
         // the winit's event loop must be run in the main thread
         #[cfg(any(target_os = "macos", target_os = "windows"))]
@@ -218,11 +211,10 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
         }
     }
 
-    for task in tasks {
-        task.await?;
+    // infinite loop to keep the main thread alive
+    loop {
+        std::thread::sleep(std::time::Duration::from_secs(1));
     }
-
-    Ok(())
 }
 
 fn main() -> Result<()> {

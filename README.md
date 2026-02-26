@@ -28,7 +28,7 @@
 **Features**
 
 - Minimalist UI with an intuitive paging and popup system.
-- Highly [configurable](docs/config.md)
+- Highly [configurable](https://github.com/aome510/spotify-player/blob/master/docs/config.md)
 - Feature parity with the official Spotify application.
 - Support remote control with [Spotify Connect](#spotify-connect).
 - Support [streaming](#streaming) songs directly from the terminal.
@@ -43,7 +43,7 @@
 
 A demo of `spotify_player` `v0.5.0-pre-release` on [youtube](https://www.youtube.com/watch/Jbfe9GLNWbA) or on [asciicast](https://asciinema.org/a/446913):
 
-Checkout [examples/README.md](./examples/README.md) for more examples.
+Checkout [examples/README.md](https://github.com/aome510/spotify-player/blob/master/examples/README.md) for more examples.
 
 ## Installation
 
@@ -63,7 +63,6 @@ A Spotify Premium account is **required**.
 
 - [Rust and cargo](https://www.rust-lang.org/tools/install) as the build dependencies
 - install `openssl`, `alsa-lib` (`streaming` feature), `libdbus` (`media-control` feature).
-
   - For example, on Debian based systems, run the below command to install application's dependencies:
 
     ```shell
@@ -98,27 +97,47 @@ Run `scoop install spotify-player` to install the application.
 
 ### Cargo
 
-Run `cargo install spotify_player --locked` to install the application from [crates.io](https://crates.io/crates/spotify_player).
+Install via Cargo:
+
+```
+cargo install spotify_player --locked
+```
 
 ### Arch Linux
 
-Run `pacman -S spotify-player` to install the application.
+Install via Arch Linux:
 
-**Note**: Defaults to PulseAudio / Pipewire audio backend. For a different one, please consider modifying the [official PKGBUILD](https://gitlab.archlinux.org/archlinux/packaging/packages/spotify-player) and rebuilding it manually. See [Audio Backends](#audio-backend) for a list of options.
+```
+pacman -S spotify-player
+```
+
+**Note**: Defaults to PulseAudio/Pipewire. For a different backend, modify the [official PKGBUILD](https://gitlab.archlinux.org/archlinux/packaging/packages/spotify-player) and rebuild manually. See [Audio Backends](#audio-backend).
 
 ### Void Linux
 
-Run `xbps-install -S spotify-player` to install the application.
+Install via Void Linux:
+
+```
+xbps-install -S spotify-player
+```
 
 ### FreeBSD
 
-Run `pkg install spotify-player` to install the `spotify_player` binary from FreeBSD ports.
+Install via FreeBSD:
+
+```
+pkg install spotify-player
+```
 
 ### NetBSD
 
-Using the package manager, run `pkgin install spotify-player` to install from the official repositories.
+Install via NetBSD:
 
-Building from source,
+```
+pkgin install spotify-player
+```
+
+Build from source on NetBSD:
 
 ```
 cd /usr/pkgsrc/audio/spotify-player
@@ -127,29 +146,31 @@ make install
 
 ### NixOS
 
-[spotify-player](https://search.nixos.org/packages?channel=unstable&show=spotify-player&from=0&size=50&sort=relevance&type=packages&query=spotify-player) is available as a Nix package and can be installed via `nix-shell -p spotify-player` or as part of your system configuration.
+[spotify-player](https://search.nixos.org/packages?channel=unstable&show=spotify-player&from=0&size=50&sort=relevance&type=packages&query=spotify-player) is available as a Nix package. Install via:
 
-If you want to build the source locally you can run `nix-shell` in the root of a checkout of the source code. The provided `shell.nix` file will install the build prerequisites.
+```
+nix-shell -p spotify-player
+```
+
+To build from source locally, run `nix-shell` in the root of the source checkout. The provided `shell.nix` will install prerequisites.
 
 ### Docker
 
-**Note**: [streaming](#streaming) feature is disabled when using the docker image.
+**Note**: The streaming feature is disabled in the Docker image.
 
-You can download the binary image of the latest build from the `master` branch by running
+Download the latest Docker image:
 
 ```
 docker pull aome510/spotify_player:latest
 ```
 
-then run
+Run the Docker container:
 
 ```
 docker run --rm -it aome510/spotify_player:latest
 ```
 
-to run the application.
-
-You can also use your local config folder to configure the application or your local cache folder to store the application's cache data when running the docker image:
+To use your local config and cache folders:
 
 ```
 docker run --rm \
@@ -162,23 +183,17 @@ docker run --rm \
 
 ### Spotify Connect
 
-To enable a full [Spotify connect](https://www.spotify.com/us/connect/) support, users will need to enable a _"user-provided client integration"_.
-
-This integration can be done by following [this documentation](https://developer.spotify.com/documentation/general/guides/authorization/app-settings/) to register a Spotify app and then specifying the app's `client_id` in the [general configuration file](docs/config.md#general). **NOTE**: please make sure that you specify `http://127.0.0.1:8989/login` (default value of `login_redirect_uri` config option) in the **Redirect URI** section when creating the app.
-
-Upon running `spotify_player` with a user-provided `client_id`, user will be prompted to authenticate the app described earlier. **NOTE** that this prompt is different from the prompt to authenticate `spotify_player`. Upon accepting the authentication request, `spotify_player` will retrieve an access token of the app to finish setting up the integration.
-
-After the user-provided client is successfully integrated, press **D** (default shortcut for `SwitchDevice` command) to get the list of available devices, then press **enter** (default shortcut for `ChooseSelected` command) to connect to the selected device.
+Control Spotify remotely with [Spotify Connect](https://support.spotify.com/us/article/spotify-connect/). Press **D** to list devices, then **enter** to connect.
 
 ### Streaming
 
-`spotify_player` supports streaming, which needs to be built/installed with `streaming` feature (**enabled** by default) **and** with an audio backend (`rodio-backend` by default). The streaming feature allows to `spotify_player` to play music directly from terminal.
+Stream music directly from the terminal. The streaming feature is enabled by default and uses the `rodio-backend` audio backend unless otherwise specified.
 
-The application uses [librespot](https://github.com/librespot-org/librespot) library to create an integrated Spotify client while running. The integrated client will register a Spotify speaker device under the `spotify-player` name, which is accessible on the [Spotify connect](#spotify-connect) device list.
+The app uses [librespot](https://github.com/librespot-org/librespot) to create an integrated Spotify client, registering a `spotify-player` device accessible via Spotify Connect.
 
 #### Audio backend
 
-`spotify_player` uses [rodio](https://github.com/RustAudio/rodio) as the default [audio backend](https://github.com/librespot-org/librespot/wiki/Audio-Backends). List of available audio backends:
+Default audio backend is [rodio](https://github.com/RustAudio/rodio). Available backends:
 
 - `alsa-backend`
 - `pulseaudio-backend`
@@ -189,18 +204,18 @@ The application uses [librespot](https://github.com/librespot-org/librespot) lib
 - `sdl-backend`
 - `gstreamer-backend`
 
-User can change the audio backend when building/installing the application by specifying the `--features` option. For example, to install `spotify_player` with `pulseaudio-backend`, run
+To use a different audio backend, specify the `--features` option when building. For example:
 
 ```shell
 cargo install spotify_player --no-default-features --features pulseaudio-backend
 ```
 
-**Note**:
+**Notes**:
 
-- needs to specify `--no-default-features` here because `rodio-backend` is one of the default features.
-- user will need to install additional dependencies depending on the selected audio backend. More details can be found in the [Librespot documentation](https://github.com/librespot-org/librespot/wiki/Compiling#general-dependencies).
+- Use `--no-default-features` to disable the default `rodio-backend`.
+- Additional dependencies may be required for some backends. See [Librespot documentation](https://github.com/librespot-org/librespot/wiki/Compiling#general-dependencies).
 
-The `streaming` feature can be also disabled upon installing by running
+To disable streaming, build with:
 
 ```shell
 cargo install spotify_player --no-default-features
@@ -208,21 +223,21 @@ cargo install spotify_player --no-default-features
 
 ### Media Control
 
-To enable media control support, `spotify_player` needs to be built/installed with `media-control` feature (**enabled** by default) and set the `enable_media_control` config option to `true` in the [general configuration file](docs/config.md#media-control).
+Media control is enabled by default. Set `enable_media_control` to `true` in your config to use it. See [config docs](https://github.com/aome510/spotify-player/blob/master/docs/config.md#media-control).
 
-Media control support is implemented using [MPRIS DBus](https://wiki.archlinux.org/title/MPRIS) on Linux and OS window event listener on Windows and MacOS.
+Media control uses [MPRIS DBus](https://wiki.archlinux.org/title/MPRIS) on Linux and OS window events on Windows and macOS.
 
 ### Image
 
-To enable image rendering support, `spotify_player` needs to be built/installed with `image` feature (**disabled** by default). To install the application with `image` feature included, run:
+To enable image rendering, build with the `image` feature (disabled by default):
 
 ```shell
 cargo install spotify_player --features image
 ```
 
-`spotify_player` supports rendering image in a full resolution if the application is run on either [Kitty](https://sw.kovidgoyal.net/kitty/graphics-protocol/) or [iTerm2](https://iterm2.com/documentation-images.html). Otherwise, the image will be displayed as [block characters](https://en.wikipedia.org/wiki/Block_Elements).
+Full-resolution images are supported in [Kitty](https://sw.kovidgoyal.net/kitty/graphics-protocol/) and [iTerm2](https://iterm2.com/documentation-images.html). Other terminals display images as [block characters](https://en.wikipedia.org/wiki/Block_Elements).
 
-`spotify_player` also supports rendering images with `sixel` behind `sixel` feature flag, which also enables `image` feature:
+To use sixel graphics, build with the `sixel` feature (also enables `image`):
 
 ```shell
 cargo install spotify_player --features sixel
@@ -230,10 +245,10 @@ cargo install spotify_player --features sixel
 
 **Notes**:
 
-- Not all terminals supported by [libsixel](https://github.com/saitoha/libsixel) are supported by `spotify_player` as it relies on a [third-party library](https://github.com/atanunq/viuer) for image rendering. A possible list of supported terminals can be found in [here](https://github.com/atanunq/viuer/blob/dc81f44a97727e04be0b000712e9233c92116ff8/src/printer/sixel.rs#L83-L95).
-- Images rendered by `sixel` can have a _weird_ scale. It's recommended to tweak the `cover_img_scale` config option to get the best result as the scaling works differently with different terminals and fonts.
+- Not all terminals supported by [libsixel](https://github.com/saitoha/libsixel) are supported by `spotify_player` (see [viuer supported terminals](https://github.com/atanunq/viuer/blob/dc81f44a97727e04be0b000712e9233c92116ff8/src/printer/sixel.rs#L83-L95)).
+- Sixel images may scale oddly; adjust `cover_img_scale` for best results.
 
-Examples of image rendering:
+Image rendering examples:
 
 - iTerm2:
 
@@ -253,49 +268,49 @@ Examples of image rendering:
 
 #### Pixelate
 
-If your terminal supports high-res images, but you like the pixelated look you can enable the `pixelate` feature, which also enables the `image` feature:
+For a pixelated look, enable the `pixelate` feature (also enables `image`):
 
 ```shell
 cargo install spotify_player --features pixelate
 ```
 
-The amount of pixels can be tweaked via the `cover_img_pixels` config option.
+Adjust the pixelation with the `cover_img_pixels` config option.
 
 | `cover_img_pixels` | `8`                                                                                                                 | `16`                                                                                                                  | `32`                                                                                                                  | `64`                                                                                                                  |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
 | example            | <img width="100" alt="8x8" src="https://github.com/user-attachments/assets/4137aaea-ce28-4019-8cd5-2d14327e72e4" /> | <img width="100" alt="16x16" src="https://github.com/user-attachments/assets/0ca94748-093a-468c-8fb3-1f5639666eb6" /> | <img width="100" alt="32x32" src="https://github.com/user-attachments/assets/f5d0f2da-0439-47e4-91c9-3a2aa73ac90c" /> | <img width="100" alt="64x64" src="https://github.com/user-attachments/assets/d06ef731-38fa-424d-9672-313f56c193d0" /> |
 
-To temporarily disable the `pixelate` feature just set `cover_img_pixels` to a high value like `512`.
+To temporarily disable pixelation, set `cover_img_pixels` to a high value (e.g., `512`).
 
 ### Notify
 
-To enable desktop notification support, `spotify_player` needs to be built/installed with `notify` feature (**disabled** by default). To install the application with `notify` feature included, run:
+To enable desktop notifications, build with the `notify` feature (disabled by default):
 
 ```shell
 cargo install spotify_player --features notify
 ```
 
-**Note**: the notification support in `MacOS` and `Windows` are quite restricted compared to `Linux`.
+**Note**: Notification support is limited on macOS and Windows compared to Linux.
 
 ### Mouse support
 
-Currently, the only supported use case for mouse is to seek to a position of the current playback by left-clicking to such position in the playback's progress bar.
+Mouse support: You can seek to a position in the playback by left-clicking the progress bar.
 
 ### Daemon
 
-To enable a [daemon](<https://en.wikipedia.org/wiki/Daemon_(computing)>) support, `spotify_player` needs to be built/installed with `daemon` feature (**disabled** by default). To install the application with `daemon` feature included, run:
+To enable daemon mode, build with the `daemon` feature (disabled by default):
 
 ```shell
 cargo install spotify_player --features daemon
 ```
 
-You can run the application as a daemon by specifying the `-d` or `--daemon` option: `spotify_player -d`.
+Run as a daemon with `-d` or `--daemon`: `spotify_player -d`.
 
 **Notes**:
 
-- `daemon` feature is not supported on Windows
-- `daemon` feature requires the `streaming` feature to be enabled and the application to be built with [an audio backend](#audio-backend)
-- because of the OS's restrictions, `daemon` feature doesn't work with the `media-control` feature on MacOS, which is **enabled by default**. In other words, if you want to use the `daemon` feature on MacOS, you must install the application with `media-control` feature **disabled**:
+- Daemon mode is not supported on Windows.
+- Daemon mode requires streaming and an audio backend.
+- On macOS, daemon mode does not work with media control (enabled by default). To use daemon mode on macOS, disable media control:
 
   ```shell
   cargo install spotify_player --no-default-features --features daemon,rodio-backend
@@ -303,11 +318,11 @@ You can run the application as a daemon by specifying the `-d` or `--daemon` opt
 
 ### Fuzzy search
 
-To enable [fuzzy search](https://en.wikipedia.org/wiki/Approximate_string_matching) support, `spotify_player` needs to be built/installed with `fzf` feature (**disabled** by default).
+To enable [fuzzy search](https://en.wikipedia.org/wiki/Approximate_string_matching), build with the `fzf` feature (disabled by default).
 
 ### CLI Commands
 
-`spotify_player` offers several CLI commands to interact with Spotify:
+`spotify_player` provides several CLI commands for interacting with Spotify:
 
 - `get`: Get Spotify data (playlist/album/artist data, user's data, etc)
 - `playback`: Interact with the playback (start a playback, play-pause, next, etc)
@@ -317,19 +332,18 @@ To enable [fuzzy search](https://en.wikipedia.org/wiki/Approximate_string_matchi
 - `authenticate`: Authenticate the application
 - `playlist`: Playlist editing (new, delete, import, fork, etc)
 
-For more details, run `spotify_player -h` or `spotify_player {command} -h`, in which `{command}` is a CLI command.
+For more details, run `spotify_player -h` or `spotify_player {command} -h`.
 
 **Notes**
 
-- When using the CLI for the first time, you'll need to run `spotify_player authenticate` to authenticate the application beforehand.
-- Under the hood, CLI command is handled by sending requests to a `spotify_player` client socket running on port `client_port`, [a general application configuration](https://github.com/aome510/spotify-player/blob/master/docs/config.md#general) with a default value of `8080`. If there is no running application's instance, a new client will be created upon handling the CLI commands, which increases the latency of the command.
+- On first use, run `spotify_player authenticate` to authenticate the app.
+- CLI commands communicate with a client socket on port `client_port` (default: `8080`). If no instance is running, a new client is started, which may increase latency.
 
 #### Scripting
 
-The `spotify_player` command-line interface makes scripting easy.
-With the `search` subcommand, you can search Spotify and retrieve data in JSON format, enabling queries with tools like [jq](https://jqlang.github.io/jq/).
+The command-line interface is script-friendly. Use the `search` subcommand to retrieve Spotify data in JSON format, which can be processed with tools like [jq](https://jqlang.github.io/jq/).
 
-Here’s an example of starting playback for the first track from a search query:
+Example: Start playback for the first track from a search query:
 
 ```sh
 read -p "Search spotify: " query
@@ -338,13 +352,13 @@ spotify_player playback start track --id $(spotify_player search "$query" | jq '
 
 ## Commands
 
-To go to the shortcut help page, press `?` or `C-h` (default shortcuts for `OpenCommandHelp` command).
+Press `?` or `C-h` to open the shortcut help page (default for `OpenCommandHelp`).
 
 **Tips**:
 
-- you can search in the shortcut help page (and some other pages) using `Search` command
-- `RefreshPlayback` can be used to manually update the playback status.
-- `RestartIntegratedClient` is useful when user wants to switch to another audio device (headphone, earphone, etc) without restarting the application, as the integrated client will be re-initialized with the new device.
+- Use the `Search` command to search in the shortcut help page and other pages.
+- `RefreshPlayback` manually updates playback status.
+- `RestartIntegratedClient` is useful for switching audio devices without restarting the app.
 
 List of supported commands:
 
@@ -355,10 +369,10 @@ List of supported commands:
 | `ResumePause`                   | resume/pause based on the current playback                                                         | `space`            |
 | `PlayRandom`                    | play a random track in the current context                                                         | `.`                |
 | `Repeat`                        | cycle the repeat mode                                                                              | `C-r`              |
-| `ToggleFakeTrackRepeatMode`     | toggle fake track repeat mode                                                                      | `M-r`              |
 | `Shuffle`                       | toggle the shuffle mode                                                                            | `C-s`              |
 | `VolumeChange`                  | change playback volume by an offset (default shortcuts use 5%)                                     | `+`, `-`           |
 | `Mute`                          | toggle playback volume between 0% and previous level                                               | `_`                |
+| `SeekStart`                     | seek start of current track                                                                        | `^`                |
 | `SeekForward`                   | seek forward by a duration in seconds (defaults to `seek_duration_secs`)                           | `>`                |
 | `SeekBackward`                  | seek backward by a duration in seconds (defaults to `seek_duration_secs`)                          | `<`                |
 | `Quit`                          | quit the application                                                                               | `C-c`, `q`         |
@@ -374,6 +388,7 @@ List of supported commands:
 | `RestartIntegratedClient`       | restart the integrated client (`streaming` feature only)                                           | `R`                |
 | `ShowActionsOnSelectedItem`     | open a popup showing actions on a selected item                                                    | `g a`, `C-space`   |
 | `ShowActionsOnCurrentTrack`     | open a popup showing actions on the current track                                                  | `a`                |
+| `ShowActionsOnCurrentContext`   | open a popup showing actions on the current context                                                | `A`                |
 | `AddSelectedItemToQueue`        | add the selected item to queue                                                                     | `Z`, `C-z`         |
 | `FocusNextWindow`               | focus the next focusable window (if any)                                                           | `tab`              |
 | `FocusPreviousWindow`           | focus the previous focusable window (if any)                                                       | `backtab`          |
@@ -409,11 +424,11 @@ List of supported commands:
 | `JumpToCurrentTrackInContext`   | jump to the current track in the context                                                           | `g c`              |
 | `JumpToHighlightTrackInContext` | jump to the currently highlighted search result in the context                                     | `C-g`              |
 
-To add new shortcuts or modify the default shortcuts, please refer to the [keymaps section](docs/config.md#keymaps) in the configuration documentation.
+To add or modify shortcuts, see the [keymaps section](https://github.com/aome510/spotify-player/blob/master/docs/config.md#keymaps).
 
 ### Actions
 
-A general list of actions is available; however, not all Spotify items (track, album, artist, or playlist) implement each action. To get the list of available actions on an item, call the `ShowActionsOnCurrentTrack` command or the `ShowActionsOnSelectedItem` command, then press enter (default binding for the `ChooseSelected` command) to initiate the selected action. Some actions may not appear in the popup but can be bound to a shortcut.
+Not all actions are available for every Spotify item. To see available actions, use `ShowActionsOnCurrentTrack` or `ShowActionsOnSelectedItem`, then press enter to trigger the action. Some actions may not appear in the popup but can be bound to shortcuts.
 
 List of available actions:
 
@@ -435,32 +450,32 @@ List of available actions:
 - `Follow`
 - `Unfollow`
 
-These actions can also be bound to a shortcut. To add new shortcuts, please refer to the [actions section](docs/config.md#actions) in the configuration documentation.
+Actions can also be bound to shortcuts. To add new shortcuts, see the [actions section](https://github.com/aome510/spotify-player/blob/master/docs/config.md#actions).
 
 ### Search Page
 
-When first entering the search page, the application focuses on the search input. User can then input text, delete one character backward using `backspace`, or search the text using `enter`.
+When entering the search page, focus is on the search input. Enter text, use `backspace` to delete, and `enter` to search.
 
-To move the focus from the search input to the other windows such as track results, album results, etc, use `FocusNextWindow` or `FocusPreviousWindow`.
+To move focus from the search input to other windows (track results, album results, etc.), use `FocusNextWindow` or `FocusPreviousWindow`.
 
 ## Configurations
 
-By default, `spotify_player` will look into `$HOME/.config/spotify-player` for application's configuration files. This can be changed by either specifying `-c <FOLDER_PATH>` or `--config-folder <FOLDER_PATH>` option.
+By default, configuration files are located in `$HOME/.config/spotify-player`. Change this with `-c <FOLDER_PATH>` or `--config-folder <FOLDER_PATH>`.
 
-If an application configuration file is not found, one will be created with default values.
+If no configuration file is found, one will be created with default values.
 
-Please refer to [the configuration documentation](docs/config.md) for more details on the configuration options.
+See [configuration documentation](https://github.com/aome510/spotify-player/blob/master/docs/config.md) for details on available options.
 
 ## Caches
 
-By default, `spotify_player` will look into `$HOME/.cache/spotify-player` for application's cache files, which include log files, Spotify's authorization credentials, audio cache files, etc. This can be changed by either specifying `-C <FOLDER_PATH>` or `--cache-folder <FOLDER_PATH>` option.
+By default, cache files are stored in `$HOME/.cache/spotify-player` (logs, credentials, audio cache, etc.). Change this with `-C <FOLDER_PATH>` or `--cache-folder <FOLDER_PATH>`.
 
 ### Logging
 
-The application stores logs inside the `$APP_CACHE_FOLDER/spotify-player-*.log` file. For debugging or submitting an issue, user can also refer to the backtrace file in `$APP_CACHE_FOLDER/spotify-player-*.backtrace`, which includes the application's backtrace in case of panics/unexpected errors.
+Logs are stored in `$APP_CACHE_FOLDER/spotify-player-*.log`. For debugging or issues, check the backtrace file in `$APP_CACHE_FOLDER/spotify-player-*.backtrace`.
 
-`spotify_player` uses `RUST_LOG` environment variable to define the application's [logging level](https://docs.rs/log/0.4.14/log/enum.Level.html). `RUST_LOG` is default to be `spotify_player=INFO`, which only shows the application's logs.
+Set the `RUST_LOG` environment variable to control [logging level](https://docs.rs/log/0.4.14/log/enum.Level.html). Default is `spotify_player=INFO`.
 
 ## Acknowledgement
 
-`spotify_player` is written in [Rust](https://www.rust-lang.org) and is built on top of awesome libraries such as [ratatui](https://github.com/ratatui/ratatui), [rspotify](https://github.com/ramsayleung/rspotify), [librespot](https://github.com/librespot-org/librespot), and [many more](spotify_player/Cargo.toml). It's highly inspired by [spotify-tui](https://github.com/Rigellute/spotify-tui) and [ncspot](https://github.com/hrkfdn/ncspot).
+`spotify_player` is written in [Rust](https://www.rust-lang.org) and built on top of libraries like [ratatui](https://github.com/ratatui/ratatui), [rspotify](https://github.com/ramsayleung/rspotify), [librespot](https://github.com/librespot-org/librespot), and more. It is inspired by [spotify-tui](https://github.com/Rigellute/spotify-tui) and [ncspot](https://github.com/hrkfdn/ncspot).

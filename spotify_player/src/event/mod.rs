@@ -12,7 +12,7 @@ use crate::{
         Focusable, Id, Item, ItemId, LibraryFocusState, LibraryPageUIState, PageState, PageType,
         PlayableId, Playback, PlaylistCreateCurrentField, PlaylistFolderItem, PlaylistId,
         PlaylistPopupAction, PopupState, SearchFocusState, SearchPageUIState, SharedState, ShowId,
-        Track, TrackId, TrackOrder, UIStateGuard, USER_LIKED_TRACKS_ID,
+        Track, TrackId, TrackOrder, TracksId, UIStateGuard, USER_LIKED_TRACKS_ID,
         USER_RECENTLY_PLAYED_TRACKS_ID, USER_TOP_TRACKS_ID,
     },
     ui::{single_line_input::LineInput, Orientation},
@@ -65,28 +65,51 @@ fn handle_mouse_event(
     client_pub: &flume::Sender<ClientRequest>,
     state: &SharedState,
 ) -> Result<()> {
-    // a left click event
-    if let crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left) = event.kind
-    {
-        tracing::debug!("Handling mouse event: {event:?}");
-        let rect = state.ui.lock().playback_progress_bar_rect;
-        if event.row == rect.y {
-            // calculate the seek position (in ms) based on the mouse click position,
-            // the progress bar's width and the track's duration (in ms)
-            let player = state.player.read();
-            let duration = match player.currently_playing() {
-                Some(rspotify::model::PlayableItem::Track(track)) => Some(track.duration),
-                Some(rspotify::model::PlayableItem::Episode(episode)) => Some(episode.duration),
-                Some(rspotify::model::PlayableItem::Unknown(_)) | None => None,
-            };
-            if let Some(duration) = duration {
-                let position_ms =
-                    (duration.num_milliseconds()) * i64::from(event.column) / i64::from(rect.width);
-                client_pub.send(ClientRequest::Player(PlayerRequest::SeekTrack(
-                    chrono::Duration::try_milliseconds(position_ms).unwrap(),
-                )))?;
+    tracing::debug!("Handling mouse event: {event:?}");
+
+    let enable_scroll = config::get_config().app_config.enable_mouse_scroll_volume;
+
+    match event.kind {
+        crossterm::event::MouseEventKind::ScrollUp if enable_scroll => {
+            let step = config::get_config().app_config.volume_scroll_step;
+            if let Some(ref playback) = state.player.read().buffered_playback {
+                if let Some(volume) = playback.volume {
+                    let new_volume = std::cmp::min(volume as u8 + step, 100);
+                    client_pub.send(ClientRequest::Player(PlayerRequest::Volume(new_volume)))?;
+                }
             }
         }
+        crossterm::event::MouseEventKind::ScrollDown if enable_scroll => {
+            let step = config::get_config().app_config.volume_scroll_step;
+            if let Some(ref playback) = state.player.read().buffered_playback {
+                if let Some(volume) = playback.volume {
+                    let new_volume = (volume as u8).saturating_sub(step);
+                    client_pub.send(ClientRequest::Player(PlayerRequest::Volume(new_volume)))?;
+                }
+            }
+        }
+        // a left click event
+        crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left) => {
+            let rect = state.ui.lock().playback_progress_bar_rect;
+            if event.row == rect.y {
+                // calculate the seek position (in ms) based on the mouse click position,
+                // the progress bar's width and the track's duration (in ms)
+                let player = state.player.read();
+                let duration = match player.currently_playing() {
+                    Some(rspotify::model::PlayableItem::Track(track)) => Some(track.duration),
+                    Some(rspotify::model::PlayableItem::Episode(episode)) => Some(episode.duration),
+                    Some(rspotify::model::PlayableItem::Unknown(_)) | None => None,
+                };
+                if let Some(duration) = duration {
+                    let position_ms = (duration.num_milliseconds()) * i64::from(event.column)
+                        / i64::from(rect.width);
+                    client_pub.send(ClientRequest::Player(PlayerRequest::SeekTrack(
+                        chrono::Duration::try_milliseconds(position_ms).unwrap(),
+                    )))?;
+                }
+            }
+        }
+        _ => {}
     }
     Ok(())
 }
@@ -238,13 +261,7 @@ pub fn handle_action_in_context(
                 Ok(true)
             }
             Action::GoToRadio => {
-                let uri = track.id.uri();
-                let name = track.name;
-                ui.new_radio_page(&uri);
-                client_pub.send(ClientRequest::GetRadioTracks {
-                    seed_uri: uri,
-                    seed_name: name,
-                })?;
+                handle_go_to_radio(&track.id.uri(), &track.name, ui, client_pub)?;
                 Ok(true)
             }
             Action::ShowActionsOnArtist => {
@@ -287,13 +304,7 @@ pub fn handle_action_in_context(
                 Ok(true)
             }
             Action::GoToRadio => {
-                let uri = album.id.uri();
-                let name = album.name;
-                ui.new_radio_page(&uri);
-                client_pub.send(ClientRequest::GetRadioTracks {
-                    seed_uri: uri,
-                    seed_name: name,
-                })?;
+                handle_go_to_radio(&album.id.uri(), &album.name, ui, client_pub)?;
                 Ok(true)
             }
             Action::ShowActionsOnArtist => {
@@ -341,13 +352,7 @@ pub fn handle_action_in_context(
                 Ok(true)
             }
             Action::GoToRadio => {
-                let uri = artist.id.uri();
-                let name = artist.name;
-                ui.new_radio_page(&uri);
-                client_pub.send(ClientRequest::GetRadioTracks {
-                    seed_uri: uri,
-                    seed_name: name,
-                })?;
+                handle_go_to_radio(&artist.id.uri(), &artist.name, ui, client_pub)?;
                 Ok(true)
             }
             _ => Ok(false),
@@ -359,13 +364,7 @@ pub fn handle_action_in_context(
                 Ok(true)
             }
             Action::GoToRadio => {
-                let uri = playlist.id.uri();
-                let name = playlist.name;
-                ui.new_radio_page(&uri);
-                client_pub.send(ClientRequest::GetRadioTracks {
-                    seed_uri: uri,
-                    seed_name: name,
-                })?;
+                handle_go_to_radio(&playlist.id.uri(), &playlist.name, ui, client_pub)?;
                 Ok(true)
             }
             Action::CopyLink => {
@@ -460,6 +459,22 @@ pub fn handle_action_in_context(
         // TODO: support actions for playlist folders
         ActionContext::PlaylistFolder(_) => Ok(false),
     }
+}
+
+fn handle_go_to_radio(
+    seed_uri: &str,
+    seed_name: &str,
+    ui: &mut UIStateGuard,
+    client_pub: &flume::Sender<ClientRequest>,
+) -> anyhow::Result<()> {
+    let radio_id = TracksId::new(format!("radio:{seed_uri}"), format!("{seed_name} Radio"));
+    ui.new_page(PageState::Context {
+        id: None,
+        context_page_type: ContextPageType::Browsing(ContextId::Tracks(radio_id.clone())),
+        state: None,
+    });
+    client_pub.send(ClientRequest::GetContext(ContextId::Tracks(radio_id)))?;
+    Ok(())
 }
 
 fn handle_go_to_artist(artists: Vec<Artist>, ui: &mut UIStateGuard) {
@@ -567,12 +582,6 @@ fn handle_global_command(
         Command::Repeat => {
             client_pub.send(ClientRequest::Player(PlayerRequest::Repeat))?;
         }
-        Command::ToggleFakeTrackRepeatMode => {
-            let mut player = state.player.write();
-            if let Some(playback) = &mut player.buffered_playback {
-                playback.fake_track_repeat_state = !playback.fake_track_repeat_state;
-            }
-        }
         Command::Shuffle => {
             client_pub.send(ClientRequest::Player(PlayerRequest::Shuffle))?;
         }
@@ -586,6 +595,11 @@ fn handle_global_command(
         }
         Command::Mute => {
             client_pub.send(ClientRequest::Player(PlayerRequest::ToggleMute))?;
+        }
+        Command::SeekStart => {
+            client_pub.send(ClientRequest::Player(PlayerRequest::SeekTrack(
+                chrono::TimeDelta::try_seconds(0).unwrap(),
+            )))?;
         }
         Command::SeekForward { duration } => {
             if let Some(progress) = state.player.read().playback_progress() {
@@ -673,7 +687,9 @@ fn handle_global_command(
                 )),
                 state: None,
             });
-            client_pub.send(ClientRequest::GetUserTopTracks)?;
+            client_pub.send(ClientRequest::GetContext(ContextId::Tracks(
+                USER_TOP_TRACKS_ID.to_owned(),
+            )))?;
         }
         Command::RecentlyPlayedTrackPage => {
             ui.new_page(PageState::Context {
@@ -683,7 +699,9 @@ fn handle_global_command(
                 )),
                 state: None,
             });
-            client_pub.send(ClientRequest::GetUserRecentlyPlayedTracks)?;
+            client_pub.send(ClientRequest::GetContext(ContextId::Tracks(
+                USER_RECENTLY_PLAYED_TRACKS_ID.to_owned(),
+            )))?;
         }
         Command::LikedTrackPage => {
             ui.new_page(PageState::Context {
@@ -693,7 +711,9 @@ fn handle_global_command(
                 )),
                 state: None,
             });
-            client_pub.send(ClientRequest::GetUserSavedTracks)?;
+            client_pub.send(ClientRequest::GetContext(ContextId::Tracks(
+                USER_LIKED_TRACKS_ID.to_owned(),
+            )))?;
         }
         Command::LibraryPage => {
             ui.new_page(PageState::Library {
@@ -733,6 +753,10 @@ fn handle_global_command(
                     // for track link, play the song
                     "track" => {
                         let id = TrackId::from_id(id)?.into_static();
+
+                        // Clear Tracks context when playing from clipboard link
+                        state.player.write().currently_playing_tracks_id = None;
+
                         client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
                             Playback::URIs(vec![id.into()], None),
                             None,

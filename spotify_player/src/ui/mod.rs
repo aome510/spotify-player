@@ -9,7 +9,7 @@ use crate::{
 };
 use anyhow::{Context as AnyhowContext, Result};
 use ratatui::{
-    layout::{Constraint, Layout, Rect},
+    layout::{Alignment, Constraint, Layout, Rect},
     style::{Modifier, Style},
     text::{Line, Span, Text},
     widgets::{

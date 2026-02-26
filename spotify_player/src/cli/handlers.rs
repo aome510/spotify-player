@@ -164,10 +164,14 @@ fn try_connect_to_client(socket: &UdpSocket, configs: &config::Configs) -> Resul
                 .context("new session")?;
 
             // create a client socket for handling CLI commands
+            // NOTE: the socket must be bound *before* spawning the thread to avoid a
+            // race condition where the caller sends a request before the socket is ready.
             let client_socket = rt.block_on(tokio::net::UdpSocket::bind(("127.0.0.1", port)))?;
 
             // spawn a thread to handle the CLI request
-            std::thread::spawn(move || rt.block_on(start_socket(client, client_socket, None)));
+            std::thread::spawn(move || {
+                rt.block_on(start_socket(&client, None, Some(client_socket)));
+            });
         } else {
             return Err(err.into());
         }
@@ -193,6 +197,10 @@ pub fn handle_cli_subcommand(cmd: &str, args: &ArgMatches) -> Result<()> {
             let mut cmd = init_cli()?;
             let name = cmd.get_name().to_string();
             generate(gen, &mut cmd, name, &mut std::io::stdout());
+            std::process::exit(0);
+        }
+        "features" => {
+            print_features();
             std::process::exit(0);
         }
         _ => {}
@@ -348,4 +356,35 @@ fn handle_playlist_subcommand(args: &ArgMatches) -> Result<Request> {
     };
 
     Ok(Request::Playlist(command))
+}
+
+macro_rules! print_feature {
+    ($feature:literal) => {
+        #[cfg(feature = $feature)]
+        println!("  ✓ {}", $feature);
+        #[cfg(not(feature = $feature))]
+        println!("  ✗ {}", $feature);
+    };
+}
+
+fn print_features() {
+    println!("Compile-time features:");
+
+    print_feature!("daemon");
+    print_feature!("streaming");
+    print_feature!("media-control");
+    print_feature!("image");
+    print_feature!("viuer");
+    print_feature!("sixel");
+    print_feature!("pixelate");
+    print_feature!("notify");
+    print_feature!("fzf");
+
+    // Audio backends
+    print_feature!("pulseaudio-backend");
+    print_feature!("alsa-backend");
+    print_feature!("rodio-backend");
+    print_feature!("jackaudio-backend");
+    print_feature!("sdl-backend");
+    print_feature!("gstreamer-backend");
 }
