@@ -327,6 +327,7 @@ To enable [fuzzy search](https://en.wikipedia.org/wiki/Approximate_string_matchi
 - `get`: Get Spotify data (playlist/album/artist data, user's data, etc)
 - `playback`: Interact with the playback (start a playback, play-pause, next, etc)
 - `search`: Search spotify
+- `open`: Open and play a Spotify item by URI or URL
 - `connect`: Connect to a Spotify device
 - `like`: Like currently playing track
 - `authenticate`: Authenticate the application
