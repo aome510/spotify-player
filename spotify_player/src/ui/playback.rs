@@ -6,7 +6,7 @@ use super::{
 #[cfg(feature = "image")]
 use crate::state::ImageRenderInfo;
 use crate::{
-    state::Track,
+    state::{Episode, Show, Track},
     ui::utils::{format_genres, to_bidi_string},
 };
 #[cfg(feature = "image")]
@@ -50,15 +50,7 @@ pub fn render_playback_window(
                             }
                         };
 
-                    let url = match item {
-                        rspotify::model::PlayableItem::Track(track) => {
-                            crate::utils::get_track_album_image_url(track).map(String::from)
-                        }
-                        rspotify::model::PlayableItem::Episode(episode) => {
-                            crate::utils::get_episode_show_image_url(episode).map(String::from)
-                        }
-                        rspotify::model::PlayableItem::Unknown(_) => None,
-                    };
+                    let url = crate::utils::get_playable_item_image_url(item);
                     if let Some(url) = url {
                         let needs_clear = if ui.last_cover_image_render_info.url != url
                             || ui.last_cover_image_render_info.render_area != cover_img_rect
@@ -122,14 +114,11 @@ pub fn render_playback_window(
                 frame.render_widget(playback_desc, metadata_rect);
             }
 
-            let duration = match item {
-                rspotify::model::PlayableItem::Track(track) => track.duration,
-                rspotify::model::PlayableItem::Episode(episode) => episode.duration,
-                rspotify::model::PlayableItem::Unknown(item) => {
+            let duration = crate::utils::get_playable_item_duration(item)
+                .unwrap_or_else(|| {
                     log::warn!("Unknown playback item: {item:?}");
-                    return other_rect;
-                }
-            };
+                    chrono::Duration::zero()
+                });
 
             let progress = std::cmp::min(
                 player.playback_progress().expect("non-empty playback"),
@@ -208,6 +197,29 @@ fn construct_playback_text(
     playable: &rspotify::model::PlayableItem,
     playback: &PlaybackMetadata,
 ) -> Text<'static> {
+    // try to parse Unknown items into Track or Episode
+    let (track, episode) = match playable {
+        rspotify::model::PlayableItem::Track(track) => {
+            (Track::try_from_full_track(track.clone()), None)
+        }
+        rspotify::model::PlayableItem::Episode(episode) => (
+            None,
+            Some(Episode {
+                id: episode.id.clone(),
+                name: episode.name.clone(),
+                description: episode.description.clone(),
+                duration: episode.duration.to_std().expect("valid duration"),
+                show: Some(Show::from(episode.show.clone())),
+                release_date: episode.release_date.clone(),
+                images: episode.images.clone(),
+            }),
+        ),
+        rspotify::model::PlayableItem::Unknown(value) => (
+            Track::try_from_value(value.clone()),
+            Episode::try_from_value(value.clone()),
+        ),
+    };
+
     // Construct a "styled" text (`playback_text`) from playback's data
     // based on a user-configurable format string (app_config.playback_format)
     let configs = config::get_config();
@@ -246,92 +258,80 @@ fn construct_playback_text(
                 .to_owned(),
                 ui.theme.playback_status(),
             ),
-            "{liked}" => match playable {
-                rspotify::model::PlayableItem::Track(track) => match &track.id {
-                    Some(id) => {
-                        if data.user_data.saved_tracks.contains_key(&id.uri()) {
-                            (configs.app_config.liked_icon.clone(), ui.theme.like())
-                        } else {
-                            continue;
-                        }
+            "{liked}" => {
+                if let Some(t) = &track {
+                    if data.user_data.saved_tracks.contains_key(&t.id.uri()) {
+                        (configs.app_config.liked_icon.clone(), ui.theme.like())
+                    } else {
+                        continue;
                     }
-                    None => continue,
-                },
-                rspotify::model::PlayableItem::Episode(_)
-                | rspotify::model::PlayableItem::Unknown(_) => continue,
-            },
-            "{track}" => match playable {
-                rspotify::model::PlayableItem::Track(track) => (
-                    {
-                        let track = Track::try_from_full_track(track.clone()).unwrap();
-                        to_bidi_string(&track.display_name())
-                    },
-                    ui.theme.playback_track(),
-                ),
-                rspotify::model::PlayableItem::Episode(episode) => (
-                    {
-                        let bidi_string = to_bidi_string(&episode.name);
-                        if episode.explicit {
-                            format!("{bidi_string} (E)")
-                        } else {
-                            bidi_string
-                        }
-                    },
-                    ui.theme.playback_track(),
-                ),
-                rspotify::model::PlayableItem::Unknown(_) => {
+                } else {
                     continue;
                 }
-            },
-            "{track_number}" => match playable {
-                rspotify::model::PlayableItem::Track(track) => (
-                    { to_bidi_string(&track.track_number.to_string()) },
-                    ui.theme.playback_track(),
-                ),
-                rspotify::model::PlayableItem::Episode(_)
-                | rspotify::model::PlayableItem::Unknown(_) => {
+            }
+            "{track}" => {
+                if let Some(t) = &track {
+                    (
+                        to_bidi_string(&t.display_name()),
+                        ui.theme.playback_track(),
+                    )
+                } else if let Some(e) = &episode {
+                    (to_bidi_string(&e.name), ui.theme.playback_track())
+                } else {
                     continue;
                 }
-            },
-            "{artists}" => match playable {
-                rspotify::model::PlayableItem::Track(track) => (
-                    to_bidi_string(&crate::utils::map_join(&track.artists, |a| &a.name, ", ")),
-                    ui.theme.playback_artists(),
-                ),
-                rspotify::model::PlayableItem::Episode(episode) => {
-                    (episode.show.publisher.clone(), ui.theme.playback_artists())
-                }
-                rspotify::model::PlayableItem::Unknown(_) => {
+            }
+            "{track_number}" => {
+                continue;
+            }
+            "{artists}" => {
+                if let Some(t) = &track {
+                    (
+                        to_bidi_string(&t.artists_info()),
+                        ui.theme.playback_artists(),
+                    )
+                } else if let Some(e) = &episode {
+                    (
+                        e
+                            .show
+                            .as_ref()
+                            .map(|s| s.name.clone())
+                            .unwrap_or_default(),
+                        ui.theme.playback_artists(),
+                    )
+                } else {
                     continue;
                 }
-            },
-            "{album}" => match playable {
-                rspotify::model::PlayableItem::Track(track) => {
-                    (to_bidi_string(&track.album.name), ui.theme.playback_album())
-                }
-                rspotify::model::PlayableItem::Episode(episode) => (
-                    to_bidi_string(&episode.show.name),
-                    ui.theme.playback_album(),
-                ),
-                rspotify::model::PlayableItem::Unknown(_) => {
+            }
+            "{album}" => {
+                if let Some(t) = &track {
+                    (to_bidi_string(&t.album_info()), ui.theme.playback_album())
+                } else if let Some(e) = &episode {
+                    (
+                        to_bidi_string(
+                            &e
+                                .show
+                                .as_ref()
+                                .map(|s| s.name.clone())
+                                .unwrap_or_default(),
+                        ),
+                        ui.theme.playback_album(),
+                    )
+                } else {
                     continue;
                 }
-            },
-            "{genres}" => match playable {
-                rspotify::model::PlayableItem::Track(full_track) => {
-                    let genre = match data.caches.genres.get(&full_track.artists[0].name) {
+            }
+            "{genres}" => {
+                if let Some(t) = &track {
+                    let genre = match data.caches.genres.get(&t.artists[0].name) {
                         Some(genres) => &format_genres(genres, configs.app_config.genre_num),
                         None => "no genre",
                     };
                     (to_bidi_string(genre), ui.theme.playback_genres())
-                }
-                rspotify::model::PlayableItem::Episode(_) => {
+                } else {
                     (to_bidi_string("no genre"), ui.theme.playback_genres())
                 }
-                rspotify::model::PlayableItem::Unknown(_) => {
-                    continue;
-                }
-            },
+            }
             "{metadata}" => {
                 let repeat_value = <&'static str>::from(playback.repeat_state).to_string();
 

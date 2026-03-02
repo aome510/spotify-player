@@ -37,6 +37,90 @@ pub fn get_episode_show_image_url(episode: &rspotify::model::FullEpisode) -> Opt
     }
 }
 
+#[cfg(feature = "image")]
+pub fn get_playable_item_image_url(item: &rspotify::model::PlayableItem) -> Option<String> {
+    match item {
+        rspotify::model::PlayableItem::Track(track) => {
+            get_track_album_image_url(track).map(String::from)
+        }
+        rspotify::model::PlayableItem::Episode(episode) => {
+            get_episode_show_image_url(episode).map(String::from)
+        }
+        rspotify::model::PlayableItem::Unknown(value) => {
+            crate::state::Track::try_from_value(value.clone())
+                .and_then(|t| t.album.and_then(|a| a.images.first().map(|i| i.url.clone())))
+                .or_else(|| {
+                    crate::state::Episode::try_from_value(value.clone())
+                        .and_then(|e| e.images.first().map(|i| i.url.clone()))
+                })
+        }
+    }
+}
+
+pub fn get_playable_item_duration(item: &rspotify::model::PlayableItem) -> Option<chrono::Duration> {
+    match item {
+        rspotify::model::PlayableItem::Track(track) => Some(track.duration),
+        rspotify::model::PlayableItem::Episode(episode) => Some(episode.duration),
+        rspotify::model::PlayableItem::Unknown(value) => {
+            crate::state::Track::try_from_value(value.clone())
+                .map(|t| chrono::Duration::from_std(t.duration).unwrap())
+                .or_else(|| {
+                    crate::state::Episode::try_from_value(value.clone())
+                        .map(|e| chrono::Duration::from_std(e.duration).unwrap())
+                })
+        }
+    }
+}
+
+pub fn get_playable_item_name(item: &rspotify::model::PlayableItem) -> String {
+    match item {
+        rspotify::model::PlayableItem::Track(track) => track.name.clone(),
+        rspotify::model::PlayableItem::Episode(episode) => episode.name.clone(),
+        rspotify::model::PlayableItem::Unknown(value) => {
+            crate::state::Track::try_from_value(value.clone())
+                .map(|t| t.name)
+                .or_else(|| crate::state::Episode::try_from_value(value.clone()).map(|e| e.name))
+                .unwrap_or_default()
+        }
+    }
+}
+
+pub fn get_playable_item_artists(item: &rspotify::model::PlayableItem) -> String {
+    match item {
+        rspotify::model::PlayableItem::Track(track) => {
+            map_join(&track.artists, |a| &a.name, ", ")
+        }
+        rspotify::model::PlayableItem::Episode(episode) => episode.show.publisher.clone(),
+        rspotify::model::PlayableItem::Unknown(value) => {
+            crate::state::Track::try_from_value(value.clone())
+                .map(|t| t.artists_info())
+                .or_else(|| {
+                    crate::state::Episode::try_from_value(value.clone())
+                        .and_then(|e| e.show.map(|s| s.name))
+                })
+                .unwrap_or_default()
+        }
+    }
+}
+
+pub fn get_playable_item_uri(item: &rspotify::model::PlayableItem) -> String {
+    use rspotify::prelude::Id;
+    match item {
+        rspotify::model::PlayableItem::Track(track) => track
+            .id
+            .as_ref()
+            .map(Id::uri)
+            .unwrap_or_default(),
+        rspotify::model::PlayableItem::Episode(episode) => episode.id.uri(),
+        rspotify::model::PlayableItem::Unknown(value) => {
+            crate::state::Track::try_from_value(value.clone())
+                .map(|t| t.id.uri())
+                .or_else(|| crate::state::Episode::try_from_value(value.clone()).map(|e| e.id.uri()))
+                .unwrap_or_default()
+        }
+    }
+}
+
 pub fn parse_uri(uri: &str) -> Cow<'_, str> {
     let parts = uri.split(':').collect::<Vec<_>>();
     // The below URI probably has a format of `spotify:user:{user_id}:{type}:{id}`,

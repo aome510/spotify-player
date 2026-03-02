@@ -134,64 +134,119 @@ pub struct Device {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 /// A Spotify track
 pub struct Track {
+    #[serde(alias = "uri")]
     pub id: TrackId<'static>,
+    #[serde(default)]
     pub name: String,
+    #[serde(default)]
     pub artists: Vec<Artist>,
     pub album: Option<Album>,
+    #[serde(rename = "duration_ms", deserialize_with = "deserialize_duration", default)]
     pub duration: std::time::Duration,
+    #[serde(default)]
     pub explicit: bool,
     #[serde(skip)]
     pub added_at: u64,
 }
 
+fn deserialize_duration<'de, D>(deserializer: D) -> Result<std::time::Duration, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let ms = u64::deserialize(deserializer).unwrap_or_default();
+    Ok(std::time::Duration::from_millis(ms))
+}
+
 #[derive(Deserialize, Serialize, Debug, Clone)]
 /// A Spotify album
 pub struct Album {
+    #[serde(alias = "uri")]
     pub id: AlbumId<'static>,
+    #[serde(default)]
     pub release_date: String,
+    #[serde(default)]
     pub name: String,
+    #[serde(default)]
     pub artists: Vec<Artist>,
+    #[serde(rename = "album_type")]
     pub typ: Option<rspotify::model::AlbumType>,
+    #[serde(default)]
+    pub images: Vec<rspotify::model::Image>,
+    #[serde(default)]
     pub added_at: u64,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 /// A Spotify artist
 pub struct Artist {
+    #[serde(alias = "uri")]
     pub id: ArtistId<'static>,
+    #[serde(default)]
     pub name: String,
+    #[serde(default)]
+    pub genres: Vec<String>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 /// A Spotify playlist
 pub struct Playlist {
+    #[serde(alias = "uri")]
     pub id: PlaylistId<'static>,
+    #[serde(default)]
     pub collaborative: bool,
+    #[serde(default)]
     pub name: String,
+    #[serde(deserialize_with = "deserialize_playlist_owner")]
     pub owner: (String, UserId<'static>),
+    #[serde(default)]
     pub desc: String,
     /// which folder id the playlist refers to
     #[serde(default)]
     pub current_folder_id: usize,
+    #[serde(default)]
     pub snapshot_id: String,
+}
+
+fn deserialize_playlist_owner<'de, D>(deserializer: D) -> Result<(String, UserId<'static>), D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Owner {
+        #[serde(default)]
+        display_name: Option<String>,
+        #[serde(alias = "uri")]
+        id: UserId<'static>,
+    }
+    let owner = Owner::deserialize(deserializer)?;
+    Ok((owner.display_name.unwrap_or_default(), owner.id))
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 /// A Spotify show (podcast)
 pub struct Show {
+    #[serde(alias = "uri")]
     pub id: ShowId<'static>,
+    #[serde(default)]
     pub name: String,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 /// A Spotify episode (podcast episode)
 pub struct Episode {
+    #[serde(alias = "uri")]
     pub id: EpisodeId<'static>,
+    #[serde(default)]
     pub name: String,
+    #[serde(default)]
     pub description: String,
+    #[serde(rename = "duration_ms", deserialize_with = "deserialize_duration", default)]
     pub duration: std::time::Duration,
     pub show: Option<Show>,
+    #[serde(default)]
     pub release_date: String,
+    #[serde(default)]
+    pub images: Vec<rspotify::model::Image>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -405,11 +460,41 @@ impl Track {
 
     /// tries to convert from a `rspotify::model::PlaylistItem` into `Track`
     pub fn try_from_playlist_item(item: rspotify::model::PlaylistItem) -> Option<Self> {
-        let rspotify::model::PlayableItem::Track(track) = item.track? else {
-            return None;
-        };
+        match item.track? {
+            rspotify::model::PlayableItem::Track(track) => {
+                Track::try_from_full_track_with_date(track, item.added_at)
+            }
+            rspotify::model::PlayableItem::Unknown(value) => {
+                let mut track = Track::try_from_value(value)?;
+                if let Some(added_at) = item.added_at {
+                    track.added_at = added_at.timestamp() as u64;
+                }
+                Some(track)
+            }
+            _ => None,
+        }
+    }
 
-        Track::try_from_full_track_with_date(track, item.added_at)
+    /// tries to convert from a `serde_json::Value` into `Track`
+    pub fn try_from_value(value: serde_json::Value) -> Option<Self> {
+        serde_json::from_value(value).ok()
+    }
+
+    /// tries to convert from a simplified track `serde_json::Value` into `Track`
+    pub fn try_from_simplified_track_value(value: serde_json::Value) -> Option<Self> {
+        serde_json::from_value(value).ok()
+    }
+
+    /// tries to convert from a playlist item `serde_json::Value` into `Track`
+    pub fn try_from_playlist_item_value(value: serde_json::Value) -> Option<Self> {
+        let track_v = value.get("item").or_else(|| value.get("track"))?.clone();
+        let mut track = Track::try_from_value(track_v)?;
+        if let Some(added_at) = value.get("added_at").and_then(|v| v.as_str()) {
+            if let Ok(ts) = chrono::DateTime::parse_from_rfc3339(added_at) {
+                track.added_at = ts.timestamp() as u64;
+            }
+        }
+        Some(track)
     }
 }
 
@@ -444,6 +529,7 @@ impl Album {
                     "compilation" => Some(rspotify::model::AlbumType::Compilation),
                     _ => None,
                 }),
+            images: album.images,
             added_at: 0,
         })
     }
@@ -464,6 +550,11 @@ impl Album {
             _ => String::new(),
         }
     }
+
+    /// tries to convert from a `serde_json::Value` into `Album`
+    pub fn try_from_simplified_album_value(value: serde_json::Value) -> Option<Self> {
+        serde_json::from_value(value).ok()
+    }
 }
 
 impl From<rspotify::model::FullAlbum> for Album {
@@ -474,6 +565,7 @@ impl From<rspotify::model::FullAlbum> for Album {
             release_date: album.release_date,
             artists: from_simplified_artists_to_artists(album.artists),
             typ: Some(album.album_type),
+            images: album.images,
             added_at: 0,
         }
     }
@@ -507,6 +599,7 @@ impl Artist {
         Some(Self {
             id: artist.id?,
             name: artist.name,
+            genres: vec![],
         })
     }
 }
@@ -516,6 +609,7 @@ impl From<rspotify::model::FullArtist> for Artist {
         Self {
             name: artist.name,
             id: artist.id,
+            genres: artist.genres,
         }
     }
 }
@@ -621,6 +715,7 @@ impl From<rspotify::model::SimplifiedEpisode> for Episode {
             duration: episode.duration.to_std().expect("valid chrono duration"),
             show: None,
             release_date: episode.release_date,
+            images: episode.images,
         }
     }
 }
@@ -634,10 +729,17 @@ impl From<rspotify::model::FullEpisode> for Episode {
             duration: episode.duration.to_std().expect("valid chrono duration"),
             show: Some(episode.show.into()),
             release_date: episode.release_date,
+            images: episode.images,
         }
     }
 }
 
+impl Episode {
+    /// tries to convert from a `serde_json::Value` into `Episode`
+    pub fn try_from_value(value: serde_json::Value) -> Option<Self> {
+        serde_json::from_value(value).ok()
+    }
+}
 impl std::fmt::Display for Episode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if let Some(s) = &self.show {
