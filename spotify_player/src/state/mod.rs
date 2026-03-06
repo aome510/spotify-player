@@ -24,6 +24,12 @@ pub struct State {
     pub data: RwLock<AppData>,
 
     pub is_daemon: bool,
+
+    /// Shared FFT frequency-band data written by the audio sink and read by the UI.
+    /// Only populated when the `streaming` feature is active and
+    /// `enable_audio_visualization` is `true`.
+    #[cfg(feature = "streaming")]
+    pub vis_bands: std::sync::Arc<Mutex<crate::streaming_vis::VisBands>>,
 }
 
 impl State {
@@ -43,6 +49,10 @@ impl State {
             player: RwLock::new(PlayerState::default()),
             data: RwLock::new(app_data),
             is_daemon,
+            #[cfg(feature = "streaming")]
+            vis_bands: std::sync::Arc::new(Mutex::new(
+                crate::streaming_vis::VisBands::new(),
+            )),
         }
     }
 

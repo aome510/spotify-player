@@ -4,6 +4,7 @@ use librespot_connect::{ConnectConfig, Spirc};
 use librespot_core::authentication::Credentials;
 use librespot_core::config::DeviceType;
 use librespot_core::{spotify_uri, Session, SpotifyUri};
+use librespot_playback::audio_backend::Sink;
 use librespot_playback::mixer::MixerConfig;
 use librespot_playback::{
     audio_backend,
@@ -188,12 +189,25 @@ pub async fn new_connection(
         session.device_id()
     );
 
-    let player = player::Player::new(
-        player_config,
-        session.clone(),
-        mixer.get_soft_volume(),
-        move || backend(None, AudioFormat::default()),
-    );
+    let player = {
+        let vis_bands = Arc::clone(&state.vis_bands);
+        player::Player::new(
+            player_config,
+            session.clone(),
+            mixer.get_soft_volume(),
+            move || -> Box<dyn Sink> {
+                let real = backend(None, AudioFormat::default());
+                if configs.app_config.enable_audio_visualization {
+                    Box::new(crate::streaming_vis::VisualizationSink::new(
+                        real,
+                        Arc::clone(&vis_bands),
+                    ))
+                } else {
+                    real
+                }
+            },
+        )
+    };
 
     let player_event_task = tokio::task::spawn({
         let mut channel = player.get_player_event_channel();
