@@ -836,7 +836,7 @@ fn render_artist_context_page_windows(
 
     // 2. Construct the page's layout
     // top tracks window
-    let chunks = Layout::vertical([Constraint::Length(12), Constraint::Fill(0)]).split(rect);
+    let chunks = Layout::vertical([Constraint::Fill(1), Constraint::Fill(1)]).split(rect);
     let top_tracks_rect = chunks[0];
 
     // albums and related artitsts windows
