@@ -8,6 +8,7 @@
 - [Features](#features)
   - [Spotify Connect](#spotify-connect)
   - [Streaming](#streaming)
+  - [Audio Visualization](#audio-visualization)
   - [Media Control](#media-control)
   - [Image](#image)
   - [Notify](#notify)
@@ -32,6 +33,7 @@
 - Feature parity with the official Spotify application.
 - Support remote control with [Spotify Connect](#spotify-connect).
 - Support [streaming](#streaming) songs directly from the terminal.
+- Support [audio visualization](#audio-visualization).
 - Support synced lyrics.
 - Support [cross-platform media control](#media-control).
 - Support [image rendering](#image).
@@ -220,6 +222,19 @@ To disable streaming, build with:
 ```shell
 cargo install spotify_player --no-default-features
 ```
+
+### Audio Visualization
+
+Real-time FFT audio visualization is displayed in the playback window as a frequency-band bar chart while music is streamed locally via the integrated [librespot](https://github.com/librespot-org/librespot) player. The visualization area is hidden when playback is on an external Spotify Connect device.
+
+Requires the `streaming` feature. Enable in your config:
+
+```toml
+[app_config]
+enable_audio_visualization = true
+```
+
+![Audio Visualization](https://github.com/user-attachments/assets/8c21c1b0-5276-4a9e-b719-e0c2bd555537)
 
 ### Media Control
 
