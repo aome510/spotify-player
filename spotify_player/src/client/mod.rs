@@ -999,10 +999,21 @@ impl AppClient {
         let tracks = self
             .tracks(track_ids, Some(rspotify::model::Market::FromToken))
             .await?;
-        let tracks = tracks
+        let mut tracks: Vec<_> = tracks
             .into_iter()
             .filter_map(Track::try_from_full_track)
             .collect();
+
+        // Track-seeded radios in the official Spotify clients include the seed track itself
+        // as the first item in the generated session.
+        if let Ok(track_id) = TrackId::from_uri(&seed_uri) {
+            match self.track(track_id).await {
+                Ok(track) => move_seed_track_to_front(&mut tracks, track),
+                Err(err) => {
+                    tracing::warn!("Failed to fetch track radio seed {seed_uri}: {err:#}");
+                }
+            }
+        }
 
         Ok(tracks)
     }
@@ -1955,5 +1966,56 @@ impl AppClient {
         }
 
         albums
+    }
+}
+
+fn move_seed_track_to_front(tracks: &mut Vec<Track>, seed_track: Track) {
+    tracks.retain(|track| track.id != seed_track.id);
+    tracks.insert(0, seed_track);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::move_seed_track_to_front;
+    use crate::state::Track;
+    use rspotify::model::TrackId;
+
+    fn sample_track(id: &'static str, name: &str) -> Track {
+        Track {
+            id: TrackId::from_id(id).unwrap().into_static(),
+            name: name.to_string(),
+            artists: vec![],
+            album: None,
+            duration: std::time::Duration::default(),
+            explicit: false,
+            added_at: 0,
+        }
+    }
+
+    #[test]
+    fn move_seed_track_to_front_prepends_missing_seed() {
+        let seed = sample_track("3n3Ppam7vgaVa1iaRUc9Lp", "seed");
+        let second = sample_track("4uLU6hMCjMI75M1A2tKUQC", "second");
+        let third = sample_track("1301WleyT98MSxVHPZCA6M", "third");
+        let mut tracks = vec![second.clone(), third];
+
+        move_seed_track_to_front(&mut tracks, seed.clone());
+
+        assert_eq!(tracks.len(), 3);
+        assert_eq!(tracks[0].id, seed.id);
+        assert_eq!(tracks[1].id, second.id);
+    }
+
+    #[test]
+    fn move_seed_track_to_front_reorders_existing_seed_without_duplication() {
+        let seed = sample_track("3n3Ppam7vgaVa1iaRUc9Lp", "seed");
+        let second = sample_track("4uLU6hMCjMI75M1A2tKUQC", "second");
+        let mut tracks = vec![second.clone(), seed.clone()];
+
+        move_seed_track_to_front(&mut tracks, seed.clone());
+
+        assert_eq!(tracks.len(), 2);
+        assert_eq!(tracks[0].id, seed.id);
+        assert_eq!(tracks[1].id, second.id);
     }
 }
