@@ -11,15 +11,7 @@ use crate::{
 };
 #[cfg(feature = "image")]
 use anyhow::{Context, Result};
-#[cfg(feature = "streaming")]
-use ratatui::style::Color;
-#[cfg(feature = "streaming")]
-use ratatui::widgets::{Bar, BarChart, BarGroup};
 use rspotify::model::Id;
-
-/// Height (in terminal rows) reserved for the audio visualization bar chart.
-#[cfg(feature = "streaming")]
-const VIS_HEIGHT: u16 = 8;
 
 /// Render a playback window showing information about the current playback, which includes
 /// - track title, artists, album
@@ -40,8 +32,11 @@ pub fn render_playback_window(
     let (rect, vis_rect) = {
         let configs = config::get_config();
         if configs.app_config.enable_audio_visualization {
-            let chunks =
-                Layout::vertical([Constraint::Fill(0), Constraint::Length(VIS_HEIGHT)]).split(rect);
+            let chunks = Layout::vertical([
+                Constraint::Fill(0),
+                Constraint::Length(super::streaming::VIS_HEIGHT),
+            ])
+            .split(rect);
             (chunks[0], Some(chunks[1]))
         } else {
             (rect, None)
@@ -159,7 +154,7 @@ pub fn render_playback_window(
             render_playback_progress_bar(frame, ui, progress, duration, progress_bar_rect);
             #[cfg(feature = "streaming")]
             if let Some(vis_r) = vis_rect {
-                render_audio_visualization(frame, state, vis_r);
+                super::streaming::render_audio_visualization(frame, state, vis_r);
             }
             return other_rect;
         }
@@ -491,7 +486,7 @@ fn split_rect_for_playback_window(rect: Rect) -> (Rect, Rect) {
     #[cfg(feature = "streaming")]
     let playback_width = playback_width
         + if configs.app_config.enable_audio_visualization {
-            VIS_HEIGHT as usize
+            super::streaming::VIS_HEIGHT as usize
         } else {
             0
         };
@@ -519,74 +514,4 @@ fn split_rect_for_playback_window(rect: Rect) -> (Rect, Rect) {
             (chunks[1], chunks[0])
         }
     }
-}
-
-/// Maps a normalised amplitude [0, 1] to an RGB colour.
-/// Quiet (0.0) → cool blue, medium → green, loud (1.0) → hot red.
-#[cfg(feature = "streaming")]
-fn bar_color(t: f32) -> Color {
-    let (r, g, b) = if t < 0.5 {
-        let s = t * 2.0;
-        (
-            (30.0 + 20.0 * s) as u8,
-            (100.0 + 155.0 * s) as u8,
-            (255.0 * (1.0 - s * 0.5)) as u8,
-        )
-    } else {
-        let s = (t - 0.5) * 2.0;
-        (
-            (50.0 + 205.0 * s) as u8,
-            (255.0 * (1.0 - s)) as u8,
-            (128.0 * (1.0 - s)) as u8,
-        )
-    };
-    Color::Rgb(r, g, b)
-}
-
-/// Render a frequency-band bar chart using live FFT data from the audio sink.
-///
-/// Bars are subsampled to the available rect width so they always fill the area
-/// cleanly. Heights use a sqrt (perceptual) curve so quiet signals stay visible.
-/// Each bar is coloured by its amplitude: cool blue (quiet) → green → hot red (loud).
-#[cfg(feature = "streaming")]
-fn render_audio_visualization(frame: &mut Frame, state: &SharedState, rect: Rect) {
-    // display_decay interpolates bar heights smoothly between write() calls.
-    // We normalise against peak_envelope (NOT the per-frame peak), so display_decay
-    // no longer cancels out and bars genuinely fade between audio packets.
-    let guard = state.vis_bands.lock();
-    let display_decay = crate::streaming_vis::decay_for_elapsed(guard.updated_at.elapsed());
-    let peak_norm = (guard.peak_envelope
-        * crate::streaming_vis::peak_decay_for_elapsed(guard.updated_at.elapsed()))
-    .max(1e-6);
-    let values = guard.values.clone();
-    drop(guard);
-    let num_bars = (rect.width as usize).min(values.len()).max(1);
-    // Multiply by 8 to use ratatui's eighth-block characters (▁▂▃▄▅▆▇█),
-    // giving 8× the resolution of whole terminal rows.
-    let max_val = u64::from(rect.height) * 8;
-
-    let step = values.len() as f64 / num_bars as f64;
-    let bars: Vec<Bar> = (0..num_bars)
-        .map(|i| {
-            let idx = ((i as f64 * step) as usize).min(values.len() - 1);
-            // Normalise against the slow peak envelope, then apply inter-frame decay.
-            // Sqrt (gamma 0.5) scaling boosts quiet signals without clipping louds.
-            let norm = ((values[idx] * display_decay) / peak_norm)
-                .clamp(0.0, 1.0)
-                .powf(0.5);
-            let val = (norm * max_val as f32) as u64;
-            Bar::default()
-                .value(val)
-                .text_value(String::new())
-                .style(Style::default().fg(bar_color(norm)))
-        })
-        .collect();
-
-    let chart = BarChart::default()
-        .data(BarGroup::default().bars(&bars))
-        .bar_width(1)
-        .bar_gap(0)
-        .max(max_val);
-
-    frame.render_widget(chart, rect);
 }

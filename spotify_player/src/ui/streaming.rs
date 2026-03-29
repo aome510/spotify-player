@@ -1,9 +1,16 @@
+use crate::state::SharedState;
 use librespot_playback::{
     audio_backend::{Sink, SinkResult},
     convert::Converter,
     decoder::AudioPacket,
 };
 use parking_lot::Mutex;
+use ratatui::{
+    layout::Rect,
+    style::{Color, Style},
+    widgets::{Bar, BarChart, BarGroup},
+    Frame,
+};
 use rustfft::{num_complex::Complex, FftPlanner};
 use std::collections::VecDeque;
 use std::sync::Arc;
@@ -15,8 +22,11 @@ const FFT_SIZE: usize = 1024;
 const HOP_SIZE: usize = 128;
 pub const NUM_BANDS: usize = 128;
 
+/// Height (in terminal rows) reserved for the audio visualization bar chart.
+pub const VIS_HEIGHT: u16 = 8;
+
 /// Per-FFT-frame decay multiplier for individual bands.
-/// At 44100 Hz / HOP_SIZE 128 ≈ 344 hops/s, 0.985^~151 ≈ 1% in ~0.44 s — snappy
+/// At 44100 Hz / `HOP_SIZE` 128 ≈ 344 hops/s, 0.985^~151 ≈ 1% in ~0.44 s — snappy
 /// enough to track transients, not so slow that it smears.
 const DECAY_FACTOR: f32 = 0.985;
 /// Slower decay for the peak envelope used for normalization. At 344 hops/s,
@@ -33,7 +43,7 @@ pub struct VisBands {
     pub values: Vec<f32>,
     pub updated_at: Instant,
     /// Slow-decaying peak envelope used to normalise bar heights.
-    /// Rises instantly to any louder value; decays with DECAY_FACTOR_PEAK.
+    /// Rises instantly to any louder value; decays with `DECAY_FACTOR_PEAK`.
     /// Kept separate from per-band values so quiet passages look genuinely
     /// quieter — the VU «breathes» with the music.
     pub peak_envelope: f32,
@@ -70,7 +80,7 @@ pub fn peak_decay_for_elapsed(elapsed: std::time::Duration) -> f32 {
 pub struct VisualizationSink {
     inner: Box<dyn Sink>,
     /// Ring-buffer of mono f32 samples waiting to be processed.
-    /// VecDeque gives O(1) front-drain instead of Vec's O(remaining) shift.
+    /// `VecDeque` gives O(1) front-drain instead of Vec's O(remaining) shift.
     sample_buf: VecDeque<f32>,
     bands: Arc<Mutex<VisBands>>,
     fft: Arc<dyn rustfft::Fft<f32>>,
@@ -173,7 +183,7 @@ impl Sink for VisualizationSink {
 /// scale and returns the RMS magnitude of each band.
 ///
 /// At the low-frequency end the log scale has fewer distinct bins than bands
-/// (e.g. with FFT_SIZE=1024 and NUM_BANDS=128, bins 0-13 would all map to bin 1).
+/// (e.g. with `FFT_SIZE=1024` and `NUM_BANDS=128`, bins 0-13 would all map to bin 1).
 /// We track `used_up_to` so that every band starts where the previous one ended,
 /// preventing the duplicate-bin plateau that otherwise appears on the left side.
 fn compute_log_bands(magnitudes: &[f32], num_bins: usize, num_bands: usize) -> Vec<f32> {
@@ -227,4 +237,71 @@ fn smooth_bands(bands: &mut [f32]) {
         };
         bands[i] = prev * 0.25 + copy[i] * 0.5 + next * 0.25;
     }
+}
+
+/// Maps a normalised amplitude [0, 1] to an RGB colour.
+/// Quiet (0.0) → cool blue, medium → green, loud (1.0) → hot red.
+fn bar_color(t: f32) -> Color {
+    let (r, g, b) = if t < 0.5 {
+        let s = t * 2.0;
+        (
+            (30.0 + 20.0 * s) as u8,
+            (100.0 + 155.0 * s) as u8,
+            (255.0 * (1.0 - s * 0.5)) as u8,
+        )
+    } else {
+        let s = (t - 0.5) * 2.0;
+        (
+            (50.0 + 205.0 * s) as u8,
+            (255.0 * (1.0 - s)) as u8,
+            (128.0 * (1.0 - s)) as u8,
+        )
+    };
+    Color::Rgb(r, g, b)
+}
+
+/// Render a frequency-band bar chart using live FFT data from the audio sink.
+///
+/// Bars are subsampled to the available rect width so they always fill the area
+/// cleanly. Heights use a sqrt (perceptual) curve so quiet signals stay visible.
+/// Each bar is coloured by its amplitude: cool blue (quiet) → green → hot red (loud).
+pub fn render_audio_visualization(frame: &mut Frame, state: &SharedState, rect: Rect) {
+    // display_decay interpolates bar heights smoothly between write() calls.
+    // We normalise against peak_envelope (NOT the per-frame peak), so display_decay
+    // no longer cancels out and bars genuinely fade between audio packets.
+    let guard = state.vis_bands.lock();
+    let display_decay = decay_for_elapsed(guard.updated_at.elapsed());
+    let peak_norm =
+        (guard.peak_envelope * peak_decay_for_elapsed(guard.updated_at.elapsed())).max(1e-6);
+    let values = guard.values.clone();
+    drop(guard);
+    let num_bars = (rect.width as usize).min(values.len()).max(1);
+    // Multiply by 8 to use ratatui's eighth-block characters (▁▂▃▄▅▆▇█),
+    // giving 8× the resolution of whole terminal rows.
+    let max_val = u64::from(rect.height) * 8;
+
+    let step = values.len() as f64 / num_bars as f64;
+    let bars: Vec<Bar> = (0..num_bars)
+        .map(|i| {
+            let idx = ((i as f64 * step) as usize).min(values.len() - 1);
+            // Normalise against the slow peak envelope, then apply inter-frame decay.
+            // Sqrt (gamma 0.5) scaling boosts quiet signals without clipping louds.
+            let norm = ((values[idx] * display_decay) / peak_norm)
+                .clamp(0.0, 1.0)
+                .powf(0.5);
+            let val = (norm * max_val as f32) as u64;
+            Bar::default()
+                .value(val)
+                .text_value(String::new())
+                .style(Style::default().fg(bar_color(norm)))
+        })
+        .collect();
+
+    let chart = BarChart::default()
+        .data(BarGroup::default().bars(&bars))
+        .bar_width(1)
+        .bar_gap(0)
+        .max(max_val);
+
+    frame.render_widget(chart, rect);
 }

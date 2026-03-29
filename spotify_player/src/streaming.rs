@@ -198,7 +198,7 @@ pub async fn new_connection(
             move || -> Box<dyn Sink> {
                 let real = backend(None, AudioFormat::default());
                 if configs.app_config.enable_audio_visualization {
-                    Box::new(crate::streaming_vis::VisualizationSink::new(
+                    Box::new(crate::ui::streaming::VisualizationSink::new(
                         real,
                         Arc::clone(&vis_bands),
                     ))

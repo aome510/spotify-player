@@ -4,6 +4,8 @@ mod model;
 mod player;
 mod ui;
 
+use std::sync::Arc;
+
 pub use constant::*;
 pub use data::*;
 pub use model::*;
@@ -14,8 +16,8 @@ use crate::config;
 
 pub use parking_lot::{Mutex, RwLock};
 
-/// Application's shared state (wrapped inside an `std::sync::Arc`)
-pub type SharedState = std::sync::Arc<State>;
+/// Application's shared state
+pub type SharedState = Arc<State>;
 
 /// Application's state
 pub struct State {
@@ -29,7 +31,7 @@ pub struct State {
     /// Only populated when the `streaming` feature is active and
     /// `enable_audio_visualization` is `true`.
     #[cfg(feature = "streaming")]
-    pub vis_bands: std::sync::Arc<Mutex<crate::streaming_vis::VisBands>>,
+    pub vis_bands: Arc<Mutex<crate::ui::streaming::VisBands>>,
 }
 
 impl State {
@@ -50,7 +52,7 @@ impl State {
             data: RwLock::new(app_data),
             is_daemon,
             #[cfg(feature = "streaming")]
-            vis_bands: std::sync::Arc::new(Mutex::new(crate::streaming_vis::VisBands::new())),
+            vis_bands: Arc::new(Mutex::new(crate::ui::streaming::VisBands::new())),
         }
     }
 

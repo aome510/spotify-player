@@ -11,8 +11,6 @@ mod playlist_folders;
 mod state;
 #[cfg(feature = "streaming")]
 mod streaming;
-#[cfg(feature = "streaming")]
-mod streaming_vis;
 mod token;
 mod ui;
 mod utils;
