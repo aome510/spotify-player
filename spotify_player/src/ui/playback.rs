@@ -478,6 +478,7 @@ fn render_playback_cover_image(state: &SharedState, ui: &mut UIStateGuard) -> Re
 
 /// Split the given area into two, the first one for the playback window
 /// and the second one for the main application's layout (popup, page, etc).
+#[allow(unused_variables)]
 fn split_rect_for_playback_window(state: &SharedState, rect: Rect) -> (Rect, Rect) {
     let configs = config::get_config();
     let playback_width = configs.app_config.layout.playback_window_height;
