@@ -435,6 +435,22 @@ fn render_playback_progress_bar(
                 )),
             rect,
         ),
+        config::ProgressBarType::Terminal => {
+            // Ghostty terminal progress bar integration
+            let ratio_percentage = (ratio * 100.0).round() as u8;
+            print!("\x1b]9;4;1;{ratio_percentage}\x07");
+            frame.render_widget(
+                Paragraph::new(Span::styled(
+                    format!(
+                        "{}/{}",
+                        crate::utils::format_duration(&progress),
+                        crate::utils::format_duration(&duration),
+                    ),
+                    Style::default().add_modifier(Modifier::BOLD),
+                )),
+                rect,
+            );
+        }
     }
 
     // update the progress bar's position stored inside the UI state
