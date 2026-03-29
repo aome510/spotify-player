@@ -135,8 +135,7 @@ impl Sink for VisualizationSink {
                     .map(|(i, &s)| {
                         let w = 0.5
                             * (1.0
-                                - (2.0 * std::f32::consts::PI * i as f32
-                                    / (FFT_SIZE - 1) as f32)
+                                - (2.0 * std::f32::consts::PI * i as f32 / (FFT_SIZE - 1) as f32)
                                     .cos());
                         Complex::new(s * w, 0.0)
                     })

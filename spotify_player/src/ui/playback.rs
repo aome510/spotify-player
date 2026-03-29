@@ -41,8 +41,7 @@ pub fn render_playback_window(
         let configs = config::get_config();
         if configs.app_config.enable_audio_visualization {
             let chunks =
-                Layout::vertical([Constraint::Fill(0), Constraint::Length(VIS_HEIGHT)])
-                    .split(rect);
+                Layout::vertical([Constraint::Fill(0), Constraint::Length(VIS_HEIGHT)]).split(rect);
             (chunks[0], Some(chunks[1]))
         } else {
             (rect, None)
@@ -558,7 +557,7 @@ fn render_audio_visualization(frame: &mut Frame, state: &SharedState, rect: Rect
     let display_decay = crate::streaming_vis::decay_for_elapsed(guard.updated_at.elapsed());
     let peak_norm = (guard.peak_envelope
         * crate::streaming_vis::peak_decay_for_elapsed(guard.updated_at.elapsed()))
-        .max(1e-6);
+    .max(1e-6);
     let values = guard.values.clone();
     drop(guard);
     let num_bars = (rect.width as usize).min(values.len()).max(1);

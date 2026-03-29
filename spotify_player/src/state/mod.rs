@@ -50,9 +50,7 @@ impl State {
             data: RwLock::new(app_data),
             is_daemon,
             #[cfg(feature = "streaming")]
-            vis_bands: std::sync::Arc::new(Mutex::new(
-                crate::streaming_vis::VisBands::new(),
-            )),
+            vis_bands: std::sync::Arc::new(Mutex::new(crate::streaming_vis::VisBands::new())),
         }
     }
 
