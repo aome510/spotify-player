@@ -76,9 +76,6 @@ impl State {
     /// render the audio-visualization area.
     #[cfg(feature = "streaming")]
     pub fn is_local_streaming_active(&self) -> bool {
-        self.vis_bands
-            .as_ref()
-            .and_then(|b| b.try_lock())
-            .is_some_and(|g| g.is_active)
+        self.vis_bands.as_ref().is_some_and(|b| b.lock().is_active)
     }
 }

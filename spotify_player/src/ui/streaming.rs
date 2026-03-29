@@ -364,14 +364,10 @@ pub fn render_audio_visualization(frame: &mut Frame, state: &SharedState, rect: 
     // no longer cancels out and bars genuinely fade between audio packets.
     //
     // vis_bands is only Some when enable_audio_visualization is true.
-    // Use try_lock() so the UI never blocks the audio thread: if the sink is
-    // mid-hop we simply skip this render frame rather than stalling.
     let Some(vis_lock) = state.vis_bands.as_ref() else {
         return;
     };
-    let Some(guard) = vis_lock.try_lock() else {
-        return;
-    };
+    let guard = vis_lock.lock();
     if !guard.is_active {
         return;
     }
