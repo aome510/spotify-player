@@ -69,4 +69,16 @@ impl State {
             || (configs.app_config.enable_streaming == config::StreamingType::DaemonOnly
                 && self.is_daemon)
     }
+
+    /// Returns `true` when the local librespot player is actively streaming
+    /// audio (i.e. a `Playing` event has been received and no `Paused` / `stop`
+    /// has occurred since).  Used by the UI to decide whether to allocate and
+    /// render the audio-visualization area.
+    #[cfg(feature = "streaming")]
+    pub fn is_local_streaming_active(&self) -> bool {
+        self.vis_bands
+            .as_ref()
+            .and_then(|b| b.try_lock())
+            .is_some_and(|g| g.is_active)
+    }
 }

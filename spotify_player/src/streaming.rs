@@ -230,11 +230,17 @@ pub async fn new_connection(
                                 if let Some(playback) = player.buffered_playback.as_mut() {
                                     playback.is_playing = true;
                                 }
+                                if let Some(ref bands) = state.vis_bands {
+                                    bands.lock().is_active = true;
+                                }
                             }
                             PlayerEvent::Paused { .. } => {
                                 let mut player = state.player.write();
                                 if let Some(playback) = player.buffered_playback.as_mut() {
                                     playback.is_playing = false;
+                                }
+                                if let Some(ref bands) = state.vis_bands {
+                                    bands.lock().is_active = false;
                                 }
                             }
                             _ => {}

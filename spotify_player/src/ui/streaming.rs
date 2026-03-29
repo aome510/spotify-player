@@ -58,6 +58,10 @@ pub struct VisBands {
     /// Kept separate from per-band values so quiet passages look genuinely
     /// quieter — the VU «breathes» with the music.
     pub peak_envelope: f32,
+    /// Set to `true` when librespot reports a `Playing` event and `false` on
+    /// `Paused` or `stop()`.  The UI uses this flag to skip rendering (and
+    /// reclaim the screen space) when audio is not being streamed locally.
+    pub is_active: bool,
 }
 
 impl VisBands {
@@ -66,6 +70,7 @@ impl VisBands {
             values: [0.0f32; NUM_BANDS],
             updated_at: Instant::now(),
             peak_envelope: 1e-6,
+            is_active: false,
         }
     }
 }
@@ -176,6 +181,7 @@ impl Sink for VisualizationSink {
         g.values.fill(0.0);
         g.peak_envelope = 1e-6;
         g.updated_at = Instant::now();
+        g.is_active = false;
         drop(g);
         self.sample_buf.clear();
         self.inner.stop()
@@ -366,6 +372,9 @@ pub fn render_audio_visualization(frame: &mut Frame, state: &SharedState, rect: 
     let Some(guard) = vis_lock.try_lock() else {
         return;
     };
+    if !guard.is_active {
+        return;
+    }
     let display_decay = decay_for_elapsed(guard.updated_at.elapsed());
     let peak_norm =
         (guard.peak_envelope * peak_decay_for_elapsed(guard.updated_at.elapsed())).max(1e-6);
