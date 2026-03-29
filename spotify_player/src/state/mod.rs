@@ -4,6 +4,8 @@ mod model;
 mod player;
 mod ui;
 
+use std::sync::Arc;
+
 pub use constant::*;
 pub use data::*;
 pub use model::*;
@@ -14,8 +16,8 @@ use crate::config;
 
 pub use parking_lot::{Mutex, RwLock};
 
-/// Application's shared state (wrapped inside an `std::sync::Arc`)
-pub type SharedState = std::sync::Arc<State>;
+/// Application's shared state
+pub type SharedState = Arc<State>;
 
 /// Application's state
 pub struct State {
@@ -24,6 +26,12 @@ pub struct State {
     pub data: RwLock<AppData>,
 
     pub is_daemon: bool,
+
+    /// Shared FFT frequency-band data written by the audio sink and read by the UI.
+    /// `Some` only when `enable_audio_visualization` is `true`; avoids allocating
+    /// the mutex/state entirely when the feature is not in use.
+    #[cfg(feature = "streaming")]
+    pub vis_bands: Option<Arc<Mutex<crate::ui::streaming::VisBands>>>,
 }
 
 impl State {
@@ -43,6 +51,14 @@ impl State {
             player: RwLock::new(PlayerState::default()),
             data: RwLock::new(app_data),
             is_daemon,
+            #[cfg(feature = "streaming")]
+            vis_bands: if configs.app_config.enable_audio_visualization {
+                Some(Arc::new(Mutex::new(
+                    crate::ui::streaming::VisBands::default(),
+                )))
+            } else {
+                None
+            },
         }
     }
 
@@ -52,5 +68,14 @@ impl State {
         configs.app_config.enable_streaming == config::StreamingType::Always
             || (configs.app_config.enable_streaming == config::StreamingType::DaemonOnly
                 && self.is_daemon)
+    }
+
+    /// Returns `true` when the local librespot player is actively streaming
+    /// audio (i.e. a `Playing` event has been received and no `Paused` / `stop`
+    /// has occurred since).  Used by the UI to decide whether to allocate and
+    /// render the audio-visualization area.
+    #[cfg(feature = "streaming")]
+    pub fn is_local_streaming_active(&self) -> bool {
+        self.vis_bands.as_ref().is_some_and(|b| b.lock().is_active)
     }
 }
