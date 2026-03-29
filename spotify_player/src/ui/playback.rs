@@ -1,7 +1,7 @@
 use super::{
-    config, utils::construct_and_render_block, Borders, Constraint, Frame, Gauge, Layout, Line,
-    LineGauge, Modifier, Paragraph, PlaybackMetadata, Rect, SharedState, Span, Style, Text,
-    UIStateGuard, Wrap,
+    config, utils::construct_and_render_block, Alignment, Borders, Constraint, Frame, Gauge,
+    Layout, Line, LineGauge, Modifier, Paragraph, PlaybackMetadata, Rect, SharedState, Span, Style,
+    Text, UIStateGuard, Wrap,
 };
 #[cfg(feature = "image")]
 use crate::state::ImageRenderInfo;
@@ -177,7 +177,29 @@ pub fn render_playback_window(
         }
     }
 
-    frame.render_widget(
+    if player.playback_last_updated_time.is_none() {
+        // Still waiting for the first successful playback fetch — show animated loading indicator
+        const SPINNER_FRAMES: [&str; 10] = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+        let frame_idx = (std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_millis()
+            / 100) as usize
+            % SPINNER_FRAMES.len();
+        let vertical_chunks = Layout::vertical([
+            Constraint::Fill(1),
+            Constraint::Length(1),
+            Constraint::Fill(1),
+        ])
+        .split(rect);
+        frame.render_widget(
+            Paragraph::new(format!("{} Loading...", SPINNER_FRAMES[frame_idx]))
+                .style(ui.theme.playback_metadata())
+                .alignment(Alignment::Center),
+            vertical_chunks[1],
+        );
+    } else {
+        frame.render_widget(
             Paragraph::new(
                 "No playback found. Please start a new playback.\n \
                  Make sure there is a running Spotify device and try to connect to one using the `SwitchDevice` command."
@@ -185,6 +207,7 @@ pub fn render_playback_window(
             .wrap(Wrap { trim: true }),
             rect,
         );
+    }
 
     other_rect
 }
