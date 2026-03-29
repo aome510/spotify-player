@@ -28,6 +28,8 @@ mod page;
 mod playback;
 mod popup;
 pub mod single_line_input;
+#[cfg(feature = "streaming")]
+pub mod streaming;
 pub mod utils;
 
 /// Run the application UI

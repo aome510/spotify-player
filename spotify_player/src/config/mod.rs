@@ -112,6 +112,9 @@ pub struct AppConfig {
 
     pub enable_streaming: StreamingType,
 
+    #[cfg(feature = "streaming")]
+    pub enable_audio_visualization: bool,
+
     #[cfg(feature = "notify")]
     pub enable_notify: bool,
 
@@ -359,6 +362,9 @@ impl Default for AppConfig {
             enable_media_control: true,
 
             enable_streaming: StreamingType::Always,
+
+            #[cfg(feature = "streaming")]
+            enable_audio_visualization: false,
 
             #[cfg(feature = "notify")]
             enable_notify: true,
