@@ -10,15 +10,15 @@ keywords = ["lyric", "song", "track"]
 
 [dependencies]
 reqwest = { version = "0.12.28", features = ["json", "http2"], default-features = false }
-anyhow = "1.0.101"
+anyhow = "1.0.102"
 serde = { version = "1.0.228", features = ["derive"] }
 html5ever = "=0.27.0"
 markup5ever_rcdom = "0.3.0"
 log = "0.4.29"
 
 [dev-dependencies]
-tokio = { version = "1.49.0", features = ["rt", "rt-multi-thread", "macros"] }
-env_logger = { version = "0.11.8", default-features = false }
+tokio = { version = "1.50.0", features = ["rt", "rt-multi-thread", "macros"] }
+env_logger = { version = "0.11.10", default-features = false }
 
 [[example]]
 name = "lyric-finder"
