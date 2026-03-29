@@ -84,17 +84,32 @@ pub struct VisualizationSink {
     sample_buf: VecDeque<f32>,
     bands: Arc<Mutex<VisBands>>,
     fft: Arc<dyn rustfft::Fft<f32>>,
+    /// Precomputed Hann window coefficients — computed once in `new()` and
+    /// reused every hop to avoid repeated `cos()` calls in the hot path.
+    hann_window: Vec<f32>,
+    /// Reusable FFT input buffer — avoids a `Vec` allocation per hop.
+    fft_buf: Vec<Complex<f32>>,
+    /// Reusable magnitude buffer — avoids a `Vec` allocation per hop.
+    magnitudes: Vec<f32>,
 }
 
 impl VisualizationSink {
     pub fn new(inner: Box<dyn Sink>, bands: Arc<Mutex<VisBands>>) -> Self {
         let mut planner = FftPlanner::<f32>::new();
         let fft = planner.plan_fft_forward(FFT_SIZE);
+        let hann_window: Vec<f32> = (0..FFT_SIZE)
+            .map(|i| {
+                0.5 * (1.0 - (2.0 * std::f32::consts::PI * i as f32 / (FFT_SIZE - 1) as f32).cos())
+            })
+            .collect();
         Self {
             inner,
             sample_buf: VecDeque::with_capacity(FFT_SIZE * 2),
             bands,
             fft,
+            hann_window,
+            fft_buf: vec![Complex::new(0.0, 0.0); FFT_SIZE],
+            magnitudes: vec![0.0; FFT_SIZE / 2],
         }
     }
 }
@@ -105,9 +120,11 @@ impl Sink for VisualizationSink {
     }
 
     fn stop(&mut self) -> SinkResult<()> {
-        // Zero out the bands when playback stops so the bars fall to silence.
+        // Zero out the bands and reset normalization when playback stops so the
+        // bars fall to silence and the next session starts with a fresh baseline.
         let mut g = self.bands.lock();
         g.values.fill(0.0);
+        g.peak_envelope = 1e-6;
         g.updated_at = Instant::now();
         drop(g);
         self.sample_buf.clear();
@@ -136,27 +153,45 @@ impl Sink for VisualizationSink {
             // vis_bands.updated_at: hops within the same write() call are ~3 ms apart
             // so decay_for_elapsed(3 ms) ≈ 0.985 ≈ 1.0 — no peak smearing.
             while self.sample_buf.len() >= FFT_SIZE {
-                let window = self.sample_buf.make_contiguous();
+                // Fill fft_buf using as_slices() to avoid make_contiguous()'s
+                // potential O(n) rotation, and reuse the preallocated buffer.
+                {
+                    let (front, back) = self.sample_buf.as_slices();
+                    if front.len() >= FFT_SIZE {
+                        for (dst, (&s, &w)) in self
+                            .fft_buf
+                            .iter_mut()
+                            .zip(front.iter().zip(self.hann_window.iter()))
+                        {
+                            *dst = Complex::new(s * w, 0.0);
+                        }
+                    } else {
+                        let split = front.len();
+                        for (dst, (&s, &w)) in self.fft_buf[..split]
+                            .iter_mut()
+                            .zip(front.iter().zip(self.hann_window[..split].iter()))
+                        {
+                            *dst = Complex::new(s * w, 0.0);
+                        }
+                        let remaining = FFT_SIZE - split;
+                        for (dst, (&s, &w)) in self.fft_buf[split..].iter_mut().zip(
+                            back[..remaining]
+                                .iter()
+                                .zip(self.hann_window[split..].iter()),
+                        ) {
+                            *dst = Complex::new(s * w, 0.0);
+                        }
+                    }
+                }
 
-                // Apply a Hann window to reduce spectral leakage.
-                let mut fft_buf: Vec<Complex<f32>> = window[..FFT_SIZE]
-                    .iter()
-                    .enumerate()
-                    .map(|(i, &s)| {
-                        let w = 0.5
-                            * (1.0
-                                - (2.0 * std::f32::consts::PI * i as f32 / (FFT_SIZE - 1) as f32)
-                                    .cos());
-                        Complex::new(s * w, 0.0)
-                    })
-                    .collect();
+                self.fft.process(&mut self.fft_buf);
 
-                self.fft.process(&mut fft_buf);
+                // Compute magnitudes in place — no allocation per hop.
+                for (mag, c) in self.magnitudes.iter_mut().zip(self.fft_buf.iter()) {
+                    *mag = c.norm();
+                }
 
-                let magnitudes: Vec<f32> =
-                    fft_buf[..FFT_SIZE / 2].iter().map(|c| c.norm()).collect();
-
-                let mut new_bands = compute_log_bands(&magnitudes, FFT_SIZE / 2, NUM_BANDS);
+                let mut new_bands = compute_log_bands(&self.magnitudes, FFT_SIZE / 2, NUM_BANDS);
                 smooth_bands(&mut new_bands);
 
                 // Apply wall-clock decay since the last hop, then rise to any louder value.
@@ -269,7 +304,12 @@ pub fn render_audio_visualization(frame: &mut Frame, state: &SharedState, rect: 
     // display_decay interpolates bar heights smoothly between write() calls.
     // We normalise against peak_envelope (NOT the per-frame peak), so display_decay
     // no longer cancels out and bars genuinely fade between audio packets.
-    let guard = state.vis_bands.lock();
+    //
+    // Use try_lock() so the UI never blocks the audio thread: if the sink is
+    // mid-hop we simply skip this render frame rather than stalling.
+    let Some(guard) = state.vis_bands.try_lock() else {
+        return;
+    };
     let display_decay = decay_for_elapsed(guard.updated_at.elapsed());
     let peak_norm =
         (guard.peak_envelope * peak_decay_for_elapsed(guard.updated_at.elapsed())).max(1e-6);

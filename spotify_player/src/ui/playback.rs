@@ -27,25 +27,26 @@ pub fn render_playback_window(
     let (rect, other_rect) = split_rect_for_playback_window(rect);
     let rect = construct_and_render_block("Playback", &ui.theme, Borders::ALL, frame, rect);
 
-    // When visualization is enabled, carve off the bottom rows for the bar chart.
-    #[cfg(feature = "streaming")]
-    let (rect, vis_rect) = {
-        let configs = config::get_config();
-        if configs.app_config.enable_audio_visualization {
-            let chunks = Layout::vertical([
-                Constraint::Fill(0),
-                Constraint::Length(super::streaming::VIS_HEIGHT),
-            ])
-            .split(rect);
-            (chunks[0], Some(chunks[1]))
-        } else {
-            (rect, None)
-        }
-    };
-
     let player = state.player.read();
     if let Some(ref playback) = player.playback {
         if let Some(item) = &playback.item {
+            // Carve off the visualization rows here, inside the active-playback
+            // branch, so the full rect is used when there is nothing playing.
+            #[cfg(feature = "streaming")]
+            let (rect, vis_rect) = {
+                let configs = config::get_config();
+                if configs.app_config.enable_audio_visualization {
+                    let chunks = Layout::vertical([
+                        Constraint::Fill(0),
+                        Constraint::Length(super::streaming::VIS_HEIGHT),
+                    ])
+                    .split(rect);
+                    (chunks[0], Some(chunks[1]))
+                } else {
+                    (rect, None)
+                }
+            };
+
             let (metadata_rect, progress_bar_rect) = {
                 // Render the track's cover image if `image` feature is enabled
                 #[cfg(feature = "image")]
