@@ -190,17 +190,22 @@ pub async fn new_connection(
     );
 
     let player = {
-        let vis_bands = Arc::clone(&state.vis_bands);
+        // Clone the Option<Arc<...>> so the factory closure can move it.
+        // vis_bands is Some iff enable_audio_visualization is true.
+        let vis_bands = state.vis_bands.as_ref().map(Arc::clone);
         player::Player::new(
             player_config,
             session.clone(),
             mixer.get_soft_volume(),
             move || -> Box<dyn Sink> {
                 let real = backend(None, AudioFormat::default());
-                if configs.app_config.enable_audio_visualization {
+                if let Some(ref bands) = vis_bands {
                     Box::new(crate::ui::streaming::VisualizationSink::new(
                         real,
-                        Arc::clone(&vis_bands),
+                        Arc::clone(bands),
+                        // librespot defaults to 44100 Hz; adjust here if
+                        // PlayerConfig::sample_rate is changed in the future.
+                        44_100.0,
                     ))
                 } else {
                     real

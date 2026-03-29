@@ -28,10 +28,10 @@ pub struct State {
     pub is_daemon: bool,
 
     /// Shared FFT frequency-band data written by the audio sink and read by the UI.
-    /// Only populated when the `streaming` feature is active and
-    /// `enable_audio_visualization` is `true`.
+    /// `Some` only when `enable_audio_visualization` is `true`; avoids allocating
+    /// the mutex/state entirely when the feature is not in use.
     #[cfg(feature = "streaming")]
-    pub vis_bands: Arc<Mutex<crate::ui::streaming::VisBands>>,
+    pub vis_bands: Option<Arc<Mutex<crate::ui::streaming::VisBands>>>,
 }
 
 impl State {
@@ -52,7 +52,13 @@ impl State {
             data: RwLock::new(app_data),
             is_daemon,
             #[cfg(feature = "streaming")]
-            vis_bands: Arc::new(Mutex::new(crate::ui::streaming::VisBands::new())),
+            vis_bands: if configs.app_config.enable_audio_visualization {
+                Some(Arc::new(Mutex::new(
+                    crate::ui::streaming::VisBands::default(),
+                )))
+            } else {
+                None
+            },
         }
     }
 
