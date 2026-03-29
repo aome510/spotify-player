@@ -24,12 +24,31 @@ pub fn render_playback_window(
     ui: &mut UIStateGuard,
     rect: Rect,
 ) -> Rect {
-    let (rect, other_rect) = split_rect_for_playback_window(rect);
+    let (rect, other_rect) = split_rect_for_playback_window(state, rect);
     let rect = construct_and_render_block("Playback", &ui.theme, Borders::ALL, frame, rect);
 
     let player = state.player.read();
     if let Some(ref playback) = player.playback {
         if let Some(item) = &playback.item {
+            // Carve off the visualization rows here, inside the active-playback
+            // branch, so the full rect is used when there is nothing playing.
+            #[cfg(feature = "streaming")]
+            let (rect, vis_rect) = {
+                let configs = config::get_config();
+                if configs.app_config.enable_audio_visualization
+                    && state.is_local_streaming_active()
+                {
+                    let chunks = Layout::vertical([
+                        Constraint::Fill(0),
+                        Constraint::Length(super::streaming::VIS_HEIGHT),
+                    ])
+                    .split(rect);
+                    (chunks[0], Some(chunks[1]))
+                } else {
+                    (rect, None)
+                }
+            };
+
             let (metadata_rect, progress_bar_rect) = {
                 // Render the track's cover image if `image` feature is enabled
                 #[cfg(feature = "image")]
@@ -136,6 +155,10 @@ pub fn render_playback_window(
                 duration,
             );
             render_playback_progress_bar(frame, ui, progress, duration, progress_bar_rect);
+            #[cfg(feature = "streaming")]
+            if let Some(vis_r) = vis_rect {
+                super::streaming::render_audio_visualization(frame, state, vis_r);
+            }
             return other_rect;
         }
     }
@@ -455,12 +478,25 @@ fn render_playback_cover_image(state: &SharedState, ui: &mut UIStateGuard) -> Re
 
 /// Split the given area into two, the first one for the playback window
 /// and the second one for the main application's layout (popup, page, etc).
-fn split_rect_for_playback_window(rect: Rect) -> (Rect, Rect) {
+#[allow(unused_variables)]
+fn split_rect_for_playback_window(state: &SharedState, rect: Rect) -> (Rect, Rect) {
     let configs = config::get_config();
     let playback_width = configs.app_config.layout.playback_window_height;
     // the playback window's width should not be smaller than the cover image's width + 1
     #[cfg(feature = "image")]
     let playback_width = std::cmp::max(configs.app_config.cover_img_width + 1, playback_width);
+
+    // When visualization is enabled *and* librespot is actively streaming,
+    // reserve extra rows for the bar chart. When the local player is idle
+    // (e.g. playback on an external Spotify Connect device) the rows are not
+    // reserved so the space is available to the rest of the layout.
+    #[cfg(feature = "streaming")]
+    let playback_width = playback_width
+        + if configs.app_config.enable_audio_visualization && state.is_local_streaming_active() {
+            super::streaming::VIS_HEIGHT as usize
+        } else {
+            0
+        };
 
     // add lines for top/bottom borders depending on the progress bar's position
     let num_lines = match configs.app_config.progress_bar_position {
