@@ -15,11 +15,11 @@ clap = { version = "4.6.0", features = ["derive", "string"] }
 config_parser2 = "0.1.7"
 crossterm = "0.29.0"
 dirs-next = "2.0.0"
-librespot-connect = { version = "0.8.0", optional = true }
-librespot-core = { version = "0.8.0" }
-librespot-oauth = { version = "0.8.0" }
-librespot-playback = {version = "0.8.0", optional = true, default-features = false, features = ["native-tls"]}
-librespot-metadata = { version = "0.8.0" }
+librespot-connect = { git = "https://github.com/antoinecellerier/librespot", branch = "fix/dealer-reconnect-hang", optional = true }
+librespot-core = { git = "https://github.com/antoinecellerier/librespot", branch = "fix/dealer-reconnect-hang" }
+librespot-oauth = { git = "https://github.com/antoinecellerier/librespot", branch = "fix/dealer-reconnect-hang" }
+librespot-playback = { git = "https://github.com/antoinecellerier/librespot", branch = "fix/dealer-reconnect-hang", optional = true, default-features = false, features = ["native-tls"] }
+librespot-metadata = { git = "https://github.com/antoinecellerier/librespot", branch = "fix/dealer-reconnect-hang" }
 log = "0.4.29"
 chrono = "0.4.44"
 chrono-humanize = "0.2.3"
