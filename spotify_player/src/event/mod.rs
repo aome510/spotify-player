@@ -91,10 +91,7 @@ fn handle_mouse_event(
         // a left click event
         crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left) => {
             let rect = state.ui.lock().playback_progress_bar_rect;
-            if event.row == rect.y
-                && event.column >= rect.x
-                && event.column < rect.x + rect.width
-            {
+            if event.row == rect.y && event.column >= rect.x && event.column < rect.x + rect.width {
                 // calculate the seek position (in ms) based on the mouse click position,
                 // the progress bar's width and the track's duration (in ms)
                 let player = state.player.read();
