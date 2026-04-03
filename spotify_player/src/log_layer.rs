@@ -50,7 +50,7 @@ struct MessageVisitor {
 impl tracing::field::Visit for MessageVisitor {
     fn record_debug(&mut self, field: &tracing::field::Field, value: &dyn core::fmt::Debug) {
         if field.name() == "message" {
-            self.message = format!("{:?}", value);
+            self.message = format!("{value:?}");
         }
     }
 }

@@ -556,21 +556,12 @@ fn handle_command_for_command_help_page(command: Command, ui: &mut UIStateGuard)
 }
 
 fn handle_command_for_logs_page(command: Command, ui: &mut UIStateGuard) -> bool {
-    match command {
-        Command::SelectNextOrScrollDown => {
-            if let PageState::Logs { scroll_offset } = ui.current_page_mut() {
-                *scroll_offset += 1;
-            }
-            true
-        }
-        Command::SelectPreviousOrScrollUp => {
-            if let PageState::Logs { scroll_offset } = ui.current_page_mut() {
-                *scroll_offset = scroll_offset.saturating_sub(1);
-            }
-            true
-        }
-        _ => false,
-    }
+    let scroll_offset = match ui.current_page() {
+        PageState::Logs { scroll_offset } => *scroll_offset,
+        _ => return false,
+    };
+    let count = ui.count_prefix;
+    handle_navigation_command(command, ui.current_page_mut(), scroll_offset, 10000, count)
 }
 
 pub fn handle_navigation_command(

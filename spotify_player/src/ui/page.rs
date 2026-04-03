@@ -1162,7 +1162,12 @@ pub fn render_logs_page(frame: &mut Frame, state: &SharedState, ui: &mut UIState
 
     let logs = state.logs.lock();
     let scroll_offset = match ui.current_page_mut() {
-        PageState::Logs { scroll_offset } => *scroll_offset,
+        PageState::Logs { scroll_offset } => {
+            if !logs.is_empty() && *scroll_offset >= logs.len() {
+                *scroll_offset = logs.len() - 1;
+            }
+            *scroll_offset
+        }
         _ => return,
     };
 
