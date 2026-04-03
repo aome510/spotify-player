@@ -4,7 +4,7 @@ mod model;
 mod player;
 mod ui;
 
-use std::sync::Arc;
+use std::{collections::VecDeque, sync::Arc};
 
 pub use constant::*;
 pub use data::*;
@@ -32,10 +32,12 @@ pub struct State {
     /// the mutex/state entirely when the feature is not in use.
     #[cfg(feature = "streaming")]
     pub vis_bands: Option<Arc<Mutex<crate::ui::streaming::VisBands>>>,
+
+    pub logs: Arc<Mutex<VecDeque<String>>>,
 }
 
 impl State {
-    pub fn new(is_daemon: bool) -> Self {
+    pub fn new(is_daemon: bool, log_buffer: Arc<Mutex<VecDeque<String>>>) -> Self {
         let mut ui = UIState::default();
         let configs = config::get_config();
 
@@ -59,6 +61,8 @@ impl State {
             } else {
                 None
             },
+
+            logs: log_buffer,
         }
     }
 

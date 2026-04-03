@@ -626,6 +626,9 @@ fn handle_global_command(
         Command::OpenCommandHelp => {
             ui.new_page(PageState::CommandHelp { scroll_offset: 0 });
         }
+        Command::OpenLogs => {
+            ui.new_page(PageState::Logs { scroll_offset: 0 });
+        }
         Command::RefreshPlayback => {
             client_pub.send(ClientRequest::GetCurrentPlayback)?;
         }

@@ -33,6 +33,9 @@ pub enum PageState {
     CommandHelp {
         scroll_offset: usize,
     },
+    Logs {
+        scroll_offset: usize,
+    },
 }
 
 #[derive(PartialEq, Eq, Clone, Copy)]
@@ -44,6 +47,7 @@ pub enum PageType {
     Lyrics,
     Queue,
     CommandHelp,
+    Logs,
 }
 
 #[derive(Clone, Debug)]
@@ -147,6 +151,7 @@ impl PageState {
             PageState::Lyrics { .. } => PageType::Lyrics,
             PageState::Queue { .. } => PageType::Queue,
             PageState::CommandHelp { .. } => PageType::CommandHelp,
+            PageState::Logs { .. } => PageType::Logs,
         }
     }
 
@@ -232,9 +237,9 @@ impl PageState {
                 }
             },
             Self::Lyrics { .. } => None,
-            Self::CommandHelp { scroll_offset } | Self::Queue { scroll_offset } => {
-                Some(MutableWindowState::Scroll(scroll_offset))
-            }
+            Self::CommandHelp { scroll_offset }
+            | Self::Queue { scroll_offset }
+            | Self::Logs { scroll_offset } => Some(MutableWindowState::Scroll(scroll_offset)),
         }
     }
 }

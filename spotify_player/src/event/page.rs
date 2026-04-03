@@ -31,6 +31,7 @@ pub fn handle_key_sequence_for_page(
             PageType::Lyrics => Ok(false),
             PageType::Queue => Ok(handle_command_for_queue_page(command, ui)),
             PageType::CommandHelp => Ok(handle_command_for_command_help_page(command, ui)),
+            PageType::Logs => Ok(handle_command_for_logs_page(command, ui)),
         },
         Some(CommandOrAction::Action(action, ActionTarget::SelectedItem)) => match page_type {
             PageType::Search => anyhow::bail!("page search type should already be handled!"),
@@ -552,6 +553,24 @@ fn handle_command_for_command_help_page(command: Command, ui: &mut UIStateGuard)
     }
     let count = ui.count_prefix;
     handle_navigation_command(command, ui.current_page_mut(), scroll_offset, 10000, count)
+}
+
+fn handle_command_for_logs_page(command: Command, ui: &mut UIStateGuard) -> bool {
+    match command {
+        Command::SelectNextOrScrollDown => {
+            if let PageState::Logs { scroll_offset } = ui.current_page_mut() {
+                *scroll_offset += 1;
+            }
+            true
+        }
+        Command::SelectPreviousOrScrollUp => {
+            if let PageState::Logs { scroll_offset } = ui.current_page_mut() {
+                *scroll_offset = scroll_offset.saturating_sub(1);
+            }
+            true
+        }
+        _ => false,
+    }
 }
 
 pub fn handle_navigation_command(

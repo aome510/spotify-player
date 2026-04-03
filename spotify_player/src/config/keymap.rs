@@ -328,6 +328,10 @@ impl Default for KeymapConfig {
                     key_sequence: "g c".into(),
                     command: Command::JumpToCurrentTrackInContext,
                 },
+                Keymap {
+                    key_sequence: "g o".into(),
+                    command: Command::OpenLogs,
+                },
             ],
         }
     }

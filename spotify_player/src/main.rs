@@ -5,6 +5,7 @@ mod command;
 mod config;
 mod event;
 mod key;
+mod log_layer;
 #[cfg(feature = "media-control")]
 mod media_control;
 mod playlist_folders;
@@ -16,7 +17,10 @@ mod ui;
 mod utils;
 
 use anyhow::{Context, Result};
-use std::io::Write;
+use parking_lot::Mutex;
+use std::{collections::VecDeque, io::Write, sync::Arc};
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
 
 fn init_spotify(
     client_pub: &flume::Sender<client::ClientRequest>,
@@ -38,7 +42,10 @@ fn init_spotify(
     Ok(())
 }
 
-fn init_logging(log_folder: &std::path::Path) -> Result<()> {
+fn init_logging(
+    log_folder: &std::path::Path,
+    log_buffer: Arc<Mutex<VecDeque<String>>>,
+) -> Result<()> {
     if std::env::var_os("RUST_LOG").is_some_and(|x| x == "off") {
         // Don't create log files if logging is disabled.
         return Ok(());
@@ -59,10 +66,17 @@ fn init_logging(log_folder: &std::path::Path) -> Result<()> {
     }
     let log_file = std::fs::File::create(log_folder.join(format!("{log_prefix}.log")))
         .context("failed to create log file")?;
-    tracing_subscriber::fmt::fmt()
-        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+
+    let fmt_layer = tracing_subscriber::fmt::layer()
         .with_ansi(false)
-        .with_writer(std::sync::Mutex::new(log_file))
+        .with_writer(std::sync::Mutex::new(log_file));
+
+    let buffer_layer = crate::log_layer::BufferLayer::new(log_buffer, 1000);
+
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::EnvFilter::from_default_env())
+        .with(fmt_layer)
+        .with(buffer_layer)
         .init();
 
     // initialize the application's panic backtrace
@@ -272,7 +286,11 @@ fn main() -> Result<()> {
                 .as_deref()
                 .expect("log_folder is set");
 
-            init_logging(log_folder).context("failed to initialize application's logging")?;
+            let log_buffer: Arc<Mutex<VecDeque<String>>> =
+                Arc::new(Mutex::new(VecDeque::with_capacity(1000)));
+
+            init_logging(log_folder, log_buffer.clone())
+                .context("failed to initialize application's logging")?;
 
             // log the application's configurations
             tracing::info!("Configurations: {:?}", config::get_config());
@@ -301,7 +319,7 @@ fn main() -> Result<()> {
                 is_daemon = false;
             }
 
-            let state = std::sync::Arc::new(state::State::new(is_daemon));
+            let state = std::sync::Arc::new(state::State::new(is_daemon, log_buffer));
             start_app(&state)
         }
         Some((cmd, args)) => cli::handle_cli_subcommand(cmd, args),
