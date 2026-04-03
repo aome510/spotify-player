@@ -89,6 +89,7 @@ pub enum Command {
     MovePlaylistItemDown,
 
     CreatePlaylist,
+    OpenLogs,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize)]
@@ -372,6 +373,7 @@ impl Command {
             Self::MovePlaylistItemDown => "move playlist item down one position",
             Self::CreatePlaylist => "create a new playlist",
             Self::VolumeChange { offset: _ } => unreachable!(),
+            Self::OpenLogs => "go to the application logs page",
         }
         .to_string()
     }

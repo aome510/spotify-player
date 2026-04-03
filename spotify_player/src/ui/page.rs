@@ -1156,3 +1156,36 @@ fn render_episode_table(
         utils::render_table_window(frame, episode_table, rect, n_episodes, playable_table_state);
     }
 }
+
+pub fn render_logs_page(frame: &mut Frame, state: &SharedState, ui: &mut UIStateGuard, rect: Rect) {
+    let rect = construct_and_render_block("Logs", &ui.theme, Borders::ALL, frame, rect);
+
+    let logs = state.logs.lock();
+    let scroll_offset = match ui.current_page_mut() {
+        PageState::Logs { scroll_offset } => {
+            if !logs.is_empty() && *scroll_offset >= logs.len() {
+                *scroll_offset = logs.len() - 1;
+            }
+            *scroll_offset
+        }
+        _ => return,
+    };
+
+    let lines: Vec<Line> = logs
+        .iter()
+        .skip(scroll_offset)
+        .map(|line| {
+            let style = if line.contains("ERROR") {
+                Style::default().fg(ratatui::style::Color::Red)
+            } else if line.contains("WARN") {
+                Style::default().fg(ratatui::style::Color::Yellow)
+            } else {
+                Style::default()
+            };
+            Line::styled(line, style)
+        })
+        .collect();
+
+    let paragraph = Paragraph::new(lines);
+    frame.render_widget(paragraph, rect);
+}
