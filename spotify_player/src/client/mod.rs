@@ -665,6 +665,85 @@ impl AppClient {
         Ok(self.device().await?)
     }
 
+    /// Get a show data
+    pub async fn get_a_show(&self, show_id: ShowId<'_>, market: Option<rspotify::model::Market>) -> Result<serde_json::Value> {
+        let url = format!("{SPOTIFY_API_ENDPOINT}/shows/{}", show_id.id());
+        let mut query = Query::new();
+        if let Some(market) = market {
+            query.insert("market", <&str>::from(market));
+        }
+        self.http_get::<serde_json::Value>(&url, &query).await
+    }
+
+    pub async fn artist(&self, artist_id: ArtistId<'_>) -> Result<Artist> {
+        let url = format!("{SPOTIFY_API_ENDPOINT}/artists/{}", artist_id.id());
+        let v = self.http_get::<serde_json::Value>(&url, &Query::new()).await?;
+        serde_json::from_value(v).context("parse artist")
+    }
+
+    pub async fn artist_related_artists(&self, artist_id: ArtistId<'_>) -> Result<Vec<Artist>> {
+        #[derive(Deserialize)]
+        struct RelatedArtistsResponse {
+            artists: Vec<serde_json::Value>,
+        }
+
+        let url = format!("{SPOTIFY_API_ENDPOINT}/artists/{}/related-artists", artist_id.id());
+        let response = match self.http_get::<RelatedArtistsResponse>(&url, &Query::new()).await {
+            Ok(r) => r,
+            Err(_) => return Ok(vec![]),
+        };
+
+        Ok(response
+            .artists
+            .into_iter()
+            .filter_map(|v| serde_json::from_value(v).ok())
+            .collect())
+    }
+
+    pub async fn artist_top_tracks(
+        &self,
+        artist_id: rspotify::model::ArtistId<'_>,
+        market: Option<rspotify::model::Market>,
+    ) -> Result<Vec<rspotify::model::FullTrack>> {
+        match self.deref().artist_top_tracks(artist_id, market).await {
+            Ok(t) => Ok(t),
+            Err(e) => {
+                tracing::warn!("Failed to get artist top tracks: {e:#}");
+                Ok(vec![])
+            }
+        }
+    }
+
+    /// Make a GET HTTP request to the Spotify server
+    async fn http_get<T>(&self, url: &str, payload: &Query<'_>) -> Result<T>
+    where
+        T: serde::de::DeserializeOwned,
+    {
+        let access_token = self.token().await.context("get token")?;
+        tracing::debug!("{access_token} {url}");
+
+        let response = self
+            .http
+            .get(url)
+            .query(payload)
+            .header(
+                reqwest::header::AUTHORIZATION,
+                format!("Bearer {access_token}"),
+            )
+            .send()
+            .await?;
+
+        let status = response.status();
+        let text = response.text().await?;
+        tracing::debug!("{text}");
+
+        if status != StatusCode::OK {
+            anyhow::bail!("failed to send a Spotify API request {url}: {text}");
+        }
+
+        Ok(serde_json::from_str(&text)?)
+    }
+
     pub fn update_playback(&self, state: &SharedState) {
         // After handling a request changing the player's playback,
         // update the playback state by making multiple get-playback requests.
@@ -786,7 +865,7 @@ impl AppClient {
     /// Get the saved (liked) tracks of the current user
     pub async fn current_user_saved_tracks(&self) -> Result<Vec<Track>> {
         let tracks = self
-            .all_paging_items::<rspotify::model::SavedTrack>(
+            .all_paging_items::<serde_json::Value>(
                 &format!("{SPOTIFY_API_ENDPOINT}/me/tracks"),
                 0, // we don't know the total number of saved tracks beforehand
             )
@@ -794,22 +873,44 @@ impl AppClient {
 
         Ok(tracks
             .into_iter()
-            .filter_map(|t| Track::try_from_full_track(t.track))
+            .filter_map(|v| {
+                let track_v = v.get("track")?.clone();
+                let mut track = Track::try_from_value(track_v)?;
+                if let Some(added_at) = v.get("added_at").and_then(|v| v.as_str()) {
+                    if let Ok(ts) = chrono::DateTime::parse_from_rfc3339(added_at) {
+                        track.added_at = ts.timestamp() as u64;
+                    }
+                }
+                Some(track)
+            })
             .collect())
     }
 
     /// Get the recently played tracks of the current user
     pub async fn current_user_recently_played_tracks(&self) -> Result<Vec<Track>> {
-        let first_page = self.current_user_recently_played(Some(50), None).await?;
+        let url = format!("{SPOTIFY_API_ENDPOINT}/me/player/recently-played?limit=50");
+        let mut response_v = self.http_get::<serde_json::Value>(&url, &Query::new()).await?;
 
-        let play_histories = self.all_cursor_based_paging_items(first_page).await?;
+        let mut tracks = Vec::new();
+        let mut seen_names = HashSet::new();
 
-        // de-duplicate the tracks returned from the recently-played API
-        let mut tracks = Vec::<Track>::new();
-        for history in play_histories {
-            if !tracks.iter().any(|t| t.name == history.track.name) {
-                if let Some(track) = Track::try_from_full_track(history.track) {
-                    tracks.push(track);
+        loop {
+            if let Some(items) = response_v.get("items").and_then(|i| i.as_array()) {
+                for item in items {
+                    if let Some(track_v) = item.get("track") {
+                        if let Some(track) = Track::try_from_value(track_v.clone()) {
+                            if seen_names.insert(track.name.clone()) {
+                                tracks.push(track);
+                            }
+                        }
+                    }
+                }
+            }
+
+            match response_v.get("next").and_then(|n| n.as_str()) {
+                None => break,
+                Some(url) => {
+                    response_v = self.http_get::<serde_json::Value>(url, &Query::new()).await?;
                 }
             }
         }
@@ -818,23 +919,27 @@ impl AppClient {
 
     /// Get the top tracks of the current user
     pub async fn current_user_top_tracks(&self) -> Result<Vec<Track>> {
-        let tracks = self
-            .all_paging_items::<rspotify::model::FullTrack>(
+        let tracks = match self
+            .all_paging_items::<serde_json::Value>(
                 &format!("{SPOTIFY_API_ENDPOINT}/me/top/tracks"),
                 0, // we don't know the total number of top tracks beforehand
             )
-            .await?;
+            .await
+        {
+            Ok(t) => t,
+            Err(e) => {
+                tracing::warn!("Failed to get top tracks: {e:#}");
+                return Ok(vec![]);
+            }
+        };
 
-        Ok(tracks
-            .into_iter()
-            .filter_map(Track::try_from_full_track)
-            .collect())
+        Ok(tracks.into_iter().filter_map(Track::try_from_value).collect())
     }
 
     /// Get all playlists of the current user
     pub async fn current_user_playlists(&self) -> Result<Vec<Playlist>> {
         let playlists = self
-            .all_paging_items::<rspotify::model::SimplifiedPlaylist>(
+            .all_paging_items::<serde_json::Value>(
                 &format!("{SPOTIFY_API_ENDPOINT}/me/playlists"),
                 0, // we don't know the total number of playlists beforehand
             )
@@ -842,63 +947,86 @@ impl AppClient {
 
         Ok(playlists
             .into_iter()
-            .map(std::convert::Into::into)
+            .filter_map(|v| serde_json::from_value(v).ok())
             .collect())
     }
 
     /// Get all followed artists of the current user
     pub async fn current_user_followed_artists(&self) -> Result<Vec<Artist>> {
-        let first_page = self
-            .deref()
-            .current_user_followed_artists(None, None)
-            .await?;
+        let url = format!("{SPOTIFY_API_ENDPOINT}/me/following?type=artist");
+        let mut response_v = self.http_get::<serde_json::Value>(&url, &Query::new()).await?;
 
-        // followed artists pagination is handled different from
-        // other paginations. The endpoint uses cursor-based pagination.
-        let mut artists = first_page.items;
-        let mut maybe_next = first_page.next;
-        while let Some(url) = maybe_next {
-            let mut next_page = self
-                .http_get::<rspotify::model::CursorPageFullArtists>(&url, &Query::new())
-                .await?
-                .artists;
-            artists.append(&mut next_page.items);
-            maybe_next = next_page.next;
+        let mut artists = Vec::new();
+        loop {
+            let artists_obj = match response_v.get("artists") {
+                Some(a) => a,
+                None => break,
+            };
+
+            if let Some(items) = artists_obj.get("items").and_then(|i| i.as_array()) {
+                for item in items {
+                    if let Ok(artist) = serde_json::from_value(item.clone()) {
+                        artists.push(artist);
+                    }
+                }
+            }
+
+            match artists_obj.get("next").and_then(|n| n.as_str()) {
+                None => break,
+                Some(url) => {
+                    response_v = self.http_get::<serde_json::Value>(url, &Query::new()).await?;
+                }
+            }
         }
-
-        // converts `rspotify::model::FullArtist` into `state::Artist`
-        Ok(artists.into_iter().map(std::convert::Into::into).collect())
+        Ok(artists)
     }
 
     /// Get all saved albums of the current user
     pub async fn current_user_saved_albums(&self) -> Result<Vec<Album>> {
         let albums = self
-            .all_paging_items::<rspotify::model::SavedAlbum>(
+            .all_paging_items::<serde_json::Value>(
                 &format!("{SPOTIFY_API_ENDPOINT}/me/albums"),
                 0, // we don't know the total number of saved albums beforehand
             )
             .await?;
 
-        // Converts `rspotify::model::SavedAlbum` into `state::Album`
-        Ok(albums.into_iter().map(Album::from).collect())
+        Ok(albums
+            .into_iter()
+            .filter_map(|v| {
+                let album_v = v.get("album")?.clone();
+                let mut album = Album::try_from_simplified_album_value(album_v)?;
+                if let Some(added_at) = v.get("added_at").and_then(|v| v.as_str()) {
+                    if let Ok(ts) = chrono::DateTime::parse_from_rfc3339(added_at) {
+                        album.added_at = ts.timestamp() as u64;
+                    }
+                }
+                Some(album)
+            })
+            .collect())
     }
 
     /// Get all saved shows of the current user
     pub async fn current_user_saved_shows(&self) -> Result<Vec<Show>> {
         let shows = self
-            .all_paging_items::<rspotify::model::Show>(
+            .all_paging_items::<serde_json::Value>(
                 &format!("{SPOTIFY_API_ENDPOINT}/me/shows"),
                 0, // we don't know the total number of saved shows beforehand
             )
             .await?;
 
-        Ok(shows.into_iter().map(|s| s.show.into()).collect())
+        Ok(shows
+            .into_iter()
+            .filter_map(|v| {
+                let show_v = v.get("show")?.clone();
+                serde_json::from_value(show_v).ok()
+            })
+            .collect())
     }
 
     /// Get all albums of an artist
     pub async fn artist_albums(&self, artist_id: ArtistId<'_>) -> Result<Vec<Album>> {
         let albums = self
-            .all_paging_items::<rspotify::model::SimplifiedAlbum>(
+            .all_paging_items::<serde_json::Value>(
                 &format!(
                     "{SPOTIFY_API_ENDPOINT}/artists/{}/albums?include_groups=album,single",
                     artist_id.id()
@@ -907,7 +1035,7 @@ impl AppClient {
             )
             .await?
             .into_iter()
-            .filter_map(Album::try_from_simplified_album)
+            .filter_map(Album::try_from_simplified_album_value)
             .collect();
 
         Ok(AppClient::process_artist_albums(albums))
@@ -1020,64 +1148,94 @@ impl AppClient {
 
     /// Search for items (tracks, artists, albums, playlists) matching a given query
     pub async fn search(&self, query: &str) -> Result<SearchResults> {
-        let (
-            track_result,
-            artist_result,
-            album_result,
-            playlist_result,
-            show_result,
-            episode_result,
-        ) = tokio::try_join!(
-            self.search_specific_type(query, rspotify::model::SearchType::Track),
-            self.search_specific_type(query, rspotify::model::SearchType::Artist),
-            self.search_specific_type(query, rspotify::model::SearchType::Album),
-            self.search_specific_type(query, rspotify::model::SearchType::Playlist),
-            self.search_specific_type(query, rspotify::model::SearchType::Show),
-            self.search_specific_type(query, rspotify::model::SearchType::Episode)
-        )?;
+        let mut tracks = vec![];
+        let mut artists = vec![];
+        let mut albums = vec![];
+        let mut playlists = vec![];
+        let mut shows = vec![];
+        let mut episodes = vec![];
 
-        let (tracks, artists, albums, playlists, shows, episodes) = (
-            match track_result {
-                rspotify::model::SearchResult::Tracks(p) => p
+        let url = format!("{SPOTIFY_API_ENDPOINT}/search");
+        let payload = Query::from([
+            ("q", query),
+            ("type", "track,artist,album,playlist,show,episode"),
+            ("limit", "10"),
+        ]);
+
+        let result = match self.http_get::<serde_json::Value>(&url, &payload).await {
+            Ok(r) => r,
+            Err(e) => {
+                tracing::warn!("Search failed: {e:#}");
+                return Ok(SearchResults::default());
+            }
+        };
+
+        if let Some(t) = result.get("tracks") {
+            if let Ok(p) =
+                serde_json::from_value::<rspotify::model::Page<serde_json::Value>>(t.clone())
+            {
+                tracks = p
                     .items
                     .into_iter()
-                    .filter_map(Track::try_from_full_track)
-                    .collect(),
-                _ => anyhow::bail!("expect a track search result"),
-            },
-            match artist_result {
-                rspotify::model::SearchResult::Artists(p) => {
-                    p.items.into_iter().map(std::convert::Into::into).collect()
-                }
-                _ => anyhow::bail!("expect an artist search result"),
-            },
-            match album_result {
-                rspotify::model::SearchResult::Albums(p) => p
+                    .filter_map(Track::try_from_value)
+                    .collect();
+            }
+        }
+        if let Some(t) = result.get("artists") {
+            if let Ok(p) =
+                serde_json::from_value::<rspotify::model::Page<serde_json::Value>>(t.clone())
+            {
+                artists = p
                     .items
                     .into_iter()
-                    .filter_map(Album::try_from_simplified_album)
-                    .collect(),
-                _ => anyhow::bail!("expect an album search result"),
-            },
-            match playlist_result {
-                rspotify::model::SearchResult::Playlists(p) => {
-                    p.items.into_iter().map(std::convert::Into::into).collect()
-                }
-                _ => anyhow::bail!("expect a playlist search result"),
-            },
-            match show_result {
-                rspotify::model::SearchResult::Shows(p) => {
-                    p.items.into_iter().map(std::convert::Into::into).collect()
-                }
-                _ => anyhow::bail!("expect a show search result"),
-            },
-            match episode_result {
-                rspotify::model::SearchResult::Episodes(p) => {
-                    p.items.into_iter().map(std::convert::Into::into).collect()
-                }
-                _ => anyhow::bail!("expect a episode search result"),
-            },
-        );
+                    .filter_map(|v| serde_json::from_value(v).ok())
+                    .collect();
+            }
+        }
+        if let Some(t) = result.get("albums") {
+            if let Ok(p) =
+                serde_json::from_value::<rspotify::model::Page<serde_json::Value>>(t.clone())
+            {
+                albums = p
+                    .items
+                    .into_iter()
+                    .filter_map(Album::try_from_simplified_album_value)
+                    .collect();
+            }
+        }
+        if let Some(t) = result.get("playlists") {
+            if let Ok(p) =
+                serde_json::from_value::<rspotify::model::Page<serde_json::Value>>(t.clone())
+            {
+                playlists = p
+                    .items
+                    .into_iter()
+                    .filter_map(|v| serde_json::from_value(v).ok())
+                    .collect();
+            }
+        }
+        if let Some(t) = result.get("shows") {
+            if let Ok(p) =
+                serde_json::from_value::<rspotify::model::Page<serde_json::Value>>(t.clone())
+            {
+                shows = p
+                    .items
+                    .into_iter()
+                    .filter_map(|v| serde_json::from_value(v).ok())
+                    .collect();
+            }
+        }
+        if let Some(t) = result.get("episodes") {
+            if let Ok(p) =
+                serde_json::from_value::<rspotify::model::Page<serde_json::Value>>(t.clone())
+            {
+                episodes = p
+                    .items
+                    .into_iter()
+                    .filter_map(|v| serde_json::from_value(v).ok())
+                    .collect();
+            }
+        }
 
         Ok(SearchResults {
             tracks,
@@ -1097,7 +1255,7 @@ impl AppClient {
     ) -> Result<rspotify::model::SearchResult> {
         Ok(self
             .deref()
-            .search(query, typ, None, None, None, None)
+            .search(query, typ, None, None, Some(10), None)
             .await?)
     }
 
@@ -1342,29 +1500,75 @@ impl AppClient {
         let playlist_uri = playlist_id.uri();
         tracing::info!("Get playlist context: {}", playlist_uri);
 
-        let playlist = self
-            .playlist(
-                playlist_id.clone(),
-                None,
-                Some(rspotify::model::Market::FromToken),
+        #[derive(Deserialize, Debug)]
+        struct ManualPlaylist {
+            pub id: PlaylistId<'static>,
+            pub collaborative: bool,
+            pub name: String,
+            pub owner: rspotify::model::PublicUser,
+            pub description: Option<String>,
+            pub snapshot_id: String,
+            #[serde(alias = "items")]
+            pub tracks: serde_json::Value,
+        }
+
+        let playlist_v = self
+            .http_get::<serde_json::Value>(
+                &format!("{SPOTIFY_API_ENDPOINT}/playlists/{}", playlist_id.id()),
+                &Query::from([("market", "from_token")]),
             )
             .await?;
+        let p: ManualPlaylist = serde_json::from_value(playlist_v.clone()).context("parse playlist")?;
+
+        let total_tracks = p.tracks.get("total").and_then(|t| t.as_u64()).unwrap_or(0) as usize;
+
+        #[derive(Deserialize, Debug)]
+        struct ManualPlaylistItem {
+            #[serde(alias = "item")]
+            pub track: Option<rspotify::model::PlayableItem>,
+            pub added_at: Option<chrono::DateTime<chrono::Utc>>,
+        }
 
         let tracks = self
-            .all_paging_items(
+            .all_paging_items::<ManualPlaylistItem>(
                 &format!(
-                    "{SPOTIFY_API_ENDPOINT}/playlists/{}/tracks",
+                    "{SPOTIFY_API_ENDPOINT}/playlists/{}/items",
                     playlist_id.id(),
                 ),
-                playlist.tracks.total as usize,
+                total_tracks,
             )
             .await?
             .into_iter()
-            .filter_map(Track::try_from_playlist_item)
+            .filter_map(|item| {
+                // convert ManualPlaylistItem to rspotify::model::PlaylistItem
+                let playlist_item = rspotify::model::PlaylistItem {
+                    added_at: item.added_at,
+                    added_by: None,
+                    is_local: false,
+                    track: item.track,
+                };
+                Track::try_from_playlist_item(playlist_item)
+            })
             .collect::<Vec<_>>();
 
+        // manual conversion to state::Playlist
+        let re = regex::Regex::new("(<.*?>|</.*?>)").expect("valid regex");
+        let desc = p.description.unwrap_or_default();
+        let desc = html_escape::decode_html_entities(&re.replace_all(&desc, "")).to_string();
+
         Ok(Context::Playlist {
-            playlist: playlist.into(),
+            playlist: Playlist {
+                id: p.id,
+                name: p.name,
+                collaborative: p.collaborative,
+                owner: (
+                    p.owner.display_name.unwrap_or_default(),
+                    p.owner.id,
+                ),
+                desc,
+                current_folder_id: 0,
+                snapshot_id: p.snapshot_id,
+            },
             tracks,
         })
     }
@@ -1374,31 +1578,29 @@ impl AppClient {
         let album_uri = album_id.uri();
         tracing::info!("Get album context: {}", album_uri);
 
-        let album = self
-            .album(album_id.clone(), Some(rspotify::model::Market::FromToken))
+        let album_v = self
+            .http_get::<serde_json::Value>(
+                &format!("{SPOTIFY_API_ENDPOINT}/albums/{}", album_id.id()),
+                &Query::from([("market", "from_token")]),
+            )
             .await?;
+        let album: Album = serde_json::from_value(album_v.clone()).context("parse album")?;
 
-        let total_tracks = album.tracks.total as usize;
-
-        // converts `rspotify::model::FullAlbum` into `state::Album`
-        let album: Album = album.into();
+        let total_tracks = album_v.get("tracks").or_else(|| album_v.get("items"))
+            .and_then(|t| t.get("total")).and_then(|t| t.as_u64()).unwrap_or(0) as usize;
 
         // get the album's tracks
         let tracks = self
-            .all_paging_items(
+            .all_paging_items::<serde_json::Value>(
                 &format!("{SPOTIFY_API_ENDPOINT}/albums/{}/tracks", album_id.id()),
                 total_tracks,
             )
             .await?
             .into_iter()
-            .filter_map(|t| {
-                // simplified track doesn't have album so
-                // we need to manually include one during
-                // converting into `state::Track`
-                Track::try_from_simplified_track(t).map(|mut t| {
-                    t.album = Some(album.clone());
-                    t
-                })
+            .filter_map(|v| {
+                let mut track = Track::try_from_simplified_track_value(v)?;
+                track.album = Some(album.clone());
+                Some(track)
             })
             .collect::<Vec<_>>();
 
@@ -1410,36 +1612,30 @@ impl AppClient {
         let artist_uri = artist_id.uri();
         tracing::info!("Get artist context: {}", artist_uri);
 
-        // get the artist's information, including top tracks, related artists, and albums
+        let artist = self.artist(artist_id.as_ref()).await?;
 
-        let artist = self
-            .artist(artist_id.as_ref())
+        let top_tracks = match self
+            .http_get::<serde_json::Value>(
+                &format!("{SPOTIFY_API_ENDPOINT}/artists/{}/top-tracks", artist_id.id()),
+                &Query::from([("market", "from_token")]),
+            )
             .await
-            .context("get artist")?
-            .into();
+        {
+            Ok(v) => v
+                .get("tracks")
+                .and_then(|t| t.as_array())
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|v| Track::try_from_value(v.clone()))
+                        .collect()
+                })
+                .unwrap_or_default(),
+            Err(_) => vec![],
+        };
 
-        let top_tracks = self
-            .artist_top_tracks(artist_id.as_ref(), Some(rspotify::model::Market::FromToken))
-            .await
-            .context("get artist's top tracks")?
-            .into_iter()
-            .filter_map(Track::try_from_full_track)
-            .collect::<Vec<_>>();
+        let related_artists = self.artist_related_artists(artist_id.as_ref()).await.unwrap_or_default();
 
-        #[allow(deprecated)]
-        let related_artists = self
-            .artist_related_artists(artist_id.as_ref())
-            .await
-            .ok()
-            .unwrap_or_default()
-            .into_iter()
-            .map(std::convert::Into::into)
-            .collect::<Vec<_>>();
-
-        let albums = self
-            .artist_albums(artist_id.as_ref())
-            .await
-            .context("get artist's albums")?;
+        let albums = self.artist_albums(artist_id.as_ref()).await.unwrap_or_default();
 
         Ok(Context::Artist {
             artist,
@@ -1454,69 +1650,31 @@ impl AppClient {
         let show_uri = show_id.uri();
         tracing::info!("Get show context: {}", show_uri);
 
-        let show = self.get_a_show(show_id.clone(), None).await?;
+        let show_v = self.get_a_show(show_id.clone(), Some(rspotify::model::Market::FromToken)).await?;
+        let show: Show = serde_json::from_value(show_v.clone()).context("parse show")?;
+
+        let total_episodes = show_v.get("episodes").and_then(|e| e.get("total")).and_then(|t| t.as_u64()).unwrap_or(0) as usize;
 
         // get the show's episodes
         let episodes = self
-            .all_paging_items::<rspotify::model::SimplifiedEpisode>(
+            .all_paging_items::<serde_json::Value>(
                 &format!("{SPOTIFY_API_ENDPOINT}/shows/{}/episodes", show_id.id()),
-                show.episodes.total as usize,
+                total_episodes,
             )
             .await?
             .into_iter()
-            .map(std::convert::Into::into)
+            .filter_map(|v| serde_json::from_value(v).ok())
             .collect::<Vec<_>>();
 
-        // converts `rspotify::model::FullShow` into `state::Show`
-        let show: Show = show.into();
-
         Ok(Context::Show { show, episodes })
-    }
-
-    /// Make a GET HTTP request to the Spotify server
-    async fn http_get<T>(&self, url: &str, payload: &Query<'_>) -> Result<T>
-    where
-        T: serde::de::DeserializeOwned,
-    {
-        /// a helper function to process an API response from Spotify server
-        ///
-        /// This function is mainly used to patch upstream API bugs , resulting in
-        /// a type error when a third-party library like `rspotify` parses the response
-        fn process_spotify_api_response(text: &str) -> String {
-            text.to_string()
-        }
-
-        let access_token = self.token().await.context("get token")?;
-        tracing::debug!("{access_token} {url}");
-
-        let response = self
-            .http
-            .get(url)
-            .query(payload)
-            .header(
-                reqwest::header::AUTHORIZATION,
-                format!("Bearer {access_token}"),
-            )
-            .send()
-            .await?;
-
-        let status = response.status();
-        let text = process_spotify_api_response(&response.text().await?);
-        tracing::debug!("{text}");
-
-        if status != StatusCode::OK {
-            anyhow::bail!("failed to send a Spotify API request {url}: {text}");
-        }
-
-        Ok(serde_json::from_str(&text)?)
     }
 
     async fn all_paging_items<T>(&self, base_url: &str, mut count: usize) -> Result<Vec<T>>
     where
         T: serde::de::DeserializeOwned + std::fmt::Debug,
     {
-        const PAGE_LIMIT: usize = 50;
-        const MAX_PARALLEL: usize = 8;
+        const PAGE_LIMIT: usize = 20;
+        const MAX_PARALLEL: usize = 2;
 
         let mut all_items = Vec::new();
         let mut offset = 0;
@@ -1542,20 +1700,33 @@ impl AppClient {
                         ("limit", &limit_str),
                         ("offset", &offset_str),
                     ]);
-                    self.http_get::<rspotify::model::Page<T>>(base_url, &params)
-                        .await
+                    self.http_get::<serde_json::Value>(base_url, &params).await
                 });
             }
 
             let results = futures::future::try_join_all(futures).await?;
 
             let mut found_empty = false;
-            for mut page in results {
-                if page.items.is_empty() {
+            for json in results {
+                let items_v = json
+                    .get("items")
+                    .or_else(|| json.get("tracks"))
+                    .cloned()
+                    .unwrap_or(json);
+
+                let mut items = if items_v.is_array() {
+                    serde_json::from_value::<Vec<T>>(items_v)?
+                } else if let Some(items) = items_v.get("items").or_else(|| items_v.get("tracks")) {
+                    serde_json::from_value::<Vec<T>>(items.clone())?
+                } else {
+                    vec![]
+                };
+
+                if items.is_empty() {
                     found_empty = true;
                     break;
                 }
-                all_items.append(&mut page.items);
+                all_items.append(&mut items);
             }
 
             if found_empty {
@@ -1607,22 +1778,18 @@ impl AppClient {
 
             let prev_item = player.currently_playing();
 
-            let prev_name = match prev_item {
-                Some(rspotify::model::PlayableItem::Track(track)) => track.name.clone(),
-                Some(rspotify::model::PlayableItem::Episode(episode)) => episode.name.clone(),
-                Some(rspotify::model::PlayableItem::Unknown(_)) | None => String::new(),
-            };
+            let prev_name = prev_item
+                .map(crate::utils::get_playable_item_name)
+                .unwrap_or_default();
 
             player.playback = playback;
             player.playback_last_updated_time = Some(std::time::Instant::now());
 
             let curr_item = player.currently_playing();
 
-            let curr_name = match curr_item {
-                Some(rspotify::model::PlayableItem::Track(track)) => track.name.clone(),
-                Some(rspotify::model::PlayableItem::Episode(episode)) => episode.name.clone(),
-                Some(rspotify::model::PlayableItem::Unknown(_)) | None => String::new(),
-            };
+            let curr_name = curr_item
+                .map(crate::utils::get_playable_item_name)
+                .unwrap_or_default();
 
             let new_playback = prev_name != curr_name && !curr_name.is_empty();
             // check if we need to update the buffered playback
@@ -1704,16 +1871,9 @@ impl AppClient {
             }
         }
 
-        let url = match curr_item {
-            rspotify::model::PlayableItem::Track(ref track) => {
-                crate::utils::get_track_album_image_url(track)
-                    .ok_or(anyhow::anyhow!("missing image"))?
-            }
-            rspotify::model::PlayableItem::Episode(ref episode) => {
-                crate::utils::get_episode_show_image_url(episode)
-                    .ok_or(anyhow::anyhow!("missing image"))?
-            }
-            rspotify::model::PlayableItem::Unknown(_) => return Ok(()),
+        let url = match crate::utils::get_playable_item_image_url(&curr_item) {
+            Some(url) => url,
+            None => return Ok(()),
         };
 
         let filename = (match curr_item {
@@ -1735,18 +1895,26 @@ impl AppClient {
                     &episode.show.id.as_ref().id()[..6]
                 )
             }
-            rspotify::model::PlayableItem::Unknown(_) => return Ok(()),
+            rspotify::model::PlayableItem::Unknown(value) => {
+                format!(
+                    "unknown-cover-{}.jpg",
+                    &crate::utils::get_playable_item_uri(&rspotify::model::PlayableItem::Unknown(value.clone()))
+                        .split(':')
+                        .last()
+                        .unwrap_or("unknown")[..6]
+                )
+            }
         })
         .replace('/', ""); // remove invalid characters from the file's name
         let path = configs.cache_folder.join("image").join(filename);
 
         if configs.app_config.enable_cover_image_cache {
-            self.retrieve_image(url, &path, true).await?;
+            self.retrieve_image(&url, &path, true).await?;
         }
 
         #[cfg(feature = "image")]
-        if !state.data.read().caches.images.contains_key(url) {
-            let bytes = self.retrieve_image(url, &path, false).await?;
+        if !state.data.read().caches.images.contains_key(&url) {
+            let bytes = self.retrieve_image(&url, &path, false).await?;
 
             #[cfg(not(feature = "pixelate"))]
             let image =

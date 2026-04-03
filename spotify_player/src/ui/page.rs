@@ -6,7 +6,7 @@ use std::{
 use chrono_humanize::HumanTime;
 use ratatui::text::Line;
 
-use crate::{state::Episode, utils::format_duration};
+use crate::state::Episode;
 
 use super::{
     config, utils, utils::construct_and_render_block, Album, Alignment, Artist, ArtistFocusState,
@@ -722,33 +722,6 @@ pub fn render_queue_page(
     ui: &mut UIStateGuard,
     rect: Rect,
 ) {
-    use rspotify::model::{FullEpisode, FullTrack, PlayableItem};
-    fn get_playable_name(item: &PlayableItem) -> String {
-        match item {
-            PlayableItem::Track(FullTrack { ref name, .. })
-            | PlayableItem::Episode(FullEpisode { ref name, .. }) => name.clone(),
-            PlayableItem::Unknown(_) => String::new(),
-        }
-    }
-    fn get_playable_artists(item: &PlayableItem) -> String {
-        match item {
-            PlayableItem::Track(FullTrack { ref artists, .. }) => artists
-                .iter()
-                .map(|a| a.name.as_str())
-                .collect::<Vec<_>>()
-                .join(", "),
-            PlayableItem::Episode(FullEpisode { ref show, .. }) => show.publisher.clone(),
-            PlayableItem::Unknown(_) => String::new(),
-        }
-    }
-    fn get_playable_duration(item: &PlayableItem) -> String {
-        match item {
-            PlayableItem::Track(FullTrack { ref duration, .. })
-            | PlayableItem::Episode(FullEpisode { ref duration, .. }) => format_duration(duration),
-            PlayableItem::Unknown(_) => String::new(),
-        }
-    }
-
     // 1. Get data
     let player = state.player.read();
     let queue = match player.queue {
@@ -779,9 +752,11 @@ pub fn render_queue_page(
             .map(|(i, x)| {
                 Row::new(vec![
                     Cell::from(format!("{}", i + 1)),
-                    Cell::from(get_playable_name(x)),
-                    Cell::from(get_playable_artists(x)),
-                    Cell::from(get_playable_duration(x)),
+                    Cell::from(crate::utils::get_playable_item_name(x)),
+                    Cell::from(crate::utils::get_playable_item_artists(x)),
+                    Cell::from(crate::utils::format_duration(
+                        &crate::utils::get_playable_item_duration(x).unwrap_or_default(),
+                    )),
                 ])
             })
             .collect::<Vec<_>>(),
@@ -949,12 +924,8 @@ fn render_track_table(
     let mut playing_track_uri = String::new();
     let mut playing_id = "";
     if let Some(ref playback) = state.player.read().playback {
-        if let Some(rspotify::model::PlayableItem::Track(ref track)) = playback.item {
-            playing_track_uri = track
-                .id
-                .as_ref()
-                .map(rspotify::prelude::Id::uri)
-                .unwrap_or_default();
+        if let Some(ref item) = playback.item {
+            playing_track_uri = crate::utils::get_playable_item_uri(item);
 
             playing_id = if playback.is_playing {
                 &configs.app_config.play_icon
