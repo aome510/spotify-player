@@ -224,6 +224,7 @@ pub fn handle_cli_subcommand(cmd: &str, args: &ArgMatches) -> Result<()> {
                 .expect("query is required")
                 .to_owned(),
         },
+        "lyrics" => Request::Lyrics,
         _ => unreachable!(),
     };
 

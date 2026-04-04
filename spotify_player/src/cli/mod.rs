@@ -131,6 +131,7 @@ pub enum Request {
     Like { unlike: bool },
     Playlist(PlaylistCommand),
     Search { query: String },
+    Lyrics,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -177,6 +178,7 @@ pub fn init_cli() -> anyhow::Result<clap::Command> {
         .subcommand(commands::init_generate_command())
         .subcommand(commands::init_search_command())
         .subcommand(commands::init_print_features_command())
+        .subcommand(commands::init_lyrics_command())
         .arg(
             clap::Arg::new("theme")
                 .short('t')

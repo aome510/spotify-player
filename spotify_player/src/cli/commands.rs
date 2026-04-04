@@ -238,3 +238,7 @@ pub fn init_playlist_subcommand() -> Command {
 pub fn init_print_features_command() -> Command {
     Command::new("features").about("Print compiled in features")
 }
+
+pub fn init_lyrics_command() -> Command {
+    Command::new("lyrics").about("Print current track's lyrics to stdout")
+}
