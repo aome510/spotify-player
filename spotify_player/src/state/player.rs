@@ -23,12 +23,6 @@ pub struct PlayerState {
     /// Active when the integrated librespot player is streaming and the user
     /// started playback from a track-table context.
     pub custom_queue: Option<CustomQueue>,
-
-    /// A pending custom queue set by the event thread before sending a
-    /// `StartPlayback` request. The client handler moves this into
-    /// `custom_queue` (or clears `custom_queue` if this is `None`).
-    #[allow(dead_code)]
-    pub pending_custom_queue: Option<CustomQueue>,
 }
 
 impl PlayerState {

@@ -40,7 +40,8 @@ pub enum ShuffleMode {
     /// Standard shuffle — randomize the full track order.
     Shuffle,
     /// Smart shuffle — shuffle + interleave radio recommendations.
-    SmartShuffle,
+    /// Carries the radio tracks used for interleaving.
+    SmartShuffle(Vec<PlayableId<'static>>),
 }
 
 /// App-managed playback queue that replaces spirc-managed queueing.
@@ -76,8 +77,9 @@ pub struct CustomQueue {
     repeat: rspotify::model::RepeatState,
     /// Current shuffle mode (Off / Shuffle / `SmartShuffle`).
     shuffle_mode: ShuffleMode,
-    /// Whether radio tracks have been fetched for autoplay/smart-shuffle.
-    radio_tracks_appended: bool,
+    /// Whether to fetch and append radio tracks when the queue is exhausted.
+    /// Sourced from `DeviceConfig.autoplay`.
+    autoplay: bool,
     /// Timestamp of last batch transition, used for consistency-check cooldown.
     last_batch_transition: Option<Instant>,
 }
@@ -91,11 +93,14 @@ impl CustomQueue {
     /// - `max_batch_size`: maximum tracks per Spotify batch (typically `tracks_playback_limit`).
     /// - `source_context`: the originating context (playlist, album, etc.) for
     ///   "playing from" display and radio seed.
+    /// - `autoplay`: whether to fetch radio tracks when the queue is exhausted
+    ///   (sourced from device config).
     pub fn new(
         tracks: Vec<PlayableId<'static>>,
         start_position: usize,
         max_batch_size: usize,
         source_context: Option<ContextId>,
+        autoplay: bool,
     ) -> Self {
         let play_order = tracks.clone();
         let batch_start = start_position;
@@ -111,7 +116,7 @@ impl CustomQueue {
             source_context,
             repeat: rspotify::model::RepeatState::Off,
             shuffle_mode: ShuffleMode::Off,
-            radio_tracks_appended: false,
+            autoplay,
             last_batch_transition: None,
         }
     }
@@ -177,11 +182,6 @@ impl CustomQueue {
         self.play_order.is_empty()
     }
 
-    /// Whether radio tracks have been appended for autoplay.
-    pub fn radio_tracks_appended(&self) -> bool {
-        self.radio_tracks_appended
-    }
-
     /// Timestamp of last batch transition (for consistency-check cooldown).
     pub fn last_batch_transition(&self) -> Option<Instant> {
         self.last_batch_transition
@@ -231,18 +231,18 @@ impl CustomQueue {
             self.position = next;
             self.batch_start = next;
             self.batch_end = (self.batch_start + self.max_batch_size).min(self.play_order.len());
-            self.last_batch_transition = Some(Instant::now());
+            self.mark_batch_transition();
             AdvanceResult::NewBatch(self.current_batch().to_vec())
         } else if self.repeat == rspotify::model::RepeatState::Context {
             // End of queue with repeat-context — wrap to beginning.
             self.position = 0;
             self.batch_start = 0;
             self.batch_end = self.max_batch_size.min(self.play_order.len());
-            self.last_batch_transition = Some(Instant::now());
+            self.mark_batch_transition();
             AdvanceResult::NewBatch(self.current_batch().to_vec())
-        } else if !self.radio_tracks_appended {
-            // End of queue, no repeat — try autoplay if radio tracks haven't
-            // been fetched yet.
+        } else if self.autoplay {
+            // End of queue, no repeat — autoplay is enabled, ask caller to
+            // fetch radio tracks and append them.
             AdvanceResult::NeedsRadioTracks
         } else {
             AdvanceResult::EndOfQueue
@@ -257,7 +257,7 @@ impl CustomQueue {
                 self.position = self.play_order.len().saturating_sub(1);
                 self.batch_end = self.play_order.len();
                 self.batch_start = self.batch_end.saturating_sub(self.max_batch_size);
-                self.last_batch_transition = Some(Instant::now());
+                self.mark_batch_transition();
                 RetreatResult::PreviousBatch(self.current_batch().to_vec())
             } else {
                 RetreatResult::BeginningOfQueue
@@ -272,7 +272,7 @@ impl CustomQueue {
                 self.position = prev;
                 self.batch_end = self.batch_start;
                 self.batch_start = self.batch_end.saturating_sub(self.max_batch_size);
-                self.last_batch_transition = Some(Instant::now());
+                self.mark_batch_transition();
                 RetreatResult::PreviousBatch(self.current_batch().to_vec())
             }
         }
@@ -300,19 +300,16 @@ impl CustomQueue {
     ///   current track's position in the original order.
     /// - `Shuffle`: Fisher-Yates permutation of `play_order`, keeping the
     ///   current track at front (`position` 0).
-    /// - `SmartShuffle`: shuffle + interleave `radio_tracks` every N songs.
+    /// - `SmartShuffle(radio_tracks)`: shuffle + interleave the provided radio
+    ///   recommendation tracks every N songs.
     ///
     /// After permuting, calls `truncate_batch_to_current()` so the change
     /// takes effect at the next batch boundary without restarting the current
     /// track.
-    pub fn set_shuffle_mode(
-        &mut self,
-        mode: ShuffleMode,
-        radio_tracks: Option<Vec<PlayableId<'static>>>,
-    ) {
+    pub fn set_shuffle_mode(&mut self, mode: ShuffleMode) {
         let current_track = self.play_order[self.position].clone();
 
-        match mode {
+        match &mode {
             ShuffleMode::Off => {
                 // Restore original order.
                 self.play_order = self.original_tracks.clone();
@@ -337,7 +334,7 @@ impl CustomQueue {
                 self.play_order = order;
                 self.position = 0;
             }
-            ShuffleMode::SmartShuffle => {
+            ShuffleMode::SmartShuffle(radio_tracks) => {
                 // Shuffle first, then interleave radio tracks.
                 let mut rng = rand::rng();
                 let mut order: Vec<PlayableId<'static>> = self
@@ -349,23 +346,23 @@ impl CustomQueue {
                 order.shuffle(&mut rng);
                 order.insert(0, current_track);
 
-                if let Some(radio) = radio_tracks {
+                if radio_tracks.is_empty() {
+                    self.play_order = order;
+                } else {
                     // Interleave one radio track every 4 original tracks.
-                    let mut interleaved = Vec::with_capacity(order.len() + radio.len());
-                    let mut radio_iter = radio.into_iter();
+                    let mut interleaved = Vec::with_capacity(order.len() + radio_tracks.len());
+                    let mut radio_iter = radio_tracks.iter();
                     for (i, track) in order.into_iter().enumerate() {
                         interleaved.push(track);
                         if i > 0 && i % 4 == 0 {
                             if let Some(rt) = radio_iter.next() {
-                                interleaved.push(rt);
+                                interleaved.push(rt.clone());
                             }
                         }
                     }
                     // Append any remaining radio tracks.
-                    interleaved.extend(radio_iter);
+                    interleaved.extend(radio_iter.cloned());
                     self.play_order = interleaved;
-                } else {
-                    self.play_order = order;
                 }
                 self.position = 0;
             }
@@ -379,7 +376,6 @@ impl CustomQueue {
     /// Append radio recommendation tracks for autoplay continuation.
     pub fn append_radio_tracks(&mut self, tracks: Vec<PlayableId<'static>>) {
         self.play_order.extend(tracks);
-        self.radio_tracks_appended = true;
     }
 
     /// Compute and load the next batch. Returns the batch URIs to send to
@@ -390,7 +386,7 @@ impl CustomQueue {
         }
         self.batch_start = self.batch_end;
         self.batch_end = (self.batch_start + self.max_batch_size).min(self.play_order.len());
-        self.last_batch_transition = Some(Instant::now());
+        self.mark_batch_transition();
         Some(self.current_batch().to_vec())
     }
 
@@ -420,7 +416,7 @@ mod tests {
     #[test]
     fn new_queue_basic_properties() {
         let tracks = make_tracks(10);
-        let q = CustomQueue::new(tracks.clone(), 0, 5, None);
+        let q = CustomQueue::new(tracks.clone(), 0, 5, None, false);
 
         assert_eq!(q.len(), 10);
         assert_eq!(q.position(), 0);
@@ -433,7 +429,7 @@ mod tests {
     #[test]
     fn new_queue_start_position_mid() {
         let tracks = make_tracks(10);
-        let q = CustomQueue::new(tracks.clone(), 3, 5, None);
+        let q = CustomQueue::new(tracks.clone(), 3, 5, None, false);
 
         assert_eq!(q.position(), 3);
         assert_eq!(q.batch_start(), 3);
@@ -444,7 +440,7 @@ mod tests {
     #[test]
     fn new_queue_batch_end_clamped() {
         let tracks = make_tracks(3);
-        let q = CustomQueue::new(tracks, 0, 10, None);
+        let q = CustomQueue::new(tracks, 0, 10, None, false);
 
         assert_eq!(q.batch_end(), 3);
         assert_eq!(q.current_batch().len(), 3);
@@ -453,7 +449,7 @@ mod tests {
     #[test]
     fn advance_within_batch() {
         let tracks = make_tracks(10);
-        let mut q = CustomQueue::new(tracks.clone(), 0, 5, None);
+        let mut q = CustomQueue::new(tracks.clone(), 0, 5, None, false);
 
         assert_eq!(q.advance(), AdvanceResult::SameBatch);
         assert_eq!(q.position(), 1);
@@ -463,7 +459,7 @@ mod tests {
     #[test]
     fn advance_across_batch_boundary() {
         let tracks = make_tracks(10);
-        let mut q = CustomQueue::new(tracks, 0, 5, None);
+        let mut q = CustomQueue::new(tracks, 0, 5, None, false);
 
         // Advance to position 4 (last in batch [0..5)).
         for _ in 0..4 {
@@ -482,8 +478,7 @@ mod tests {
     #[test]
     fn advance_end_of_queue() {
         let tracks = make_tracks(3);
-        let mut q = CustomQueue::new(tracks, 0, 10, None);
-        q.radio_tracks_appended = true; // Pretend radio already fetched.
+        let mut q = CustomQueue::new(tracks, 0, 10, None, false);
 
         for _ in 0..2 {
             q.advance();
@@ -494,7 +489,7 @@ mod tests {
     #[test]
     fn advance_needs_radio_tracks() {
         let tracks = make_tracks(3);
-        let mut q = CustomQueue::new(tracks, 0, 10, None);
+        let mut q = CustomQueue::new(tracks, 0, 10, None, true);
 
         for _ in 0..2 {
             q.advance();
@@ -505,7 +500,7 @@ mod tests {
     #[test]
     fn advance_repeat_context_wraps() {
         let tracks = make_tracks(3);
-        let mut q = CustomQueue::new(tracks.clone(), 0, 10, None);
+        let mut q = CustomQueue::new(tracks.clone(), 0, 10, None, false);
         q.set_repeat(rspotify::model::RepeatState::Context);
 
         for _ in 0..2 {
@@ -520,7 +515,7 @@ mod tests {
     #[test]
     fn advance_repeat_track_stays() {
         let tracks = make_tracks(3);
-        let mut q = CustomQueue::new(tracks.clone(), 0, 10, None);
+        let mut q = CustomQueue::new(tracks.clone(), 0, 10, None, false);
         q.set_repeat(rspotify::model::RepeatState::Track);
 
         assert_eq!(q.advance(), AdvanceResult::SameBatch);
@@ -531,7 +526,7 @@ mod tests {
     #[test]
     fn retreat_within_batch() {
         let tracks = make_tracks(10);
-        let mut q = CustomQueue::new(tracks.clone(), 0, 5, None);
+        let mut q = CustomQueue::new(tracks.clone(), 0, 5, None, false);
 
         // Advance to position 2 (still within batch [0..5)).
         q.advance();
@@ -546,7 +541,7 @@ mod tests {
     #[test]
     fn retreat_at_beginning() {
         let tracks = make_tracks(10);
-        let mut q = CustomQueue::new(tracks, 0, 5, None);
+        let mut q = CustomQueue::new(tracks, 0, 5, None, false);
 
         assert_eq!(q.retreat(), RetreatResult::BeginningOfQueue);
         assert_eq!(q.position(), 0);
@@ -555,7 +550,7 @@ mod tests {
     #[test]
     fn retreat_across_batch_boundary() {
         let tracks = make_tracks(10);
-        let mut q = CustomQueue::new(tracks, 0, 5, None);
+        let mut q = CustomQueue::new(tracks, 0, 5, None, false);
 
         // Advance into the second batch.
         for _ in 0..4 {
@@ -572,7 +567,7 @@ mod tests {
     #[test]
     fn truncate_batch_to_current() {
         let tracks = make_tracks(10);
-        let mut q = CustomQueue::new(tracks, 0, 5, None);
+        let mut q = CustomQueue::new(tracks, 0, 5, None, false);
 
         q.advance(); // position = 1
         q.advance(); // position = 2
@@ -585,7 +580,7 @@ mod tests {
     #[test]
     fn remaining_tracks_correct() {
         let tracks = make_tracks(5);
-        let q = CustomQueue::new(tracks.clone(), 0, 10, None);
+        let q = CustomQueue::new(tracks.clone(), 0, 10, None, false);
 
         assert_eq!(q.remaining_tracks().len(), 4);
         assert_eq!(q.remaining_tracks()[0], tracks[1]);
@@ -594,7 +589,7 @@ mod tests {
     #[test]
     fn remaining_tracks_at_end() {
         let tracks = make_tracks(3);
-        let mut q = CustomQueue::new(tracks, 0, 10, None);
+        let mut q = CustomQueue::new(tracks, 0, 10, None, false);
         q.advance();
         q.advance();
 
@@ -604,7 +599,7 @@ mod tests {
     #[test]
     fn expected_next_track_within_batch() {
         let tracks = make_tracks(10);
-        let q = CustomQueue::new(tracks.clone(), 0, 5, None);
+        let q = CustomQueue::new(tracks.clone(), 0, 5, None, false);
 
         assert_eq!(q.expected_next_track(), Some(&tracks[1]));
     }
@@ -612,7 +607,7 @@ mod tests {
     #[test]
     fn expected_next_track_at_batch_end() {
         let tracks = make_tracks(10);
-        let mut q = CustomQueue::new(tracks, 0, 5, None);
+        let mut q = CustomQueue::new(tracks, 0, 5, None, false);
 
         // Advance to position 4 (last in batch).
         for _ in 0..4 {
@@ -624,21 +619,20 @@ mod tests {
     #[test]
     fn append_radio_tracks() {
         let tracks = make_tracks(3);
-        let mut q = CustomQueue::new(tracks, 0, 10, None);
+        let mut q = CustomQueue::new(tracks, 0, 10, None, false);
 
         let radio = make_tracks(5);
         q.append_radio_tracks(radio);
 
         assert_eq!(q.len(), 8);
-        assert!(q.radio_tracks_appended());
     }
 
     #[test]
     fn set_shuffle_mode_shuffle() {
         let tracks = make_tracks(10);
-        let mut q = CustomQueue::new(tracks.clone(), 3, 5, None);
+        let mut q = CustomQueue::new(tracks.clone(), 3, 5, None, false);
 
-        q.set_shuffle_mode(ShuffleMode::Shuffle, None);
+        q.set_shuffle_mode(ShuffleMode::Shuffle);
 
         // Current track should be at front.
         assert_eq!(*q.current_track(), tracks[3]);
@@ -653,10 +647,10 @@ mod tests {
     #[test]
     fn set_shuffle_mode_off_restores_order() {
         let tracks = make_tracks(10);
-        let mut q = CustomQueue::new(tracks.clone(), 3, 5, None);
+        let mut q = CustomQueue::new(tracks.clone(), 3, 5, None, false);
 
-        q.set_shuffle_mode(ShuffleMode::Shuffle, None);
-        q.set_shuffle_mode(ShuffleMode::Off, None);
+        q.set_shuffle_mode(ShuffleMode::Shuffle);
+        q.set_shuffle_mode(ShuffleMode::Off);
 
         // Should be back in original order.
         assert_eq!(q.play_order, tracks);
