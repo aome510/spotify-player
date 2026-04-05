@@ -133,6 +133,11 @@ pub struct AppConfig {
 
     pub volume_scroll_step: u8,
     pub enable_mouse_scroll_volume: bool,
+
+    /// Enable app-managed queue for full playlist playback.
+    /// Requires streaming. When disabled, playback uses Spotify-native queue
+    /// management.
+    pub custom_queue: bool,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -384,6 +389,8 @@ impl Default for AppConfig {
 
             volume_scroll_step: 5,
             enable_mouse_scroll_volume: true,
+
+            custom_queue: true,
         }
     }
 }

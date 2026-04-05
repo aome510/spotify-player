@@ -2,6 +2,7 @@ mod constant;
 mod data;
 mod model;
 mod player;
+mod queue;
 mod ui;
 
 use std::{collections::VecDeque, sync::Arc};
@@ -10,6 +11,8 @@ pub use constant::*;
 pub use data::*;
 pub use model::*;
 pub use player::*;
+#[allow(unused_imports)]
+pub use queue::*;
 pub use ui::*;
 
 use crate::config;
@@ -72,6 +75,16 @@ impl State {
         configs.app_config.enable_streaming == config::StreamingType::Always
             || (configs.app_config.enable_streaming == config::StreamingType::DaemonOnly
                 && self.is_daemon)
+    }
+
+    /// Returns `true` when the custom queue system should be used for new playback.
+    ///
+    /// Requires streaming to be enabled and the `custom_queue` config option
+    /// to be `true`.
+    #[cfg(feature = "streaming")]
+    #[allow(dead_code)]
+    pub fn should_use_custom_queue(&self) -> bool {
+        self.is_streaming_enabled() && config::get_config().app_config.custom_queue
     }
 
     /// Returns `true` when the local librespot player is actively streaming

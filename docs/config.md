@@ -67,6 +67,7 @@ A sample `app.toml` is available at [examples/app.toml](../examples/app.toml).
 | `sort_artist_albums_by_type`      | Sort albums by type on artist pages.                                                           | `false`                                                                |
 | `volume_scroll_step`              | Volume change step when using mouse scroll.                                                    | `5`                                                                    |
 | `enable_mouse_scroll_volume`      | Enable volume control via mouse scroll.                                                        | `true`                                                                 |
+| `custom_queue`                    | Enable app-managed queue for custom playback integration (requires `streaming` feature).       | `true`                                                                 |
 | `device`                          | Device configuration (see below).                                                              | See below                                                              |
 
 ### Notes
