@@ -131,7 +131,7 @@ pub enum Request {
     Like { unlike: bool },
     Playlist(PlaylistCommand),
     Search { query: String },
-    Lyrics,
+    Lyrics { id_or_name: Option<IdOrName> },
 }
 
 #[derive(Debug, Serialize, Deserialize)]

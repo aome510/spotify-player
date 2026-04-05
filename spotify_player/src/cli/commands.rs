@@ -240,5 +240,10 @@ pub fn init_print_features_command() -> Command {
 }
 
 pub fn init_lyrics_command() -> Command {
-    Command::new("lyrics").about("Print current track's lyrics to stdout")
+    Command::new("lyrics")
+        .about(
+            "Print provided track`s name lyrics or current playing track, if no argument specified",
+        )
+        .arg(Arg::new("id").long("id").short('i').help("Track ID"))
+        .arg(Arg::new("name").long("name").short('n').help("Track Name"))
 }

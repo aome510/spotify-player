@@ -224,7 +224,17 @@ pub fn handle_cli_subcommand(cmd: &str, args: &ArgMatches) -> Result<()> {
                 .expect("query is required")
                 .to_owned(),
         },
-        "lyrics" => Request::Lyrics,
+        "lyrics" => {
+            let id_or_name = if let Some(id) = args.get_one::<String>("id") {
+                Some(IdOrName::Id(id.to_owned()))
+            } else if let Some(name) = args.get_one::<String>("name") {
+                Some(IdOrName::Name(name.to_owned()))
+            } else {
+                None
+            };
+
+            Request::Lyrics { id_or_name }
+        }
         _ => unreachable!(),
     };
 

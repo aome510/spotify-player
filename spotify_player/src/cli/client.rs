@@ -195,7 +195,7 @@ async fn handle_socket_request(
             let resp = handle_search_request(client, query).await?;
             Ok(resp)
         }
-        Request::Lyrics => handle_lyrics_request(client, state).await,
+        Request::Lyrics { id_or_name } => handle_lyrics_request(client, state, id_or_name).await,
     }
 }
 
@@ -865,19 +865,35 @@ async fn playlist_import(
     Ok(result)
 }
 
-async fn handle_lyrics_request(client: &AppClient, state: Option<&SharedState>) -> Result<Vec<u8>> {
-    let playback = current_playback(client, state).await?;
-
-    let track = match playback {
-        Some(ref p) => match p.item {
-            Some(rspotify::model::PlayableItem::Track(ref t)) => t,
-            _ => anyhow::bail!("No track currently playing"),
-        },
-        None => anyhow::bail!("No active playback"),
+async fn handle_lyrics_request(
+    client: &AppClient,
+    state: Option<&SharedState>,
+    id_or_name: Option<IdOrName>,
+) -> Result<Vec<u8>> {
+    let track_id = match id_or_name {
+        Some(id_or_name) => {
+            let ItemId::Track(id) = get_spotify_id(client, ItemType::Track, id_or_name).await?
+            else {
+                anyhow::bail!("Unable to get track id")
+            };
+            id
+        }
+        None => {
+            let playback = current_playback(client, state).await?;
+            match playback {
+                Some(ref p) => match p.item {
+                    Some(rspotify::model::PlayableItem::Track(ref t)) => {
+                        t.id.as_ref().context("Track has no ID")?.clone_static()
+                    }
+                    _ => anyhow::bail!("No track currently playing"),
+                },
+                None => anyhow::bail!("No active playback"),
+            }
+        }
     };
 
-    let track_id = track.id.as_ref().context("Track has no ID")?;
-    let lyrics = client.lyrics(track_id.clone_static()).await?;
+    let track = client.track(track_id.clone()).await?;
+    let lyrics = client.lyrics(track_id).await?;
 
     let mut output = format!(
         "{} - {}\n\n",
