@@ -225,13 +225,13 @@ pub fn handle_cli_subcommand(cmd: &str, args: &ArgMatches) -> Result<()> {
                 .to_owned(),
         },
         "lyrics" => {
-            let id_or_name = if let Some(id) = args.get_one::<String>("id") {
-                Some(IdOrName::Id(id.to_owned()))
-            } else if let Some(name) = args.get_one::<String>("name") {
-                Some(IdOrName::Name(name.to_owned()))
-            } else {
-                None
-            };
+            let id_or_name = args
+                .get_one::<String>("id")
+                .map(|id| IdOrName::Id(id.to_owned()))
+                .or_else(|| {
+                    args.get_one::<String>("name")
+                        .map(|name| IdOrName::Name(name.to_owned()))
+                });
 
             Request::Lyrics { id_or_name }
         }

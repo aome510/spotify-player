@@ -870,25 +870,21 @@ async fn handle_lyrics_request(
     state: Option<&SharedState>,
     id_or_name: Option<IdOrName>,
 ) -> Result<Vec<u8>> {
-    let track_id = match id_or_name {
-        Some(id_or_name) => {
-            let ItemId::Track(id) = get_spotify_id(client, ItemType::Track, id_or_name).await?
-            else {
-                anyhow::bail!("Unable to get track id")
-            };
-            id
-        }
-        None => {
-            let playback = current_playback(client, state).await?;
-            match playback {
-                Some(ref p) => match p.item {
-                    Some(rspotify::model::PlayableItem::Track(ref t)) => {
-                        t.id.as_ref().context("Track has no ID")?.clone_static()
-                    }
-                    _ => anyhow::bail!("No track currently playing"),
-                },
-                None => anyhow::bail!("No active playback"),
-            }
+    let track_id = if let Some(id_or_name) = id_or_name {
+        let ItemId::Track(id) = get_spotify_id(client, ItemType::Track, id_or_name).await? else {
+            anyhow::bail!("Unable to get track ID")
+        };
+        id
+    } else {
+        let playback = current_playback(client, state).await?;
+        match playback {
+            Some(ref p) => match p.item {
+                Some(rspotify::model::PlayableItem::Track(ref t)) => {
+                    t.id.as_ref().context("Track has no ID")?.clone_static()
+                }
+                _ => anyhow::bail!("No track currently playing"),
+            },
+            None => anyhow::bail!("No active playback"),
         }
     };
 
