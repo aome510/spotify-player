@@ -309,8 +309,10 @@ fn construct_playback_text(
             "{track}" => match playable {
                 rspotify::model::PlayableItem::Track(track) => (
                     {
-                        let track = Track::try_from_full_track(track.clone()).unwrap();
-                        to_bidi_string(&track.display_name())
+                        let display = Track::try_from_full_track(track.clone())
+                            .map(|t| to_bidi_string(&t.display_name()))
+                            .unwrap_or_else(|| "Unknown Track".to_string());
+                        display
                     },
                     ui.theme.playback_track(),
                 ),
