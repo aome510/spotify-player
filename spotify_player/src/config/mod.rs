@@ -17,6 +17,7 @@ use std::{
     sync::OnceLock,
 };
 
+use anyhow::Context;
 use keymap::KeymapConfig;
 use theme::ThemeConfig;
 
@@ -516,4 +517,37 @@ pub fn set_config(configs: Configs) {
     CONFIGS
         .set(configs)
         .expect("configs should be initialized only once");
+}
+
+// Apply a CLI config override to the application config.
+// Serializes the config to TOML, navigates to the key via dot-notation,
+// overrides the value, and deserializes back into AppConfig.
+// Returns an error if the key path is invalid or the value type mismatches.
+pub fn apply_config_override(config: &mut AppConfig, key: &str, value: &str) -> anyhow::Result<()> {
+    let mut config_value = toml::Value::try_from(&*config)?;
+
+    let parts: Vec<&str> = key.split('.').collect();
+    let mut current = &mut config_value;
+
+    for (i, part) in parts.iter().enumerate() {
+        if i == parts.len() - 1 {
+            let table = current
+                .as_table_mut()
+                .context(format!("'{key}' is not a valid config path"))?;
+
+            let parsed_value: toml::Value = value
+                .parse()
+                .unwrap_or_else(|_| toml::Value::String(value.to_string()));
+
+            table.insert(part.to_string(), parsed_value);
+        } else {
+            current = current
+                .get_mut(part)
+                .context(format!("Config key '{part}' not found in path '{key}'"))?;
+        }
+    }
+
+    *config = config_value.try_into()?;
+
+    Ok(())
 }

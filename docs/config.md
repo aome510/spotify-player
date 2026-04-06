@@ -22,6 +22,11 @@ Configuration files are located in the application's configuration directory, wh
 A sample `app.toml` is available at [examples/app.toml](../examples/app.toml).
 
 `spotify_player` uses `app.toml` for application settings. Available options:
+`spotify_player` also supports cli config overriding using -o / --config-override flag. Example:
+
+```bash
+spotify_player -o device.volume=80 -o theme=dracula
+```
 
 | Option                            | Description                                                                                    | Default                                                                |
 | --------------------------------- | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
