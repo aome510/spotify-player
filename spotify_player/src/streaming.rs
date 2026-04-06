@@ -1,4 +1,8 @@
-use crate::{client::AppClient, config, state::SharedState};
+use crate::{
+    client::{AppClient, ClientRequest, PlayerRequest},
+    config,
+    state::{AdvanceResult, Playback, SharedState},
+};
 use anyhow::Context;
 use librespot_connect::{ConnectConfig, Spirc};
 use librespot_core::authentication::Credentials;
@@ -145,6 +149,7 @@ pub async fn new_connection(
     state: SharedState,
     session: Session,
     creds: Credentials,
+    client_pub: flume::Sender<crate::client::ClientRequest>,
 ) -> anyhow::Result<Spirc> {
     let configs = config::get_config();
     let device = &configs.app_config.device;
@@ -243,7 +248,42 @@ pub async fn new_connection(
                                     bands.lock().is_active = false;
                                 }
                             }
-                            _ => {}
+                            PlayerEvent::EndOfTrack { .. } => {
+                                let mut player = state.player.write();
+                                if let Some(ref mut queue) = player.custom_queue {
+                                    match queue.advance() {
+                                        AdvanceResult::SameBatch => {
+                                            // librespot handles intra-batch transitions
+                                        }
+                                        AdvanceResult::NewBatch(batch) => {
+                                            let playback = Playback::URIs(batch, None);
+                                            // Drop the write lock before sending to avoid deadlock
+                                            drop(player);
+                                            if let Err(err) =
+                                                client_pub.send(ClientRequest::Player(
+                                                    PlayerRequest::StartPlayback(playback, None),
+                                                ))
+                                            {
+                                                tracing::error!(
+                                                    "Failed to send batch transition request: {err:#}"
+                                                );
+                                            }
+                                        }
+                                        AdvanceResult::NeedsRadioTracks => {
+                                            // Phase 5 — for now, playback stops
+                                            tracing::info!(
+                                                "Custom queue exhausted, autoplay requested but not yet implemented"
+                                            );
+                                        }
+                                        AdvanceResult::EndOfQueue => {
+                                            tracing::info!(
+                                                "Custom queue fully exhausted, playback will stop"
+                                            );
+                                        }
+                                    }
+                                }
+                            }
+                            PlayerEvent::Changed { .. } => {}
                         }
                         client.update_playback(&state);
 

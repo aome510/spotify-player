@@ -52,6 +52,9 @@ pub struct AppClient {
     user_client: Option<rspotify::AuthCodePkceSpotify>,
     #[cfg(feature = "streaming")]
     stream_conn: Arc<Mutex<Option<librespot_connect::Spirc>>>,
+    /// Sender half of the client request channel, used to send requests from
+    /// the streaming player-event task (e.g. batch transitions on `EndOfTrack`).
+    client_pub: Option<flume::Sender<ClientRequest>>,
 }
 
 impl Deref for AppClient {
@@ -108,7 +111,15 @@ impl AppClient {
 
             #[cfg(feature = "streaming")]
             stream_conn: Arc::new(Mutex::new(None)),
+            client_pub: None,
         })
+    }
+
+    /// Set the client request sender. Must be called before starting a
+    /// streaming connection so that the player-event task can send
+    /// `ClientRequest`s (e.g. batch transitions).
+    pub fn set_client_pub(&mut self, sender: flume::Sender<ClientRequest>) {
+        self.client_pub = Some(sender);
     }
 
     async fn token(&self) -> Result<String> {
@@ -235,8 +246,13 @@ impl AppClient {
         session: librespot_core::Session,
         creds: librespot_core::authentication::Credentials,
     ) -> Result<()> {
+        let client_pub = self
+            .client_pub
+            .clone()
+            .context("client_pub must be set before creating a streaming connection")?;
         let new_conn =
-            crate::streaming::new_connection(self.clone(), state, session, creds).await?;
+            crate::streaming::new_connection(self.clone(), state, session, creds, client_pub)
+                .await?;
         let mut stream_conn = self.stream_conn.lock();
         // shutdown old streaming connection and replace it with a new connection
         if let Some(conn) = stream_conn.as_ref() {
