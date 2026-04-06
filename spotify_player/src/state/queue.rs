@@ -1,7 +1,11 @@
 use rand::seq::SliceRandom;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use super::model::{ContextId, PlayableId};
+
+/// How long after a batch transition to suppress queue consistency checks
+/// and context-change clearing, giving Spotify's API time to catch up.
+pub const BATCH_COOLDOWN: Duration = Duration::from_secs(3);
 
 /// Result of advancing the queue by one track.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -185,6 +189,14 @@ impl CustomQueue {
     /// Timestamp of last batch transition (for consistency-check cooldown).
     pub fn last_batch_transition(&self) -> Option<Instant> {
         self.last_batch_transition
+    }
+
+    /// Returns `true` if a batch transition occurred recently enough that
+    /// Spotify's API state may not yet reflect the new batch.  Used to
+    /// suppress premature queue-clearing / consistency checks.
+    pub fn in_batch_cooldown(&self) -> bool {
+        self.last_batch_transition
+            .is_some_and(|t| t.elapsed() < BATCH_COOLDOWN)
     }
 
     /// The expected next track in the play order (if any and within the batch).
