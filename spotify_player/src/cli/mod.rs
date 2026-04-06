@@ -201,6 +201,14 @@ pub fn init_cli() -> anyhow::Result<clap::Command> {
                 .value_name("FOLDER")
                 .default_value(default_cache_folder.into_os_string())
                 .help("Path to the application's cache folder"),
+        )
+        .arg(
+            clap::Arg::new("config-override")
+                .short('o')
+                .long("config-override")
+                .value_name("KEY=VALUE")
+                .action(clap::ArgAction::Append)
+                .help("Override a config option (e.g. -o device.volume=80 -o theme=dracula)"),
         );
 
     #[cfg(feature = "daemon")]

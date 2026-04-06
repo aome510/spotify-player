@@ -18,6 +18,8 @@ mod utils;
 use anyhow::{Context, Result};
 use std::io::Write;
 
+use crate::config::apply_config_override;
+
 fn init_spotify(
     client_pub: &flume::Sender<client::ClientRequest>,
     client: &client::AppClient,
@@ -256,9 +258,14 @@ fn main() -> Result<()> {
             // set the log folder to be the cache folder if it is not set
             configs.app_config.log_folder = Some(cache_folder);
         }
-        if let Some(theme) = args.get_one::<String>("theme") {
-            // override the theme config if user specifies a `theme` cli argument
-            theme.clone_into(&mut configs.app_config.theme);
+        if let Some(overrides) = args.get_many::<String>("config-override") {
+            for override_str in overrides {
+                let (key, value) = override_str.split_once('=').context(format!(
+                    "Invalid override format: '{override_str}'. Expected KEY=VALUE"
+                ))?;
+
+                apply_config_override(&mut configs.app_config, key, value)?;
+            }
         }
         config::set_config(configs);
     }
