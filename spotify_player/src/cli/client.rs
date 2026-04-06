@@ -195,6 +195,7 @@ async fn handle_socket_request(
             let resp = handle_search_request(client, query).await?;
             Ok(resp)
         }
+        Request::Lyrics { id_or_name } => handle_lyrics_request(client, state, id_or_name).await,
     }
 }
 
@@ -862,4 +863,54 @@ async fn playlist_import(
     ))?;
 
     Ok(result)
+}
+
+async fn handle_lyrics_request(
+    client: &AppClient,
+    state: Option<&SharedState>,
+    id_or_name: Option<IdOrName>,
+) -> Result<Vec<u8>> {
+    let track_id = if let Some(id_or_name) = id_or_name {
+        let ItemId::Track(id) = get_spotify_id(client, ItemType::Track, id_or_name).await? else {
+            anyhow::bail!("Unable to get track ID")
+        };
+        id
+    } else {
+        let playback = current_playback(client, state).await?;
+        match playback {
+            Some(ref p) => match p.item {
+                Some(rspotify::model::PlayableItem::Track(ref t)) => {
+                    t.id.as_ref().context("Track has no ID")?.clone_static()
+                }
+                _ => anyhow::bail!("No track currently playing"),
+            },
+            None => anyhow::bail!("No active playback"),
+        }
+    };
+
+    let track = client.track(track_id.clone()).await?;
+    let lyrics = client.lyrics(track_id).await?;
+
+    let mut output = format!(
+        "{} - {}\n\n",
+        track.name,
+        track
+            .artists
+            .iter()
+            .map(|a| a.name.as_str())
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
+
+    match lyrics {
+        Some(lyrics) => {
+            for (_, line) in &lyrics.lines {
+                output.push_str(line);
+                output.push('\n');
+            }
+        }
+        None => output.push_str("Lyrics not found"),
+    }
+
+    Ok(output.into_bytes())
 }

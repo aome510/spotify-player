@@ -81,12 +81,16 @@ fn init_playback_start_subcommand() -> Command {
 }
 
 fn add_id_or_name_group(cmd: Command) -> Command {
+    add_id_or_name_group_optional(cmd, true)
+}
+
+fn add_id_or_name_group_optional(cmd: Command, required: bool) -> Command {
     cmd.arg(Arg::new("id").long("id").short('i'))
         .arg(Arg::new("name").long("name").short('n'))
         .group(
             ArgGroup::new("id_or_name")
                 .args(["id", "name"])
-                .required(true),
+                .required(required),
         )
 }
 
@@ -237,4 +241,13 @@ pub fn init_playlist_subcommand() -> Command {
 
 pub fn init_print_features_command() -> Command {
     Command::new("features").about("Print compiled in features")
+}
+
+pub fn init_lyrics_command() -> Command {
+    add_id_or_name_group_optional(
+        Command::new("lyrics").about(
+            "Print provided track's lyrics or current playing track, if no argument specified",
+        ),
+        false,
+    )
 }
