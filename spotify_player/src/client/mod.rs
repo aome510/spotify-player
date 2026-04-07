@@ -614,11 +614,11 @@ impl AppClient {
 
                 // Queue consistency check — safety net that detects silent
                 // divergence between the custom queue and Spotify's actual
-                // queue state.
-                if let Some(custom_queue) = &mut player.custom_queue {
-                    let in_cooldown = custom_queue.in_batch_cooldown();
-
-                    if !in_cooldown {
+                // queue state.  If the expected next track is missing from
+                // Spotify's queue, our local position is unreliable — clear
+                // the custom queue and fall back to Spotify-managed playback.
+                if let Some(custom_queue) = &player.custom_queue {
+                    if !custom_queue.in_batch_cooldown() {
                         if let Some(expected) = custom_queue.expected_next_track() {
                             let expected_uri = expected.uri();
                             let found = queue
@@ -628,10 +628,10 @@ impl AppClient {
                             if !found {
                                 tracing::warn!(
                                     "Custom queue consistency check failed: \
-                                     expected next track not found in Spotify queue. \
-                                     Forcing re-sync."
+                                     expected next track {expected_uri} not found in Spotify queue; \
+                                     clearing custom queue."
                                 );
-                                custom_queue.truncate_batch_to_current();
+                                player.custom_queue = None;
                             }
                         }
                     }
