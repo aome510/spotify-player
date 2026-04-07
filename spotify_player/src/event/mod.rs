@@ -8,12 +8,12 @@ use crate::{
     key::{Key, KeySequence},
     state::{
         ActionListItem, Album, AlbumId, Artist, ArtistFocusState, ArtistId, ArtistPopupAction,
-        BrowsePageUIState, Context, ContextId, ContextPageType, ContextPageUIState, DataReadGuard,
-        Focusable, Id, Item, ItemId, LibraryFocusState, LibraryPageUIState, PageState, PageType,
-        PlayableId, Playback, PlaylistCreateCurrentField, PlaylistFolderItem, PlaylistId,
-        PlaylistPopupAction, PopupState, SearchFocusState, SearchPageUIState, SharedState, ShowId,
-        Track, TrackId, TrackOrder, TracksId, UIStateGuard, USER_LIKED_TRACKS_ID,
-        USER_RECENTLY_PLAYED_TRACKS_ID, USER_TOP_TRACKS_ID,
+        BrowsePageUIState, ConfirmableAction, Context, ContextId, ContextPageType,
+        ContextPageUIState, DataReadGuard, Focusable, Id, Item, ItemId, LibraryFocusState,
+        LibraryPageUIState, PageState, PageType, PlayableId, Playback, PlaylistCreateCurrentField,
+        PlaylistFolderItem, PlaylistId, PlaylistPopupAction, PopupState, SearchFocusState,
+        SearchPageUIState, SharedState, ShowId, Track, TrackId, TrackOrder, TracksId, UIStateGuard,
+        USER_LIKED_TRACKS_ID, USER_RECENTLY_PLAYED_TRACKS_ID, USER_TOP_TRACKS_ID,
     },
     ui::{single_line_input::LineInput, Orientation},
     utils::parse_uri,
@@ -289,12 +289,14 @@ pub fn handle_action_in_context(
                     ..
                 } = ui.current_page()
                 {
-                    client_pub.send(ClientRequest::DeleteTrackFromPlaylist(
-                        playlist_id.clone_static(),
-                        track.id,
-                    ))?;
+                    ui.popup = Some(PopupState::ConfirmAction {
+                        message: "Are you sure?".to_string(),
+                        action: ConfirmableAction::DeleteTrackFromPlaylist {
+                            playlist_id: playlist_id.clone_static(),
+                            track_id: track.id,
+                        },
+                    });
                 }
-                ui.popup = None;
                 Ok(true)
             }
             _ => Ok(false),
@@ -318,8 +320,10 @@ pub fn handle_action_in_context(
                 Ok(true)
             }
             Action::DeleteFromLibrary => {
-                client_pub.send(ClientRequest::DeleteFromLibrary(ItemId::Album(album.id)))?;
-                ui.popup = None;
+                ui.popup = Some(PopupState::ConfirmAction {
+                    message: "Are you sure?".to_string(),
+                    action: ConfirmableAction::DeleteFromLibrary(ItemId::Album(album.id)),
+                });
                 Ok(true)
             }
             Action::CopyLink => {
@@ -376,10 +380,10 @@ pub fn handle_action_in_context(
                 Ok(true)
             }
             Action::DeleteFromLibrary => {
-                client_pub.send(ClientRequest::DeleteFromLibrary(ItemId::Playlist(
-                    playlist.id,
-                )))?;
-                ui.popup = None;
+                ui.popup = Some(PopupState::ConfirmAction {
+                    message: "Are you sure?".to_string(),
+                    action: ConfirmableAction::DeleteFromLibrary(ItemId::Playlist(playlist.id)),
+                });
                 Ok(true)
             }
             _ => Ok(false),
@@ -397,8 +401,10 @@ pub fn handle_action_in_context(
                 Ok(true)
             }
             Action::DeleteFromLibrary => {
-                client_pub.send(ClientRequest::DeleteFromLibrary(ItemId::Show(show.id)))?;
-                ui.popup = None;
+                ui.popup = Some(PopupState::ConfirmAction {
+                    message: "Are you sure?".to_string(),
+                    action: ConfirmableAction::DeleteFromLibrary(ItemId::Show(show.id)),
+                });
                 Ok(true)
             }
             _ => Ok(false),

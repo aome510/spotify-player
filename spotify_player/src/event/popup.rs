@@ -1,5 +1,7 @@
 use super::*;
-use crate::{command::construct_artist_actions, utils::filtered_items_from_query};
+use crate::{
+    command::construct_artist_actions, state::ConfirmableAction, utils::filtered_items_from_query,
+};
 use anyhow::Context;
 
 pub fn handle_key_sequence_for_popup(
@@ -30,6 +32,14 @@ pub fn handle_key_sequence_for_popup(
                 return Ok(true);
             }
         }
+        PopupState::ConfirmAction { action, .. } => {
+            return handle_key_sequence_for_confirm_popup(
+                key_sequence,
+                client_pub,
+                ui,
+                action.clone(),
+            );
+        }
         _ => {}
     }
 
@@ -41,6 +51,9 @@ pub fn handle_key_sequence_for_popup(
     };
 
     match ui.popup.as_ref().context("empty popup")? {
+        PopupState::ConfirmAction { .. } => {
+            anyhow::bail!("confirm action should be handler before")
+        }
         PopupState::Search { .. } => anyhow::bail!("search popup should be handled before"),
         PopupState::PlaylistCreate { .. } => {
             anyhow::bail!("create playlist popup should be handled before")
@@ -599,4 +612,33 @@ fn handle_key_sequence_for_playlist_search_popup(
     }
 
     false
+}
+
+fn handle_key_sequence_for_confirm_popup(
+    key_sequence: &KeySequence,
+    client_pub: &flume::Sender<ClientRequest>,
+    ui: &mut UIStateGuard,
+    action: ConfirmableAction,
+) -> Result<bool> {
+    if matches!(
+        key_sequence.keys.as_slice(),
+        [Key::None(crossterm::event::KeyCode::Char('y'))]
+    ) {
+        match action {
+            ConfirmableAction::DeleteTrackFromPlaylist {
+                playlist_id,
+                track_id,
+            } => {
+                client_pub.send(ClientRequest::DeleteTrackFromPlaylist(
+                    playlist_id,
+                    track_id,
+                ))?;
+            }
+            ConfirmableAction::DeleteFromLibrary(item_id) => {
+                client_pub.send(ClientRequest::DeleteFromLibrary(item_id))?;
+            }
+        }
+    }
+    ui.popup = None;
+    Ok(true)
 }
