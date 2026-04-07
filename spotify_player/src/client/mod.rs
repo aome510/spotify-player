@@ -52,6 +52,9 @@ pub struct AppClient {
     user_client: Option<rspotify::AuthCodePkceSpotify>,
     #[cfg(feature = "streaming")]
     stream_conn: Arc<Mutex<Option<librespot_connect::Spirc>>>,
+    /// Sender half of the client request channel, used to send requests from
+    /// the streaming player-event task (e.g. batch transitions on `EndOfTrack`).
+    client_pub: Option<flume::Sender<ClientRequest>>,
 }
 
 impl Deref for AppClient {
@@ -108,7 +111,15 @@ impl AppClient {
 
             #[cfg(feature = "streaming")]
             stream_conn: Arc::new(Mutex::new(None)),
+            client_pub: None,
         })
+    }
+
+    /// Set the client request sender. Must be called before starting a
+    /// streaming connection so that the player-event task can send
+    /// `ClientRequest`s (e.g. batch transitions).
+    pub fn set_client_pub(&mut self, sender: flume::Sender<ClientRequest>) {
+        self.client_pub = Some(sender);
     }
 
     async fn token(&self) -> Result<String> {
@@ -235,8 +246,13 @@ impl AppClient {
         session: librespot_core::Session,
         creds: librespot_core::authentication::Credentials,
     ) -> Result<()> {
+        let client_pub = self
+            .client_pub
+            .clone()
+            .context("client_pub must be set before creating a streaming connection")?;
         let new_conn =
-            crate::streaming::new_connection(self.clone(), state, session, creds).await?;
+            crate::streaming::new_connection(self.clone(), state, session, creds, client_pub)
+                .await?;
         let mut stream_conn = self.stream_conn.lock();
         // shutdown old streaming connection and replace it with a new connection
         if let Some(conn) = stream_conn.as_ref() {
@@ -251,6 +267,7 @@ impl AppClient {
     /// Handle a player request, return a new playback metadata on success
     pub async fn handle_player_request(
         &self,
+        state: Option<&SharedState>,
         request: PlayerRequest,
         mut playback: Option<PlaybackMetadata>,
     ) -> Result<Option<PlaybackMetadata>> {
@@ -261,6 +278,11 @@ impl AppClient {
                 // because `TransferPlayback` doesn't require an active playback
                 self.transfer_playback(&device_id, Some(force_play)).await?;
                 tracing::info!("Transferred playback to device with id={}", device_id);
+                // Transferring playback leaves the custom queue's context;
+                // clear it so stale state doesn't interfere.
+                if let Some(state) = state {
+                    state.player.write().custom_queue = None;
+                }
                 return Ok(None);
             }
             PlayerRequest::StartPlayback(p, shuffle) => {
@@ -401,7 +423,9 @@ impl AppClient {
             }
             ClientRequest::Player(request) => {
                 let playback = state.player.read().buffered_playback.clone();
-                let playback = self.handle_player_request(request, playback).await?;
+                let playback = self
+                    .handle_player_request(Some(state), request, playback)
+                    .await?;
                 state.player.write().buffered_playback = playback;
                 self.update_playback(state);
             }
@@ -586,7 +610,34 @@ impl AppClient {
             }
             ClientRequest::GetCurrentUserQueue => {
                 let queue = self.current_user_queue().await?;
-                state.player.write().queue = Some(queue);
+                let mut player = state.player.write();
+
+                // Queue consistency check — safety net that detects silent
+                // divergence between the custom queue and Spotify's actual
+                // queue state.  If the expected next track is missing from
+                // Spotify's queue, our local position is unreliable — clear
+                // the custom queue and fall back to Spotify-managed playback.
+                if let Some(custom_queue) = &player.custom_queue {
+                    if !custom_queue.in_batch_cooldown() {
+                        if let Some(expected) = custom_queue.expected_next_track() {
+                            let expected_uri = expected.uri();
+                            let found = queue
+                                .queue
+                                .iter()
+                                .any(|item| item.id().is_some_and(|id| id.uri() == expected_uri));
+                            if !found {
+                                tracing::warn!(
+                                    "Custom queue consistency check failed: \
+                                     expected next track {expected_uri} not found in Spotify queue; \
+                                     clearing custom queue."
+                                );
+                                player.custom_queue = None;
+                            }
+                        }
+                    }
+                }
+
+                player.queue = Some(queue);
             }
             ClientRequest::ReorderPlaylistItems {
                 playlist_id,
@@ -1615,6 +1666,36 @@ impl AppClient {
 
             player.playback = playback;
             player.playback_last_updated_time = Some(std::time::Instant::now());
+
+            // Clear custom_queue when there is no playback at all.
+            if player.playback.is_none() {
+                player.custom_queue = None;
+            } else if let Some(ref cq) = player.custom_queue {
+                // If Spotify reports a non-None context whose URI differs from
+                // the queue's source context, another context has taken over.
+                // context: None is expected for URIs playback — don't clear.
+                // Skip during cooldown after a batch transition to avoid
+                // premature clearing while Spotify's API catches up.
+                let in_cooldown = cq.in_batch_cooldown();
+                if !in_cooldown {
+                    if let Some(ref spotify_ctx) = player.playback.as_ref().unwrap().context {
+                        let queue_ctx_uri = cq.source_context().map(ContextId::uri);
+                        let spotify_uri = crate::utils::parse_uri(&spotify_ctx.uri);
+                        let matches = queue_ctx_uri
+                            .as_deref()
+                            .is_some_and(|u| u == spotify_uri.as_ref());
+                        if !matches {
+                            tracing::info!(
+                                "Spotify context changed (reported={}, expected={:?}); \
+                                 clearing custom queue",
+                                spotify_ctx.uri,
+                                queue_ctx_uri,
+                            );
+                            player.custom_queue = None;
+                        }
+                    }
+                }
+            }
 
             let curr_item = player.currently_playing();
 
