@@ -248,10 +248,10 @@ pub async fn new_connection(
                                     bands.lock().is_active = false;
                                 }
                             }
-                            PlayerEvent::EndOfTrack { .. } => {
+                            PlayerEvent::EndOfTrack { ref playable_id } => {
                                 let mut player = state.player.write();
                                 if let Some(ref mut queue) = player.custom_queue {
-                                    match queue.advance() {
+                                    match queue.advance(playable_id) {
                                         AdvanceResult::SameBatch => {
                                             // librespot handles intra-batch transitions
                                         }

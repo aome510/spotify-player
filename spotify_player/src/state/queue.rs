@@ -23,18 +23,6 @@ pub enum AdvanceResult {
     EndOfQueue,
 }
 
-/// Result of retreating the queue by one track.
-#[derive(Clone, Debug, PartialEq, Eq)]
-#[allow(dead_code)]
-pub enum RetreatResult {
-    /// The previous track is still within the current batch.
-    SameBatch,
-    /// Need to load the previous batch to reach the previous track.
-    PreviousBatch(Vec<PlayableId<'static>>),
-    /// Already at the very beginning of the queue.
-    BeginningOfQueue,
-}
-
 /// Shuffle mode for the custom queue.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 #[allow(dead_code)]
@@ -215,24 +203,45 @@ impl CustomQueue {
         self.position + 1 >= self.batch_end
     }
 
-    /// Whether the current track is the first in the current batch.
-    pub fn is_at_batch_start(&self) -> bool {
-        self.position == self.batch_start
-    }
-
     // ── Mutations ──────────────────────────────────────────────────────
 
-    /// Advance to the next track. Returns what action the caller should take.
-    ///
-    /// This is called from the `EndOfTrack` handler — it is the **sole**
-    /// mechanism for advancing position.
-    pub fn advance(&mut self) -> AdvanceResult {
-        let next = self.position + 1;
+    /// Search `play_order[position..batch_end]` for the first element whose URI
+    /// matches `id`. Returns the absolute index, or `None` if not found (e.g.
+    /// the track was user-queued and is not part of the custom queue).
+    fn find_forward_in_batch(&self, id: &PlayableId<'static>) -> Option<usize> {
+        self.play_order[self.position..self.batch_end]
+            .iter()
+            .position(|t| t == id)
+            .map(|offset| self.position + offset)
+    }
 
+    /// Advance the queue in response to an `EndOfTrack` event.
+    ///
+    /// `ended_id` is the track that just finished playing. The method looks it
+    /// up in the current batch (searching forward from `position`) to determine
+    /// the real position. This handles:
+    ///
+    /// - **Normal playback**: `ended_id` is at `position` → next = position + 1.
+    /// - **Skips** (`NextTrack` fires `Changed`, not `EndOfTrack`): `ended_id` is
+    ///   found ahead of `position` → position jumps forward, self-correcting.
+    /// - **User-queued tracks**: `ended_id` is not in `play_order` → position
+    ///   unchanged, returns `SameBatch`.
+    pub fn advance(&mut self, ended_id: &PlayableId<'static>) -> AdvanceResult {
         // RepeatState::Track — don't advance; librespot loops the track.
         if self.repeat == rspotify::model::RepeatState::Track {
             return AdvanceResult::SameBatch;
         }
+
+        // Find where the ended track sits in the current batch.
+        let Some(idx) = self.find_forward_in_batch(ended_id) else {
+            // Track not in our batch — user-queued track played through.
+            // Don't touch position; librespot will resume with the next
+            // batch track automatically.
+            tracing::debug!("EndOfTrack for track not in batch (user-queued?): {ended_id:?}");
+            return AdvanceResult::SameBatch;
+        };
+
+        let next = idx + 1;
 
         if next < self.batch_end {
             // Still within the current batch.
@@ -258,35 +267,6 @@ impl CustomQueue {
             AdvanceResult::NeedsRadioTracks
         } else {
             AdvanceResult::EndOfQueue
-        }
-    }
-
-    /// Retreat to the previous track. Returns what action the caller should take.
-    pub fn retreat(&mut self) -> RetreatResult {
-        if self.position == 0 {
-            if self.repeat == rspotify::model::RepeatState::Context {
-                // Wrap to end of queue.
-                self.position = self.play_order.len().saturating_sub(1);
-                self.batch_end = self.play_order.len();
-                self.batch_start = self.batch_end.saturating_sub(self.max_batch_size);
-                self.mark_batch_transition();
-                RetreatResult::PreviousBatch(self.current_batch().to_vec())
-            } else {
-                RetreatResult::BeginningOfQueue
-            }
-        } else {
-            let prev = self.position - 1;
-            if prev >= self.batch_start {
-                self.position = prev;
-                RetreatResult::SameBatch
-            } else {
-                // Need to load the previous batch.
-                self.position = prev;
-                self.batch_end = self.batch_start;
-                self.batch_start = self.batch_end.saturating_sub(self.max_batch_size);
-                self.mark_batch_transition();
-                RetreatResult::PreviousBatch(self.current_batch().to_vec())
-            }
         }
     }
 
@@ -458,12 +438,21 @@ mod tests {
         assert_eq!(q.current_batch().len(), 3);
     }
 
+    /// Helper to call advance with the track at position `pos` in the tracks list.
+    fn advance_with(
+        q: &mut CustomQueue,
+        tracks: &[PlayableId<'static>],
+        pos: usize,
+    ) -> AdvanceResult {
+        q.advance(&tracks[pos])
+    }
+
     #[test]
     fn advance_within_batch() {
         let tracks = make_tracks(10);
         let mut q = CustomQueue::new(tracks.clone(), 0, 5, None, false);
 
-        assert_eq!(q.advance(), AdvanceResult::SameBatch);
+        assert_eq!(advance_with(&mut q, &tracks, 0), AdvanceResult::SameBatch);
         assert_eq!(q.position(), 1);
         assert_eq!(*q.current_track(), tracks[1]);
     }
@@ -471,16 +460,16 @@ mod tests {
     #[test]
     fn advance_across_batch_boundary() {
         let tracks = make_tracks(10);
-        let mut q = CustomQueue::new(tracks, 0, 5, None, false);
+        let mut q = CustomQueue::new(tracks.clone(), 0, 5, None, false);
 
         // Advance to position 4 (last in batch [0..5)).
-        for _ in 0..4 {
-            assert_eq!(q.advance(), AdvanceResult::SameBatch);
+        for i in 0..4 {
+            assert_eq!(advance_with(&mut q, &tracks, i), AdvanceResult::SameBatch);
         }
         assert_eq!(q.position(), 4);
 
         // Next advance should trigger a new batch.
-        let result = q.advance();
+        let result = advance_with(&mut q, &tracks, 4);
         assert!(matches!(result, AdvanceResult::NewBatch(_)));
         assert_eq!(q.position(), 5);
         assert_eq!(q.batch_start(), 5);
@@ -490,23 +479,24 @@ mod tests {
     #[test]
     fn advance_end_of_queue() {
         let tracks = make_tracks(3);
-        let mut q = CustomQueue::new(tracks, 0, 10, None, false);
+        let mut q = CustomQueue::new(tracks.clone(), 0, 10, None, false);
 
-        for _ in 0..2 {
-            q.advance();
-        }
-        assert_eq!(q.advance(), AdvanceResult::EndOfQueue);
+        advance_with(&mut q, &tracks, 0);
+        advance_with(&mut q, &tracks, 1);
+        assert_eq!(advance_with(&mut q, &tracks, 2), AdvanceResult::EndOfQueue);
     }
 
     #[test]
     fn advance_needs_radio_tracks() {
         let tracks = make_tracks(3);
-        let mut q = CustomQueue::new(tracks, 0, 10, None, true);
+        let mut q = CustomQueue::new(tracks.clone(), 0, 10, None, true);
 
-        for _ in 0..2 {
-            q.advance();
-        }
-        assert_eq!(q.advance(), AdvanceResult::NeedsRadioTracks);
+        advance_with(&mut q, &tracks, 0);
+        advance_with(&mut q, &tracks, 1);
+        assert_eq!(
+            advance_with(&mut q, &tracks, 2),
+            AdvanceResult::NeedsRadioTracks
+        );
     }
 
     #[test]
@@ -515,10 +505,9 @@ mod tests {
         let mut q = CustomQueue::new(tracks.clone(), 0, 10, None, false);
         q.set_repeat(rspotify::model::RepeatState::Context);
 
-        for _ in 0..2 {
-            q.advance();
-        }
-        let result = q.advance();
+        advance_with(&mut q, &tracks, 0);
+        advance_with(&mut q, &tracks, 1);
+        let result = advance_with(&mut q, &tracks, 2);
         assert!(matches!(result, AdvanceResult::NewBatch(_)));
         assert_eq!(q.position(), 0);
         assert_eq!(*q.current_track(), tracks[0]);
@@ -530,59 +519,87 @@ mod tests {
         let mut q = CustomQueue::new(tracks.clone(), 0, 10, None, false);
         q.set_repeat(rspotify::model::RepeatState::Track);
 
-        assert_eq!(q.advance(), AdvanceResult::SameBatch);
+        // ended_id doesn't matter for repeat-track; position stays.
+        assert_eq!(advance_with(&mut q, &tracks, 0), AdvanceResult::SameBatch);
         assert_eq!(q.position(), 0); // Didn't move.
         assert_eq!(*q.current_track(), tracks[0]);
     }
 
     #[test]
-    fn retreat_within_batch() {
+    fn advance_user_queued_track_ignored() {
         let tracks = make_tracks(10);
         let mut q = CustomQueue::new(tracks.clone(), 0, 5, None, false);
 
-        // Advance to position 2 (still within batch [0..5)).
-        q.advance();
-        q.advance();
-        assert_eq!(q.position(), 2);
-
-        assert_eq!(q.retreat(), RetreatResult::SameBatch);
-        assert_eq!(q.position(), 1);
-        assert_eq!(*q.current_track(), tracks[1]);
+        // Simulate a user-queued track (ID not in play_order) ending.
+        let unknown = make_track_id(999);
+        assert_eq!(q.advance(&unknown), AdvanceResult::SameBatch);
+        assert_eq!(q.position(), 0); // Position unchanged.
     }
 
     #[test]
-    fn retreat_at_beginning() {
+    fn advance_user_queued_at_batch_boundary() {
         let tracks = make_tracks(10);
-        let mut q = CustomQueue::new(tracks, 0, 5, None, false);
+        let mut q = CustomQueue::new(tracks.clone(), 0, 5, None, false);
 
-        assert_eq!(q.retreat(), RetreatResult::BeginningOfQueue);
-        assert_eq!(q.position(), 0);
-    }
-
-    #[test]
-    fn retreat_across_batch_boundary() {
-        let tracks = make_tracks(10);
-        let mut q = CustomQueue::new(tracks, 0, 5, None, false);
-
-        // Advance into the second batch.
-        for _ in 0..4 {
-            q.advance();
+        // Move to last track in batch.
+        for i in 0..4 {
+            advance_with(&mut q, &tracks, i);
         }
-        q.advance(); // Triggers new batch at position 5.
-
-        // Now retreat back across the boundary.
-        let result = q.retreat();
-        assert!(matches!(result, RetreatResult::PreviousBatch(_)));
         assert_eq!(q.position(), 4);
+        assert!(q.is_at_batch_end());
+
+        // User-queued track ends — should NOT trigger batch transition.
+        let unknown = make_track_id(999);
+        assert_eq!(q.advance(&unknown), AdvanceResult::SameBatch);
+        assert_eq!(q.position(), 4); // Still at batch end, waiting for real track.
+    }
+
+    #[test]
+    fn advance_skip_corrects_position() {
+        let tracks = make_tracks(10);
+        let mut q = CustomQueue::new(tracks.clone(), 0, 5, None, false);
+
+        // User skipped tracks 0, 1, 2 (which fire Changed, not EndOfTrack).
+        // Track 3 finishes naturally.
+        let result = advance_with(&mut q, &tracks, 3);
+        assert_eq!(result, AdvanceResult::SameBatch);
+        assert_eq!(q.position(), 4); // Jumped from 0 to 4.
+    }
+
+    #[test]
+    fn advance_skip_to_last_in_batch_triggers_new_batch() {
+        let tracks = make_tracks(10);
+        let mut q = CustomQueue::new(tracks.clone(), 0, 5, None, false);
+
+        // Skip to position 4 (last in batch [0..5)), it ends naturally.
+        let result = advance_with(&mut q, &tracks, 4);
+        assert!(matches!(result, AdvanceResult::NewBatch(_)));
+        assert_eq!(q.position(), 5);
+        assert_eq!(q.batch_start(), 5);
+        assert_eq!(q.batch_end(), 10);
+    }
+
+    #[test]
+    fn advance_duplicate_ids_takes_nearest() {
+        // play_order: [A, B, A, C] — duplicate A at positions 0 and 2.
+        let a = make_track_id(0);
+        let b = make_track_id(1);
+        let c = make_track_id(3);
+        let tracks = vec![a.clone(), b, a.clone(), c];
+        let mut q = CustomQueue::new(tracks.clone(), 0, 10, None, false);
+
+        // Track A ends — should match at position 0 (nearest forward), next = 1.
+        assert_eq!(q.advance(&a), AdvanceResult::SameBatch);
+        assert_eq!(q.position(), 1);
     }
 
     #[test]
     fn truncate_batch_to_current() {
         let tracks = make_tracks(10);
-        let mut q = CustomQueue::new(tracks, 0, 5, None, false);
+        let mut q = CustomQueue::new(tracks.clone(), 0, 5, None, false);
 
-        q.advance(); // position = 1
-        q.advance(); // position = 2
+        advance_with(&mut q, &tracks, 0); // position = 1
+        advance_with(&mut q, &tracks, 1); // position = 2
         q.truncate_batch_to_current();
 
         assert_eq!(q.batch_end(), 3); // position + 1
@@ -601,9 +618,9 @@ mod tests {
     #[test]
     fn remaining_tracks_at_end() {
         let tracks = make_tracks(3);
-        let mut q = CustomQueue::new(tracks, 0, 10, None, false);
-        q.advance();
-        q.advance();
+        let mut q = CustomQueue::new(tracks.clone(), 0, 10, None, false);
+        advance_with(&mut q, &tracks, 0);
+        advance_with(&mut q, &tracks, 1);
 
         assert!(q.remaining_tracks().is_empty());
     }
@@ -619,11 +636,11 @@ mod tests {
     #[test]
     fn expected_next_track_at_batch_end() {
         let tracks = make_tracks(10);
-        let mut q = CustomQueue::new(tracks, 0, 5, None, false);
+        let mut q = CustomQueue::new(tracks.clone(), 0, 5, None, false);
 
         // Advance to position 4 (last in batch).
-        for _ in 0..4 {
-            q.advance();
+        for i in 0..4 {
+            advance_with(&mut q, &tracks, i);
         }
         assert_eq!(q.expected_next_track(), None); // Next is outside batch.
     }

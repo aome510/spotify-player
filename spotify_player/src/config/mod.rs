@@ -390,7 +390,7 @@ impl Default for AppConfig {
             volume_scroll_step: 5,
             enable_mouse_scroll_volume: true,
 
-            custom_queue: true,
+            custom_queue: false,
         }
     }
 }
