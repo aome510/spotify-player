@@ -94,8 +94,7 @@ impl PopupState {
             | Self::ArtistList(.., list_state)
             | Self::ThemeList(.., list_state)
             | Self::ActionList(.., list_state) => Some(list_state),
-            Self::Search { .. } | Self::PlaylistCreate { .. } => None,
-            Self::ConfirmAction { .. } => None,
+            Self::Search { .. } | Self::PlaylistCreate { .. } | Self::ConfirmAction { .. } => None,
         }
     }
 
@@ -109,8 +108,7 @@ impl PopupState {
             | Self::ArtistList(.., list_state)
             | Self::ThemeList(.., list_state)
             | Self::ActionList(.., list_state) => Some(list_state),
-            Self::Search { .. } | Self::PlaylistCreate { .. } => None,
-            Self::ConfirmAction { .. } => None,
+            Self::Search { .. } | Self::PlaylistCreate { .. } | Self::ConfirmAction { .. } => None,
         }
     }
 
