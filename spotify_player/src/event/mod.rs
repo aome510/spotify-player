@@ -569,6 +569,7 @@ fn handle_global_command(
 ) -> Result<bool> {
     match command {
         Command::Quit => {
+            client_pub.send(ClientRequest::Player(PlayerRequest::Pause))?;
             ui.is_running = false;
         }
         Command::NextTrack => {
