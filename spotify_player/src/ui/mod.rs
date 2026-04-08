@@ -34,6 +34,20 @@ pub mod utils;
 
 /// Run the application UI
 pub fn run(state: &SharedState) -> Result<()> {
+    #[cfg(feature = "image")]
+    {
+        crossterm::terminal::enable_raw_mode()?;
+        let mut ui = state.ui.lock();
+        ui.picker = match ratatui_image::picker::Picker::from_query_stdio() {
+            Ok(p) => p,
+            Err(err) => {
+                tracing::warn!("Failed to initialize query_stdio picker, error: {err:#}");
+                ratatui_image::picker::Picker::halfblocks()
+            }
+        };
+        crossterm::terminal::disable_raw_mode()?;
+    }
+
     let mut terminal = init_ui().context("failed to initialize the application's UI")?;
 
     let ui_refresh_duration = std::time::Duration::from_millis(
