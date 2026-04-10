@@ -290,7 +290,7 @@ pub fn handle_action_in_context(
                 } = ui.current_page()
                 {
                     ui.popup = Some(PopupState::ConfirmAction {
-                        message: format!("Delete {}?", track.name),
+                        message: format!("Delete {} from this playlist?", track.name),
                         action: ConfirmableAction::DeleteTrackFromPlaylist {
                             playlist_id: playlist_id.clone_static(),
                             track_id: track.id,
@@ -321,7 +321,7 @@ pub fn handle_action_in_context(
             }
             Action::DeleteFromLibrary => {
                 ui.popup = Some(PopupState::ConfirmAction {
-                    message: format!("Delete {}?", album.name),
+                    message: format!("Delete {} from your library?", album.name),
                     action: ConfirmableAction::DeleteFromLibrary(ItemId::Album(album.id)),
                 });
                 Ok(true)
@@ -381,7 +381,7 @@ pub fn handle_action_in_context(
             }
             Action::DeleteFromLibrary => {
                 ui.popup = Some(PopupState::ConfirmAction {
-                    message: format!("Delete {}?", playlist.name),
+                    message: format!("Delete {} from your library?", playlist.name),
                     action: ConfirmableAction::DeleteFromLibrary(ItemId::Playlist(playlist.id)),
                 });
                 Ok(true)
@@ -402,7 +402,7 @@ pub fn handle_action_in_context(
             }
             Action::DeleteFromLibrary => {
                 ui.popup = Some(PopupState::ConfirmAction {
-                    message: format!("Delete {}?", show.name),
+                    message: format!("Delete {} from your library?", show.name),
                     action: ConfirmableAction::DeleteFromLibrary(ItemId::Show(show.id)),
                 });
                 Ok(true)

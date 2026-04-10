@@ -52,7 +52,7 @@ pub fn handle_key_sequence_for_popup(
 
     match ui.popup.as_ref().context("empty popup")? {
         PopupState::ConfirmAction { .. } => {
-            anyhow::bail!("confirm action should be handler before")
+            anyhow::bail!("confirm action should be handled before")
         }
         PopupState::Search { .. } => anyhow::bail!("search popup should be handled before"),
         PopupState::PlaylistCreate { .. } => {
