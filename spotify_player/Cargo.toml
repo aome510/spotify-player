@@ -24,7 +24,7 @@ log = "0.4.29"
 chrono = "0.4.44"
 chrono-humanize = "0.2.3"
 reqwest = { version = "0.13.2", features = ["json", "query"] }
-rspotify = {version = "0.15.3", features = ["cli"] }
+rspotify = {version = "0.16.0", features = ["cli"] }
 serde = { version = "1.0.228", features = ["derive"] }
 tokio = { version = "1.50.0", features = [
 	"rt",
