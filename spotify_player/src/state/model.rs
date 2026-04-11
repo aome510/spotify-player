@@ -356,6 +356,7 @@ impl Track {
     /// tries to convert from a `rspotify::model::SimplifiedTrack` into `Track`
     pub fn try_from_simplified_track(track: rspotify::model::SimplifiedTrack) -> Option<Self> {
         if track.is_playable.unwrap_or(true) {
+            #[allow(deprecated)]
             let id = match track.linked_from {
                 Some(d) => d.id?,
                 None => track.id?,
@@ -380,6 +381,7 @@ impl Track {
         added_at: Option<chrono::DateTime<chrono::Utc>>,
     ) -> Option<Self> {
         if track.is_playable.unwrap_or(true) {
+            #[allow(deprecated)]
             let id = match track.linked_from {
                 Some(d) => d.id?,
                 None => track.id?,
@@ -405,7 +407,9 @@ impl Track {
 
     /// tries to convert from a `rspotify::model::PlaylistItem` into `Track`
     pub fn try_from_playlist_item(item: rspotify::model::PlaylistItem) -> Option<Self> {
-        let rspotify::model::PlayableItem::Track(track) = item.track? else {
+        #[allow(deprecated)]
+        let rspotify::model::PlayableItem::Track(track) = item.track?
+        else {
             return None;
         };
 
