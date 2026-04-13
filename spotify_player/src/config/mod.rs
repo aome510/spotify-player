@@ -119,6 +119,8 @@ pub struct AppConfig {
     #[cfg(feature = "notify")]
     pub enable_notify: bool,
 
+    pub sort_ignore_the: bool,
+
     pub enable_cover_image_cache: bool,
 
     pub default_device: String,
@@ -374,6 +376,8 @@ impl Default for AppConfig {
 
             #[cfg(feature = "notify")]
             enable_notify: true,
+
+            sort_ignore_the: true,
 
             enable_cover_image_cache: true,
 

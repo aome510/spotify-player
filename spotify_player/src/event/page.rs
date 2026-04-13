@@ -104,6 +104,16 @@ fn handle_command_for_library_page(
     if command == Command::SortLibraryAlphabetically {
         let mut data = state.data.write();
 
+        // Always compare using lowercase, strip "the " prefix if set in config
+        let filter = if config::get_config().app_config.sort_ignore_the {
+            |name: &str| {
+                let lowered = name.to_lowercase();
+                lowered.strip_prefix("the ").unwrap_or(&lowered).to_string()
+            }
+        } else {
+            |name: &str| name.to_lowercase()
+        };
+
         // Sort playlists alphabetically, keeping folders on top
         data.user_data.playlists.sort_by(|a, b| match (a, b) {
             (PlaylistFolderItem::Folder(_), PlaylistFolderItem::Playlist(_)) => {
@@ -112,21 +122,18 @@ fn handle_command_for_library_page(
             (PlaylistFolderItem::Playlist(_), PlaylistFolderItem::Folder(_)) => {
                 std::cmp::Ordering::Greater
             }
-            _ => a
-                .to_string()
-                .to_lowercase()
-                .cmp(&b.to_string().to_lowercase()),
+            _ => filter(&a.to_string()).cmp(&filter(&b.to_string())),
         });
 
         // Sort albums alphabetically
         data.user_data
             .saved_albums
-            .sort_by(|x, y| x.name.to_lowercase().cmp(&y.name.to_lowercase()));
+            .sort_by(|x, y| filter(&x.name).cmp(&filter(&y.name)));
 
         // Sort artists alphabetically
         data.user_data
             .followed_artists
-            .sort_by(|x, y| x.name.to_lowercase().cmp(&y.name.to_lowercase()));
+            .sort_by(|x, y| filter(&x.name).cmp(&filter(&y.name)));
     }
 
     if command == Command::SortLibraryByRecent {
