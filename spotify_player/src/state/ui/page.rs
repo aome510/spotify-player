@@ -429,10 +429,10 @@ impl_focusable!(
 
 impl_focusable!(
     ArtistFocusState,
-    [TopTracks, Albums],
+    [TopTracks, LikedSongs],
+    [LikedSongs, Albums],
     [Albums, RelatedArtists],
-    [RelatedArtists, LikedSongs],
-    [LikedSongs, TopTracks]
+    [RelatedArtists, TopTracks]
 );
 
 impl_focusable!(
