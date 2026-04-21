@@ -88,6 +88,7 @@ pub enum ContextPageUIState {
         top_track_table: TableState,
         album_table: TableState,
         related_artist_list: ListState,
+        liked_track_table: TableState,
         focus: ArtistFocusState,
     },
     Tracks {
@@ -110,6 +111,7 @@ pub enum ArtistFocusState {
     TopTracks,
     Albums,
     RelatedArtists,
+    LikedSongs,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -218,6 +220,7 @@ impl PageState {
                     top_track_table,
                     album_table,
                     related_artist_list,
+                    liked_track_table,
                     focus,
                 } => match focus {
                     ArtistFocusState::TopTracks => MutableWindowState::Table(top_track_table),
@@ -225,6 +228,7 @@ impl PageState {
                     ArtistFocusState::RelatedArtists => {
                         MutableWindowState::List(related_artist_list)
                     }
+                    ArtistFocusState::LikedSongs => MutableWindowState::Table(liked_track_table),
                 },
                 ContextPageUIState::Show { episode_table } => {
                     MutableWindowState::Table(episode_table)
@@ -303,6 +307,7 @@ impl ContextPageUIState {
             top_track_table: TableState::default(),
             album_table: TableState::default(),
             related_artist_list: ListState::default(),
+            liked_track_table: TableState::default(),
             focus: ArtistFocusState::TopTracks,
         }
     }
@@ -426,7 +431,8 @@ impl_focusable!(
     ArtistFocusState,
     [TopTracks, Albums],
     [Albums, RelatedArtists],
-    [RelatedArtists, TopTracks]
+    [RelatedArtists, LikedSongs],
+    [LikedSongs, TopTracks]
 );
 
 impl_focusable!(

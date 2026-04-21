@@ -23,10 +23,10 @@ pub fn handle_action_for_focused_context_page(
     let data = state.data.read();
     match data.caches.context.get(&id.uri()) {
         Some(Context::Artist {
+            artist,
             top_tracks,
             albums,
             related_artists,
-            ..
         }) => {
             let PageState::Context {
                 state: Some(ContextPageUIState::Artist { focus, .. }),
@@ -58,6 +58,18 @@ pub fn handle_action_for_focused_context_page(
                     ui,
                     client_pub,
                 ),
+                ArtistFocusState::LikedSongs => {
+                    let mut liked: Vec<Track> = data
+                        .user_data
+                        .saved_tracks
+                        .values()
+                        .filter(|t| t.artists.iter().any(|a| a.id == artist.id))
+                        .cloned()
+                        .collect();
+                    liked.sort_by(|a, b| b.added_at.cmp(&a.added_at));
+                    let filtered = ui.search_filtered_items(&liked);
+                    handle_action_for_selected_item(action, &filtered, &data, ui, client_pub)
+                }
             }
         }
         Some(
@@ -149,10 +161,10 @@ pub fn handle_command_for_focused_context_window(
     match data.caches.context.get(&context_id.uri()) {
         Some(context) => match context {
             Context::Artist {
+                artist,
                 top_tracks,
                 albums,
                 related_artists,
-                ..
             } => {
                 let PageState::Context {
                     state: Some(ContextPageUIState::Artist { focus, .. }),
@@ -179,6 +191,19 @@ pub fn handle_command_for_focused_context_window(
                     ArtistFocusState::TopTracks => handle_command_for_track_table_window(
                         command, client_pub, None, top_tracks, &data, ui, state,
                     ),
+                    ArtistFocusState::LikedSongs => {
+                        let mut liked: Vec<Track> = data
+                            .user_data
+                            .saved_tracks
+                            .values()
+                            .filter(|t| t.artists.iter().any(|a| a.id == artist.id))
+                            .cloned()
+                            .collect();
+                        liked.sort_by(|a, b| b.added_at.cmp(&a.added_at));
+                        handle_command_for_track_table_window(
+                            command, client_pub, None, &liked, &data, ui, state,
+                        )
+                    }
                 }
             }
             Context::Album { tracks, .. }
