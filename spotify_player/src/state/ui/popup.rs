@@ -32,6 +32,7 @@ pub enum PopupState {
         desc: LineInput,
         current_field: PlaylistCreateCurrentField,
     },
+    AddedToQueue { frames_left: u16 },
     ConfirmAction {
         message: String,
         action: ConfirmableAction,
@@ -94,7 +95,11 @@ impl PopupState {
             | Self::ArtistList(.., list_state)
             | Self::ThemeList(.., list_state)
             | Self::ActionList(.., list_state) => Some(list_state),
-            Self::Search { .. } | Self::PlaylistCreate { .. } | Self::ConfirmAction { .. } => None,
+            Self::Search { .. } 
+            | Self::PlaylistCreate { .. } 
+            | Self::AddedToQueue { frames_left: _ }
+            | Self::ConfirmAction { .. } => None,
+
         }
     }
 
@@ -107,8 +112,11 @@ impl PopupState {
             | Self::UserSavedAlbumList(list_state)
             | Self::ArtistList(.., list_state)
             | Self::ThemeList(.., list_state)
-            | Self::ActionList(.., list_state) => Some(list_state),
-            Self::Search { .. } | Self::PlaylistCreate { .. } | Self::ConfirmAction { .. } => None,
+            | Self::ActionList(.., list_state) => Some(list_state),           
+            Self::Search { .. } 
+            | Self::PlaylistCreate { .. }
+            | Self::AddedToQueue { frames_left: _ }
+            | Self::ConfirmAction { .. } => None,
         }
     }
 
