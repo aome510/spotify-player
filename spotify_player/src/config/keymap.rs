@@ -56,10 +56,6 @@ impl Default for KeymapConfig {
                     command: Command::Repeat,
                 },
                 Keymap {
-                    key_sequence: "M-r".into(),
-                    command: Command::ToggleFakeTrackRepeatMode,
-                },
-                Keymap {
                     key_sequence: "C-s".into(),
                     command: Command::Shuffle,
                 },
@@ -76,7 +72,7 @@ impl Default for KeymapConfig {
                     command: Command::Mute,
                 },
                 Keymap {
-                    key_sequence: "0".into(),
+                    key_sequence: "^".into(),
                     command: Command::SeekStart,
                 },
                 Keymap {
@@ -331,6 +327,10 @@ impl Default for KeymapConfig {
                 Keymap {
                     key_sequence: "g c".into(),
                     command: Command::JumpToCurrentTrackInContext,
+                },
+                Keymap {
+                    key_sequence: "g o".into(),
+                    command: Command::OpenLogs,
                 },
             ],
         }

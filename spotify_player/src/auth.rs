@@ -4,6 +4,7 @@ use librespot_core::{authentication::Credentials, cache::Cache, config::SessionC
 use librespot_oauth::OAuthClientBuilder;
 
 pub const SPOTIFY_CLIENT_ID: &str = "65b708073fc0480ea92a077233ca87bd";
+pub const NCSPOT_CLIENT_ID: &str = "d420a117a32841c2b3474932e49fb54b";
 // based on https://developer.spotify.com/documentation/web-api/concepts/scopes#list-of-scopes
 pub const OAUTH_SCOPES: &[&str] = &[
     // Spotify Connect

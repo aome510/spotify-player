@@ -28,6 +28,8 @@ mod page;
 mod playback;
 mod popup;
 pub mod single_line_input;
+#[cfg(feature = "streaming")]
+pub mod streaming;
 pub mod utils;
 
 /// Run the application UI
@@ -148,6 +150,7 @@ fn render_main_layout(
         PageType::Lyrics => page::render_lyrics_page(is_active, frame, state, ui, rect),
         PageType::Queue => page::render_queue_page(frame, state, ui, rect),
         PageType::CommandHelp => page::render_commands_help_page(frame, ui, rect),
+        PageType::Logs => page::render_logs_page(frame, state, ui, rect),
     }
 }
 

@@ -31,6 +31,7 @@ pub fn handle_key_sequence_for_page(
             PageType::Lyrics => Ok(false),
             PageType::Queue => Ok(handle_command_for_queue_page(command, ui)),
             PageType::CommandHelp => Ok(handle_command_for_command_help_page(command, ui)),
+            PageType::Logs => Ok(handle_command_for_logs_page(command, ui)),
         },
         Some(CommandOrAction::Action(action, ActionTarget::SelectedItem)) => match page_type {
             PageType::Search => anyhow::bail!("page search type should already be handled!"),
@@ -247,7 +248,7 @@ fn handle_key_sequence_for_search_page(
 
             match found_keymap {
                 CommandOrAction::Command(command) => window::handle_command_for_track_list_window(
-                    command, client_pub, &tracks, &data, ui,
+                    command, client_pub, &tracks, &data, ui, state,
                 ),
                 CommandOrAction::Action(action, ActionTarget::SelectedItem) => {
                     window::handle_action_for_selected_item(action, &tracks, &data, ui, client_pub)
@@ -341,7 +342,7 @@ fn handle_key_sequence_for_search_page(
             match found_keymap {
                 CommandOrAction::Command(command) => {
                     window::handle_command_for_episode_list_window(
-                        command, client_pub, &episodes, &data, ui,
+                        command, client_pub, &episodes, &data, ui, state,
                     )
                 }
                 CommandOrAction::Action(action, ActionTarget::SelectedItem) => {
@@ -550,6 +551,15 @@ fn handle_command_for_command_help_page(command: Command, ui: &mut UIStateGuard)
         ui.new_search_popup();
         return true;
     }
+    let count = ui.count_prefix;
+    handle_navigation_command(command, ui.current_page_mut(), scroll_offset, 10000, count)
+}
+
+fn handle_command_for_logs_page(command: Command, ui: &mut UIStateGuard) -> bool {
+    let scroll_offset = match ui.current_page() {
+        PageState::Logs { scroll_offset } => *scroll_offset,
+        _ => return false,
+    };
     let count = ui.count_prefix;
     handle_navigation_command(command, ui.current_page_mut(), scroll_offset, 10000, count)
 }

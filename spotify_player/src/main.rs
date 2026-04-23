@@ -5,6 +5,7 @@ mod command;
 mod config;
 mod event;
 mod key;
+mod log_layer;
 #[cfg(feature = "media-control")]
 mod media_control;
 mod playlist_folders;
@@ -16,7 +17,12 @@ mod ui;
 mod utils;
 
 use anyhow::{Context, Result};
-use std::io::Write;
+use parking_lot::Mutex;
+use std::{collections::VecDeque, io::Write, sync::Arc};
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
+
+use crate::config::apply_config_override;
 
 fn init_spotify(
     client_pub: &flume::Sender<client::ClientRequest>,
@@ -30,13 +36,18 @@ fn init_spotify(
     client_pub.send(client::ClientRequest::GetUserPlaylists)?;
     client_pub.send(client::ClientRequest::GetUserFollowedArtists)?;
     client_pub.send(client::ClientRequest::GetUserSavedAlbums)?;
-    client_pub.send(client::ClientRequest::GetUserSavedTracks)?;
+    client_pub.send(client::ClientRequest::GetContext(state::ContextId::Tracks(
+        state::USER_LIKED_TRACKS_ID.to_owned(),
+    )))?;
     client_pub.send(client::ClientRequest::GetUserSavedShows)?;
 
     Ok(())
 }
 
-fn init_logging(log_folder: &std::path::Path) -> Result<()> {
+fn init_logging(
+    log_folder: &std::path::Path,
+    log_buffer: Arc<Mutex<VecDeque<String>>>,
+) -> Result<()> {
     if std::env::var_os("RUST_LOG").is_some_and(|x| x == "off") {
         // Don't create log files if logging is disabled.
         return Ok(());
@@ -57,10 +68,17 @@ fn init_logging(log_folder: &std::path::Path) -> Result<()> {
     }
     let log_file = std::fs::File::create(log_folder.join(format!("{log_prefix}.log")))
         .context("failed to create log file")?;
-    tracing_subscriber::fmt::fmt()
-        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+
+    let fmt_layer = tracing_subscriber::fmt::layer()
         .with_ansi(false)
-        .with_writer(std::sync::Mutex::new(log_file))
+        .with_writer(std::sync::Mutex::new(log_file));
+
+    let buffer_layer = crate::log_layer::BufferLayer::new(log_buffer, 1000);
+
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::EnvFilter::from_default_env())
+        .with(fmt_layer)
+        .with(buffer_layer)
         .init();
 
     // initialize the application's panic backtrace
@@ -79,8 +97,6 @@ fn init_logging(log_folder: &std::path::Path) -> Result<()> {
 
 #[tokio::main]
 async fn start_app(state: &state::SharedState) -> Result<()> {
-    let configs = config::get_config();
-
     if !state.is_daemon {
         #[cfg(feature = "image")]
         {
@@ -105,6 +121,7 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
             std::env::set_var("PULSE_PROP_application.icon_name", "spotify");
         }
         if std::env::var("PULSE_PROP_stream.description").is_err() {
+            let configs = config::get_config();
             std::env::set_var(
                 "PULSE_PROP_stream.description",
                 format!(
@@ -133,76 +150,68 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
     // initialize Spotify-related stuff
     init_spotify(&client_pub, &client, state).context("Failed to initialize the Spotify data")?;
 
-    // Spawn application's tasks
-    let mut tasks = Vec::new();
-
     // client socket task (for handling CLI commands)
-    tasks.push(tokio::task::spawn({
+    tokio::task::spawn({
         let client = client.clone();
         let state = state.clone();
         async move {
-            let port = configs.app_config.client_port;
-            tracing::info!("Starting a client socket at 127.0.0.1:{port}");
-            match tokio::net::UdpSocket::bind(("127.0.0.1", port)).await {
-                Ok(socket) => cli::start_socket(client, socket, Some(state)).await,
-                Err(err) => {
-                    tracing::warn!(
-                        "Failed to create a client socket for handling CLI commands: {err:#}"
-                    );
-                }
-            }
+            cli::start_socket(&client, Some(&state), None).await;
         }
-    }));
+    });
 
     // client event handler task
-    tasks.push(tokio::task::spawn({
+    tokio::task::spawn({
         let state = state.clone();
         async move {
-            client::start_client_handler(state, client, client_sub).await;
+            client::start_client_handler(&state, &client, &client_sub).await;
         }
-    }));
+    });
 
     // player event watcher task
-    tasks.push(tokio::task::spawn({
-        let state = state.clone();
-        let client_pub = client_pub.clone();
-        async move {
-            client::start_player_event_watchers(state, client_pub).await;
-        }
-    }));
+    std::thread::Builder::new()
+        .name("player-event-watcher".to_string())
+        .spawn({
+            let state = state.clone();
+            let client_pub = client_pub.clone();
+            move || {
+                client::start_player_event_watcher(&state, &client_pub);
+            }
+        })?;
 
     if !state.is_daemon {
-        // spawn tasks needed for running the application UI
-
         // terminal event handler task
-        tokio::task::spawn_blocking({
-            let client_pub = client_pub.clone();
-            let state = state.clone();
-            move || {
-                event::start_event_handler(&state, &client_pub);
-            }
-        });
+        std::thread::Builder::new()
+            .name("terminal-event-handler".to_string())
+            .spawn({
+                let client_pub = client_pub.clone();
+                let state = state.clone();
+                move || {
+                    event::start_event_handler(&state, &client_pub);
+                }
+            })?;
 
         // application UI task
-        tokio::task::spawn_blocking({
+        std::thread::Builder::new().name("ui".to_string()).spawn({
             let state = state.clone();
             move || ui::run(&state)
-        });
+        })?;
     }
 
     #[cfg(feature = "media-control")]
-    if configs.app_config.enable_media_control {
+    if config::get_config().app_config.enable_media_control {
         // media control task
-        tokio::task::spawn_blocking({
-            let state = state.clone();
-            move || {
-                if let Err(err) = media_control::start_event_watcher(&state, client_pub) {
-                    tracing::error!(
-                        "Failed to start the application's media control event watcher: err={err:#?}"
-                    );
+        std::thread::Builder::new()
+            .name("media-control".to_string())
+            .spawn({
+                let state = state.clone();
+                move || {
+                    if let Err(err) = media_control::start_event_watcher(&state, client_pub) {
+                        tracing::error!(
+                            "Failed to start the application's media control event watcher: err={err:#?}"
+                        );
+                    }
                 }
-            }
-        });
+            })?;
 
         // the winit's event loop must be run in the main thread
         #[cfg(any(target_os = "macos", target_os = "windows"))]
@@ -218,11 +227,10 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
         }
     }
 
-    for task in tasks {
-        task.await?;
+    // infinite loop to keep the main thread alive
+    loop {
+        std::thread::sleep(std::time::Duration::from_secs(1));
     }
-
-    Ok(())
 }
 
 fn main() -> Result<()> {
@@ -264,9 +272,14 @@ fn main() -> Result<()> {
             // set the log folder to be the cache folder if it is not set
             configs.app_config.log_folder = Some(cache_folder);
         }
-        if let Some(theme) = args.get_one::<String>("theme") {
-            // override the theme config if user specifies a `theme` cli argument
-            theme.clone_into(&mut configs.app_config.theme);
+        if let Some(overrides) = args.get_many::<String>("config-override") {
+            for override_str in overrides {
+                let (key, value) = override_str.split_once('=').context(format!(
+                    "Invalid override format: '{override_str}'. Expected KEY=VALUE"
+                ))?;
+
+                apply_config_override(&mut configs.app_config, key, value)?;
+            }
         }
         config::set_config(configs);
     }
@@ -280,7 +293,11 @@ fn main() -> Result<()> {
                 .as_deref()
                 .expect("log_folder is set");
 
-            init_logging(log_folder).context("failed to initialize application's logging")?;
+            let log_buffer: Arc<Mutex<VecDeque<String>>> =
+                Arc::new(Mutex::new(VecDeque::with_capacity(1000)));
+
+            init_logging(log_folder, log_buffer.clone())
+                .context("failed to initialize application's logging")?;
 
             // log the application's configurations
             tracing::info!("Configurations: {:?}", config::get_config());
@@ -309,7 +326,7 @@ fn main() -> Result<()> {
                 is_daemon = false;
             }
 
-            let state = std::sync::Arc::new(state::State::new(is_daemon));
+            let state = std::sync::Arc::new(state::State::new(is_daemon, log_buffer));
             start_app(&state)
         }
         Some((cmd, args)) => cli::handle_cli_subcommand(cmd, args),

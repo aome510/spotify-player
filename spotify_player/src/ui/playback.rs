@@ -1,11 +1,14 @@
 use super::{
-    config, utils::construct_and_render_block, Borders, Constraint, Frame, Gauge, Layout, Line,
-    LineGauge, Modifier, Paragraph, PlaybackMetadata, Rect, SharedState, Span, Style, Text,
-    UIStateGuard, Wrap,
+    config, utils::construct_and_render_block, Alignment, Borders, Constraint, Frame, Gauge,
+    Layout, Line, LineGauge, Modifier, Paragraph, PlaybackMetadata, Rect, SharedState, Span, Style,
+    Text, UIStateGuard, Wrap,
 };
 #[cfg(feature = "image")]
 use crate::state::ImageRenderInfo;
-use crate::ui::utils::{format_genres, to_bidi_string};
+use crate::{
+    state::Track,
+    ui::utils::{format_genres, to_bidi_string},
+};
 #[cfg(feature = "image")]
 use anyhow::{Context, Result};
 use rspotify::model::Id;
@@ -21,12 +24,31 @@ pub fn render_playback_window(
     ui: &mut UIStateGuard,
     rect: Rect,
 ) -> Rect {
-    let (rect, other_rect) = split_rect_for_playback_window(rect);
+    let (rect, other_rect) = split_rect_for_playback_window(state, rect);
     let rect = construct_and_render_block("Playback", &ui.theme, Borders::ALL, frame, rect);
 
     let player = state.player.read();
     if let Some(ref playback) = player.playback {
         if let Some(item) = &playback.item {
+            // Carve off the visualization rows here, inside the active-playback
+            // branch, so the full rect is used when there is nothing playing.
+            #[cfg(feature = "streaming")]
+            let (rect, vis_rect) = {
+                let configs = config::get_config();
+                if configs.app_config.enable_audio_visualization
+                    && state.is_local_streaming_active()
+                {
+                    let chunks = Layout::vertical([
+                        Constraint::Fill(0),
+                        Constraint::Length(super::streaming::VIS_HEIGHT),
+                    ])
+                    .split(rect);
+                    (chunks[0], Some(chunks[1]))
+                } else {
+                    (rect, None)
+                }
+            };
+
             let (metadata_rect, progress_bar_rect) = {
                 // Render the track's cover image if `image` feature is enabled
                 #[cfg(feature = "image")]
@@ -133,6 +155,10 @@ pub fn render_playback_window(
                 duration,
             );
             render_playback_progress_bar(frame, ui, progress, duration, progress_bar_rect);
+            #[cfg(feature = "streaming")]
+            if let Some(vis_r) = vis_rect {
+                super::streaming::render_audio_visualization(frame, state, vis_r);
+            }
             return other_rect;
         }
     }
@@ -151,15 +177,37 @@ pub fn render_playback_window(
         }
     }
 
-    frame.render_widget(
+    if player.playback_last_updated_time.is_none() {
+        // Still waiting for the first successful playback fetch — show animated loading indicator
+        const SPINNER_FRAMES: [&str; 10] = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+        let frame_idx = (std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_millis()
+            / 100) as usize
+            % SPINNER_FRAMES.len();
+        let vertical_chunks = Layout::vertical([
+            Constraint::Fill(1),
+            Constraint::Length(1),
+            Constraint::Fill(1),
+        ])
+        .split(rect);
+        frame.render_widget(
+            Paragraph::new(format!("{} Loading...", SPINNER_FRAMES[frame_idx]))
+                .style(ui.theme.playback_metadata())
+                .alignment(Alignment::Center),
+            vertical_chunks[1],
+        );
+    } else {
+        frame.render_widget(
             Paragraph::new(
                 "No playback found. Please start a new playback.\n \
-                 Make sure there is a running Spotify device and try to connect to one using the `SwitchDevice` command.\n \
-                 You may also need to set up Spotify Connect to see available devices as in https://github.com/aome510/spotify-player#spotify-connect."
+                 Make sure there is a running Spotify device and try to connect to one using the `SwitchDevice` command."
             )
             .wrap(Wrap { trim: true }),
             rect,
         );
+    }
 
     other_rect
 }
@@ -261,12 +309,11 @@ fn construct_playback_text(
             "{track}" => match playable {
                 rspotify::model::PlayableItem::Track(track) => (
                     {
-                        let bidi_string = to_bidi_string(&track.name);
-                        if track.explicit {
-                            format!("{bidi_string} (E)")
-                        } else {
-                            bidi_string
-                        }
+                        let display = Track::try_from_full_track(track.clone()).map_or_else(
+                            || "Unknown Track".to_string(),
+                            |t| to_bidi_string(&t.display_name()),
+                        );
+                        display
                     },
                     ui.theme.playback_track(),
                 ),
@@ -335,11 +382,7 @@ fn construct_playback_text(
                 }
             },
             "{metadata}" => {
-                let repeat_value = if playback.fake_track_repeat_state {
-                    "track (fake)".to_string()
-                } else {
-                    <&'static str>::from(playback.repeat_state).to_string()
-                };
+                let repeat_value = <&'static str>::from(playback.repeat_state).to_string();
 
                 let volume_value = if let Some(volume) = playback.mute_state {
                     format!("{volume}% (muted)")
@@ -461,12 +504,25 @@ fn render_playback_cover_image(state: &SharedState, ui: &mut UIStateGuard) -> Re
 
 /// Split the given area into two, the first one for the playback window
 /// and the second one for the main application's layout (popup, page, etc).
-fn split_rect_for_playback_window(rect: Rect) -> (Rect, Rect) {
+#[allow(unused_variables)]
+fn split_rect_for_playback_window(state: &SharedState, rect: Rect) -> (Rect, Rect) {
     let configs = config::get_config();
     let playback_width = configs.app_config.layout.playback_window_height;
     // the playback window's width should not be smaller than the cover image's width + 1
     #[cfg(feature = "image")]
     let playback_width = std::cmp::max(configs.app_config.cover_img_width + 1, playback_width);
+
+    // When visualization is enabled *and* librespot is actively streaming,
+    // reserve extra rows for the bar chart. When the local player is idle
+    // (e.g. playback on an external Spotify Connect device) the rows are not
+    // reserved so the space is available to the rest of the layout.
+    #[cfg(feature = "streaming")]
+    let playback_width = playback_width
+        + if configs.app_config.enable_audio_visualization && state.is_local_streaming_active() {
+            super::streaming::VIS_HEIGHT as usize
+        } else {
+            0
+        };
 
     // add lines for top/bottom borders depending on the progress bar's position
     let num_lines = match configs.app_config.progress_bar_position {

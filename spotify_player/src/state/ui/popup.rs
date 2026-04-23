@@ -1,9 +1,13 @@
 use crate::{
     command,
-    state::model::{Album, Artist, Episode, EpisodeId, Playlist, Show, Track, TrackId},
+    state::{
+        model::{Album, Artist, Episode, EpisodeId, Playlist, Show, Track, TrackId},
+        ItemId,
+    },
     ui::single_line_input::LineInput,
 };
 use ratatui::widgets::ListState;
+use rspotify::model::PlaylistId;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PlaylistCreateCurrentField {
@@ -28,7 +32,20 @@ pub enum PopupState {
         desc: LineInput,
         current_field: PlaylistCreateCurrentField,
     },
-    AddedToQueue { frames_left: u16 }
+    AddedToQueue { frames_left: u16 },
+    ConfirmAction {
+        message: String,
+        action: ConfirmableAction,
+    },
+}
+
+#[derive(Debug, Clone)]
+pub enum ConfirmableAction {
+    DeleteTrackFromPlaylist {
+        playlist_id: PlaylistId<'static>,
+        track_id: TrackId<'static>,
+    },
+    DeleteFromLibrary(ItemId),
 }
 
 #[derive(Debug, Clone)]
@@ -78,10 +95,11 @@ impl PopupState {
             | Self::ArtistList(.., list_state)
             | Self::ThemeList(.., list_state)
             | Self::ActionList(.., list_state) => Some(list_state),
-
             Self::Search { .. } 
             | Self::PlaylistCreate { .. } 
-            | Self::AddedToQueue { frames_left: _ } => None,
+            | Self::AddedToQueue { frames_left: _ }
+            | Self::ConfirmAction { .. } => None,
+
         }
     }
 
@@ -94,11 +112,11 @@ impl PopupState {
             | Self::UserSavedAlbumList(list_state)
             | Self::ArtistList(.., list_state)
             | Self::ThemeList(.., list_state)
-            | Self::ActionList(.., list_state) => Some(list_state),
-            
+            | Self::ActionList(.., list_state) => Some(list_state),           
             Self::Search { .. } 
             | Self::PlaylistCreate { .. }
-            | Self::AddedToQueue { frames_left: _ } => None,
+            | Self::AddedToQueue { frames_left: _ }
+            | Self::ConfirmAction { .. } => None,
         }
     }
 

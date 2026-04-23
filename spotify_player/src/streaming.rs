@@ -4,6 +4,7 @@ use librespot_connect::{ConnectConfig, Spirc};
 use librespot_core::authentication::Credentials;
 use librespot_core::config::DeviceType;
 use librespot_core::{spotify_uri, Session, SpotifyUri};
+use librespot_playback::audio_backend::Sink;
 use librespot_playback::mixer::MixerConfig;
 use librespot_playback::{
     audio_backend,
@@ -188,12 +189,30 @@ pub async fn new_connection(
         session.device_id()
     );
 
-    let player = player::Player::new(
-        player_config,
-        session.clone(),
-        mixer.get_soft_volume(),
-        move || backend(None, AudioFormat::default()),
-    );
+    let player = {
+        // Clone the Option<Arc<...>> so the factory closure can move it.
+        // vis_bands is Some iff enable_audio_visualization is true.
+        let vis_bands = state.vis_bands.as_ref().map(Arc::clone);
+        player::Player::new(
+            player_config,
+            session.clone(),
+            mixer.get_soft_volume(),
+            move || -> Box<dyn Sink> {
+                let real = backend(None, AudioFormat::default());
+                if let Some(ref bands) = vis_bands {
+                    Box::new(crate::ui::streaming::VisualizationSink::new(
+                        real,
+                        Arc::clone(bands),
+                        // librespot defaults to 44100 Hz; adjust here if
+                        // PlayerConfig::sample_rate is changed in the future.
+                        44_100.0,
+                    ))
+                } else {
+                    real
+                }
+            },
+        )
+    };
 
     let player_event_task = tokio::task::spawn({
         let mut channel = player.get_player_event_channel();
@@ -211,11 +230,17 @@ pub async fn new_connection(
                                 if let Some(playback) = player.buffered_playback.as_mut() {
                                     playback.is_playing = true;
                                 }
+                                if let Some(ref bands) = state.vis_bands {
+                                    bands.lock().is_active = true;
+                                }
                             }
                             PlayerEvent::Paused { .. } => {
                                 let mut player = state.player.write();
                                 if let Some(playback) = player.buffered_playback.as_mut() {
                                     playback.is_playing = false;
+                                }
+                                if let Some(ref bands) = state.vis_bands {
+                                    bands.lock().is_active = false;
                                 }
                             }
                             _ => {}

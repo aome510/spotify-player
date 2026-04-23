@@ -14,7 +14,7 @@ use tracing::Instrument;
 use crate::{
     cli::Request,
     client::{AppClient, PlayerRequest},
-    config::get_cache_folder_path,
+    config::{self, get_cache_folder_path},
     state::{
         AlbumId, ArtistId, Context, ContextId, Id, PlayableId, Playback, PlaybackMetadata,
         PlaylistId, SharedState, TrackId,
@@ -27,7 +27,29 @@ use super::{
     Response, Serialize, MAX_REQUEST_SIZE,
 };
 
-pub async fn start_socket(client: AppClient, socket: UdpSocket, state: Option<SharedState>) {
+pub async fn start_socket(
+    client: &AppClient,
+    state: Option<&SharedState>,
+    socket: Option<tokio::net::UdpSocket>,
+) {
+    let socket = if let Some(s) = socket {
+        s
+    } else {
+        let configs = config::get_config();
+        let port = configs.app_config.client_port;
+        tracing::info!("Starting a client socket at 127.0.0.1:{port}");
+
+        match tokio::net::UdpSocket::bind(("127.0.0.1", port)).await {
+            Ok(socket) => socket,
+            Err(err) => {
+                tracing::warn!(
+                    "Failed to create a client socket for handling CLI commands: {err:#}"
+                );
+                return;
+            }
+        }
+    };
+
     let mut buf = [0; MAX_REQUEST_SIZE];
 
     loop {
@@ -52,15 +74,14 @@ pub async fn start_socket(client: AppClient, socket: UdpSocket, state: Option<Sh
                 let span = tracing::info_span!("socket_request", request = ?request, dest_addr = ?dest_addr);
 
                 async {
-                    let response =
-                        match handle_socket_request(&client, state.as_ref(), request).await {
-                            Err(err) => {
-                                tracing::error!("Failed to handle socket request: {err:#}");
-                                let msg = format!("Bad request: {err:#}");
-                                Response::Err(msg.into_bytes())
-                            }
-                            Ok(data) => Response::Ok(data),
-                        };
+                    let response = match handle_socket_request(client, state, request).await {
+                        Err(err) => {
+                            tracing::error!("Failed to handle socket request: {err:#}");
+                            let msg = format!("Bad request: {err:#}");
+                            Response::Err(msg.into_bytes())
+                        }
+                        Ok(data) => Response::Ok(data),
+                    };
                     send_response(response, &socket, dest_addr)
                         .await
                         .unwrap_or_default();
@@ -174,6 +195,7 @@ async fn handle_socket_request(
             let resp = handle_search_request(client, query).await?;
             Ok(resp)
         }
+        Request::Lyrics { id_or_name } => handle_lyrics_request(client, state, id_or_name).await,
     }
 }
 
@@ -841,4 +863,54 @@ async fn playlist_import(
     ))?;
 
     Ok(result)
+}
+
+async fn handle_lyrics_request(
+    client: &AppClient,
+    state: Option<&SharedState>,
+    id_or_name: Option<IdOrName>,
+) -> Result<Vec<u8>> {
+    let track_id = if let Some(id_or_name) = id_or_name {
+        let ItemId::Track(id) = get_spotify_id(client, ItemType::Track, id_or_name).await? else {
+            anyhow::bail!("Unable to get track ID")
+        };
+        id
+    } else {
+        let playback = current_playback(client, state).await?;
+        match playback {
+            Some(ref p) => match p.item {
+                Some(rspotify::model::PlayableItem::Track(ref t)) => {
+                    t.id.as_ref().context("Track has no ID")?.clone_static()
+                }
+                _ => anyhow::bail!("No track currently playing"),
+            },
+            None => anyhow::bail!("No active playback"),
+        }
+    };
+
+    let track = client.track(track_id.clone()).await?;
+    let lyrics = client.lyrics(track_id).await?;
+
+    let mut output = format!(
+        "{} - {}\n\n",
+        track.name,
+        track
+            .artists
+            .iter()
+            .map(|a| a.name.as_str())
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
+
+    match lyrics {
+        Some(lyrics) => {
+            for (_, line) in &lyrics.lines {
+                output.push_str(line);
+                output.push('\n');
+            }
+        }
+        None => output.push_str("Lyrics not found"),
+    }
+
+    Ok(output.into_bytes())
 }

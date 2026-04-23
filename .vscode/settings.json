@@ -1,3 +1,8 @@
 {
-    "rust-analyzer.cargo.features": ["image", "notify", "fzf"]
+    "rust-analyzer.cargo.features": ["image", "notify", "fzf"],
+    "chat.tools.terminal.autoApprove": {
+        "cargo clippy": true,
+        "cargo fmt": true,
+        "cargo test": true
+    }
 }

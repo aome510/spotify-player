@@ -1,4 +1,7 @@
-use super::model::{AlbumId, ArtistId, ContextId, Device, PlaybackMetadata, PlaylistId, ShowId};
+use super::model::{
+    AlbumId, ArtistId, ContextId, Device, PlaybackMetadata, PlaylistId, ShowId, TracksId,
+};
+use super::queue::CustomQueue;
 
 /// Player state
 #[derive(Default, Debug)]
@@ -12,6 +15,14 @@ pub struct PlayerState {
     pub buffered_playback: Option<PlaybackMetadata>,
 
     pub queue: Option<rspotify::model::CurrentUserQueue>,
+
+    /// The currently playing Tracks context (for contexts not tracked by Spotify's playback, e.g. liked/top tracks)
+    pub currently_playing_tracks_id: Option<TracksId>,
+
+    /// App-managed custom queue for full playlist/album playback.
+    /// Active when the integrated librespot player is streaming and the user
+    /// started playback from a track-table context.
+    pub custom_queue: Option<CustomQueue>,
 }
 
 impl PlayerState {
@@ -89,7 +100,15 @@ impl PlayerState {
                         _ => None,
                     }
                 }
-                None => None,
+                None => self
+                    .custom_queue
+                    .as_ref()
+                    .and_then(|q| q.source_context().cloned())
+                    .or_else(|| {
+                        self.currently_playing_tracks_id
+                            .clone()
+                            .map(ContextId::Tracks)
+                    }),
             },
             None => None,
         }
