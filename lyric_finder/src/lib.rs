@@ -249,10 +249,8 @@ mod parse {
         }
 
         match &node.data {
-            NodeData::Text { contents } => {
-                if should_parse {
-                    s.push_str(&contents.borrow().to_string());
-                }
+            NodeData::Text { contents } if should_parse => {
+                s.push_str(&contents.borrow().to_string());
             }
             NodeData::Element { ref name, .. } => {
                 if let expanded_name!(html "br") = name.expanded() {
