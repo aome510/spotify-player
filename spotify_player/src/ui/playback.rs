@@ -347,6 +347,7 @@ fn construct_playback_text(
                     to_bidi_string(&crate::utils::map_join(&track.artists, |a| &a.name, ", ")),
                     ui.theme.playback_artists(),
                 ),
+                #[allow(deprecated)]
                 rspotify::model::PlayableItem::Episode(episode) => {
                     (episode.show.publisher.clone(), ui.theme.playback_artists())
                 }

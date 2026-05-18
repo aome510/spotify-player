@@ -53,6 +53,7 @@ fn update_control_metadata(
                         controls.set_metadata(MediaMetadata {
                             title: Some(&episode.name),
                             album: Some(&episode.show.name),
+                            #[allow(deprecated)]
                             artist: Some(&episode.show.publisher),
                             duration: episode.duration.to_std().ok(),
                             cover_url: utils::get_episode_show_image_url(episode),

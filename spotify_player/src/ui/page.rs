@@ -737,6 +737,7 @@ pub fn render_queue_page(
                 .map(|a| a.name.as_str())
                 .collect::<Vec<_>>()
                 .join(", "),
+            #[allow(deprecated)]
             PlayableItem::Episode(FullEpisode { ref show, .. }) => show.publisher.clone(),
             PlayableItem::Unknown(_) => String::new(),
         }
