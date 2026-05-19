@@ -1,7 +1,12 @@
 #![allow(unused_imports)]
+use chrono::TimeDelta;
+use rspotify::model::{
+    AlbumId, EpisodeId, Offset, PlayContextId, PlayableId, PlaylistId, ShowId, TrackId,
+};
 use souvlaki::MediaPosition;
 use souvlaki::{MediaControlEvent, MediaControls, MediaMetadata, MediaPlayback, PlatformConfig};
 
+use crate::state::{ContextId, Playback};
 use crate::utils;
 use crate::{
     client::{ClientRequest, PlayerRequest},
@@ -127,11 +132,45 @@ pub fn start_event_watcher(
                     .send(ClientRequest::Player(PlayerRequest::PreviousTrack))
                     .unwrap_or_default();
             }
-            MediaControlEvent::SetVolume(volume) => client_pub
-                .send(ClientRequest::Player(PlayerRequest::Volume(
-                    (volume * 100.0) as u8,
-                )))
-                .unwrap_or_default(),
+            MediaControlEvent::SetVolume(volume) => {
+                client_pub
+                    .send(ClientRequest::Player(PlayerRequest::Volume(
+                        (volume * 100.0) as u8,
+                    )))
+                    .unwrap_or_default();
+            }
+            MediaControlEvent::OpenUri(uri) => {
+                let id = uri[uri.rfind(":").unwrap_or(0) + 1..uri.len()].to_string();
+                let uri_type = &uri[uri.find(":").unwrap_or(0) + 1..uri.rfind(":").unwrap_or(0)];
+                let playback: Option<Playback> = match uri_type {
+                    "album" => {
+                        let album_id = AlbumId::from_id(id).unwrap();
+                        Some(Playback::Context(ContextId::Album(album_id), None))
+                    }
+                    "track" => {
+                        let track_id = PlayableId::Track(TrackId::from_id(id).unwrap());
+                        Some(Playback::URIs(vec![track_id], None))
+                    }
+                    "playlist" => {
+                        let playlist_id = PlaylistId::from_id(id).unwrap();
+                        Some(Playback::Context(ContextId::Playlist(playlist_id), None))
+                    }
+                    "show" => {
+                        let show_id = ShowId::from_id(id).unwrap();
+                        Some(Playback::Context(ContextId::Show(show_id), None))
+                    }
+                    "episode" => {
+                        let episode_id = PlayableId::Episode(EpisodeId::from_id(id).unwrap());
+                        Some(Playback::URIs(vec![episode_id], None))
+                    }
+                    _ => None,
+                };
+                if let Some(s) = playback {
+                    client_pub
+                        .send(ClientRequest::Player(PlayerRequest::StartPlayback(s, None)))
+                        .unwrap_or_default();
+                }
+            }
             _ => {}
         }
     })?;
