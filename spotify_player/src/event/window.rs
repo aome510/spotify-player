@@ -1,5 +1,7 @@
 use super::page::handle_navigation_command;
 use super::*;
+#[cfg(feature = "streaming")]
+use crate::state::CustomQueue;
 use crate::{
     command::{
         construct_album_actions, construct_artist_actions, construct_playlist_actions,
@@ -258,6 +260,7 @@ fn handle_playlist_modify_command(
     Ok(false)
 }
 
+#[allow(clippy::needless_pass_by_value)]
 fn handle_command_for_track_table_window(
     command: Command,
     client_pub: &flume::Sender<ClientRequest>,
@@ -322,19 +325,55 @@ fn handle_command_for_track_table_window(
                 }
             }
 
-            let base_playback = match context_id {
-                None | Some(ContextId::Tracks(_)) => {
-                    Playback::URIs(tracks.iter().map(|t| t.id.clone().into()).collect(), None)
+            let configs = config::get_config();
+            let limit = configs.app_config.tracks_playback_limit;
+
+            // When streaming with the custom queue enabled and the context is a
+            // playlist/album/artist, build a CustomQueue that holds the **full**
+            // track list and always use URIs-based playback so the app controls
+            // the play order.
+            #[cfg(feature = "streaming")]
+            let use_custom_queue = state.should_use_custom_queue()
+                && matches!(
+                    context_id,
+                    Some(ContextId::Playlist(_) | ContextId::Album(_) | ContextId::Artist(_))
+                );
+            #[cfg(not(feature = "streaming"))]
+            let use_custom_queue = false;
+
+            let base_playback = if use_custom_queue {
+                Playback::URIs(tracks.iter().map(|t| t.id.clone().into()).collect(), None)
+            } else {
+                // Clear any stale custom queue when not using it.
+                state.player.write().custom_queue = None;
+                match &context_id {
+                    None | Some(ContextId::Tracks(_)) => {
+                        Playback::URIs(tracks.iter().map(|t| t.id.clone().into()).collect(), None)
+                    }
+                    Some(ContextId::Show(_)) => unreachable!(
+                        "show context should be handled by handle_command_for_episode_table_window"
+                    ),
+                    Some(context_id) => Playback::Context(context_id.clone(), None),
                 }
-                Some(ContextId::Show(_)) => unreachable!(
-                    "show context should be handled by handle_command_for_episode_table_window"
-                ),
-                Some(context_id) => Playback::Context(context_id, None),
             };
 
+            #[cfg(feature = "streaming")]
+            if use_custom_queue {
+                let track_ids: Vec<PlayableId<'static>> =
+                    tracks.iter().map(|t| t.id.clone().into()).collect();
+                let start_position = track_ids.iter().position(|t| t.uri() == uri).unwrap_or(0);
+                let queue = CustomQueue::new(
+                    track_ids,
+                    start_position,
+                    limit,
+                    context_id.clone(),
+                    false, // autoplay: wired up in Phase 5
+                );
+                state.player.write().custom_queue = Some(queue);
+            }
+
             client_pub.send(ClientRequest::Player(PlayerRequest::StartPlayback(
-                base_playback
-                    .uri_offset(uri, config::get_config().app_config.tracks_playback_limit),
+                base_playback.uri_offset(uri, limit),
                 None,
             )))?;
         }
