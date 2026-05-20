@@ -314,6 +314,7 @@ pub fn handle_key_sequence_for_popup(
                 },
             )
         }
+        PopupState::AddedToQueue { frames_left: _ } => Ok(false)
     }
 }
 
