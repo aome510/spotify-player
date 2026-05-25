@@ -464,21 +464,24 @@ fn handle_command_for_list_popup(
     on_choose_func: impl FnOnce(&mut UIStateGuard, usize) -> anyhow::Result<()>,
     on_close_func: impl FnOnce(&mut UIStateGuard),
 ) -> anyhow::Result<bool> {
+    let offset = ui.count_prefix.unwrap_or(1);
     let popup = ui.popup.as_mut().with_context(|| "expect a popup")?;
     let current_id = popup.list_selected().unwrap_or_default();
 
+    if n_items == 0 {
+        return Ok(false);
+    }
+
     match command {
         Command::SelectPreviousOrScrollUp => {
-            if current_id > 0 {
-                popup.list_select(Some(current_id - 1));
-                on_select_func(ui, current_id - 1);
-            }
+            let next_id = current_id.saturating_sub(offset);
+            popup.list_select(Some(next_id));
+            on_select_func(ui, next_id);
         }
         Command::SelectNextOrScrollDown => {
-            if current_id + 1 < n_items {
-                popup.list_select(Some(current_id + 1));
-                on_select_func(ui, current_id + 1);
-            }
+            let next_id = std::cmp::min(current_id + offset, n_items - 1);
+            popup.list_select(Some(next_id));
+            on_select_func(ui, next_id);
         }
         Command::ChooseSelected => {
             if current_id < n_items {

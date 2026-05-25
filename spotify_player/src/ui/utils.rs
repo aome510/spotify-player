@@ -55,15 +55,29 @@ pub fn construct_list_widget<'a>(
     theme: &config::Theme,
     items: Vec<(String, bool)>,
     is_active: bool,
+    selected_index: Option<usize>,
 ) -> (List<'a>, usize) {
+    let configs = config::get_config();
     let n_items = items.len();
 
     (
         List::new(
             items
                 .into_iter()
-                .map(|(s, is_active)| {
-                    ListItem::new(s).style(if is_active {
+                .enumerate()
+                .map(|(i, (s, is_playing))| {
+                    let text = if is_active && configs.app_config.enable_relative_line_number {
+                        if let Some(selected_index) = selected_index {
+                            let diff = (i as isize - selected_index as isize).abs();
+                            let width = std::cmp::min(n_items.to_string().len(), 2);
+                            format!("{:>width$}  {}", diff, s, width = width)
+                        } else {
+                            s
+                        }
+                    } else {
+                        s
+                    };
+                    ListItem::new(text).style(if is_playing {
                         theme.current_playing()
                     } else {
                         Style::default()

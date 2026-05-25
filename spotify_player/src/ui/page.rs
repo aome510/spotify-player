@@ -48,16 +48,16 @@ pub fn render_search_page(
     // 1. Get data
     let data = state.data.read();
 
-    let (focus_state, current_query, line_input) = match ui.current_page() {
+    let (focus_state, current_query) = match ui.current_page() {
         PageState::Search {
             state,
             current_query,
-            line_input,
-        } => (state.focus, current_query, line_input),
+            ..
+        } => (state.focus, current_query.clone()),
         _ => return,
     };
 
-    let search_results = data.caches.search.get(current_query);
+    let search_results = data.caches.search.get(&current_query);
 
     // 2. Construct the page's layout
     let rect = construct_and_render_block("Search", &ui.theme, Borders::ALL, frame, rect);
@@ -140,8 +140,9 @@ pub fn render_search_page(
             .unwrap_or_default();
 
         let is_active = is_active && focus_state == SearchFocusState::Tracks;
+        let selected_index = if is_active { ui.current_page_mut().selected() } else { None };
 
-        utils::construct_list_widget(&ui.theme, track_items, is_active)
+        utils::construct_list_widget(&ui.theme, track_items, is_active, selected_index)
     };
 
     let (album_list, n_albums) = {
@@ -150,8 +151,9 @@ pub fn render_search_page(
             .unwrap_or_default();
 
         let is_active = is_active && focus_state == SearchFocusState::Albums;
+        let selected_index = if is_active { ui.current_page_mut().selected() } else { None };
 
-        utils::construct_list_widget(&ui.theme, album_items, is_active)
+        utils::construct_list_widget(&ui.theme, album_items, is_active, selected_index)
     };
 
     let (artist_list, n_artists) = {
@@ -160,8 +162,9 @@ pub fn render_search_page(
             .unwrap_or_default();
 
         let is_active = is_active && focus_state == SearchFocusState::Artists;
+        let selected_index = if is_active { ui.current_page_mut().selected() } else { None };
 
-        utils::construct_list_widget(&ui.theme, artist_items, is_active)
+        utils::construct_list_widget(&ui.theme, artist_items, is_active, selected_index)
     };
 
     let (playlist_list, n_playlists) = {
@@ -170,8 +173,9 @@ pub fn render_search_page(
             .unwrap_or_default();
 
         let is_active = is_active && focus_state == SearchFocusState::Playlists;
+        let selected_index = if is_active { ui.current_page_mut().selected() } else { None };
 
-        utils::construct_list_widget(&ui.theme, playlist_items, is_active)
+        utils::construct_list_widget(&ui.theme, playlist_items, is_active, selected_index)
     };
 
     let (show_list, n_shows) = {
@@ -179,8 +183,9 @@ pub fn render_search_page(
             .map(|s| search_items(&s.shows))
             .unwrap_or_default();
         let is_active = is_active && focus_state == SearchFocusState::Shows;
+        let selected_index = if is_active { ui.current_page_mut().selected() } else { None };
 
-        utils::construct_list_widget(&ui.theme, show_items, is_active)
+        utils::construct_list_widget(&ui.theme, show_items, is_active, selected_index)
     };
 
     let (episode_list, n_episodes) = {
@@ -189,25 +194,27 @@ pub fn render_search_page(
             .unwrap_or_default();
 
         let is_active = is_active && focus_state == SearchFocusState::Episodes;
+        let selected_index = if is_active { ui.current_page_mut().selected() } else { None };
 
-        utils::construct_list_widget(&ui.theme, episode_items, is_active)
+        utils::construct_list_widget(&ui.theme, episode_items, is_active, selected_index)
     };
 
     // 4. Render the page's widgets
+    // Need mutable access to the list/table states stored inside the page state for rendering.
+    let PageState::Search {
+        state: page_state,
+        line_input,
+        ..
+    } = ui.current_page_mut()
+    else {
+        return;
+    };
+
     // Render the query input box
     frame.render_widget(
         line_input.widget(is_active && focus_state == SearchFocusState::Input),
         search_input_rect,
     );
-
-    // Render the search result windows.
-    // Need mutable access to the list/table states stored inside the page state for rendering.
-    let PageState::Search {
-        state: page_state, ..
-    } = ui.current_page_mut()
-    else {
-        return;
-    };
     utils::render_list_window(
         frame,
         track_list,
@@ -453,30 +460,39 @@ pub fn render_library_page(
         })
         .collect::<Vec<_>>();
 
+    let is_playlist_active = is_active
+        && focus_state != LibraryFocusState::SavedAlbums
+        && focus_state != LibraryFocusState::FollowedArtists;
+    let playlist_selected = if is_playlist_active { ui.current_page_mut().selected() } else { None };
     let (playlist_list, n_playlists) = utils::construct_list_widget(
         &ui.theme,
         items,
-        is_active
-            && focus_state != LibraryFocusState::SavedAlbums
-            && focus_state != LibraryFocusState::FollowedArtists,
+        is_playlist_active,
+        playlist_selected,
     );
     // Construct the saved album window
+    let is_album_active = is_active && focus_state == LibraryFocusState::SavedAlbums;
+    let album_selected = if is_album_active { ui.current_page_mut().selected() } else { None };
     let (album_list, n_albums) = utils::construct_list_widget(
         &ui.theme,
         ui.search_filtered_items(&data.user_data.saved_albums)
             .into_iter()
             .map(|a| (a.to_bidi_string(), curr_context_uri == Some(a.id.uri())))
             .collect(),
-        is_active && focus_state == LibraryFocusState::SavedAlbums,
+        is_album_active,
+        album_selected,
     );
     // Construct the followed artist window
+    let is_artist_active = is_active && focus_state == LibraryFocusState::FollowedArtists;
+    let artist_selected = if is_artist_active { ui.current_page_mut().selected() } else { None };
     let (artist_list, n_artists) = utils::construct_list_widget(
         &ui.theme,
         ui.search_filtered_items(&data.user_data.followed_artists)
             .into_iter()
             .map(|a| (a.to_bidi_string(), curr_context_uri == Some(a.id.uri())))
             .collect(),
-        is_active && focus_state == LibraryFocusState::FollowedArtists,
+        is_artist_active,
+        artist_selected,
     );
 
     // 4. Render the page's widgets
@@ -520,6 +536,7 @@ pub fn render_browse_page(
     let data = state.data.read();
 
     // 2+3. Construct the page's layout and widgets
+    let selected_index = if is_active { ui.current_page_mut().selected() } else { None };
     let (list, len) = match ui.current_page() {
         PageState::Browse { state: ui_state } => match ui_state {
             BrowsePageUIState::CategoryList { .. } => {
@@ -533,6 +550,7 @@ pub fn render_browse_page(
                         .map(|c| (c.name.clone(), false))
                         .collect(),
                     is_active,
+                    selected_index,
                 )
             }
             BrowsePageUIState::CategoryPlaylistList { category, .. } => {
@@ -551,6 +569,7 @@ pub fn render_browse_page(
                         .map(|c| (c.name.clone(), false))
                         .collect(),
                     is_active,
+                    selected_index,
                 )
             }
         },
@@ -894,10 +913,14 @@ fn render_artist_context_page_windows(
             .map(|a| (a.name.clone(), false))
             .collect::<Vec<_>>();
 
+        let is_artist_active = is_active && focus_state == ArtistFocusState::RelatedArtists;
+        let selected_index = if is_artist_active { ui.current_page_mut().selected() } else { None };
+
         utils::construct_list_widget(
             &ui.theme,
             artist_items,
-            is_active && focus_state == ArtistFocusState::RelatedArtists,
+            is_artist_active,
+            selected_index,
         )
     };
 
@@ -967,12 +990,27 @@ fn render_track_table(
     // enable Added column if any track in the table has added_at field specified
     let added_at_enabled = tracks.iter().any(|t| t.added_at > 0);
 
+    let selected_index = if is_active && configs.app_config.enable_relative_line_number {
+        ui.current_page_mut().selected()
+    } else {
+        None
+    };
+
     let n_tracks = tracks.len();
     let rows = tracks
         .into_iter()
         .enumerate()
         .map(|(id, t)| {
-            let track_no = (id + 1).to_string();
+            let track_no = match selected_index {
+                Some(sel_idx) => {
+                    if id == sel_idx {
+                        (id + 1).to_string()
+                    } else {
+                        (id as isize - sel_idx as isize).abs().to_string()
+                    }
+                }
+                None => (id + 1).to_string(),
+            };
             let (play_pause, style) = if playing_track_uri == t.id.uri() {
                 (playing_id.to_string(), ui.theme.current_playing())
             } else {
@@ -1101,18 +1139,34 @@ fn render_episode_table(
         }
     }
 
+    let selected_index = if is_active && configs.app_config.enable_relative_line_number {
+        ui.current_page_mut().selected()
+    } else {
+        None
+    };
+
     let n_episodes = episodes.len();
     let rows = episodes
         .into_iter()
         .enumerate()
         .map(|(id, e)| {
-            let (id, style) = if playing_episode_uri == e.id.uri() {
+            let index_str = match selected_index {
+                Some(sel_idx) => {
+                    if id == sel_idx {
+                        (id + 1).to_string()
+                    } else {
+                        (id as isize - sel_idx as isize).abs().to_string()
+                    }
+                }
+                None => (id + 1).to_string(),
+            };
+            let (id_str, style) = if playing_episode_uri == e.id.uri() {
                 (playing_id.to_string(), ui.theme.current_playing())
             } else {
-                ((id + 1).to_string(), Style::default())
+                (index_str, Style::default())
             };
             Row::new(vec![
-                Cell::from(id),
+                Cell::from(id_str),
                 Cell::from(to_bidi_string(&e.name)),
                 Cell::from(e.release_date.clone()),
                 Cell::from(format!(
