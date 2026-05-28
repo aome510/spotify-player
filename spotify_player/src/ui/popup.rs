@@ -1,4 +1,4 @@
-use crate::utils::filtered_items_from_query;
+use crate::{command::Command, utils::filtered_items_from_query};
 
 use super::{
     config, utils, utils::construct_and_render_block, Borders, Cell, Constraint, Frame, Layout,
@@ -196,6 +196,22 @@ pub fn render_popup(
                 let rect = render_list_popup(frame, rect, "Artists", items, 5, ui);
                 (rect, false)
             }
+            PopupState::ConfirmAction { message, .. } => {
+                let chunks =
+                    Layout::vertical([Constraint::Fill(0), Constraint::Length(3)]).split(rect);
+
+                let confirm_rect = construct_and_render_block(
+                    "Confirm",
+                    &ui.theme,
+                    Borders::ALL,
+                    frame,
+                    chunks[1],
+                );
+
+                frame.render_widget(Paragraph::new(format!("{message} (y/n)")), confirm_rect);
+
+                (chunks[0], true)
+            }
         },
     }
 }
@@ -244,7 +260,9 @@ pub fn render_shortcut_help_popup(frame: &mut Frame, ui: &mut UIStateGuard, rect
                     keymap.key_sequence.keys.drain(0..input.keys.len());
                     keymap
                 })
-                .filter(|keymap| !keymap.key_sequence.keys.is_empty())
+                .filter(|keymap| {
+                    !keymap.key_sequence.keys.is_empty() && keymap.command != Command::None
+                })
                 .collect::<Vec<_>>()
         }
     };

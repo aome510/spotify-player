@@ -14,12 +14,12 @@ pub enum Command {
     ResumePause,
     PlayRandom,
     Repeat,
-    ToggleFakeTrackRepeatMode,
     Shuffle,
     VolumeChange {
         offset: i32,
     },
     Mute,
+    SeekStart,
     SeekForward {
         duration: Option<u16>,
     },
@@ -56,6 +56,7 @@ pub enum Command {
 
     ShowActionsOnSelectedItem,
     ShowActionsOnCurrentTrack,
+    ShowActionsOnCurrentContext,
     AddSelectedItemToQueue,
     JumpToHighlightTrackInContext,
 
@@ -88,6 +89,7 @@ pub enum Command {
     MovePlaylistItemDown,
 
     CreatePlaylist,
+    OpenLogs,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize)]
@@ -304,9 +306,9 @@ impl Command {
             Self::ResumePause => "resume/pause based on the current playback",
             Self::PlayRandom => "play a random track in the current context",
             Self::Repeat => "cycle the repeat mode",
-            Self::ToggleFakeTrackRepeatMode => "toggle fake track repeat mode",
             Self::Shuffle => "toggle the shuffle mode",
             Self::Mute => "toggle playback volume between 0% and previous level",
+            Self::SeekStart => "seek to track start",
             Self::SeekForward { duration } => { return format!("seek forward by {}s", duration.unwrap_or(5)) },
             Self::SeekBackward { duration } => { return format!("seek backward by {}s", duration.unwrap_or(5)) },
             Self::Quit => "quit the application",
@@ -334,6 +336,7 @@ impl Command {
             Self::RefreshPlayback => "manually refresh the current playback",
             Self::ShowActionsOnSelectedItem => "open a popup showing actions on a selected item",
             Self::ShowActionsOnCurrentTrack => "open a popup showing actions on the current track",
+            Self::ShowActionsOnCurrentContext => "open a popup showing actions on the current context",
             Self::AddSelectedItemToQueue => "add the selected item to queue",
             Self::JumpToHighlightTrackInContext => "jump to the currently highlighted search result in the context",
             Self::FocusNextWindow => "focus the next focusable window (if any)",
@@ -370,6 +373,7 @@ impl Command {
             Self::MovePlaylistItemDown => "move playlist item down one position",
             Self::CreatePlaylist => "create a new playlist",
             Self::VolumeChange { offset: _ } => unreachable!(),
+            Self::OpenLogs => "go to the application logs page",
         }
         .to_string()
     }

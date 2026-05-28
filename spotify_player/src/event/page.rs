@@ -1,6 +1,8 @@
 use anyhow::Context as _;
 use command::CommandOrAction;
 
+use crate::command::{construct_album_actions, construct_playlist_actions, construct_show_actions};
+
 use super::*;
 
 pub fn handle_key_sequence_for_page(
@@ -29,6 +31,7 @@ pub fn handle_key_sequence_for_page(
             PageType::Lyrics => Ok(false),
             PageType::Queue => Ok(handle_command_for_queue_page(command, ui)),
             PageType::CommandHelp => Ok(handle_command_for_command_help_page(command, ui)),
+            PageType::Logs => Ok(handle_command_for_logs_page(command, ui)),
         },
         Some(CommandOrAction::Action(action, ActionTarget::SelectedItem)) => match page_type {
             PageType::Search => anyhow::bail!("page search type should already be handled!"),
@@ -118,12 +121,12 @@ fn handle_command_for_library_page(
         // Sort albums alphabetically
         data.user_data
             .saved_albums
-            .sort_by(|x, y| x.name.to_lowercase().cmp(&y.name.to_lowercase()));
+            .sort_by_key(|x| x.name.to_lowercase());
 
         // Sort artists alphabetically
         data.user_data
             .followed_artists
-            .sort_by(|x, y| x.name.to_lowercase().cmp(&y.name.to_lowercase()));
+            .sort_by_key(|x| x.name.to_lowercase());
     }
 
     if command == Command::SortLibraryByRecent {
@@ -152,7 +155,7 @@ fn handle_command_for_library_page(
         // Sort albums by recent addition
         data.user_data
             .saved_albums
-            .sort_by(|a, b| b.added_at.cmp(&a.added_at));
+            .sort_by_key(|a| std::cmp::Reverse(a.added_at));
     }
 
     match focus_state {
@@ -245,7 +248,7 @@ fn handle_key_sequence_for_search_page(
 
             match found_keymap {
                 CommandOrAction::Command(command) => window::handle_command_for_track_list_window(
-                    command, client_pub, &tracks, &data, ui,
+                    command, client_pub, &tracks, &data, ui, state,
                 ),
                 CommandOrAction::Action(action, ActionTarget::SelectedItem) => {
                     window::handle_action_for_selected_item(action, &tracks, &data, ui, client_pub)
@@ -339,7 +342,7 @@ fn handle_key_sequence_for_search_page(
             match found_keymap {
                 CommandOrAction::Command(command) => {
                     window::handle_command_for_episode_list_window(
-                        command, client_pub, &episodes, &data, ui,
+                        command, client_pub, &episodes, &data, ui, state,
                     )
                 }
                 CommandOrAction::Action(action, ActionTarget::SelectedItem) => {
@@ -363,6 +366,55 @@ fn handle_command_for_context_page(
         Command::Search => {
             ui.new_search_popup();
             Ok(true)
+        }
+        Command::ShowActionsOnCurrentContext => {
+            let context_id = match ui.current_page() {
+                PageState::Context { id, .. } => match id {
+                    None => return Ok(false),
+                    Some(id) => id,
+                },
+                _ => anyhow::bail!("expect a context page"),
+            };
+            let data = state.data.read();
+
+            match data.caches.context.get(&context_id.uri()) {
+                Some(context) => match context {
+                    Context::Playlist { playlist, .. } => {
+                        let actions = construct_playlist_actions(playlist, &data);
+                        ui.popup = Some(PopupState::ActionList(
+                            Box::new(ActionListItem::Playlist(playlist.clone(), actions)),
+                            ListState::default(),
+                        ));
+                        Ok(true)
+                    }
+                    Context::Album { album, .. } => {
+                        let actions = construct_album_actions(album, &data);
+                        ui.popup = Some(PopupState::ActionList(
+                            Box::new(ActionListItem::Album(album.clone(), actions)),
+                            ListState::default(),
+                        ));
+                        Ok(true)
+                    }
+                    Context::Artist { artist, .. } => {
+                        let actions = construct_artist_actions(artist, &data);
+                        ui.popup = Some(PopupState::ActionList(
+                            Box::new(ActionListItem::Artist(artist.clone(), actions)),
+                            ListState::default(),
+                        ));
+                        Ok(true)
+                    }
+                    Context::Show { show, .. } => {
+                        let actions = construct_show_actions(show, &data);
+                        ui.popup = Some(PopupState::ActionList(
+                            Box::new(ActionListItem::Show(show.clone(), actions)),
+                            ListState::default(),
+                        ));
+                        Ok(true)
+                    }
+                    Context::Tracks { tracks: _, desc: _ } => Ok(false),
+                },
+                None => Ok(false),
+            }
         }
         _ => window::handle_command_for_focused_context_window(command, client_pub, ui, state),
     }
@@ -499,6 +551,15 @@ fn handle_command_for_command_help_page(command: Command, ui: &mut UIStateGuard)
         ui.new_search_popup();
         return true;
     }
+    let count = ui.count_prefix;
+    handle_navigation_command(command, ui.current_page_mut(), scroll_offset, 10000, count)
+}
+
+fn handle_command_for_logs_page(command: Command, ui: &mut UIStateGuard) -> bool {
+    let scroll_offset = match ui.current_page() {
+        PageState::Logs { scroll_offset } => *scroll_offset,
+        _ => return false,
+    };
     let count = ui.count_prefix;
     handle_navigation_command(command, ui.current_page_mut(), scroll_offset, 10000, count)
 }

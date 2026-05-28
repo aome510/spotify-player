@@ -1,11 +1,13 @@
 theme = "default"
 login_redirect_uri = "http://127.0.0.1:8989/login"
+client_id = "d420a117a32841c2b3474932e49fb54b"
 client_port = 8080
 tracks_playback_limit = 50
 playback_format = "{status} {track} • {artists}\n{album} • {genres}\n{metadata}"
 playback_metadata_fields = ["repeat", "shuffle", "volume", "device"]
 notify_format = { summary = "{track} • {artists}", body = "{album}" }
 notify_timeout_in_secs = 0
+notify_transient = false
 app_refresh_duration_in_ms = 32
 playback_refresh_duration_in_ms = 0
 page_size_in_rows = 20
@@ -23,6 +25,7 @@ cover_img_length = 9
 cover_img_width = 5
 cover_img_pixels = 16
 seek_duration_secs = 5
+custom_queue = true
 
 [device]
 name = "spotify-player"

@@ -28,21 +28,21 @@ fn receive_response(socket: &UdpSocket) -> Result<Response> {
 }
 
 fn get_id_or_name(args: &ArgMatches) -> IdOrName {
-    match args
-        .get_one::<Id>("id_or_name")
-        .expect("id_or_name group is required")
-        .as_str()
-    {
-        "name" => IdOrName::Name(
+    try_get_id_or_name(args).expect("id_or_name group is required")
+}
+
+fn try_get_id_or_name(args: &ArgMatches) -> Option<IdOrName> {
+    match args.get_one::<Id>("id_or_name")?.as_str() {
+        "name" => Some(IdOrName::Name(
             args.get_one::<String>("name")
                 .expect("name should be specified")
                 .to_owned(),
-        ),
-        "id" => IdOrName::Id(
+        )),
+        "id" => Some(IdOrName::Id(
             args.get_one::<String>("id")
                 .expect("id should be specified")
                 .to_owned(),
-        ),
+        )),
         id => panic!("unknown id: {id}"),
     }
 }
@@ -164,10 +164,14 @@ fn try_connect_to_client(socket: &UdpSocket, configs: &config::Configs) -> Resul
                 .context("new session")?;
 
             // create a client socket for handling CLI commands
+            // NOTE: the socket must be bound *before* spawning the thread to avoid a
+            // race condition where the caller sends a request before the socket is ready.
             let client_socket = rt.block_on(tokio::net::UdpSocket::bind(("127.0.0.1", port)))?;
 
             // spawn a thread to handle the CLI request
-            std::thread::spawn(move || rt.block_on(start_socket(client, client_socket, None)));
+            std::thread::spawn(move || {
+                rt.block_on(start_socket(&client, None, Some(client_socket)));
+            });
         } else {
             return Err(err.into());
         }
@@ -195,6 +199,10 @@ pub fn handle_cli_subcommand(cmd: &str, args: &ArgMatches) -> Result<()> {
             generate(gen, &mut cmd, name, &mut std::io::stdout());
             std::process::exit(0);
         }
+        "features" => {
+            print_features();
+            std::process::exit(0);
+        }
         _ => {}
     }
 
@@ -215,6 +223,9 @@ pub fn handle_cli_subcommand(cmd: &str, args: &ArgMatches) -> Result<()> {
                 .get_one::<String>("query")
                 .expect("query is required")
                 .to_owned(),
+        },
+        "lyrics" => Request::Lyrics {
+            id_or_name: try_get_id_or_name(args),
         },
         _ => unreachable!(),
     };
@@ -348,4 +359,35 @@ fn handle_playlist_subcommand(args: &ArgMatches) -> Result<Request> {
     };
 
     Ok(Request::Playlist(command))
+}
+
+macro_rules! print_feature {
+    ($feature:literal) => {
+        #[cfg(feature = $feature)]
+        println!("  ✓ {}", $feature);
+        #[cfg(not(feature = $feature))]
+        println!("  ✗ {}", $feature);
+    };
+}
+
+fn print_features() {
+    println!("Compile-time features:");
+
+    print_feature!("daemon");
+    print_feature!("streaming");
+    print_feature!("media-control");
+    print_feature!("image");
+    print_feature!("viuer");
+    print_feature!("sixel");
+    print_feature!("pixelate");
+    print_feature!("notify");
+    print_feature!("fzf");
+
+    // Audio backends
+    print_feature!("pulseaudio-backend");
+    print_feature!("alsa-backend");
+    print_feature!("rodio-backend");
+    print_feature!("jackaudio-backend");
+    print_feature!("sdl-backend");
+    print_feature!("gstreamer-backend");
 }

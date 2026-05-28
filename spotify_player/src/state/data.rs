@@ -24,7 +24,7 @@ pub enum FileCacheKey {
 
 /// default time-to-live cache duration
 pub static TTL_CACHE_DURATION: LazyLock<std::time::Duration> =
-    LazyLock::new(|| std::time::Duration::from_secs(60 * 60));
+    LazyLock::new(|| std::time::Duration::from_hours(1));
 
 /// the application's data
 pub struct AppData {

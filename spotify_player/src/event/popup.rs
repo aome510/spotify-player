@@ -1,5 +1,7 @@
 use super::*;
-use crate::{command::construct_artist_actions, utils::filtered_items_from_query};
+use crate::{
+    command::construct_artist_actions, state::ConfirmableAction, utils::filtered_items_from_query,
+};
 use anyhow::Context;
 
 pub fn handle_key_sequence_for_popup(
@@ -25,10 +27,20 @@ pub fn handle_key_sequence_for_popup(
                 ui,
             );
         }
+        // can't use match guard: the match holds an immutable borrow of ui
+        #[allow(clippy::collapsible_match)]
         PopupState::UserPlaylistList(..) => {
             if handle_key_sequence_for_playlist_search_popup(key_sequence, ui) {
                 return Ok(true);
             }
+        }
+        PopupState::ConfirmAction { action, .. } => {
+            return handle_key_sequence_for_confirm_popup(
+                key_sequence,
+                client_pub,
+                ui,
+                action.clone(),
+            );
         }
         _ => {}
     }
@@ -41,6 +53,9 @@ pub fn handle_key_sequence_for_popup(
     };
 
     match ui.popup.as_ref().context("empty popup")? {
+        PopupState::ConfirmAction { .. } => {
+            anyhow::bail!("confirm action should be handled before")
+        }
         PopupState::Search { .. } => anyhow::bail!("search popup should be handled before"),
         PopupState::PlaylistCreate { .. } => {
             anyhow::bail!("create playlist popup should be handled before")
@@ -485,20 +500,20 @@ fn handle_key_sequence_for_action_list_popup(
     state: &SharedState,
     ui: &mut UIStateGuard,
 ) -> Result<bool> {
+    if let Some(Key::None(crossterm::event::KeyCode::Char(c))) = key_sequence.keys.first() {
+        if let Some(id) = c.to_digit(10) {
+            let id = id as usize;
+            if id < n_actions {
+                handle_item_action(id, client_pub, state, ui)?;
+                return Ok(true);
+            }
+        }
+    }
+
     let Some(command) = config::get_config()
         .keymap_config
         .find_command_from_key_sequence(key_sequence)
     else {
-        // handle selecting an action by pressing a key from '0' to '9'
-        if let Some(Key::None(crossterm::event::KeyCode::Char(c))) = key_sequence.keys.first() {
-            if let Some(id) = c.to_digit(10) {
-                let id = id as usize;
-                if id < n_actions {
-                    handle_item_action(id, client_pub, state, ui)?;
-                    return Ok(true);
-                }
-            }
-        }
         return Ok(false);
     };
 
@@ -599,4 +614,33 @@ fn handle_key_sequence_for_playlist_search_popup(
     }
 
     false
+}
+
+fn handle_key_sequence_for_confirm_popup(
+    key_sequence: &KeySequence,
+    client_pub: &flume::Sender<ClientRequest>,
+    ui: &mut UIStateGuard,
+    action: ConfirmableAction,
+) -> Result<bool> {
+    if matches!(
+        key_sequence.keys.as_slice(),
+        [Key::None(crossterm::event::KeyCode::Char('y'))]
+    ) {
+        match action {
+            ConfirmableAction::DeleteTrackFromPlaylist {
+                playlist_id,
+                track_id,
+            } => {
+                client_pub.send(ClientRequest::DeleteTrackFromPlaylist(
+                    playlist_id,
+                    track_id,
+                ))?;
+            }
+            ConfirmableAction::DeleteFromLibrary(item_id) => {
+                client_pub.send(ClientRequest::DeleteFromLibrary(item_id))?;
+            }
+        }
+    }
+    ui.popup = None;
+    Ok(true)
 }

@@ -169,7 +169,7 @@ impl KeySequence {
         if self.keys.len() > other.keys.len() {
             return false;
         }
-        (0..self.keys.len()).fold(true, |acc, i| acc & (self.keys[i] == other.keys[i]))
+        (0..self.keys.len()).all(|i| self.keys[i] == other.keys[i])
     }
 }
 

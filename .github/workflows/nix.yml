@@ -1,0 +1,23 @@
+name: Build on Cargo.lock Change
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "spotify_player/Cargo.lock"
+  push:
+    branches:
+      - "master"
+    paths:
+      - "spotify_player/Cargo.lock"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+      - uses: cachix/install-nix-action@v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+      - run: nix build .

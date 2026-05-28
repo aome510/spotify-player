@@ -142,7 +142,7 @@ pub fn start_event_watcher(
     // The below refresh duration should be no less than 1s to avoid **overloading** linux dbus
     // handler provided by the souvlaki library, which only handles an event every 1s.
     // [1]: https://github.com/Sinono3/souvlaki/blob/b4d47bb2797ffdd625c17192df640510466762e1/src/platform/linux/mod.rs#L450
-    let refresh_duration = std::time::Duration::from_millis(1000);
+    let refresh_duration = std::time::Duration::from_secs(1);
     let mut info = String::new();
     loop {
         update_control_metadata(state, &mut controls, &mut info)?;
@@ -183,7 +183,7 @@ mod windows {
 
             unsafe {
                 let instance = GetModuleHandleW(None)
-                    .map_err(|e| (format!("Getting module handle failed: {e}")))?;
+                    .map_err(|e| format!("Getting module handle failed: {e}"))?;
 
                 let wnd_class = WNDCLASSEXW {
                     cbSize: mem::size_of::<WNDCLASSEXW>() as u32,
@@ -214,7 +214,7 @@ mod windows {
                     instance,
                     None,
                 )
-                .map_err(|e| (format!("Failed to create window: {e}")))?;
+                .map_err(|e| format!("Failed to create window: {e}"))?;
 
                 if handle.0.is_null() {
                     Err(format!(

@@ -1,9 +1,13 @@
 use crate::{
     command,
-    state::model::{Album, Artist, Episode, EpisodeId, Playlist, Show, Track, TrackId},
+    state::{
+        model::{Album, Artist, Episode, EpisodeId, Playlist, Show, Track, TrackId},
+        ItemId,
+    },
     ui::single_line_input::LineInput,
 };
 use ratatui::widgets::ListState;
+use rspotify::model::PlaylistId;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PlaylistCreateCurrentField {
@@ -28,6 +32,19 @@ pub enum PopupState {
         desc: LineInput,
         current_field: PlaylistCreateCurrentField,
     },
+    ConfirmAction {
+        message: String,
+        action: ConfirmableAction,
+    },
+}
+
+#[derive(Debug, Clone)]
+pub enum ConfirmableAction {
+    DeleteTrackFromPlaylist {
+        playlist_id: PlaylistId<'static>,
+        track_id: TrackId<'static>,
+    },
+    DeleteFromLibrary(ItemId),
 }
 
 #[derive(Debug, Clone)]
@@ -77,7 +94,7 @@ impl PopupState {
             | Self::ArtistList(.., list_state)
             | Self::ThemeList(.., list_state)
             | Self::ActionList(.., list_state) => Some(list_state),
-            Self::Search { .. } | Self::PlaylistCreate { .. } => None,
+            Self::Search { .. } | Self::PlaylistCreate { .. } | Self::ConfirmAction { .. } => None,
         }
     }
 
@@ -91,7 +108,7 @@ impl PopupState {
             | Self::ArtistList(.., list_state)
             | Self::ThemeList(.., list_state)
             | Self::ActionList(.., list_state) => Some(list_state),
-            Self::Search { .. } | Self::PlaylistCreate { .. } => None,
+            Self::Search { .. } | Self::PlaylistCreate { .. } | Self::ConfirmAction { .. } => None,
         }
     }
 

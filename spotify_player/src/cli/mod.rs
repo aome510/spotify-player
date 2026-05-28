@@ -131,6 +131,7 @@ pub enum Request {
     Like { unlike: bool },
     Playlist(PlaylistCommand),
     Search { query: String },
+    Lyrics { id_or_name: Option<IdOrName> },
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -176,6 +177,8 @@ pub fn init_cli() -> anyhow::Result<clap::Command> {
         .subcommand(commands::init_playlist_subcommand())
         .subcommand(commands::init_generate_command())
         .subcommand(commands::init_search_command())
+        .subcommand(commands::init_print_features_command())
+        .subcommand(commands::init_lyrics_command())
         .arg(
             clap::Arg::new("theme")
                 .short('t')
@@ -198,6 +201,14 @@ pub fn init_cli() -> anyhow::Result<clap::Command> {
                 .value_name("FOLDER")
                 .default_value(default_cache_folder.into_os_string())
                 .help("Path to the application's cache folder"),
+        )
+        .arg(
+            clap::Arg::new("config-override")
+                .short('o')
+                .long("config-override")
+                .value_name("KEY=VALUE")
+                .action(clap::ArgAction::Append)
+                .help("Override a config option (e.g. -o device.volume=80 -o theme=dracula)"),
         );
 
     #[cfg(feature = "daemon")]

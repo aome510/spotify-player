@@ -15,7 +15,7 @@ pub async fn get_token_rspotify(session: &Session) -> Result<rspotify::Token> {
     let fut = session.login5().auth_token();
     let token = match tokio::time::timeout(TIMEOUT, fut).await {
         Ok(Ok(token)) => token,
-        Ok(Err(err)) => anyhow::bail!("failed to get the token: {:?}", err),
+        Ok(Err(err)) => anyhow::bail!("failed to get the token: {err:?}"),
         Err(_) => {
             // The timeout likely happens because of the "corrupted" session,
             // shutdown it to force re-initializing.

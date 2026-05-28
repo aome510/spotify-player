@@ -17,12 +17,13 @@ use std::{
     sync::OnceLock,
 };
 
+use anyhow::Context;
 use keymap::KeymapConfig;
 use theme::ThemeConfig;
 
 pub use theme::Theme;
 
-use crate::auth::SPOTIFY_CLIENT_ID;
+use crate::auth::{NCSPOT_CLIENT_ID, SPOTIFY_CLIENT_ID};
 
 static CONFIGS: OnceLock<Configs> = OnceLock::new();
 
@@ -67,6 +68,9 @@ pub struct AppConfig {
     pub notify_format: NotifyFormat,
     #[cfg(feature = "notify")]
     pub notify_timeout_in_secs: u64,
+    #[cfg(feature = "notify")]
+    #[cfg(all(unix, not(target_os = "macos")))]
+    pub notify_transient: bool,
 
     pub tracks_playback_limit: usize,
 
@@ -84,6 +88,7 @@ pub struct AppConfig {
     pub play_icon: String,
     pub pause_icon: String,
     pub liked_icon: String,
+    pub explicit_icon: String,
 
     // layout configs
     pub border_type: BorderType,
@@ -108,6 +113,9 @@ pub struct AppConfig {
 
     pub enable_streaming: StreamingType,
 
+    #[cfg(feature = "streaming")]
+    pub enable_audio_visualization: bool,
+
     #[cfg(feature = "notify")]
     pub enable_notify: bool,
 
@@ -123,6 +131,14 @@ pub struct AppConfig {
     pub seek_duration_secs: u16,
 
     pub sort_artist_albums_by_type: bool,
+
+    pub volume_scroll_step: u8,
+    pub enable_mouse_scroll_volume: bool,
+
+    /// Enable app-managed queue for full playlist playback.
+    /// Requires streaming. When disabled, playback uses Spotify-native queue
+    /// management.
+    pub custom_queue: bool,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -271,7 +287,14 @@ impl Default for AppConfig {
     fn default() -> Self {
         Self {
             theme: "dracula".to_owned(),
-            client_id: None,
+            // Use ncspot's client ID as a fallback for user-provided client ID
+            //
+            // Most of the time, using ncspot's client ID is better than user-provided one
+            // because it is registered with [extended quota mode] and predates [spotify API changes]
+            //
+            // [extended quota mode]: https://developer.spotify.com/documentation/web-api/concepts/quota-modes
+            // [spotify API changes]: https://developer.spotify.com/blog/2024-11-27-changes-to-the-web-api
+            client_id: Some(NCSPOT_CLIENT_ID.to_string()),
             client_id_command: None,
 
             client_port: 8080,
@@ -298,6 +321,9 @@ impl Default for AppConfig {
             },
             #[cfg(feature = "notify")]
             notify_timeout_in_secs: 0,
+            #[cfg(feature = "notify")]
+            #[cfg(all(unix, not(target_os = "macos")))]
+            notify_transient: false,
 
             player_event_hook_command: None,
 
@@ -311,6 +337,7 @@ impl Default for AppConfig {
             pause_icon: "▌▌".to_string(),
             play_icon: "▶".to_string(),
             liked_icon: "♥".to_string(),
+            explicit_icon: "(E)".to_string(),
 
             border_type: BorderType::Plain,
             progress_bar_type: ProgressBarType::Rectangle,
@@ -342,6 +369,9 @@ impl Default for AppConfig {
 
             enable_streaming: StreamingType::Always,
 
+            #[cfg(feature = "streaming")]
+            enable_audio_visualization: false,
+
             #[cfg(feature = "notify")]
             enable_notify: true,
 
@@ -357,6 +387,11 @@ impl Default for AppConfig {
             seek_duration_secs: 5,
 
             sort_artist_albums_by_type: false,
+
+            volume_scroll_step: 5,
+            enable_mouse_scroll_volume: true,
+
+            custom_queue: true,
         }
     }
 }
@@ -482,4 +517,37 @@ pub fn set_config(configs: Configs) {
     CONFIGS
         .set(configs)
         .expect("configs should be initialized only once");
+}
+
+// Apply a CLI config override to the application config.
+// Serializes the config to TOML, navigates to the key via dot-notation,
+// overrides the value, and deserializes back into AppConfig.
+// Returns an error if the key path is invalid or the value type mismatches.
+pub fn apply_config_override(config: &mut AppConfig, key: &str, value: &str) -> anyhow::Result<()> {
+    let mut config_value = toml::Value::try_from(&*config)?;
+
+    let parts: Vec<&str> = key.split('.').collect();
+    let mut current = &mut config_value;
+
+    for (i, part) in parts.iter().enumerate() {
+        if i == parts.len() - 1 {
+            let table = current
+                .as_table_mut()
+                .context(format!("'{key}' is not a valid config path"))?;
+
+            let parsed_value: toml::Value = value
+                .parse()
+                .unwrap_or_else(|_| toml::Value::String(value.to_string()));
+
+            table.insert(part.to_string(), parsed_value);
+        } else {
+            current = current
+                .get_mut(part)
+                .context(format!("Config key '{part}' not found in path '{key}'"))?;
+        }
+    }
+
+    *config = config_value.try_into()?;
+
+    Ok(())
 }

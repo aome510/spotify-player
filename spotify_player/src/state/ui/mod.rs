@@ -10,8 +10,6 @@ pub type UIStateGuard<'a> = parking_lot::MutexGuard<'a, UIState>;
 mod page;
 mod popup;
 
-use super::TracksId;
-
 pub use page::*;
 pub use popup::*;
 
@@ -65,17 +63,6 @@ impl UIState {
     pub fn new_page(&mut self, page: PageState) {
         self.history.push(page);
         self.popup = None;
-    }
-
-    pub fn new_radio_page(&mut self, uri: &str) {
-        self.new_page(PageState::Context {
-            id: None,
-            context_page_type: ContextPageType::Browsing(super::ContextId::Tracks(TracksId::new(
-                format!("radio:{uri}"),
-                "Recommendations",
-            ))),
-            state: None,
-        });
     }
 
     /// Return whether there exists a focused popup.

@@ -9,10 +9,10 @@ use ratatui::text::Line;
 use crate::{state::Episode, utils::format_duration};
 
 use super::{
-    config, utils, utils::construct_and_render_block, Album, Artist, ArtistFocusState, Borders,
-    BrowsePageUIState, Cell, Constraint, Context, ContextPageUIState, DataReadGuard, Frame, Id,
-    Layout, LibraryFocusState, MutableWindowState, Orientation, PageState, Paragraph,
-    PlaylistFolderItem, Rect, Row, SearchFocusState, SharedState, Style, Table, Track,
+    config, utils, utils::construct_and_render_block, Album, Alignment, Artist, ArtistFocusState,
+    Borders, BrowsePageUIState, Cell, Constraint, Context, ContextPageUIState, DataReadGuard,
+    Frame, Id, Layout, LibraryFocusState, MutableWindowState, Orientation, PageState, Paragraph,
+    PlaylistFolderItem, Rect, Row, SearchFocusState, SharedState, Style, Table, Text, Track,
     UIStateGuard,
 };
 use crate::state::BidiDisplay;
@@ -337,8 +337,7 @@ pub fn render_context_page(
                         let chunks = Layout::vertical([Constraint::Length(1), Constraint::Fill(0)])
                             .split(rect);
                         frame.render_widget(
-                            Paragraph::new(playlist.desc.to_string())
-                                .style(ui.theme.playlist_desc()),
+                            Paragraph::new(playlist.desc.clone()).style(ui.theme.playlist_desc()),
                             chunks[0],
                         );
                         chunks[1]
@@ -727,7 +726,7 @@ pub fn render_queue_page(
     fn get_playable_name(item: &PlayableItem) -> String {
         match item {
             PlayableItem::Track(FullTrack { ref name, .. })
-            | PlayableItem::Episode(FullEpisode { ref name, .. }) => name.to_string(),
+            | PlayableItem::Episode(FullEpisode { ref name, .. }) => name.clone(),
             PlayableItem::Unknown(_) => String::new(),
         }
     }
@@ -837,7 +836,7 @@ fn render_artist_context_page_windows(
 
     // 2. Construct the page's layout
     // top tracks window
-    let chunks = Layout::vertical([Constraint::Length(12), Constraint::Fill(0)]).split(rect);
+    let chunks = Layout::vertical([Constraint::Fill(1), Constraint::Fill(1)]).split(rect);
     let top_tracks_rect = chunks[0];
 
     // albums and related artitsts windows
@@ -973,10 +972,11 @@ fn render_track_table(
         .into_iter()
         .enumerate()
         .map(|(id, t)| {
-            let (id, style) = if playing_track_uri == t.id.uri() {
+            let track_no = (id + 1).to_string();
+            let (play_pause, style) = if playing_track_uri == t.id.uri() {
                 (playing_id.to_string(), ui.theme.current_playing())
             } else {
-                ((id + 1).to_string(), Style::default())
+                (String::new(), Style::default())
             };
             Row::new(vec![
                 if data.user_data.is_liked_track(t) {
@@ -984,7 +984,8 @@ fn render_track_table(
                 } else {
                     Cell::from("")
                 },
-                Cell::from(id),
+                Cell::from(Text::from(track_no).alignment(Alignment::Right)),
+                Cell::from(play_pause),
                 Cell::from(to_bidi_string(&t.display_name())),
                 Cell::from(to_bidi_string(&t.artists_info())),
                 Cell::from(to_bidi_string(&t.album_info())),
@@ -1010,11 +1011,22 @@ fn render_track_table(
             .style(style)
         })
         .collect::<Vec<_>>();
+
+    let n_play_pause_chars = std::cmp::max(
+        configs.app_config.play_icon.chars().count(),
+        configs.app_config.pause_icon.chars().count(),
+    ) as u16;
+    let n_track_digits = if n_tracks > 0 {
+        (n_tracks.ilog10() + 1) as u16
+    } else {
+        1
+    };
     let track_table = Table::new(
         rows,
         [
             Constraint::Length(configs.app_config.liked_icon.chars().count() as u16),
-            Constraint::Length(4),
+            Constraint::Length(n_track_digits),
+            Constraint::Length(n_play_pause_chars),
             Constraint::Fill(4),
             Constraint::Fill(3),
             Constraint::Fill(5),
@@ -1029,7 +1041,8 @@ fn render_track_table(
     .header(
         Row::new(vec![
             Cell::from(""),
-            Cell::from("#"),
+            Cell::from(Text::from("#").alignment(Alignment::Right)),
+            Cell::from(""),
             Cell::from("Title"),
             Cell::from("Artists"),
             Cell::from("Album"),
@@ -1142,4 +1155,37 @@ fn render_episode_table(
         };
         utils::render_table_window(frame, episode_table, rect, n_episodes, playable_table_state);
     }
+}
+
+pub fn render_logs_page(frame: &mut Frame, state: &SharedState, ui: &mut UIStateGuard, rect: Rect) {
+    let rect = construct_and_render_block("Logs", &ui.theme, Borders::ALL, frame, rect);
+
+    let logs = state.logs.lock();
+    let scroll_offset = match ui.current_page_mut() {
+        PageState::Logs { scroll_offset } => {
+            if !logs.is_empty() && *scroll_offset >= logs.len() {
+                *scroll_offset = logs.len() - 1;
+            }
+            *scroll_offset
+        }
+        _ => return,
+    };
+
+    let lines: Vec<Line> = logs
+        .iter()
+        .skip(scroll_offset)
+        .map(|line| {
+            let style = if line.contains("ERROR") {
+                Style::default().fg(ratatui::style::Color::Red)
+            } else if line.contains("WARN") {
+                Style::default().fg(ratatui::style::Color::Yellow)
+            } else {
+                Style::default()
+            };
+            Line::styled(line, style)
+        })
+        .collect();
+
+    let paragraph = Paragraph::new(lines);
+    frame.render_widget(paragraph, rect);
 }
