@@ -14,7 +14,15 @@ use librespot_playback::{
 };
 use rspotify::model::{EpisodeId, Id, PlayableId, TrackId};
 use serde::Serialize;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+
+/// Whether the next streaming connection is the first one of the process.
+///
+/// Used to scope `pause_on_startup` to application startup only, so that
+/// reconnecting mid-session (e.g. via `RestartIntegratedClient`) does not
+/// pause an intentionally playing track.
+static IS_FIRST_CONNECTION: AtomicBool = AtomicBool::new(true);
 
 #[cfg(not(any(
     feature = "rodio-backend",
@@ -214,10 +222,46 @@ pub async fn new_connection(
         )
     };
 
+    // When `pause_on_startup` is enabled, suppress Spotify's auto-resume of the
+    // previous session by pausing the first auto-started playback. Scoped to the
+    // first connection of the process so mid-session reconnects are unaffected.
+    let pause_on_startup =
+        configs.app_config.pause_on_startup && IS_FIRST_CONNECTION.swap(false, Ordering::SeqCst);
+
     let player_event_task = tokio::task::spawn({
         let mut channel = player.get_player_event_channel();
         async move {
+            let mut pause_armed = pause_on_startup;
             while let Some(event) = channel.recv().await {
+                // Suppress Spotify's auto-resume of the previous session on
+                // startup. The `librespot` connect transfer finalizes the
+                // play state asynchronously, so a single reactive pause is not
+                // reliable on its own:
+                if pause_armed {
+                    match &event {
+                        // Best-effort: pause as the track starts loading, before
+                        // the audio sink starts, so no audible blip occurs. This
+                        // is a no-op if the transfer has not set the play state
+                        // yet, so we do NOT disarm here.
+                        player::PlayerEvent::Loading { .. } => {
+                            client.pause_streaming_on_startup();
+                        }
+                        // Authoritative: playback actually started (the transfer
+                        // finalized into "playing"). Pause and stop interfering.
+                        player::PlayerEvent::Playing { .. } => {
+                            if client.pause_streaming_on_startup() {
+                                pause_armed = false;
+                            }
+                        }
+                        // The track finished loading already paused, i.e. the
+                        // `Loading` pause above took effect and no audio played.
+                        player::PlayerEvent::Paused { .. } => {
+                            pause_armed = false;
+                        }
+                        _ => {}
+                    }
+                }
+
                 match PlayerEvent::from_librespot_player_event(event) {
                     Err(err) => {
                         tracing::warn!("Failed to convert a `librespot` player event into `spotify_player` player event: {err:#}");

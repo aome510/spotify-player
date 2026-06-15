@@ -248,6 +248,24 @@ impl AppClient {
         Ok(())
     }
 
+    /// Pause the integrated streaming client, if a connection exists.
+    ///
+    /// Returns `true` if a streaming connection was present and the pause
+    /// command was issued. Used to suppress Spotify's auto-resume of the
+    /// previous session on startup when `pause_on_startup` is enabled.
+    #[cfg(feature = "streaming")]
+    pub fn pause_streaming_on_startup(&self) -> bool {
+        match self.stream_conn.lock().as_ref() {
+            Some(spirc) => {
+                if let Err(err) = spirc.pause() {
+                    tracing::warn!("Failed to pause integrated client on startup: {err:#}");
+                }
+                true
+            }
+            None => false,
+        }
+    }
+
     /// Handle a player request, return a new playback metadata on success
     pub async fn handle_player_request(
         &self,
