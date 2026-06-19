@@ -268,12 +268,19 @@ impl AppClient {
                 if let (Some(shuffle), Some(playback)) = (shuffle, playback.as_mut()) {
                     playback.shuffle_state = shuffle;
                 }
-                let device_id = playback.as_ref().and_then(|p| p.device_id.as_deref());
-                self.start_playback(p, device_id).await?;
+                // Resolve the target device. When there is no active playback (e.g. the integrated
+                // device went idle and Spotify dropped it as the active device), fall back to
+                // `find_available_device`, the same recovery `initialize_playback` uses on startup,
+                // so a new playback can be started without restarting the app.
+                let device_id = match playback.as_ref().and_then(|p| p.device_id.clone()) {
+                    Some(id) => Some(id),
+                    None => self.find_available_device().await?,
+                };
+                self.start_playback(p, device_id.as_deref()).await?;
                 // For some reasons, when starting a new playback, the integrated `spotify_player`
                 // client doesn't respect the initial shuffle state, so we need to manually update the state
                 if let Some(ref playback) = playback {
-                    self.shuffle(playback.shuffle_state, device_id).await?;
+                    self.shuffle(playback.shuffle_state, device_id.as_deref()).await?;
                 }
                 return Ok(None);
             }
