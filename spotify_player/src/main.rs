@@ -184,7 +184,7 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
 
         std::thread::Builder::new().name("ui".to_string()).spawn({
             let state = state.clone();
-            move || ui::run(&state, terminal_ready)
+            move || ui::run(&state, &terminal_ready)
         })?;
     }
 

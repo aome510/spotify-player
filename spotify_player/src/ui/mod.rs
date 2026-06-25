@@ -33,7 +33,7 @@ pub mod streaming;
 pub mod utils;
 
 /// Run the application UI
-pub fn run(state: &SharedState, terminal_ready: std::sync::Arc<std::sync::Barrier>) -> Result<()> {
+pub fn run(state: &SharedState, terminal_ready: &std::sync::Arc<std::sync::Barrier>) -> Result<()> {
     let mut terminal = init_ui().context("failed to initialize the application's UI")?;
     detect_image_protocol();
     terminal_ready.wait();
