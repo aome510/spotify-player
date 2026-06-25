@@ -33,8 +33,10 @@ pub mod streaming;
 pub mod utils;
 
 /// Run the application UI
-pub fn run(state: &SharedState) -> Result<()> {
+pub fn run(state: &SharedState, terminal_ready: std::sync::Arc<std::sync::Barrier>) -> Result<()> {
     let mut terminal = init_ui().context("failed to initialize the application's UI")?;
+    detect_image_protocol();
+    terminal_ready.wait();
 
     let ui_refresh_duration = std::time::Duration::from_millis(
         config::get_config().app_config.app_refresh_duration_in_ms,
@@ -88,6 +90,16 @@ fn init_ui() -> Result<Terminal> {
     let mut terminal = ratatui::Terminal::new(backend)?;
     terminal.clear()?;
     Ok(terminal)
+}
+
+fn detect_image_protocol() {
+    #[cfg(feature = "image")]
+    {
+        viuer::get_kitty_support();
+        viuer::is_iterm_supported();
+        #[cfg(feature = "sixel")]
+        viuer::is_sixel_supported();
+    }
 }
 
 /// Clean up UI resources before quitting the application
