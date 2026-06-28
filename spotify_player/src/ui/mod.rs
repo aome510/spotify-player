@@ -74,6 +74,7 @@ pub fn run(state: &SharedState, mut terminal: Terminal) -> Result<()> {
 }
 
 pub fn init_terminal(state: &SharedState) -> Result<Terminal> {
+    #[cfg(feature = "image")]
     init_image_picker(state).context("initialize image picker")?;
 
     let mut stdout = std::io::stdout();
