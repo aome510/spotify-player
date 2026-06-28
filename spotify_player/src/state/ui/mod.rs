@@ -77,8 +77,13 @@ impl UIState {
     }
 
     pub fn new_page(&mut self, page: PageState) {
-        self.history.push(page);
         self.popup = None;
+        if let Some(current_page) = self.history.last() {
+            if &page == current_page {
+                return;
+            }
+        }
+        self.history.push(page);
     }
 
     /// Return whether there exists a focused popup.
