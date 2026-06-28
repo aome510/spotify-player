@@ -32,46 +32,8 @@ pub mod single_line_input;
 pub mod streaming;
 pub mod utils;
 
-/// Whether the application is running inside iTerm2.
-///
-/// iTerm2 sets `TERM_PROGRAM=iTerm.app` locally and forwards `LC_TERMINAL=iTerm2`
-/// over SSH, so checking both covers the common cases.
-#[cfg(feature = "image")]
-fn is_iterm2() -> bool {
-    std::env::var("TERM_PROGRAM").is_ok_and(|v| v == "iTerm.app")
-        || std::env::var("LC_TERMINAL").is_ok_and(|v| v.eq_ignore_ascii_case("iTerm2"))
-}
-
 /// Run the application UI
-pub fn run(state: &SharedState) -> Result<()> {
-    #[cfg(feature = "image")]
-    {
-        crossterm::terminal::enable_raw_mode()?;
-        let mut ui = state.ui.lock();
-        ui.picker = match ratatui_image::picker::Picker::from_query_stdio() {
-            Ok(p) => p,
-            Err(err) => {
-                tracing::warn!("Failed to initialize query_stdio picker, error: {err:#}");
-                ratatui_image::picker::Picker::halfblocks()
-            }
-        };
-        crossterm::terminal::disable_raw_mode()?;
-
-        // `from_query_stdio` selects a protocol from the terminal's capability query
-        // (`CSI c`), which prioritizes Kitty/Sixel over iTerm2's native protocol.
-        // Modern iTerm2 advertises Sixel support in that response, so it gets detected
-        // as a Sixel terminal even though its native inline-image protocol renders far
-        // more reliably. Prefer the native protocol when we know we're running in iTerm2.
-        if is_iterm2() && ui.picker.protocol_type() == ratatui_image::picker::ProtocolType::Sixel {
-            ui.picker
-                .set_protocol_type(ratatui_image::picker::ProtocolType::Iterm2);
-            tracing::info!("Detected iTerm2; overriding image protocol to native iTerm2");
-        }
-        tracing::info!("Image protocol: {:?}", ui.picker.protocol_type());
-    }
-
-    let mut terminal = init_ui().context("failed to initialize the application's UI")?;
-
+pub fn run(state: &SharedState, mut terminal: Terminal) -> Result<()> {
     let ui_refresh_duration = std::time::Duration::from_millis(
         config::get_config().app_config.app_refresh_duration_in_ms,
     );
@@ -111,8 +73,9 @@ pub fn run(state: &SharedState) -> Result<()> {
     }
 }
 
-// initialize the application's UI
-fn init_ui() -> Result<Terminal> {
+pub fn init_terminal(state: &SharedState) -> Result<Terminal> {
+    init_image_picker(state).context("initialize image picker")?;
+
     let mut stdout = std::io::stdout();
     crossterm::terminal::enable_raw_mode()?;
     crossterm::execute!(
@@ -124,6 +87,38 @@ fn init_ui() -> Result<Terminal> {
     let mut terminal = ratatui::Terminal::new(backend)?;
     terminal.clear()?;
     Ok(terminal)
+}
+
+/// Whether the application is running inside iTerm2.
+///
+/// iTerm2 sets `TERM_PROGRAM=iTerm.app` locally and forwards `LC_TERMINAL=iTerm2`
+/// over SSH, so checking both covers the common cases.
+#[cfg(feature = "image")]
+fn is_iterm2() -> bool {
+    std::env::var("TERM_PROGRAM").is_ok_and(|v| v == "iTerm.app")
+        || std::env::var("LC_TERMINAL").is_ok_and(|v| v.eq_ignore_ascii_case("iTerm2"))
+}
+
+#[cfg(feature = "image")]
+fn init_image_picker(state: &SharedState) -> Result<()> {
+    let mut ui = state.ui.lock();
+    crossterm::terminal::enable_raw_mode()?;
+    ui.picker = match ratatui_image::picker::Picker::from_query_stdio() {
+        Ok(p) => p,
+        Err(err) => {
+            tracing::warn!("Failed to initialize query_stdio picker, error: {err:#}");
+            ratatui_image::picker::Picker::halfblocks()
+        }
+    };
+    crossterm::terminal::disable_raw_mode()?;
+
+    if is_iterm2() && ui.picker.protocol_type() != ratatui_image::picker::ProtocolType::Iterm2 {
+        ui.picker
+            .set_protocol_type(ratatui_image::picker::ProtocolType::Iterm2);
+        tracing::info!("Detected iTerm2; overriding image protocol to native iTerm2");
+    }
+    tracing::info!("Image protocol: {:?}", ui.picker.protocol_type());
+    Ok(())
 }
 
 /// Clean up UI resources before quitting the application

@@ -168,6 +168,8 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
         })?;
 
     if !state.is_daemon {
+        let terminal = ui::init_terminal(state).context("initialize terminal")?;
+
         // terminal event handler task
         std::thread::Builder::new()
             .name("terminal-event-handler".to_string())
@@ -182,7 +184,7 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
         // application UI task
         std::thread::Builder::new().name("ui".to_string()).spawn({
             let state = state.clone();
-            move || ui::run(&state)
+            move || ui::run(&state, terminal)
         })?;
     }
 
