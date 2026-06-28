@@ -32,6 +32,16 @@ pub mod single_line_input;
 pub mod streaming;
 pub mod utils;
 
+/// Whether the application is running inside iTerm2.
+///
+/// iTerm2 sets `TERM_PROGRAM=iTerm.app` locally and forwards `LC_TERMINAL=iTerm2`
+/// over SSH, so checking both covers the common cases.
+#[cfg(feature = "image")]
+fn is_iterm2() -> bool {
+    std::env::var("TERM_PROGRAM").is_ok_and(|v| v == "iTerm.app")
+        || std::env::var("LC_TERMINAL").is_ok_and(|v| v.eq_ignore_ascii_case("iTerm2"))
+}
+
 /// Run the application UI
 pub fn run(state: &SharedState) -> Result<()> {
     #[cfg(feature = "image")]
@@ -46,6 +56,18 @@ pub fn run(state: &SharedState) -> Result<()> {
             }
         };
         crossterm::terminal::disable_raw_mode()?;
+
+        // `from_query_stdio` selects a protocol from the terminal's capability query
+        // (`CSI c`), which prioritizes Kitty/Sixel over iTerm2's native protocol.
+        // Modern iTerm2 advertises Sixel support in that response, so it gets detected
+        // as a Sixel terminal even though its native inline-image protocol renders far
+        // more reliably. Prefer the native protocol when we know we're running in iTerm2.
+        if is_iterm2() && ui.picker.protocol_type() == ratatui_image::picker::ProtocolType::Sixel {
+            ui.picker
+                .set_protocol_type(ratatui_image::picker::ProtocolType::Iterm2);
+            tracing::info!("Detected iTerm2; overriding image protocol to native iTerm2");
+        }
+        tracing::info!("Image protocol: {:?}", ui.picker.protocol_type());
     }
 
     let mut terminal = init_ui().context("failed to initialize the application's UI")?;
