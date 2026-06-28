@@ -91,13 +91,9 @@ impl AppClient {
         });
 
         if let Some(client) = &mut user_client {
-            let url = client
-                .get_authorize_url(None)
-                .context("get authorize URL for user-provided client")?;
-            client
-                .prompt_for_token(&url)
+            auth::prompt_for_user_token(client)
                 .await
-                .context("get token for user-provided client")?;
+                .context("authenticate user-provided client")?;
         }
 
         Ok(Self {

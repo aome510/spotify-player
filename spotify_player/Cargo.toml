@@ -17,14 +17,16 @@ crossterm = "0.29.0"
 dirs-next = "2.0.0"
 librespot-connect = { version = "0.8.0", optional = true }
 librespot-core = { version = "0.8.0" }
-librespot-oauth = { version = "0.8.0" }
 librespot-playback = {version = "0.8.0", optional = true, default-features = false, features = ["native-tls"]}
 librespot-metadata = { version = "0.8.0" }
 log = "0.4.33"
 chrono = "0.4.45"
 chrono-humanize = "0.2.3"
-reqwest = { version = "0.13.4", features = ["json", "query"] }
+reqwest = { version = "0.13.4", features = ["json", "query", "form", "blocking"] }
 rspotify = {version = "0.15.3", features = ["cli"] }
+base64 = "0.22.1"
+sha2 = "0.10.9"
+open = "5.3.5"
 serde = { version = "1.0.228", features = ["derive"] }
 tokio = { version = "1.52.3", features = [
 	"rt",
