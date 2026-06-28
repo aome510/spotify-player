@@ -120,7 +120,7 @@ pub fn render_playback_window(
                                         .buffer_mut()
                                         .cell_mut((x, y))
                                         .expect("invalid cell")
-                                        .set_skip(true);
+                                        .set_diff_option(ratatui::buffer::CellDiffOption::Skip);
                                 }
                             }
                         }
