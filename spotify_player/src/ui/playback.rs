@@ -82,25 +82,29 @@ pub fn render_playback_window(
                             if ui.last_cover_image_render_info.url != url
                                 || ui.last_cover_image_render_info.render_area != cover_img_rect
                             {
-                                // let mut protocol = ui.picker.new_resize_protocol(img.clone());
-                                // frame.render_stateful_widget(
-                                //     ratatui_image::StatefulImage::default(),
-                                //     cover_img_rect,
-                                //     &mut protocol,
-                                // );
-                                // ui.last_cover_image_render_info = ImageRenderInfo {
-                                //     url,
-                                //     render_area: cover_img_rect,
-                                //     state: Some(protocol),
-                                // };
+                                let state = match ui.picker.new_protocol(
+                                    img.clone(),
+                                    cover_img_rect.into(),
+                                    ratatui_image::Resize::Fit(None),
+                                ) {
+                                    Ok(protocol) => Some(protocol),
+                                    Err(err) => {
+                                        tracing::error!("Failed to encode cover image: {err:#}");
+                                        None
+                                    }
+                                };
+                                ui.last_cover_image_render_info = ImageRenderInfo {
+                                    url,
+                                    render_area: cover_img_rect,
+                                    state,
+                                };
                             }
-                            // if let Some(ref mut protocol) = ui.last_cover_image_render_info.state {
-                            //     frame.render_stateful_widget(
-                            //         ratatui_image::StatefulImage::default(),
-                            //         cover_img_rect,
-                            //         protocol,
-                            //     );
-                            // }
+                            if let Some(ref protocol) = ui.last_cover_image_render_info.state {
+                                frame.render_widget(
+                                    ratatui_image::Image::new(protocol),
+                                    ui.last_cover_image_render_info.render_area,
+                                );
+                            }
                         }
                     }
                     (metadata_rect, progress_bar_rect)

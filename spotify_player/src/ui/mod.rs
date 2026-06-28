@@ -112,6 +112,8 @@ fn init_image_picker(state: &SharedState) -> Result<()> {
     };
     crossterm::terminal::disable_raw_mode()?;
 
+    // ratatui_image might detect the wrong protocol for iTerm2, so override it to the native iTerm2 protocol if detected
+    // https://github.com/ratatui/ratatui-image/issues/158
     if is_iterm2() && ui.picker.protocol_type() != ratatui_image::picker::ProtocolType::Iterm2 {
         ui.picker
             .set_protocol_type(ratatui_image::picker::ProtocolType::Iterm2);
