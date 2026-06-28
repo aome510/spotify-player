@@ -5,6 +5,9 @@ use crate::{
     utils::filtered_items_from_query,
 };
 
+#[cfg(feature = "image")]
+use ratatui_image::{picker::Picker, protocol::StatefulProtocol};
+
 pub type UIStateGuard<'a> = parking_lot::MutexGuard<'a, UIState>;
 
 mod page;
@@ -13,13 +16,23 @@ mod popup;
 pub use page::*;
 pub use popup::*;
 
-#[derive(Default, Debug)]
 #[cfg(feature = "image")]
+#[derive(Default)]
 pub struct ImageRenderInfo {
     pub url: String,
     pub render_area: ratatui::layout::Rect,
-    /// indicates if the image is rendered
-    pub rendered: bool,
+    pub state: Option<StatefulProtocol>,
+}
+
+#[cfg(feature = "image")]
+impl std::fmt::Debug for ImageRenderInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ImageRenderInfo")
+            .field("url", &self.url)
+            .field("render_area", &self.render_area)
+            .field("state", &self.state.is_some())
+            .finish()
+    }
 }
 
 /// Application's UI state
@@ -42,6 +55,9 @@ pub struct UIState {
 
     #[cfg(feature = "image")]
     pub last_cover_image_render_info: ImageRenderInfo,
+
+    #[cfg(feature = "image")]
+    pub picker: Picker,
 }
 
 impl UIState {
@@ -111,6 +127,10 @@ impl Default for UIState {
 
             #[cfg(feature = "image")]
             last_cover_image_render_info: ImageRenderInfo::default(),
+
+            // Will be reinitialize later in ui/mod.rs after init_ui()
+            #[cfg(feature = "image")]
+            picker: Picker::halfblocks(),
         }
     }
 }
