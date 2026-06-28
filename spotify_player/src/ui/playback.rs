@@ -90,13 +90,18 @@ pub fn render_playback_window(
                                 };
                             }
 
-                            if let Some(ref mut protocol) = ui.last_cover_image_render_info.state {
-                                let image_widget = ratatui_image::StatefulImage::new();
-                                frame.render_stateful_widget(
-                                    image_widget,
-                                    cover_img_rect,
-                                    protocol,
-                                );
+                            // set the `skip` state of cells in the cover image area
+                            // to prevent buffer from overwriting the image's rendered area
+                            // NOTE: `skip` should not be set when clearing the render area.
+                            // Otherwise, nothing will be clear as the buffer doesn't handle cells with `skip=true`.
+                            for x in cover_img_rect.left()..cover_img_rect.right() {
+                                for y in cover_img_rect.top()..cover_img_rect.bottom() {
+                                    frame
+                                        .buffer_mut()
+                                        .cell_mut((x, y))
+                                        .expect("invalid cell")
+                                        .set_diff_option(ratatui::buffer::CellDiffOption::Skip);
+                                }
                             }
                         }
                     }
