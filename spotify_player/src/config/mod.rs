@@ -51,7 +51,7 @@ impl Configs {
 /// Application configurations
 pub struct AppConfig {
     pub theme: String,
-    pub client_id: Option<String>,
+    pub client_id: String,
     pub client_id_command: Option<Command>,
 
     pub client_port: u16,
@@ -299,7 +299,7 @@ impl Default for AppConfig {
             //
             // [extended quota mode]: https://developer.spotify.com/documentation/web-api/concepts/quota-modes
             // [spotify API changes]: https://developer.spotify.com/blog/2024-11-27-changes-to-the-web-api
-            client_id: Some(NCSPOT_CLIENT_ID.to_string()),
+            client_id: NCSPOT_CLIENT_ID.to_string(),
             client_id_command: None,
 
             client_port: 8080,
@@ -491,10 +491,10 @@ impl AppConfig {
         }
     }
 
-    /// Returns stdout of `client_id_command` if set, otherwise it returns the the value of `client_id`
-    pub fn get_user_client_id(&self) -> Result<Option<String>> {
+    /// Returns stdout of `client_id_command` if set, otherwise the value of `client_id`.
+    pub fn get_client_id(&self) -> Result<String> {
         match self.client_id_command {
-            Some(ref cmd) => cmd.execute(None).map(|out| Some(out.trim().to_string())),
+            Some(ref cmd) => cmd.execute(None).map(|out| out.trim().to_string()),
             None => Ok(self.client_id.clone()),
         }
     }
