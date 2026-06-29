@@ -223,7 +223,9 @@ impl AppClient {
 
         tracing::info!("Used a new session for Spotify client.");
 
-        self.refresh_token().await.context("refresh auth token")?;
+        if let Err(err) = self.refresh_token().await {
+            tracing::warn!("Failed to refresh auth token after creating a new session: {err:#}");
+        }
 
         if let Some(state) = state {
             // reset the application's caches
