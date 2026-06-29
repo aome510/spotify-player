@@ -73,10 +73,7 @@ pub fn run(state: &SharedState, mut terminal: Terminal) -> Result<()> {
     }
 }
 
-pub fn init_terminal(state: &SharedState) -> Result<Terminal> {
-    #[cfg(feature = "image")]
-    init_image_picker(state).context("initialize image picker")?;
-
+pub fn init_terminal() -> Result<Terminal> {
     let mut stdout = std::io::stdout();
     crossterm::terminal::enable_raw_mode()?;
     crossterm::execute!(
@@ -90,18 +87,8 @@ pub fn init_terminal(state: &SharedState) -> Result<Terminal> {
     Ok(terminal)
 }
 
-/// Whether the application is running inside iTerm2.
-///
-/// iTerm2 sets `TERM_PROGRAM=iTerm.app` locally and forwards `LC_TERMINAL=iTerm2`
-/// over SSH, so checking both covers the common cases.
 #[cfg(feature = "image")]
-fn is_iterm2() -> bool {
-    std::env::var("TERM_PROGRAM").is_ok_and(|v| v == "iTerm.app")
-        || std::env::var("LC_TERMINAL").is_ok_and(|v| v.eq_ignore_ascii_case("iTerm2"))
-}
-
-#[cfg(feature = "image")]
-fn init_image_picker(state: &SharedState) -> Result<()> {
+pub fn init_image_picker(state: &SharedState) -> Result<()> {
     let mut ui = state.ui.lock();
     crossterm::terminal::enable_raw_mode()?;
     ui.picker = match ratatui_image::picker::Picker::from_query_stdio() {
@@ -122,6 +109,16 @@ fn init_image_picker(state: &SharedState) -> Result<()> {
     }
     tracing::info!("Image protocol: {:?}", ui.picker.protocol_type());
     Ok(())
+}
+
+/// Whether the application is running inside iTerm2.
+///
+/// iTerm2 sets `TERM_PROGRAM=iTerm.app` locally and forwards `LC_TERMINAL=iTerm2`
+/// over SSH, so checking both covers the common cases.
+#[cfg(feature = "image")]
+fn is_iterm2() -> bool {
+    std::env::var("TERM_PROGRAM").is_ok_and(|v| v == "iTerm.app")
+        || std::env::var("LC_TERMINAL").is_ok_and(|v| v.eq_ignore_ascii_case("iTerm2"))
 }
 
 /// Clean up UI resources before quitting the application

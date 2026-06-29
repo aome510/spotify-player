@@ -168,7 +168,9 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
         })?;
 
     if !state.is_daemon {
-        let terminal = ui::init_terminal(state).context("initialize terminal")?;
+        #[cfg(feature = "image")]
+        ui::init_image_picker(state).context("initialize image picker")?;
+        let terminal = ui::init_terminal().context("initialize terminal")?;
 
         // terminal event handler task
         std::thread::Builder::new()
