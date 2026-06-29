@@ -151,8 +151,19 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
     // client event handler task
     tokio::task::spawn({
         let state = state.clone();
+        let client = client.clone();
         async move {
             client::start_client_handler(&state, &client, &client_sub).await;
+        }
+    });
+
+    // background task that detects an invalidated session and reconnects,
+    // independent of any incoming client request
+    tokio::task::spawn({
+        let state = state.clone();
+        let client = client.clone();
+        async move {
+            client::start_session_watcher(state, client).await;
         }
     });
 
