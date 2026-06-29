@@ -801,10 +801,10 @@ impl AppClient {
         #[cfg(feature = "streaming")]
         {
             let session = self.spotify.session().await;
-            devices.push((
-                configs.app_config.device.name.clone(),
-                session.device_id().to_string(),
-            ));
+            let device_name = configs.app_config.device.name.clone();
+            let device_id = session.device_id().to_string();
+            log::info!("Adding integrated device {device_name} to the device list: {device_id}");
+            devices.push((device_name, device_id));
         }
 
         if devices.is_empty() {
