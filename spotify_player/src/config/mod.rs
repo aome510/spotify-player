@@ -137,6 +137,13 @@ pub struct AppConfig {
     /// Requires streaming. When disabled, playback uses Spotify-native queue
     /// management.
     pub custom_queue: bool,
+
+    /// Start the application with playback paused instead of resuming the
+    /// previous session. Requires streaming. When the integrated client
+    /// connects on startup, Spotify may restore and auto-resume the last
+    /// playing track; enabling this pauses that auto-started playback once.
+    #[cfg(feature = "streaming")]
+    pub pause_on_startup: bool,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -388,6 +395,9 @@ impl Default for AppConfig {
             enable_mouse_scroll_volume: true,
 
             custom_queue: true,
+
+            #[cfg(feature = "streaming")]
+            pause_on_startup: false,
         }
     }
 }
