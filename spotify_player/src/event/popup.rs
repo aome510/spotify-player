@@ -27,6 +27,8 @@ pub fn handle_key_sequence_for_popup(
                 ui,
             );
         }
+        // can't use match guard: the match holds an immutable borrow of ui
+        #[allow(clippy::collapsible_match)]
         PopupState::UserPlaylistList(..) => {
             if handle_key_sequence_for_playlist_search_popup(key_sequence, ui) {
                 return Ok(true);

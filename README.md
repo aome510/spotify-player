@@ -245,18 +245,11 @@ To enable image rendering, build with the `image` feature (disabled by default):
 cargo install spotify_player --features image
 ```
 
-Full-resolution images are supported in [Kitty](https://sw.kovidgoyal.net/kitty/graphics-protocol/) and [iTerm2](https://iterm2.com/documentation-images.html). Other terminals display images as [block characters](https://en.wikipedia.org/wiki/Block_Elements).
-
-To use sixel graphics, build with the `sixel` feature (also enables `image`):
-
-```shell
-cargo install spotify_player --features sixel
-```
+Image rendering is powered by [`ratatui-image`](https://github.com/benjajaja/ratatui-image), which auto-detects the terminal's graphics protocol (Kitty, iTerm2, Sixel) on startup. Terminals without any graphics protocol support fall back to [block characters](https://en.wikipedia.org/wiki/Block_Elements).
 
 **Notes**:
 
-- Not all terminals supported by [libsixel](https://github.com/saitoha/libsixel) are supported by `spotify_player` (see [viuer supported terminals](https://github.com/atanunq/viuer/blob/dc81f44a97727e04be0b000712e9233c92116ff8/src/printer/sixel.rs#L83-L95)).
-- Sixel images may scale oddly; adjust `cover_img_scale` for best results.
+- Protocol detection queries the terminal via stdio. In nested terminals (e.g. Neovim's floating terminal), the query does not reach the outer terminal emulator, so the protocol falls back to block characters.
 
 Image rendering examples:
 
@@ -268,7 +261,7 @@ Image rendering examples:
 
 ![kitty](https://user-images.githubusercontent.com/40011582/172967028-8cfb2daa-1642-499a-a5bf-8ed77f2b3fac.png)
 
-- Sixel (`foot` terminal, `cover_img_scale=1.8`):
+- Sixel (`foot` terminal):
 
 ![sixel](https://user-images.githubusercontent.com/40011582/219880331-58ac1c30-bbb0-4c99-a6cc-e5b7c9c81455.png)
 

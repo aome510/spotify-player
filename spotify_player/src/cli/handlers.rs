@@ -377,7 +377,7 @@ fn print_features() {
     print_feature!("streaming");
     print_feature!("media-control");
     print_feature!("image");
-    print_feature!("viuer");
+    print_feature!("ratatui-image");
     print_feature!("sixel");
     print_feature!("pixelate");
     print_feature!("notify");

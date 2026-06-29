@@ -121,12 +121,12 @@ fn handle_command_for_library_page(
         // Sort albums alphabetically
         data.user_data
             .saved_albums
-            .sort_by(|x, y| x.name.to_lowercase().cmp(&y.name.to_lowercase()));
+            .sort_by_key(|x| x.name.to_lowercase());
 
         // Sort artists alphabetically
         data.user_data
             .followed_artists
-            .sort_by(|x, y| x.name.to_lowercase().cmp(&y.name.to_lowercase()));
+            .sort_by_key(|x| x.name.to_lowercase());
     }
 
     if command == Command::SortLibraryByRecent {
@@ -155,7 +155,7 @@ fn handle_command_for_library_page(
         // Sort albums by recent addition
         data.user_data
             .saved_albums
-            .sort_by(|a, b| b.added_at.cmp(&a.added_at));
+            .sort_by_key(|a| std::cmp::Reverse(a.added_at));
     }
 
     match focus_state {
