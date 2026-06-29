@@ -131,27 +131,35 @@ pub fn get_creds(auth_config: &AuthConfig, reauth: bool, use_cached: bool) -> Re
 /// This mirrors `rspotify`'s `prompt_for_token` (reusing/refreshing a cached token when possible),
 /// but replaces its callback listener with [`obtain_auth_code`], which is robust against stray
 /// browser requests on the callback port (see [`listen_for_auth_code`]).
-pub async fn prompt_for_user_token(client: &mut rspotify::AuthCodePkceSpotify) -> Result<()> {
+///
+/// When `force` is set, any cached token is ignored and a fresh interactive authorization flow is
+/// always run. This is used by the `authenticate` CLI command to re-authenticate on demand.
+pub async fn prompt_for_user_token(
+    client: &mut rspotify::AuthCodePkceSpotify,
+    force: bool,
+) -> Result<()> {
     // Reuse a cached token when possible, refreshing it if it has expired.
-    if let Ok(Some(token)) = client.read_token_cache(true).await {
-        let expired = token.is_expired();
-        *client.get_token().lock().await.unwrap() = Some(token);
+    if !force {
+        if let Ok(Some(token)) = client.read_token_cache(true).await {
+            let expired = token.is_expired();
+            *client.get_token().lock().await.unwrap() = Some(token);
 
-        if !expired {
-            return Ok(());
-        }
+            if !expired {
+                return Ok(());
+            }
 
-        if let Some(refreshed) = client
-            .refetch_token()
-            .await
-            .context("refresh expired token from cache")?
-        {
-            *client.get_token().lock().await.unwrap() = Some(refreshed);
-            client
-                .write_token_cache()
+            if let Some(refreshed) = client
+                .refetch_token()
                 .await
-                .context("write refreshed token to cache")?;
-            return Ok(());
+                .context("refresh expired token from cache")?
+            {
+                *client.get_token().lock().await.unwrap() = Some(refreshed);
+                client
+                    .write_token_cache()
+                    .await
+                    .context("write refreshed token to cache")?;
+                return Ok(());
+            }
         }
     }
 

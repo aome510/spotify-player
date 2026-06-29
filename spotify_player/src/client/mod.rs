@@ -48,8 +48,8 @@ pub struct AppClient {
     /// The integrated Spotify client, mainly used for streaming and librespot integration
     spotify: Arc<spotify::Spotify>,
     auth_config: AuthConfig,
-    /// The user-provided Spotify client, mainly used for interacting with Spotify Web APIs
-    user_client: Option<rspotify::AuthCodePkceSpotify>,
+    /// The Spotify Web API client, used for interacting with Spotify Web APIs
+    api_client: rspotify::AuthCodePkceSpotify,
     #[cfg(feature = "streaming")]
     stream_conn: Arc<Mutex<Option<librespot_connect::Spirc>>>,
 }
@@ -57,10 +57,54 @@ pub struct AppClient {
 impl Deref for AppClient {
     type Target = rspotify::AuthCodePkceSpotify;
     fn deref(&self) -> &Self::Target {
-        self.user_client
-            .as_ref()
-            .expect("user-provided client should be initialized")
+        &self.api_client
     }
+}
+
+/// Build the Spotify Web API client from the configured client ID.
+///
+/// The returned client is unauthenticated; call [`auth::prompt_for_user_token`] to obtain an
+/// access token.
+pub fn new_api_client() -> Result<rspotify::AuthCodePkceSpotify> {
+    let configs = config::get_config();
+
+    let id = configs.app_config.get_client_id()?;
+    // The bundled default (ncspot's client ID) is registered with extended quota mode and
+    // predates Spotify's 2024 Web API changes, so it is far less likely to hit rate limits
+    // than a freshly-registered client. Warn users who override it that they may run into
+    // `429 Too Many Requests` / `403 Forbidden` errors.
+    //
+    // See https://github.com/aome510/spotify-player/issues/890 for details.
+    if id != auth::NCSPOT_CLIENT_ID {
+        tracing::warn!(
+            "A custom `client_id` ({id}) is configured. Newly-registered Spotify clients \
+             use the restricted default quota mode and may hit rate-limit (429) or \
+             forbidden (403) errors. Unless you specifically need your own client, \
+             consider removing `client_id`/`client_id_command` to use the bundled default. \
+             See https://github.com/aome510/spotify-player/issues/890 for details."
+        );
+    }
+
+    let creds = rspotify::Credentials { id, secret: None };
+    let mut scopes = auth::OAUTH_SCOPES
+        .iter()
+        .map(ToString::to_string)
+        .collect::<HashSet<_>>();
+    // `user-personalized` scope is not supported by the Web API client and only available to the official Spotify client
+    scopes.remove("user-personalized");
+    let oauth = rspotify::OAuth {
+        redirect_uri: configs.app_config.login_redirect_uri.clone(),
+        scopes,
+        ..Default::default()
+    };
+    let config = rspotify::Config {
+        token_cached: true,
+        cache_path: configs.cache_folder.join("user_client_token.json"),
+        ..Default::default()
+    };
+    Ok(rspotify::AuthCodePkceSpotify::with_config(
+        creds, oauth, config,
+    ))
 }
 
 impl AppClient {
@@ -69,38 +113,16 @@ impl AppClient {
         let configs = config::get_config();
         let auth_config = AuthConfig::new(configs)?;
 
-        let mut user_client = configs.app_config.get_user_client_id()?.clone().map(|id| {
-            let creds = rspotify::Credentials { id, secret: None };
-            let mut scopes = auth::OAUTH_SCOPES
-                .iter()
-                .map(ToString::to_string)
-                .collect::<HashSet<_>>();
-            // `user-personalized` scope is not supported by user-provided client and only available to the official Spotify client
-            scopes.remove("user-personalized");
-            let oauth = rspotify::OAuth {
-                redirect_uri: configs.app_config.login_redirect_uri.clone(),
-                scopes,
-                ..Default::default()
-            };
-            let config = rspotify::Config {
-                token_cached: true,
-                cache_path: configs.cache_folder.join("user_client_token.json"),
-                ..Default::default()
-            };
-            rspotify::AuthCodePkceSpotify::with_config(creds, oauth, config)
-        });
-
-        if let Some(client) = &mut user_client {
-            auth::prompt_for_user_token(client)
-                .await
-                .context("authenticate user-provided client")?;
-        }
+        let mut api_client = new_api_client()?;
+        auth::prompt_for_user_token(&mut api_client, false)
+            .await
+            .context("authenticate Spotify Web API client")?;
 
         Ok(Self {
             spotify: Arc::new(spotify::Spotify::new()),
             http: reqwest::Client::new(),
             auth_config,
-            user_client,
+            api_client,
 
             #[cfg(feature = "streaming")]
             stream_conn: Arc::new(Mutex::new(None)),
