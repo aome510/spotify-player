@@ -82,26 +82,28 @@ pub fn render_playback_window(
                             if ui.last_cover_image_render_info.url != url
                                 || ui.last_cover_image_render_info.render_area != cover_img_rect
                             {
-                                let protocol = ui.picker.new_resize_protocol(img.clone());
+                                let state = match ui.picker.new_protocol(
+                                    img.clone(),
+                                    cover_img_rect.into(),
+                                    ratatui_image::Resize::Fit(None),
+                                ) {
+                                    Ok(protocol) => Some(protocol),
+                                    Err(err) => {
+                                        tracing::error!("Failed to encode cover image: {err:#}");
+                                        None
+                                    }
+                                };
                                 ui.last_cover_image_render_info = ImageRenderInfo {
                                     url,
                                     render_area: cover_img_rect,
-                                    state: Some(protocol),
+                                    state,
                                 };
                             }
-
-                            // set the `skip` state of cells in the cover image area
-                            // to prevent buffer from overwriting the image's rendered area
-                            // NOTE: `skip` should not be set when clearing the render area.
-                            // Otherwise, nothing will be clear as the buffer doesn't handle cells with `skip=true`.
-                            for x in cover_img_rect.left()..cover_img_rect.right() {
-                                for y in cover_img_rect.top()..cover_img_rect.bottom() {
-                                    frame
-                                        .buffer_mut()
-                                        .cell_mut((x, y))
-                                        .expect("invalid cell")
-                                        .set_diff_option(ratatui::buffer::CellDiffOption::Skip);
-                                }
+                            if let Some(ref protocol) = ui.last_cover_image_render_info.state {
+                                frame.render_widget(
+                                    ratatui_image::Image::new(protocol),
+                                    ui.last_cover_image_render_info.render_area,
+                                );
                             }
                         }
                     }
