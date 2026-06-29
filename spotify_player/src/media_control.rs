@@ -1,7 +1,12 @@
 #![allow(unused_imports)]
+use chrono::TimeDelta;
+use rspotify::model::{
+    AlbumId, EpisodeId, Offset, PlayContextId, PlayableId, PlaylistId, ShowId, TrackId,
+};
 use souvlaki::MediaPosition;
 use souvlaki::{MediaControlEvent, MediaControls, MediaMetadata, MediaPlayback, PlatformConfig};
 
+use crate::state::{ContextId, Playback};
 use crate::utils;
 use crate::{
     client::{ClientRequest, PlayerRequest},
@@ -127,11 +132,48 @@ pub fn start_event_watcher(
                     .send(ClientRequest::Player(PlayerRequest::PreviousTrack))
                     .unwrap_or_default();
             }
-            MediaControlEvent::SetVolume(volume) => client_pub
-                .send(ClientRequest::Player(PlayerRequest::Volume(
-                    (volume * 100.0) as u8,
-                )))
-                .unwrap_or_default(),
+            MediaControlEvent::SetVolume(volume) => {
+                client_pub
+                    .send(ClientRequest::Player(PlayerRequest::Volume(
+                        (volume * 100.0) as u8,
+                    )))
+                    .unwrap_or_default();
+            }
+            MediaControlEvent::OpenUri(uri) => {
+                let mut split = uri.split(':');
+                let (Some("spotify"), Some(uri_type), Some(id)) =
+                    (split.next(), split.next(), split.next())
+                else {
+                    return;
+                };
+                let id = id.to_string();
+                let playback = match uri_type {
+                    "album" => AlbumId::from_id(id)
+                        .ok()
+                        .map(|album_id| Playback::Context(ContextId::Album(album_id), None)),
+                    "track" => TrackId::from_id(id)
+                        .ok()
+                        .map(|track_id| Playback::URIs(vec![PlayableId::Track(track_id)], None)),
+                    "playlist" => PlaylistId::from_id(id).ok().map(|playlist_id| {
+                        Playback::Context(ContextId::Playlist(playlist_id), None)
+                    }),
+                    "show" => ShowId::from_id(id)
+                        .ok()
+                        .map(|show_id| Playback::Context(ContextId::Show(show_id), None)),
+                    "episode" => EpisodeId::from_id(id).ok().map(|episode_id| {
+                        Playback::URIs(vec![PlayableId::Episode(episode_id)], None)
+                    }),
+                    _ => None,
+                };
+                if let Some(playback) = playback {
+                    client_pub
+                        .send(ClientRequest::Player(PlayerRequest::StartPlayback(
+                            playback, None,
+                        )))
+                        .unwrap_or_default();
+                }
+            }
+
             _ => {}
         }
     })?;
