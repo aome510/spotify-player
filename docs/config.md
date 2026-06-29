@@ -73,6 +73,7 @@ spotify_player -o device.volume=80 -o theme=dracula
 | `enable_mouse_scroll_volume`      | Enable volume control via mouse scroll.                                                              | `true`                                                                 |
 | `custom_queue`                    | Enable app-managed queue for custom playback integration (requires `streaming` feature).             | `true`                                                                 |
 | `pause_on_startup`                | Start with playback paused instead of resuming the previous session (requires `streaming` feature).  | `false`                                                                |
+| `enable_relative_line_number`     | Enable Vim-style relative line numbers for lists and popups.                                         | `false`                                                                |
 | `device`                          | Device configuration (see below).                                                                    | See below                                                              |
 
 ### Notes

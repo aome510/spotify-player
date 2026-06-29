@@ -138,6 +138,8 @@ pub struct AppConfig {
     /// management.
     pub custom_queue: bool,
 
+    pub enable_relative_line_number: bool,
+
     /// Start the application with playback paused instead of resuming the
     /// previous session. Requires streaming. When the integrated client
     /// connects on startup, Spotify may restore and auto-resume the last
@@ -395,6 +397,8 @@ impl Default for AppConfig {
             enable_mouse_scroll_volume: true,
 
             custom_queue: true,
+
+            enable_relative_line_number: false,
 
             #[cfg(feature = "streaming")]
             pause_on_startup: false,
