@@ -24,26 +24,6 @@ use tracing_subscriber::util::SubscriberInitExt;
 
 use crate::config::apply_config_override;
 
-fn init_spotify(
-    client_pub: &flume::Sender<client::ClientRequest>,
-    client: &client::AppClient,
-    state: &state::SharedState,
-) -> Result<()> {
-    client.initialize_playback(state);
-
-    // request user data
-    client_pub.send(client::ClientRequest::GetCurrentUser)?;
-    client_pub.send(client::ClientRequest::GetUserPlaylists)?;
-    client_pub.send(client::ClientRequest::GetUserFollowedArtists)?;
-    client_pub.send(client::ClientRequest::GetUserSavedAlbums)?;
-    client_pub.send(client::ClientRequest::GetContext(state::ContextId::Tracks(
-        state::USER_LIKED_TRACKS_ID.to_owned(),
-    )))?;
-    client_pub.send(client::ClientRequest::GetUserSavedShows)?;
-
-    Ok(())
-}
-
 fn init_logging(
     log_folder: &std::path::Path,
     log_buffer: Arc<Mutex<VecDeque<String>>>,
@@ -136,8 +116,15 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
         .await
         .context("initialize new Spotify session")?;
 
-    // initialize Spotify-related stuff
-    init_spotify(&client_pub, &client, state).context("Failed to initialize the Spotify data")?;
+    // request user data
+    client_pub.send(client::ClientRequest::GetCurrentUser)?;
+    client_pub.send(client::ClientRequest::GetUserPlaylists)?;
+    client_pub.send(client::ClientRequest::GetUserFollowedArtists)?;
+    client_pub.send(client::ClientRequest::GetUserSavedAlbums)?;
+    client_pub.send(client::ClientRequest::GetContext(state::ContextId::Tracks(
+        state::USER_LIKED_TRACKS_ID.to_owned(),
+    )))?;
+    client_pub.send(client::ClientRequest::GetUserSavedShows)?;
 
     // client socket task (for handling CLI commands)
     tokio::task::spawn({
