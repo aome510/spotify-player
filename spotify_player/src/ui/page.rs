@@ -327,8 +327,7 @@ pub fn render_context_page(
                         ui,
                         &data,
                         rect,
-                        artist,
-                        (top_tracks, albums, related_artists),
+                        (artist, top_tracks, albums, related_artists),
                     );
                 }
                 Context::Playlist { tracks, playlist } => {
@@ -821,25 +820,18 @@ fn render_artist_context_page_windows(
     ui: &mut UIStateGuard,
     data: &DataReadGuard,
     rect: Rect,
-    artist: &Artist,
-    artist_data: (&[Track], &[Album], &[Artist]),
+    artist_data: (&Artist, &[Track], &[Album], &[Artist]),
 ) {
     // 1. Get data
-    let (tracks, albums, artists) = (
-        ui.search_filtered_items(artist_data.0),
+    let (artist, tracks, albums, artists) = (
+        artist_data.0,
         ui.search_filtered_items(artist_data.1),
         ui.search_filtered_items(artist_data.2),
+        ui.search_filtered_items(artist_data.3),
     );
 
     // Collect liked tracks for this artist, sorted newest first
-    let mut liked_tracks: Vec<Track> = data
-        .user_data
-        .saved_tracks
-        .values()
-        .filter(|t| t.artists.iter().any(|a| a.id == artist.id))
-        .cloned()
-        .collect();
-    liked_tracks.sort_by(|a, b| b.added_at.cmp(&a.added_at));
+    let liked_tracks = data.user_data.liked_tracks_by_artist(artist);
     let liked_tracks_filtered = ui.search_filtered_items(&liked_tracks);
 
     let focus_state = match ui.current_page() {
@@ -854,9 +846,12 @@ fn render_artist_context_page_windows(
     // row 1: top tracks (full width)
     // row 2: liked songs (full width)
     // row 3: albums (left half) | related artists (right half)
-    let rows =
-        Layout::vertical([Constraint::Fill(1), Constraint::Fill(1), Constraint::Fill(1)])
-            .split(rect);
+    let rows = Layout::vertical([
+        Constraint::Fill(1),
+        Constraint::Fill(1),
+        Constraint::Fill(2),
+    ])
+    .split(rect);
     let top_tracks_rect = rows[0];
     let liked_songs_rect =
         construct_and_render_block("Liked Songs", &ui.theme, Borders::TOP, frame, rows[1]);
@@ -869,8 +864,13 @@ fn render_artist_context_page_windows(
         frame,
         bot_chunks[0],
     );
-    let related_artists_rect =
-        construct_and_render_block("Related Artists", &ui.theme, Borders::TOP, frame, bot_chunks[1]);
+    let related_artists_rect = construct_and_render_block(
+        "Related Artists",
+        &ui.theme,
+        Borders::TOP,
+        frame,
+        bot_chunks[1],
+    );
 
     // 3. Construct the page's widgets
     // album table
@@ -967,6 +967,7 @@ fn render_artist_context_page_windows(
     );
 }
 
+#[allow(clippy::too_many_arguments)]
 fn render_track_table(
     frame: &mut Frame,
     rect: Rect,
@@ -975,7 +976,7 @@ fn render_track_table(
     tracks: Vec<&Track>,
     ui: &mut UIStateGuard,
     data: &DataReadGuard,
-    for_liked_songs: bool,
+    is_artist_liked_songs: bool,
 ) {
     let configs = config::get_config();
     // get the current playing track's URI to decorate such track (if exists) in the track table
@@ -1101,7 +1102,7 @@ fn render_track_table(
                 liked_track_table,
                 ..
             } => {
-                if for_liked_songs {
+                if is_artist_liked_songs {
                     liked_track_table
                 } else {
                     top_track_table

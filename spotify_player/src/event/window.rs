@@ -59,14 +59,7 @@ pub fn handle_action_for_focused_context_page(
                     client_pub,
                 ),
                 ArtistFocusState::LikedSongs => {
-                    let mut liked: Vec<Track> = data
-                        .user_data
-                        .saved_tracks
-                        .values()
-                        .filter(|t| t.artists.iter().any(|a| a.id == artist.id))
-                        .cloned()
-                        .collect();
-                    liked.sort_by(|a, b| b.added_at.cmp(&a.added_at));
+                    let liked = data.user_data.liked_tracks_by_artist(artist);
                     let filtered = ui.search_filtered_items(&liked);
                     handle_action_for_selected_item(action, &filtered, &data, ui, client_pub)
                 }
@@ -192,14 +185,7 @@ pub fn handle_command_for_focused_context_window(
                         command, client_pub, None, top_tracks, &data, ui, state,
                     ),
                     ArtistFocusState::LikedSongs => {
-                        let mut liked: Vec<Track> = data
-                            .user_data
-                            .saved_tracks
-                            .values()
-                            .filter(|t| t.artists.iter().any(|a| a.id == artist.id))
-                            .cloned()
-                            .collect();
-                        liked.sort_by(|a, b| b.added_at.cmp(&a.added_at));
+                        let liked = data.user_data.liked_tracks_by_artist(artist);
                         handle_command_for_track_table_window(
                             command, client_pub, None, &liked, &data, ui, state,
                         )
