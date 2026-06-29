@@ -66,7 +66,6 @@ spotify_player -o device.volume=80 -o theme=dracula
 | `genre_num`                       | Max number of genres to display in playback text.                                              | `2`                                                                    |
 | `cover_img_length`                | Cover image length (requires `image` feature).                                                 | `9`                                                                    |
 | `cover_img_width`                 | Cover image width (requires `image` feature).                                                  | `5`                                                                    |
-| `cover_img_scale`                 | Cover image scale (requires `image` feature).                                                  | `1.0`                                                                  |
 | `cover_img_pixels`                | Pixels per side for cover image (requires `pixelate` feature).                                 | `16`                                                                   |
 | `seek_duration_secs`              | Seek duration in seconds for seek commands.                                                    | `5`                                                                    |
 | `sort_artist_albums_by_type`      | Sort albums by type on artist pages.                                                           | `false`                                                                |

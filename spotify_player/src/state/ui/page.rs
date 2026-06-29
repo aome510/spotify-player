@@ -4,7 +4,7 @@ use crate::{
 };
 use ratatui::widgets::{ListState, TableState};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum PageState {
     Library {
         state: LibraryPageUIState,
@@ -50,7 +50,7 @@ pub enum PageType {
     Logs,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct LibraryPageUIState {
     pub playlist_list: ListState,
     pub saved_album_list: ListState,
@@ -59,7 +59,7 @@ pub struct LibraryPageUIState {
     pub playlist_folder_id: usize,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct SearchPageUIState {
     pub track_list: ListState,
     pub album_list: ListState,
@@ -70,13 +70,13 @@ pub struct SearchPageUIState {
     pub focus: SearchFocusState,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum ContextPageType {
     CurrentPlaying,
     Browsing(ContextId),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum ContextPageUIState {
     Playlist {
         track_table: TableState,
@@ -123,7 +123,7 @@ pub enum SearchFocusState {
     Episodes,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum BrowsePageUIState {
     CategoryList {
         state: ListState,
