@@ -28,52 +28,52 @@ A sample `app.toml` is available at [examples/app.toml](../examples/app.toml).
 spotify_player -o device.volume=80 -o theme=dracula
 ```
 
-| Option                            | Description                                                                                    | Default                                                                |
-| --------------------------------- | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `client_id`                       | Spotify client ID for API access. Uses a default if not specified.                             | See code (default: ncspot's client ID)                                 |
-| `client_id_command`               | Shell command that outputs client ID to stdout (overrides `client_id`).                        | `None`                                                                 |
-| `login_redirect_uri`              | Redirect URI for authentication.                                                               | `http://127.0.0.1:8989/login`                                          |
-| `client_port`                     | Port for the application's client to handle CLI commands.                                      | `8080`                                                                 |
-| `log_folder`                      | Path to store log files.                                                                       | `None`                                                                 |
-| `tracks_playback_limit`           | Maximum number of tracks in a playback session.                                                | `50`                                                                   |
-| `playback_format`                 | Format string for the playback window.                                                         | `{status} {track} • {artists} {liked}\n{album} • {genres}\n{metadata}` |
-| `playback_metadata_fields`        | Ordered list of metadata fields displayed in the playback UI `{metadata}` placeholder.         | `["repeat", "shuffle", "volume", "device"]`                            |
-| `notify_format`                   | Notification format (if `notify` feature enabled).                                             | `{ summary = "{track} • {artists}", body = "{album}" }`                |
-| `notify_timeout_in_secs`          | Notification timeout in seconds (if `notify` feature enabled).                                 | `0`                                                                    |
-| `notify_transient`                | Send transient notifications (Linux only, if `notify` feature enabled).                        | `false`                                                                |
-| `player_event_hook_command`       | Command to execute on player events.                                                           | `None`                                                                 |
-| `ap_port`                         | Spotify session connection port.                                                               | `None`                                                                 |
-| `proxy`                           | Spotify session connection proxy.                                                              | `None`                                                                 |
-| `theme`                           | Name of the theme to use.                                                                      | `default`                                                              |
-| `app_refresh_duration_in_ms`      | Interval (ms) between application refreshes.                                                   | `32`                                                                   |
-| `playback_refresh_duration_in_ms` | Interval (ms) between playback refreshes.                                                      | `0`                                                                    |
-| `page_size_in_rows`               | Number of rows per page for navigation.                                                        | `20`                                                                   |
-| `enable_media_control`            | Enable media control support (requires `media-control` feature).                               | `true` (Linux), `false` (macOS/Windows)                                |
-| `enable_streaming`                | Enable streaming (`Always`, `Never`, or `DaemonOnly`).                                         | `Always`                                                               |
-| `enable_audio_visualization`      | Show a real-time frequency bar chart in the playback window (requires `streaming` feature).    | `false`                                                                |
-| `enable_notify`                   | Enable notifications (requires `notify` feature).                                              | `true`                                                                 |
-| `enable_cover_image_cache`        | Cache album cover images.                                                                      | `true`                                                                 |
-| `notify_streaming_only`           | Send notifications only when streaming is active (requires `streaming` and `notify` features). | `false`                                                                |
-| `default_device`                  | Default device to connect to on startup.                                                       | `spotify-player`                                                       |
-| `play_icon`                       | Icon for playing state.                                                                        | `▶`                                                                    |
-| `pause_icon`                      | Icon for paused state.                                                                         | `▌▌`                                                                   |
-| `liked_icon`                      | Icon for liked songs.                                                                          | `♥`                                                                    |
-| `explicit_icon`                   | Icon for explicit songs.                                                                       | `(E)`                                                                  |
-| `border_type`                     | Border style: `Hidden`, `Plain`, `Rounded`, `Double`, or `Thick`.                              | `Plain`                                                                |
-| `progress_bar_type`               | Progress bar style: `Rectangle` or `Line`.                                                     | `Rectangle`                                                            |
-| `progress_bar_position`           | Progress bar position: `Bottom` or `Right`.                                                    | `Bottom`                                                               |
-| `layout`                          | Layout configuration (see below).                                                              | See below                                                              |
-| `genre_num`                       | Max number of genres to display in playback text.                                              | `2`                                                                    |
-| `cover_img_length`                | Cover image length (requires `image` feature).                                                 | `9`                                                                    |
-| `cover_img_width`                 | Cover image width (requires `image` feature).                                                  | `5`                                                                    |
-| `cover_img_pixels`                | Pixels per side for cover image (requires `pixelate` feature).                                 | `16`                                                                   |
-| `seek_duration_secs`              | Seek duration in seconds for seek commands.                                                    | `5`                                                                    |
-| `sort_artist_albums_by_type`      | Sort albums by type on artist pages.                                                           | `false`                                                                |
-| `volume_scroll_step`              | Volume change step when using mouse scroll.                                                    | `5`                                                                    |
-| `enable_mouse_scroll_volume`      | Enable volume control via mouse scroll.                                                        | `true`                                                                 |
-| `custom_queue`                    | Enable app-managed queue for custom playback integration (requires `streaming` feature).       | `true`                                                                 |
-| `pause_on_startup`                | Start with playback paused instead of resuming the previous session (requires `streaming` feature). | `false`                                                           |
-| `device`                          | Device configuration (see below).                                                              | See below                                                              |
+| Option                            | Description                                                                                          | Default                                                                |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `client_id`                       | Spotify client ID for API access. **Leave unset unless you know you need a custom one** (see notes). | See code (default: ncspot's client ID)                                 |
+| `client_id_command`               | Shell command that outputs client ID to stdout (overrides `client_id`).                              | `None`                                                                 |
+| `login_redirect_uri`              | Redirect URI for authentication.                                                                     | `http://127.0.0.1:8989/login`                                          |
+| `client_port`                     | Port for the application's client to handle CLI commands.                                            | `8080`                                                                 |
+| `log_folder`                      | Path to store log files.                                                                             | `None`                                                                 |
+| `tracks_playback_limit`           | Maximum number of tracks in a playback session.                                                      | `50`                                                                   |
+| `playback_format`                 | Format string for the playback window.                                                               | `{status} {track} • {artists} {liked}\n{album} • {genres}\n{metadata}` |
+| `playback_metadata_fields`        | Ordered list of metadata fields displayed in the playback UI `{metadata}` placeholder.               | `["repeat", "shuffle", "volume", "device"]`                            |
+| `notify_format`                   | Notification format (if `notify` feature enabled).                                                   | `{ summary = "{track} • {artists}", body = "{album}" }`                |
+| `notify_timeout_in_secs`          | Notification timeout in seconds (if `notify` feature enabled).                                       | `0`                                                                    |
+| `notify_transient`                | Send transient notifications (Linux only, if `notify` feature enabled).                              | `false`                                                                |
+| `player_event_hook_command`       | Command to execute on player events.                                                                 | `None`                                                                 |
+| `ap_port`                         | Spotify session connection port.                                                                     | `None`                                                                 |
+| `proxy`                           | Spotify session connection proxy.                                                                    | `None`                                                                 |
+| `theme`                           | Name of the theme to use.                                                                            | `default`                                                              |
+| `app_refresh_duration_in_ms`      | Interval (ms) between application refreshes.                                                         | `32`                                                                   |
+| `playback_refresh_duration_in_ms` | Interval (ms) between playback refreshes.                                                            | `0`                                                                    |
+| `page_size_in_rows`               | Number of rows per page for navigation.                                                              | `20`                                                                   |
+| `enable_media_control`            | Enable media control support (requires `media-control` feature).                                     | `true` (Linux), `false` (macOS/Windows)                                |
+| `enable_streaming`                | Enable streaming (`Always`, `Never`, or `DaemonOnly`).                                               | `Always`                                                               |
+| `enable_audio_visualization`      | Show a real-time frequency bar chart in the playback window (requires `streaming` feature).          | `false`                                                                |
+| `enable_notify`                   | Enable notifications (requires `notify` feature).                                                    | `true`                                                                 |
+| `enable_cover_image_cache`        | Cache album cover images.                                                                            | `true`                                                                 |
+| `notify_streaming_only`           | Send notifications only when streaming is active (requires `streaming` and `notify` features).       | `false`                                                                |
+| `default_device`                  | Default device to connect to on startup.                                                             | `spotify-player`                                                       |
+| `play_icon`                       | Icon for playing state.                                                                              | `▶`                                                                    |
+| `pause_icon`                      | Icon for paused state.                                                                               | `▌▌`                                                                   |
+| `liked_icon`                      | Icon for liked songs.                                                                                | `♥`                                                                    |
+| `explicit_icon`                   | Icon for explicit songs.                                                                             | `(E)`                                                                  |
+| `border_type`                     | Border style: `Hidden`, `Plain`, `Rounded`, `Double`, or `Thick`.                                    | `Plain`                                                                |
+| `progress_bar_type`               | Progress bar style: `Rectangle` or `Line`.                                                           | `Rectangle`                                                            |
+| `progress_bar_position`           | Progress bar position: `Bottom` or `Right`.                                                          | `Bottom`                                                               |
+| `layout`                          | Layout configuration (see below).                                                                    | See below                                                              |
+| `genre_num`                       | Max number of genres to display in playback text.                                                    | `2`                                                                    |
+| `cover_img_length`                | Cover image length (requires `image` feature).                                                       | `9`                                                                    |
+| `cover_img_width`                 | Cover image width (requires `image` feature).                                                        | `5`                                                                    |
+| `cover_img_pixels`                | Pixels per side for cover image (requires `pixelate` feature).                                       | `16`                                                                   |
+| `seek_duration_secs`              | Seek duration in seconds for seek commands.                                                          | `5`                                                                    |
+| `sort_artist_albums_by_type`      | Sort albums by type on artist pages.                                                                 | `false`                                                                |
+| `volume_scroll_step`              | Volume change step when using mouse scroll.                                                          | `5`                                                                    |
+| `enable_mouse_scroll_volume`      | Enable volume control via mouse scroll.                                                              | `true`                                                                 |
+| `custom_queue`                    | Enable app-managed queue for custom playback integration (requires `streaming` feature).             | `true`                                                                 |
+| `pause_on_startup`                | Start with playback paused instead of resuming the previous session (requires `streaming` feature).  | `false`                                                                |
+| `device`                          | Device configuration (see below).                                                                    | See below                                                              |
 
 ### Notes
 
