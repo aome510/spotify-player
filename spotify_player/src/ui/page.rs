@@ -53,11 +53,11 @@ pub fn render_search_page(
             state,
             current_query,
             ..
-        } => (state.focus, current_query.clone()),
+        } => (state.focus, current_query),
         _ => return,
     };
 
-    let search_results = data.caches.search.get(&current_query);
+    let search_results = data.caches.search.get(current_query);
 
     // 2. Construct the page's layout
     let rect = construct_and_render_block("Search", &ui.theme, Borders::ALL, frame, rect);
@@ -140,7 +140,11 @@ pub fn render_search_page(
             .unwrap_or_default();
 
         let is_active = is_active && focus_state == SearchFocusState::Tracks;
-        let selected_index = if is_active { ui.current_page_mut().selected() } else { None };
+        let selected_index = if is_active {
+            ui.current_page_mut().selected()
+        } else {
+            None
+        };
 
         utils::construct_list_widget(&ui.theme, track_items, is_active, selected_index)
     };
@@ -151,7 +155,11 @@ pub fn render_search_page(
             .unwrap_or_default();
 
         let is_active = is_active && focus_state == SearchFocusState::Albums;
-        let selected_index = if is_active { ui.current_page_mut().selected() } else { None };
+        let selected_index = if is_active {
+            ui.current_page_mut().selected()
+        } else {
+            None
+        };
 
         utils::construct_list_widget(&ui.theme, album_items, is_active, selected_index)
     };
@@ -162,7 +170,11 @@ pub fn render_search_page(
             .unwrap_or_default();
 
         let is_active = is_active && focus_state == SearchFocusState::Artists;
-        let selected_index = if is_active { ui.current_page_mut().selected() } else { None };
+        let selected_index = if is_active {
+            ui.current_page_mut().selected()
+        } else {
+            None
+        };
 
         utils::construct_list_widget(&ui.theme, artist_items, is_active, selected_index)
     };
@@ -173,7 +185,11 @@ pub fn render_search_page(
             .unwrap_or_default();
 
         let is_active = is_active && focus_state == SearchFocusState::Playlists;
-        let selected_index = if is_active { ui.current_page_mut().selected() } else { None };
+        let selected_index = if is_active {
+            ui.current_page_mut().selected()
+        } else {
+            None
+        };
 
         utils::construct_list_widget(&ui.theme, playlist_items, is_active, selected_index)
     };
@@ -183,7 +199,11 @@ pub fn render_search_page(
             .map(|s| search_items(&s.shows))
             .unwrap_or_default();
         let is_active = is_active && focus_state == SearchFocusState::Shows;
-        let selected_index = if is_active { ui.current_page_mut().selected() } else { None };
+        let selected_index = if is_active {
+            ui.current_page_mut().selected()
+        } else {
+            None
+        };
 
         utils::construct_list_widget(&ui.theme, show_items, is_active, selected_index)
     };
@@ -194,7 +214,11 @@ pub fn render_search_page(
             .unwrap_or_default();
 
         let is_active = is_active && focus_state == SearchFocusState::Episodes;
-        let selected_index = if is_active { ui.current_page_mut().selected() } else { None };
+        let selected_index = if is_active {
+            ui.current_page_mut().selected()
+        } else {
+            None
+        };
 
         utils::construct_list_widget(&ui.theme, episode_items, is_active, selected_index)
     };
@@ -463,16 +487,20 @@ pub fn render_library_page(
     let is_playlist_active = is_active
         && focus_state != LibraryFocusState::SavedAlbums
         && focus_state != LibraryFocusState::FollowedArtists;
-    let playlist_selected = if is_playlist_active { ui.current_page_mut().selected() } else { None };
-    let (playlist_list, n_playlists) = utils::construct_list_widget(
-        &ui.theme,
-        items,
-        is_playlist_active,
-        playlist_selected,
-    );
+    let playlist_selected = if is_playlist_active {
+        ui.current_page_mut().selected()
+    } else {
+        None
+    };
+    let (playlist_list, n_playlists) =
+        utils::construct_list_widget(&ui.theme, items, is_playlist_active, playlist_selected);
     // Construct the saved album window
     let is_album_active = is_active && focus_state == LibraryFocusState::SavedAlbums;
-    let album_selected = if is_album_active { ui.current_page_mut().selected() } else { None };
+    let album_selected = if is_album_active {
+        ui.current_page_mut().selected()
+    } else {
+        None
+    };
     let (album_list, n_albums) = utils::construct_list_widget(
         &ui.theme,
         ui.search_filtered_items(&data.user_data.saved_albums)
@@ -484,7 +512,11 @@ pub fn render_library_page(
     );
     // Construct the followed artist window
     let is_artist_active = is_active && focus_state == LibraryFocusState::FollowedArtists;
-    let artist_selected = if is_artist_active { ui.current_page_mut().selected() } else { None };
+    let artist_selected = if is_artist_active {
+        ui.current_page_mut().selected()
+    } else {
+        None
+    };
     let (artist_list, n_artists) = utils::construct_list_widget(
         &ui.theme,
         ui.search_filtered_items(&data.user_data.followed_artists)
@@ -536,7 +568,11 @@ pub fn render_browse_page(
     let data = state.data.read();
 
     // 2+3. Construct the page's layout and widgets
-    let selected_index = if is_active { ui.current_page_mut().selected() } else { None };
+    let selected_index = if is_active {
+        ui.current_page_mut().selected()
+    } else {
+        None
+    };
     let (list, len) = match ui.current_page() {
         PageState::Browse { state: ui_state } => match ui_state {
             BrowsePageUIState::CategoryList { .. } => {
@@ -914,14 +950,13 @@ fn render_artist_context_page_windows(
             .collect::<Vec<_>>();
 
         let is_artist_active = is_active && focus_state == ArtistFocusState::RelatedArtists;
-        let selected_index = if is_artist_active { ui.current_page_mut().selected() } else { None };
+        let selected_index = if is_artist_active {
+            ui.current_page_mut().selected()
+        } else {
+            None
+        };
 
-        utils::construct_list_widget(
-            &ui.theme,
-            artist_items,
-            is_artist_active,
-            selected_index,
-        )
+        utils::construct_list_widget(&ui.theme, artist_items, is_artist_active, selected_index)
     };
 
     // 4. Render the page's widgets

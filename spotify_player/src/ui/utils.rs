@@ -70,7 +70,7 @@ pub fn construct_list_widget<'a>(
                         if let Some(selected_index) = selected_index {
                             let diff = (i as isize - selected_index as isize).abs();
                             let width = std::cmp::min(n_items.to_string().len(), 2);
-                            format!("{:>width$}  {}", diff, s, width = width)
+                            format!("{diff:>width$}  {s}")
                         } else {
                             s
                         }
