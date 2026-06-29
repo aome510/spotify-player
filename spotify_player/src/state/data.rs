@@ -188,6 +188,18 @@ impl UserData {
         self.saved_tracks.contains_key(&track.id.uri())
     }
 
+    /// Get the user's liked tracks by the given artist, sorted by liked date (newest first)
+    pub fn liked_tracks_by_artist(&self, artist: &Artist) -> Vec<Track> {
+        let mut tracks: Vec<Track> = self
+            .saved_tracks
+            .values()
+            .filter(|t| t.artists.iter().any(|a| a.id == artist.id))
+            .cloned()
+            .collect();
+        tracks.sort_by_key(|t| std::cmp::Reverse(t.added_at));
+        tracks
+    }
+
     /// Check if a playlist is followed
     pub fn is_followed_playlist(&self, playlist: &Playlist) -> bool {
         self.playlists.iter().any(|x| match x {
