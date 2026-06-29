@@ -82,12 +82,12 @@ pub fn render_playback_window(
                             if ui.last_cover_image_render_info.url != url
                                 || ui.last_cover_image_render_info.render_area != cover_img_rect
                             {
-                                let state = match ui.picker.new_protocol(
-                                    img.clone(),
-                                    cover_img_rect.into(),
-                                    ratatui_image::Resize::Fit(None),
+                                let state = match crate::ui::cover_image::CoverImage::new(
+                                    &ui.picker,
+                                    img,
+                                    cover_img_rect,
                                 ) {
-                                    Ok(protocol) => Some(protocol),
+                                    Ok(cover) => Some(cover),
                                     Err(err) => {
                                         tracing::error!("Failed to encode cover image: {err:#}");
                                         None
@@ -99,11 +99,9 @@ pub fn render_playback_window(
                                     state,
                                 };
                             }
-                            if let Some(ref protocol) = ui.last_cover_image_render_info.state {
-                                frame.render_widget(
-                                    ratatui_image::Image::new(protocol),
-                                    ui.last_cover_image_render_info.render_area,
-                                );
+                            let area = ui.last_cover_image_render_info.render_area;
+                            if let Some(cover) = ui.last_cover_image_render_info.state.as_mut() {
+                                cover.render(frame, area);
                             }
                         }
                     }

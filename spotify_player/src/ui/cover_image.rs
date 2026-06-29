@@ -1,0 +1,124 @@
+//! Cover-image rendering, abstracting over the terminal's image protocol.
+//!
+//! Most protocols (kitty / sixel / halfblocks) render through `ratatui-image` as a normal
+//! widget, drawn into the frame buffer and emitted by `ratatui`'s differential renderer.
+//!
+//! iTerm2 is special-cased. When its window is occluded or sent to a background tab,
+//! iTerm2 disables its GPU (Metal) renderer and switches to the legacy renderer, rebuilding
+//! the screen from the cell grid. `ratatui-image` draws the iTerm2 image as a single buffer
+//! cell using `doNotMoveCursor=1` — a position-pinned overlay that is *not* attached to a
+//! grid line — and `ratatui`'s diff emits that unchanged cell only once. So the renderer
+//! switch drops the image and nothing ever re-emits it, leaving a black/garbled box.
+//!
+//! To match the old `viuer`-based behaviour (which did not have this problem), for iTerm2 we
+//! emit a *cursor-anchored*, cell-sized inline-image escape directly to the terminal. iTerm2
+//! attaches a cursor-anchored image to the grid, so it is redrawn across renderer switches
+//! and a single draw survives occlusion. We reserve the image's cells with `Skip` so
+//! `ratatui` never paints over it.
+
+use std::io::Write;
+
+use anyhow::{Context, Result};
+use base64::Engine;
+use image::DynamicImage;
+use ratatui::{buffer::CellDiffOption, layout::Rect, Frame};
+use ratatui_image::{
+    picker::{Picker, ProtocolType},
+    protocol::Protocol,
+    Image, Resize,
+};
+
+/// A cover image prepared for a fixed render area, in a form matching the terminal's image
+/// protocol. Construct it once per `(url, area)` and reuse it across frames.
+pub enum CoverImage {
+    /// Rendered through `ratatui-image` as a widget (kitty / sixel / halfblocks).
+    Widget(Box<Protocol>),
+    /// A cursor-anchored iTerm2 inline-image escape, written directly to the terminal.
+    /// `drawn` tracks whether it has been emitted yet — being grid-anchored, it only needs
+    /// to be emitted once.
+    Iterm2 { escape: String, drawn: bool },
+}
+
+impl CoverImage {
+    /// Prepare `img` for rendering into `area` using the protocol selected by `picker`.
+    pub fn new(picker: &Picker, img: &DynamicImage, area: Rect) -> Result<Self> {
+        if picker.protocol_type() == ProtocolType::Iterm2 {
+            Ok(Self::Iterm2 {
+                escape: encode_iterm2(img, area)?,
+                drawn: false,
+            })
+        } else {
+            let protocol = picker
+                .new_protocol(img.clone(), area.into(), Resize::Fit(None))
+                .context("encode cover image protocol")?;
+            Ok(Self::Widget(Box::new(protocol)))
+        }
+    }
+
+    /// Render the cover image into `area`.
+    ///
+    /// The widget backend draws into the frame buffer as usual. The iTerm2 backend reserves
+    /// `area` with `Skip` cells (so `ratatui` doesn't paint over it) and writes the
+    /// inline-image escape straight to the terminal on first render.
+    pub fn render(&mut self, frame: &mut Frame, area: Rect) {
+        match self {
+            Self::Widget(protocol) => frame.render_widget(Image::new(protocol.as_ref()), area),
+            Self::Iterm2 { escape, drawn } => {
+                reserve_area(frame, area);
+                if !*drawn {
+                    if let Err(err) = write_iterm2(escape, area) {
+                        tracing::error!("Failed to draw iTerm2 cover image: {err:#}");
+                    } else {
+                        *drawn = true;
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Mark every cell in `area` as skipped so `ratatui`'s renderer leaves it untouched.
+fn reserve_area(frame: &mut Frame, area: Rect) {
+    for y in area.top()..area.bottom() {
+        for x in area.left()..area.right() {
+            if let Some(cell) = frame.buffer_mut().cell_mut((x, y)) {
+                cell.set_diff_option(CellDiffOption::Skip);
+            }
+        }
+    }
+}
+
+/// Encode `img` as a cursor-anchored, cell-sized iTerm2 inline-image escape sequence.
+///
+/// `width`/`height` are given in cells (not pixels), and `doNotMoveCursor` is intentionally
+/// omitted, so iTerm2 scales the image into the reserved cell box and anchors it to the grid.
+fn encode_iterm2(img: &DynamicImage, area: Rect) -> Result<String> {
+    let mut png = Vec::new();
+    img.write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png)
+        .context("encode cover image to PNG")?;
+    let data = base64::engine::general_purpose::STANDARD.encode(&png);
+    Ok(format!(
+        "\x1b]1337;File=inline=1;preserveAspectRatio=1;size={};width={};height={}:{data}\x07",
+        png.len(),
+        area.width,
+        area.height,
+    ))
+}
+
+/// Write a prepared iTerm2 image escape at `area`'s top-left, erasing the cell box first (so
+/// letterboxing doesn't reveal stale content) and restoring the cursor afterwards so
+/// `ratatui`'s own rendering is unaffected.
+fn write_iterm2(escape: &str, area: Rect) -> std::io::Result<()> {
+    // `area` is always a sub-rectangle of the screen, so the cursor-anchored image fits and
+    // does not scroll the alternate screen.
+    let mut out = std::io::stdout().lock();
+    out.write_all(b"\x1b7")?; // DEC save cursor
+    for row in area.top()..area.bottom() {
+        // move to the start of the row (1-based) and erase `width` cells
+        write!(out, "\x1b[{};{}H\x1b[{}X", row + 1, area.x + 1, area.width)?;
+    }
+    // position at the image origin and draw it
+    write!(out, "\x1b[{};{}H{escape}", area.y + 1, area.x + 1)?;
+    out.write_all(b"\x1b8")?; // DEC restore cursor
+    out.flush()
+}

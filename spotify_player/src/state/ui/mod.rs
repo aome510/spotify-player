@@ -6,7 +6,9 @@ use crate::{
 };
 
 #[cfg(feature = "image")]
-use ratatui_image::{picker::Picker, protocol::Protocol};
+use crate::ui::cover_image::CoverImage;
+#[cfg(feature = "image")]
+use ratatui_image::picker::Picker;
 
 pub type UIStateGuard<'a> = parking_lot::MutexGuard<'a, UIState>;
 
@@ -21,7 +23,7 @@ pub use popup::*;
 pub struct ImageRenderInfo {
     pub url: String,
     pub render_area: ratatui::layout::Rect,
-    pub state: Option<Protocol>,
+    pub state: Option<CoverImage>,
 }
 
 #[cfg(feature = "image")]
