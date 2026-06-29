@@ -30,7 +30,7 @@ spotify_player -o device.volume=80 -o theme=dracula
 
 | Option                            | Description                                                                                    | Default                                                                |
 | --------------------------------- | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `client_id`                       | Spotify client ID for API access. Uses a default if not specified.                             | See code (default: ncspot's client ID)                                 |
+| `client_id`                       | Spotify client ID for API access. **Leave unset unless you know you need a custom one** (see notes). | See code (default: ncspot's client ID)                           |
 | `client_id_command`               | Shell command that outputs client ID to stdout (overrides `client_id`).                        | `None`                                                                 |
 | `login_redirect_uri`              | Redirect URI for authentication.                                                               | `http://127.0.0.1:8989/login`                                          |
 | `client_port`                     | Port for the application's client to handle CLI commands.                                      | `8080`                                                                 |
@@ -76,7 +76,7 @@ spotify_player -o device.volume=80 -o theme=dracula
 
 ### Notes
 
-- By default, `spotify-player` uses [ncspot](https://github.com/hrkfdn/ncspot)'s client ID for compatibility with Spotify's API. See [this issue](https://github.com/aome510/spotify-player/issues/890) for details.
+- By default, `spotify-player` uses [ncspot](https://github.com/hrkfdn/ncspot)'s client ID for compatibility with Spotify's API. It is registered in [extended quota mode](https://developer.spotify.com/documentation/web-api/concepts/quota-modes) and predates Spotify's [November 2024 Web API changes](https://developer.spotify.com/blog/2024-11-27-changes-to-the-web-api), so it has higher rate limits and broader endpoint access than a newly-registered app. **Avoid setting a custom `client_id`**: clients registered today start in the restricted default quota mode and commonly hit `429 Too Many Requests` / `403 Forbidden` errors. `spotify-player` logs a warning at startup if a custom `client_id` is detected. See [this issue](https://github.com/aome510/spotify-player/issues/890) and the [Authentication section of the README](../README.md#authentication) for details.
 - `ap_port` and `proxy` are passed to Librespot for session configuration. Librespot uses its defaults if unset.
 - Setting a positive `app_refresh_duration_in_ms` increases API usage and may trigger rate limits. By default, `playback_refresh_duration_in_ms=0` refreshes playback only on events or commands.
 - `enable_streaming` accepts `Always`, `Never`, or `DaemonOnly`. For backward compatibility, `true`/`false` are also accepted.
