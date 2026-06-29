@@ -97,17 +97,6 @@ fn init_logging(
 
 #[tokio::main]
 async fn start_app(state: &state::SharedState) -> Result<()> {
-    if !state.is_daemon {
-        #[cfg(feature = "image")]
-        {
-            // initialize `viuer` supports for kitty, iterm2, and sixel
-            viuer::get_kitty_support();
-            viuer::is_iterm_supported();
-            #[cfg(feature = "sixel")]
-            viuer::is_sixel_supported();
-        }
-    }
-
     // client channels
     let (client_pub, client_sub) = flume::unbounded::<client::ClientRequest>();
 
@@ -179,6 +168,10 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
         })?;
 
     if !state.is_daemon {
+        #[cfg(feature = "image")]
+        ui::init_image_picker(state).context("initialize image picker")?;
+        let terminal = ui::init_terminal().context("initialize terminal")?;
+
         // terminal event handler task
         std::thread::Builder::new()
             .name("terminal-event-handler".to_string())
@@ -193,7 +186,7 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
         // application UI task
         std::thread::Builder::new().name("ui".to_string()).spawn({
             let state = state.clone();
-            move || ui::run(&state)
+            move || ui::run(&state, terminal)
         })?;
     }
 

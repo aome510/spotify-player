@@ -224,7 +224,7 @@ pub struct PlaylistFolderNode {
     pub children: Vec<PlaylistFolderNode>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 /// A Spotify category
 pub struct Category {
     pub id: String,
