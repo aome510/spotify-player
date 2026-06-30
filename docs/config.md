@@ -64,8 +64,8 @@ spotify_player -o device.volume=80 -o theme=dracula
 | `progress_bar_position`           | Progress bar position: `Bottom` or `Right`.                                                          | `Bottom`                                                               |
 | `layout`                          | Layout configuration (see below).                                                                    | See below                                                              |
 | `genre_num`                       | Max number of genres to display in playback text.                                                    | `2`                                                                    |
-| `cover_img_length`                | Cover image length (requires `image` feature).                                                       | `9`                                                                    |
-| `cover_img_width`                 | Cover image width (requires `image` feature).                                                        | `5`                                                                    |
+| `cover_img_length`                | Cover image length in terminal columns (requires `image` feature).                                   | `0` (auto, see notes)                                                  |
+| `cover_img_width`                 | Cover image width in terminal rows (requires `image` feature).                                       | `5`                                                                    |
 | `cover_img_pixels`                | Pixels per side for cover image (requires `pixelate` feature).                                       | `16`                                                                   |
 | `seek_duration_secs`              | Seek duration in seconds for seek commands.                                                          | `5`                                                                    |
 | `sort_artist_albums_by_type`      | Sort albums by type on artist pages.                                                                 | `false`                                                                |
@@ -84,6 +84,7 @@ spotify_player -o device.volume=80 -o theme=dracula
 - `enable_streaming` accepts `Always`, `Never`, or `DaemonOnly`. For backward compatibility, `true`/`false` are also accepted.
 - `border_type`, `progress_bar_type`, and `progress_bar_position` accept only the values listed in the table above.
 - `explicit_icon` can be set to any Unicode character or an empty string to disable explicit markers.
+- `cover_img_length = 0` (the default) auto-derives the cover's column count from the terminal's cell aspect ratio. Set a non-zero `cover_img_length` to size the box manually.
 
 #### Media control
 

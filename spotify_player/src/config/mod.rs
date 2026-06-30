@@ -354,8 +354,9 @@ impl Default for AppConfig {
 
             genre_num: 2,
 
+            // `0` means "auto": derive the cover's column count from the terminal's cell aspect ratio
             #[cfg(feature = "image")]
-            cover_img_length: 9,
+            cover_img_length: 0,
             #[cfg(feature = "image")]
             cover_img_width: 5,
             #[cfg(feature = "pixelate")]

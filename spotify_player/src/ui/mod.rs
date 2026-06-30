@@ -24,6 +24,8 @@ use crate::state::ImageRenderInfo;
 
 type Terminal = ratatui::Terminal<ratatui::backend::CrosstermBackend<std::io::Stdout>>;
 
+#[cfg(feature = "image")]
+pub mod cover_image;
 mod page;
 mod playback;
 mod popup;
