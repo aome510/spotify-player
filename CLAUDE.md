@@ -132,3 +132,5 @@ Base the description on the actual branch diff (`git diff master...<branch>`), n
 - **Summary** — 2-4 sentences: what problem the change solves and the approach. State the _why_ (the prior behaviour / bug) before the _what_.
 - **Changes** — a bullet per logical change, each tagged with the affected module/file. Lead with the user-facing or architectural change, not mechanical edits.
 - Prefer plain prose over filler; omit empty sections. Add a short **Notes** section only for non-obvious trade-offs or follow-ups.
+
+Output the description as raw markdown in a fenced code block so it can be copied and pasted directly into the PR.
