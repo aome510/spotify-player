@@ -102,6 +102,13 @@ tracing::error!("...: {err:#}");
 tracing::debug!("{value:?}");
 ```
 
+### Comments and doc comments
+
+- Comment the _why_, not the _what_ — skip comments that restate the code.
+- Reserve comments for non-obvious intent: invariants, ordering constraints, workarounds, edge cases.
+- Keep comments concise and clear; avoid long paragraphs.
+- Try to keep comments up to date with code changes.
+
 ## Keeping docs up to date
 
 `README.md` and `docs/config.md` are the primary user-facing references. Update them on any user-visible change:
@@ -118,3 +125,11 @@ Keep `.github/copilot-instructions.md` and this `CLAUDE.md` in sync when project
 1. Add the variant to `Command` in `command.rs` and update `Command::desc()`.
 2. Add a default keybinding in `config/keymap.rs`.
 3. Update the command table in `README.md`.
+
+## Writing PR descriptions
+
+Base the description on the actual branch diff (`git diff master...<branch>`), not assumptions. Keep it clear and concise:
+
+- **Summary** — 2-4 sentences: what problem the change solves and the approach. State the _why_ (the prior behaviour / bug) before the _what_.
+- **Changes** — a bullet per logical change, each tagged with the affected module/file. Lead with the user-facing or architectural change, not mechanical edits.
+- Prefer plain prose over filler; omit empty sections. Add a short **Notes** section only for non-obvious trade-offs or follow-ups.

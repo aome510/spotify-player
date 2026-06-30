@@ -25,11 +25,6 @@ pub async fn start_client_handler(
     client_sub: &flume::Receiver<ClientRequest>,
 ) {
     while let Ok(request) = client_sub.recv_async().await {
-        if let Err(err) = client.check_valid_session(state).await {
-            tracing::error!("{err:#}");
-            continue;
-        }
-
         let state = state.clone();
         let client = client.clone();
         let span = tracing::info_span!("client_request", request = ?request);
@@ -42,6 +37,23 @@ pub async fn start_client_handler(
             }
             .instrument(span),
         );
+    }
+}
+
+/// Interval between background session-validity checks.
+const SESSION_CHECK_INTERVAL: Duration = Duration::from_secs(1);
+
+pub async fn start_session_watcher(state: SharedState, client: super::AppClient) {
+    let mut interval = tokio::time::interval(SESSION_CHECK_INTERVAL);
+    // If a check ever runs long (e.g. a slow reconnect), skip missed ticks
+    // rather than firing them back-to-back.
+    interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+
+    loop {
+        interval.tick().await;
+        if let Err(err) = client.check_valid_session(&state).await {
+            tracing::error!("Failed to check/reconnect the client's session: {err:#}");
+        }
     }
 }
 
