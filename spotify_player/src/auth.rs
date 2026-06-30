@@ -6,7 +6,7 @@ use std::{
 use crate::config;
 use anyhow::{Context as _, Result};
 use base64::Engine as _;
-use librespot_core::{authentication::Credentials, cache::Cache, config::SessionConfig, Session};
+use librespot_core::{authentication::Credentials, cache::Cache, Session};
 use reqwest::Url;
 use rspotify::clients::{BaseClient as _, OAuthClient as _};
 use sha2::{Digest as _, Sha256};
@@ -48,7 +48,6 @@ pub const OAUTH_SCOPES: &[&str] = &[
 #[derive(Clone)]
 pub struct AuthConfig {
     pub cache: Cache,
-    pub session_config: SessionConfig,
     pub login_redirect_uri: String,
 }
 
@@ -56,7 +55,6 @@ impl Default for AuthConfig {
     fn default() -> Self {
         AuthConfig {
             cache: Cache::new(None::<String>, None, None, None).unwrap(),
-            session_config: SessionConfig::default(),
             login_redirect_uri: "http://127.0.0.1:8989/login".to_string(),
         }
     }
@@ -65,7 +63,8 @@ impl Default for AuthConfig {
 impl AuthConfig {
     /// Create a `librespot::Session` from authentication configs
     pub fn session(&self) -> Session {
-        Session::new(self.session_config.clone(), Some(self.cache.clone()))
+        let session_config = config::get_config().app_config.session_config();
+        Session::new(session_config, Some(self.cache.clone()))
     }
 
     pub fn new(configs: &config::Configs) -> Result<AuthConfig> {
@@ -84,7 +83,6 @@ impl AuthConfig {
 
         Ok(AuthConfig {
             cache,
-            session_config: configs.app_config.session_config(),
             login_redirect_uri: configs.app_config.login_redirect_uri.clone(),
         })
     }

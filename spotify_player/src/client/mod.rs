@@ -142,8 +142,10 @@ impl AppClient {
             .clone())
     }
 
-    /// Initialize the application's playback upon creating a new session or during startup
-    pub fn initialize_playback(&self, state: &SharedState) {
+    /// Initialize the application's playback upon creating a new session or during startup.
+    ///
+    /// `resume` controls whether playback should be (re)started on the device we connect to.
+    pub fn initialize_playback(&self, state: &SharedState, resume: bool) {
         tokio::task::spawn({
             let client = self.clone();
             let state = state.clone();
@@ -178,11 +180,20 @@ impl AppClient {
                     };
 
                     if let Some(id) = id {
-                        tracing::info!("Trying to connect to device (id={id})");
+                        tracing::info!("Trying to connect to device (id={id}, resume={resume})");
                         if let Err(err) = client.transfer_playback(&id, Some(false)).await {
                             tracing::warn!("Connection failed (device_id={id}): {err:#}");
                         } else {
                             tracing::info!("Connection succeeded (device_id={id})!");
+                            if resume {
+                                if let Err(err) =
+                                    client.resume_playback(Some(id.as_ref()), None).await
+                                {
+                                    tracing::warn!(
+                                        "Failed to resume playback after reconnect: {err:#}"
+                                    );
+                                }
+                            }
                             // upon new connection, reset the buffered playback
                             state.player.write().buffered_playback = None;
                             client.update_playback(&state);
@@ -196,6 +207,19 @@ impl AppClient {
 
     /// Create a new client session
     pub async fn new_session(&self, state: Option<&SharedState>, reauth: bool) -> Result<()> {
+        // Capture whether playback was active *before* tearing down any existing streaming
+        // connection. Shutting down the old `librespot` spirc pauses playback Spotify-side
+        // (and a broken session leaves it paused too), so we use this to resume on the new
+        // device rather than reconnecting in a paused state.
+        let was_playing = state.is_some_and(|state| {
+            state
+                .player
+                .read()
+                .buffered_playback
+                .as_ref()
+                .is_some_and(|p| p.is_playing)
+        });
+
         let session = self.auth_config.session();
         let creds = auth::get_creds(&self.auth_config, reauth, true).context("get credentials")?;
         self.spotify.set_session(session.clone()).await;
@@ -223,12 +247,14 @@ impl AppClient {
 
         tracing::info!("Used a new session for Spotify client.");
 
-        self.refresh_token().await.context("refresh auth token")?;
+        if let Err(err) = self.refresh_token().await {
+            tracing::warn!("Failed to refresh auth token after creating a new session: {err:#}");
+        }
 
         if let Some(state) = state {
             // reset the application's caches
             state.data.write().caches = MemoryCaches::new();
-            self.initialize_playback(state);
+            self.initialize_playback(state, was_playing);
         }
 
         Ok(())
@@ -799,10 +825,10 @@ impl AppClient {
         #[cfg(feature = "streaming")]
         {
             let session = self.spotify.session().await;
-            devices.push((
-                configs.app_config.device.name.clone(),
-                session.device_id().to_string(),
-            ));
+            let device_name = configs.app_config.device.name.clone();
+            let device_id = session.device_id().to_string();
+            log::info!("Adding integrated device {device_name} to the device list: {device_id}");
+            devices.push((device_name, device_id));
         }
 
         if devices.is_empty() {
