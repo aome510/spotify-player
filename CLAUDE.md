@@ -104,10 +104,9 @@ tracing::debug!("{value:?}");
 
 ### Comments and doc comments
 
-- Comment the _why_, not the _what_ — skip comments that restate the code.
 - Reserve comments for non-obvious intent: invariants, ordering constraints, workarounds, edge cases.
-- Keep comments concise and clear; avoid long paragraphs.
-- Try to keep comments up to date with code changes.
+- Do not narrate the implementation. A doc comment states a type/function's purpose and contract (what callers need to know); leave the mechanics — which branch does what, field-by-field behaviour, control flow — to the code itself. Implementation rationale belongs in a focused inline comment at the relevant line, not in the doc comment.
+- Keep comments concise and clear, avoid long paragraphs and try to keep comments up to date with code changes.
 
 ## Keeping docs up to date
 

@@ -1,21 +1,3 @@
-//! Cover-image rendering, abstracting over the terminal's image protocol.
-//!
-//! Most protocols (kitty / sixel / halfblocks) render through `ratatui-image` as a normal
-//! widget, drawn into the frame buffer and emitted by `ratatui`'s differential renderer.
-//!
-//! iTerm2 is special-cased. When its window is occluded or sent to a background tab,
-//! iTerm2 disables its GPU (Metal) renderer and switches to the legacy renderer, rebuilding
-//! the screen from the cell grid. `ratatui-image` draws the iTerm2 image as a single buffer
-//! cell using `doNotMoveCursor=1` — a position-pinned overlay that is *not* attached to a
-//! grid line — and `ratatui`'s diff emits that unchanged cell only once. So the renderer
-//! switch drops the image and nothing ever re-emits it, leaving a black/garbled box.
-//!
-//! To match the old `viuer`-based behaviour (which did not have this problem), for iTerm2 we
-//! emit a *cursor-anchored*, cell-sized inline-image escape directly to the terminal. iTerm2
-//! attaches a cursor-anchored image to the grid, so it is redrawn across renderer switches
-//! and a single draw survives occlusion. We reserve the image's cells with `Skip` so
-//! `ratatui` never paints over it.
-
 use std::io::Write;
 
 use anyhow::{Context, Result};
@@ -28,8 +10,8 @@ use ratatui_image::{
     Image, Resize,
 };
 
-/// A cover image prepared for a fixed render area, in a form matching the terminal's image
-/// protocol. Construct it once per `(url, area)` and reuse it across frames.
+/// A cover image prepared for a fixed render area. Construct it once per `(url, area)` and reuse
+/// it across frames.
 pub enum CoverImage {
     /// Rendered through `ratatui-image` as a widget (kitty / sixel / halfblocks).
     Widget(Box<Protocol>),
@@ -56,10 +38,6 @@ impl CoverImage {
     }
 
     /// Render the cover image into `area`.
-    ///
-    /// The widget backend draws into the frame buffer as usual. The iTerm2 backend reserves
-    /// `area` with `Skip` cells (so `ratatui` doesn't paint over it) and writes the
-    /// inline-image escape straight to the terminal on first render.
     pub fn render(&mut self, frame: &mut Frame, area: Rect) {
         match self {
             Self::Widget(protocol) => frame.render_widget(Image::new(protocol.as_ref()), area),
@@ -89,9 +67,6 @@ fn reserve_area(frame: &mut Frame, area: Rect) {
 }
 
 /// Encode `img` as a cursor-anchored, cell-sized iTerm2 inline-image escape sequence.
-///
-/// `width`/`height` are given in cells (not pixels), and `doNotMoveCursor` is intentionally
-/// omitted, so iTerm2 scales the image into the reserved cell box and anchors it to the grid.
 fn encode_iterm2(img: &DynamicImage, area: Rect) -> Result<String> {
     let mut png = Vec::new();
     img.write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png)
