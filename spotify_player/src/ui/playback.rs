@@ -57,11 +57,11 @@ pub fn render_playback_window(
                         match configs.app_config.progress_bar_position {
                             config::ProgressBarPosition::Bottom => {
                                 let ver_chunks = split_rect_for_progress_bar(rect); // rect, progress_bar_rect
-                                let hor_chunks = split_rect_for_cover_img(ver_chunks.0); // cover_img_rect, metadata_rect
+                                let hor_chunks = split_rect_for_cover_img(ver_chunks.0, &ui.picker); // cover_img_rect, metadata_rect
                                 (hor_chunks.1, hor_chunks.0, ver_chunks.1)
                             }
                             config::ProgressBarPosition::Right => {
-                                let hor_chunks = split_rect_for_cover_img(rect); // cover_img_rect, rect
+                                let hor_chunks = split_rect_for_cover_img(rect, &ui.picker); // cover_img_rect, rect
                                 let ver_chunks = split_rect_for_progress_bar(hor_chunks.1); // metadata_rect, progress_bar_rect
                                 (ver_chunks.0, hor_chunks.0, ver_chunks.1)
                             }
@@ -191,10 +191,10 @@ fn split_rect_for_progress_bar(rect: Rect) -> (Rect, Rect) {
 }
 
 #[cfg(feature = "image")]
-fn split_rect_for_cover_img(rect: Rect) -> (Rect, Rect) {
+fn split_rect_for_cover_img(rect: Rect, picker: &ratatui_image::picker::Picker) -> (Rect, Rect) {
     let configs = config::get_config();
     let hor_chunks = Layout::horizontal([
-        Constraint::Length(configs.app_config.cover_img_length as u16),
+        Constraint::Length(cover_img_length(configs, picker)),
         Constraint::Fill(0), // metadata_rect
     ])
     .spacing(1)
@@ -205,6 +205,20 @@ fn split_rect_for_cover_img(rect: Rect) -> (Rect, Rect) {
     .split(hor_chunks[0]);
 
     (ver_chunks[0], hor_chunks[1])
+}
+
+/// Determine the cover image box's width in columns.
+#[cfg(feature = "image")]
+fn cover_img_length(configs: &config::Configs, picker: &ratatui_image::picker::Picker) -> u16 {
+    match configs.app_config.cover_img_length {
+        // When `cover_img_length` is `0` (the default), derive it from the terminal's cell aspect ratio
+        0 => {
+            let font_size = picker.font_size();
+            let rows = configs.app_config.cover_img_width as u16;
+            rows * font_size.height / font_size.width
+        }
+        length => length as u16,
+    }
 }
 
 fn construct_playback_text(
