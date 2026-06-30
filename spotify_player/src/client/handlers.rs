@@ -41,21 +41,8 @@ pub async fn start_client_handler(
 }
 
 /// Interval between background session-validity checks.
-///
-/// Checking validity only reads a local flag (`Session::is_invalid`), so this
-/// can run frequently without making any API calls; it only triggers work when
-/// the session has actually been invalidated.
 const SESSION_CHECK_INTERVAL: Duration = Duration::from_secs(1);
 
-/// Periodically checks whether the client's session is still valid and
-/// reconnects when it has become invalid (e.g. after a broken pipe, audio key
-/// timeout, or other network drop).
-///
-/// Without this, an invalid session is only detected the next time a
-/// [`ClientRequest`] happens to run [`super::AppClient::check_valid_session`],
-/// which may never occur while the application is idle (e.g. the default
-/// `playback_refresh_duration_in_ms = 0`, where no periodic playback refresh
-/// request is sent).
 pub async fn start_session_watcher(state: SharedState, client: super::AppClient) {
     let mut interval = tokio::time::interval(SESSION_CHECK_INTERVAL);
     // If a check ever runs long (e.g. a slow reconnect), skip missed ticks
