@@ -479,24 +479,8 @@ impl AppClient {
                     .filter_map(Device::try_from_device)
                     .collect();
 
-                // Include the local streaming device when the streaming feature is enabled.
-                // This ensures the device list is never empty when using integrated playback,
-                // even if the user hasn't configured a custom client_id or if the Spotify API
-                // hasn't registered the device yet.
                 #[cfg(feature = "streaming")]
-                {
-                    let configs = config::get_config();
-                    let session = self.spotify.session().await;
-                    let local_device = Device {
-                        id: session.device_id().to_string(),
-                        name: configs.app_config.device.name.clone(),
-                    };
-
-                    // Only add if not already in the list (avoid duplicates)
-                    if !devices.iter().any(|d| d.id == local_device.id) {
-                        devices.push(local_device);
-                    }
-                }
+                self.ensure_integrated_device(&mut devices).await;
 
                 state.player.write().devices = devices;
             }
@@ -800,49 +784,62 @@ impl AppClient {
     /// Find an available device. If found, return the device's ID.
     async fn find_available_device(&self) -> Result<Option<String>> {
         let devices = self.available_devices().await?;
-        tracing::info!("Available devices: {devices:?}");
 
         // if there is an active device, return it
         if let Some(d) = devices.iter().find(|d| d.is_active) {
             return Ok(d.id.clone());
         }
 
-        // convert a vector of `Device` items into `(name, id)` pairs
+        #[allow(unused_mut)]
         let mut devices = devices
             .into_iter()
-            .filter_map(|d| d.id.map(|id| (d.name, id)))
+            .filter_map(Device::try_from_device)
             .collect::<Vec<_>>();
 
-        let configs = config::get_config();
-
-        // Manually append the integrated device to the device list if `streaming` feature is enabled.
-        // The integrated device may not show up in the device list returned by the Spotify API because
-        // 1. The device is just initialized and hasn't been registered in Spotify server.
-        //    Related issue/discussion: https://github.com/aome510/spotify-player/issues/79
-        // 2. The device list is empty. This might be because user doesn't specify their own client ID.
-        //    By default, the application uses Spotify web app's client ID, which doesn't have
-        //    access to user's active devices.
         #[cfg(feature = "streaming")]
-        {
-            let session = self.spotify.session().await;
-            let device_name = configs.app_config.device.name.clone();
-            let device_id = session.device_id().to_string();
-            log::info!("Adding integrated device {device_name} to the device list: {device_id}");
-            devices.push((device_name, device_id));
-        }
+        self.ensure_integrated_device(&mut devices).await;
+
+        tracing::info!("no active device found, available devices: {devices:?}");
 
         if devices.is_empty() {
             return Ok(None);
         }
 
-        // Prioritize the `default_device` specified in the application's configurations,
-        // otherwise, use the first available device.
+        // Prioritize the integrated device; otherwise, use the first available device.
         let id = devices
             .iter()
-            .position(|d| d.0 == configs.app_config.default_device)
+            .position(|d| d.is_integrated)
             .unwrap_or_default();
 
-        Ok(Some(devices.remove(id).1))
+        Ok(Some(devices.remove(id).id))
+    }
+
+    /// Ensures the integrated librespot device (of *this* running instance) is present in `devices`.
+    ///
+    /// The integrated device may not show up in the device list returned by the Spotify API because
+    /// 1. The device is just initialized and hasn't been registered in Spotify server.
+    ///    Related issue/discussion: <https://github.com/aome510/spotify-player/issues/79>
+    /// 2. The device list is empty. This might be because user doesn't specify their own client ID.
+    ///    By default, the application uses Spotify web app's client ID, which doesn't have
+    ///    access to user's active devices.
+    #[cfg(feature = "streaming")]
+    async fn ensure_integrated_device(&self, devices: &mut Vec<Device>) {
+        let session = self.spotify.session().await;
+        let session_device_id = session.device_id().to_string();
+
+        // Mark the integrated device if it's already in the list; otherwise, add it, so it's
+        // always present without duplicating an entry the API already returned.
+        match devices.iter_mut().find(|d| d.id == session_device_id) {
+            Some(device) => device.is_integrated = true,
+            None => devices.insert(
+                0,
+                Device {
+                    id: session_device_id,
+                    name: config::get_config().app_config.device.name.clone(),
+                    is_integrated: true,
+                },
+            ),
+        }
     }
 
     /// Get the saved (liked) tracks of the current user

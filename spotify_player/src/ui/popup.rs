@@ -97,7 +97,16 @@ pub fn render_popup(
                 let items = player
                     .devices
                     .iter()
-                    .map(|d| (format!("{} | {}", d.name, d.id), current_device_id == d.id))
+                    .map(|d| {
+                        // Mark the integrated device of this running instance to distinguish it
+                        // from other `spotify-player` instances running elsewhere.
+                        let name = if d.is_integrated {
+                            format!("{} (integrated)", d.name)
+                        } else {
+                            d.name.clone()
+                        };
+                        (format!("{name} | {}", d.id), current_device_id == d.id)
+                    })
                     .collect();
 
                 let rect = render_list_popup(frame, rect, "Devices", items, 5, ui);
