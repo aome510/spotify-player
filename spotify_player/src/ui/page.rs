@@ -947,7 +947,7 @@ fn render_artist_context_page_windows(
         album_rows,
         [
             Constraint::Length(10),
-            Constraint::Length(6),
+            Constraint::Length(11),
             Constraint::Fill(1),
         ],
     )

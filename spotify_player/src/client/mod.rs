@@ -959,7 +959,7 @@ impl AppClient {
         let albums = self
             .all_paging_items::<rspotify::model::SimplifiedAlbum>(
                 &format!(
-                    "{SPOTIFY_API_ENDPOINT}/artists/{}/albums?include_groups=album,single",
+                    "{SPOTIFY_API_ENDPOINT}/artists/{}/albums?include_groups=album,single,compilation",
                     artist_id.id()
                 ),
                 0, // we don't know the total number of artist albums beforehand
