@@ -1,4 +1,7 @@
-use std::time::{Duration, Instant};
+use std::{
+    future::Future,
+    time::{Duration, Instant},
+};
 
 use anyhow::Context;
 use rspotify::model::Id;
@@ -18,26 +21,81 @@ struct PlayerEventHandlerState {
     last_playback_refresh_timer: Instant,
 }
 
+async fn dispatch_requests<T, Handler, HandlerFuture, RequiresOrderedExecution>(
+    request_sub: flume::Receiver<T>,
+    requires_ordered_execution: RequiresOrderedExecution,
+    handler: Handler,
+) where
+    T: Send + 'static,
+    Handler: Fn(T) -> HandlerFuture + Clone + Send + 'static,
+    HandlerFuture: Future<Output = ()> + Send + 'static,
+    RequiresOrderedExecution: Fn(&T) -> bool,
+{
+    let (ordered_pub, ordered_sub) = flume::unbounded();
+    let ordered_handler = handler.clone();
+    let ordered_task = tokio::task::spawn(async move {
+        while let Ok(request) = ordered_sub.recv_async().await {
+            if let Err(err) = tokio::task::spawn(ordered_handler(request)).await {
+                tracing::error!("Ordered client request task failed: {err:#}");
+            }
+        }
+    });
+    let mut concurrent_tasks = tokio::task::JoinSet::new();
+
+    while let Ok(request) = request_sub.recv_async().await {
+        if requires_ordered_execution(&request) {
+            if ordered_pub.send(request).is_err() {
+                break;
+            }
+        } else {
+            let handler = handler.clone();
+            concurrent_tasks.spawn(async move {
+                handler(request).await;
+            });
+        }
+
+        while let Some(result) = concurrent_tasks.try_join_next() {
+            if let Err(err) = result {
+                tracing::error!("Concurrent client request task failed: {err:#}");
+            }
+        }
+    }
+
+    drop(ordered_pub);
+    if let Err(err) = ordered_task.await {
+        tracing::error!("Ordered client request task failed: {err:#}");
+    }
+    while let Some(result) = concurrent_tasks.join_next().await {
+        if let Err(err) = result {
+            tracing::error!("Concurrent client request task failed: {err:#}");
+        }
+    }
+}
+
 /// starts the client's request handler
 pub async fn start_client_handler(
     state: &SharedState,
     client: &super::AppClient,
     client_sub: &flume::Receiver<ClientRequest>,
 ) {
-    while let Ok(request) = client_sub.recv_async().await {
-        let state = state.clone();
-        let client = client.clone();
-        let span = tracing::info_span!("client_request", request = ?request);
-
-        tokio::task::spawn(
+    let state = state.clone();
+    let client = client.clone();
+    dispatch_requests(
+        client_sub.clone(),
+        ClientRequest::requires_ordered_execution,
+        move |request| {
+            let state = state.clone();
+            let client = client.clone();
+            let span = tracing::info_span!("client_request", request = ?request);
             async move {
                 if let Err(err) = client.handle_request(&state, request).await {
                     tracing::error!("Failed to handle client request: {err:#}");
                 }
             }
-            .instrument(span),
-        );
-    }
+            .instrument(span)
+        },
+    )
+    .await;
 }
 
 /// Interval between background session-validity checks.
@@ -224,5 +282,106 @@ pub fn start_player_event_watcher(state: &SharedState, client_pub: &flume::Sende
         }
 
         std::thread::sleep(refresh_duration);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::dispatch_requests;
+    use std::time::Duration;
+
+    struct TestRequest {
+        id: u8,
+        ordered: bool,
+        wait_for: Option<flume::Receiver<()>>,
+    }
+
+    fn test_dispatcher() -> (
+        flume::Sender<TestRequest>,
+        flume::Receiver<u8>,
+        tokio::task::JoinHandle<()>,
+    ) {
+        let (request_pub, request_sub) = flume::unbounded();
+        let (completed_pub, completed_sub) = flume::unbounded();
+
+        let task = tokio::task::spawn(dispatch_requests(
+            request_sub,
+            |request: &TestRequest| request.ordered,
+            move |request: TestRequest| {
+                let completed_pub = completed_pub.clone();
+                async move {
+                    if let Some(wait_for) = request.wait_for {
+                        wait_for.recv_async().await.unwrap();
+                    }
+                    completed_pub.send_async(request.id).await.unwrap();
+                }
+            },
+        ));
+
+        (request_pub, completed_sub, task)
+    }
+
+    #[tokio::test]
+    async fn ordered_requests_finish_in_receive_order() {
+        let (gate_pub, gate_sub) = flume::bounded(1);
+        let (request_pub, completed_sub, task) = test_dispatcher();
+        request_pub
+            .send(TestRequest {
+                id: 1,
+                ordered: true,
+                wait_for: Some(gate_sub),
+            })
+            .unwrap();
+        request_pub
+            .send(TestRequest {
+                id: 2,
+                ordered: true,
+                wait_for: None,
+            })
+            .unwrap();
+        drop(request_pub);
+
+        assert!(
+            tokio::time::timeout(Duration::from_millis(50), completed_sub.recv_async())
+                .await
+                .is_err()
+        );
+        gate_pub.send(()).unwrap();
+        task.await.unwrap();
+
+        assert_eq!(completed_sub.try_iter().collect::<Vec<_>>(), vec![1, 2]);
+    }
+
+    #[tokio::test]
+    async fn concurrent_requests_are_not_blocked_by_ordered_requests() {
+        let (gate_pub, gate_sub) = flume::bounded(1);
+        let (request_pub, completed_sub, task) = test_dispatcher();
+        request_pub
+            .send(TestRequest {
+                id: 1,
+                ordered: true,
+                wait_for: Some(gate_sub),
+            })
+            .unwrap();
+        request_pub
+            .send(TestRequest {
+                id: 2,
+                ordered: false,
+                wait_for: None,
+            })
+            .unwrap();
+        drop(request_pub);
+
+        assert_eq!(
+            tokio::time::timeout(Duration::from_secs(1), completed_sub.recv_async())
+                .await
+                .unwrap()
+                .unwrap(),
+            2
+        );
+        gate_pub.send(()).unwrap();
+        task.await.unwrap();
+
+        assert_eq!(completed_sub.try_iter().collect::<Vec<_>>(), vec![1]);
     }
 }

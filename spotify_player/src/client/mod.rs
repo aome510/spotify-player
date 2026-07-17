@@ -195,7 +195,10 @@ impl AppClient {
                                 }
                             }
                             // upon new connection, reset the buffered playback
-                            state.player.write().buffered_playback = None;
+                            let mut player = state.player.write();
+                            player.invalidate_playback_refreshes();
+                            player.buffered_playback = None;
+                            drop(player);
                             client.update_playback(&state);
                             break;
                         }
@@ -462,9 +465,16 @@ impl AppClient {
                 state.data.write().user_data.user = Some(user);
             }
             ClientRequest::Player(request) => {
-                let playback = state.player.read().buffered_playback.clone();
-                let playback = self.handle_player_request(request, playback).await?;
-                state.player.write().buffered_playback = playback;
+                let playback = {
+                    let mut player = state.player.write();
+                    player.invalidate_playback_refreshes();
+                    player.buffered_playback.clone()
+                };
+                let playback_result = self.handle_player_request(request, playback).await;
+                let mut player = state.player.write();
+                player.invalidate_playback_refreshes();
+                player.buffered_playback = playback_result?;
+                drop(player);
                 self.update_playback(state);
             }
             ClientRequest::GetCurrentPlayback => {
@@ -1659,10 +1669,17 @@ impl AppClient {
         state: &SharedState,
         reset_buffered_playback: bool,
     ) -> Result<()> {
+        let refresh_generation = state.player.write().begin_playback_refresh();
+        let playback = self.current_playback2().await?;
         let new_playback = {
-            // update the playback state
-            let playback = self.current_playback2().await?;
             let mut player = state.player.write();
+            if !player.is_current_playback_refresh(refresh_generation) {
+                tracing::debug!(
+                    refresh_generation,
+                    "Discarded a stale playback refresh response"
+                );
+                return Ok(());
+            }
 
             let prev_item = player.currently_playing();
 
