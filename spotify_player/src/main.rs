@@ -53,12 +53,31 @@ impl Drop for UiThreadSupervisor {
     }
 }
 
+fn install_panic_hook(backtrace_file: Option<std::fs::File>) {
+    let backtrace_file = backtrace_file.map(std::sync::Mutex::new);
+    let previous_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        ui::handle_panic();
+
+        if let Some(backtrace_file) = backtrace_file.as_ref() {
+            if let Ok(mut file) = backtrace_file.lock() {
+                let backtrace = backtrace::Backtrace::new();
+                let _ = writeln!(&mut file, "Got a panic: {info:#?}\n");
+                let _ = writeln!(&mut file, "Stack backtrace:\n{backtrace:?}");
+            }
+        }
+
+        previous_hook(info);
+    }));
+}
+
 fn init_logging(
     log_folder: &std::path::Path,
     log_buffer: Arc<Mutex<VecDeque<String>>>,
 ) -> Result<()> {
     if std::env::var_os("RUST_LOG").is_some_and(|x| x == "off") {
         // Don't create log files if logging is disabled.
+        install_panic_hook(None);
         return Ok(());
     }
 
@@ -93,19 +112,7 @@ fn init_logging(
     // initialize the application's panic backtrace
     let backtrace_file = std::fs::File::create(log_folder.join(format!("{log_prefix}.backtrace")))
         .context("failed to create backtrace file")?;
-    let backtrace_file = std::sync::Mutex::new(backtrace_file);
-    let previous_hook = std::panic::take_hook();
-    std::panic::set_hook(Box::new(move |info| {
-        ui::handle_panic();
-
-        if let Ok(mut file) = backtrace_file.lock() {
-            let backtrace = backtrace::Backtrace::new();
-            let _ = writeln!(&mut file, "Got a panic: {info:#?}\n");
-            let _ = writeln!(&mut file, "Stack backtrace:\n{backtrace:?}");
-        }
-
-        previous_hook(info);
-    }));
+    install_panic_hook(Some(backtrace_file));
 
     Ok(())
 }

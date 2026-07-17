@@ -60,7 +60,9 @@ pub(crate) struct TerminalSession {
 impl TerminalSession {
     fn restore(mut self) -> Result<()> {
         let result = restore_active_terminal();
-        self.restore_guard.disarm();
+        if result.is_ok() {
+            self.restore_guard.disarm();
+        }
         result
     }
 }
@@ -200,37 +202,40 @@ fn record_first_error(first_error: &mut Option<std::io::Error>, result: std::io:
     }
 }
 
-fn restore_terminal_state_with<W, DisableRawMode>(
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum TerminalRestoreAction {
+    DisableRawMode,
+    LeaveAlternateScreen,
+    DisableMouseCapture,
+    ShowCursor,
+}
+
+fn restore_terminal_state_with(
     state: u8,
-    output: &mut W,
-    disable_raw_mode: DisableRawMode,
-) -> std::io::Result<()>
-where
-    W: std::io::Write,
-    DisableRawMode: FnOnce() -> std::io::Result<()>,
-{
+    mut restore: impl FnMut(TerminalRestoreAction) -> std::io::Result<()>,
+) -> std::io::Result<()> {
     let mut first_error = None;
 
     if state & RAW_MODE_ACTIVE != 0 {
-        record_first_error(&mut first_error, disable_raw_mode());
+        record_first_error(
+            &mut first_error,
+            restore(TerminalRestoreAction::DisableRawMode),
+        );
     }
     if state & ALTERNATE_SCREEN_ACTIVE != 0 {
         record_first_error(
             &mut first_error,
-            crossterm::execute!(output, crossterm::terminal::LeaveAlternateScreen),
+            restore(TerminalRestoreAction::LeaveAlternateScreen),
         );
     }
     if state & MOUSE_CAPTURE_ACTIVE != 0 {
         record_first_error(
             &mut first_error,
-            crossterm::execute!(output, crossterm::event::DisableMouseCapture),
+            restore(TerminalRestoreAction::DisableMouseCapture),
         );
     }
     if state != 0 {
-        record_first_error(
-            &mut first_error,
-            crossterm::execute!(output, crossterm::cursor::Show),
-        );
+        record_first_error(&mut first_error, restore(TerminalRestoreAction::ShowCursor));
     }
 
     match first_error {
@@ -240,17 +245,34 @@ where
 }
 
 fn restore_terminal_state(state: u8) -> Result<()> {
-    restore_terminal_state_with(
-        state,
-        &mut std::io::stdout(),
-        crossterm::terminal::disable_raw_mode,
-    )?;
+    let mut stdout = std::io::stdout();
+    restore_terminal_state_with(state, |action| match action {
+        TerminalRestoreAction::DisableRawMode => crossterm::terminal::disable_raw_mode(),
+        TerminalRestoreAction::LeaveAlternateScreen => {
+            crossterm::execute!(&mut stdout, crossterm::terminal::LeaveAlternateScreen)
+        }
+        TerminalRestoreAction::DisableMouseCapture => {
+            crossterm::execute!(&mut stdout, crossterm::event::DisableMouseCapture)
+        }
+        TerminalRestoreAction::ShowCursor => {
+            crossterm::execute!(&mut stdout, crossterm::cursor::Show)
+        }
+    })?;
+    Ok(())
+}
+
+fn restore_active_terminal_with(
+    active_state: &AtomicU8,
+    restore: impl FnOnce(u8) -> Result<()>,
+) -> Result<()> {
+    let state = active_state.load(Ordering::SeqCst);
+    restore(state)?;
+    active_state.fetch_and(!state, Ordering::SeqCst);
     Ok(())
 }
 
 fn restore_active_terminal() -> Result<()> {
-    let state = ACTIVE_TERMINAL_STATE.swap(0, Ordering::SeqCst);
-    restore_terminal_state(state)
+    restore_active_terminal_with(&ACTIVE_TERMINAL_STATE, restore_terminal_state)
 }
 
 fn restore_active_terminal_best_effort() {
@@ -347,39 +369,54 @@ impl Orientation {
 #[cfg(test)]
 mod tests {
     use super::{
-        restore_terminal_state_with, RestoreOnDrop, ALTERNATE_SCREEN_ACTIVE, MOUSE_CAPTURE_ACTIVE,
-        RAW_MODE_ACTIVE,
+        restore_active_terminal_with, restore_terminal_state_with, RestoreOnDrop,
+        TerminalRestoreAction, ALTERNATE_SCREEN_ACTIVE, MOUSE_CAPTURE_ACTIVE, RAW_MODE_ACTIVE,
     };
     use std::sync::{
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicBool, AtomicU8, Ordering},
         Arc,
     };
 
-    fn contains_bytes(output: &[u8], expected: &[u8]) -> bool {
-        output
-            .windows(expected.len())
-            .any(|window| window == expected)
-    }
-
     #[test]
     fn terminal_restore_resets_every_enabled_mode() {
-        let raw_mode_disabled = AtomicBool::new(false);
-        let mut output = Vec::new();
+        let mut actions = Vec::new();
 
         restore_terminal_state_with(
             RAW_MODE_ACTIVE | ALTERNATE_SCREEN_ACTIVE | MOUSE_CAPTURE_ACTIVE,
-            &mut output,
-            || {
-                raw_mode_disabled.store(true, Ordering::SeqCst);
+            |action| {
+                actions.push(action);
                 Ok(())
             },
         )
         .unwrap();
 
-        assert!(raw_mode_disabled.load(Ordering::SeqCst));
-        assert!(contains_bytes(&output, b"\x1b[?1049l"));
-        assert!(contains_bytes(&output, b"\x1b[?1000l"));
-        assert!(contains_bytes(&output, b"\x1b[?25h"));
+        assert_eq!(
+            actions,
+            [
+                TerminalRestoreAction::DisableRawMode,
+                TerminalRestoreAction::LeaveAlternateScreen,
+                TerminalRestoreAction::DisableMouseCapture,
+                TerminalRestoreAction::ShowCursor,
+            ]
+        );
+    }
+
+    #[test]
+    fn failed_terminal_restore_remains_armed_for_retry() {
+        let active_state = AtomicU8::new(RAW_MODE_ACTIVE | MOUSE_CAPTURE_ACTIVE);
+
+        let result = restore_active_terminal_with(&active_state, |_| {
+            anyhow::bail!("injected restore failure")
+        });
+
+        assert!(result.is_err());
+        assert_eq!(
+            active_state.load(Ordering::SeqCst),
+            RAW_MODE_ACTIVE | MOUSE_CAPTURE_ACTIVE
+        );
+
+        restore_active_terminal_with(&active_state, |_| Ok(())).unwrap();
+        assert_eq!(active_state.load(Ordering::SeqCst), 0);
     }
 
     #[test]
