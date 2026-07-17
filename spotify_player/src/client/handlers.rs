@@ -21,14 +21,15 @@ struct PlayerEventHandlerState {
     last_playback_refresh_timer: Instant,
 }
 
-async fn dispatch_requests<T, Handler, HandlerFuture, RequiresOrderedExecution>(
+async fn dispatch_requests<T, Handler, HandlerFuture, HandlerOutput, RequiresOrderedExecution>(
     request_sub: flume::Receiver<T>,
     requires_ordered_execution: RequiresOrderedExecution,
     handler: Handler,
 ) where
     T: Send + 'static,
     Handler: Fn(T) -> HandlerFuture + Clone + Send + 'static,
-    HandlerFuture: Future<Output = ()> + Send + 'static,
+    HandlerFuture: Future<Output = HandlerOutput> + Send + 'static,
+    HandlerOutput: Send + 'static,
     RequiresOrderedExecution: Fn(&T) -> bool,
 {
     let (ordered_pub, ordered_sub) = flume::unbounded();
@@ -42,21 +43,33 @@ async fn dispatch_requests<T, Handler, HandlerFuture, RequiresOrderedExecution>(
     });
     let mut concurrent_tasks = tokio::task::JoinSet::new();
 
-    while let Ok(request) = request_sub.recv_async().await {
-        if requires_ordered_execution(&request) {
-            if ordered_pub.send(request).is_err() {
-                break;
-            }
-        } else {
-            let handler = handler.clone();
-            concurrent_tasks.spawn(async move {
-                handler(request).await;
-            });
-        }
-
+    loop {
         while let Some(result) = concurrent_tasks.try_join_next() {
             if let Err(err) = result {
                 tracing::error!("Concurrent client request task failed: {err:#}");
+            }
+        }
+
+        tokio::select! {
+            request = request_sub.recv_async() => {
+                let Ok(request) = request else {
+                    break;
+                };
+                if requires_ordered_execution(&request) {
+                    if ordered_pub.send(request).is_err() {
+                        break;
+                    }
+                } else {
+                    let handler = handler.clone();
+                    concurrent_tasks.spawn(async move {
+                        handler(request).await
+                    });
+                }
+            }
+            result = concurrent_tasks.join_next(), if !concurrent_tasks.is_empty() => {
+                if let Some(Err(err)) = result {
+                    tracing::error!("Concurrent client request task failed: {err:#}");
+                }
             }
         }
     }
@@ -290,6 +303,14 @@ mod tests {
     use super::dispatch_requests;
     use std::time::Duration;
 
+    struct DropSignal(flume::Sender<()>);
+
+    impl Drop for DropSignal {
+        fn drop(&mut self) {
+            let _ = self.0.send(());
+        }
+    }
+
     struct TestRequest {
         id: u8,
         ordered: bool,
@@ -383,5 +404,40 @@ mod tests {
         task.await.unwrap();
 
         assert_eq!(completed_sub.try_iter().collect::<Vec<_>>(), vec![1]);
+    }
+
+    #[tokio::test]
+    async fn completed_concurrent_tasks_are_reaped_while_request_stream_is_idle() {
+        let (request_pub, request_sub) = flume::unbounded();
+        let (gate_pub, gate_sub) = flume::bounded(1);
+        let (started_pub, started_sub) = flume::bounded(1);
+        let (reaped_pub, reaped_sub) = flume::bounded(1);
+        let task = tokio::task::spawn(dispatch_requests(
+            request_sub,
+            |_: &()| false,
+            move |()| {
+                let gate_sub = gate_sub.clone();
+                let started_pub = started_pub.clone();
+                let reaped_pub = reaped_pub.clone();
+                async move {
+                    started_pub.send_async(()).await.unwrap();
+                    gate_sub.recv_async().await.unwrap();
+                    DropSignal(reaped_pub)
+                }
+            },
+        ));
+
+        request_pub.send(()).unwrap();
+        started_sub.recv_async().await.unwrap();
+        tokio::time::sleep(Duration::from_millis(10)).await;
+        gate_pub.send(()).unwrap();
+
+        tokio::time::timeout(Duration::from_secs(1), reaped_sub.recv_async())
+            .await
+            .unwrap()
+            .unwrap();
+
+        drop(request_pub);
+        task.await.unwrap();
     }
 }
