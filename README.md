@@ -392,7 +392,7 @@ For more details, run `spotify_player -h` or `spotify_player {command} -h`.
 **Notes**
 
 - On first use, run `spotify_player authenticate` to authenticate the app.
-- CLI commands communicate with a client socket on port `client_port` (default: `8080`). If no instance is running, a new client is started, which may increase latency.
+- CLI commands use length-prefixed TCP on `client_port` (default: `8080`). Connection attempts time out after 5 seconds, and request and response I/O operations time out after 30 seconds. If no instance is running, a new client is started, which may increase latency.
 
 #### Scripting
 

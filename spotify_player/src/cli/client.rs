@@ -3,12 +3,11 @@ use std::{
     fmt::Write as _,
     fs::{create_dir_all, remove_dir_all},
     io::Write,
-    net::SocketAddr,
 };
 
 use anyhow::{Context as _, Result};
 use rand::seq::SliceRandom;
-use tokio::net::UdpSocket;
+use tokio::net::{TcpListener, TcpStream};
 use tracing::Instrument;
 
 use crate::{
@@ -23,92 +22,122 @@ use crate::{
 use rspotify::prelude::{BaseClient, OAuthClient};
 
 use super::{
+    ipc::{read_frame_async, write_frame_async, IO_TIMEOUT, MAX_REQUEST_SIZE, MAX_RESPONSE_SIZE},
     Command, Deserialize, EditAction, GetRequest, IdOrName, ItemId, ItemType, Key, PlaylistCommand,
-    Response, Serialize, MAX_REQUEST_SIZE,
+    Response, Serialize,
 };
 
 pub async fn start_socket(
     client: &AppClient,
     state: Option<&SharedState>,
-    socket: Option<tokio::net::UdpSocket>,
+    listener: Option<TcpListener>,
 ) {
-    let socket = if let Some(s) = socket {
-        s
+    let listener = if let Some(listener) = listener {
+        listener
     } else {
         let configs = config::get_config();
         let port = configs.app_config.client_port;
-        tracing::info!("Starting a client socket at 127.0.0.1:{port}");
+        tracing::info!("Starting the CLI listener at 127.0.0.1:{port}");
 
-        match tokio::net::UdpSocket::bind(("127.0.0.1", port)).await {
-            Ok(socket) => socket,
+        match TcpListener::bind(("127.0.0.1", port)).await {
+            Ok(listener) => listener,
             Err(err) => {
-                tracing::warn!(
-                    "Failed to create a client socket for handling CLI commands: {err:#}"
-                );
+                tracing::warn!("Failed to create the CLI listener: {err:#}");
                 return;
             }
         }
     };
 
-    let mut buf = [0; MAX_REQUEST_SIZE];
-
     loop {
-        match socket.recv_from(&mut buf).await {
-            Err(err) => tracing::warn!("Failed to receive from the socket: {err:#}"),
-            Ok((n_bytes, dest_addr)) => {
-                if n_bytes == 0 {
-                    // received a connection request from the destination address
-                    socket.send_to(&[], dest_addr).await.unwrap_or_default();
-                    continue;
-                }
-
-                let req_buf = &buf[0..n_bytes];
-                let request: Request = match serde_json::from_slice(req_buf) {
-                    Ok(v) => v,
-                    Err(err) => {
-                        tracing::error!("Cannot deserialize the socket request: {err:#}");
-                        continue;
-                    }
-                };
-
-                let span = tracing::info_span!("socket_request", request = ?request, dest_addr = ?dest_addr);
-
-                async {
-                    let response = match handle_socket_request(client, state, request).await {
-                        Err(err) => {
-                            tracing::error!("Failed to handle socket request: {err:#}");
-                            let msg = format!("Bad request: {err:#}");
-                            Response::Err(msg.into_bytes())
+        match listener.accept().await {
+            Err(err) => tracing::warn!("Failed to accept a CLI connection: {err:#}"),
+            Ok((stream, peer_addr)) => {
+                let client = client.clone();
+                let state = state.cloned();
+                let span = tracing::info_span!("cli_request", ?peer_addr);
+                tokio::spawn(
+                    async move {
+                        if let Err(err) = handle_connection(&client, state.as_ref(), stream).await {
+                            tracing::warn!("CLI connection failed: {err:#}");
                         }
-                        Ok(data) => Response::Ok(data),
-                    };
-                    send_response(response, &socket, dest_addr)
-                        .await
-                        .unwrap_or_default();
-
-                    tracing::info!("Successfully handled the socket request.",);
-                }
-                .instrument(span)
-                .await;
+                    }
+                    .instrument(span),
+                );
             }
         }
     }
 }
 
-async fn send_response(
-    response: Response,
-    socket: &UdpSocket,
-    dest_addr: SocketAddr,
+async fn handle_connection(
+    client: &AppClient,
+    state: Option<&SharedState>,
+    mut stream: TcpStream,
 ) -> Result<()> {
-    let data = serde_json::to_vec(&response)?;
+    let request_data = match tokio::time::timeout(
+        IO_TIMEOUT,
+        read_frame_async(&mut stream, MAX_REQUEST_SIZE, "CLI request"),
+    )
+    .await
+    .context("timed out while reading a CLI request")?
+    {
+        Ok(data) => data,
+        Err(err) => {
+            tracing::error!("Cannot read the CLI request: {err:#}");
+            let response = Response::Err(format!("Bad request: {err:#}").into_bytes());
+            send_response(response, &mut stream).await?;
+            return Ok(());
+        }
+    };
 
-    // as the result data can be large and may not be sent in a single UDP datagram,
-    // split it into smaller chunks
-    for chunk in data.chunks(4096) {
-        socket.send_to(chunk, dest_addr).await?;
-    }
-    // send an empty buffer to indicate end of chunk
-    socket.send_to(&[], dest_addr).await?;
+    let request: Request = match serde_json::from_slice(&request_data) {
+        Ok(request) => request,
+        Err(err) => {
+            tracing::error!("Cannot deserialize the CLI request: {err:#}");
+            let response = Response::Err(format!("Bad request: {err:#}").into_bytes());
+            send_response(response, &mut stream).await?;
+            return Ok(());
+        }
+    };
+
+    let response =
+        match tokio::time::timeout(IO_TIMEOUT, handle_socket_request(client, state, request)).await
+        {
+            Err(_) => Response::Err(
+                format!("Request timed out after {} seconds", IO_TIMEOUT.as_secs()).into_bytes(),
+            ),
+            Ok(Err(err)) => {
+                tracing::error!("Failed to handle CLI request: {err:#}");
+                Response::Err(format!("Bad request: {err:#}").into_bytes())
+            }
+            Ok(Ok(data)) => Response::Ok(data),
+        };
+    send_response(response, &mut stream).await?;
+    tracing::info!("Successfully handled the CLI request.");
+    Ok(())
+}
+
+async fn send_response(response: Response, stream: &mut TcpStream) -> Result<()> {
+    let data = serde_json::to_vec(&response).context("serialize CLI response")?;
+    let data = if data.len() > MAX_RESPONSE_SIZE {
+        serde_json::to_vec(&Response::Err(
+            format!(
+                "Response is {} bytes, but the maximum is {} bytes",
+                data.len(),
+                MAX_RESPONSE_SIZE
+            )
+            .into_bytes(),
+        ))
+        .context("serialize oversized-response error")?
+    } else {
+        data
+    };
+
+    tokio::time::timeout(
+        IO_TIMEOUT,
+        write_frame_async(stream, &data, MAX_RESPONSE_SIZE, "CLI response"),
+    )
+    .await
+    .context("timed out while sending a CLI response")??;
     Ok(())
 }
 
