@@ -3,6 +3,7 @@ mod data;
 mod model;
 mod player;
 mod queue;
+mod request;
 mod ui;
 
 use std::{collections::VecDeque, sync::Arc};
@@ -13,6 +14,7 @@ pub use model::*;
 pub use player::*;
 #[allow(unused_imports)]
 pub use queue::*;
+pub use request::*;
 pub use ui::*;
 
 use crate::config;
@@ -27,6 +29,7 @@ pub struct State {
     pub ui: Mutex<UIState>,
     pub player: RwLock<PlayerState>,
     pub data: RwLock<AppData>,
+    pub requests: RwLock<RequestTracker>,
 
     pub is_daemon: bool,
 
@@ -55,6 +58,7 @@ impl State {
             ui: Mutex::new(ui),
             player: RwLock::new(PlayerState::default()),
             data: RwLock::new(app_data),
+            requests: RwLock::new(RequestTracker::default()),
             is_daemon,
             #[cfg(feature = "streaming")]
             vis_bands: if configs.app_config.enable_audio_visualization {

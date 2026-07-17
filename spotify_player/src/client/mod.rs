@@ -664,7 +664,9 @@ impl AppClient {
                     .user
                     .as_ref()
                     .map(|u| u.id.clone())
-                    .unwrap();
+                    .context(
+                        "Current user data is unavailable. Wait for account data to finish loading, then retry playlist creation",
+                    )?;
                 self.create_new_playlist(
                     state,
                     user_id,

@@ -12,8 +12,8 @@ use super::{
     config, utils, utils::construct_and_render_block, Album, Alignment, Artist, ArtistFocusState,
     Borders, BrowsePageUIState, Cell, Constraint, Context, ContextPageUIState, DataReadGuard,
     Frame, Id, Layout, LibraryFocusState, MutableWindowState, Orientation, PageState, Paragraph,
-    PlaylistFolderItem, Rect, Row, SearchFocusState, SharedState, Style, Table, Text, Track,
-    UIStateGuard,
+    PlaylistFolderItem, Rect, RequestKey, RequestStatus, Row, SearchFocusState, SharedState, Style,
+    Table, Text, Track, UIStateGuard,
 };
 use crate::state::BidiDisplay;
 use crate::ui::utils::to_bidi_string;
@@ -23,6 +23,24 @@ const COMMAND_TABLE_CONSTRAINTS: [Constraint; 3] = [
     Constraint::Percentage(25),
     Constraint::Percentage(50),
 ];
+
+fn request_state_message(
+    state: &SharedState,
+    key: &RequestKey,
+    has_content: bool,
+    loading_message: &str,
+    empty_message: &str,
+    failure_message: &str,
+) -> Option<String> {
+    match state.requests.read().status(key).cloned() {
+        Some(RequestStatus::Failed(error)) => Some(format!(
+            "{failure_message}: {error}. Open Logs for details."
+        )),
+        Some(RequestStatus::Loading) | None if !has_content => Some(loading_message.to_owned()),
+        Some(RequestStatus::Succeeded) if !has_content => Some(empty_message.to_owned()),
+        _ => None,
+    }
+}
 
 // UI codes to render a page.
 // A `render_*_page` function should follow (not strictly) the below steps
@@ -66,6 +84,42 @@ pub fn render_search_page(
     let chunks = Layout::vertical([Constraint::Length(1), Constraint::Fill(0)]).split(rect);
     let search_input_rect = chunks[0];
     let rect = chunks[1];
+
+    let PageState::Search { line_input, .. } = ui.current_page() else {
+        return;
+    };
+    frame.render_widget(
+        line_input.widget(is_active && focus_state == SearchFocusState::Input),
+        search_input_rect,
+    );
+
+    if current_query.is_empty() {
+        frame.render_widget(
+            Paragraph::new("Enter a query and press Enter to search."),
+            rect,
+        );
+        return;
+    }
+
+    let has_results = search_results.is_some_and(|results| {
+        !results.tracks.is_empty()
+            || !results.albums.is_empty()
+            || !results.artists.is_empty()
+            || !results.playlists.is_empty()
+            || !results.shows.is_empty()
+            || !results.episodes.is_empty()
+    });
+    if let Some(message) = request_state_message(
+        state,
+        &RequestKey::Search(current_query.clone()),
+        has_results,
+        "Searching...",
+        "No results found.",
+        "Search failed",
+    ) {
+        frame.render_widget(Paragraph::new(message), rect);
+        return;
+    }
 
     // track/album/artist/playlist/show/episode search results layout
     let chunks = match ui.orientation {
@@ -226,19 +280,12 @@ pub fn render_search_page(
     // 4. Render the page's widgets
     // Need mutable access to the list/table states stored inside the page state for rendering.
     let PageState::Search {
-        state: page_state,
-        line_input,
-        ..
+        state: page_state, ..
     } = ui.current_page_mut()
     else {
         return;
     };
 
-    // Render the query input box
-    frame.render_widget(
-        line_input.widget(is_active && focus_state == SearchFocusState::Input),
-        search_input_rect,
-    );
     utils::render_list_window(
         frame,
         track_list,
@@ -319,98 +366,126 @@ pub fn render_context_page(
     };
 
     let data = state.data.read();
-    match data.caches.context.get(&id.uri()) {
-        Some(context) => {
-            // render context description
-            let chunks = Layout::vertical([Constraint::Length(1), Constraint::Fill(0)]).split(rect);
+    let Some(context) = data.caches.context.get(&id.uri()) else {
+        let message = request_state_message(
+            state,
+            &RequestKey::Context(id.uri()),
+            false,
+            "Loading context...",
+            "No context data available.",
+            "Could not load context",
+        )
+        .unwrap_or_else(|| "Loading context...".to_owned());
+        frame.render_widget(Paragraph::new(message), rect);
+        return;
+    };
 
-            let description = if let Context::Playlist { playlist, .. } = context {
-                format!(
-                    "{} | {}",
-                    context.description(),
-                    if data.user_data.is_followed_playlist(playlist) {
-                        "Followed"
-                    } else {
-                        "Not Followed"
-                    }
-                )
+    // render context description
+    let chunks = Layout::vertical([Constraint::Length(1), Constraint::Fill(0)]).split(rect);
+
+    let description = if let Context::Playlist { playlist, .. } = context {
+        format!(
+            "{} | {}",
+            context.description(),
+            if data.user_data.is_followed_playlist(playlist) {
+                "Followed"
             } else {
-                context.description()
+                "Not Followed"
+            }
+        )
+    } else {
+        context.description()
+    };
+
+    frame.render_widget(
+        Paragraph::new(description).style(ui.theme.page_desc()),
+        chunks[0],
+    );
+    let rect = chunks[1];
+
+    match context {
+        Context::Artist {
+            artist,
+            top_tracks,
+            albums,
+            related_artists,
+        } => {
+            if top_tracks.is_empty()
+                && albums.is_empty()
+                && related_artists.is_empty()
+                && data.user_data.liked_tracks_by_artist(artist).is_empty()
+            {
+                frame.render_widget(Paragraph::new("No artist content available."), rect);
+                return;
+            }
+            render_artist_context_page_windows(
+                is_active,
+                frame,
+                state,
+                ui,
+                &data,
+                rect,
+                (artist, top_tracks, albums, related_artists),
+            );
+        }
+        Context::Playlist { tracks, playlist } => {
+            let rect = if playlist.desc.is_empty() {
+                rect
+            } else {
+                let chunks =
+                    Layout::vertical([Constraint::Length(1), Constraint::Fill(0)]).split(rect);
+                frame.render_widget(
+                    Paragraph::new(playlist.desc.clone()).style(ui.theme.playlist_desc()),
+                    chunks[0],
+                );
+                chunks[1]
             };
 
-            frame.render_widget(
-                Paragraph::new(description).style(ui.theme.page_desc()),
-                chunks[0],
-            );
-            let rect = chunks[1];
-
-            match context {
-                Context::Artist {
-                    artist,
-                    top_tracks,
-                    albums,
-                    related_artists,
-                } => {
-                    render_artist_context_page_windows(
-                        is_active,
-                        frame,
-                        state,
-                        ui,
-                        &data,
-                        rect,
-                        (artist, top_tracks, albums, related_artists),
-                    );
-                }
-                Context::Playlist { tracks, playlist } => {
-                    let rect = if playlist.desc.is_empty() {
-                        rect
-                    } else {
-                        let chunks = Layout::vertical([Constraint::Length(1), Constraint::Fill(0)])
-                            .split(rect);
-                        frame.render_widget(
-                            Paragraph::new(playlist.desc.clone()).style(ui.theme.playlist_desc()),
-                            chunks[0],
-                        );
-                        chunks[1]
-                    };
-
-                    render_track_table(
-                        frame,
-                        rect,
-                        is_active,
-                        state,
-                        ui.search_filtered_items(tracks),
-                        ui,
-                        &data,
-                        false,
-                    );
-                }
-                Context::Tracks { tracks, .. } | Context::Album { tracks, .. } => {
-                    render_track_table(
-                        frame,
-                        rect,
-                        is_active,
-                        state,
-                        ui.search_filtered_items(tracks),
-                        ui,
-                        &data,
-                        false,
-                    );
-                }
-                Context::Show { episodes, .. } => {
-                    render_episode_table(
-                        frame,
-                        rect,
-                        is_active,
-                        state,
-                        ui.search_filtered_items(episodes),
-                        ui,
-                    );
-                }
+            if tracks.is_empty() {
+                frame.render_widget(Paragraph::new("This playlist is empty."), rect);
+                return;
             }
+
+            render_track_table(
+                frame,
+                rect,
+                is_active,
+                state,
+                ui.search_filtered_items(tracks),
+                ui,
+                &data,
+                false,
+            );
         }
-        None => {
-            frame.render_widget(Paragraph::new("Loading..."), rect);
+        Context::Tracks { tracks, .. } | Context::Album { tracks, .. } => {
+            if tracks.is_empty() {
+                frame.render_widget(Paragraph::new("No tracks available."), rect);
+                return;
+            }
+            render_track_table(
+                frame,
+                rect,
+                is_active,
+                state,
+                ui.search_filtered_items(tracks),
+                ui,
+                &data,
+                false,
+            );
+        }
+        Context::Show { episodes, .. } => {
+            if episodes.is_empty() {
+                frame.render_widget(Paragraph::new("No episodes available."), rect);
+                return;
+            }
+            render_episode_table(
+                frame,
+                rect,
+                is_active,
+                state,
+                ui.search_filtered_items(episodes),
+                ui,
+            );
         }
     }
 }
@@ -475,8 +550,10 @@ pub fn render_library_page(
 
     // 3. Construct the page's widgets
     // Construct the playlist window
+    let folder_playlist_items = data.user_data.folder_playlists_items(playlist_folder_id);
+    let has_playlists = !folder_playlist_items.is_empty();
     let items = ui
-        .search_filtered_items(&data.user_data.folder_playlists_items(playlist_folder_id))
+        .search_filtered_items(&folder_playlist_items)
         .into_iter()
         .map(|item| match item {
             PlaylistFolderItem::Playlist(p) => {
@@ -503,6 +580,7 @@ pub fn render_library_page(
     } else {
         None
     };
+    let has_saved_albums = !data.user_data.saved_albums.is_empty();
     let (album_list, n_albums) = utils::construct_list_widget(
         &ui.theme,
         ui.search_filtered_items(&data.user_data.saved_albums)
@@ -519,6 +597,7 @@ pub fn render_library_page(
     } else {
         None
     };
+    let has_followed_artists = !data.user_data.followed_artists.is_empty();
     let (artist_list, n_artists) = utils::construct_list_widget(
         &ui.theme,
         ui.search_filtered_items(&data.user_data.followed_artists)
@@ -536,27 +615,66 @@ pub fn render_library_page(
         return;
     };
 
-    utils::render_list_window(
-        frame,
-        playlist_list,
-        playlist_rect,
-        n_playlists,
-        &mut page_state.playlist_list,
-    );
-    utils::render_list_window(
-        frame,
-        album_list,
-        album_rect,
-        n_albums,
-        &mut page_state.saved_album_list,
-    );
-    utils::render_list_window(
-        frame,
-        artist_list,
-        artist_rect,
-        n_artists,
-        &mut page_state.followed_artist_list,
-    );
+    if let Some(message) = request_state_message(
+        state,
+        &RequestKey::UserPlaylists,
+        has_playlists,
+        "Loading playlists...",
+        "No playlists found.",
+        "Could not load playlists",
+    ) {
+        frame.render_widget(Paragraph::new(message), playlist_rect);
+    } else if n_playlists == 0 {
+        frame.render_widget(Paragraph::new("No matching playlists."), playlist_rect);
+    } else {
+        utils::render_list_window(
+            frame,
+            playlist_list,
+            playlist_rect,
+            n_playlists,
+            &mut page_state.playlist_list,
+        );
+    }
+    if let Some(message) = request_state_message(
+        state,
+        &RequestKey::UserSavedAlbums,
+        has_saved_albums,
+        "Loading saved albums...",
+        "No saved albums found.",
+        "Could not load saved albums",
+    ) {
+        frame.render_widget(Paragraph::new(message), album_rect);
+    } else if n_albums == 0 {
+        frame.render_widget(Paragraph::new("No matching saved albums."), album_rect);
+    } else {
+        utils::render_list_window(
+            frame,
+            album_list,
+            album_rect,
+            n_albums,
+            &mut page_state.saved_album_list,
+        );
+    }
+    if let Some(message) = request_state_message(
+        state,
+        &RequestKey::UserFollowedArtists,
+        has_followed_artists,
+        "Loading followed artists...",
+        "No followed artists found.",
+        "Could not load followed artists",
+    ) {
+        frame.render_widget(Paragraph::new(message), artist_rect);
+    } else if n_artists == 0 {
+        frame.render_widget(Paragraph::new("No matching followed artists."), artist_rect);
+    } else {
+        utils::render_list_window(
+            frame,
+            artist_list,
+            artist_rect,
+            n_artists,
+            &mut page_state.followed_artist_list,
+        );
+    }
 }
 
 pub fn render_browse_page(
@@ -581,6 +699,18 @@ pub fn render_browse_page(
                 rect =
                     construct_and_render_block("Categories", &ui.theme, Borders::ALL, frame, rect);
 
+                if let Some(message) = request_state_message(
+                    state,
+                    &RequestKey::BrowseCategories,
+                    !data.browse.categories.is_empty(),
+                    "Loading categories...",
+                    "No browse categories available.",
+                    "Could not load browse categories",
+                ) {
+                    frame.render_widget(Paragraph::new(message), rect);
+                    return;
+                }
+
                 utils::construct_list_widget(
                     &ui.theme,
                     ui.search_filtered_items(&data.browse.categories)
@@ -595,8 +725,19 @@ pub fn render_browse_page(
                 let title = format!("{} Playlists", category.name);
                 rect = construct_and_render_block(&title, &ui.theme, Borders::ALL, frame, rect);
 
-                let Some(playlists) = data.browse.category_playlists.get(&category.id) else {
-                    frame.render_widget(Paragraph::new("Loading..."), rect);
+                let playlists = data.browse.category_playlists.get(&category.id);
+                if let Some(message) = request_state_message(
+                    state,
+                    &RequestKey::BrowseCategory(category.id.clone()),
+                    playlists.is_some_and(|playlists| !playlists.is_empty()),
+                    "Loading playlists...",
+                    "No playlists available in this category.",
+                    "Could not load category playlists",
+                ) {
+                    frame.render_widget(Paragraph::new(message), rect);
+                    return;
+                }
+                let Some(playlists) = playlists else {
                     return;
                 };
 
@@ -653,11 +794,20 @@ pub fn render_lyrics_page(
 
     let lyrics = match data.caches.lyrics.get(track_uri) {
         None => {
-            frame.render_widget(Paragraph::new("Loading..."), rect);
+            let message = request_state_message(
+                state,
+                &RequestKey::Lyrics(track_uri.clone()),
+                false,
+                "Loading lyrics...",
+                "Lyrics not found.",
+                "Could not load lyrics",
+            )
+            .unwrap_or_else(|| "Loading lyrics...".to_owned());
+            frame.render_widget(Paragraph::new(message), rect);
             return;
         }
         Some(None) => {
-            frame.render_widget(Paragraph::new("Lyrics not found"), rect);
+            frame.render_widget(Paragraph::new("Lyrics not found."), rect);
             return;
         }
         Some(Some(lyrics)) => lyrics,
@@ -807,10 +957,22 @@ pub fn render_queue_page(
     }
 
     // 1. Get data
+    let rect = construct_and_render_block("Queue", &ui.theme, Borders::ALL, frame, rect);
     let player = state.player.read();
-    let queue = match player.queue {
-        Some(ref q) => &q.queue,
-        None => return,
+    let queue = player.queue.as_ref().map(|queue| &queue.queue);
+    if let Some(message) = request_state_message(
+        state,
+        &RequestKey::Queue,
+        queue.is_some_and(|queue| !queue.is_empty()),
+        "Loading queue...",
+        "The queue is empty.",
+        "Could not load queue",
+    ) {
+        frame.render_widget(Paragraph::new(message), rect);
+        return;
+    }
+    let Some(queue) = queue else {
+        return;
     };
     let scroll_offset = match ui.current_page_mut() {
         PageState::Queue {
@@ -824,10 +986,7 @@ pub fn render_queue_page(
         _ => return,
     };
 
-    // 2. Construct the page's layout
-    let rect = construct_and_render_block("Queue", &ui.theme, Borders::ALL, frame, rect);
-
-    // 3. Construct the page's widget
+    // 2. Construct the page's widget
     let queue_table = Table::new(
         queue
             .iter()

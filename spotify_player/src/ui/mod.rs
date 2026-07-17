@@ -4,13 +4,14 @@ use crate::{
         Album, Artist, ArtistFocusState, BrowsePageUIState, Context, ContextPageUIState,
         DataReadGuard, Id, LibraryFocusState, MutableWindowState, PageState, PageType,
         PlaybackMetadata, PlaylistCreateCurrentField, PlaylistFolderItem, PlaylistPopupAction,
-        PopupState, SearchFocusState, SharedState, Track, UIStateGuard,
+        PopupState, RequestFeedbackKind, RequestKey, RequestStatus, SearchFocusState, SharedState,
+        Track, UIStateGuard,
     },
 };
 use anyhow::{Context as AnyhowContext, Result};
 use ratatui::{
     layout::{Alignment, Constraint, Layout, Rect},
-    style::{Modifier, Style},
+    style::{Color, Modifier, Style},
     text::{Line, Span, Text},
     widgets::{
         Block, BorderType, Borders, Cell, Gauge, LineGauge, List, ListItem, ListState, Paragraph,
@@ -144,11 +145,35 @@ fn render_application(frame: &mut Frame, state: &SharedState, ui: &mut UIStateGu
     // See: https://github.com/aome510/spotify-player/issues/498
     let rect = playback::render_playback_window(frame, state, ui, rect);
 
+    let rect = render_request_feedback(frame, state, rect);
+
     let rect = popup::render_shortcut_help_popup(frame, ui, rect);
 
     let (rect, is_active) = popup::render_popup(frame, state, ui, rect);
 
     render_main_layout(is_active, frame, state, ui, rect);
+}
+
+fn render_request_feedback(frame: &mut Frame, state: &SharedState, rect: Rect) -> Rect {
+    let Some(feedback) = state.requests.read().visible_feedback() else {
+        return rect;
+    };
+
+    let chunks = Layout::vertical([Constraint::Fill(0), Constraint::Length(1)]).split(rect);
+    let (label, color) = match feedback.kind {
+        RequestFeedbackKind::Pending => ("[Pending]", Color::Yellow),
+        RequestFeedbackKind::Success => ("[Success]", Color::Green),
+        RequestFeedbackKind::Error => ("[Error]", Color::Red),
+    };
+    let message = Line::from(vec![
+        Span::styled(
+            format!("{label} "),
+            Style::default().fg(color).add_modifier(Modifier::BOLD),
+        ),
+        Span::raw(feedback.message),
+    ]);
+    frame.render_widget(Paragraph::new(message), chunks[1]);
+    chunks[0]
 }
 
 /// Render the application's main layout

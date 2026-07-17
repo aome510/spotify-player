@@ -31,6 +31,7 @@ pub enum PopupState {
         name: LineInput,
         desc: LineInput,
         current_field: PlaylistCreateCurrentField,
+        submitting: bool,
     },
     ConfirmAction {
         message: String,

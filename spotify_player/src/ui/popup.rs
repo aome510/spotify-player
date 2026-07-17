@@ -2,13 +2,31 @@ use crate::{command::Command, utils::filtered_items_from_query};
 
 use super::{
     config, utils, utils::construct_and_render_block, Borders, Cell, Constraint, Frame, Layout,
-    Paragraph, PlaylistCreateCurrentField, PlaylistPopupAction, PopupState, Rect, Row, SharedState,
-    Table, UIStateGuard,
+    Paragraph, PlaylistCreateCurrentField, PlaylistPopupAction, PopupState, Rect, RequestKey,
+    RequestStatus, Row, SharedState, Table, UIStateGuard,
 };
 
 const SHORTCUT_TABLE_N_COLUMNS: usize = 3;
 const SHORTCUT_TABLE_CONSTRAINS: [Constraint; SHORTCUT_TABLE_N_COLUMNS] =
     [Constraint::Ratio(1, 3); 3];
+
+fn request_status_message(
+    state: &SharedState,
+    key: &RequestKey,
+    has_content: bool,
+    loading_message: &str,
+    empty_message: &str,
+    failure_message: &str,
+) -> Option<String> {
+    match state.requests.read().status(key).cloned() {
+        Some(RequestStatus::Failed(error)) => Some(format!(
+            "{failure_message}: {error}. Open Logs for details."
+        )),
+        Some(RequestStatus::Loading) | None if !has_content => Some(loading_message.to_owned()),
+        Some(RequestStatus::Succeeded) if !has_content => Some(empty_message.to_owned()),
+        _ => None,
+    }
+}
 
 /// Render a popup (if any) to handle a command or show additional information
 /// depending on the current popup state.
@@ -28,13 +46,34 @@ pub fn render_popup(
                 name,
                 desc,
                 current_field,
+                ..
             } => {
+                let request_status = state
+                    .requests
+                    .read()
+                    .status(&RequestKey::CreatePlaylist)
+                    .cloned();
+                let status_message = match request_status {
+                    Some(RequestStatus::Loading) => Some("Creating playlist...".to_owned()),
+                    Some(RequestStatus::Failed(error)) => {
+                        Some(format!("Error: {error}. Press Enter to retry."))
+                    }
+                    Some(RequestStatus::Succeeded) => Some("Playlist created.".to_owned()),
+                    None => None,
+                };
+                let popup_height = if status_message.is_some() { 4 } else { 3 };
                 let chunks =
-                    Layout::vertical([Constraint::Min(0), Constraint::Length(3)]).split(rect);
+                    Layout::vertical([Constraint::Min(0), Constraint::Length(popup_height)])
+                        .split(rect);
+                let form_chunks = Layout::vertical([
+                    Constraint::Length(3),
+                    Constraint::Length(popup_height.saturating_sub(3)),
+                ])
+                .split(chunks[1]);
 
                 let popup_chunks =
                     Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)])
-                        .split(chunks[1]);
+                        .split(form_chunks[0]);
 
                 let name_input = construct_and_render_block(
                     "Enter Name for New Playlist:",
@@ -60,6 +99,9 @@ pub fn render_popup(
                     desc.widget(PlaylistCreateCurrentField::Desc == *current_field),
                     desc_input,
                 );
+                if let Some(message) = status_message {
+                    frame.render_widget(Paragraph::new(message), form_chunks[1]);
+                }
                 (chunks[0], true)
             }
             PopupState::Search { query } => {
@@ -94,7 +136,7 @@ pub fn render_popup(
                     Some(ref playback) => playback.device.id.as_deref().unwrap_or_default(),
                     None => "",
                 };
-                let items = player
+                let mut items = player
                     .devices
                     .iter()
                     .map(|d| {
@@ -108,6 +150,17 @@ pub fn render_popup(
                         (format!("{name} | {}", d.id), current_device_id == d.id)
                     })
                     .collect();
+
+                if let Some(message) = request_status_message(
+                    state,
+                    &RequestKey::Devices,
+                    !player.devices.is_empty(),
+                    "Loading devices...",
+                    "No playback devices available.",
+                    "Could not load devices",
+                ) {
+                    items = vec![(message, false)];
+                }
 
                 let rect = render_list_popup(frame, rect, "Devices", items, 5, ui);
                 (rect, false)
@@ -146,10 +199,23 @@ pub fn render_popup(
                 // Filter items based on search query if present
                 let filtered_items = filtered_items_from_query(search_query, &items);
 
-                let display_items = filtered_items
+                let mut display_items = filtered_items
                     .iter()
                     .map(|p| (p.to_string(), false))
-                    .collect();
+                    .collect::<Vec<_>>();
+
+                if let Some(message) = request_status_message(
+                    state,
+                    &RequestKey::UserPlaylists,
+                    !items.is_empty(),
+                    "Loading playlists...",
+                    "No playlists available.",
+                    "Could not load playlists",
+                ) {
+                    display_items = vec![(message, false)];
+                } else if display_items.is_empty() && !search_query.is_empty() {
+                    display_items = vec![("No matching playlists.".to_owned(), false)];
+                }
 
                 let chunks = Layout::vertical([
                     Constraint::Length(3),
@@ -174,27 +240,47 @@ pub fn render_popup(
                 (rect, false)
             }
             PopupState::UserFollowedArtistList { .. } => {
-                let items = state
-                    .data
-                    .read()
+                let data = state.data.read();
+                let mut items = data
                     .user_data
                     .followed_artists
                     .iter()
                     .map(|a| (a.to_string(), false))
-                    .collect();
+                    .collect::<Vec<_>>();
+
+                if let Some(message) = request_status_message(
+                    state,
+                    &RequestKey::UserFollowedArtists,
+                    !items.is_empty(),
+                    "Loading followed artists...",
+                    "No followed artists available.",
+                    "Could not load followed artists",
+                ) {
+                    items = vec![(message, false)];
+                }
 
                 let rect = render_list_popup(frame, rect, "User Followed Artists", items, 7, ui);
                 (rect, false)
             }
             PopupState::UserSavedAlbumList { .. } => {
-                let items = state
-                    .data
-                    .read()
+                let data = state.data.read();
+                let mut items = data
                     .user_data
                     .saved_albums
                     .iter()
                     .map(|a| (a.to_string(), false))
-                    .collect();
+                    .collect::<Vec<_>>();
+
+                if let Some(message) = request_status_message(
+                    state,
+                    &RequestKey::UserSavedAlbums,
+                    !items.is_empty(),
+                    "Loading saved albums...",
+                    "No saved albums available.",
+                    "Could not load saved albums",
+                ) {
+                    items = vec![(message, false)];
+                }
 
                 let rect = render_list_popup(frame, rect, "User Saved Albums", items, 7, ui);
                 (rect, false)
