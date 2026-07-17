@@ -29,6 +29,8 @@ sha2 = "0.11.0"
 open = "5.3.6"
 serde = { version = "1.0.228", features = ["derive"] }
 tokio = { version = "1.52.3", features = [
+	"io-util",
+	"net",
 	"rt",
 	"rt-multi-thread",
 	"macros",

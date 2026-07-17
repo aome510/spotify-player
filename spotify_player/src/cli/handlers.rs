@@ -1,30 +1,58 @@
 use crate::{auth::AuthConfig, client};
 
 use super::{
-    config, init_cli, start_socket, AlbumId, Command, ContextType, EditAction, GetRequest,
-    IdOrName, ItemType, Key, PlaylistCommand, PlaylistId, Request, Response, TrackId,
-    MAX_REQUEST_SIZE,
+    config, init_cli,
+    ipc::{
+        read_frame, write_frame, CONNECT_TIMEOUT, IO_TIMEOUT, MAX_REQUEST_SIZE, MAX_RESPONSE_SIZE,
+    },
+    start_socket, AlbumId, Command, ContextType, EditAction, GetRequest, IdOrName, ItemType, Key,
+    PlaylistCommand, PlaylistId, Request, Response, TrackId,
 };
 use anyhow::{Context, Result};
 use clap::{ArgMatches, Id};
 use clap_complete::{generate, Shell};
-use std::net::UdpSocket;
+use std::{
+    io,
+    net::{SocketAddr, TcpStream},
+    time::Duration,
+};
 
-fn receive_response(socket: &UdpSocket) -> Result<Response> {
-    // read response from the server's socket, which can be split into
-    // smaller chunks of data
-    let mut data = Vec::new();
-    let mut buf = [0; 4096];
-    loop {
-        let (n_bytes, _) = socket.recv_from(&mut buf)?;
-        if n_bytes == 0 {
-            // end of chunk
-            break;
-        }
-        data.extend_from_slice(&buf[..n_bytes]);
-    }
+fn receive_response(stream: &mut TcpStream) -> Result<Response> {
+    let data = read_frame(stream, MAX_RESPONSE_SIZE, "CLI response").with_context(|| {
+        format!(
+            "receive a complete response within {} seconds",
+            IO_TIMEOUT.as_secs()
+        )
+    })?;
+    serde_json::from_slice(&data).context("deserialize CLI response")
+}
 
-    Ok(serde_json::from_slice(&data)?)
+fn serialize_request(request: &Request) -> Result<Vec<u8>> {
+    let data = serde_json::to_vec(request).context("serialize CLI request")?;
+    anyhow::ensure!(
+        data.len() <= MAX_REQUEST_SIZE,
+        "CLI request is {} bytes, but the maximum is {} bytes; shorten the query or text fields",
+        data.len(),
+        MAX_REQUEST_SIZE
+    );
+    Ok(data)
+}
+
+fn connect_with_timeout(addr: SocketAddr, timeout: Duration) -> io::Result<TcpStream> {
+    TcpStream::connect_timeout(&addr, timeout)
+}
+
+fn configure_stream(stream: TcpStream) -> Result<TcpStream> {
+    stream
+        .set_read_timeout(Some(IO_TIMEOUT))
+        .context("set CLI response deadline")?;
+    stream
+        .set_write_timeout(Some(IO_TIMEOUT))
+        .context("set CLI request deadline")?;
+    stream
+        .set_nodelay(true)
+        .context("configure CLI connection")?;
+    Ok(stream)
 }
 
 fn get_id_or_name(args: &ArgMatches) -> IdOrName {
@@ -139,18 +167,16 @@ fn handle_playback_subcommand(args: &ArgMatches) -> Result<Request> {
     Ok(Request::Playback(command))
 }
 
-/// Tries to connect to a running client, if exists, by sending a connection request
-/// to the client via a UDP socket.
+/// Tries to connect to a running client using a bounded TCP connection.
 /// If no running client found, create a new client running in a separate thread to
 /// handle the socket request.
-fn try_connect_to_client(socket: &UdpSocket, configs: &config::Configs) -> Result<()> {
+fn try_connect_to_client(configs: &config::Configs) -> Result<TcpStream> {
     let port = configs.app_config.client_port;
-    socket.connect(("127.0.0.1", port))?;
+    let addr = SocketAddr::from(([127, 0, 0, 1], port));
 
-    // send an empty buffer as a connection request to the client
-    socket.send(&[])?;
-    if let Err(err) = socket.recv(&mut [0; 1]) {
-        if let std::io::ErrorKind::ConnectionRefused = err.kind() {
+    match connect_with_timeout(addr, CONNECT_TIMEOUT) {
+        Ok(stream) => configure_stream(stream),
+        Err(err) if err.kind() == io::ErrorKind::ConnectionRefused => {
             // no running `spotify_player` instance found,
             // initialize a new client to handle the current CLI command
 
@@ -163,21 +189,28 @@ fn try_connect_to_client(socket: &UdpSocket, configs: &config::Configs) -> Resul
             rt.block_on(client.new_session(None, false))
                 .context("new session")?;
 
-            // create a client socket for handling CLI commands
-            // NOTE: the socket must be bound *before* spawning the thread to avoid a
-            // race condition where the caller sends a request before the socket is ready.
-            let client_socket = rt.block_on(tokio::net::UdpSocket::bind(("127.0.0.1", port)))?;
+            // Bind before spawning the thread so the caller cannot race the listener startup.
+            let client_listener = rt.block_on(tokio::net::TcpListener::bind(addr))?;
 
-            // spawn a thread to handle the CLI request
             std::thread::spawn(move || {
-                rt.block_on(start_socket(&client, None, Some(client_socket)));
+                rt.block_on(start_socket(&client, None, Some(client_listener)));
             });
-        } else {
-            return Err(err.into());
-        }
-    }
 
-    Ok(())
+            let stream = connect_with_timeout(addr, CONNECT_TIMEOUT).with_context(|| {
+                format!(
+                    "connect to the new Spotify client within {} seconds",
+                    CONNECT_TIMEOUT.as_secs()
+                )
+            })?;
+            configure_stream(stream)
+        }
+        Err(err) => Err(err).with_context(|| {
+            format!(
+                "connect to the Spotify client within {} seconds",
+                CONNECT_TIMEOUT.as_secs()
+            )
+        }),
+    }
 }
 
 pub fn handle_cli_subcommand(cmd: &str, args: &ArgMatches) -> Result<()> {
@@ -214,9 +247,6 @@ pub fn handle_cli_subcommand(cmd: &str, args: &ArgMatches) -> Result<()> {
         _ => {}
     }
 
-    let socket = UdpSocket::bind("127.0.0.1:0")?;
-    try_connect_to_client(&socket, configs).context("try to connect to a client")?;
-
     // construct a socket request based on the CLI command and its arguments
     let request = match cmd {
         "get" => handle_get_subcommand(args),
@@ -238,13 +268,13 @@ pub fn handle_cli_subcommand(cmd: &str, args: &ArgMatches) -> Result<()> {
         _ => unreachable!(),
     };
 
-    // send the request to the client's socket
-    let request_buf = serde_json::to_vec(&request)?;
-    assert!(request_buf.len() <= MAX_REQUEST_SIZE);
-    socket.send(&request_buf)?;
+    let request_buf = serialize_request(&request)?;
+    let mut stream = try_connect_to_client(configs).context("connect to a Spotify client")?;
+    write_frame(&mut stream, &request_buf, MAX_REQUEST_SIZE, "CLI request")
+        .with_context(|| format!("send the request within {} seconds", IO_TIMEOUT.as_secs()))?;
 
     // receive and handle a response from the client's socket
-    match receive_response(&socket)? {
+    match receive_response(&mut stream)? {
         Response::Err(err) => {
             eprintln!("{}", String::from_utf8_lossy(&err));
             std::process::exit(1);
@@ -398,4 +428,58 @@ fn print_features() {
     print_feature!("jackaudio-backend");
     print_feature!("sdl-backend");
     print_feature!("gstreamer-backend");
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{
+        net::{TcpListener, TcpStream},
+        thread,
+        time::Duration,
+    };
+
+    use super::{connect_with_timeout, receive_response, serialize_request, Request};
+    use crate::cli::ipc::MAX_REQUEST_SIZE;
+
+    #[test]
+    fn oversized_user_input_returns_an_error() {
+        let request = Request::Search {
+            query: "x".repeat(MAX_REQUEST_SIZE),
+        };
+
+        let error = serialize_request(&request).unwrap_err();
+
+        assert!(error.to_string().contains("maximum"));
+        assert!(error.to_string().contains("shorten"));
+    }
+
+    #[test]
+    fn missing_server_connection_fails_within_the_deadline() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+        drop(listener);
+
+        let result = connect_with_timeout(addr, Duration::from_millis(100));
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn stalled_server_response_returns_an_error() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+        let server = thread::spawn(move || {
+            let (_stream, _) = listener.accept().unwrap();
+            thread::sleep(Duration::from_millis(150));
+        });
+        let mut stream = TcpStream::connect(addr).unwrap();
+        stream
+            .set_read_timeout(Some(Duration::from_millis(25)))
+            .unwrap();
+
+        let error = receive_response(&mut stream).unwrap_err();
+
+        assert!(error.to_string().contains("complete response"));
+        server.join().unwrap();
+    }
 }

@@ -1,12 +1,11 @@
 mod client;
 mod commands;
 mod handlers;
+mod ipc;
 
 use crate::config;
 use rspotify::model::{AlbumId, ArtistId, Id, PlaylistId, TrackId};
 use serde::{Deserialize, Serialize};
-
-const MAX_REQUEST_SIZE: usize = 4096;
 
 pub use client::start_socket;
 pub use handlers::handle_cli_subcommand;
