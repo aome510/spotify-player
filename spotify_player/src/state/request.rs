@@ -1,6 +1,7 @@
 use std::{collections::HashMap, time::Duration};
 
 const SUCCESS_FEEDBACK_DURATION: Duration = Duration::from_secs(4);
+const MAX_TRACKED_STATUSES: usize = 128;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum RequestKey {
@@ -133,6 +134,7 @@ impl RequestTracker {
                     status: RequestStatus::Loading,
                 },
             );
+            self.evict_oldest_status();
         }
         if let Some(operation) = token.operation.as_ref() {
             self.feedback = Some(TrackedFeedback {
@@ -203,6 +205,21 @@ impl RequestTracker {
         }
     }
 
+    fn evict_oldest_status(&mut self) {
+        if self.statuses.len() <= MAX_TRACKED_STATUSES {
+            return;
+        }
+
+        let oldest_key = self
+            .statuses
+            .iter()
+            .min_by_key(|(_, tracked)| tracked.request_id)
+            .map(|(key, _)| key.clone());
+        if let Some(key) = oldest_key {
+            self.statuses.remove(&key);
+        }
+    }
+
     fn update_feedback(
         &mut self,
         token: &RequestToken,
@@ -226,7 +243,7 @@ impl RequestTracker {
 mod tests {
     use super::{
         RequestFeedbackKind, RequestKey, RequestMetadata, RequestOperation, RequestStatus,
-        RequestTracker,
+        RequestTracker, MAX_TRACKED_STATUSES,
     };
 
     #[test]
@@ -267,5 +284,47 @@ mod tests {
         assert_eq!(feedback.kind, RequestFeedbackKind::Error);
         assert!(feedback.message.contains("network unavailable"));
         assert!(feedback.message.contains("See Logs"));
+    }
+
+    #[test]
+    fn tracked_statuses_are_bounded_to_the_most_recent_requests() {
+        let mut tracker = RequestTracker::default();
+
+        for index in 0..=MAX_TRACKED_STATUSES {
+            tracker.begin(RequestMetadata::tracked(RequestKey::Search(format!(
+                "query-{index}"
+            ))));
+        }
+
+        assert_eq!(tracker.statuses.len(), MAX_TRACKED_STATUSES);
+        assert_eq!(
+            tracker.status(&RequestKey::Search("query-0".to_owned())),
+            None
+        );
+        assert_eq!(
+            tracker.status(&RequestKey::Search(format!("query-{MAX_TRACKED_STATUSES}"))),
+            Some(&RequestStatus::Loading)
+        );
+    }
+
+    #[test]
+    fn completion_for_an_evicted_generation_cannot_replace_a_new_request() {
+        let mut tracker = RequestTracker::default();
+        let key = RequestKey::Search("reused-query".to_owned());
+        let evicted = tracker.begin(RequestMetadata::tracked(key.clone()));
+
+        for index in 0..MAX_TRACKED_STATUSES {
+            tracker.begin(RequestMetadata::tracked(RequestKey::Search(format!(
+                "other-query-{index}"
+            ))));
+        }
+        assert_eq!(tracker.status(&key), None);
+
+        let current = tracker.begin(RequestMetadata::tracked(key.clone()));
+        tracker.fail(&evicted, "stale failure");
+        assert_eq!(tracker.status(&key), Some(&RequestStatus::Loading));
+
+        tracker.succeed(&current);
+        assert_eq!(tracker.status(&key), Some(&RequestStatus::Succeeded));
     }
 }
