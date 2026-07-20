@@ -14,6 +14,10 @@ pub struct PlayerState {
     // Related issue: https://github.com/aome510/spotify-player/issues/109
     pub buffered_playback: Option<PlaybackMetadata>,
 
+    /// Identifies the most recently started playback refresh. A refresh only applies its result
+    /// while its generation remains current.
+    playback_refresh_generation: u64,
+
     pub queue: Option<rspotify::model::CurrentUserQueue>,
 
     /// The currently playing Tracks context (for contexts not tracked by Spotify's playback, e.g. liked/top tracks)
@@ -26,6 +30,19 @@ pub struct PlayerState {
 }
 
 impl PlayerState {
+    pub(crate) fn begin_playback_refresh(&mut self) -> u64 {
+        self.invalidate_playback_refreshes();
+        self.playback_refresh_generation
+    }
+
+    pub(crate) fn invalidate_playback_refreshes(&mut self) {
+        self.playback_refresh_generation = self.playback_refresh_generation.wrapping_add(1);
+    }
+
+    pub(crate) fn is_current_playback_refresh(&self, generation: u64) -> bool {
+        self.playback_refresh_generation == generation
+    }
+
     /// Get the current playback
     ///
     /// # Note
@@ -112,5 +129,30 @@ impl PlayerState {
             },
             None => None,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::PlayerState;
+
+    #[test]
+    fn newer_playback_refresh_supersedes_older_refresh() {
+        let mut player = PlayerState::default();
+        let older = player.begin_playback_refresh();
+        let newer = player.begin_playback_refresh();
+
+        assert!(!player.is_current_playback_refresh(older));
+        assert!(player.is_current_playback_refresh(newer));
+    }
+
+    #[test]
+    fn player_change_invalidates_pending_playback_refresh() {
+        let mut player = PlayerState::default();
+        let pending = player.begin_playback_refresh();
+
+        player.invalidate_playback_refreshes();
+
+        assert!(!player.is_current_playback_refresh(pending));
     }
 }
