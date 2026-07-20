@@ -52,6 +52,7 @@ pub enum Command {
     SwitchTheme,
     SwitchDevice,
     Search,
+    SearchRegex,
     Queue,
 
     ShowActionsOnSelectedItem,
@@ -344,6 +345,7 @@ impl Command {
             Self::SwitchTheme => "open a popup for switching theme",
             Self::SwitchDevice => "open a popup for switching device",
             Self::Search => "open a popup for searching in the current page",
+            Self::SearchRegex => "nao esquece de colocar",
             Self::BrowseUserPlaylists => "open a popup for browsing user's playlists",
             Self::BrowseUserFollowedArtists => "open a popup for browsing user's followed artists",
             Self::BrowseUserSavedAlbums => "open a popup for browsing user's saved albums",
