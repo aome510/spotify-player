@@ -34,6 +34,7 @@ mod spotify;
 pub use handlers::*;
 pub use request::*;
 use serde::Deserialize;
+pub(crate) use spotify::WebApiClient;
 
 const SPOTIFY_API_ENDPOINT: &str = "https://api.spotify.com/v1";
 const PLAYBACK_TYPES: [&rspotify::model::AdditionalType; 2] = [
@@ -49,13 +50,13 @@ pub struct AppClient {
     spotify: Arc<spotify::Spotify>,
     auth_config: AuthConfig,
     /// The Spotify Web API client, used for interacting with Spotify Web APIs
-    api_client: rspotify::AuthCodePkceSpotify,
+    api_client: WebApiClient,
     #[cfg(feature = "streaming")]
     stream_conn: Arc<Mutex<Option<librespot_connect::Spirc>>>,
 }
 
 impl Deref for AppClient {
-    type Target = rspotify::AuthCodePkceSpotify;
+    type Target = WebApiClient;
     fn deref(&self) -> &Self::Target {
         &self.api_client
     }
@@ -65,7 +66,7 @@ impl Deref for AppClient {
 ///
 /// The returned client is unauthenticated; call [`auth::prompt_for_user_token`] to obtain an
 /// access token.
-pub fn new_api_client() -> Result<rspotify::AuthCodePkceSpotify> {
+pub fn new_api_client() -> Result<WebApiClient> {
     let configs = config::get_config();
 
     let id = configs.app_config.get_client_id()?;
@@ -102,8 +103,8 @@ pub fn new_api_client() -> Result<rspotify::AuthCodePkceSpotify> {
         cache_path: configs.cache_folder.join("user_client_token.json"),
         ..Default::default()
     };
-    Ok(rspotify::AuthCodePkceSpotify::with_config(
-        creds, oauth, config,
+    Ok(WebApiClient::new(
+        rspotify::AuthCodePkceSpotify::with_config(creds, oauth, config),
     ))
 }
 
