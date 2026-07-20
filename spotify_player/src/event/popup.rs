@@ -417,7 +417,6 @@ fn handle_key_sequence_for_search_popup(
             match c {
                 crossterm::event::KeyCode::Char(c) => {
                     query.push(c);
-                    // TODO isso funfa: query.push(c);
                     ui.current_page_mut().select(0);
                     return Ok(true);
                 }

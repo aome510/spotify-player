@@ -187,7 +187,6 @@ async fn handle_socket_request(
             let resp = handle_search_request(client, query).await?;
             Ok(resp)
         }
-        // TODO aqui fica a search por command line, precisa fazer um regex aqui tb
         Request::Lyrics { id_or_name } => handle_lyrics_request(client, state, id_or_name).await,
     }
 }
