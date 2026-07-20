@@ -97,7 +97,7 @@ fn handle_command_for_library_page(
     }
 
     if command == Command::SearchRegex {
-        ui.new_regex_popup();
+        ui.new_regex_search_popup();
         return Ok(true);
     }
 

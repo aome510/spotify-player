@@ -75,10 +75,10 @@ impl UIState {
         self.current_page_mut().select(0);
         self.popup = Some(PopupState::Search {
             query: String::new(),
-        }); // TODO impl?
+        });
     }
 
-    pub fn new_regex_popup(&mut self){
+    pub fn new_regex_search_popup(&mut self){
         self.current_page_mut().select(0);
          self.popup = Some(PopupState::RegexSearch {
             pattern: String::new(),
@@ -109,6 +109,7 @@ impl UIState {
     pub fn search_filtered_items<'a, T: std::fmt::Display>(&self, items: &'a [T]) -> Vec<&'a T> {
         match self.popup {
             Some(PopupState::Search { ref query }) => filtered_items_from_query(query, items),
+            Some(PopupState::RegexSearch { ref pattern }) => [].iter().collect::<Vec<_>>(),
             _ => items.iter().collect::<Vec<_>>(),
         }
     }

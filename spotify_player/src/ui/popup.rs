@@ -68,17 +68,15 @@ pub fn render_popup(
 
                 let rect =
                     construct_and_render_block("Search", &ui.theme, Borders::ALL, frame, chunks[1]);
-                //TODO acheiii
                 frame.render_widget(Paragraph::new(format!("/{query}")), rect);
                 (chunks[0], true)
             },
             PopupState::RegexSearch { pattern } => {
-                //TODO impl
                 let chunks =
                     Layout::vertical([Constraint::Fill(0), Constraint::Length(3)]).split(rect);
 
                 let rect =
-                    construct_and_render_block("Pattern", &ui.theme, Borders::ALL, frame, chunks[1]);
+                    construct_and_render_block("Pattern Search", &ui.theme, Borders::ALL, frame, chunks[1]);
                 frame.render_widget(Paragraph::new(format!(";{pattern}")), rect);
                 (chunks[0], true)
             },
