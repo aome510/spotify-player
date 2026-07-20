@@ -6,7 +6,10 @@ use tracing::Instrument;
 
 use crate::{
     config,
-    state::{ContextId, ContextPageType, ContextPageUIState, PageState, PlayableId, SharedState},
+    state::{
+        ContextId, ContextPageType, ContextPageUIState, PageState, PlayableId, PopupState,
+        SharedState,
+    },
 };
 
 use crate::utils::map_join;
@@ -18,6 +21,17 @@ struct PlayerEventHandlerState {
     last_playback_refresh_timer: Instant,
 }
 
+fn short_error_message(err: &anyhow::Error) -> String {
+    const MAX_CHARS: usize = 140;
+
+    let mut message = err.to_string();
+    if let Some((truncate_at, _)) = message.char_indices().nth(MAX_CHARS) {
+        message.truncate(truncate_at);
+        message.push_str("...");
+    }
+    message
+}
+
 /// starts the client's request handler
 pub async fn start_client_handler(
     state: &SharedState,
@@ -25,14 +39,38 @@ pub async fn start_client_handler(
     client_sub: &flume::Receiver<ClientRequest>,
 ) {
     while let Ok(request) = client_sub.recv_async().await {
+        let token = state.requests.write().begin(request.metadata());
         let state = state.clone();
         let client = client.clone();
         let span = tracing::info_span!("client_request", request = ?request);
 
         tokio::task::spawn(
             async move {
-                if let Err(err) = client.handle_request(&state, request).await {
-                    tracing::error!("Failed to handle client request: {err:#}");
+                let close_playlist_popup = matches!(&request, ClientRequest::CreatePlaylist { .. });
+
+                match client.handle_request(&state, request).await {
+                    Ok(()) => {
+                        state.requests.write().succeed(&token);
+                        if close_playlist_popup {
+                            let mut ui = state.ui.lock();
+                            if matches!(ui.popup, Some(PopupState::PlaylistCreate { .. })) {
+                                ui.popup = None;
+                            }
+                        }
+                    }
+                    Err(err) => {
+                        let short_error = short_error_message(&err);
+                        state.requests.write().fail(&token, &short_error);
+                        if close_playlist_popup {
+                            let mut ui = state.ui.lock();
+                            if let Some(PopupState::PlaylistCreate { submitting, .. }) =
+                                ui.popup.as_mut()
+                            {
+                                *submitting = false;
+                            }
+                        }
+                        tracing::error!("Failed to handle client request: {err:#}");
+                    }
                 }
             }
             .instrument(span),

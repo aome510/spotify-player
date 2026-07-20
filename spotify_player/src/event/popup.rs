@@ -1,6 +1,8 @@
 use super::*;
 use crate::{
-    command::construct_artist_actions, state::ConfirmableAction, utils::filtered_items_from_query,
+    command::construct_artist_actions,
+    state::{ConfirmableAction, RequestKey},
+    utils::filtered_items_from_query,
 };
 use anyhow::Context;
 
@@ -16,7 +18,12 @@ pub fn handle_key_sequence_for_popup(
             return handle_key_sequence_for_search_popup(key_sequence, client_pub, state, ui);
         }
         PopupState::PlaylistCreate { .. } => {
-            return handle_key_sequence_for_create_playlist_popup(key_sequence, client_pub, ui);
+            return handle_key_sequence_for_create_playlist_popup(
+                key_sequence,
+                client_pub,
+                state,
+                ui,
+            );
         }
         PopupState::ActionList(item, ..) => {
             return handle_key_sequence_for_action_list_popup(
@@ -320,12 +327,22 @@ pub fn handle_key_sequence_for_popup(
 fn handle_key_sequence_for_create_playlist_popup(
     key_sequence: &KeySequence,
     client_pub: &flume::Sender<ClientRequest>,
+    state: &SharedState,
     ui: &mut UIStateGuard,
 ) -> Result<bool> {
+    if state
+        .requests
+        .read()
+        .is_loading(&RequestKey::CreatePlaylist)
+    {
+        return Ok(true);
+    }
+
     let Some(PopupState::PlaylistCreate {
         name,
         desc,
         current_field,
+        submitting,
     }) = &mut ui.popup
     else {
         return Ok(false);
@@ -333,13 +350,16 @@ fn handle_key_sequence_for_create_playlist_popup(
     if key_sequence.keys.len() == 1 {
         match &key_sequence.keys[0] {
             Key::None(crossterm::event::KeyCode::Enter) => {
+                if *submitting {
+                    return Ok(true);
+                }
                 client_pub.send(ClientRequest::CreatePlaylist {
                     playlist_name: name.get_text(),
                     public: false,
                     collab: false,
                     desc: desc.get_text(),
                 })?;
-                ui.popup = None;
+                *submitting = true;
                 return Ok(true);
             }
             Key::None(crossterm::event::KeyCode::Tab | crossterm::event::KeyCode::BackTab) => {
