@@ -133,30 +133,50 @@ pub fn get_creds(auth_config: &AuthConfig, reauth: bool, use_cached: bool) -> Re
 /// When `force` is set, any cached token is ignored and a fresh interactive authorization flow is
 /// always run. This is used by the `authenticate` CLI command to re-authenticate on demand.
 pub async fn prompt_for_user_token(
-    client: &mut rspotify::AuthCodePkceSpotify,
+    client: &mut crate::client::WebApiClient,
     force: bool,
 ) -> Result<()> {
     // Reuse a cached token when possible, refreshing it if it has expired.
     if !force {
         if let Ok(Some(token)) = client.read_token_cache(true).await {
             let expired = token.is_expired();
+            // A token without a refresh token cannot be renewed once it expires and
+            // gets wiped by the next refresh (e.g. caches nulled by Spotify's
+            // refresh-token change). Treat it as unusable so we re-authenticate and
+            // obtain a fresh refresh token instead of serving a dead-end token.
+            let renewable = token.refresh_token.is_some();
             *client.get_token().lock().await.unwrap() = Some(token);
 
-            if !expired {
+            if !expired && renewable {
                 return Ok(());
             }
 
-            if let Some(refreshed) = client
-                .refetch_token()
-                .await
-                .context("refresh expired token from cache")?
-            {
-                *client.get_token().lock().await.unwrap() = Some(refreshed);
-                client
-                    .write_token_cache()
-                    .await
-                    .context("write refreshed token to cache")?;
-                return Ok(());
+            // A refresh may fail because the refresh token expired (Spotify expires
+            // refresh tokens 6 months after the original authorization, returning
+            // `invalid_grant`) or because no refresh token is available. In either
+            // case, fall through to the interactive flow below rather than failing.
+            match client.refetch_token().await {
+                Ok(Some(refreshed)) => {
+                    *client.get_token().lock().await.unwrap() = Some(refreshed);
+                    client
+                        .write_token_cache()
+                        .await
+                        .context("write refreshed token to cache")?;
+                    return Ok(());
+                }
+                Ok(None) => {
+                    tracing::warn!(
+                        "Cached token could not be refreshed (no refresh token available); \
+                         falling back to interactive re-authentication."
+                    );
+                }
+                Err(err) => {
+                    tracing::warn!(
+                        "Failed to refresh the cached token (the refresh token may have expired \
+                         per Spotify's 6-month refresh-token expiration policy); \
+                         falling back to interactive re-authentication: {err:#}"
+                    );
+                }
             }
         }
     }
