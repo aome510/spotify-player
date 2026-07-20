@@ -2,7 +2,7 @@ use crate::{
     config::{self, Theme},
     key,
     ui::{self, Orientation},
-    utils::filtered_items_from_query,
+    utils::{filtered_items_from_query, filtered_items_from_regex_pattern},
 };
 
 #[cfg(feature = "image")]
@@ -109,7 +109,7 @@ impl UIState {
     pub fn search_filtered_items<'a, T: std::fmt::Display>(&self, items: &'a [T]) -> Vec<&'a T> {
         match self.popup {
             Some(PopupState::Search { ref query }) => filtered_items_from_query(query, items),
-            Some(PopupState::RegexSearch { ref pattern }) => [].iter().collect::<Vec<_>>(),
+            Some(PopupState::RegexSearch { ref pattern }) => filtered_items_from_regex_pattern(pattern, items),
             _ => items.iter().collect::<Vec<_>>(),
         }
     }
