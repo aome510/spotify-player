@@ -366,42 +366,6 @@ fn handle_key_sequence_for_create_playlist_popup(
     Ok(false)
 }
 
-fn handle_key_sequence_for_regex_search_popup(
-    key_sequence: &KeySequence,
-    client_pub: &flume::Sender<ClientRequest>,
-    state: &SharedState,
-    ui: &mut UIStateGuard,
-) -> Result<bool> {
-    let Some(PopupState::RegexSearch { ref mut pattern }) = &mut ui.popup else {
-        return Ok(false);
-    };
-    if key_sequence.keys.len() == 1 {
-        if let Key::None(c) = key_sequence.keys[0] {
-            match c {
-                crossterm::event::KeyCode::Char(c) => {
-                    pattern.push(c);
-                    ui.current_page_mut().select(0);
-                    return Ok(true);
-                }
-                crossterm::event::KeyCode::Backspace => {
-                    if pattern.is_empty() {
-                        // close regex search popup when user presses backspace on empty search
-                        ui.popup = None;
-                    } else {
-                        pattern.pop().unwrap();
-                        ui.current_page_mut().select(0);
-                    }
-                    return Ok(true);
-                }
-                _ => {}
-            }
-        }
-    }
-
-    // key sequence not handle by the popup should be moved to the current page's event handler
-    page::handle_key_sequence_for_page(key_sequence, client_pub, state, ui)
-}
-
 fn handle_key_sequence_for_search_popup(
     key_sequence: &KeySequence,
     client_pub: &flume::Sender<ClientRequest>,
@@ -426,6 +390,42 @@ fn handle_key_sequence_for_search_popup(
                         ui.popup = None;
                     } else {
                         query.pop().unwrap();
+                        ui.current_page_mut().select(0);
+                    }
+                    return Ok(true);
+                }
+                _ => {}
+            }
+        }
+    }
+
+    // key sequence not handle by the popup should be moved to the current page's event handler
+    page::handle_key_sequence_for_page(key_sequence, client_pub, state, ui)
+}
+
+fn handle_key_sequence_for_regex_search_popup(
+    key_sequence: &KeySequence,
+    client_pub: &flume::Sender<ClientRequest>,
+    state: &SharedState,
+    ui: &mut UIStateGuard,
+) -> Result<bool> {
+    let Some(PopupState::RegexSearch { ref mut pattern }) = &mut ui.popup else {
+        return Ok(false);
+    };
+    if key_sequence.keys.len() == 1 {
+        if let Key::None(c) = key_sequence.keys[0] {
+            match c {
+                crossterm::event::KeyCode::Char(c) => {
+                    pattern.push(c);
+                    ui.current_page_mut().select(0);
+                    return Ok(true);
+                }
+                crossterm::event::KeyCode::Backspace => {
+                    if pattern.is_empty() {
+                        // close regex search popup when user presses backspace on empty search
+                        ui.popup = None;
+                    } else {
+                        pattern.pop().unwrap();
                         ui.current_page_mut().select(0);
                     }
                     return Ok(true);

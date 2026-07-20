@@ -1,5 +1,5 @@
 use std::{
-    collections::HashSet, fmt::Write as _, fs::{create_dir_all, remove_dir_all}, io::Write, net::SocketAddr, process::exit,
+    collections::HashSet, fmt::Write as _, fs::{create_dir_all, remove_dir_all}, io::Write, net::SocketAddr,
 };
 
 use anyhow::{Context as _, Result};
