@@ -731,9 +731,11 @@ fn handle_global_command(
             });
         }
         Command::SearchPage => {
+            // TODO essa é a janela inteira de search
+            ui.is_running = false;
             ui.new_page(PageState::Search {
                 line_input: LineInput::default(),
-                current_query: String::new(),
+                current_query: String::from("teste"),
                 state: SearchPageUIState::new(),
             });
         }

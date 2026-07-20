@@ -75,6 +75,13 @@ impl UIState {
         self.current_page_mut().select(0);
         self.popup = Some(PopupState::Search {
             query: String::new(),
+        }); // TODO impl?
+    }
+
+    pub fn new_regex_popup(&mut self){
+        self.current_page_mut().select(0);
+         self.popup = Some(PopupState::RegexSearch {
+            pattern: String::new(),
         });
     }
 

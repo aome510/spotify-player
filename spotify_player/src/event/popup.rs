@@ -15,6 +15,9 @@ pub fn handle_key_sequence_for_popup(
         PopupState::Search { .. } => {
             return handle_key_sequence_for_search_popup(key_sequence, client_pub, state, ui);
         }
+        PopupState::RegexSearch { .. } => {
+            // TODO impl
+        }
         PopupState::PlaylistCreate { .. } => {
             return handle_key_sequence_for_create_playlist_popup(key_sequence, client_pub, ui);
         }
@@ -56,7 +59,7 @@ pub fn handle_key_sequence_for_popup(
         PopupState::ConfirmAction { .. } => {
             anyhow::bail!("confirm action should be handled before")
         }
-        PopupState::Search { .. } => anyhow::bail!("search popup should be handled before"),
+        PopupState::Search { .. } | PopupState::RegexSearch { .. } => anyhow::bail!("search popup should be handled before"),
         PopupState::PlaylistCreate { .. } => {
             anyhow::bail!("create playlist popup should be handled before")
         }
@@ -371,13 +374,14 @@ fn handle_key_sequence_for_search_popup(
 ) -> Result<bool> {
     // handle user's input that updates the search query
     let Some(PopupState::Search { ref mut query }) = &mut ui.popup else {
-        return Ok(false);
+        return Ok(false); // TODO impl?
     };
     if key_sequence.keys.len() == 1 {
         if let Key::None(c) = key_sequence.keys[0] {
             match c {
                 crossterm::event::KeyCode::Char(c) => {
                     query.push(c);
+                    // TODO isso funfa: query.push(c);
                     ui.current_page_mut().select(0);
                     return Ok(true);
                 }

@@ -1,9 +1,5 @@
 use std::{
-    collections::HashSet,
-    fmt::Write as _,
-    fs::{create_dir_all, remove_dir_all},
-    io::Write,
-    net::SocketAddr,
+    collections::HashSet, fmt::Write as _, fs::{create_dir_all, remove_dir_all}, io::Write, net::SocketAddr, process::exit,
 };
 
 use anyhow::{Context as _, Result};
@@ -191,6 +187,7 @@ async fn handle_socket_request(
             let resp = handle_search_request(client, query).await?;
             Ok(resp)
         }
+        // TODO aqui fica a search por command line, precisa fazer um regex aqui tb
         Request::Lyrics { id_or_name } => handle_lyrics_request(client, state, id_or_name).await,
     }
 }
@@ -337,7 +334,6 @@ async fn handle_get_item_request(
 
 async fn handle_search_request(client: &AppClient, query: String) -> Result<Vec<u8>> {
     let search_result = client.search(&query).await?;
-
     Ok(serde_json::to_vec(&search_result)?)
 }
 
