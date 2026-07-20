@@ -139,8 +139,6 @@ impl WebApiClient {
         Self(inner)
     }
 
-    /// Forwards the inherent [`AuthCodePkceSpotify::get_authorize_url`], which needs
-    /// `&mut self` to store the PKCE verifier later read by `request_token`.
     pub fn get_authorize_url(&mut self, verifier_bytes: Option<usize>) -> ClientResult<String> {
         self.0.get_authorize_url(verifier_bytes)
     }
@@ -165,9 +163,7 @@ impl BaseClient for WebApiClient {
     }
 
     async fn refetch_token(&self) -> ClientResult<Option<Token>> {
-        // Capture the current refresh token before refreshing. The guard is a
-        // statement-level temporary released at the `;`, so it is not held across
-        // the inner refetch (which locks the same mutex) — avoids a deadlock.
+        // Capture the current refresh token before refreshing
         let previous_refresh_token = self
             .0
             .get_token()
