@@ -285,7 +285,7 @@ The [`theme_parse`](../scripts/theme_parse) Python script (requires `toml` and `
 Example:
 
 ```
-./theme_parse "Builtin Solarized Dark" "solarized_dark"  >> ~/.config/spotify-player/theme.toml
+./theme_parse "iTerm2 Solarized Dark" "solarized_dark"  >> ~/.config/spotify-player/theme.toml
 ```
 
 This converts the [Builtin Solarized Dark](https://github.com/mbadolato/iTerm2-Color-Schemes/blob/master/alacritty/Builtin%20Solarized%20Dark.yml) color scheme to a theme named `solarized_dark`.
