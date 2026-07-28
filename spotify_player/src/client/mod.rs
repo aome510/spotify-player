@@ -230,11 +230,60 @@ impl AppClient {
 
         #[cfg(feature = "streaming")]
         if let Some(state) = state {
-            if state.is_streaming_enabled() {
+            use crate::config::StreamingType;
+            let enable_streaming = config::get_config().app_config.enable_streaming.clone();
+
+            // `Always` and `DaemonOnly` go through the existing path.
+            // `Auto` queries the user's available Spotify Connect devices first:
+            // if any device is already active, skip librespot and act as a Web
+            // API remote (no local audio engine); otherwise fall back to the
+            // `Always` path.
+            if enable_streaming == StreamingType::Always
+                || (enable_streaming == StreamingType::DaemonOnly && state.is_daemon)
+            {
                 self.new_streaming_connection(state.clone(), session.clone(), creds.clone())
                     .await
                     .context("new streaming connection")?;
                 connected = true;
+            } else if enable_streaming == StreamingType::Auto {
+                match self.available_devices().await {
+                    Ok(devices) => {
+                        let has_active = devices.iter().any(|d| d.is_active);
+                        if has_active {
+                            tracing::info!(
+                                "Auto streaming: an active Spotify Connect device was found; \
+                                 running in Web API mode without a local librespot player"
+                            );
+                        } else {
+                            tracing::info!(
+                                "Auto streaming: no active Spotify Connect device found; \
+                                 initializing a local librespot player"
+                            );
+                            self.new_streaming_connection(
+                                state.clone(),
+                                session.clone(),
+                                creds.clone(),
+                            )
+                            .await
+                            .context("new streaming connection")?;
+                            connected = true;
+                        }
+                    }
+                    Err(err) => {
+                        tracing::warn!(
+                            "Auto streaming: failed to query available devices; \
+                             falling back to local librespot: {err:#}"
+                        );
+                        self.new_streaming_connection(
+                            state.clone(),
+                            session.clone(),
+                            creds.clone(),
+                        )
+                        .await
+                        .context("new streaming connection")?;
+                        connected = true;
+                    }
+                }
             }
         }
 
