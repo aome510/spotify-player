@@ -1080,72 +1080,57 @@ impl AppClient {
 
     /// Search for items (tracks, artists, albums, playlists) matching a given query
     pub async fn search(&self, query: &str) -> Result<SearchResults> {
-        let (
-            track_result,
-            artist_result,
-            album_result,
-            playlist_result,
-            show_result,
-            episode_result,
-        ) = tokio::try_join!(
-            self.search_specific_type(query, rspotify::model::SearchType::Track),
-            self.search_specific_type(query, rspotify::model::SearchType::Artist),
-            self.search_specific_type(query, rspotify::model::SearchType::Album),
-            self.search_specific_type(query, rspotify::model::SearchType::Playlist),
-            self.search_specific_type(query, rspotify::model::SearchType::Show),
-            self.search_specific_type(query, rspotify::model::SearchType::Episode)
-        )?;
+        // Show and Episode searches are skipped: the mixed-results endpoint does
+        // not always populate fields rspotify's typed models require (e.g. artist
+        // `followers`), so a successful HTTP 200 still fails to deserialize and
+        // the whole search returns an error. Dropping them also cuts the request
+        // burst from 6 to 4, which reduces the load that triggers the rate-limit
+        // errors reported in #974 and #890.
+        let track_result = self.search_specific_type(query, rspotify::model::SearchType::Track);
+        let artist_result = self.search_specific_type(query, rspotify::model::SearchType::Artist);
+        let album_result = self.search_specific_type(query, rspotify::model::SearchType::Album);
+        let playlist_result =
+            self.search_specific_type(query, rspotify::model::SearchType::Playlist);
 
-        let (tracks, artists, albums, playlists, shows, episodes) = (
-            match track_result {
-                rspotify::model::SearchResult::Tracks(p) => p
-                    .items
-                    .into_iter()
-                    .filter_map(Track::try_from_full_track)
-                    .collect(),
-                _ => anyhow::bail!("expect a track search result"),
-            },
-            match artist_result {
-                rspotify::model::SearchResult::Artists(p) => {
-                    p.items.into_iter().map(std::convert::Into::into).collect()
-                }
-                _ => anyhow::bail!("expect an artist search result"),
-            },
-            match album_result {
-                rspotify::model::SearchResult::Albums(p) => p
-                    .items
-                    .into_iter()
-                    .filter_map(Album::try_from_simplified_album)
-                    .collect(),
-                _ => anyhow::bail!("expect an album search result"),
-            },
-            match playlist_result {
-                rspotify::model::SearchResult::Playlists(p) => {
-                    p.items.into_iter().map(std::convert::Into::into).collect()
-                }
-                _ => anyhow::bail!("expect a playlist search result"),
-            },
-            match show_result {
-                rspotify::model::SearchResult::Shows(p) => {
-                    p.items.into_iter().map(std::convert::Into::into).collect()
-                }
-                _ => anyhow::bail!("expect a show search result"),
-            },
-            match episode_result {
-                rspotify::model::SearchResult::Episodes(p) => {
-                    p.items.into_iter().map(std::convert::Into::into).collect()
-                }
-                _ => anyhow::bail!("expect a episode search result"),
-            },
-        );
+        let (track_r, artist_r, album_r, playlist_r) =
+            tokio::try_join!(track_result, artist_result, album_result, playlist_result,)?;
+
+        let tracks = match track_r {
+            rspotify::model::SearchResult::Tracks(p) => p
+                .items
+                .into_iter()
+                .filter_map(Track::try_from_full_track)
+                .collect(),
+            _ => anyhow::bail!("expect a track search result"),
+        };
+        let artists = match artist_r {
+            rspotify::model::SearchResult::Artists(p) => {
+                p.items.into_iter().map(std::convert::Into::into).collect()
+            }
+            _ => anyhow::bail!("expect an artist search result"),
+        };
+        let albums = match album_r {
+            rspotify::model::SearchResult::Albums(p) => p
+                .items
+                .into_iter()
+                .filter_map(Album::try_from_simplified_album)
+                .collect(),
+            _ => anyhow::bail!("expect an album search result"),
+        };
+        let playlists = match playlist_r {
+            rspotify::model::SearchResult::Playlists(p) => {
+                p.items.into_iter().map(std::convert::Into::into).collect()
+            }
+            _ => anyhow::bail!("expect a playlist search result"),
+        };
 
         Ok(SearchResults {
             tracks,
             artists,
             albums,
             playlists,
-            shows,
-            episodes,
+            shows: Vec::new(),
+            episodes: Vec::new(),
         })
     }
 
