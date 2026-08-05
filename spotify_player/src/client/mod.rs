@@ -171,7 +171,7 @@ impl AppClient {
                         continue;
                     }
 
-                    let id = match client.find_available_device().await {
+                    let id = match client.find_available_device(&state).await {
                         Ok(Some(id)) => Some(Cow::Owned(id)),
                         Ok(None) => None,
                         Err(err) => {
@@ -481,7 +481,9 @@ impl AppClient {
                     .collect();
 
                 #[cfg(feature = "streaming")]
-                self.ensure_integrated_device(&mut devices).await;
+                if state.is_streaming_enabled() {
+                    self.ensure_integrated_device(&mut devices).await;
+                }
 
                 state.player.write().devices = devices;
             }
@@ -783,7 +785,8 @@ impl AppClient {
     }
 
     /// Find an available device. If found, return the device's ID.
-    async fn find_available_device(&self) -> Result<Option<String>> {
+    #[cfg_attr(not(feature = "streaming"), allow(unused_variables))]
+    async fn find_available_device(&self, state: &SharedState) -> Result<Option<String>> {
         let devices = self.available_devices().await?;
 
         // if there is an active device, return it
@@ -798,7 +801,9 @@ impl AppClient {
             .collect::<Vec<_>>();
 
         #[cfg(feature = "streaming")]
-        self.ensure_integrated_device(&mut devices).await;
+        if state.is_streaming_enabled() {
+            self.ensure_integrated_device(&mut devices).await;
+        }
 
         tracing::info!("no active device found, available devices: {devices:?}");
 
@@ -823,6 +828,11 @@ impl AppClient {
     /// 2. The device list is empty. This might be because user doesn't specify their own client ID.
     ///    By default, the application uses Spotify web app's client ID, which doesn't have
     ///    access to user's active devices.
+    ///
+    /// Callers must check [`SharedState::is_streaming_enabled`] first. The `streaming` feature
+    /// being compiled in does not mean *this* instance runs an integrated player: with
+    /// `enable_streaming = "DaemonOnly"` only the daemon does, so a non-daemon instance would
+    /// otherwise advertise a device that does not exist.
     #[cfg(feature = "streaming")]
     async fn ensure_integrated_device(&self, devices: &mut Vec<Device>) {
         let session = self.spotify.session().await;
