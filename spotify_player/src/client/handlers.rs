@@ -18,6 +18,15 @@ struct PlayerEventHandlerState {
     last_playback_refresh_timer: Instant,
 }
 
+/// Check if the error returned from Spotify API is a terminal authentication/token error
+fn is_auth_error(err: &anyhow::Error) -> bool {
+    let err_str = format!("{err:#}");
+    err_str.contains("Token is not valid")
+        || err_str.contains("invalid_grant")
+        || err_str.contains("status code 401")
+        || err_str.contains("status code 403")
+}
+
 /// starts the client's request handler
 pub async fn start_client_handler(
     state: &SharedState,
@@ -33,6 +42,19 @@ pub async fn start_client_handler(
             async move {
                 if let Err(err) = client.handle_request(&state, request).await {
                     tracing::error!("Failed to handle client request: {err:#}");
+
+                    if is_auth_error(&err) {
+                        tracing::warn!("Authentication error detected, clearing token cache to force re-authentication");
+                        let cache_path = crate::config::get_config().cache_folder.join("user_client_token.json");
+                        if cache_path.exists() {
+                            if let Err(e) = std::fs::remove_file(&cache_path) {
+                                tracing::error!("Failed to remove token cache file {}: {e:#}", cache_path.display());
+                            }
+                        }
+                        if let Ok(mut token_guard) = client.get_token().lock().await {
+                            *token_guard = None;
+                        }
+                    }
                 }
             }
             .instrument(span),
