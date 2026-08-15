@@ -157,10 +157,14 @@ pub async fn new_connection(
     let configs = config::get_config();
     let device = &configs.app_config.device;
 
+    // Start at the last volume the user set rather than the configured default, so that
+    // reconnecting (after a network drop) or restarting the app does not jump the level.
+    let initial_percent = crate::volume::initial();
+
     // `librespot` volume is a u16 number ranging from 0 to 65535,
     // while a percentage volume value (from 0 to 100) is used for the device configuration.
     // So we need to convert from one format to another
-    let volume = (f64::from(std::cmp::min(device.volume, 100_u8)) / 100.0 * 65535.0).round() as u16;
+    let volume = (f64::from(initial_percent) / 100.0 * 65535.0).round() as u16;
 
     let connect_config = ConnectConfig {
         name: device.name.clone(),

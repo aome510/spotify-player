@@ -463,9 +463,38 @@ impl AppClient {
                 state.data.write().user_data.user = Some(user);
             }
             ClientRequest::Player(request) => {
+                let is_volume_request = matches!(
+                    request,
+                    PlayerRequest::Volume(..) | PlayerRequest::ToggleMute
+                );
                 let playback = state.player.read().buffered_playback.clone();
-                let playback = self.handle_player_request(request, playback).await?;
-                state.player.write().buffered_playback = playback;
+                let mut playback = self.handle_player_request(request, playback).await?;
+
+                {
+                    let mut player = state.player.write();
+                    if is_volume_request {
+                        // The user may have pressed a volume key while this request was in flight.
+                        // That newer level is already applied locally, so keep it rather than
+                        // rolling the UI back to the level this request confirmed.
+                        if let (Some(new), Some(current)) =
+                            (playback.as_mut(), player.buffered_playback.as_ref())
+                        {
+                            if player.volume_sync.pending.is_some() {
+                                new.volume = current.volume;
+                                new.mute_state = current.mute_state;
+                            }
+                        }
+                        if let Some(volume) = playback
+                            .as_ref()
+                            .and_then(|p| p.mute_state.or(p.volume))
+                            .and_then(|v| u8::try_from(v.min(100)).ok())
+                        {
+                            crate::volume::save(volume);
+                        }
+                    }
+                    player.buffered_playback = playback;
+                }
+
                 self.update_playback(state);
             }
             ClientRequest::GetCurrentPlayback => {

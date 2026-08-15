@@ -283,6 +283,14 @@ Set `enable_audio_visualization` to `true` in your config to enable this feature
 
 ![Audio Visualization](https://github.com/user-attachments/assets/8c21c1b0-5276-4a9e-b719-e0c2bd555537)
 
+### Volume
+
+Volume is adjusted with `+`/`_` (or the unshifted `=`/`-`) in steps of 5%, and muted with `m`. Each press applies locally right away and the requests sent to Spotify are coalesced, so holding a key ramps the volume smoothly instead of lagging behind.
+
+A volume gauge appears in a corner of the screen on every change and disappears again shortly after. Use `enable_volume_hud`, `volume_hud_position`, `volume_hud_timeout_in_ms`, and `volume_hud_width` to configure or disable it. See [config docs](https://github.com/aome510/spotify-player/blob/master/docs/config.md).
+
+The last volume you set is remembered in `$APP_CACHE_FOLDER/volume.state` and restored when the integrated player reconnects, so restarting the app or losing the network briefly does not reset playback to `device.volume`. That config option now only supplies the starting level before anything has been stored.
+
 ### Media Control
 
 Media control is enabled by default. Set `enable_media_control` to `true` in your config to use it. See [config docs](https://github.com/aome510/spotify-player/blob/master/docs/config.md#media-control).
@@ -425,8 +433,8 @@ List of supported commands:
 | `PlayRandom`                    | play a random track in the current context                                                         | `.`                |
 | `Repeat`                        | cycle the repeat mode                                                                              | `C-r`              |
 | `Shuffle`                       | toggle the shuffle mode                                                                            | `C-s`              |
-| `VolumeChange`                  | change playback volume by an offset (default shortcuts use 5%)                                     | `+`, `-`           |
-| `Mute`                          | toggle playback volume between 0% and previous level                                               | `_`                |
+| `VolumeChange`                  | change playback volume by an offset (default shortcuts use 5%)                                     | `+`, `_`, `=`, `-` |
+| `Mute`                          | toggle playback volume between 0% and previous level                                               | `m`                |
 | `SeekStart`                     | seek start of current track                                                                        | `^`                |
 | `SeekForward`                   | seek forward by a duration in seconds (defaults to `seek_duration_secs`)                           | `>`                |
 | `SeekBackward`                  | seek backward by a duration in seconds (defaults to `seek_duration_secs`)                          | `<`                |
@@ -524,7 +532,7 @@ See [configuration documentation](https://github.com/aome510/spotify-player/blob
 
 ## Caches
 
-By default, cache files are stored in `$HOME/.cache/spotify-player` (logs, credentials, audio cache, etc.). Change this with `-C <FOLDER_PATH>` or `--cache-folder <FOLDER_PATH>`.
+By default, cache files are stored in `$HOME/.cache/spotify-player` (logs, credentials, audio cache, the last volume in `volume.state`, etc.). Change this with `-C <FOLDER_PATH>` or `--cache-folder <FOLDER_PATH>`.
 
 ### Logging
 

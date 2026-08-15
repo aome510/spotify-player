@@ -55,6 +55,9 @@ pub struct UIState {
     /// Count prefix for vim-style navigation (e.g., 5j, 10k)
     pub count_prefix: Option<usize>,
 
+    /// When the volume was last changed, used to show and time out the volume HUD.
+    pub volume_hud_shown_at: Option<std::time::Instant>,
+
     #[cfg(feature = "image")]
     pub last_cover_image_render_info: ImageRenderInfo,
 
@@ -131,6 +134,8 @@ impl Default for UIState {
             playback_progress_bar_rect: Rect::default(),
 
             count_prefix: None,
+
+            volume_hud_shown_at: None,
 
             #[cfg(feature = "image")]
             last_cover_image_render_info: ImageRenderInfo::default(),

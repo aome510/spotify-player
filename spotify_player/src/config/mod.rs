@@ -131,6 +131,15 @@ pub struct AppConfig {
     pub volume_scroll_step: u8,
     pub enable_mouse_scroll_volume: bool,
 
+    /// Show a transient volume gauge in a corner of the screen whenever the volume changes.
+    pub enable_volume_hud: bool,
+    /// How long the volume HUD stays on screen after the last change.
+    pub volume_hud_timeout_in_ms: u64,
+    /// Which corner the volume HUD is drawn in.
+    pub volume_hud_position: VolumeHudPosition,
+    /// Width, in cells, of the volume HUD's gauge.
+    pub volume_hud_width: u16,
+
     /// Enable app-managed queue for full playlist playback.
     /// Requires streaming. When disabled, playback uses Spotify-native queue
     /// management.
@@ -176,6 +185,16 @@ pub enum ProgressBarPosition {
     Right,
 }
 config_parser_impl!(ProgressBarPosition);
+
+/// Which corner the transient volume HUD is drawn in.
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
+pub enum VolumeHudPosition {
+    TopLeft,
+    TopRight,
+    BottomLeft,
+    BottomRight,
+}
+config_parser_impl!(VolumeHudPosition);
 
 #[derive(Debug, Deserialize, Serialize, ConfigParse, Clone)]
 pub struct Command {
@@ -392,6 +411,11 @@ impl Default for AppConfig {
 
             volume_scroll_step: 5,
             enable_mouse_scroll_volume: true,
+
+            enable_volume_hud: true,
+            volume_hud_timeout_in_ms: 1500,
+            volume_hud_position: VolumeHudPosition::TopRight,
+            volume_hud_width: 20,
 
             custom_queue: true,
 

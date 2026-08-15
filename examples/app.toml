@@ -26,6 +26,10 @@ cover_img_pixels = 16
 seek_duration_secs = 5
 custom_queue = true
 enable_relative_line_number = false
+enable_volume_hud = true
+volume_hud_timeout_in_ms = 1500
+volume_hud_position = "TopRight"
+volume_hud_width = 20
 
 [device]
 name = "spotify-player"

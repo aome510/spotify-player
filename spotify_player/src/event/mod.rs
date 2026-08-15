@@ -59,6 +59,29 @@ pub fn start_event_handler(state: &SharedState, client_pub: &flume::Sender<Clien
     }
 }
 
+/// Adjusts the playback volume by `offset` percent.
+///
+/// The new level is clamped to `0..=100` and applied to the local playback state straight away, so
+/// the UI and any immediately following keypress both see it without waiting for Spotify to
+/// acknowledge the change. Requests are throttled by [`PlayerState::apply_volume`]; the player
+/// event watcher flushes whatever the user settled on.
+fn change_volume_by(
+    offset: i32,
+    client_pub: &flume::Sender<ClientRequest>,
+    state: &SharedState,
+) -> Result<()> {
+    let mut player = state.player.write();
+    let Some(volume) = player.effective_volume() else {
+        return Ok(());
+    };
+    let new_volume = crate::volume::offset_volume(volume, offset);
+
+    if let Some(volume) = player.apply_volume(new_volume) {
+        client_pub.send(ClientRequest::Player(PlayerRequest::Volume(volume)))?;
+    }
+    Ok(())
+}
+
 // Handle a terminal mouse event
 fn handle_mouse_event(
     event: crossterm::event::MouseEvent,
@@ -72,21 +95,13 @@ fn handle_mouse_event(
     match event.kind {
         crossterm::event::MouseEventKind::ScrollUp if enable_scroll => {
             let step = config::get_config().app_config.volume_scroll_step;
-            if let Some(ref playback) = state.player.read().buffered_playback {
-                if let Some(volume) = playback.volume {
-                    let new_volume = std::cmp::min(volume as u8 + step, 100);
-                    client_pub.send(ClientRequest::Player(PlayerRequest::Volume(new_volume)))?;
-                }
-            }
+            change_volume_by(i32::from(step), client_pub, state)?;
+            state.ui.lock().volume_hud_shown_at = Some(std::time::Instant::now());
         }
         crossterm::event::MouseEventKind::ScrollDown if enable_scroll => {
             let step = config::get_config().app_config.volume_scroll_step;
-            if let Some(ref playback) = state.player.read().buffered_playback {
-                if let Some(volume) = playback.volume {
-                    let new_volume = (volume as u8).saturating_sub(step);
-                    client_pub.send(ClientRequest::Player(PlayerRequest::Volume(new_volume)))?;
-                }
-            }
+            change_volume_by(-i32::from(step), client_pub, state)?;
+            state.ui.lock().volume_hud_shown_at = Some(std::time::Instant::now());
         }
         // a left click event
         crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left) => {
@@ -593,15 +608,12 @@ fn handle_global_command(
             client_pub.send(ClientRequest::Player(PlayerRequest::Shuffle))?;
         }
         Command::VolumeChange { offset } => {
-            if let Some(ref playback) = state.player.read().buffered_playback {
-                if let Some(volume) = playback.volume {
-                    let volume = std::cmp::min(volume as i32 + offset, 100_i32);
-                    client_pub.send(ClientRequest::Player(PlayerRequest::Volume(volume as u8)))?;
-                }
-            }
+            change_volume_by(offset, client_pub, state)?;
+            ui.volume_hud_shown_at = Some(std::time::Instant::now());
         }
         Command::Mute => {
             client_pub.send(ClientRequest::Player(PlayerRequest::ToggleMute))?;
+            ui.volume_hud_shown_at = Some(std::time::Instant::now());
         }
         Command::SeekStart => {
             client_pub.send(ClientRequest::Player(PlayerRequest::SeekTrack(

@@ -32,6 +32,8 @@ This file guides Claude Code when working in this repository.
 | `ui/{page,playback,popup}.rs` | Render functions for pages, playback bar, popups                            |
 | `ui/streaming.rs`             | FFT audio visualizer: `VisualizationSink`, `VisBands`, bar chart            |
 | `streaming.rs`                | librespot connection + audio backend setup (feature-gated)                  |
+| `volume.rs`                   | Volume offset math and persistence of the last level across connections     |
+| `ui/volume.rs`                | Transient volume HUD overlay drawn on volume changes                        |
 | `cli/`                        | Unix socket server and client for inter-process CLI commands                |
 | `auth.rs`                     | OAuth scopes and librespot credential/session building                      |
 | `media_control.rs`            | OS media key integration via `souvlaki` (feature-gated)                     |

@@ -196,6 +196,33 @@ fn handle_player_event(
     Ok(())
 }
 
+/// Sends the volume the user settled on, once the throttle window since the last request has
+/// passed.
+///
+/// Volume keypresses apply locally and only dispatch a request every
+/// `state::VOLUME_SEND_INTERVAL`. Without this flush, the final press of a burst -- the one that
+/// actually matters -- would stay local and never reach Spotify.
+fn flush_pending_volume(state: &SharedState, client_pub: &flume::Sender<ClientRequest>) {
+    let volume = {
+        let mut player = state.player.write();
+        match player.volume_sync.pending {
+            Some(volume) if player.volume_sync.may_send() => {
+                player.volume_sync.mark_sent();
+                Some(volume)
+            }
+            _ => None,
+        }
+    };
+
+    if let Some(volume) = volume {
+        client_pub
+            .send(ClientRequest::Player(crate::client::PlayerRequest::Volume(
+                volume,
+            )))
+            .unwrap_or_default();
+    }
+}
+
 /// Starts event watcher listening to events and making update requests to the client if needed
 pub fn start_player_event_watcher(state: &SharedState, client_pub: &flume::Sender<ClientRequest>) {
     let configs = config::get_config();
@@ -218,6 +245,8 @@ pub fn start_player_event_watcher(state: &SharedState, client_pub: &flume::Sende
                 .unwrap_or_default();
             handler_state.last_playback_refresh_timer = Instant::now();
         }
+
+        flush_pending_volume(state, client_pub);
 
         if let Err(err) = handle_player_event(state, client_pub, &mut handler_state) {
             tracing::error!("Encounter error when handling player event: {err:#}");
