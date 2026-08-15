@@ -223,6 +223,35 @@ fn flush_pending_volume(state: &SharedState, client_pub: &flume::Sender<ClientRe
     }
 }
 
+/// Pushes the settled volume to the Web API once the user has stopped adjusting it.
+///
+/// Volume is applied locally on every press; this is the single deferred call that brings
+/// Spotify's server-side state back in line, rather than one call per keypress.
+fn sync_settled_volume_to_api(state: &SharedState, client_pub: &flume::Sender<ClientRequest>) {
+    let volume = {
+        let mut player = state.player.write();
+        let settled = player
+            .volume_sync
+            .last_change
+            .is_some_and(|t| t.elapsed() >= crate::state::VOLUME_API_SYNC_DELAY);
+
+        // Wait for the local dispatch to drain too, so the value pushed upstream is the one that
+        // actually took effect.
+        if settled && player.volume_sync.pending.is_none() {
+            player.volume_sync.last_change = None;
+            player.volume_sync.api_pending.take()
+        } else {
+            None
+        }
+    };
+
+    if let Some(volume) = volume {
+        client_pub
+            .send(ClientRequest::SyncVolumeToApi(volume))
+            .unwrap_or_default();
+    }
+}
+
 /// Starts event watcher listening to events and making update requests to the client if needed
 pub fn start_player_event_watcher(state: &SharedState, client_pub: &flume::Sender<ClientRequest>) {
     let configs = config::get_config();
@@ -247,6 +276,7 @@ pub fn start_player_event_watcher(state: &SharedState, client_pub: &flume::Sende
         }
 
         flush_pending_volume(state, client_pub);
+        sync_settled_volume_to_api(state, client_pub);
 
         if let Err(err) = handle_player_event(state, client_pub, &mut handler_state) {
             tracing::error!("Encounter error when handling player event: {err:#}");

@@ -285,7 +285,9 @@ Set `enable_audio_visualization` to `true` in your config to enable this feature
 
 ### Volume
 
-Volume is adjusted with `+`/`_` (or the unshifted `=`/`-`) in steps of 5%, and muted with `m`. Each press applies locally right away and the requests sent to Spotify are coalesced, so holding a key ramps the volume smoothly instead of lagging behind.
+Volume is adjusted with `+`/`_` (or the unshifted `=`/`-`) in steps of 5%, and muted with `m`.
+
+When playback is on the integrated player, volume is applied straight to its local mixer, so a keypress never waits on the network. Spotify's server-side volume is reconciled with a single deferred request once you stop adjusting. Playback on a remote Spotify Connect device still goes through the Web API, with requests coalesced so that holding a key does not queue one call per press.
 
 A volume gauge appears in a corner of the screen on every change and disappears again shortly after. Use `enable_volume_hud`, `volume_hud_position`, `volume_hud_timeout_in_ms`, and `volume_hud_width` to configure or disable it. See [config docs](https://github.com/aome510/spotify-player/blob/master/docs/config.md).
 

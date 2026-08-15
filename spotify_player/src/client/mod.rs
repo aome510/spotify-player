@@ -311,6 +311,42 @@ impl AppClient {
         }
     }
 
+    /// Set the volume on the integrated player's local mixer, bypassing the network.
+    ///
+    /// Returns `false` when the request has to go over the Web API instead, either because
+    /// playback is on a remote Spotify Connect device or because no integrated player is running.
+    #[cfg(feature = "streaming")]
+    async fn set_local_volume(&self, device_id: Option<&str>, volume: u8) -> bool {
+        // Only our own device is ours to mix; anything else has to go through Spotify.
+        let session_device_id = self.spotify.session().await.device_id().to_string();
+        if device_id.is_some_and(|id| id != session_device_id) {
+            return false;
+        }
+
+        // librespot volume is a u16 over the full range, the app works in percent.
+        let scaled = (f64::from(volume.min(100)) / 100.0 * f64::from(u16::MAX)).round() as u16;
+
+        // `set_volume` only queues a command for the spirc task, so this holds the lock briefly
+        // and never across an await.
+        let conn = self.stream_conn.lock();
+        let Some(spirc) = conn.as_ref() else {
+            return false;
+        };
+        match spirc.set_volume(scaled) {
+            Ok(()) => true,
+            Err(err) => {
+                tracing::warn!("Failed to set volume on the integrated player: {err:#}");
+                false
+            }
+        }
+    }
+
+    #[cfg(not(feature = "streaming"))]
+    #[allow(clippy::unused_async)]
+    async fn set_local_volume(&self, _device_id: Option<&str>, _volume: u8) -> bool {
+        false
+    }
+
     /// Handle a player request, return a new playback metadata on success
     pub async fn handle_player_request(
         &self,
@@ -390,7 +426,13 @@ impl AppClient {
                 playback.shuffle_state = !playback.shuffle_state;
             }
             PlayerRequest::Volume(volume) => {
-                self.volume(volume, device_id).await?;
+                // Prefer the integrated player's own mixer: it lives in this process, so setting
+                // it costs a channel send rather than a round-trip to Spotify. librespot reports
+                // the new level upstream over its existing connection, and the Web API is
+                // reconciled separately once the user stops adjusting.
+                if !self.set_local_volume(device_id, volume).await {
+                    self.volume(volume, device_id).await?;
+                }
 
                 playback.volume = Some(u32::from(volume));
                 playback.mute_state = None;
@@ -502,6 +544,19 @@ impl AppClient {
                 // presses is still in progress.
                 if !is_volume_change && !is_mute_change {
                     self.update_playback(state);
+                }
+            }
+            ClientRequest::SyncVolumeToApi(volume) => {
+                // Best-effort reconciliation of Spotify's server-side volume. The level the user
+                // hears was already set locally, so a failure here is not worth surfacing.
+                let device_id = state
+                    .player
+                    .read()
+                    .buffered_playback
+                    .as_ref()
+                    .and_then(|p| p.device_id.clone());
+                if let Err(err) = self.volume(volume, device_id.as_deref()).await {
+                    tracing::warn!("Failed to sync volume to the Spotify API: {err:#}");
                 }
             }
             ClientRequest::GetCurrentPlayback => {

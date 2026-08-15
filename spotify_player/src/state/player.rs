@@ -40,14 +40,21 @@ pub struct PlayerState {
 /// player event watcher.
 #[derive(Default, Debug)]
 pub struct VolumeSync {
-    /// A volume the user has dialed in that has not been sent to Spotify yet.
+    /// A volume the user has dialed in that has not been applied yet.
     pub pending: Option<u8>,
     /// When a volume request was last dispatched.
     pub last_sent: Option<std::time::Instant>,
+    /// A volume that has been applied locally but not yet reflected in Spotify's server-side
+    /// state, along with when the user last moved it.
+    pub api_pending: Option<u8>,
+    pub last_change: Option<std::time::Instant>,
 }
 
 /// Minimum spacing between volume requests sent to Spotify.
 pub const VOLUME_SEND_INTERVAL: std::time::Duration = std::time::Duration::from_millis(100);
+
+/// How long volume must sit still before the settled level is pushed to the Web API.
+pub const VOLUME_API_SYNC_DELAY: std::time::Duration = std::time::Duration::from_millis(800);
 
 impl VolumeSync {
     /// Whether a request may be dispatched right now.
@@ -122,6 +129,11 @@ impl PlayerState {
         playback.volume = Some(u32::from(volume));
         // Changing the volume takes the playback out of the muted state.
         playback.mute_state = None;
+
+        // Spotify's server-side state now owes an update, but it can wait until the user stops
+        // turning the knob.
+        self.volume_sync.api_pending = Some(volume);
+        self.volume_sync.last_change = Some(std::time::Instant::now());
 
         if self.volume_sync.may_send() {
             self.volume_sync.mark_sent();
