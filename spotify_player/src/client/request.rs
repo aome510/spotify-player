@@ -32,6 +32,12 @@ pub enum ClientRequest {
     GetUserFollowedArtists,
     GetContext(ContextId),
     GetCurrentPlayback,
+    /// Push a settled volume to the Web API after local changes have gone quiet.
+    ///
+    /// Volume on the integrated player is applied through the local mixer, which never touches the
+    /// network. This reconciles Spotify's server-side state once the user stops adjusting, instead
+    /// of on every keypress.
+    SyncVolumeToApi(u8),
     Search(String),
     AddPlayableToQueue(PlayableId<'static>),
     AddAlbumToQueue(AlbumId<'static>),

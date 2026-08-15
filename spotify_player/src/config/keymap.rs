@@ -59,16 +59,29 @@ impl Default for KeymapConfig {
                     key_sequence: "C-s".into(),
                     command: Command::Shuffle,
                 },
+                // Volume is bound as two symmetric pairs so that either row of the key --
+                // shifted (`+`/`_`) or unshifted (`=`/`-`) -- adjusts it the same way.
                 Keymap {
                     key_sequence: "+".into(),
+                    command: Command::VolumeChange { offset: 5 },
+                },
+                Keymap {
+                    key_sequence: "_".into(),
+                    command: Command::VolumeChange { offset: -5 },
+                },
+                Keymap {
+                    key_sequence: "=".into(),
                     command: Command::VolumeChange { offset: 5 },
                 },
                 Keymap {
                     key_sequence: "-".into(),
                     command: Command::VolumeChange { offset: -5 },
                 },
+                // `_` now adjusts the volume, so mute moves here. Note that `C-m` is not an
+                // option: terminals send it as the same byte as Enter (CR), so binding it would
+                // shadow the `enter` keymap.
                 Keymap {
-                    key_sequence: "_".into(),
+                    key_sequence: "m".into(),
                     command: Command::Mute,
                 },
                 Keymap {

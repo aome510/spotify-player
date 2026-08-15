@@ -15,6 +15,7 @@ mod streaming;
 mod token;
 mod ui;
 mod utils;
+mod volume;
 
 use anyhow::{Context, Result};
 use parking_lot::Mutex;

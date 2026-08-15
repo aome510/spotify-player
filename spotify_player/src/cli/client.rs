@@ -429,12 +429,14 @@ async fn handle_playback_request(
                 .context("no active playback found!")?
                 .volume
                 .context("playback has no volume!")?;
+            // Compute in `i32`: an offset applied to a near-max volume overflows `i8`, and the
+            // result needs clamping at both ends before it can be a valid percentage.
             let percent = if is_offset {
-                std::cmp::max(0, (volume as i8) + percent)
+                (i32::try_from(volume)? + i32::from(percent)).clamp(0, 100)
             } else {
-                percent
+                i32::from(percent).clamp(0, 100)
             };
-            PlayerRequest::Volume(percent.try_into()?)
+            PlayerRequest::Volume(u8::try_from(percent)?)
         }
         Command::Seek(position_offset_ms) => {
             // Playback's progress cannot be computed trivially without knowing the `playback` variable in
@@ -452,6 +454,13 @@ async fn handle_playback_request(
         }
     };
 
+    // A volume set from the CLI is just as much "the level the user chose" as one set from a
+    // keypress, so it has to be remembered for the next connection too.
+    let is_volume_request = matches!(
+        player_request,
+        PlayerRequest::Volume(..) | PlayerRequest::ToggleMute
+    );
+
     if let Some(state) = state {
         // A non-null application's state indicates there is a running application instance.
         // To reduce the latency of the CLI command, the player request is handled asynchronously
@@ -462,6 +471,9 @@ async fn handle_playback_request(
             async move {
                 match client.handle_player_request(player_request, playback).await {
                     Ok(playback) => {
+                        if is_volume_request {
+                            persist_volume(playback.as_ref());
+                        }
                         // update application's states
                         state.player.write().buffered_playback = playback;
                         client.update_playback(&state);
@@ -476,11 +488,24 @@ async fn handle_playback_request(
         });
     } else {
         // Handles the player request synchronously
-        client
+        let playback = client
             .handle_player_request(player_request, playback)
             .await?;
+        if is_volume_request {
+            persist_volume(playback.as_ref());
+        }
     }
     Ok(())
+}
+
+/// Remembers the volume of `playback` as the level to restore on the next connection.
+fn persist_volume(playback: Option<&crate::state::PlaybackMetadata>) {
+    if let Some(volume) = playback
+        .and_then(|p| p.mute_state.or(p.volume))
+        .and_then(|v| u8::try_from(v.min(100)).ok())
+    {
+        crate::volume::save(volume);
+    }
 }
 
 async fn handle_playlist_request(client: &AppClient, command: PlaylistCommand) -> Result<String> {

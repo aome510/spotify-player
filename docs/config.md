@@ -70,6 +70,10 @@ spotify_player -o device.volume=80 -o theme=dracula
 | `sort_artist_albums_by_type`      | Sort albums by type on artist pages.                                                                 | `false`                                                                |
 | `volume_scroll_step`              | Volume change step when using mouse scroll.                                                          | `5`                                                                    |
 | `enable_mouse_scroll_volume`      | Enable volume control via mouse scroll.                                                              | `true`                                                                 |
+| `enable_volume_hud`               | Show a transient volume gauge in a corner whenever the volume changes.                               | `true`                                                                 |
+| `volume_hud_timeout_in_ms`        | How long the volume HUD stays visible after the last change.                                         | `1500`                                                                 |
+| `volume_hud_position`             | Corner the volume HUD is drawn in: `TopLeft`, `TopRight`, `BottomLeft`, `BottomRight`.               | `TopRight`                                                             |
+| `volume_hud_width`                | Width, in terminal cells, of the volume HUD's gauge.                                                 | `20`                                                                   |
 | `custom_queue`                    | Enable app-managed queue for custom playback integration (requires `streaming` feature).             | `true`                                                                 |
 | `pause_on_startup`                | Start with playback paused instead of resuming the previous session (requires `streaming` feature).  | `false`                                                                |
 | `enable_relative_line_number`     | Enable Vim-style relative line numbers for lists and popups.                                         | `false`                                                                |
@@ -141,7 +145,7 @@ Device options are configured in the `[device]` section:
 | --------------- | ---------------------------------------- | ---------------- |
 | `name`          | Device name.                             | `spotify-player` |
 | `device_type`   | Device type.                             | `speaker`        |
-| `volume`        | Initial volume (percent).                | `70`             |
+| `volume`        | Initial volume (percent), used only until a volume has been set and remembered in the cache folder. | `70`             |
 | `bitrate`       | Bitrate in kbps (`96`, `160`, or `320`). | `320`            |
 | `audio_cache`   | Enable audio file caching.               | `false`          |
 | `normalization` | Enable audio normalization.              | `false`          |

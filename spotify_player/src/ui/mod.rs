@@ -33,6 +33,7 @@ pub mod single_line_input;
 #[cfg(feature = "streaming")]
 pub mod streaming;
 pub mod utils;
+mod volume;
 
 /// Run the application UI
 pub fn run(state: &SharedState, mut terminal: Terminal) -> Result<()> {
@@ -139,6 +140,8 @@ fn clean_up(mut terminal: Terminal) -> Result<()> {
 fn render_application(frame: &mut Frame, state: &SharedState, ui: &mut UIStateGuard, rect: Rect) {
     // rendering order: playback window -> shortcut help popup -> other popups -> main layout
 
+    let full_rect = rect;
+
     // render playback window before other popups and windows to ensure nothing is rendered on top
     // of the playback window, which is to avoid "duplicated images" issue
     // See: https://github.com/aome510/spotify-player/issues/498
@@ -149,6 +152,10 @@ fn render_application(frame: &mut Frame, state: &SharedState, ui: &mut UIStateGu
     let (rect, is_active) = popup::render_popup(frame, state, ui, rect);
 
     render_main_layout(is_active, frame, state, ui, rect);
+
+    // The volume HUD is an overlay, so it is drawn last against the full area to sit on top of
+    // whatever is currently on screen.
+    volume::render_volume_hud(frame, state, ui, full_rect);
 }
 
 /// Render the application's main layout
