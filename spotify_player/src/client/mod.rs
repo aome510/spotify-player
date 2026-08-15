@@ -463,27 +463,28 @@ impl AppClient {
                 state.data.write().user_data.user = Some(user);
             }
             ClientRequest::Player(request) => {
-                let is_volume_request = matches!(
-                    request,
-                    PlayerRequest::Volume(..) | PlayerRequest::ToggleMute
-                );
+                let is_volume_change = matches!(request, PlayerRequest::Volume(..));
+                let is_mute_change = matches!(request, PlayerRequest::ToggleMute);
+
                 let playback = state.player.read().buffered_playback.clone();
                 let mut playback = self.handle_player_request(request, playback).await?;
 
                 {
                     let mut player = state.player.write();
-                    if is_volume_request {
-                        // The user may have pressed a volume key while this request was in flight.
-                        // That newer level is already applied locally, so keep it rather than
-                        // rolling the UI back to the level this request confirmed.
+                    if is_volume_change {
+                        // Volume is driven locally: the key handler applies every press
+                        // immediately, so by the time this request lands the user may already be
+                        // several steps further along. The local level is therefore always the
+                        // newer one -- adopting the level this request carried would rewind the
+                        // display and show up as a flickering percentage.
                         if let (Some(new), Some(current)) =
                             (playback.as_mut(), player.buffered_playback.as_ref())
                         {
-                            if player.volume_sync.pending.is_some() {
-                                new.volume = current.volume;
-                                new.mute_state = current.mute_state;
-                            }
+                            new.volume = current.volume;
+                            new.mute_state = current.mute_state;
                         }
+                    }
+                    if is_volume_change || is_mute_change {
                         if let Some(volume) = playback
                             .as_ref()
                             .and_then(|p| p.mute_state.or(p.volume))
@@ -495,7 +496,13 @@ impl AppClient {
                     player.buffered_playback = playback;
                 }
 
-                self.update_playback(state);
+                // `update_playback` re-polls Spotify five times at one-second intervals to let the
+                // server catch up. Volume needs none of that -- the local value is authoritative --
+                // and spawning that storm per keypress would flood the API while a burst of
+                // presses is still in progress.
+                if !is_volume_change && !is_mute_change {
+                    self.update_playback(state);
+                }
             }
             ClientRequest::GetCurrentPlayback => {
                 self.retrieve_current_playback(state, true).await?;
