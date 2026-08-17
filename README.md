@@ -88,6 +88,25 @@ A Spotify Premium account is **required**.
     sudo yum install openssl-devel alsa-lib-devel dbus-devel
     ```
 
+##### Termux (Android)
+
+- Two default components require a JVM context that Termux processes don't have:
+  the default TLS backend (`rustls-platform-verifier`, panics during the auth
+  token exchange) and the rodio audio backend (cpal's AAudio host, panics when
+  streaming starts). Build with the `native-tls` feature and the pulseaudio
+  backend instead:
+
+  ```shell
+  pkg install rust openssl pulseaudio
+  cargo install spotify_player --no-default-features --features pulseaudio-backend,media-control,native-tls
+  ```
+
+  This makes authentication, the Web API, and remote device control work. Integrated
+  streaming additionally requires patching librespot's compile-time OS identity
+  (`librespot-core`'s `config::OS`) to `"linux"` via `[patch.crates-io]`, because
+  librespot built for `target_os = "android"` presents the Android-app identity, which
+  Spotify rejects for keymaster-minted credentials.
+
 ### Binaries
 
 Application's prebuilt binaries can be found in the [Releases Page](https://github.com/aome510/spotify-player/releases).
