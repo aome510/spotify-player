@@ -211,6 +211,9 @@ The `component_style` table customizes UI component appearance. All fields are o
 | `like`                           | Style for the like indicator                              |
 | `lyrics_played`                  | Style for played lyrics lines                             |
 | `lyrics_playing`                 | Style for the currently playing lyrics line               |
+| `visualization`                  | Colors for the audio visualization bars (see below)       |
+
+The `visualization` style uses three optional colors (`low`, `mid`, `high`), interpolated by bar amplitude: quiet bars use `low`, medium bars use `mid`, and loud bars use `high`. When omitted, a blue → green → red gradient is used.
 
 Each style accepts optional fields:
 
@@ -229,6 +232,7 @@ name = "my_theme"
 block_title = { fg = "Magenta", modifiers = ["Bold"] }
 border = { fg = "White" }
 selection = { modifiers = ["Reversed", "Bold"] }
+visualization = { low = "#00d7ff", mid = "#00ff87", high = "#ff004d" }
 ```
 
 #### Default Component Styles
@@ -253,6 +257,7 @@ secondary_row = {}
 like = {}
 lyrics_played = { modifiers = ["Dim"] }
 lyrics_playing = { fg = "Green", modifiers = ["Bold"] }
+visualization = { low = "#1e64ff", mid = "#32ff80", high = "#ff0000" }
 ```
 
 #### Accepted Colors

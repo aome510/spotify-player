@@ -1,3 +1,4 @@
+use super::config;
 use crate::state::SharedState;
 use librespot_playback::{
     audio_backend::{Sink, SinkResult},
@@ -332,33 +333,41 @@ fn smooth_bands(bands: &mut [f32], scratch: &mut [f32]) {
     }
 }
 
-/// Maps a normalised amplitude [0, 1] to an RGB colour.
-/// Quiet (0.0) → cool blue, medium → green, loud (1.0) → hot red.
-fn bar_color(t: f32) -> Color {
-    let (r, g, b) = if t < 0.5 {
-        let s = t * 2.0;
-        (
-            (30.0 + 20.0 * s) as u8,
-            (100.0 + 155.0 * s) as u8,
-            (255.0 * (1.0 - s * 0.5)) as u8,
-        )
+/// Linearly interpolates between two RGB colors; returns `a` when either color
+/// is not an RGB color (e.g. an ANSI palette color).
+fn lerp_color(a: Color, b: Color, t: f32) -> Color {
+    match (a, b) {
+        (Color::Rgb(r1, g1, b1), Color::Rgb(r2, g2, b2)) => Color::Rgb(
+            (f32::from(r1) + (f32::from(r2) - f32::from(r1)) * t) as u8,
+            (f32::from(g1) + (f32::from(g2) - f32::from(g1)) * t) as u8,
+            (f32::from(b1) + (f32::from(b2) - f32::from(b1)) * t) as u8,
+        ),
+        (a, _) => a,
+    }
+}
+
+/// Maps a normalised amplitude `t` in [0, 1] to a color between the theme's
+/// `low` (quiet), `mid` (medium) and `high` (loud) visualization stops.
+fn bar_color(t: f32, low: Color, mid: Color, high: Color) -> Color {
+    if t < 0.5 {
+        lerp_color(low, mid, t * 2.0)
     } else {
-        let s = (t - 0.5) * 2.0;
-        (
-            (50.0 + 205.0 * s) as u8,
-            (255.0 * (1.0 - s)) as u8,
-            (128.0 * (1.0 - s)) as u8,
-        )
-    };
-    Color::Rgb(r, g, b)
+        lerp_color(mid, high, (t - 0.5) * 2.0)
+    }
 }
 
 /// Render a frequency-band bar chart using live FFT data from the audio sink.
 ///
 /// Bars are subsampled to the available rect width so they always fill the area
 /// cleanly. Heights use a sqrt (perceptual) curve so quiet signals stay visible.
-/// Each bar is coloured by its amplitude: cool blue (quiet) → green → hot red (loud).
-pub fn render_audio_visualization(frame: &mut Frame, state: &SharedState, rect: Rect) {
+/// Each bar is coloured by its amplitude using the theme's visualization colors:
+/// `low` (quiet) → `mid` → `high` (loud).
+pub fn render_audio_visualization(
+    frame: &mut Frame,
+    state: &SharedState,
+    theme: &config::Theme,
+    rect: Rect,
+) {
     // display_decay interpolates bar heights smoothly between write() calls.
     // We normalise against peak_envelope (NOT the per-frame peak), so display_decay
     // no longer cancels out and bars genuinely fade between audio packets.
@@ -377,6 +386,7 @@ pub fn render_audio_visualization(frame: &mut Frame, state: &SharedState, rect: 
     // Copy the fixed-size array by value — no heap allocation.
     let values = guard.values;
     drop(guard);
+    let vis_colors = theme.visualization();
     let num_bars = (rect.width as usize).min(values.len()).max(1);
     // Multiply by 8 to use ratatui's eighth-block characters (▁▂▃▄▅▆▇█),
     // giving 8× the resolution of whole terminal rows.
@@ -395,7 +405,12 @@ pub fn render_audio_visualization(frame: &mut Frame, state: &SharedState, rect: 
             Bar::default()
                 .value(val)
                 .text_value("")
-                .style(Style::default().fg(bar_color(norm)))
+                .style(Style::default().fg(bar_color(
+                    norm,
+                    vis_colors.low,
+                    vis_colors.mid,
+                    vis_colors.high,
+                )))
         })
         .collect();
 

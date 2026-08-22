@@ -68,6 +68,7 @@ bright_white = "#ffffff"
 like = { fg = "Red", modifiers = ["Bold"] }
 selection = { bg = "Black", fg = "White", modifiers = ["Bold"] }
 secondary_row = { bg = "#677075" }
+visualization = { low = "#1e64ff", mid = "#32ff80", high = "#ff0000" }
 
 [[themes]]
 name = "gruvbox_dark"
