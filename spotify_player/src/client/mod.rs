@@ -53,6 +53,9 @@ pub struct AppClient {
     api_client: WebApiClient,
     #[cfg(feature = "streaming")]
     stream_conn: Arc<Mutex<Option<librespot_connect::Spirc>>>,
+    /// Guards the post-change playback poll so rapid player events coalesce into a single
+    /// in-flight loop rather than flooding Spotify's Web API (which 429 rate-limits).
+    update_playback_in_flight: Arc<std::sync::atomic::AtomicBool>,
 }
 
 impl Deref for AppClient {
@@ -127,7 +130,36 @@ impl AppClient {
 
             #[cfg(feature = "streaming")]
             stream_conn: Arc::new(Mutex::new(None)),
+            update_playback_in_flight: Arc::new(std::sync::atomic::AtomicBool::new(false)),
         })
+    }
+
+    /// Snapshot the currently-playing context + track so a recreated session can
+    /// resume the *same* position rather than whatever the cloud reports after the
+    /// old device is torn down (which has no retained queue).
+    fn remember_playback(state: &SharedState) -> Option<crate::state::Playback> {
+        let player = state.player.read();
+        let playback = player.playback.as_ref()?;
+        let uri = match &playback.item {
+            Some(rspotify::model::PlayableItem::Track(track)) => {
+                let id = track.id.as_ref()?;
+                id.uri()
+            }
+            Some(rspotify::model::PlayableItem::Episode(episode)) => {
+                let id = episode.id.as_ref();
+                id.uri()
+            }
+            _ => return None,
+        };
+        match player.playing_context_id() {
+            // A `Tracks` context can't be restarted by uri, so there is no
+            // rememberable playback to re-issue.
+            Some(ContextId::Tracks(_)) | None => None,
+            Some(context_id) => Some(crate::state::Playback::Context(
+                context_id,
+                Some(rspotify::model::Offset::Uri(uri)),
+            )),
+        }
     }
 
     async fn token(&self) -> Result<String> {
@@ -146,7 +178,15 @@ impl AppClient {
     /// Initialize the application's playback upon creating a new session or during startup.
     ///
     /// `resume` controls whether playback should be (re)started on the device we connect to.
-    pub fn initialize_playback(&self, state: &SharedState, resume: bool) {
+    /// `remembered` is the context+track that was playing before a session recreation; when
+    /// provided it is re-issued at its remembered position instead of inheriting the cloud's
+    /// (empty/stale) playback state.
+    pub fn initialize_playback(
+        &self,
+        state: &SharedState,
+        resume: bool,
+        remembered: Option<crate::state::Playback>,
+    ) {
         tokio::task::spawn({
             let client = self.clone();
             let state = state.clone();
@@ -163,7 +203,7 @@ impl AppClient {
 
                     if let Err(err) = client.retrieve_current_playback(&state, false).await {
                         tracing::error!("Failed to retrieve current playback: {err:#}");
-                        return;
+                        continue;
                     }
 
                     // if playback exists, don't connect to a new device
@@ -187,7 +227,19 @@ impl AppClient {
                         } else {
                             tracing::info!("Connection succeeded (device_id={id})!");
                             if resume {
-                                if let Err(err) =
+                                if let Some(remembered) = remembered.as_ref() {
+                                    // Re-issue the remembered context at its remembered track: the
+                                    // fresh device has no retained queue after the old one was
+                                    // torn down, so resuming it would restart a different track.
+                                    if let Err(err) = client
+                                        .start_playback(remembered.clone(), Some(id.as_ref()))
+                                        .await
+                                    {
+                                        tracing::warn!(
+                                            "Failed to resume remembered playback after reconnect: {err:#}"
+                                        );
+                                    }
+                                } else if let Err(err) =
                                     client.resume_playback(Some(id.as_ref()), None).await
                                 {
                                     tracing::warn!(
@@ -220,6 +272,10 @@ impl AppClient {
                 .as_ref()
                 .is_some_and(|p| p.is_playing)
         });
+
+        // Snapshot the currently-playing context + track so the recreated device resumes the
+        // *same* position rather than inheriting the cloud's (empty/stale) playback state.
+        let remembered = state.and_then(Self::remember_playback);
 
         let session = self.auth_config.session();
         let creds = auth::get_creds(&self.auth_config, reauth, true).context("get credentials")?;
@@ -255,7 +311,7 @@ impl AppClient {
         if let Some(state) = state {
             // reset the application's caches
             state.data.write().caches = MemoryCaches::new();
-            self.initialize_playback(state, was_playing);
+            self.initialize_playback(state, was_playing, remembered);
         }
 
         Ok(())
@@ -714,16 +770,25 @@ impl AppClient {
 
     pub fn update_playback(&self, state: &SharedState) {
         // After handling a request changing the player's playback,
-        // update the playback state by making multiple get-playback requests.
+        // update the playback state by making a few get-playback requests.
         //
-        // Q: Why do we need more than one request to update the playback?
-        // A: It might take a while for Spotify server to reflect the new change,
-        // making additional requests can help ensure that the playback state is always up-to-date.
+        // Q: Why do we need more than one request?
+        // A: It can take a moment for Spotify to reflect the change. Rapid player events each
+        // triggering this loop would otherwise flood the Web API and trip its 429 rate limit, so
+        // coalesce them into a single in-flight loop.
+        if self
+            .update_playback_in_flight
+            .swap(true, std::sync::atomic::Ordering::SeqCst)
+        {
+            return;
+        }
+
         let client = self.clone();
         let state = state.clone();
+        let in_flight = self.update_playback_in_flight.clone();
         tokio::task::spawn(async move {
             let delay = std::time::Duration::from_secs(1);
-            for _ in 0..5 {
+            for _ in 0..2 {
                 tokio::time::sleep(delay).await;
                 if let Err(err) = client.retrieve_current_playback(&state, false).await {
                     tracing::error!(
@@ -731,6 +796,7 @@ impl AppClient {
                     );
                 }
             }
+            in_flight.store(false, std::sync::atomic::Ordering::SeqCst);
         });
     }
 
