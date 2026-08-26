@@ -59,6 +59,9 @@ pub struct UIState {
     pub last_cover_image_render_info: ImageRenderInfo,
 
     #[cfg(feature = "image")]
+    pub episode_detail_image_render_info: ImageRenderInfo,
+
+    #[cfg(feature = "image")]
     pub picker: Picker,
 }
 
@@ -134,6 +137,9 @@ impl Default for UIState {
 
             #[cfg(feature = "image")]
             last_cover_image_render_info: ImageRenderInfo::default(),
+
+            #[cfg(feature = "image")]
+            episode_detail_image_render_info: ImageRenderInfo::default(),
 
             // Will be reinitialize later in ui/mod.rs after init_ui()
             #[cfg(feature = "image")]

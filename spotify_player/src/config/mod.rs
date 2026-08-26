@@ -125,7 +125,7 @@ pub struct AppConfig {
     pub notify_streaming_only: bool,
 
     pub seek_duration_secs: u16,
-
+    pub seek_duration_secs_podcast: u16,
     pub sort_artist_albums_by_type: bool,
 
     pub volume_scroll_step: u8,
@@ -229,12 +229,17 @@ pub struct LayoutConfig {
     pub library: LibraryLayoutConfig,
     pub playback_window_position: Position,
     pub playback_window_height: usize,
+    pub detail_window_height: usize,
+    pub detail_window_image: bool,
 }
 
+#[allow(clippy::struct_field_names)]
 #[derive(Debug, Deserialize, Serialize, ConfigParse, Clone)]
 pub struct LibraryLayoutConfig {
     pub playlist_percent: u16,
     pub album_percent: u16,
+    pub show_percent: u16,
+    pub audiobook_percent: u16,
 }
 
 #[allow(dead_code)]
@@ -387,7 +392,7 @@ impl Default for AppConfig {
             notify_streaming_only: false,
 
             seek_duration_secs: 5,
-
+            seek_duration_secs_podcast: 15,
             sort_artist_albums_by_type: false,
 
             volume_scroll_step: 5,
@@ -423,17 +428,26 @@ impl Default for LayoutConfig {
             library: LibraryLayoutConfig {
                 playlist_percent: 40,
                 album_percent: 40,
+                show_percent: 0,
+                audiobook_percent: 0,
             },
             playback_window_position: Position::Top,
             playback_window_height: 6,
+            detail_window_height: 8,
+            detail_window_image: true,
         }
     }
 }
 
 impl LayoutConfig {
     fn check_values(&self) -> anyhow::Result<()> {
-        if self.library.album_percent + self.library.playlist_percent > 99 {
-            anyhow::bail!("Invalid library layout: summation of album_percent and playlist_percent cannot be greater than 99!");
+        if self.library.album_percent
+            + self.library.playlist_percent
+            + self.library.show_percent
+            + self.library.audiobook_percent
+            > 99
+        {
+            anyhow::bail!("Invalid library layout: summation of album_percent, playlist_percent, show_percent, and audiobook_percent cannot be greater than 99!");
         }
         Ok(())
     }

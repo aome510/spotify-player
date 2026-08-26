@@ -566,6 +566,22 @@ fn handle_global_action(
     Ok(false)
 }
 
+/// Resolve the seek step for the current playback item. Podcasts/episodes use a larger default
+/// step than tracks.
+fn current_seek_duration(state: &SharedState) -> u16 {
+    let configs = config::get_config();
+    let is_episode = state
+        .player
+        .read()
+        .currently_playing()
+        .is_some_and(|item| matches!(item, rspotify::model::PlayableItem::Episode(_)));
+    if is_episode {
+        configs.app_config.seek_duration_secs_podcast
+    } else {
+        configs.app_config.seek_duration_secs
+    }
+}
+
 /// Handle a global command that is not specific to any page/popup
 fn handle_global_command(
     command: Command,
@@ -608,10 +624,10 @@ fn handle_global_command(
                 chrono::TimeDelta::try_seconds(0).unwrap(),
             )))?;
         }
+
         Command::SeekForward { duration } => {
             if let Some(progress) = state.player.read().playback_progress() {
-                let duration =
-                    duration.unwrap_or(config::get_config().app_config.seek_duration_secs);
+                let duration = duration.unwrap_or(current_seek_duration(state));
                 client_pub.send(ClientRequest::Player(PlayerRequest::SeekTrack(
                     progress + chrono::Duration::try_seconds(i64::from(duration)).unwrap(),
                 )))?;
@@ -619,8 +635,7 @@ fn handle_global_command(
         }
         Command::SeekBackward { duration } => {
             if let Some(progress) = state.player.read().playback_progress() {
-                let duration =
-                    duration.unwrap_or(config::get_config().app_config.seek_duration_secs);
+                let duration = duration.unwrap_or(current_seek_duration(state));
                 client_pub.send(ClientRequest::Player(PlayerRequest::SeekTrack(
                     std::cmp::max(
                         chrono::Duration::zero(),

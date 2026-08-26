@@ -4,16 +4,16 @@ use std::{
 };
 
 use chrono_humanize::HumanTime;
-use ratatui::text::Line;
+use ratatui::{text::Line, widgets::Wrap};
 
-use crate::{state::Episode, utils::format_duration};
+use crate::{state::Episode, state::Show, utils::format_duration};
 
 use super::{
     config, utils, utils::construct_and_render_block, Album, Alignment, Artist, ArtistFocusState,
     Borders, BrowsePageUIState, Cell, Constraint, Context, ContextPageUIState, DataReadGuard,
     Frame, Id, Layout, LibraryFocusState, MutableWindowState, Orientation, PageState, Paragraph,
-    PlaylistFolderItem, Rect, Row, SearchFocusState, SharedState, Style, Table, Text, Track,
-    UIStateGuard,
+    PlaylistFolderItem, Rect, Row, SearchFocusState, SharedState, ShowFocusState, Style, Table,
+    Text, Track, UIStateGuard,
 };
 use crate::state::BidiDisplay;
 use crate::ui::utils::to_bidi_string;
@@ -299,17 +299,6 @@ pub fn render_context_page(
     else {
         return;
     };
-
-    // 2. Construct the page's layout
-    let rect = construct_and_render_block(
-        &context_page_type.title(),
-        &ui.theme,
-        Borders::ALL,
-        frame,
-        rect,
-    );
-
-    // 3+4. Construct and render the page's widgets
     let Some(id) = id else {
         frame.render_widget(
             Paragraph::new("Cannot determine the current page's context"),
@@ -319,7 +308,34 @@ pub fn render_context_page(
     };
 
     let data = state.data.read();
-    match data.caches.context.get(&id.uri()) {
+    let context = data.caches.context.get(&id.uri());
+
+    // Shows render their episode detail in a sibling panel below the show panel, so reserve a
+    // bottom strip for it before the show panel's border is drawn.
+    let detail_height = config::get_config()
+        .app_config
+        .layout
+        .detail_window_height
+        .clamp(1, u16::MAX as usize) as u16;
+    let (content_rect, footer_rect) = if matches!(context, Some(Context::Show { .. })) {
+        let chunks =
+            Layout::vertical([Constraint::Fill(0), Constraint::Length(detail_height)]).split(rect);
+        (chunks[0], Some(chunks[1]))
+    } else {
+        (rect, None)
+    };
+
+    // 2. Construct the page's title panel around the content area.
+    let rect = construct_and_render_block(
+        &context_page_type.title(),
+        &ui.theme,
+        Borders::ALL,
+        frame,
+        content_rect,
+    );
+
+    // 3+4. Construct and render the page's widgets.
+    match context {
         Some(context) => {
             // render context description
             let chunks = Layout::vertical([Constraint::Length(1), Constraint::Fill(0)]).split(rect);
@@ -413,6 +429,13 @@ pub fn render_context_page(
             frame.render_widget(Paragraph::new("Loading..."), rect);
         }
     }
+
+    // Render the episode detail below the show panel.
+    if let (Some(footer_rect), Some(Context::Show { show, episodes, .. })) = (footer_rect, context)
+    {
+        let filtered = ui.search_filtered_items(episodes);
+        render_episode_detail_footer(frame, footer_rect, &data, ui, show, &filtered);
+    }
 }
 
 pub fn render_library_page(
@@ -433,10 +456,11 @@ pub fn render_library_page(
     };
 
     // 2. Construct the page's layout
-    // Split the library page into 3 windows:
+    // Split the library page into 4 windows:
     // - a playlists window
     // - a saved albums window
     // - a followed artists window
+    // - a saved shows window
 
     let chunks = ui
         .orientation
@@ -445,8 +469,10 @@ pub fn render_library_page(
             Constraint::Percentage(configs.app_config.layout.library.album_percent),
             Constraint::Percentage(
                 100 - (configs.app_config.layout.library.album_percent
-                    + configs.app_config.layout.library.playlist_percent),
+                    + configs.app_config.layout.library.playlist_percent
+                    + configs.app_config.layout.library.show_percent),
             ),
+            Constraint::Percentage(configs.app_config.layout.library.show_percent),
         ])
         .split(rect);
 
@@ -472,6 +498,7 @@ pub fn render_library_page(
     );
     let artist_rect =
         construct_and_render_block("Artists", &ui.theme, Borders::ALL, frame, chunks[2]);
+    let show_rect = construct_and_render_block("Shows", &ui.theme, Borders::ALL, frame, chunks[3]);
 
     // 3. Construct the page's widgets
     // Construct the playlist window
@@ -488,7 +515,8 @@ pub fn render_library_page(
 
     let is_playlist_active = is_active
         && focus_state != LibraryFocusState::SavedAlbums
-        && focus_state != LibraryFocusState::FollowedArtists;
+        && focus_state != LibraryFocusState::FollowedArtists
+        && focus_state != LibraryFocusState::SavedShows;
     let playlist_selected = if is_playlist_active {
         ui.current_page_mut().selected()
     } else {
@@ -528,6 +556,22 @@ pub fn render_library_page(
         is_artist_active,
         artist_selected,
     );
+    // Construct the saved show window
+    let is_show_active = is_active && focus_state == LibraryFocusState::SavedShows;
+    let show_selected = if is_show_active {
+        ui.current_page_mut().selected()
+    } else {
+        None
+    };
+    let (show_list, n_shows) = utils::construct_list_widget(
+        &ui.theme,
+        ui.search_filtered_items(&data.user_data.saved_shows)
+            .into_iter()
+            .map(|s| (s.to_bidi_string(), curr_context_uri == Some(s.id.uri())))
+            .collect(),
+        is_show_active,
+        show_selected,
+    );
 
     // 4. Render the page's widgets
     // Render the library page's windows.
@@ -556,6 +600,13 @@ pub fn render_library_page(
         artist_rect,
         n_artists,
         &mut page_state.followed_artist_list,
+    );
+    utils::render_list_window(
+        frame,
+        show_list,
+        show_rect,
+        n_shows,
+        &mut page_state.saved_show_list,
     );
 }
 
@@ -1281,13 +1332,112 @@ fn render_episode_table(
     } = ui.current_page_mut()
     {
         let playable_table_state = match state {
-            ContextPageUIState::Show { episode_table } => episode_table,
+            ContextPageUIState::Show { episode_table, .. } => episode_table,
             s => unreachable!("unexpected state: {s:?}"),
         };
         utils::render_table_window(frame, episode_table, rect, n_episodes, playable_table_state);
     }
 }
 
+/// Renders the selected episode's show/publisher + description below the episode table.
+#[cfg_attr(not(feature = "image"), allow(unused_variables))]
+fn render_episode_detail_footer(
+    frame: &mut Frame,
+    rect: Rect,
+    data: &DataReadGuard,
+    ui: &mut UIStateGuard,
+    show: &Show,
+    episodes: &[&Episode],
+) {
+    let selected = ui.current_page_mut().selected().unwrap_or_default();
+    let Some(episode) = episodes.get(selected) else {
+        return;
+    };
+
+    let (is_focused, description_scroll) = match ui.current_page() {
+        PageState::Context {
+            state:
+                Some(ContextPageUIState::Show {
+                    focus,
+                    description_scroll,
+                    ..
+                }),
+            ..
+        } => (*focus == ShowFocusState::Details, *description_scroll),
+        _ => (false, 0),
+    };
+
+    let inner = construct_and_render_block("Description", &ui.theme, Borders::ALL, frame, rect);
+
+    // When enabled and the episode's cover image is cached, reserve a left strip for it and
+    // render the description text in the remaining area.
+    #[cfg(feature = "image")]
+    let text_rect = {
+        let configs = config::get_config();
+        let image_url = episode.image_url.as_deref();
+        match image_url
+            .filter(|_| configs.app_config.layout.detail_window_image)
+            .and_then(|url| data.caches.images.get(url).map(|img| (url, img)))
+        {
+            Some((url, img)) => {
+                let width = {
+                    let font = ui.picker.font_size();
+                    inner.height.saturating_mul(font.height) / font.width.max(1)
+                };
+                let chunks = Layout::horizontal([Constraint::Length(width), Constraint::Fill(1)])
+                    .spacing(1)
+                    .split(inner);
+                let area = chunks[0];
+
+                let needs_rebuild = {
+                    let info = &ui.episode_detail_image_render_info;
+                    info.url != url || info.render_area != area
+                };
+                if needs_rebuild {
+                    let state = match crate::ui::cover_image::CoverImage::new(&ui.picker, img, area)
+                    {
+                        Ok(cover) => Some(cover),
+                        Err(err) => {
+                            tracing::error!("Failed to encode episode cover image: {err:#}");
+                            None
+                        }
+                    };
+                    let info = &mut ui.episode_detail_image_render_info;
+                    info.state = state;
+                    url.clone_into(&mut info.url);
+                    info.render_area = area;
+                }
+                if let Some(cover) = ui.episode_detail_image_render_info.state.as_mut() {
+                    cover.render(frame, area);
+                }
+                chunks[1]
+            }
+            None => inner,
+        }
+    };
+    #[cfg(not(feature = "image"))]
+    let text_rect = inner;
+
+    let header = format!("{} • {}", show.name, show.publisher);
+    let chunks = Layout::vertical([Constraint::Length(1), Constraint::Fill(1)]).split(text_rect);
+
+    let header_style = if is_focused {
+        ui.theme.selection(true)
+    } else {
+        ui.theme.playback_album()
+    };
+    if !show.name.is_empty() {
+        frame.render_widget(Paragraph::new(header).style(header_style), chunks[0]);
+    }
+
+    frame.render_widget(
+        Paragraph::new(episode.description.clone())
+            .wrap(Wrap { trim: true })
+            .scroll((description_scroll, 0))
+            .style(Style::default()),
+        chunks[1],
+    );
+}
 pub fn render_logs_page(frame: &mut Frame, state: &SharedState, ui: &mut UIStateGuard, rect: Rect) {
     let rect = construct_and_render_block("Logs", &ui.theme, Borders::ALL, frame, rect);
 

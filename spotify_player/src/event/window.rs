@@ -5,7 +5,7 @@ use crate::{
         construct_album_actions, construct_artist_actions, construct_playlist_actions,
         construct_show_actions,
     },
-    state::{Episode, MutableWindowState, Show, UIStateGuard},
+    state::{Episode, MutableWindowState, Show, ShowFocusState, UIStateGuard},
 };
 use command::Action;
 use rand::RngExt;
@@ -203,18 +203,81 @@ pub fn handle_command_for_focused_context_window(
                 ui,
                 state,
             ),
-            Context::Show { show, episodes } => handle_command_for_episode_table_window(
-                command,
-                client_pub,
-                &show.id,
-                &ui.search_filtered_items(episodes),
-                &data,
-                ui,
-                state,
-            ),
+            Context::Show { show, episodes, .. } => {
+                let focus = match ui.current_page() {
+                    PageState::Context {
+                        state: Some(ContextPageUIState::Show { focus, .. }),
+                        ..
+                    } => *focus,
+                    _ => ShowFocusState::Episodes,
+                };
+                match focus {
+                    ShowFocusState::Episodes => handle_command_for_episode_table_window(
+                        command,
+                        client_pub,
+                        &show.id,
+                        &ui.search_filtered_items(episodes),
+                        &data,
+                        ui,
+                        state,
+                    ),
+                    ShowFocusState::Details => {
+                        if handle_command_for_episode_detail_window(command, ui) {
+                            Ok(true)
+                        } else {
+                            handle_command_for_episode_table_window(
+                                command,
+                                client_pub,
+                                &show.id,
+                                &ui.search_filtered_items(episodes),
+                                &data,
+                                ui,
+                                state,
+                            )
+                        }
+                    }
+                }
+            }
         },
         None => Ok(false),
     }
+}
+
+/// Handle navigation/scroll commands when the episode detail window is focused, scrolling the
+/// wrapped description body.
+fn handle_command_for_episode_detail_window(command: Command, ui: &mut UIStateGuard) -> bool {
+    let PageState::Context {
+        state: Some(ContextPageUIState::Show {
+            description_scroll, ..
+        }),
+        ..
+    } = ui.current_page_mut()
+    else {
+        return false;
+    };
+
+    let page = crate::config::get_config()
+        .app_config
+        .layout
+        .detail_window_height as u16;
+    match command {
+        Command::SelectNextOrScrollDown => {
+            *description_scroll = description_scroll.saturating_add(1);
+        }
+        Command::SelectPreviousOrScrollUp => {
+            *description_scroll = description_scroll.saturating_sub(1);
+        }
+        Command::PageSelectNextOrScrollDown => {
+            *description_scroll = description_scroll.saturating_add(page);
+        }
+        Command::PageSelectPreviousOrScrollUp => {
+            *description_scroll = description_scroll.saturating_sub(page);
+        }
+        Command::SelectFirstOrScrollToTop => *description_scroll = 0,
+        Command::SelectLastOrScrollToBottom => *description_scroll = u16::MAX,
+        _ => return false,
+    }
+    true
 }
 
 /// Handle commands that may modify a playlist
@@ -651,13 +714,33 @@ fn handle_command_for_episode_table_window(
     ui: &mut UIStateGuard,
     state: &SharedState,
 ) -> Result<bool> {
-    let id = ui.current_page_mut().selected().unwrap_or_default();
+    // Read the selection from the episode table directly: when the detail window has focus,
+    // `PageState::selected()` resolves to `None` (no focused window), but the episode selection
+    // itself is unchanged.
+    let id = match ui.current_page() {
+        PageState::Context {
+            state: Some(ContextPageUIState::Show { episode_table, .. }),
+            ..
+        } => episode_table.selected().unwrap_or_default(),
+        _ => return Ok(false),
+    };
     if id >= episodes.len() {
         return Ok(false);
     }
 
     let count = ui.count_prefix;
     if handle_navigation_command(command, ui.current_page_mut(), id, episodes.len(), count) {
+        // reset the description scroll for the newly selected episode
+        if let PageState::Context {
+            state:
+                Some(ContextPageUIState::Show {
+                    description_scroll, ..
+                }),
+            ..
+        } = ui.current_page_mut()
+        {
+            *description_scroll = 0;
+        }
         return Ok(true);
     }
     match command {

@@ -82,6 +82,13 @@ fn handle_action_for_library_page(
             ui,
             client_pub,
         ),
+        LibraryFocusState::SavedShows => window::handle_action_for_selected_item(
+            action,
+            &ui.search_filtered_items(&data.user_data.saved_shows),
+            &data,
+            ui,
+            client_pub,
+        ),
     }
 }
 
@@ -126,6 +133,11 @@ fn handle_command_for_library_page(
         // Sort artists alphabetically
         data.user_data
             .followed_artists
+            .sort_by_key(|x| x.name.to_lowercase());
+
+        // Sort shows alphabetically
+        data.user_data
+            .saved_shows
             .sort_by_key(|x| x.name.to_lowercase());
     }
 
@@ -188,6 +200,15 @@ fn handle_command_for_library_page(
             Ok(window::handle_command_for_artist_list_window(
                 command,
                 &ui.search_filtered_items(&data.user_data.followed_artists),
+                &data,
+                ui,
+            ))
+        }
+        LibraryFocusState::SavedShows => {
+            let data = state.data.read();
+            Ok(window::handle_command_for_show_list_window(
+                command,
+                &ui.search_filtered_items(&data.user_data.saved_shows),
                 &data,
                 ui,
             ))

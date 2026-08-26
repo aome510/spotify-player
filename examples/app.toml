@@ -24,7 +24,7 @@ cover_img_length = 0
 cover_img_width = 5
 cover_img_pixels = 16
 seek_duration_secs = 5
-custom_queue = true
+seek_duration_secs_podcast = 15
 enable_relative_line_number = false
 
 [device]
@@ -37,6 +37,8 @@ normalization = false
 autoplay = false
 
 [layout]
-library = { playlist_percent = 40, album_percent = 40 }
+library = { playlist_percent = 40, album_percent = 40, show_percent = 0, audiobook_percent = 0 }
 playback_window_position = "Top"
 playback_window_height = 6
+detail_window_height = 8
+detail_window_image = true

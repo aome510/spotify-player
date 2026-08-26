@@ -55,6 +55,7 @@ pub struct LibraryPageUIState {
     pub playlist_list: ListState,
     pub saved_album_list: ListState,
     pub followed_artist_list: ListState,
+    pub saved_show_list: ListState,
     pub focus: LibraryFocusState,
     pub playlist_folder_id: usize,
 }
@@ -96,6 +97,8 @@ pub enum ContextPageUIState {
     },
     Show {
         episode_table: TableState,
+        focus: ShowFocusState,
+        description_scroll: u16,
     },
 }
 
@@ -104,6 +107,7 @@ pub enum LibraryFocusState {
     Playlists,
     SavedAlbums,
     FollowedArtists,
+    SavedShows,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -112,6 +116,12 @@ pub enum ArtistFocusState {
     Albums,
     RelatedArtists,
     LikedSongs,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum ShowFocusState {
+    Episodes,
+    Details,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -179,6 +189,7 @@ impl PageState {
                         playlist_list,
                         saved_album_list,
                         followed_artist_list,
+                        saved_show_list,
                         focus,
                         ..
                     },
@@ -188,6 +199,7 @@ impl PageState {
                 LibraryFocusState::FollowedArtists => {
                     MutableWindowState::List(followed_artist_list)
                 }
+                LibraryFocusState::SavedShows => MutableWindowState::List(saved_show_list),
             }),
             Self::Search {
                 state:
@@ -210,29 +222,34 @@ impl PageState {
                 SearchFocusState::Shows => Some(MutableWindowState::List(show_list)),
                 SearchFocusState::Episodes => Some(MutableWindowState::List(episode_list)),
             },
-            Self::Context { state, .. } => state.as_mut().map(|state| match state {
+            Self::Context { state, .. } => state.as_mut().and_then(|state| match state {
                 ContextPageUIState::Tracks { track_table }
-                | ContextPageUIState::Playlist { track_table } => {
-                    MutableWindowState::Table(track_table)
+                | ContextPageUIState::Playlist { track_table }
+                | ContextPageUIState::Album { track_table } => {
+                    Some(MutableWindowState::Table(track_table))
                 }
-                ContextPageUIState::Album { track_table } => MutableWindowState::Table(track_table),
                 ContextPageUIState::Artist {
                     top_track_table,
                     album_table,
                     related_artist_list,
                     liked_track_table,
                     focus,
-                } => match focus {
+                } => Some(match focus {
                     ArtistFocusState::TopTracks => MutableWindowState::Table(top_track_table),
                     ArtistFocusState::Albums => MutableWindowState::Table(album_table),
                     ArtistFocusState::RelatedArtists => {
                         MutableWindowState::List(related_artist_list)
                     }
                     ArtistFocusState::LikedSongs => MutableWindowState::Table(liked_track_table),
+                }),
+                ContextPageUIState::Show {
+                    episode_table,
+                    focus,
+                    ..
+                } => match focus {
+                    ShowFocusState::Episodes => Some(MutableWindowState::Table(episode_table)),
+                    ShowFocusState::Details => None,
                 },
-                ContextPageUIState::Show { episode_table } => {
-                    MutableWindowState::Table(episode_table)
-                }
             }),
             Self::Browse { state } => match state {
                 BrowsePageUIState::CategoryList { state } => Some(MutableWindowState::List(state)),
@@ -254,6 +271,7 @@ impl LibraryPageUIState {
             playlist_list: ListState::default(),
             saved_album_list: ListState::default(),
             followed_artist_list: ListState::default(),
+            saved_show_list: ListState::default(),
             focus: LibraryFocusState::Playlists,
             playlist_folder_id: 0,
         }
@@ -321,6 +339,8 @@ impl ContextPageUIState {
     pub fn new_show() -> Self {
         Self::Show {
             episode_table: TableState::default(),
+            focus: ShowFocusState::Episodes,
+            description_scroll: 0,
         }
     }
 }
@@ -365,6 +385,10 @@ impl Focusable for PageState {
                 state: Some(ContextPageUIState::Artist { focus, .. }),
                 ..
             } => focus.next(),
+            Self::Context {
+                state: Some(ContextPageUIState::Show { focus, .. }),
+                ..
+            } => focus.next(),
             _ => {}
         }
 
@@ -386,6 +410,10 @@ impl Focusable for PageState {
             } => focus.previous(),
             Self::Context {
                 state: Some(ContextPageUIState::Artist { focus, .. }),
+                ..
+            } => focus.previous(),
+            Self::Context {
+                state: Some(ContextPageUIState::Show { focus, .. }),
                 ..
             } => focus.previous(),
             _ => {}
@@ -424,7 +452,8 @@ impl_focusable!(
     LibraryFocusState,
     [Playlists, SavedAlbums],
     [SavedAlbums, FollowedArtists],
-    [FollowedArtists, Playlists]
+    [FollowedArtists, SavedShows],
+    [SavedShows, Playlists]
 );
 
 impl_focusable!(
@@ -434,6 +463,8 @@ impl_focusable!(
     [Albums, RelatedArtists],
     [RelatedArtists, TopTracks]
 );
+
+impl_focusable!(ShowFocusState, [Episodes, Details], [Details, Episodes]);
 
 impl_focusable!(
     SearchFocusState,
