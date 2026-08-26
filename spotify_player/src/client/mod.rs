@@ -463,9 +463,23 @@ impl AppClient {
                 state.data.write().user_data.user = Some(user);
             }
             ClientRequest::Player(request) => {
+                let seek_to = match &request {
+                    PlayerRequest::SeekTrack(position) => Some(*position),
+                    _ => None,
+                };
                 let playback = state.player.read().buffered_playback.clone();
                 let playback = self.handle_player_request(request, playback).await?;
                 state.player.write().buffered_playback = playback;
+                if let Some(position) = seek_to {
+                    // Reflect a seek immediately in local state so the progress bar jumps right
+                    // away; the background `update_playback()` poll reconciles the exact
+                    // server-side position shortly after.
+                    let mut player = state.player.write();
+                    if let Some(p) = player.playback.as_mut() {
+                        p.progress = Some(position);
+                    }
+                    player.playback_last_updated_time = Some(std::time::Instant::now());
+                }
                 self.update_playback(state);
             }
             ClientRequest::GetCurrentPlayback => {
