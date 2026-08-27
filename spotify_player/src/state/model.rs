@@ -42,6 +42,7 @@ pub enum Context {
     Show {
         show: Show,
         episodes: Vec<Episode>,
+        total_episodes: usize,
     },
 }
 
@@ -186,10 +187,10 @@ pub struct Playlist {
 pub struct Show {
     pub id: ShowId<'static>,
     pub name: String,
+    pub publisher: String,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-/// A Spotify episode (podcast episode)
 pub struct Episode {
     pub id: EpisodeId<'static>,
     pub name: String,
@@ -197,6 +198,8 @@ pub struct Episode {
     pub duration: std::time::Duration,
     pub show: Option<Show>,
     pub release_date: String,
+    #[cfg(feature = "image")]
+    pub image_url: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -266,8 +269,9 @@ impl Context {
             }
             Context::Show {
                 ref show,
-                ref episodes,
-            } => format!("{} | {} episodes", show.name, episodes.len()),
+                total_episodes,
+                ..
+            } => format!("{} | {} episodes", show.name, total_episodes),
         }
     }
 }
@@ -597,6 +601,7 @@ impl From<rspotify::model::SimplifiedShow> for Show {
         Self {
             id: show.id,
             name: show.name,
+            publisher: show.publisher,
         }
     }
 }
@@ -606,6 +611,7 @@ impl From<rspotify::model::FullShow> for Show {
         Self {
             id: show.id,
             name: show.name,
+            publisher: show.publisher,
         }
     }
 }
@@ -627,6 +633,8 @@ impl From<rspotify::model::SimplifiedEpisode> for Episode {
             duration: episode.duration.to_std().expect("valid chrono duration"),
             show: None,
             release_date: episode.release_date,
+            #[cfg(feature = "image")]
+            image_url: episode.images.first().map(|i| i.url.clone()),
         }
     }
 }
@@ -640,6 +648,8 @@ impl From<rspotify::model::FullEpisode> for Episode {
             duration: episode.duration.to_std().expect("valid chrono duration"),
             show: Some(episode.show.into()),
             release_date: episode.release_date,
+            #[cfg(feature = "image")]
+            image_url: episode.images.first().map(|i| i.url.clone()),
         }
     }
 }

@@ -4,7 +4,7 @@ use crate::{
         Album, Artist, ArtistFocusState, BrowsePageUIState, Context, ContextPageUIState,
         DataReadGuard, Id, LibraryFocusState, MutableWindowState, PageState, PageType,
         PlaybackMetadata, PlaylistCreateCurrentField, PlaylistFolderItem, PlaylistPopupAction,
-        PopupState, SearchFocusState, SharedState, Track, UIStateGuard,
+        PopupState, SearchFocusState, SharedState, ShowFocusState, Track, UIStateGuard,
     },
 };
 use anyhow::{Context as AnyhowContext, Result};

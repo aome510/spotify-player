@@ -67,7 +67,7 @@ spotify_player -o device.volume=80 -o theme=dracula
 | `cover_img_width`                 | Cover image width in terminal rows (requires `image` feature).                                       | `5`                                                                    |
 | `cover_img_pixels`                | Pixels per side for cover image (requires `pixelate` feature).                                       | `16`                                                                   |
 | `seek_duration_secs`              | Seek duration in seconds for seek commands.                                                          | `5`                                                                    |
-| `sort_artist_albums_by_type`      | Sort albums by type on artist pages.                                                                 | `false`                                                                |
+| `seek_duration_secs_podcast`      | Seek duration in seconds for seek commands when playing a podcast episode.                          | `15`                                                                   |
 | `volume_scroll_step`              | Volume change step when using mouse scroll.                                                          | `5`                                                                    |
 | `enable_mouse_scroll_volume`      | Enable volume control via mouse scroll.                                                              | `true`                                                                 |
 | `custom_queue`                    | Enable app-managed queue for custom playback integration (requires `streaming` feature).             | `true`                                                                 |
@@ -153,21 +153,48 @@ See the [Librespot wiki](https://github.com/librespot-org/librespot/wiki/Options
 
 The `[layout]` section configures the UI layout:
 
-| Option                     | Description                                          | Default |
-| -------------------------- | ---------------------------------------------------- | ------- |
-| `library.album_percent`    | Percentage of the album window in the library.       | `40`    |
-| `library.playlist_percent` | Percentage of the playlist window in the library.    | `40`    |
-| `playback_window_position` | Position of the playback window (`Top` or `Bottom`). | `Top`   |
-| `playback_window_height`   | Height of the playback window.                       | `6`     |
+| Option                      | Description                                            | Default |
+| --------------------------- | ------------------------------------------------------ | ------- |
+| `library.layout`            | Library window layout: `Stack` (single axis) or `Grid` (2x2 quadrants). | `Stack` |
+| `library.album_percent`     | Percentage of the album window in the library.         | `40`    |
+| `library.playlist_percent`  | Percentage of the playlist window in the library.      | `40`    |
+| `library.show_percent`      | Percentage of the show (podcast) window in the library. | `0`    |
+| `library.audiobook_percent` | Percentage of the audiobook window in the library.     | `0`     |
+| `library.grid.*`            | Quadrant view assignment for the `Grid` layout (see below). | see below |
+| `playback_window_position`  | Position of the playback window (`Top` or `Bottom`).   | `Top`   |
+| `playback_window_height`    | Height of the playback window.                         | `6`     |
+| `detail_window_height`      | Height of the episode detail (description) window shown when browsing a show. | `8` |
+| `detail_window_image`       | Render the episode's cover image inside the detail window (requires the `image` feature). | `true` |
+
+With `library.layout = "Stack"` (the default), the four library windows are laid out along a
+single axis, sized by their per-view percentages (artists take the remainder). With
+`library.layout = "Grid"`, the home view becomes a 2x2 quadrant grid combining vertical and
+horizontal tiling. Each quadrant hosts a configured view via `library.grid.top_left`,
+`top_right`, `bottom_left`, and `bottom_right` (each `Playlists`, `Albums`, `Artists`, or
+`Shows`). Sizing derives from the per-view percentages — the top row holds the top-left +
+top-right views, the bottom row the rest, and each row splits its two columns proportionally —
+so the vertical divider can differ between the two rows. On terminals too small for a usable
+grid (less than ~60 columns or ~10 rows) the view automatically falls back to the stack layout.
 
 Example:
 
 ```toml
-
-[layout]
-library = { album_percent = 40, playlist_percent = 40 }
+library = {
+    layout = "Grid",
+    album_percent = 40,
+    playlist_percent = 40,
+    show_percent = 0,
+    audiobook_percent = 0,
+    grid = {
+        top_left = "Playlists",
+        top_right = "Albums",
+        bottom_left = "Artists",
+        bottom_right = "Shows",
+    },
+}
 playback_window_position = "Top"
-
+detail_window_height = 8
+detail_window_image = true
 ```
 
 ## Themes

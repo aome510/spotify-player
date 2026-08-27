@@ -125,7 +125,7 @@ pub struct AppConfig {
     pub notify_streaming_only: bool,
 
     pub seek_duration_secs: u16,
-
+    pub seek_duration_secs_podcast: u16,
     pub sort_artist_albums_by_type: bool,
 
     pub volume_scroll_step: u8,
@@ -229,12 +229,52 @@ pub struct LayoutConfig {
     pub library: LibraryLayoutConfig,
     pub playback_window_position: Position,
     pub playback_window_height: usize,
+    pub detail_window_height: usize,
+    pub detail_window_image: bool,
 }
 
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
+pub enum LibraryLayoutKind {
+    /// The default single-axis stack of library windows.
+    Stack,
+    /// A 2x2 quadrant grid of library windows (vertical + horizontal tiling).
+    Grid,
+}
+config_parser_impl!(LibraryLayoutKind);
+
+/// A library window that can be placed in a quadrant of the grid layout.
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
+pub enum LibraryView {
+    Playlists,
+    Albums,
+    Artists,
+    Shows,
+}
+config_parser_impl!(LibraryView);
+
+/// Which library window each of the four grid quadrants hosts.
+///
+/// Sizing derives from the per-view `*_percent` fields in [`LibraryLayoutConfig`]: the grid is
+/// split into a top row (top-left + top-right views) and a bottom row, then each row is split
+/// into its two columns proportionally to those views' percents. This lets the vertical divider
+/// differ between the two rows (a dashboard mosaic).
+#[derive(Debug, Deserialize, Serialize, ConfigParse, Clone)]
+pub struct LibraryGridLayoutConfig {
+    pub top_left: LibraryView,
+    pub top_right: LibraryView,
+    pub bottom_left: LibraryView,
+    pub bottom_right: LibraryView,
+}
+
+#[allow(clippy::struct_field_names)]
 #[derive(Debug, Deserialize, Serialize, ConfigParse, Clone)]
 pub struct LibraryLayoutConfig {
+    pub layout: LibraryLayoutKind,
     pub playlist_percent: u16,
     pub album_percent: u16,
+    pub show_percent: u16,
+    pub audiobook_percent: u16,
+    pub grid: LibraryGridLayoutConfig,
 }
 
 #[allow(dead_code)]
@@ -387,7 +427,7 @@ impl Default for AppConfig {
             notify_streaming_only: false,
 
             seek_duration_secs: 5,
-
+            seek_duration_secs_podcast: 15,
             sort_artist_albums_by_type: false,
 
             volume_scroll_step: 5,
@@ -421,19 +461,35 @@ impl Default for LayoutConfig {
     fn default() -> Self {
         Self {
             library: LibraryLayoutConfig {
+                layout: LibraryLayoutKind::Stack,
                 playlist_percent: 40,
                 album_percent: 40,
+                show_percent: 0,
+                audiobook_percent: 0,
+                grid: LibraryGridLayoutConfig {
+                    top_left: LibraryView::Playlists,
+                    top_right: LibraryView::Albums,
+                    bottom_left: LibraryView::Artists,
+                    bottom_right: LibraryView::Shows,
+                },
             },
             playback_window_position: Position::Top,
             playback_window_height: 6,
+            detail_window_height: 8,
+            detail_window_image: true,
         }
     }
 }
 
 impl LayoutConfig {
     fn check_values(&self) -> anyhow::Result<()> {
-        if self.library.album_percent + self.library.playlist_percent > 99 {
-            anyhow::bail!("Invalid library layout: summation of album_percent and playlist_percent cannot be greater than 99!");
+        if self.library.album_percent
+            + self.library.playlist_percent
+            + self.library.show_percent
+            + self.library.audiobook_percent
+            > 99
+        {
+            anyhow::bail!("Invalid library layout: summation of album_percent, playlist_percent, show_percent, and audiobook_percent cannot be greater than 99!");
         }
         Ok(())
     }

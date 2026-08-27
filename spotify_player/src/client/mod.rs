@@ -8,10 +8,10 @@ use crate::{
     auth::AuthConfig,
     state::{
         store_data_into_file_cache, Album, AlbumId, Artist, ArtistId, Category, Context, ContextId,
-        Device, FileCacheKey, Item, ItemId, MemoryCaches, Playback, PlaybackMetadata, Playlist,
-        PlaylistFolderItem, PlaylistId, SearchResults, SharedState, Show, ShowId, Track, TrackId,
-        UserId, TTL_CACHE_DURATION, USER_LIKED_TRACKS_URI, USER_RECENTLY_PLAYED_TRACKS_URI,
-        USER_TOP_TRACKS_URI,
+        Device, Episode, EpisodeId, FileCacheKey, Item, ItemId, MemoryCaches, Playback,
+        PlaybackMetadata, Playlist, PlaylistFolderItem, PlaylistId, SearchResults, SharedState,
+        Show, ShowId, Track, TrackId, UserId, TTL_CACHE_DURATION, USER_LIKED_TRACKS_URI,
+        USER_RECENTLY_PLAYED_TRACKS_URI, USER_TOP_TRACKS_URI,
     },
 };
 
@@ -106,6 +106,76 @@ pub fn new_api_client() -> Result<WebApiClient> {
     Ok(WebApiClient::new(
         rspotify::AuthCodePkceSpotify::with_config(creds, oauth, config),
     ))
+}
+
+/// Minimal deserialization target for a Spotify show. rspotify 0.15.3's `SimplifiedShow`/
+/// `FullShow` types require the `available_markets` field, which Spotify removed from API
+/// responses; this struct only captures the fields the app uses.
+#[derive(Deserialize, Debug, Clone)]
+struct ShowInfo {
+    id: ShowId<'static>,
+    name: String,
+    #[serde(default)]
+    publisher: String,
+}
+
+/// A saved show object returned by `/me/shows`.
+#[derive(Deserialize, Debug, Clone)]
+struct SavedShow {
+    show: ShowInfo,
+}
+
+/// A full show object returned by `/shows/{id}`.
+#[derive(Deserialize, Debug, Clone)]
+struct FullShow {
+    id: ShowId<'static>,
+    name: String,
+    #[serde(default)]
+    publisher: String,
+    episodes: rspotify::model::Page<SimplifiedEpisodeInfo>,
+}
+
+/// Deserialization target for a show's episodes. Carries the fields the episode table and detail
+/// footer need, avoiding a per-episode `/episodes/{id}` request. `images` is gated on the `image`
+/// feature since only the cover-image footer reads it.
+#[derive(Deserialize, Debug, Clone)]
+struct SimplifiedEpisodeInfo {
+    id: EpisodeId<'static>,
+    name: String,
+    release_date: String,
+    duration_ms: u64,
+    #[serde(default)]
+    description: String,
+    #[cfg(feature = "image")]
+    #[serde(default)]
+    images: Vec<EpisodeImageInfo>,
+}
+
+impl From<SimplifiedEpisodeInfo> for Episode {
+    fn from(e: SimplifiedEpisodeInfo) -> Self {
+        Self {
+            id: e.id,
+            name: e.name,
+            description: e.description,
+            duration: std::time::Duration::from_millis(e.duration_ms),
+            show: None,
+            release_date: e.release_date,
+            #[cfg(feature = "image")]
+            image_url: e.images.first().map(|i| i.url.clone()),
+        }
+    }
+}
+
+/// A `/search?type=show` response body.
+#[derive(Deserialize, Debug)]
+struct ShowSearchResult {
+    shows: rspotify::model::Page<ShowInfo>,
+}
+/// A single cover image from an episode's `images` array.
+#[cfg(feature = "image")]
+#[derive(Deserialize, Debug, Clone)]
+struct EpisodeImageInfo {
+    url: String,
 }
 
 impl AppClient {
@@ -580,7 +650,29 @@ impl AppClient {
                             },
                             uri => anyhow::bail!("unsupported Tracks context: {uri}"),
                         },
-                        ContextId::Show(show_id) => self.show_context(show_id).await?,
+                        ContextId::Show(show_id) => {
+                            let prefetch_id = show_id.clone_static();
+                            let ctx = self.show_context(show_id).await?;
+                            if let Context::Show {
+                                episodes,
+                                total_episodes,
+                                ..
+                            } = &ctx
+                            {
+                                if episodes.len() < *total_episodes {
+                                    self.spawn_show_episodes_prefetch(
+                                        state.clone(),
+                                        prefetch_id,
+                                        uri.clone(),
+                                        episodes.len(),
+                                        *total_episodes,
+                                    );
+                                }
+                                #[cfg(feature = "image")]
+                                self.spawn_episode_images_prefetch(state.clone(), episodes.clone());
+                            }
+                            ctx
+                        }
                     };
 
                     state
@@ -946,13 +1038,20 @@ impl AppClient {
     /// Get all saved shows of the current user
     pub async fn current_user_saved_shows(&self) -> Result<Vec<Show>> {
         let shows = self
-            .all_paging_items::<rspotify::model::Show>(
+            .all_paging_items::<SavedShow>(
                 &format!("{SPOTIFY_API_ENDPOINT}/me/shows"),
                 0, // we don't know the total number of saved shows beforehand
             )
             .await?;
 
-        Ok(shows.into_iter().map(|s| s.show.into()).collect())
+        Ok(shows
+            .into_iter()
+            .map(|s| Show {
+                id: s.show.id,
+                name: s.show.name,
+                publisher: s.show.publisher,
+            })
+            .collect())
     }
 
     /// Get all albums of an artist
@@ -1080,23 +1179,16 @@ impl AppClient {
 
     /// Search for items (tracks, artists, albums, playlists) matching a given query
     pub async fn search(&self, query: &str) -> Result<SearchResults> {
-        let (
-            track_result,
-            artist_result,
-            album_result,
-            playlist_result,
-            show_result,
-            episode_result,
-        ) = tokio::try_join!(
+        let (track_result, artist_result, album_result, playlist_result, shows, episode_result) = tokio::try_join!(
             self.search_specific_type(query, rspotify::model::SearchType::Track),
             self.search_specific_type(query, rspotify::model::SearchType::Artist),
             self.search_specific_type(query, rspotify::model::SearchType::Album),
             self.search_specific_type(query, rspotify::model::SearchType::Playlist),
-            self.search_specific_type(query, rspotify::model::SearchType::Show),
+            self.search_shows(query),
             self.search_specific_type(query, rspotify::model::SearchType::Episode)
         )?;
 
-        let (tracks, artists, albums, playlists, shows, episodes) = (
+        let (tracks, artists, albums, playlists, episodes) = (
             match track_result {
                 rspotify::model::SearchResult::Tracks(p) => p
                     .items
@@ -1124,12 +1216,6 @@ impl AppClient {
                     p.items.into_iter().map(std::convert::Into::into).collect()
                 }
                 _ => anyhow::bail!("expect a playlist search result"),
-            },
-            match show_result {
-                rspotify::model::SearchResult::Shows(p) => {
-                    p.items.into_iter().map(std::convert::Into::into).collect()
-                }
-                _ => anyhow::bail!("expect a show search result"),
             },
             match episode_result {
                 rspotify::model::SearchResult::Episodes(p) => {
@@ -1159,6 +1245,35 @@ impl AppClient {
             .deref()
             .search(query, typ, None, None, None, None)
             .await?)
+    }
+
+    /// Search for shows matching a given query.
+    ///
+    /// Uses a raw request because rspotify's `SearchResult::Shows` deserializes into
+    /// `SimplifiedShow`, which requires the `available_markets` field Spotify no longer sends.
+    pub async fn search_shows(&self, query: &str) -> Result<Vec<Show>> {
+        let result = self
+            .http_get::<ShowSearchResult>(
+                &format!("{SPOTIFY_API_ENDPOINT}/search"),
+                &Query::from([
+                    ("q", query),
+                    ("type", "show"),
+                    ("market", "from_token"),
+                    ("limit", "50"),
+                    ("offset", "0"),
+                ]),
+            )
+            .await?;
+        Ok(result
+            .shows
+            .items
+            .into_iter()
+            .map(|s| Show {
+                id: s.id,
+                name: s.name,
+                publisher: s.publisher,
+            })
+            .collect())
     }
 
     /// Add a playable item to a playlist
@@ -1510,27 +1625,169 @@ impl AppClient {
     }
 
     /// Get a show context data
+    ///
+    /// Only the first page of episodes is fetched eagerly; the rest load in the background so
+    /// the table fills up without requiring the user to scroll.
     pub async fn show_context(&self, show_id: ShowId<'_>) -> Result<Context> {
         let show_uri = show_id.uri();
         tracing::info!("Get show context: {}", show_uri);
 
-        let show = self.get_a_show(show_id.clone(), None).await?;
-
-        // get the show's episodes
-        let episodes = self
-            .all_paging_items::<rspotify::model::SimplifiedEpisode>(
-                &format!("{SPOTIFY_API_ENDPOINT}/shows/{}/episodes", show_id.id()),
-                show.episodes.total as usize,
+        let show = self
+            .http_get::<FullShow>(
+                &format!("{SPOTIFY_API_ENDPOINT}/shows/{}", show_id.id()),
+                &Query::new(),
             )
-            .await?
+            .await?;
+
+        // Reuse the first page of episodes already bundled in the show payload instead of
+        // issuing a second paginated request for the same data.
+        let total_episodes = show.episodes.total as usize;
+        let episodes: Vec<Episode> = show.episodes.items.into_iter().map(Episode::from).collect();
+
+        let show = Show {
+            id: show.id,
+            name: show.name,
+            publisher: show.publisher,
+        };
+
+        Ok(Context::Show {
+            show,
+            episodes,
+            total_episodes,
+        })
+    }
+
+    /// Fetch one page of a show's episodes starting at `offset`.
+    ///
+    /// Chunk size is the configured page of rows (so the first page fills the view), clamped to
+    /// Spotify's practical 25–50 range.
+    async fn show_episodes_page(
+        &self,
+        show_id: &ShowId<'_>,
+        offset: usize,
+    ) -> Result<Vec<Episode>> {
+        let limit = config::get_config()
+            .app_config
+            .page_size_in_rows
+            .clamp(25, 50);
+        let limit_str = limit.to_string();
+        let offset_str = offset.to_string();
+        let params = Query::from([
+            ("market", "from_token"),
+            ("limit", &limit_str),
+            ("offset", &offset_str),
+        ]);
+        let page = self
+            .http_get::<rspotify::model::Page<SimplifiedEpisodeInfo>>(
+                &format!("{SPOTIFY_API_ENDPOINT}/shows/{}/episodes", show_id.id()),
+                &params,
+            )
+            .await?;
+
+        Ok(page
+            .items
             .into_iter()
-            .map(std::convert::Into::into)
-            .collect::<Vec<_>>();
+            .map(Episode::from)
+            .collect::<Vec<_>>())
+    }
 
-        // converts `rspotify::model::FullShow` into `state::Show`
-        let show: Show = show.into();
+    /// Spawn a background task that appends the remaining pages of a show's episodes to the
+    /// cached context as they arrive, so the episode table fills up without user interaction.
+    fn spawn_show_episodes_prefetch(
+        &self,
+        state: SharedState,
+        show_id: ShowId<'static>,
+        uri: String,
+        mut offset: usize,
+        total_episodes: usize,
+    ) {
+        let client = self.clone();
+        tokio::spawn(async move {
+            while offset < total_episodes {
+                match client.show_episodes_page(&show_id, offset).await {
+                    Ok(episodes) => {
+                        if episodes.is_empty() {
+                            break;
+                        }
+                        offset += episodes.len();
+                        #[cfg(feature = "image")]
+                        let fetched = episodes.clone();
+                        let mut data = state.data.write();
+                        if let Some(Context::Show {
+                            episodes: loaded, ..
+                        }) = data.caches.context.get_mut(&uri)
+                        {
+                            loaded.extend(episodes);
+                        }
+                        drop(data);
+                        #[cfg(feature = "image")]
+                        if !fetched.is_empty() {
+                            client.spawn_episode_images_prefetch(state.clone(), fetched);
+                        }
+                    }
+                    Err(err) => {
+                        tracing::warn!("failed to prefetch show episodes: {err:#}");
+                        break;
+                    }
+                }
+            }
+        });
+    }
 
-        Ok(Context::Show { show, episodes })
+    /// Fetch a cover image and cache it in memory (and on disk, when enabled).
+    #[cfg(feature = "image")]
+    async fn fetch_episode_image(&self, state: &SharedState, url: &str) -> Result<()> {
+        if state.data.read().caches.images.contains_key(url) {
+            return Ok(());
+        }
+
+        let configs = config::get_config();
+        let filename = format!(
+            "episode-cover-{}.jpg",
+            url.rsplit('/').next().unwrap_or("img")
+        );
+        let path = configs.cache_folder.join("image").join(filename);
+        let bytes = self
+            .retrieve_image(url, &path, configs.app_config.enable_cover_image_cache)
+            .await?;
+
+        #[cfg(not(feature = "pixelate"))]
+        let image = image::load_from_memory(&bytes).context("Failed to load image from memory")?;
+        #[cfg(feature = "pixelate")]
+        let mut image =
+            image::load_from_memory(&bytes).context("Failed to load image from memory")?;
+        #[cfg(feature = "pixelate")]
+        Self::pixelate_image(&mut image);
+
+        state
+            .data
+            .write()
+            .caches
+            .images
+            .insert(url.to_owned(), image, *TTL_CACHE_DURATION);
+        Ok(())
+    }
+
+    /// Spawn a background task that prefetches and caches cover images for the given episodes'
+    /// unique image URLs, skipping any already cached.
+    #[cfg(feature = "image")]
+    fn spawn_episode_images_prefetch(&self, state: SharedState, episodes: Vec<Episode>) {
+        let client = self.clone();
+        tokio::spawn(async move {
+            if config::get_config().app_config.layout.detail_window_image {
+                let mut urls: Vec<&str> = episodes
+                    .iter()
+                    .filter_map(|e| e.image_url.as_deref())
+                    .collect();
+                urls.sort_unstable();
+                urls.dedup();
+                for url in urls {
+                    if let Err(err) = client.fetch_episode_image(&state, url).await {
+                        tracing::warn!("failed to prefetch episode image: {err:#}");
+                    }
+                }
+            }
+        });
     }
 
     /// Make a GET HTTP request to the Spotify server
@@ -1546,29 +1803,62 @@ impl AppClient {
             text.to_string()
         }
 
-        let access_token = self.token().await.context("get token")?;
-        tracing::debug!("{access_token} {url}");
+        // Respect Spotify's rate limit: on a 429, honor `Retry-After` (bounded) and retry a few
+        // times instead of failing outright or immediately hammering the API.
+        const MAX_RATE_LIMIT_RETRIES: usize = 3;
+        const MAX_BACKOFF_SECS: u64 = 10;
 
-        let response = self
-            .http
-            .get(url)
-            .query(payload)
-            .header(
-                reqwest::header::AUTHORIZATION,
-                format!("Bearer {access_token}"),
-            )
-            .send()
-            .await?;
+        let mut attempt = 0;
+        loop {
+            let access_token = self.token().await.context("get token")?;
+            tracing::debug!("{access_token} {url}");
 
-        let status = response.status();
-        let text = process_spotify_api_response(&response.text().await?);
-        tracing::debug!("{text}");
+            let response = self
+                .http
+                .get(url)
+                .query(payload)
+                .header(
+                    reqwest::header::AUTHORIZATION,
+                    format!("Bearer {access_token}"),
+                )
+                .send()
+                .await?;
 
-        if status != StatusCode::OK {
-            anyhow::bail!("failed to send a Spotify API request {url}: {text}");
+            let status = response.status();
+
+            if status == StatusCode::TOO_MANY_REQUESTS {
+                let retry_after = response
+                    .headers()
+                    .get(reqwest::header::RETRY_AFTER)
+                    .and_then(|v| v.to_str().ok())
+                    .and_then(|v| v.parse::<u64>().ok())
+                    .unwrap_or(1);
+
+                attempt += 1;
+                if attempt >= MAX_RATE_LIMIT_RETRIES {
+                    let text = response.text().await.unwrap_or_default();
+                    anyhow::bail!(
+                        "rate-limited (429) after {MAX_RATE_LIMIT_RETRIES} attempts requesting {url}: {text}"
+                    );
+                }
+
+                let delay = std::time::Duration::from_secs(retry_after.min(MAX_BACKOFF_SECS));
+                tracing::warn!(
+                    "rate-limited (429) requesting {url}; backing off {delay:?} (attempt {attempt}/{MAX_RATE_LIMIT_RETRIES})"
+                );
+                tokio::time::sleep(delay).await;
+                continue;
+            }
+
+            let text = process_spotify_api_response(&response.text().await?);
+            tracing::debug!("{text}");
+
+            if status != StatusCode::OK {
+                anyhow::bail!("failed to send a Spotify API request {url}: {text}");
+            }
+
+            return Ok(serde_json::from_str(&text)?);
         }
-
-        Ok(serde_json::from_str(&text)?)
     }
 
     async fn all_paging_items<T>(&self, base_url: &str, mut count: usize) -> Result<Vec<T>>
