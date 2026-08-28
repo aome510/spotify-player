@@ -4,7 +4,7 @@ mod theme;
 const DEFAULT_CONFIG_FOLDER: &str = ".config/spotify-player";
 const DEFAULT_CACHE_FOLDER: &str = ".cache/spotify-player";
 const APP_CONFIG_FILE: &str = "app.toml";
-const THEME_CONFIG_FILE: &str = "theme.toml";
+pub const THEME_CONFIG_FILE: &str = "theme.toml";
 const KEYMAP_CONFIG_FILE: &str = "keymap.toml";
 
 use anyhow::{anyhow, Result};
@@ -19,7 +19,7 @@ use std::{
 
 use anyhow::Context;
 use keymap::KeymapConfig;
-use theme::ThemeConfig;
+pub use theme::ThemeConfig;
 
 pub use theme::Theme;
 
