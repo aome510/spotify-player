@@ -464,7 +464,7 @@ async fn handle_playback_request(
                     Ok(playback) => {
                         // update application's states
                         state.player.write().buffered_playback = playback;
-                        client.update_playback(&state);
+                        client.update_playback_non_blocking(&state);
                     }
                     Err(err) => {
                         tracing::warn!(

@@ -395,7 +395,7 @@ impl Default for AppConfig {
             sort_artist_albums_by_type: false,
 
             volume_scroll_step: 5,
-            enable_mouse_scroll_volume: true,
+            enable_mouse_scroll_volume: false,
 
             custom_queue: true,
 

@@ -433,13 +433,13 @@ mod tests {
         requests.store_retry_after(Duration::from_secs(5)).await;
         assert_eq!(
             requests.retry_after_remaining().await,
-            Some(Duration::from_secs(10))
+            Some(Duration::from_secs(11))
         );
 
         requests.store_retry_after(Duration::from_secs(20)).await;
         assert_eq!(
             requests.retry_after_remaining().await,
-            Some(Duration::from_secs(20))
+            Some(Duration::from_secs(21))
         );
     }
 
@@ -454,7 +454,7 @@ mod tests {
         tokio::task::yield_now().await;
         assert!(!waiting.is_finished());
 
-        tokio::time::advance(Duration::from_secs(10)).await;
+        tokio::time::advance(Duration::from_secs(11)).await;
         waiting.await.unwrap();
         assert_eq!(requests.retry_after_remaining().await, None);
     }

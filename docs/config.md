@@ -70,7 +70,7 @@ spotify_player -o device.volume=80 -o theme=dracula
 | `seek_duration_secs`              | Seek duration in seconds for seek commands.                                                          | `5`                                                                    |
 | `sort_artist_albums_by_type`      | Sort albums by type on artist pages.                                                                 | `false`                                                                |
 | `volume_scroll_step`              | Volume change step when using mouse scroll.                                                          | `5`                                                                    |
-| `enable_mouse_scroll_volume`      | Enable volume control via mouse scroll.                                                              | `true`                                                                 |
+| `enable_mouse_scroll_volume`      | Enable volume control via mouse scroll.                                                              | `false`                                                                |
 | `custom_queue`                    | Enable app-managed queue for custom playback integration (requires `streaming` feature).             | `true`                                                                 |
 | `pause_on_startup`                | Start with playback paused instead of resuming the previous session (requires `streaming` feature).  | `false`                                                                |
 | `enable_relative_line_number`     | Enable Vim-style relative line numbers for lists and popups.                                         | `false`                                                                |

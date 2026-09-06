@@ -16,6 +16,8 @@ use super::ClientRequest;
 struct PlayerEventHandlerState {
     get_context_timer: Instant,
     last_playback_refresh_timer: Instant,
+    ended_playable_uri: Option<String>,
+    last_queue_refresh: Option<(String, Instant)>,
 }
 
 /// starts the client's request handler
@@ -42,6 +44,7 @@ pub async fn start_client_handler(
 
 /// Interval between background session-validity checks.
 const SESSION_CHECK_INTERVAL: Duration = Duration::from_secs(1);
+const QUEUE_REFRESH_THROTTLE: Duration = Duration::from_secs(5);
 
 pub async fn start_session_watcher(state: SharedState, client: super::AppClient) {
     let mut interval = tokio::time::interval(SESSION_CHECK_INTERVAL);
@@ -60,6 +63,7 @@ pub async fn start_session_watcher(state: SharedState, client: super::AppClient)
 fn handle_playback_change_event(
     state: &SharedState,
     client_pub: &flume::Sender<ClientRequest>,
+    handler_state: &mut PlayerEventHandlerState,
 ) -> anyhow::Result<()> {
     let player = state.player.read();
     let (playback, id, duration) = match (
@@ -78,23 +82,37 @@ fn handle_playback_change_event(
         ),
         _ => return Ok(()),
     };
+    let playable_uri = id.uri();
 
-    if let Some(progress) = player.playback_progress() {
-        // update the playback when the current track ends
-        if progress >= duration && playback.is_playing {
-            client_pub.send(ClientRequest::GetCurrentPlayback)?;
-        }
+    let playback_ended = player
+        .playback_progress()
+        .is_some_and(|progress| progress >= duration && playback.is_playing);
+    if playback_ended && handler_state.ended_playable_uri.as_deref() != Some(&playable_uri) {
+        client_pub.send(ClientRequest::GetCurrentPlayback)?;
+        handler_state.ended_playable_uri = Some(playable_uri.clone());
+    } else if !playback_ended {
+        handler_state.ended_playable_uri = None;
     }
 
-    if let Some(queue) = player.queue.as_ref() {
-        // queue needs to be updated if its playing track is different from actual playback's playing track
-        if let Some(queue_track) = queue.currently_playing.as_ref() {
-            if queue_track.id().expect("null track_id") != id {
-                client_pub.send(ClientRequest::GetCurrentUserQueue)?;
-            }
+    let queue_needs_refresh = player.queue.as_ref().is_none_or(|queue| {
+        queue
+            .currently_playing
+            .as_ref()
+            .is_none_or(|queue_item| queue_item.id().expect("null track_id") != id)
+    });
+    if queue_needs_refresh {
+        let should_refresh = handler_state
+            .last_queue_refresh
+            .as_ref()
+            .is_none_or(|(last_uri, timer)| {
+                last_uri != &playable_uri || timer.elapsed() >= QUEUE_REFRESH_THROTTLE
+            });
+        if should_refresh {
+            handler_state.last_queue_refresh = Some((playable_uri, Instant::now()));
+            client_pub.send(ClientRequest::GetCurrentUserQueue)?;
         }
-    } else {
-        client_pub.send(ClientRequest::GetCurrentUserQueue)?;
+    } else if !queue_needs_refresh {
+        handler_state.last_queue_refresh = None;
     }
 
     Ok(())
@@ -191,7 +209,8 @@ fn handle_player_event(
 ) -> anyhow::Result<()> {
     handle_page_change_event(state, client_pub, handler_state)
         .context("handle page change event")?;
-    handle_playback_change_event(state, client_pub).context("handle playback change event")?;
+    handle_playback_change_event(state, client_pub, handler_state)
+        .context("handle playback change event")?;
 
     Ok(())
 }
@@ -206,6 +225,8 @@ pub fn start_player_event_watcher(state: &SharedState, client_pub: &flume::Sende
     let mut handler_state = PlayerEventHandlerState {
         get_context_timer: Instant::now(),
         last_playback_refresh_timer: Instant::now(),
+        ended_playable_uri: None,
+        last_queue_refresh: None,
     };
 
     loop {
