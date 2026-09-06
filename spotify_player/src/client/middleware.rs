@@ -262,16 +262,19 @@ impl SpotifyApiMiddleware {
         next: Next<'_>,
     ) -> reqwest_middleware::Result<Response> {
         let url = request.url();
-        let request_key = url.as_str().to_owned();
-        match self.requests.register_get(request_key).await {
+        match self.requests.register_get(url.to_string()).await {
             GetRegistration::Shared(result) => {
-                tracing::debug!(
+                tracing::info!(
                     %url,
                     "Sharing recent Spotify Web API GET response"
                 );
                 SpotifyApiRequestManager::shared_result(result).await
             }
             GetRegistration::Leader(leader) => {
+                tracing::info!(
+                    %url,
+                    "Making a Spotify Web API GET request"
+                );
                 let response = self.run_get_with_retries(request, extensions, next).await;
                 match response {
                     Ok(response) => match CachedResponse::from_response(response).await {
@@ -351,6 +354,8 @@ impl Middleware for SpotifyApiMiddleware {
         if method == Method::GET {
             return self.run_get(request, extensions, next).await;
         }
+
+        tracing::info!(%method, %url, "Making a Spotify Web API request");
 
         let response = next.run(request, extensions).await;
         if let Ok(response) = &response {
