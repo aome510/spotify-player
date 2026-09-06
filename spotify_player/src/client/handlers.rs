@@ -101,12 +101,13 @@ fn handle_playback_change_event(
             .is_none_or(|queue_item| queue_item.id().expect("null track_id") != id)
     });
     if queue_needs_refresh {
-        let should_refresh = handler_state
-            .last_queue_refresh
-            .as_ref()
-            .is_none_or(|(last_uri, timer)| {
-                last_uri != &playable_uri || timer.elapsed() >= QUEUE_REFRESH_THROTTLE
-            });
+        let should_refresh =
+            handler_state
+                .last_queue_refresh
+                .as_ref()
+                .is_none_or(|(last_uri, timer)| {
+                    last_uri != &playable_uri || timer.elapsed() >= QUEUE_REFRESH_THROTTLE
+                });
         if should_refresh {
             handler_state.last_queue_refresh = Some((playable_uri, Instant::now()));
             client_pub.send(ClientRequest::GetCurrentUserQueue)?;
