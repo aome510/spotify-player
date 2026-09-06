@@ -103,11 +103,15 @@ impl SpotifyApiRequestManager {
     async fn register_get(&self, request_key: String) -> GetRegistration {
         let now = Instant::now();
         let mut state = self.state.lock().await;
-        state.recent_gets.retain(|_, request| {
-            request.completed_at.lock().is_none_or(|completed_at| {
-                now.duration_since(completed_at) < GET_DEDUPLICATION_WINDOW
-            })
-        });
+        state
+            .recent_gets
+            .retain(|_, request| match *request.completed_at.lock() {
+                Some(completed_at) => {
+                    now.saturating_duration_since(completed_at) < GET_DEDUPLICATION_WINDOW
+                }
+                // Remove dropped requests (closed watch channel)
+                None => request.result.has_changed().is_ok(),
+            });
 
         if let Some(request) = state.recent_gets.get(&request_key) {
             return GetRegistration::Shared(request.result.clone());
