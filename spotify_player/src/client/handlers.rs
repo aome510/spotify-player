@@ -14,9 +14,9 @@ use crate::utils::map_join;
 use super::ClientRequest;
 
 struct PlayerEventHandlerState {
-    get_context_timer: Instant,
-    last_playback_refresh_timer: Instant,
     ended_playable_uri: Option<String>,
+    last_get_context: Instant,
+    last_playback_refresh: Instant,
     last_queue_refresh: Option<(String, Instant)>,
 }
 
@@ -44,6 +44,7 @@ pub async fn start_client_handler(
 
 /// Interval between background session-validity checks.
 const SESSION_CHECK_INTERVAL: Duration = Duration::from_secs(1);
+const CONTEXT_REFRESH_THROTTLE: Duration = Duration::from_secs(5);
 const QUEUE_REFRESH_THROTTLE: Duration = Duration::from_secs(5);
 
 pub async fn start_session_watcher(state: SharedState, client: super::AppClient) {
@@ -168,10 +169,10 @@ fn handle_page_change_event(
                 if !matches!(id, ContextId::Tracks(_))
                     && !state.data.read().caches.context.contains_key(&id.uri())
                     && (new_id
-                        || handler_state.get_context_timer.elapsed() > Duration::from_secs(5))
+                        || handler_state.last_get_context.elapsed() > CONTEXT_REFRESH_THROTTLE)
                 {
                     client_pub.send(ClientRequest::GetContext(id.clone()))?;
-                    handler_state.get_context_timer = Instant::now();
+                    handler_state.last_get_context = Instant::now();
                 }
             }
         }
@@ -224,8 +225,8 @@ pub fn start_player_event_watcher(state: &SharedState, client_pub: &flume::Sende
     let playback_refresh_duration =
         Duration::from_millis(configs.app_config.playback_refresh_duration_in_ms);
     let mut handler_state = PlayerEventHandlerState {
-        get_context_timer: Instant::now(),
-        last_playback_refresh_timer: Instant::now(),
+        last_get_context: Instant::now(),
+        last_playback_refresh: Instant::now(),
         ended_playable_uri: None,
         last_queue_refresh: None,
     };
@@ -233,12 +234,12 @@ pub fn start_player_event_watcher(state: &SharedState, client_pub: &flume::Sende
     loop {
         // periodically refresh the playback state (if enabled in config)
         if configs.app_config.playback_refresh_duration_in_ms > 0
-            && handler_state.last_playback_refresh_timer.elapsed() >= playback_refresh_duration
+            && handler_state.last_playback_refresh.elapsed() >= playback_refresh_duration
         {
             client_pub
                 .send(ClientRequest::GetCurrentPlayback)
                 .unwrap_or_default();
-            handler_state.last_playback_refresh_timer = Instant::now();
+            handler_state.last_playback_refresh = Instant::now();
         }
 
         if let Err(err) = handle_player_event(state, client_pub, &mut handler_state) {
