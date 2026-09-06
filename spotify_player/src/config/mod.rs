@@ -82,6 +82,9 @@ pub struct AppConfig {
     pub app_refresh_duration_in_ms: u64,
     pub playback_refresh_duration_in_ms: u64,
 
+    // Spotify Web API rate-limit retries
+    pub api_rate_limit_retries: usize,
+
     pub page_size_in_rows: usize,
 
     // icon configs
@@ -336,6 +339,7 @@ impl Default for AppConfig {
             ap_port: None,
             app_refresh_duration_in_ms: 32,
             playback_refresh_duration_in_ms: 0,
+            api_rate_limit_retries: 2,
 
             page_size_in_rows: 20,
 

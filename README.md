@@ -225,6 +225,8 @@ By default, `spotify_player` uses [ncspot](https://github.com/hrkfdn/ncspot)'s c
 >
 > The recommended setup is to **leave `client_id` unset** so the bundled default is used.
 
+When Spotify returns `429 Too Many Requests`, `spotify-player` stores the response's `Retry-After` duration and retries GET requests up to two times by default. Mutation requests are never delayed or retried. Configure the retry count with `api_rate_limit_retries`; see the [configuration documentation](https://github.com/aome510/spotify-player/blob/master/docs/config.md) for details.
+
 ### Using a custom client ID
 
 A custom client ID is only worthwhile if you have a specific reason — for example an application that has been granted extended quota mode by Spotify, or organizational policy requiring your own registered app.
