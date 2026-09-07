@@ -134,10 +134,6 @@ async fn handle_socket_request(
     state: Option<&SharedState>,
     request: super::Request,
 ) -> Result<Vec<u8>> {
-    if let Some(state) = state {
-        client.check_valid_session(state).await?;
-    }
-
     match request {
         Request::Get(GetRequest::Key(key)) => handle_get_key_request(client, state, key).await,
         Request::Get(GetRequest::Item(item_type, id_or_name)) => {
@@ -471,7 +467,7 @@ async fn handle_playback_request(
                     Ok(playback) => {
                         // update application's states
                         state.player.write().buffered_playback = playback;
-                        client.update_playback(&state);
+                        client.update_playback_non_blocking(&state);
                     }
                     Err(err) => {
                         tracing::warn!(

@@ -4,7 +4,7 @@ use rspotify::{
     clients::{BaseClient, OAuthClient},
     http::HttpClient,
     sync::Mutex,
-    ClientResult, Config, Credentials, OAuth, Token,
+    AuthCodePkceSpotify, ClientResult, Config, Credentials, OAuth, Token,
 };
 use std::{fmt, sync::Arc};
 
@@ -118,5 +118,81 @@ impl OAuthClient for Spotify {
 
     async fn request_token(&self, _code: &str) -> ClientResult<()> {
         panic!("`OAuthClient::request_token` should never be called!")
+    }
+}
+
+/// Thin wrapper over [`rspotify::AuthCodePkceSpotify`] for the Spotify Web API.
+///
+/// It exists solely to override `refetch_token` so that a refresh grant which
+/// omits `refresh_token` preserves the previously stored refresh token instead
+/// of overwriting it with `None`. Spotify stopped rotating (and now expires)
+/// refresh tokens, so the refresh response no longer echoes one back.
+///
+/// See:
+/// - <https://developer.spotify.com/blog/2026-06-18-refresh-token-expiration>
+/// - <https://github.com/aome510/spotify-player/issues/1040>
+#[derive(Clone, Debug, Default)]
+pub struct WebApiClient(AuthCodePkceSpotify);
+
+impl WebApiClient {
+    pub fn new(inner: AuthCodePkceSpotify) -> Self {
+        Self(inner)
+    }
+
+    pub fn get_authorize_url(&mut self, verifier_bytes: Option<usize>) -> ClientResult<String> {
+        self.0.get_authorize_url(verifier_bytes)
+    }
+}
+
+#[maybe_async]
+impl BaseClient for WebApiClient {
+    fn get_http(&self) -> &HttpClient {
+        self.0.get_http()
+    }
+
+    fn get_token(&self) -> Arc<Mutex<Option<Token>>> {
+        self.0.get_token()
+    }
+
+    fn get_creds(&self) -> &Credentials {
+        self.0.get_creds()
+    }
+
+    fn get_config(&self) -> &Config {
+        self.0.get_config()
+    }
+
+    async fn refetch_token(&self) -> ClientResult<Option<Token>> {
+        // Capture the current refresh token before refreshing
+        let previous_refresh_token = self
+            .0
+            .get_token()
+            .lock()
+            .await
+            .unwrap()
+            .as_ref()
+            .and_then(|token| token.refresh_token.clone());
+
+        // Spotify's refresh response no longer includes `refresh_token`; carry the
+        // previous one forward so it is not lost on the round-trip and nulled in the
+        // token cache.
+        let refreshed = self.0.refetch_token().await?;
+        Ok(refreshed.map(|mut token| {
+            if token.refresh_token.is_none() {
+                token.refresh_token = previous_refresh_token;
+            }
+            token
+        }))
+    }
+}
+
+#[maybe_async]
+impl OAuthClient for WebApiClient {
+    fn get_oauth(&self) -> &OAuth {
+        self.0.get_oauth()
+    }
+
+    async fn request_token(&self, code: &str) -> ClientResult<()> {
+        self.0.request_token(code).await
     }
 }

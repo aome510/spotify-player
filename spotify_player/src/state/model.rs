@@ -129,6 +129,11 @@ pub struct PlaybackMetadata {
 pub struct Device {
     pub id: String,
     pub name: String,
+    /// Whether this device is the integrated librespot player of *this* running instance.
+    ///
+    /// Used to distinguish the current app's integrated device from other `spotify-player`
+    /// instances (which may share the same device name) running elsewhere.
+    pub is_integrated: bool,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -224,7 +229,7 @@ pub struct PlaylistFolderNode {
     pub children: Vec<PlaylistFolderNode>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 /// A Spotify category
 pub struct Category {
     pub id: String,
@@ -322,6 +327,7 @@ impl Device {
         Some(Self {
             id: device.id?,
             name: device.name,
+            is_integrated: false,
         })
     }
 }

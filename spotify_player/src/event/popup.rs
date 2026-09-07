@@ -1,5 +1,7 @@
 use super::*;
-use crate::{command::construct_artist_actions, utils::filtered_items_from_query};
+use crate::{
+    command::construct_artist_actions, state::ConfirmableAction, utils::filtered_items_from_query,
+};
 use anyhow::Context;
 
 pub fn handle_key_sequence_for_popup(
@@ -25,10 +27,20 @@ pub fn handle_key_sequence_for_popup(
                 ui,
             );
         }
+        // can't use match guard: the match holds an immutable borrow of ui
+        #[allow(clippy::collapsible_match)]
         PopupState::UserPlaylistList(..) => {
             if handle_key_sequence_for_playlist_search_popup(key_sequence, ui) {
                 return Ok(true);
             }
+        }
+        PopupState::ConfirmAction { action, .. } => {
+            return handle_key_sequence_for_confirm_popup(
+                key_sequence,
+                client_pub,
+                ui,
+                action.clone(),
+            );
         }
         _ => {}
     }
@@ -41,6 +53,9 @@ pub fn handle_key_sequence_for_popup(
     };
 
     match ui.popup.as_ref().context("empty popup")? {
+        PopupState::ConfirmAction { .. } => {
+            anyhow::bail!("confirm action should be handled before")
+        }
         PopupState::Search { .. } => anyhow::bail!("search popup should be handled before"),
         PopupState::PlaylistCreate { .. } => {
             anyhow::bail!("create playlist popup should be handled before")
@@ -449,21 +464,24 @@ fn handle_command_for_list_popup(
     on_choose_func: impl FnOnce(&mut UIStateGuard, usize) -> anyhow::Result<()>,
     on_close_func: impl FnOnce(&mut UIStateGuard),
 ) -> anyhow::Result<bool> {
+    let offset = ui.count_prefix.unwrap_or(1);
     let popup = ui.popup.as_mut().with_context(|| "expect a popup")?;
     let current_id = popup.list_selected().unwrap_or_default();
 
+    if n_items == 0 {
+        return Ok(false);
+    }
+
     match command {
         Command::SelectPreviousOrScrollUp => {
-            if current_id > 0 {
-                popup.list_select(Some(current_id - 1));
-                on_select_func(ui, current_id - 1);
-            }
+            let next_id = current_id.saturating_sub(offset);
+            popup.list_select(Some(next_id));
+            on_select_func(ui, next_id);
         }
         Command::SelectNextOrScrollDown => {
-            if current_id + 1 < n_items {
-                popup.list_select(Some(current_id + 1));
-                on_select_func(ui, current_id + 1);
-            }
+            let next_id = std::cmp::min(current_id + offset, n_items - 1);
+            popup.list_select(Some(next_id));
+            on_select_func(ui, next_id);
         }
         Command::ChooseSelected => {
             if current_id < n_items {
@@ -599,4 +617,33 @@ fn handle_key_sequence_for_playlist_search_popup(
     }
 
     false
+}
+
+fn handle_key_sequence_for_confirm_popup(
+    key_sequence: &KeySequence,
+    client_pub: &flume::Sender<ClientRequest>,
+    ui: &mut UIStateGuard,
+    action: ConfirmableAction,
+) -> Result<bool> {
+    if matches!(
+        key_sequence.keys.as_slice(),
+        [Key::None(crossterm::event::KeyCode::Char('y'))]
+    ) {
+        match action {
+            ConfirmableAction::DeleteTrackFromPlaylist {
+                playlist_id,
+                track_id,
+            } => {
+                client_pub.send(ClientRequest::DeleteTrackFromPlaylist(
+                    playlist_id,
+                    track_id,
+                ))?;
+            }
+            ConfirmableAction::DeleteFromLibrary(item_id) => {
+                client_pub.send(ClientRequest::DeleteFromLibrary(item_id))?;
+            }
+        }
+    }
+    ui.popup = None;
+    Ok(true)
 }

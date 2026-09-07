@@ -97,7 +97,16 @@ pub fn render_popup(
                 let items = player
                     .devices
                     .iter()
-                    .map(|d| (format!("{} | {}", d.name, d.id), current_device_id == d.id))
+                    .map(|d| {
+                        // Mark the integrated device of this running instance to distinguish it
+                        // from other `spotify-player` instances running elsewhere.
+                        let name = if d.is_integrated {
+                            format!("{} (integrated)", d.name)
+                        } else {
+                            d.name.clone()
+                        };
+                        (format!("{name} | {}", d.id), current_device_id == d.id)
+                    })
                     .collect();
 
                 let rect = render_list_popup(frame, rect, "Devices", items, 5, ui);
@@ -196,6 +205,22 @@ pub fn render_popup(
                 let rect = render_list_popup(frame, rect, "Artists", items, 5, ui);
                 (rect, false)
             }
+            PopupState::ConfirmAction { message, .. } => {
+                let chunks =
+                    Layout::vertical([Constraint::Fill(0), Constraint::Length(3)]).split(rect);
+
+                let confirm_rect = construct_and_render_block(
+                    "Confirm",
+                    &ui.theme,
+                    Borders::ALL,
+                    frame,
+                    chunks[1],
+                );
+
+                frame.render_widget(Paragraph::new(format!("{message} (y/n)")), confirm_rect);
+
+                (chunks[0], true)
+            }
         },
     }
 }
@@ -212,7 +237,8 @@ fn render_list_popup(
     let chunks = Layout::vertical([Constraint::Fill(0), Constraint::Length(length)]).split(rect);
 
     let rect = construct_and_render_block(title, &ui.theme, Borders::ALL, frame, chunks[1]);
-    let (list, len) = utils::construct_list_widget(&ui.theme, items, true);
+    let selected_index = ui.popup.as_ref().and_then(PopupState::list_selected);
+    let (list, len) = utils::construct_list_widget(&ui.theme, items, true, selected_index);
 
     utils::render_list_window(
         frame,

@@ -24,3 +24,5 @@ NOTES*
 *.html
 
 .idea
+
+*.DS_Store

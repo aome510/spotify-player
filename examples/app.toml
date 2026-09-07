@@ -10,22 +10,23 @@ notify_timeout_in_secs = 0
 notify_transient = false
 app_refresh_duration_in_ms = 32
 playback_refresh_duration_in_ms = 0
+api_rate_limit_retries = 2
 page_size_in_rows = 20
 enable_media_control = false
 enable_streaming = "Always"
 enable_notify = true
 enable_cover_image_cache = true
 notify_streaming_only = false
-default_device = "spotify-player"
 play_icon = "▶"
 pause_icon = "▌▌"
 liked_icon = "♥"
 genre_num = 2
-cover_img_length = 9
+cover_img_length = 0
 cover_img_width = 5
 cover_img_pixels = 16
 seek_duration_secs = 5
 custom_queue = true
+enable_relative_line_number = false
 
 [device]
 name = "spotify-player"

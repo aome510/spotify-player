@@ -1,7 +1,12 @@
 #![allow(unused_imports)]
+use chrono::TimeDelta;
+use rspotify::model::{
+    AlbumId, EpisodeId, Offset, PlayContextId, PlayableId, PlaylistId, ShowId, TrackId,
+};
 use souvlaki::MediaPosition;
 use souvlaki::{MediaControlEvent, MediaControls, MediaMetadata, MediaPlayback, PlatformConfig};
 
+use crate::state::{ContextId, Playback};
 use crate::utils;
 use crate::{
     client::{ClientRequest, PlayerRequest},
@@ -128,11 +133,48 @@ pub fn start_event_watcher(
                     .send(ClientRequest::Player(PlayerRequest::PreviousTrack))
                     .unwrap_or_default();
             }
-            MediaControlEvent::SetVolume(volume) => client_pub
-                .send(ClientRequest::Player(PlayerRequest::Volume(
-                    (volume * 100.0) as u8,
-                )))
-                .unwrap_or_default(),
+            MediaControlEvent::SetVolume(volume) => {
+                client_pub
+                    .send(ClientRequest::Player(PlayerRequest::Volume(
+                        (volume * 100.0) as u8,
+                    )))
+                    .unwrap_or_default();
+            }
+            MediaControlEvent::OpenUri(uri) => {
+                let mut split = uri.split(':');
+                let (Some("spotify"), Some(uri_type), Some(id)) =
+                    (split.next(), split.next(), split.next())
+                else {
+                    return;
+                };
+                let id = id.to_string();
+                let playback = match uri_type {
+                    "album" => AlbumId::from_id(id)
+                        .ok()
+                        .map(|album_id| Playback::Context(ContextId::Album(album_id), None)),
+                    "track" => TrackId::from_id(id)
+                        .ok()
+                        .map(|track_id| Playback::URIs(vec![PlayableId::Track(track_id)], None)),
+                    "playlist" => PlaylistId::from_id(id).ok().map(|playlist_id| {
+                        Playback::Context(ContextId::Playlist(playlist_id), None)
+                    }),
+                    "show" => ShowId::from_id(id)
+                        .ok()
+                        .map(|show_id| Playback::Context(ContextId::Show(show_id), None)),
+                    "episode" => EpisodeId::from_id(id).ok().map(|episode_id| {
+                        Playback::URIs(vec![PlayableId::Episode(episode_id)], None)
+                    }),
+                    _ => None,
+                };
+                if let Some(playback) = playback {
+                    client_pub
+                        .send(ClientRequest::Player(PlayerRequest::StartPlayback(
+                            playback, None,
+                        )))
+                        .unwrap_or_default();
+                }
+            }
+
             _ => {}
         }
     })?;
@@ -143,7 +185,7 @@ pub fn start_event_watcher(
     // The below refresh duration should be no less than 1s to avoid **overloading** linux dbus
     // handler provided by the souvlaki library, which only handles an event every 1s.
     // [1]: https://github.com/Sinono3/souvlaki/blob/b4d47bb2797ffdd625c17192df640510466762e1/src/platform/linux/mod.rs#L450
-    let refresh_duration = std::time::Duration::from_millis(1000);
+    let refresh_duration = std::time::Duration::from_secs(1);
     let mut info = String::new();
     loop {
         update_control_metadata(state, &mut controls, &mut info)?;

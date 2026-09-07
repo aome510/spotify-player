@@ -24,7 +24,7 @@ pub enum FileCacheKey {
 
 /// default time-to-live cache duration
 pub static TTL_CACHE_DURATION: LazyLock<std::time::Duration> =
-    LazyLock::new(|| std::time::Duration::from_secs(60 * 60));
+    LazyLock::new(|| std::time::Duration::from_hours(1));
 
 /// the application's data
 pub struct AppData {
@@ -186,6 +186,18 @@ impl UserData {
     /// Check if a track is a liked track
     pub fn is_liked_track(&self, track: &Track) -> bool {
         self.saved_tracks.contains_key(&track.id.uri())
+    }
+
+    /// Get the user's liked tracks by the given artist, sorted by liked date (newest first)
+    pub fn liked_tracks_by_artist(&self, artist: &Artist) -> Vec<Track> {
+        let mut tracks: Vec<Track> = self
+            .saved_tracks
+            .values()
+            .filter(|t| t.artists.iter().any(|a| a.id == artist.id))
+            .cloned()
+            .collect();
+        tracks.sort_by_key(|t| std::cmp::Reverse(t.added_at));
+        tracks
     }
 
     /// Check if a playlist is followed

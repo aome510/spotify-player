@@ -5,6 +5,11 @@
 - [Introduction](#introduction)
 - [Examples](#examples)
 - [Installation](#installation)
+- [Authentication](#authentication)
+  - [How authentication works](#how-authentication-works)
+  - [Why you may be asked to authenticate twice](#why-you-may-be-asked-to-authenticate-twice)
+  - [Client ID and rate limits](#client-id-and-rate-limits)
+  - [Using a custom client ID](#using-a-custom-client-id)
 - [Features](#features)
   - [Spotify Connect](#spotify-connect)
   - [Streaming](#streaming)
@@ -181,6 +186,55 @@ docker run --rm \
 -it aome510/spotify_player:latest
 ```
 
+## Authentication
+
+`spotify_player` requires a **Spotify Premium** account and authenticates against the Spotify Web API using the [OAuth 2.0 authorization code flow with PKCE](https://developer.spotify.com/documentation/web-api/tutorials/code-pkce-flow). No client secret is stored or required.
+
+The simplest way to authenticate is to just **run the application** — on first use it prompts for whichever credentials are not yet cached. Each prompt opens the Spotify authorization page in your browser; after you approve access, Spotify redirects to a local loopback address (`login_redirect_uri`, default `http://127.0.0.1:8989/login`) where `spotify_player` captures the authorization code and exchanges it for an access token. Credentials are cached in the application's [cache folder](#caches), so this is a one-time step per machine.
+
+Alternatively, run the `spotify_player authenticate` CLI command to authenticate **both** credentials up front — useful for setting things up ahead of a [daemon](#daemon) or headless launch. Unlike a normal launch, `authenticate` always forces a fresh interactive login for both credentials, ignoring any cached tokens, so it can also be used to re-authenticate from scratch.
+
+### How authentication works
+
+Two distinct credentials are involved:
+
+- A **Web API token**, used for all REST calls (playback control, library, search, playlists, etc.). This is obtained through the OAuth flow above.
+- A **librespot session**, used for the [streaming](#streaming) feature (direct playback and Spotify Connect device registration).
+
+Both authenticate through your Spotify account; the only thing that differs is the _client ID_ presented to Spotify (see below).
+
+### Why you may be asked to authenticate twice
+
+With the [streaming](#streaming) feature enabled (the default), the first launch can open the Spotify authorization page **twice** — once for each credential described above, in this order:
+
+1. The **Web API token**, presented under the configured `client_id` (ncspot's by default). This is cached as `user_client_token.json`.
+2. The **librespot session** credentials, presented under Spotify's official client ID. These are cached as `credentials.json`.
+
+These are two independent OAuth flows with two different client IDs, so Spotify requires a separate approval for each, and each token is cached separately in the [cache folder](#caches). This is a one-time step per machine — once both tokens are cached, subsequent launches reuse and silently refresh them, and you will not be prompted again unless the cache is cleared or a token is revoked.
+
+The `spotify_player authenticate` command runs both flows in one go (forcing a fresh login for each). If the `streaming` feature is disabled, the librespot session is not needed, so you are prompted just once (step 1).
+
+### Client ID and rate limits
+
+Every request to the Spotify Web API is attributed to a Spotify _application_, identified by a **client ID**. The client ID — not your account — determines the [API quota](https://developer.spotify.com/documentation/web-api/concepts/rate-limits) you are subject to.
+
+By default, `spotify_player` uses [ncspot](https://github.com/hrkfdn/ncspot)'s client ID. This is intentional: that client ID is registered in [extended quota mode](https://developer.spotify.com/documentation/web-api/concepts/quota-modes) and predates Spotify's [November 2024 Web API changes](https://developer.spotify.com/blog/2024-11-27-changes-to-the-web-api). As a result it has a much higher rate limit and access to endpoints (browse, personalized content, generated playlists, …) that newly-registered applications can no longer use.
+
+> [!IMPORTANT]
+> **You almost certainly should not configure your own `client_id`.** Any application you register today starts in Spotify's restricted _default_ quota mode. Using such a client ID commonly leads to `429 Too Many Requests` and `403 Forbidden` errors and missing browse/personalized data. This was the root cause of several reported issues (e.g. [#890](https://github.com/aome510/spotify-player/issues/890), [#893](https://github.com/aome510/spotify-player/issues/893), [#912](https://github.com/aome510/spotify-player/issues/912), [#913](https://github.com/aome510/spotify-player/issues/913)), and switching to the bundled default client ID ([#918](https://github.com/aome510/spotify-player/pull/918)) resolved them.
+>
+> The recommended setup is to **leave `client_id` unset** so the bundled default is used.
+
+When Spotify returns `429 Too Many Requests`, `spotify-player` stores the response's `Retry-After` duration and retries GET requests up to two times by default. Mutation requests are never delayed or retried. Configure the retry count with `api_rate_limit_retries`; see the [configuration documentation](https://github.com/aome510/spotify-player/blob/master/docs/config.md) for details.
+
+### Using a custom client ID
+
+A custom client ID is only worthwhile if you have a specific reason — for example an application that has been granted extended quota mode by Spotify, or organizational policy requiring your own registered app.
+
+If you do need one, [register an application](https://developer.spotify.com/dashboard) on the Spotify developer dashboard, add your `login_redirect_uri` (default `http://127.0.0.1:8989/login`) to the app's allowed redirect URIs, then set `client_id` (or `client_id_command`) in `app.toml`. See the [Client id command](https://github.com/aome510/spotify-player/blob/master/docs/config.md#client-id-command) section of the configuration docs for details.
+
+After changing the client ID, re-run `spotify_player authenticate` to refresh the cached token.
+
 ## Features
 
 ### Spotify Connect
@@ -245,18 +299,11 @@ To enable image rendering, build with the `image` feature (disabled by default):
 cargo install spotify_player --features image
 ```
 
-Full-resolution images are supported in [Kitty](https://sw.kovidgoyal.net/kitty/graphics-protocol/) and [iTerm2](https://iterm2.com/documentation-images.html). Other terminals display images as [block characters](https://en.wikipedia.org/wiki/Block_Elements).
-
-To use sixel graphics, build with the `sixel` feature (also enables `image`):
-
-```shell
-cargo install spotify_player --features sixel
-```
+Image rendering is powered by [`ratatui-image`](https://github.com/benjajaja/ratatui-image), which auto-detects the terminal's graphics protocol (Kitty, iTerm2, Sixel) on startup. Terminals without any graphics protocol support fall back to [block characters](https://en.wikipedia.org/wiki/Block_Elements).
 
 **Notes**:
 
-- Not all terminals supported by [libsixel](https://github.com/saitoha/libsixel) are supported by `spotify_player` (see [viuer supported terminals](https://github.com/atanunq/viuer/blob/dc81f44a97727e04be0b000712e9233c92116ff8/src/printer/sixel.rs#L83-L95)).
-- Sixel images may scale oddly; adjust `cover_img_scale` for best results.
+- Protocol detection queries the terminal via stdio. In nested terminals (e.g. Neovim's floating terminal), the query does not reach the outer terminal emulator, so the protocol falls back to block characters.
 
 Image rendering examples:
 
@@ -268,7 +315,7 @@ Image rendering examples:
 
 ![kitty](https://user-images.githubusercontent.com/40011582/172967028-8cfb2daa-1642-499a-a5bf-8ed77f2b3fac.png)
 
-- Sixel (`foot` terminal, `cover_img_scale=1.8`):
+- Sixel (`foot` terminal):
 
 ![sixel](https://user-images.githubusercontent.com/40011582/219880331-58ac1c30-bbb0-4c99-a6cc-e5b7c9c81455.png)
 

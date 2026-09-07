@@ -4,7 +4,7 @@ use ratatui::widgets::Widget;
 use super::{Line, Modifier, Paragraph, Span, Style};
 use crate::key::Key;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct LineInput {
     // This is less space-efficient than String, but it's easier to work with text manipulation at the
     // cursor. Otherwise, you have to shuffle back and forth between String and String::chars().
