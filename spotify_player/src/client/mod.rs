@@ -25,10 +25,7 @@ use librespot_core::SpotifyUri;
 use parking_lot::Mutex;
 
 use rspotify::model::LibraryId;
-use rspotify::{
-    http::{BaseHttpClient, Query},
-    prelude::*,
-};
+use rspotify::{http::Query, prelude::*};
 
 mod handlers;
 mod middleware;
@@ -39,9 +36,7 @@ pub use handlers::*;
 use middleware::SpotifyApiMiddleware;
 pub use request::*;
 use serde::Deserialize;
-pub(crate) use spotify::WebApiClient;
-
-const SPOTIFY_API_ENDPOINT: &str = "https://api.spotify.com/v1";
+pub(crate) use spotify::{PkceWebApiClient, WebApiClient};
 
 fn patch_missing_track_external_ids(response: &mut serde_json::Value) {
     let Some(item) = response.get_mut("item") else {
@@ -100,47 +95,67 @@ pub fn new_api_client() -> Result<WebApiClient> {
     let configs = config::get_config();
 
     let id = configs.app_config.get_client_id()?;
-    // The bundled default (ncspot's client ID) is registered with extended quota mode and
-    // predates Spotify's 2024 Web API changes, so it is far less likely to hit rate limits
-    // than a freshly-registered client. Warn users who override it that they may run into
-    // `429 Too Many Requests` / `403 Forbidden` errors.
-    //
-    // See https://github.com/aome510/spotify-player/issues/890 for details.
-    if id != auth::NCSPOT_CLIENT_ID {
-        tracing::warn!(
-            "A custom `client_id` ({id}) is configured. Newly-registered Spotify clients \
-             use the restricted default quota mode and may hit rate-limit (429) or \
-             forbidden (403) errors. Unless you specifically need your own client, \
-             consider removing `client_id`/`client_id_command` to use the bundled default. \
-             See https://github.com/aome510/spotify-player/issues/890 for details."
-        );
-    }
-
-    let creds = rspotify::Credentials { id, secret: None };
     let mut scopes = auth::OAUTH_SCOPES
         .iter()
         .map(ToString::to_string)
         .collect::<HashSet<_>>();
     // `user-personalized` scope is not supported by the Web API client and only available to the official Spotify client
     scopes.remove("user-personalized");
-    let oauth = rspotify::OAuth {
-        redirect_uri: configs.app_config.login_redirect_uri.clone(),
-        scopes,
-        ..Default::default()
-    };
-    let config = rspotify::Config {
+
+    let build_config = |cache_file: &str| rspotify::Config {
         token_cached: true,
-        cache_path: configs.cache_folder.join("user_client_token.json"),
+        cache_path: configs.cache_folder.join(cache_file),
         ..Default::default()
     };
-    let middleware = SpotifyApiMiddleware::new(
-        &config.api_base_url,
+    let build_oauth = |redirect_uri: String| rspotify::OAuth {
+        redirect_uri,
+        scopes: scopes.clone(),
+        ..Default::default()
+    };
+    let primary_cache_file = format!("{id}_token.json");
+
+    if id == auth::NCSPOT_CLIENT_ID {
+        let config = build_config(&primary_cache_file);
+        let middleware = SpotifyApiMiddleware::new(
+            &config.api_base_url,
+            configs.app_config.api_rate_limit_retries,
+        )?;
+        let client = rspotify::AuthCodePkceSpotify::with_config(
+            rspotify::Credentials { id, secret: None },
+            build_oauth(configs.app_config.login_redirect_uri.clone()),
+            config,
+        )
+        .with_middleware(middleware);
+        return Ok(WebApiClient::new(client, None));
+    }
+
+    tracing::info!(
+        %id,
+        "Using custom Spotify Web API client with ncspot fallback"
+    );
+    let primary = rspotify::AuthCodePkceSpotify::with_config(
+        rspotify::Credentials { id, secret: None },
+        build_oauth(configs.app_config.login_redirect_uri.clone()),
+        build_config(&primary_cache_file),
+    );
+
+    let fallback_cache_file = format!("{}_token.json", auth::NCSPOT_CLIENT_ID);
+    let fallback_config = build_config(&fallback_cache_file);
+    let fallback_middleware = SpotifyApiMiddleware::new(
+        &fallback_config.api_base_url,
         configs.app_config.api_rate_limit_retries,
     )?;
-    let client = rspotify::AuthCodePkceSpotify::with_config(creds, oauth, config)
-        .with_middleware(middleware);
+    let fallback = rspotify::AuthCodePkceSpotify::with_config(
+        rspotify::Credentials {
+            id: auth::NCSPOT_CLIENT_ID.to_string(),
+            secret: None,
+        },
+        build_oauth(auth::NCSPOT_REDIRECT_URI.to_string()),
+        fallback_config,
+    )
+    .with_middleware(fallback_middleware);
 
-    Ok(WebApiClient::new(client))
+    Ok(WebApiClient::new(primary, Some(fallback)))
 }
 
 impl AppClient {
@@ -458,7 +473,7 @@ impl AppClient {
         match request {
             ClientRequest::GetBrowseCategories => {
                 let categories = self.browse_categories().await?;
-                state.data.write().browse.categories = categories;
+                state.data.write().browse.categories = Some(categories);
             }
             ClientRequest::GetBrowseCategoryPlaylists(category) => {
                 let playlists = self.browse_category_playlists(&category.id).await?;
@@ -790,7 +805,7 @@ impl AppClient {
 
         Ok(self
             .http_get::<BrowseCategoryPlaylistsResponse>(
-                &format!("{SPOTIFY_API_ENDPOINT}/browse/categories/{category_id}/playlists"),
+                &format!("browse/categories/{category_id}/playlists"),
                 &Query::from([("limit", "50")]),
             )
             .await?
@@ -869,7 +884,7 @@ impl AppClient {
     pub async fn current_user_saved_tracks(&self) -> Result<Vec<Track>> {
         let tracks = self
             .all_paging_items::<rspotify::model::SavedTrack>(
-                &format!("{SPOTIFY_API_ENDPOINT}/me/tracks"),
+                "me/tracks",
                 0, // we don't know the total number of saved tracks beforehand
             )
             .await?;
@@ -882,9 +897,10 @@ impl AppClient {
 
     /// Get the recently played tracks of the current user
     pub async fn current_user_recently_played_tracks(&self) -> Result<Vec<Track>> {
-        let first_page = self.current_user_recently_played(Some(50), None).await?;
-
-        let play_histories = self.all_cursor_based_paging_items(first_page).await?;
+        let play_histories = self
+            .current_user_recently_played(Some(50), None)
+            .await?
+            .items;
 
         // de-duplicate the tracks returned from the recently-played API
         let mut tracks = Vec::<Track>::new();
@@ -902,7 +918,7 @@ impl AppClient {
     pub async fn current_user_top_tracks(&self) -> Result<Vec<Track>> {
         let tracks = self
             .all_paging_items::<rspotify::model::FullTrack>(
-                &format!("{SPOTIFY_API_ENDPOINT}/me/top/tracks"),
+                "me/top/tracks",
                 0, // we don't know the total number of top tracks beforehand
             )
             .await?;
@@ -917,7 +933,7 @@ impl AppClient {
     pub async fn current_user_playlists(&self) -> Result<Vec<Playlist>> {
         let playlists = self
             .all_paging_items::<rspotify::model::SimplifiedPlaylist>(
-                &format!("{SPOTIFY_API_ENDPOINT}/me/playlists"),
+                "me/playlists",
                 0, // we don't know the total number of playlists beforehand
             )
             .await?;
@@ -940,8 +956,11 @@ impl AppClient {
         let mut artists = first_page.items;
         let mut maybe_next = first_page.next;
         while let Some(url) = maybe_next {
+            let endpoint = url
+                .split_once("/v1/")
+                .map_or(url.as_str(), |(_, endpoint)| endpoint);
             let mut next_page = self
-                .http_get::<rspotify::model::CursorPageFullArtists>(&url, &Query::new())
+                .http_get::<rspotify::model::CursorPageFullArtists>(endpoint, &Query::new())
                 .await?
                 .artists;
             artists.append(&mut next_page.items);
@@ -956,7 +975,7 @@ impl AppClient {
     pub async fn current_user_saved_albums(&self) -> Result<Vec<Album>> {
         let albums = self
             .all_paging_items::<rspotify::model::SavedAlbum>(
-                &format!("{SPOTIFY_API_ENDPOINT}/me/albums"),
+                "me/albums",
                 0, // we don't know the total number of saved albums beforehand
             )
             .await?;
@@ -969,7 +988,7 @@ impl AppClient {
     pub async fn current_user_saved_shows(&self) -> Result<Vec<Show>> {
         let shows = self
             .all_paging_items::<rspotify::model::Show>(
-                &format!("{SPOTIFY_API_ENDPOINT}/me/shows"),
+                "me/shows",
                 0, // we don't know the total number of saved shows beforehand
             )
             .await?;
@@ -981,10 +1000,7 @@ impl AppClient {
     pub async fn artist_albums(&self, artist_id: ArtistId<'_>) -> Result<Vec<Album>> {
         let albums = self
             .all_paging_items::<rspotify::model::SimplifiedAlbum>(
-                &format!(
-                    "{SPOTIFY_API_ENDPOINT}/artists/{}/albums?include_groups=album,single",
-                    artist_id.id()
-                ),
+                &format!("artists/{}/albums?include_groups=album,single", artist_id.id()),
                 0, // we don't know the total number of artist albums beforehand
             )
             .await?
@@ -1441,10 +1457,7 @@ impl AppClient {
 
         let tracks = self
             .all_paging_items(
-                &format!(
-                    "{SPOTIFY_API_ENDPOINT}/playlists/{}/tracks",
-                    playlist_id.id(),
-                ),
+                &format!("playlists/{}/tracks", playlist_id.id()),
                 playlist.items.total as usize,
             )
             .await?
@@ -1475,7 +1488,7 @@ impl AppClient {
         // get the album's tracks
         let tracks = self
             .all_paging_items(
-                &format!("{SPOTIFY_API_ENDPOINT}/albums/{}/tracks", album_id.id()),
+                &format!("albums/{}/tracks", album_id.id()),
                 total_tracks,
             )
             .await?
@@ -1549,7 +1562,7 @@ impl AppClient {
         // get the show's episodes
         let episodes = self
             .all_paging_items::<rspotify::model::SimplifiedEpisode>(
-                &format!("{SPOTIFY_API_ENDPOINT}/shows/{}/episodes", show_id.id()),
+                &format!("shows/{}/episodes", show_id.id()),
                 show.episodes.total as usize,
             )
             .await?
@@ -1563,22 +1576,12 @@ impl AppClient {
         Ok(Context::Show { show, episodes })
     }
 
-    async fn http_get_raw(&self, url: &str, payload: &Query<'_>) -> Result<String> {
-        let headers = self
-            .auth_headers()
-            .await
-            .context("get Spotify API headers")?;
-        Ok(self.get_http().get(url, Some(&headers), payload).await?)
-    }
-
     /// Make a GET HTTP request to the Spotify server
     async fn http_get<T>(&self, url: &str, payload: &Query<'_>) -> Result<T>
     where
         T: serde::de::DeserializeOwned,
     {
-        let text = self.http_get_raw(url, payload).await?;
-        tracing::debug!("{text}");
-
+        let text = self.api_client.api_get(url, payload).await?;
         Ok(serde_json::from_str(&text)?)
     }
 
@@ -1641,33 +1644,11 @@ impl AppClient {
         Ok(all_items)
     }
 
-    /// Get all cursor-based paging items starting from a pagination object of the first page
-    async fn all_cursor_based_paging_items<T>(
-        &self,
-        first_page: rspotify::model::CursorBasedPage<T>,
-    ) -> Result<Vec<T>>
-    where
-        T: serde::de::DeserializeOwned,
-    {
-        let mut items = first_page.items;
-        let mut maybe_next = first_page.next;
-        while let Some(url) = maybe_next {
-            let mut next_page = self
-                .http_get::<rspotify::model::CursorBasedPage<T>>(&url, &Query::new())
-                .await?;
-            items.append(&mut next_page.items);
-            maybe_next = next_page.next;
-        }
-        Ok(items)
-    }
-
     pub async fn current_playback2(
         &self,
     ) -> Result<Option<rspotify::model::CurrentPlaybackContext>> {
         let params = Query::from([("additional_types", "track,episode")]);
-        let text = self
-            .http_get_raw(&format!("{SPOTIFY_API_ENDPOINT}/me/player"), &params)
-            .await?;
+        let text = self.api_client.api_get("me/player", &params).await?;
         parse_current_playback_response(&text)
     }
 
