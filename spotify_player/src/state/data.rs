@@ -58,7 +58,7 @@ pub struct MemoryCaches {
 #[derive(Default, Debug)]
 /// Spotify browse data
 pub struct BrowseData {
-    pub categories: Vec<Category>,
+    pub categories: Option<Vec<Category>>,
     pub category_playlists: HashMap<String, Vec<Playlist>>,
 }
 

@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file guides Claude Code when working in this repository.
+This file guides coding agents when working in this repository.
 
 ## Project Overview
 
@@ -117,7 +117,7 @@ tracing::debug!("{value:?}");
 - **New feature flag** — add it to the feature-flags table in `README.md`.
 - **New CLI subcommand** — document it under the CLI section of `README.md`.
 
-Keep `.github/copilot-instructions.md` and this `CLAUDE.md` in sync when project structure, architecture, or conventions change significantly.
+Keep `.github/copilot-instructions.md` and this `AGENTS.md` in sync when project structure, architecture, or conventions change significantly.
 
 ### Adding a new `Command`
 
