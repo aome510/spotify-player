@@ -220,6 +220,17 @@ fn handle_key_sequence_for_search_page(
                     }
                     Ok(true)
                 }
+                Key::None(crossterm::event::KeyCode::Backspace) => {
+                    if line_input.is_empty() {
+                        if ui.history.len() > 1 {
+                            ui.history.pop();
+                            ui.popup = None;
+                        }
+                    } else {
+                        line_input.input(&Key::None(crossterm::event::KeyCode::Backspace));
+                    }
+                    Ok(true)
+                }
                 k => match line_input.input(k) {
                     None => Ok(false),
                     _ => Ok(true),
