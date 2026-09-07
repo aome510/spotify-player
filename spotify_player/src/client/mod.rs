@@ -988,8 +988,7 @@ impl AppClient {
     pub async fn current_user_saved_shows(&self) -> Result<Vec<Show>> {
         let shows = self
             .all_paging_items::<rspotify::model::Show>(
-                "me/shows",
-                0, // we don't know the total number of saved shows beforehand
+                "me/shows", 0, // we don't know the total number of saved shows beforehand
             )
             .await?;
 
@@ -1000,7 +999,10 @@ impl AppClient {
     pub async fn artist_albums(&self, artist_id: ArtistId<'_>) -> Result<Vec<Album>> {
         let albums = self
             .all_paging_items::<rspotify::model::SimplifiedAlbum>(
-                &format!("artists/{}/albums?include_groups=album,single", artist_id.id()),
+                &format!(
+                    "artists/{}/albums?include_groups=album,single",
+                    artist_id.id()
+                ),
                 0, // we don't know the total number of artist albums beforehand
             )
             .await?
@@ -1487,10 +1489,7 @@ impl AppClient {
 
         // get the album's tracks
         let tracks = self
-            .all_paging_items(
-                &format!("albums/{}/tracks", album_id.id()),
-                total_tracks,
-            )
+            .all_paging_items(&format!("albums/{}/tracks", album_id.id()), total_tracks)
             .await?
             .into_iter()
             .filter_map(|t| {
