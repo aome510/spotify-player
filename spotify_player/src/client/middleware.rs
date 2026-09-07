@@ -216,6 +216,20 @@ impl SpotifyApiMiddleware {
         })
     }
 
+    /// Returns a normalized key for the given URL that guarantees consistent ordering of query parameters,
+    /// used for caching and deduplication of requests.
+    fn get_request_key(url: &Url) -> String {
+        let mut normalized_url = url.clone();
+        let mut query_pairs = url.query_pairs().into_owned().collect::<Vec<_>>();
+        query_pairs.sort_unstable();
+
+        normalized_url.set_query(None);
+        if !query_pairs.is_empty() {
+            normalized_url.query_pairs_mut().extend_pairs(query_pairs);
+        }
+        normalized_url.into()
+    }
+
     fn is_api_request(&self, url: &Url) -> bool {
         let base_path = self.api_base_url.path().trim_end_matches('/');
         let request_path = url.path();
@@ -266,7 +280,7 @@ impl SpotifyApiMiddleware {
         next: Next<'_>,
     ) -> reqwest_middleware::Result<Response> {
         let url = request.url();
-        match self.requests.register_get(url.to_string()).await {
+        match self.requests.register_get(Self::get_request_key(url)).await {
             GetRegistration::Shared(result) => {
                 tracing::info!(
                     %url,
@@ -538,6 +552,34 @@ mod tests {
 
         let first = client.get(&url).send().await.unwrap();
         let second = client.get(&url).send().await.unwrap();
+
+        assert_eq!(first.text().await.unwrap(), "shared");
+        assert_eq!(second.text().await.unwrap(), "shared");
+    }
+
+    #[tokio::test]
+    async fn shares_get_response_with_reordered_query_parameters() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/v1/search"))
+            .respond_with(ResponseTemplate::new(200).set_body_string("shared"))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let client = ClientBuilder::new(reqwest::Client::new())
+            .with(SpotifyApiMiddleware::new(&format!("{}/v1", server.uri()), 2).unwrap())
+            .build();
+        let first = client
+            .get(format!("{}/v1/search?type=track&q=test", server.uri()))
+            .send()
+            .await
+            .unwrap();
+        let second = client
+            .get(format!("{}/v1/search?q=test&type=track", server.uri()))
+            .send()
+            .await
+            .unwrap();
 
         assert_eq!(first.text().await.unwrap(), "shared");
         assert_eq!(second.text().await.unwrap(), "shared");
