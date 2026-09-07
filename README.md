@@ -7,7 +7,7 @@
 - [Installation](#installation)
 - [Authentication](#authentication)
   - [How authentication works](#how-authentication-works)
-  - [Why you may be asked to authenticate twice](#why-you-may-be-asked-to-authenticate-twice)
+  - [Why you may be asked to authenticate multiple times](#why-you-may-be-asked-to-authenticate-multiple-times)
   - [Client ID and rate limits](#client-id-and-rate-limits)
   - [Using a custom client ID](#using-a-custom-client-id)
 - [Features](#features)
@@ -192,27 +192,31 @@ docker run --rm \
 
 The simplest way to authenticate is to just **run the application** — on first use it prompts for whichever credentials are not yet cached. Each prompt opens the Spotify authorization page in your browser; after you approve access, Spotify redirects to a local loopback address (`login_redirect_uri`, default `http://127.0.0.1:8989/login`) where `spotify_player` captures the authorization code and exchanges it for an access token. Credentials are cached in the application's [cache folder](#caches), so this is a one-time step per machine.
 
-Alternatively, run the `spotify_player authenticate` CLI command to authenticate **both** credentials up front — useful for setting things up ahead of a [daemon](#daemon) or headless launch. Unlike a normal launch, `authenticate` always forces a fresh interactive login for both credentials, ignoring any cached tokens, so it can also be used to re-authenticate from scratch.
+Alternatively, run the `spotify_player authenticate` CLI command to authenticate all required credentials up front — useful for setting things up ahead of a [daemon](#daemon) or headless launch. Unlike a normal launch, `authenticate` always forces fresh interactive logins, ignoring cached credentials, so it can also be used to re-authenticate from scratch.
 
 ### How authentication works
 
-Two distinct credentials are involved:
+Two kinds of credentials are involved:
 
-- A **Web API token**, used for all REST calls (playback control, library, search, playlists, etc.). This is obtained through the OAuth flow above.
+- One or two **Web API tokens**, used for REST calls (playback control, library, search, playlists, etc.). The default setup uses ncspot's client ID. When a custom `client_id` is configured, its token is used first and a separate ncspot token provides fallback access.
 - A **librespot session**, used for the [streaming](#streaming) feature (direct playback and Spotify Connect device registration).
 
-Both authenticate through your Spotify account; the only thing that differs is the _client ID_ presented to Spotify (see below).
+They authenticate through your Spotify account; the _client ID_ presented to Spotify differs between credentials (see below).
 
-### Why you may be asked to authenticate twice
+### Why you may be asked to authenticate multiple times
 
-With the [streaming](#streaming) feature enabled (the default), the first launch can open the Spotify authorization page **twice** — once for each credential described above, in this order:
+With the [streaming](#streaming) feature enabled (the default), the first launch normally opens the Spotify authorization page **twice**, in this order:
 
-1. The **Web API token**, presented under the configured `client_id` (ncspot's by default). This is cached as `user_client_token.json`.
+1. The **Web API token**, presented under the configured `client_id` (ncspot's by default). This is cached as `<client_id>_token.json`.
 2. The **librespot session** credentials, presented under Spotify's official client ID. These are cached as `credentials.json`.
 
-These are two independent OAuth flows with two different client IDs, so Spotify requires a separate approval for each, and each token is cached separately in the [cache folder](#caches). This is a one-time step per machine — once both tokens are cached, subsequent launches reuse and silently refresh them, and you will not be prompted again unless the cache is cleared or a token is revoked.
+These are two independent OAuth flows with two different client IDs, so Spotify requires a separate approval for each, and each credential is cached separately in the [cache folder](#caches). This is a one-time step per machine — subsequent launches reuse and silently refresh them unless a cache is cleared or a credential is revoked.
 
-The `spotify_player authenticate` command runs both flows in one go (forcing a fresh login for each). If the `streaming` feature is disabled, the librespot session is not needed, so you are prompted just once (step 1).
+When a custom `client_id` is configured, an ncspot fallback Web API token is also requested and cached as `<ncspot_client_id>_token.json`. Its OAuth callback always uses `http://127.0.0.1:8989/login`; `login_redirect_uri` applies only to the custom client. A custom setup with streaming enabled can therefore require three approvals on first launch. Web API token cache filenames include their client IDs, so changing `client_id` requires a new approval instead of reusing a token issued to another client.
+
+A fallback ncspot client is integrated since the custom client might not be registered with [extended quota mode](https://developer.spotify.com/documentation/web-api/concepts/quota-modes) and could therefore doesn't have access to [certain endpoints](https://developer.spotify.com/blog/2024-11-27-changes-to-the-web-api).
+
+The `spotify_player authenticate` command runs every required flow in one go, forcing a fresh login for each. Without streaming, the librespot flow is omitted, leaving one Web API approval for the default setup or two for a custom-client setup.
 
 ### Client ID and rate limits
 
@@ -220,18 +224,17 @@ Every request to the Spotify Web API is attributed to a Spotify _application_, i
 
 By default, `spotify_player` uses [ncspot](https://github.com/hrkfdn/ncspot)'s client ID. This is intentional: that client ID is registered in [extended quota mode](https://developer.spotify.com/documentation/web-api/concepts/quota-modes) and predates Spotify's [November 2024 Web API changes](https://developer.spotify.com/blog/2024-11-27-changes-to-the-web-api). As a result it has a much higher rate limit and access to endpoints (browse, personalized content, generated playlists, …) that newly-registered applications can no longer use.
 
-> [!IMPORTANT]
-> **You almost certainly should not configure your own `client_id`.** Any application you register today starts in Spotify's restricted _default_ quota mode. Using such a client ID commonly leads to `429 Too Many Requests` and `403 Forbidden` errors and missing browse/personalized data. This was the root cause of several reported issues (e.g. [#890](https://github.com/aome510/spotify-player/issues/890), [#893](https://github.com/aome510/spotify-player/issues/893), [#912](https://github.com/aome510/spotify-player/issues/912), [#913](https://github.com/aome510/spotify-player/issues/913)), and switching to the bundled default client ID ([#918](https://github.com/aome510/spotify-player/pull/918)) resolved them.
->
-> The recommended setup is to **leave `client_id` unset** so the bundled default is used.
+When a custom `client_id` is configured, `spotify-player` sends most Web API requests through that client first. If Spotify rejects custom-client request with any `4xx` response, the request is attempted once through ncspot. Successful requests and failures outside the `4xx` range do not trigger fallback.
+
+The custom client uses no request middleware. The ncspot client stores `Retry-After` durations and retries rate-limited GET requests up to two times by default; mutation requests are never delayed or retried by the middleware. Configure the ncspot retry count with `api_rate_limit_retries`; see the [configuration documentation](https://github.com/aome510/spotify-player/blob/master/docs/config.md) for details.
 
 ### Using a custom client ID
 
-A custom client ID is only worthwhile if you have a specific reason — for example an application that has been granted extended quota mode by Spotify, or organizational policy requiring your own registered app.
+A custom client ID can be used when you prefer requests to be attributed to your own Spotify application. Newly registered applications use restricted default quota mode, so endpoints unavailable to the custom client transparently fall back to ncspot.
 
 If you do need one, [register an application](https://developer.spotify.com/dashboard) on the Spotify developer dashboard, add your `login_redirect_uri` (default `http://127.0.0.1:8989/login`) to the app's allowed redirect URIs, then set `client_id` (or `client_id_command`) in `app.toml`. See the [Client id command](https://github.com/aome510/spotify-player/blob/master/docs/config.md#client-id-command) section of the configuration docs for details.
 
-After changing the client ID, re-run `spotify_player authenticate` to refresh the cached token.
+After changing the client ID, re-run `spotify_player authenticate` to refresh the custom and fallback tokens.
 
 ## Features
 
@@ -428,8 +431,8 @@ List of supported commands:
 | `VolumeChange`                  | change playback volume by an offset (default shortcuts use 5%)                                     | `+`, `-`           |
 | `Mute`                          | toggle playback volume between 0% and previous level                                               | `_`                |
 | `SeekStart`                     | seek start of current track                                                                        | `^`                |
-| `SeekForward`                   | seek forward by a duration in seconds (defaults to `seek_duration_secs`)                           | `>`                |
-| `SeekBackward`                  | seek backward by a duration in seconds (defaults to `seek_duration_secs`)                          | `<`                |
+| `SeekForward`                   | seek forward by a duration in seconds (defaults to `seek_duration_secs`, supports vim-style count) | `>`                |
+| `SeekBackward`                  | seek backward by a duration in seconds (defaults to `seek_duration_secs`, supports vim-style count)| `<`                |
 | `Quit`                          | quit the application                                                                               | `C-c`, `q`         |
 | `ClosePopup`                    | close a popup                                                                                      | `esc`              |
 | `SelectNextOrScrollDown`        | select the next item in a list/table or scroll down (supports vim-style count: 5j)                 | `j`, `C-n`, `down` |

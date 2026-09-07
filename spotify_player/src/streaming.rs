@@ -289,7 +289,7 @@ pub async fn new_connection(
                             }
                             _ => {}
                         }
-                        client.update_playback(&state);
+                        client.update_playback_non_blocking(&state);
 
                         // execute a player event hook command
                         if let Some(ref cmd) = configs.app_config.player_event_hook_command {

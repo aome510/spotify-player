@@ -581,9 +581,14 @@ pub fn render_browse_page(
                 rect =
                     construct_and_render_block("Categories", &ui.theme, Borders::ALL, frame, rect);
 
+                let Some(categories) = data.browse.categories.as_deref() else {
+                    frame.render_widget(Paragraph::new("Loading..."), rect);
+                    return;
+                };
+
                 utils::construct_list_widget(
                     &ui.theme,
-                    ui.search_filtered_items(&data.browse.categories)
+                    ui.search_filtered_items(categories)
                         .into_iter()
                         .map(|c| (c.name.clone(), false))
                         .collect(),
@@ -794,6 +799,7 @@ pub fn render_queue_page(
                 .map(|a| a.name.as_str())
                 .collect::<Vec<_>>()
                 .join(", "),
+            #[allow(deprecated)]
             PlayableItem::Episode(FullEpisode { ref show, .. }) => show.publisher.clone(),
             PlayableItem::Unknown(_) => String::new(),
         }

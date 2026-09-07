@@ -1,4 +1,3 @@
-use anyhow::Context as _;
 use command::CommandOrAction;
 
 use crate::command::{construct_album_actions, construct_playlist_actions, construct_show_actions};
@@ -218,6 +217,17 @@ fn handle_key_sequence_for_search_page(
                     if !line_input.is_empty() {
                         *current_query = line_input.get_text();
                         client_pub.send(ClientRequest::Search(line_input.get_text()))?;
+                    }
+                    Ok(true)
+                }
+                Key::None(crossterm::event::KeyCode::Backspace) => {
+                    if line_input.is_empty() {
+                        if ui.history.len() > 1 {
+                            ui.history.pop();
+                            ui.popup = None;
+                        }
+                    } else {
+                        line_input.input(&Key::None(crossterm::event::KeyCode::Backspace));
                     }
                     Ok(true)
                 }
@@ -467,9 +477,12 @@ fn handle_command_for_browse_page(
 
     let len = match ui.current_page() {
         PageState::Browse { state } => match state {
-            BrowsePageUIState::CategoryList { .. } => {
-                ui.search_filtered_items(&data.browse.categories).len()
-            }
+            BrowsePageUIState::CategoryList { .. } => data
+                .browse
+                .categories
+                .as_deref()
+                .map(|categories| ui.search_filtered_items(categories).len())
+                .unwrap_or_default(),
             BrowsePageUIState::CategoryPlaylistList { category, .. } => data
                 .browse
                 .category_playlists
@@ -494,7 +507,10 @@ fn handle_command_for_browse_page(
         Command::ChooseSelected => match page_state {
             PageState::Browse { state } => match state {
                 BrowsePageUIState::CategoryList { .. } => {
-                    let categories = ui.search_filtered_items(&data.browse.categories);
+                    let Some(categories) = data.browse.categories.as_deref() else {
+                        return Ok(false);
+                    };
+                    let categories = ui.search_filtered_items(categories);
                     client_pub.send(ClientRequest::GetBrowseCategoryPlaylists(
                         categories[selected].clone(),
                     ))?;

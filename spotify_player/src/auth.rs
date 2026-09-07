@@ -13,6 +13,7 @@ use sha2::{Digest as _, Sha256};
 
 pub const SPOTIFY_CLIENT_ID: &str = "65b708073fc0480ea92a077233ca87bd";
 pub const NCSPOT_CLIENT_ID: &str = "d420a117a32841c2b3474932e49fb54b";
+pub const NCSPOT_REDIRECT_URI: &str = "http://127.0.0.1:8989/login";
 
 const SPOTIFY_AUTHORIZE_URL: &str = "https://accounts.spotify.com/authorize";
 const SPOTIFY_TOKEN_URL: &str = "https://accounts.spotify.com/api/token";
@@ -106,6 +107,7 @@ pub fn get_creds(auth_config: &AuthConfig, reauth: bool, use_cached: bool) -> Re
             let msg = "No cached credentials found, please authenticate the application first.";
             if reauth {
                 eprintln!("{msg}");
+                println!("Authenticating the librespot streaming client...");
 
                 let access_token = get_oauth_access_token(
                     SPOTIFY_CLIENT_ID,
@@ -124,17 +126,29 @@ pub fn get_creds(auth_config: &AuthConfig, reauth: bool, use_cached: bool) -> Re
     })
 }
 
-/// Authenticate the user-provided (Web API) client using the authorization code with PKCE flow.
+/// Authenticate the configured Web API client and its optional fallback using PKCE.
 ///
 /// This mirrors `rspotify`'s `prompt_for_token` (reusing/refreshing a cached token when possible),
 /// but replaces its callback listener with [`obtain_auth_code`], which is robust against stray
 /// browser requests on the callback port (see [`listen_for_auth_code`]).
 ///
-/// When `force` is set, any cached token is ignored and a fresh interactive authorization flow is
-/// always run. This is used by the `authenticate` CLI command to re-authenticate on demand.
+/// When `force` is set, cached tokens are ignored and fresh interactive authorization flows are
+/// run. This is used by the `authenticate` CLI command to re-authenticate on demand.
 pub async fn prompt_for_user_token(
     client: &mut crate::client::WebApiClient,
     force: bool,
+) -> Result<()> {
+    prompt_for_web_api_token(client.primary_mut(), force, "configured client").await?;
+    if let Some(fallback) = client.fallback_mut() {
+        prompt_for_web_api_token(fallback, force, "ncspot fallback client").await?;
+    }
+    Ok(())
+}
+
+async fn prompt_for_web_api_token(
+    client: &mut crate::client::PkceWebApiClient,
+    force: bool,
+    client_name: &str,
 ) -> Result<()> {
     // Reuse a cached token when possible, refreshing it if it has expired.
     if !force {
@@ -183,14 +197,15 @@ pub async fn prompt_for_user_token(
 
     // No usable cached token: run the interactive authorization code flow.
     // `get_authorize_url` also generates and stores the PKCE verifier used by `request_token`.
+    println!("Authenticating the {client_name} for Spotify Web API access...");
     let url = client
         .get_authorize_url(None)
-        .context("get authorize URL for user-provided client")?;
+        .with_context(|| format!("get authorize URL for {client_name}"))?;
     let code = obtain_auth_code(&url, &client.get_oauth().redirect_uri)?;
     client
         .request_token(&code)
         .await
-        .context("exchange auth code for token (user-provided client)")?;
+        .with_context(|| format!("exchange auth code for token ({client_name})"))?;
 
     Ok(())
 }
