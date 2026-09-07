@@ -44,6 +44,17 @@ For more details on theme configuration, see the [Configuration Documentation](.
 - 🌺 Macchiato
 - 🌿 Mocha
 
+### [spotify-player Afterglow](https://github.com/mbti0n/Spotify-Player-Afterglow)
+**Author**: [@mbti0n](https://github.com/mbti0n)
+
+**Description**: 
+An Afterglow theme port for [aome510's spotify-player](https://github.com/aome510/spotify-player). Built on top of [MBeggiato's SoundCloud theme from their collection for spotify-player](https://github.com/MBeggiato/spotify-player-themes).
+
+**Themes**: 7 themes (Orange (custom), Red, Yellow, Blue, Green, Magenta, Cyan)
+
+**Install**: 
+Open the `theme.toml` file of this repository, copy everything inside, and paste into the end of the `theme.toml` file inside `~/.config/spotify-player`.
+
 ## Submit Your Theme Collection
 
 Do you have a theme collection you'd like to share with the community? Submit a pull request to add your repository to this list!
