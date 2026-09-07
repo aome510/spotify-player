@@ -431,8 +431,8 @@ List of supported commands:
 | `VolumeChange`                  | change playback volume by an offset (default shortcuts use 5%)                                     | `+`, `-`           |
 | `Mute`                          | toggle playback volume between 0% and previous level                                               | `_`                |
 | `SeekStart`                     | seek start of current track                                                                        | `^`                |
-| `SeekForward`                   | seek forward by a duration in seconds (defaults to `seek_duration_secs`)                           | `>`                |
-| `SeekBackward`                  | seek backward by a duration in seconds (defaults to `seek_duration_secs`)                          | `<`                |
+| `SeekForward`                   | seek forward by a duration in seconds (defaults to `seek_duration_secs`, supports vim-style count) | `>`                |
+| `SeekBackward`                  | seek backward by a duration in seconds (defaults to `seek_duration_secs`, supports vim-style count)| `<`                |
 | `Quit`                          | quit the application                                                                               | `C-c`, `q`         |
 | `ClosePopup`                    | close a popup                                                                                      | `esc`              |
 | `SelectNextOrScrollDown`        | select the next item in a list/table or scroll down (supports vim-style count: 5j)                 | `j`, `C-n`, `down` |
