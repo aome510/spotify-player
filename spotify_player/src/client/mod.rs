@@ -24,14 +24,18 @@ use librespot_core::SpotifyUri;
 #[cfg(feature = "streaming")]
 use parking_lot::Mutex;
 
-use reqwest::StatusCode;
-use rspotify::{http::Query, prelude::*};
+use rspotify::{
+    http::{BaseHttpClient, Query},
+    prelude::*,
+};
 
 mod handlers;
+mod middleware;
 mod request;
 mod spotify;
 
 pub use handlers::*;
+use middleware::SpotifyApiMiddleware;
 pub use request::*;
 use serde::Deserialize;
 pub(crate) use spotify::WebApiClient;
@@ -103,9 +107,14 @@ pub fn new_api_client() -> Result<WebApiClient> {
         cache_path: configs.cache_folder.join("user_client_token.json"),
         ..Default::default()
     };
-    Ok(WebApiClient::new(
-        rspotify::AuthCodePkceSpotify::with_config(creds, oauth, config),
-    ))
+    let middleware = SpotifyApiMiddleware::new(
+        &config.api_base_url,
+        configs.app_config.api_rate_limit_retries,
+    )?;
+    let client = rspotify::AuthCodePkceSpotify::with_config(creds, oauth, config)
+        .with_middleware(middleware);
+
+    Ok(WebApiClient::new(client))
 }
 
 impl AppClient {
@@ -130,19 +139,6 @@ impl AppClient {
         })
     }
 
-    async fn token(&self) -> Result<String> {
-        self.auto_reauth().await?;
-        Ok(self
-            .get_token()
-            .lock()
-            .await
-            .unwrap()
-            .as_ref()
-            .context("no access token")?
-            .access_token
-            .clone())
-    }
-
     /// Initialize the application's playback upon creating a new session or during startup.
     ///
     /// `resume` controls whether playback should be (re)started on the device we connect to.
@@ -156,11 +152,8 @@ impl AppClient {
                 //
                 // However, because it takes time for Spotify server to show up new changes,
                 // a retry logic is implemented to ensure the application's state is properly initialized
-                let delay = std::time::Duration::from_secs(1);
-
-                for _ in 0..5 {
-                    tokio::time::sleep(delay).await;
-
+                let max_retries = 3;
+                for i in 0..max_retries {
                     if let Err(err) = client.retrieve_current_playback(&state, false).await {
                         tracing::error!("Failed to retrieve current playback: {err:#}");
                         return;
@@ -180,15 +173,21 @@ impl AppClient {
                         }
                     };
 
-                    if let Some(id) = id {
-                        tracing::info!("Trying to connect to device (id={id}, resume={resume})");
-                        if let Err(err) = client.transfer_playback(&id, Some(false)).await {
-                            tracing::warn!("Connection failed (device_id={id}): {err:#}");
+                    if let Some(device_id) = id {
+                        tracing::info!(
+                            %device_id,
+                            resume,
+                            retry = i,
+                            max_retries,
+                            "Trying to connect to device"
+                        );
+                        if let Err(err) = client.transfer_playback(&device_id, Some(false)).await {
+                            tracing::warn!(%device_id, "Connection failed: {err:#}");
                         } else {
-                            tracing::info!("Connection succeeded (device_id={id})!");
+                            tracing::info!(%device_id, "Connection succeeded!");
                             if resume {
                                 if let Err(err) =
-                                    client.resume_playback(Some(id.as_ref()), None).await
+                                    client.resume_playback(Some(device_id.as_ref()), None).await
                                 {
                                     tracing::warn!(
                                         "Failed to resume playback after reconnect: {err:#}"
@@ -197,10 +196,12 @@ impl AppClient {
                             }
                             // upon new connection, reset the buffered playback
                             state.player.write().buffered_playback = None;
-                            client.update_playback(&state);
+                            client.update_playback_non_blocking(&state);
                             break;
                         }
                     }
+
+                    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
                 }
             }
         });
@@ -466,7 +467,7 @@ impl AppClient {
                 let playback = state.player.read().buffered_playback.clone();
                 let playback = self.handle_player_request(request, playback).await?;
                 state.player.write().buffered_playback = playback;
-                self.update_playback(state);
+                self.update_playback_non_blocking(state);
             }
             ClientRequest::GetCurrentPlayback => {
                 self.retrieve_current_playback(state, true).await?;
@@ -712,25 +713,19 @@ impl AppClient {
         Ok(self.device().await?)
     }
 
-    pub fn update_playback(&self, state: &SharedState) {
-        // After handling a request changing the player's playback,
-        // update the playback state by making multiple get-playback requests.
-        //
+    /// After handling a request changing the player's playback,
+    /// update the playback state **in a non-blocking manner**.
+    pub fn update_playback_non_blocking(&self, state: &SharedState) {
         // Q: Why do we need more than one request to update the playback?
         // A: It might take a while for Spotify server to reflect the new change,
         // making additional requests can help ensure that the playback state is always up-to-date.
         let client = self.clone();
         let state = state.clone();
         tokio::task::spawn(async move {
-            let delay = std::time::Duration::from_secs(1);
-            for _ in 0..5 {
-                tokio::time::sleep(delay).await;
-                if let Err(err) = client.retrieve_current_playback(&state, false).await {
-                    tracing::error!(
-                        "Encountered an error when updating the playback state: {err:#}"
-                    );
-                }
-            }
+            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+            let _ = client.retrieve_current_playback(&state, false).await;
+            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+            let _ = client.retrieve_current_playback(&state, false).await;
         });
     }
 
@@ -1546,27 +1541,13 @@ impl AppClient {
             text.to_string()
         }
 
-        let access_token = self.token().await.context("get token")?;
-        tracing::debug!("{access_token} {url}");
-
-        let response = self
-            .http
-            .get(url)
-            .query(payload)
-            .header(
-                reqwest::header::AUTHORIZATION,
-                format!("Bearer {access_token}"),
-            )
-            .send()
-            .await?;
-
-        let status = response.status();
-        let text = process_spotify_api_response(&response.text().await?);
+        let headers = self
+            .auth_headers()
+            .await
+            .context("get Spotify API headers")?;
+        let text = self.get_http().get(url, Some(&headers), payload).await?;
+        let text = process_spotify_api_response(&text);
         tracing::debug!("{text}");
-
-        if status != StatusCode::OK {
-            anyhow::bail!("failed to send a Spotify API request {url}: {text}");
-        }
 
         Ok(serde_json::from_str(&text)?)
     }
@@ -1576,10 +1557,11 @@ impl AppClient {
         T: serde::de::DeserializeOwned + std::fmt::Debug,
     {
         const PAGE_LIMIT: usize = 50;
-        const MAX_PARALLEL: usize = 8;
+        const MAX_PARALLEL: usize = 4;
 
         let mut all_items = Vec::new();
         let mut offset = 0;
+        let mut n_jobs = 1;
 
         // if count is 0 (i.e., unknown), set it to usize::MAX to fetch until no more items
         if count == 0 {
@@ -1587,7 +1569,7 @@ impl AppClient {
         }
 
         while offset < count {
-            let n_jobs = std::cmp::min(MAX_PARALLEL, (count - offset).div_ceil(PAGE_LIMIT));
+            n_jobs = std::cmp::min(n_jobs, (count - offset).div_ceil(PAGE_LIMIT));
 
             let mut futures = Vec::with_capacity(n_jobs);
 
@@ -1609,20 +1591,21 @@ impl AppClient {
 
             let results = futures::future::try_join_all(futures).await?;
 
-            let mut found_empty = false;
+            let mut found_partial_page = false;
             for mut page in results {
-                if page.items.is_empty() {
-                    found_empty = true;
-                    break;
+                if page.items.len() < PAGE_LIMIT {
+                    found_partial_page = true;
                 }
                 all_items.append(&mut page.items);
             }
 
-            if found_empty {
+            if found_partial_page {
                 break;
             }
 
             offset += n_jobs * PAGE_LIMIT;
+            // gradually increase the number of parallel jobs, but do not exceed MAX_PARALLEL
+            n_jobs = std::cmp::min(n_jobs + 1, MAX_PARALLEL);
         }
 
         Ok(all_items)

@@ -1,4 +1,3 @@
-use anyhow::Context as _;
 use command::CommandOrAction;
 
 use crate::command::{construct_album_actions, construct_playlist_actions, construct_show_actions};
