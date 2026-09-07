@@ -42,10 +42,35 @@ use serde::Deserialize;
 pub(crate) use spotify::WebApiClient;
 
 const SPOTIFY_API_ENDPOINT: &str = "https://api.spotify.com/v1";
-const PLAYBACK_TYPES: [&rspotify::model::AdditionalType; 2] = [
-    &rspotify::model::AdditionalType::Track,
-    &rspotify::model::AdditionalType::Episode,
-];
+
+fn patch_missing_track_external_ids(response: &mut serde_json::Value) {
+    let Some(item) = response.get_mut("item") else {
+        return;
+    };
+    if item.get("type").and_then(serde_json::Value::as_str) != Some("track")
+        || item.get("external_ids").is_some()
+    {
+        return;
+    }
+    if let Some(item) = item.as_object_mut() {
+        item.insert(
+            "external_ids".to_string(),
+            serde_json::Value::Object(serde_json::Map::new()),
+        );
+    }
+}
+
+fn parse_current_playback_response(
+    text: &str,
+) -> Result<Option<rspotify::model::CurrentPlaybackContext>> {
+    if text.is_empty() {
+        return Ok(None);
+    }
+
+    let mut response = serde_json::from_str(text)?;
+    patch_missing_track_external_ids(&mut response);
+    Ok(Some(serde_json::from_value(response)?))
+}
 
 /// The application's Spotify client
 #[derive(Clone)]
@@ -1538,25 +1563,20 @@ impl AppClient {
         Ok(Context::Show { show, episodes })
     }
 
+    async fn http_get_raw(&self, url: &str, payload: &Query<'_>) -> Result<String> {
+        let headers = self
+            .auth_headers()
+            .await
+            .context("get Spotify API headers")?;
+        Ok(self.get_http().get(url, Some(&headers), payload).await?)
+    }
+
     /// Make a GET HTTP request to the Spotify server
     async fn http_get<T>(&self, url: &str, payload: &Query<'_>) -> Result<T>
     where
         T: serde::de::DeserializeOwned,
     {
-        /// a helper function to process an API response from Spotify server
-        ///
-        /// This function is mainly used to patch upstream API bugs , resulting in
-        /// a type error when a third-party library like `rspotify` parses the response
-        fn process_spotify_api_response(text: &str) -> String {
-            text.to_string()
-        }
-
-        let headers = self
-            .auth_headers()
-            .await
-            .context("get Spotify API headers")?;
-        let text = self.get_http().get(url, Some(&headers), payload).await?;
-        let text = process_spotify_api_response(&text);
+        let text = self.http_get_raw(url, payload).await?;
         tracing::debug!("{text}");
 
         Ok(serde_json::from_str(&text)?)
@@ -1644,7 +1664,11 @@ impl AppClient {
     pub async fn current_playback2(
         &self,
     ) -> Result<Option<rspotify::model::CurrentPlaybackContext>> {
-        Ok(self.current_playback(None, PLAYBACK_TYPES.into()).await?)
+        let params = Query::from([("additional_types", "track,episode")]);
+        let text = self
+            .http_get_raw(&format!("{SPOTIFY_API_ENDPOINT}/me/player"), &params)
+            .await?;
+        parse_current_playback_response(&text)
     }
 
     /// Retrieve the latest playback state
@@ -2031,9 +2055,9 @@ fn move_seed_track_to_front(tracks: &mut Vec<Track>, seed_track: Track) {
 
 #[cfg(test)]
 mod tests {
-    use super::move_seed_track_to_front;
+    use super::{move_seed_track_to_front, parse_current_playback_response};
     use crate::state::Track;
-    use rspotify::model::TrackId;
+    use rspotify::model::{PlayableItem, TrackId};
 
     fn sample_track(id: &'static str, name: &str) -> Track {
         Track {
@@ -2072,5 +2096,57 @@ mod tests {
         assert_eq!(tracks.len(), 2);
         assert_eq!(tracks[0].id, seed.id);
         assert_eq!(tracks[1].id, second.id);
+    }
+
+    #[test]
+    fn patches_missing_external_ids_in_playback_track() {
+        let response = serde_json::json!({
+            "device": {
+                "id": null,
+                "is_active": true,
+                "is_private_session": false,
+                "is_restricted": false,
+                "name": "Spotify Player",
+                "type": "Computer",
+                "volume_percent": 50
+            },
+            "repeat_state": "off",
+            "shuffle_state": false,
+            "context": null,
+            "timestamp": 0,
+            "progress_ms": 1000,
+            "is_playing": true,
+            "item": {
+                "album": {
+                    "album_type": "album",
+                    "artists": [],
+                    "external_urls": {},
+                    "href": null,
+                    "id": null,
+                    "images": [],
+                    "name": "Skool Luv Affair"
+                },
+                "artists": [],
+                "disc_number": 1,
+                "duration_ms": 239_469,
+                "explicit": false,
+                "external_urls": {},
+                "href": "https://api.spotify.com/v1/tracks/6t7WriKgVszATnrdBKSUAf",
+                "id": "6t7WriKgVszATnrdBKSUAf",
+                "is_local": false,
+                "name": "Just One Day",
+                "preview_url": null,
+                "track_number": 5,
+                "type": "track"
+            },
+            "currently_playing_type": "track",
+            "actions": { "disallows": {} }
+        });
+
+        let playback = parse_current_playback_response(&response.to_string())
+            .unwrap()
+            .unwrap();
+
+        assert!(matches!(playback.item, Some(PlayableItem::Track(_))));
     }
 }
