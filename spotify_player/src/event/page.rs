@@ -466,9 +466,12 @@ fn handle_command_for_browse_page(
 
     let len = match ui.current_page() {
         PageState::Browse { state } => match state {
-            BrowsePageUIState::CategoryList { .. } => {
-                ui.search_filtered_items(&data.browse.categories).len()
-            }
+            BrowsePageUIState::CategoryList { .. } => data
+                .browse
+                .categories
+                .as_deref()
+                .map(|categories| ui.search_filtered_items(categories).len())
+                .unwrap_or_default(),
             BrowsePageUIState::CategoryPlaylistList { category, .. } => data
                 .browse
                 .category_playlists
@@ -493,7 +496,10 @@ fn handle_command_for_browse_page(
         Command::ChooseSelected => match page_state {
             PageState::Browse { state } => match state {
                 BrowsePageUIState::CategoryList { .. } => {
-                    let categories = ui.search_filtered_items(&data.browse.categories);
+                    let Some(categories) = data.browse.categories.as_deref() else {
+                        return Ok(false);
+                    };
+                    let categories = ui.search_filtered_items(categories);
                     client_pub.send(ClientRequest::GetBrowseCategoryPlaylists(
                         categories[selected].clone(),
                     ))?;
