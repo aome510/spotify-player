@@ -60,6 +60,23 @@ struct Palette {
     bright_yellow: Color,
 }
 
+#[cfg(feature = "streaming")]
+#[derive(Clone, Debug, Default, Deserialize)]
+struct VisualizationStyle {
+    low: Option<StyleColor>,
+    mid: Option<StyleColor>,
+    high: Option<StyleColor>,
+}
+
+/// Amplitude-keyed colors resolved from a theme's `visualization` style.
+#[cfg(feature = "streaming")]
+#[derive(Clone, Debug)]
+pub struct VisualizationColors {
+    pub low: style::Color,
+    pub mid: style::Color,
+    pub high: style::Color,
+}
+
 #[derive(Clone, Debug, Default, Deserialize)]
 struct ComponentStyle {
     block_title: Option<Style>,
@@ -81,6 +98,8 @@ struct ComponentStyle {
     like: Option<Style>,
     lyrics_played: Option<Style>,
     lyrics_playing: Option<Style>,
+    #[cfg(feature = "streaming")]
+    visualization: Option<VisualizationStyle>,
 }
 
 #[derive(Default, Clone, Debug, Deserialize)]
@@ -372,6 +391,46 @@ impl Theme {
                     .modifiers([StyleModifier::Bold]),
             )
             .style(&self.palette)
+    }
+
+    /// Colors used by the audio visualization bars, keyed by amplitude.
+    /// Quiet bars use `low`, medium bars use `mid`, loud bars use `high`,
+    /// with a gradient between adjacent stops.
+    #[cfg(feature = "streaming")]
+    pub fn visualization(&self) -> VisualizationColors {
+        self.component_style
+            .visualization
+            .as_ref()
+            .unwrap_or(&VisualizationStyle::default())
+            .resolve(&self.palette)
+    }
+}
+
+#[cfg(feature = "streaming")]
+impl VisualizationStyle {
+    fn resolve(&self, palette: &Palette) -> VisualizationColors {
+        VisualizationColors {
+            low: self
+                .low
+                .unwrap_or(StyleColor::Rgb {
+                    r: 30,
+                    g: 100,
+                    b: 255,
+                })
+                .color(palette),
+            mid: self
+                .mid
+                .unwrap_or(StyleColor::Rgb {
+                    r: 50,
+                    g: 255,
+                    b: 128,
+                })
+                .color(palette),
+            high: self
+                .high
+                .unwrap_or(StyleColor::Rgb { r: 255, g: 0, b: 0 })
+                .color(palette),
+        }
     }
 }
 
