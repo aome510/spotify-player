@@ -1121,64 +1121,63 @@ impl AppClient {
 
     /// Search for items (tracks, artists, albums, playlists) matching a given query
     pub async fn search(&self, query: &str) -> Result<SearchResults> {
-        let (
-            track_result,
-            artist_result,
-            album_result,
-            playlist_result,
-            show_result,
-            episode_result,
-        ) = tokio::try_join!(
-            self.search_specific_type(query, rspotify::model::SearchType::Track),
-            self.search_specific_type(query, rspotify::model::SearchType::Artist),
-            self.search_specific_type(query, rspotify::model::SearchType::Album),
-            self.search_specific_type(query, rspotify::model::SearchType::Playlist),
-            self.search_specific_type(query, rspotify::model::SearchType::Show),
-            self.search_specific_type(query, rspotify::model::SearchType::Episode)
-        )?;
+        use rspotify::model::SearchType;
 
-        let (tracks, artists, albums, playlists, shows, episodes) = (
-            match track_result {
-                rspotify::model::SearchResult::Tracks(p) => p
-                    .items
-                    .into_iter()
-                    .filter_map(Track::try_from_full_track)
-                    .collect(),
-                _ => anyhow::bail!("expect a track search result"),
-            },
-            match artist_result {
-                rspotify::model::SearchResult::Artists(p) => {
-                    p.items.into_iter().map(std::convert::Into::into).collect()
-                }
-                _ => anyhow::bail!("expect an artist search result"),
-            },
-            match album_result {
-                rspotify::model::SearchResult::Albums(p) => p
-                    .items
-                    .into_iter()
-                    .filter_map(Album::try_from_simplified_album)
-                    .collect(),
-                _ => anyhow::bail!("expect an album search result"),
-            },
-            match playlist_result {
-                rspotify::model::SearchResult::Playlists(p) => {
-                    p.items.into_iter().map(std::convert::Into::into).collect()
-                }
-                _ => anyhow::bail!("expect a playlist search result"),
-            },
-            match show_result {
-                rspotify::model::SearchResult::Shows(p) => {
-                    p.items.into_iter().map(std::convert::Into::into).collect()
-                }
-                _ => anyhow::bail!("expect a show search result"),
-            },
-            match episode_result {
-                rspotify::model::SearchResult::Episodes(p) => {
-                    p.items.into_iter().map(std::convert::Into::into).collect()
-                }
-                _ => anyhow::bail!("expect a episode search result"),
-            },
-        );
+        let result = self
+            .deref()
+            .search_multiple(
+                query,
+                [
+                    SearchType::Track,
+                    SearchType::Artist,
+                    SearchType::Album,
+                    SearchType::Playlist,
+                    SearchType::Show,
+                    SearchType::Episode,
+                ],
+                None,
+                None,
+                None,
+                None,
+            )
+            .await?;
+
+        let tracks = result
+            .tracks
+            .into_iter()
+            .flat_map(|page| page.items)
+            .filter_map(Track::try_from_full_track)
+            .collect();
+        let artists = result
+            .artists
+            .into_iter()
+            .flat_map(|page| page.items)
+            .map(std::convert::Into::into)
+            .collect();
+        let albums = result
+            .albums
+            .into_iter()
+            .flat_map(|page| page.items)
+            .filter_map(Album::try_from_simplified_album)
+            .collect();
+        let playlists = result
+            .playlists
+            .into_iter()
+            .flat_map(|page| page.items)
+            .map(std::convert::Into::into)
+            .collect();
+        let shows = result
+            .shows
+            .into_iter()
+            .flat_map(|page| page.items)
+            .map(std::convert::Into::into)
+            .collect();
+        let episodes = result
+            .episodes
+            .into_iter()
+            .flat_map(|page| page.items)
+            .map(std::convert::Into::into)
+            .collect();
 
         Ok(SearchResults {
             tracks,
