@@ -1482,7 +1482,6 @@ impl AppClient {
             .context("get artist")?
             .into();
 
-        // this is the main feb 2026 spotify api update
         #[allow(deprecated)]
         let top_tracks = self
             .artist_top_tracks(artist_id.as_ref(), Some(rspotify::model::Market::FromToken))
