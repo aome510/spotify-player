@@ -20,7 +20,10 @@ use crate::{
         PlaylistId, SharedState, TrackId,
     },
 };
-use rspotify::prelude::{BaseClient, OAuthClient};
+use rspotify::{
+    model::LibraryId,
+    prelude::{BaseClient, OAuthClient},
+};
 
 use super::{
     Command, Deserialize, EditAction, GetRequest, IdOrName, ItemId, ItemType, Key, PlaylistCommand,
@@ -175,9 +178,9 @@ async fn handle_socket_request(
 
             if let Some(id) = track.and_then(|t| t.id.clone()) {
                 if unlike {
-                    client.current_user_saved_tracks_delete([id]).await?;
+                    client.library_remove([LibraryId::Track(id)]).await?;
                 } else {
-                    client.current_user_saved_tracks_add([id]).await?;
+                    client.library_add([LibraryId::Track(id)]).await?;
                 }
             }
 
@@ -509,7 +512,7 @@ async fn handle_playlist_request(client: &AppClient, command: PlaylistCommand) -
         }
         PlaylistCommand::Delete { id } => {
             let following = client
-                .playlist_check_follow(id.clone(), &[uid])
+                .library_contains([LibraryId::Playlist(id.clone())])
                 .await
                 .context(format!("Could not find playlist '{}'", id.id()))?
                 .pop()
@@ -517,7 +520,9 @@ async fn handle_playlist_request(client: &AppClient, command: PlaylistCommand) -
 
             // Won't delete if not following
             if following {
-                client.playlist_unfollow(id.clone()).await?;
+                client
+                    .library_remove([LibraryId::Playlist(id.clone())])
+                    .await?;
                 Ok(format!("Playlist '{id}' was deleted/unfollowed"))
             } else {
                 Ok(format!(
@@ -591,7 +596,7 @@ async fn handle_playlist_request(client: &AppClient, command: PlaylistCommand) -
                 }
 
                 let pl_follow = client
-                    .playlist_check_follow(to_id.as_ref(), &[uid.as_ref()])
+                    .library_contains([LibraryId::Playlist(to_id.as_ref())])
                     .await?
                     .pop()
                     .unwrap();

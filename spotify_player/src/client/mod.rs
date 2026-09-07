@@ -24,6 +24,7 @@ use librespot_core::SpotifyUri;
 #[cfg(feature = "streaming")]
 use parking_lot::Mutex;
 
+use rspotify::model::LibraryId;
 use rspotify::{
     http::{BaseHttpClient, Query},
     prelude::*,
@@ -731,6 +732,7 @@ impl AppClient {
 
     /// Get Spotify's available browse categories
     pub async fn browse_categories(&self) -> Result<Vec<Category>> {
+        #[allow(deprecated)]
         let first_page = self
             .categories_manual(Some("EN"), None, Some(50), None)
             .await?;
@@ -1051,6 +1053,7 @@ impl AppClient {
             .filter_map(|t| TrackId::from_id(t.original_gid).ok());
 
         // Retrieve tracks based on IDs
+        #[allow(deprecated)]
         let tracks = self
             .tracks(track_ids, Some(rspotify::model::Market::FromToken))
             .await?;
@@ -1255,10 +1258,10 @@ impl AppClient {
         match item {
             Item::Track(track) => {
                 let contains = self
-                    .current_user_saved_tracks_contains([track.id.as_ref()])
+                    .library_contains([LibraryId::Track(track.id.as_ref())])
                     .await?;
                 if !contains[0] {
-                    self.current_user_saved_tracks_add([track.id.as_ref()])
+                    self.library_add([LibraryId::Track(track.id.as_ref())])
                         .await?;
                     // update the in-memory `user_data`
                     state
@@ -1271,19 +1274,22 @@ impl AppClient {
             }
             Item::Album(album) => {
                 let contains = self
-                    .current_user_saved_albums_contains([album.id.as_ref()])
+                    .library_contains([LibraryId::Album(album.id.as_ref())])
                     .await?;
                 if !contains[0] {
-                    self.current_user_saved_albums_add([album.id.as_ref()])
+                    self.library_add([LibraryId::Album(album.id.as_ref())])
                         .await?;
                     // update the in-memory `user_data`
                     state.data.write().user_data.saved_albums.insert(0, album);
                 }
             }
             Item::Artist(artist) => {
-                let follows = self.user_artist_check_follow([artist.id.as_ref()]).await?;
+                let follows = self
+                    .library_contains([LibraryId::Artist(artist.id.as_ref())])
+                    .await?;
                 if !follows[0] {
-                    self.user_follow_artists([artist.id.as_ref()]).await?;
+                    self.library_add([LibraryId::Artist(artist.id.as_ref())])
+                        .await?;
                     // update the in-memory `user_data`
                     state
                         .data
@@ -1302,12 +1308,13 @@ impl AppClient {
                     .as_ref()
                     .map(|u| u.id.clone());
 
-                if let Some(user_id) = user_id {
+                if let Some(_user_id) = user_id {
                     let follows = self
-                        .playlist_check_follow(playlist.id.as_ref(), &[user_id])
+                        .library_contains([LibraryId::Playlist(playlist.id.as_ref())])
                         .await?;
                     if !follows[0] {
-                        self.playlist_follow(playlist.id.as_ref(), None).await?;
+                        self.library_add([LibraryId::Playlist(playlist.id.as_ref())])
+                            .await?;
                         // update the in-memory `user_data`
                         state
                             .data
@@ -1319,9 +1326,12 @@ impl AppClient {
                 }
             }
             Item::Show(show) => {
-                let follows = self.check_users_saved_shows([show.id.as_ref()]).await?;
+                let follows = self
+                    .library_contains([LibraryId::Show(show.id.as_ref())])
+                    .await?;
                 if !follows[0] {
-                    self.save_shows([show.id.as_ref()]).await?;
+                    self.library_add([LibraryId::Show(show.id.as_ref())])
+                        .await?;
                     // update the in-memory `user_data`
                     state.data.write().user_data.saved_shows.insert(0, show);
                 }
@@ -1335,7 +1345,7 @@ impl AppClient {
         match id {
             ItemId::Track(id) => {
                 let uri = id.uri();
-                self.current_user_saved_tracks_delete([id]).await?;
+                self.library_remove([LibraryId::Track(id)]).await?;
                 state.data.write().user_data.saved_tracks.remove(&uri);
             }
             ItemId::Album(id) => {
@@ -1345,7 +1355,7 @@ impl AppClient {
                     .user_data
                     .saved_albums
                     .retain(|a| a.id != id);
-                self.current_user_saved_albums_delete([id]).await?;
+                self.library_remove([LibraryId::Album(id)]).await?;
             }
             ItemId::Artist(id) => {
                 state
@@ -1354,7 +1364,7 @@ impl AppClient {
                     .user_data
                     .followed_artists
                     .retain(|a| a.id != id);
-                self.user_unfollow_artists([id]).await?;
+                self.library_remove([LibraryId::Artist(id)]).await?;
             }
             ItemId::Playlist(id) => {
                 state
@@ -1366,7 +1376,7 @@ impl AppClient {
                         PlaylistFolderItem::Playlist(p) => p.id != id,
                         PlaylistFolderItem::Folder(_) => true,
                     });
-                self.playlist_unfollow(id).await?;
+                self.library_remove([LibraryId::Playlist(id)]).await?;
             }
             ItemId::Show(id) => {
                 state
@@ -1375,8 +1385,7 @@ impl AppClient {
                     .user_data
                     .saved_shows
                     .retain(|s| s.id != id);
-                self.remove_users_saved_shows([id], Some(rspotify::model::Market::FromToken))
-                    .await?;
+                self.library_remove([LibraryId::Show(id)]).await?;
             }
         }
         Ok(())
@@ -1411,7 +1420,7 @@ impl AppClient {
                     "{SPOTIFY_API_ENDPOINT}/playlists/{}/tracks",
                     playlist_id.id(),
                 ),
-                playlist.tracks.total as usize,
+                playlist.items.total as usize,
             )
             .await?
             .into_iter()
@@ -1473,6 +1482,7 @@ impl AppClient {
             .context("get artist")?
             .into();
 
+        #[allow(deprecated)]
         let top_tracks = self
             .artist_top_tracks(artist_id.as_ref(), Some(rspotify::model::Market::FromToken))
             .await
@@ -1738,6 +1748,7 @@ impl AppClient {
         };
 
         if let Some(artist) = curr_artist {
+            #[allow(deprecated)]
             if !artist.genres.is_empty() {
                 state.data.write().caches.genres.insert(
                     artist.name,
@@ -1769,6 +1780,7 @@ impl AppClient {
                     &track.album.id.as_ref().unwrap().id()[..6]
                 )
             }
+            #[allow(deprecated)]
             rspotify::model::PlayableItem::Episode(ref episode) => {
                 format!(
                     "{}-{}-cover-{}.jpg",
