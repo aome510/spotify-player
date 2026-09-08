@@ -929,8 +929,13 @@ impl AppClient {
 
     /// Get the top tracks of the current user
     pub async fn current_user_top_tracks(&self) -> Result<Vec<Track>> {
+        let limit = config::get_config().app_config.top_tracks_limit;
+        if limit == 0 {
+            return Ok(Vec::new());
+        }
+
         let tracks = self
-            .all_paging_items::<rspotify::model::FullTrack>("me/top/tracks", 100)
+            .all_paging_items::<rspotify::model::FullTrack>("me/top/tracks", limit)
             .await?;
 
         Ok(tracks

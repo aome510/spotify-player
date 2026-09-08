@@ -4,6 +4,7 @@ client_id = "d420a117a32841c2b3474932e49fb54b"
 ncspot_only_get_endpoints = ["me/playlists", "search", "playlists/"]
 client_port = 8080
 tracks_playback_limit = 50
+top_tracks_limit = 100
 playback_format = "{status} {track} • {artists}\n{album} • {genres}\n{metadata}"
 playback_metadata_fields = ["repeat", "shuffle", "volume", "device"]
 notify_format = { summary = "{track} • {artists}", body = "{album}" }
