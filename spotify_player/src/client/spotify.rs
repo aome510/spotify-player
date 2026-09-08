@@ -202,10 +202,17 @@ impl OAuthClient for PkceWebApiClient {
 }
 
 /// Spotify Web API client with an optional fallback identity.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct WebApiClient {
     primary: PkceWebApiClient,
     fallback: Option<PkceWebApiClient>,
+    ncspot_only_get_endpoints: Vec<String>,
+}
+
+impl Default for WebApiClient {
+    fn default() -> Self {
+        Self::new(AuthCodePkceSpotify::default(), None)
+    }
 }
 
 impl WebApiClient {
@@ -213,7 +220,19 @@ impl WebApiClient {
         Self {
             primary: PkceWebApiClient::new(primary),
             fallback: fallback.map(PkceWebApiClient::new),
+            ncspot_only_get_endpoints: crate::config::DEFAULT_NCSPOT_ONLY_GET_ENDPOINTS
+                .iter()
+                .map(ToString::to_string)
+                .collect(),
         }
+    }
+
+    pub fn with_ncspot_only_get_endpoints(
+        mut self,
+        ncspot_only_get_endpoints: Vec<String>,
+    ) -> Self {
+        self.ncspot_only_get_endpoints = ncspot_only_get_endpoints;
+        self
     }
 
     pub(crate) fn primary_mut(&mut self) -> &mut PkceWebApiClient {
@@ -228,9 +247,10 @@ impl WebApiClient {
         self.fallback.as_ref().unwrap_or(&self.primary)
     }
 
-    fn is_ncspot_only_get(url: &str) -> bool {
-        let path = url.split('?').next().unwrap_or(url).trim_matches('/');
-        matches!(path, "me/playlists" | "search")
+    fn is_ncspot_only_get(&self, url: &str) -> bool {
+        self.ncspot_only_get_endpoints
+            .iter()
+            .any(|endpoint| url.starts_with(endpoint))
     }
 
     fn fallback_status(error: &ClientError) -> Option<reqwest::StatusCode> {
@@ -278,7 +298,7 @@ impl BaseClient for WebApiClient {
     }
 
     async fn api_get(&self, url: &str, payload: &Query<'_>) -> ClientResult<String> {
-        if Self::is_ncspot_only_get(url) {
+        if self.is_ncspot_only_get(url) {
             return self.ncspot().api_get(url, payload).await;
         }
 
@@ -575,6 +595,39 @@ mod tests {
 
         assert_eq!(
             client.api_get("search", &Query::new()).await.unwrap(),
+            "ncspot"
+        );
+    }
+
+    #[tokio::test]
+    async fn configured_endpoint_prefix_uses_ncspot_without_calling_primary() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/v1/artists/artist-id"))
+            .and(header("authorization", "Bearer primary-token"))
+            .respond_with(ResponseTemplate::new(200).set_body_string("primary"))
+            .expect(0)
+            .mount(&server)
+            .await;
+        Mock::given(method("GET"))
+            .and(path("/v1/artists/artist-id"))
+            .and(header("authorization", "Bearer fallback-token"))
+            .respond_with(ResponseTemplate::new(200).set_body_string("ncspot"))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let client = WebApiClient::new(
+            client_with_token(&server, false, "primary-token").await,
+            Some(client_with_token(&server, true, "fallback-token").await),
+        )
+        .with_ncspot_only_get_endpoints(vec!["artists/".to_string()]);
+
+        assert_eq!(
+            client
+                .api_get("artists/artist-id", &Query::new())
+                .await
+                .unwrap(),
             "ncspot"
         );
     }

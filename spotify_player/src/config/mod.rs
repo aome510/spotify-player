@@ -6,6 +6,8 @@ const DEFAULT_CACHE_FOLDER: &str = ".cache/spotify-player";
 const APP_CONFIG_FILE: &str = "app.toml";
 const THEME_CONFIG_FILE: &str = "theme.toml";
 const KEYMAP_CONFIG_FILE: &str = "keymap.toml";
+pub(crate) const DEFAULT_NCSPOT_ONLY_GET_ENDPOINTS: &[&str] =
+    &["me/playlists", "search", "playlists/"];
 
 use anyhow::{anyhow, Result};
 use config_parser2::{config_parser_impl, ConfigParse, ConfigParser};
@@ -53,6 +55,7 @@ pub struct AppConfig {
     pub theme: String,
     pub client_id: String,
     pub client_id_command: Option<Command>,
+    pub ncspot_only_get_endpoints: Vec<String>,
 
     pub client_port: u16,
 
@@ -304,6 +307,10 @@ impl Default for AppConfig {
             // [spotify API changes]: https://developer.spotify.com/blog/2024-11-27-changes-to-the-web-api
             client_id: NCSPOT_CLIENT_ID.to_string(),
             client_id_command: None,
+            ncspot_only_get_endpoints: DEFAULT_NCSPOT_ONLY_GET_ENDPOINTS
+                .iter()
+                .map(ToString::to_string)
+                .collect(),
 
             client_port: 8080,
 
