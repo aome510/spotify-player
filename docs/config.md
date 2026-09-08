@@ -235,7 +235,6 @@ name = "my_theme"
 block_title = { fg = "Magenta", modifiers = ["Bold"] }
 border = { fg = "White" }
 selection = { modifiers = ["Reversed", "Bold"] }
-visualization = { low = "#00d7ff", mid = "#00ff87", high = "#ff004d" }
 ```
 
 #### Default Component Styles
@@ -260,7 +259,7 @@ secondary_row = {}
 like = {}
 lyrics_played = { modifiers = ["Dim"] }
 lyrics_playing = { fg = "Green", modifiers = ["Bold"] }
-visualization = { low = "#1e64ff", mid = "#32ff80", high = "#ff0000" }
+visualization = { low = { fg = "Blue" }, mid = { fg = "Green" }, high = { fg = "Red" } }
 ```
 
 #### Accepted Colors

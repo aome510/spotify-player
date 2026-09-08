@@ -410,26 +410,9 @@ impl Theme {
 impl VisualizationStyle {
     fn resolve(&self, palette: &Palette) -> VisualizationColors {
         VisualizationColors {
-            low: self
-                .low
-                .unwrap_or(StyleColor::Rgb {
-                    r: 30,
-                    g: 100,
-                    b: 255,
-                })
-                .color(palette),
-            mid: self
-                .mid
-                .unwrap_or(StyleColor::Rgb {
-                    r: 50,
-                    g: 255,
-                    b: 128,
-                })
-                .color(palette),
-            high: self
-                .high
-                .unwrap_or(StyleColor::Rgb { r: 255, g: 0, b: 0 })
-                .color(palette),
+            low: self.low.unwrap_or(StyleColor::Blue).color(palette),
+            mid: self.mid.unwrap_or(StyleColor::Green).color(palette),
+            high: self.high.unwrap_or(StyleColor::Red).color(palette),
         }
     }
 }
