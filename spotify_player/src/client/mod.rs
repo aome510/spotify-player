@@ -95,6 +95,7 @@ pub fn new_api_client() -> Result<WebApiClient> {
     let configs = config::get_config();
 
     let id = configs.app_config.get_client_id()?;
+    let ncspot_only_get_endpoints = configs.app_config.ncspot_only_get_endpoints.clone();
     let mut scopes = auth::OAUTH_SCOPES
         .iter()
         .map(ToString::to_string)
@@ -126,7 +127,8 @@ pub fn new_api_client() -> Result<WebApiClient> {
             config,
         )
         .with_middleware(middleware);
-        return Ok(WebApiClient::new(client, None));
+        return Ok(WebApiClient::new(client, None)
+            .with_ncspot_only_get_endpoints(ncspot_only_get_endpoints));
     }
 
     tracing::info!(
@@ -155,7 +157,8 @@ pub fn new_api_client() -> Result<WebApiClient> {
     )
     .with_middleware(fallback_middleware);
 
-    Ok(WebApiClient::new(primary, Some(fallback)))
+    Ok(WebApiClient::new(primary, Some(fallback))
+        .with_ncspot_only_get_endpoints(ncspot_only_get_endpoints))
 }
 
 impl AppClient {
