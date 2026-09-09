@@ -32,7 +32,7 @@ spotify_player -o device.volume=80 -o theme=dracula
 | --------------------------------- | --------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
 | `client_id`                       | Primary Spotify client ID for API access; rejected requests can fall back to ncspot (see notes).    | See code (default: ncspot's client ID)                                 |
 | `client_id_command`               | Shell command that outputs client ID to stdout (overrides `client_id`).                             | `None`                                                                 |
-| `ncspot_only_get_endpoints`       | Endpoint prefixes for GET requests that should always use the ncspot client.                        | `["me/playlists", "search", "playlists/"]`                             |
+| `ncspot_only_get_endpoints`       | Endpoint prefixes for GET requests that should always use the ncspot client.                        | `["me/playlists", "playlists/"]`                                       |
 | `login_redirect_uri`              | Redirect URI for authentication.                                                                    | `http://127.0.0.1:8989/login`                                          |
 | `client_port`                     | Port for the application's client to handle CLI commands.                                           | `8080`                                                                 |
 | `log_folder`                      | Path to store log files.                                                                            | `None`                                                                 |
