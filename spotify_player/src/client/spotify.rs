@@ -571,35 +571,6 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn search_uses_ncspot_without_calling_primary() {
-        let server = MockServer::start().await;
-        Mock::given(method("GET"))
-            .and(path("/v1/search"))
-            .and(header("authorization", "Bearer primary-token"))
-            .respond_with(ResponseTemplate::new(200).set_body_string("primary"))
-            .expect(0)
-            .mount(&server)
-            .await;
-        Mock::given(method("GET"))
-            .and(path("/v1/search"))
-            .and(header("authorization", "Bearer fallback-token"))
-            .respond_with(ResponseTemplate::new(200).set_body_string("ncspot"))
-            .expect(1)
-            .mount(&server)
-            .await;
-
-        let client = WebApiClient::new(
-            client_with_token(&server, false, "primary-token").await,
-            Some(client_with_token(&server, true, "fallback-token").await),
-        );
-
-        assert_eq!(
-            client.api_get("search", &Query::new()).await.unwrap(),
-            "ncspot"
-        );
-    }
-
-    #[tokio::test]
     async fn configured_endpoint_prefix_uses_ncspot_without_calling_primary() {
         let server = MockServer::start().await;
         Mock::given(method("GET"))

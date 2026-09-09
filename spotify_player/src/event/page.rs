@@ -215,8 +215,16 @@ fn handle_key_sequence_for_search_page(
             return match &key_sequence.keys[0] {
                 Key::None(crossterm::event::KeyCode::Enter) => {
                     if !line_input.is_empty() {
-                        *current_query = line_input.get_text();
-                        client_pub.send(ClientRequest::Search(line_input.get_text()))?;
+                        let query = line_input.get_text();
+                        current_query.clone_from(&query);
+
+                        if state.data.write().caches.begin_search(&query) {
+                            if let Err(err) = client_pub.send(ClientRequest::Search(query.clone()))
+                            {
+                                state.data.write().caches.fail_search(query);
+                                return Err(err.into());
+                            }
+                        }
                     }
                     Ok(true)
                 }
@@ -247,7 +255,7 @@ fn handle_key_sequence_for_search_page(
     };
 
     let data = state.data.read();
-    let search_results = data.caches.search.get(current_query);
+    let search_results = data.caches.search_results(current_query);
 
     match focus_state {
         SearchFocusState::Input => anyhow::bail!("user's search input should be handled before"),
