@@ -333,8 +333,8 @@ fn smooth_bands(bands: &mut [f32], scratch: &mut [f32]) {
     }
 }
 
-/// Linearly interpolates between two RGB colors; returns `a` when either color
-/// is not an RGB color (e.g. an ANSI palette color).
+/// Linearly interpolates between two RGB colors; selects the nearest endpoint
+/// when either color is not an RGB color (e.g. an ANSI palette color).
 fn lerp_color(a: Color, b: Color, t: f32) -> Color {
     match (a, b) {
         (Color::Rgb(r1, g1, b1), Color::Rgb(r2, g2, b2)) => Color::Rgb(
@@ -342,7 +342,13 @@ fn lerp_color(a: Color, b: Color, t: f32) -> Color {
             (f32::from(g1) + (f32::from(g2) - f32::from(g1)) * t) as u8,
             (f32::from(b1) + (f32::from(b2) - f32::from(b1)) * t) as u8,
         ),
-        (a, _) => a,
+        (a, b) => {
+            if t < 0.5 {
+                a
+            } else {
+                b
+            }
+        }
     }
 }
 
