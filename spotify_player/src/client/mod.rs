@@ -638,18 +638,13 @@ impl AppClient {
                         .insert(uri, ctx, *TTL_CACHE_DURATION);
                 }
             }
-            ClientRequest::Search(query) => {
-                if !state.data.read().caches.search.contains_key(&query) {
-                    let results = self.search(&query).await?;
-
-                    state
-                        .data
-                        .write()
-                        .caches
-                        .search
-                        .insert(query, results, *TTL_CACHE_DURATION);
+            ClientRequest::Search(query) => match self.search(&query).await {
+                Ok(results) => state.data.write().caches.complete_search(query, results),
+                Err(err) => {
+                    state.data.write().caches.fail_search(query);
+                    return Err(err);
                 }
-            }
+            },
 
             ClientRequest::AddPlayableToQueue(playable_id) => {
                 self.add_item_to_queue(playable_id, None).await?;

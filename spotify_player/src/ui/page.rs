@@ -6,7 +6,10 @@ use std::{
 use chrono_humanize::HumanTime;
 use ratatui::text::Line;
 
-use crate::{state::Episode, utils::format_duration};
+use crate::{
+    state::{Episode, SearchCacheEntry},
+    utils::format_duration,
+};
 
 use super::{
     config, utils, utils::construct_and_render_block, Album, Alignment, Artist, ArtistFocusState,
@@ -57,15 +60,50 @@ pub fn render_search_page(
         _ => return,
     };
 
-    let search_results = data.caches.search.get(current_query);
+    let search_entry = data.caches.search.get(current_query);
+    let search_results = data.caches.search_results(current_query);
 
     // 2. Construct the page's layout
     let rect = construct_and_render_block("Search", &ui.theme, Borders::ALL, frame, rect);
 
+    let status = match search_entry {
+        Some(SearchCacheEntry::Loading) => Some("Loading..."),
+        Some(SearchCacheEntry::Failed) => Some("Search failed"),
+        _ => None,
+    };
+
     // search input's layout
-    let chunks = Layout::vertical([Constraint::Length(1), Constraint::Fill(0)]).split(rect);
-    let search_input_rect = chunks[0];
+    let input_height = if status.is_some() { 2 } else { 1 };
+    let chunks =
+        Layout::vertical([Constraint::Length(input_height), Constraint::Fill(0)]).split(rect);
+    let search_input_rect = if status.is_some() {
+        construct_and_render_block("", &ui.theme, Borders::BOTTOM, frame, chunks[0])
+    } else {
+        chunks[0]
+    };
     let rect = chunks[1];
+
+    let PageState::Search { line_input, .. } = ui.current_page_mut() else {
+        return;
+    };
+    frame.render_widget(
+        line_input.widget(is_active && focus_state == SearchFocusState::Input),
+        search_input_rect,
+    );
+
+    if let Some(status) = status {
+        let status_rect = Layout::vertical([
+            Constraint::Fill(1),
+            Constraint::Length(1),
+            Constraint::Fill(1),
+        ])
+        .split(rect)[1];
+        frame.render_widget(
+            Paragraph::new(status).alignment(Alignment::Center),
+            status_rect,
+        );
+        return;
+    }
 
     // track/album/artist/playlist/show/episode search results layout
     let chunks = match ui.orientation {
@@ -226,19 +264,11 @@ pub fn render_search_page(
     // 4. Render the page's widgets
     // Need mutable access to the list/table states stored inside the page state for rendering.
     let PageState::Search {
-        state: page_state,
-        line_input,
-        ..
+        state: page_state, ..
     } = ui.current_page_mut()
     else {
         return;
     };
-
-    // Render the query input box
-    frame.render_widget(
-        line_input.widget(is_active && focus_state == SearchFocusState::Input),
-        search_input_rect,
-    );
     utils::render_list_window(
         frame,
         track_list,
