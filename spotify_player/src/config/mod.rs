@@ -76,6 +76,7 @@ pub struct AppConfig {
     pub notify_transient: bool,
 
     pub tracks_playback_limit: usize,
+    pub top_tracks_limit: usize,
 
     // session configs
     pub proxy: Option<String>,
@@ -319,6 +320,7 @@ impl Default for AppConfig {
             log_folder: None,
 
             tracks_playback_limit: 50,
+            top_tracks_limit: 100,
 
             playback_format: String::from(
                 "{status} {track} • {artists} {liked}\n{album} • {genres}\n{metadata}",

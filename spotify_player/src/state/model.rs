@@ -413,9 +413,7 @@ impl Track {
 
     /// tries to convert from a `rspotify::model::PlaylistItem` into `Track`
     pub fn try_from_playlist_item(item: rspotify::model::PlaylistItem) -> Option<Self> {
-        #[allow(deprecated)]
-        let rspotify::model::PlayableItem::Track(track) = item.track?
-        else {
+        let rspotify::model::PlayableItem::Track(track) = item.item? else {
             return None;
         };
 

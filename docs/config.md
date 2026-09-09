@@ -37,6 +37,7 @@ spotify_player -o device.volume=80 -o theme=dracula
 | `client_port`                     | Port for the application's client to handle CLI commands.                                           | `8080`                                                                 |
 | `log_folder`                      | Path to store log files.                                                                            | `None`                                                                 |
 | `tracks_playback_limit`           | Maximum number of tracks in a playback session.                                                     | `50`                                                                   |
+| `top_tracks_limit`                | Maximum number of tracks returned on the user's top tracks page.                                    | `100`                                                                  |
 | `playback_format`                 | Format string for the playback window.                                                              | `{status} {track} • {artists} {liked}\n{album} • {genres}\n{metadata}` |
 | `playback_metadata_fields`        | Ordered list of metadata fields displayed in the playback UI `{metadata}` placeholder.              | `["repeat", "shuffle", "volume", "device"]`                            |
 | `notify_format`                   | Notification format (if `notify` feature enabled).                                                  | `{ summary = "{track} • {artists}", body = "{album}" }`                |
