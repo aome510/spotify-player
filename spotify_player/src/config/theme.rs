@@ -175,9 +175,11 @@ impl ThemeConfig {
                 let config = toml::from_str::<Self>(&content)?;
 
                 // merge user-defined themes and the application default themes
-                // Skip any theme whose name conflicts with already existed theme in the current application's themes
+                // User-defined themes take precedence and overwrite any existing themes with the same name
                 config.themes.into_iter().for_each(|theme| {
-                    if !self.themes.iter().any(|t| t.name == theme.name) {
+                    if let Some(existing) = self.themes.iter_mut().find(|t| t.name == theme.name) {
+                        *existing = theme;
+                    } else {
                         self.themes.push(theme);
                     }
                 });
