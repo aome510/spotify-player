@@ -33,6 +33,10 @@ mod page;
 mod popup;
 mod window;
 
+fn volume_with_offset(volume: u32, offset: i32) -> u8 {
+    (i64::from(volume) + i64::from(offset)).clamp(0, 100) as u8
+}
+
 /// Start a terminal event handler (key pressed, mouse clicked, etc)
 pub fn start_event_handler(state: &SharedState, client_pub: &flume::Sender<ClientRequest>) {
     while let Ok(event) = crossterm::event::read() {
@@ -76,7 +80,7 @@ fn handle_mouse_event(
             let step = config::get_config().app_config.volume_scroll_step;
             if let Some(ref playback) = state.player.read().buffered_playback {
                 if let Some(volume) = playback.volume {
-                    let new_volume = std::cmp::min(volume as u8 + step, 100);
+                    let new_volume = volume_with_offset(volume, i32::from(step));
                     client_pub.send(ClientRequest::Player(PlayerRequest::Volume(new_volume)))?;
                 }
             }
@@ -85,7 +89,7 @@ fn handle_mouse_event(
             let step = config::get_config().app_config.volume_scroll_step;
             if let Some(ref playback) = state.player.read().buffered_playback {
                 if let Some(volume) = playback.volume {
-                    let new_volume = (volume as u8).saturating_sub(step);
+                    let new_volume = volume_with_offset(volume, -i32::from(step));
                     client_pub.send(ClientRequest::Player(PlayerRequest::Volume(new_volume)))?;
                 }
             }
@@ -599,8 +603,8 @@ fn handle_global_command(
         Command::VolumeChange { offset } => {
             if let Some(ref playback) = state.player.read().buffered_playback {
                 if let Some(volume) = playback.volume {
-                    let volume = std::cmp::min(volume as i32 + offset, 100_i32);
-                    client_pub.send(ClientRequest::Player(PlayerRequest::Volume(volume as u8)))?;
+                    let volume = volume_with_offset(volume, offset);
+                    client_pub.send(ClientRequest::Player(PlayerRequest::Volume(volume)))?;
                 }
             }
         }
@@ -902,4 +906,27 @@ fn handle_global_command(
         _ => return Ok(false),
     }
     Ok(true)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::volume_with_offset;
+
+    #[test]
+    fn volume_offset_is_applied_within_bounds() {
+        assert_eq!(volume_with_offset(0, 5), 5);
+        assert_eq!(volume_with_offset(50, -5), 45);
+        assert_eq!(volume_with_offset(50, 5), 55);
+        assert_eq!(volume_with_offset(100, -5), 95);
+    }
+
+    #[test]
+    fn volume_offset_is_clamped_to_spotify_bounds() {
+        assert_eq!(volume_with_offset(0, -5), 0);
+        assert_eq!(volume_with_offset(1, -5), 0);
+        assert_eq!(volume_with_offset(99, 5), 100);
+        assert_eq!(volume_with_offset(100, 5), 100);
+        assert_eq!(volume_with_offset(0, i32::MIN), 0);
+        assert_eq!(volume_with_offset(u32::MAX, i32::MAX), 100);
+    }
 }
