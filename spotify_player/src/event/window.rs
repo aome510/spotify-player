@@ -218,47 +218,57 @@ pub fn handle_command_for_focused_context_window(
 }
 
 /// Handle commands that may modify a playlist
+struct PlaylistTrackSelection<'a> {
+    visible_index: usize,
+    source_index: usize,
+    source_len: usize,
+    track: &'a Track,
+}
+
 fn handle_playlist_modify_command(
-    id: usize,
+    selection: &PlaylistTrackSelection<'_>,
     playlist_id: &PlaylistId<'static>,
     command: Command,
     client_pub: &flume::Sender<ClientRequest>,
-    tracks: &[&Track],
     data: &DataReadGuard,
     ui: &mut UIStateGuard,
 ) -> Result<bool> {
     match command {
         Command::MovePlaylistItemUp => {
-            if id > 0 {
+            if selection.source_index > 0 {
                 client_pub.send(ClientRequest::ReorderPlaylistItems {
                     playlist_id: playlist_id.clone_static(),
-                    insert_index: id - 1,
-                    range_start: id,
+                    insert_index: selection.source_index - 1,
+                    range_start: selection.source_index,
                     range_length: None,
                     snapshot_id: None,
                 })?;
-                ui.current_page_mut().select(id - 1);
+                if !matches!(ui.popup, Some(PopupState::Search { .. })) {
+                    ui.current_page_mut().select(selection.visible_index - 1);
+                }
             }
             return Ok(true);
         }
         Command::MovePlaylistItemDown => {
-            if id + 1 < tracks.len() {
+            if selection.source_index + 1 < selection.source_len {
                 client_pub.send(ClientRequest::ReorderPlaylistItems {
                     playlist_id: playlist_id.clone_static(),
-                    insert_index: id + 1,
-                    range_start: id,
+                    insert_index: selection.source_index + 1,
+                    range_start: selection.source_index,
                     range_length: None,
                     snapshot_id: None,
                 })?;
-                ui.current_page_mut().select(id + 1);
+                if !matches!(ui.popup, Some(PopupState::Search { .. })) {
+                    ui.current_page_mut().select(selection.visible_index + 1);
+                }
             }
             return Ok(true);
         }
         Command::ShowActionsOnSelectedItem => {
-            let mut actions = command::construct_track_actions(tracks[id], data);
+            let mut actions = command::construct_track_actions(selection.track, data);
             actions.push(Action::DeleteFromPlaylist);
             ui.popup = Some(PopupState::ActionList(
-                Box::new(ActionListItem::Track(tracks[id].clone(), actions)),
+                Box::new(ActionListItem::Track(selection.track.clone(), actions)),
                 ListState::default(),
             ));
             return Ok(true);
@@ -283,6 +293,11 @@ fn handle_command_for_track_table_window(
     if id >= filtered_tracks.len() {
         return Ok(false);
     }
+    let selected_track = filtered_tracks[id];
+    let source_index = tracks
+        .iter()
+        .position(|track| std::ptr::eq(track, selected_track))
+        .expect("filtered track should reference the source list");
 
     if let Some(ContextId::Playlist(ref playlist_id)) = context_id {
         let modifiable =
@@ -291,11 +306,15 @@ fn handle_command_for_track_table_window(
             );
         if modifiable
             && handle_playlist_modify_command(
-                id,
+                &PlaylistTrackSelection {
+                    visible_index: id,
+                    source_index,
+                    source_len: tracks.len(),
+                    track: selected_track,
+                },
                 playlist_id,
                 command,
                 client_pub,
-                &filtered_tracks,
                 data,
                 ui,
             )?
@@ -320,7 +339,7 @@ fn handle_command_for_track_table_window(
             let uri = if command == Command::PlayRandom {
                 tracks[rand::rng().random_range(0..tracks.len())].id.uri()
             } else {
-                filtered_tracks[id].id.uri()
+                selected_track.id.uri()
             };
 
             // Update currently_playing_tracks_id based on the context
@@ -350,30 +369,24 @@ fn handle_command_for_track_table_window(
             )))?;
         }
         Command::ShowActionsOnSelectedItem => {
-            let actions = command::construct_track_actions(filtered_tracks[id], data);
+            let actions = command::construct_track_actions(selected_track, data);
             ui.popup = Some(PopupState::ActionList(
-                Box::new(ActionListItem::Track(tracks[id].clone(), actions)),
+                Box::new(ActionListItem::Track(selected_track.clone(), actions)),
                 ListState::default(),
             ));
         }
         Command::AddSelectedItemToQueue => {
             client_pub.send(ClientRequest::AddPlayableToQueue(
-                filtered_tracks[id].id.clone().into(),
+                selected_track.id.clone().into(),
             ))?;
         }
         Command::JumpToHighlightTrackInContext => {
             ui.popup = None;
-            let selected_track = filtered_tracks[id];
-            let location = tracks
-                .iter()
-                .enumerate()
-                .find(|(_, track)| track.id == selected_track.id)
-                .unwrap();
 
             // Move selection and change the offset so selection is at the top
-            ui.current_page_mut().select(location.0);
+            ui.current_page_mut().select(source_index);
             match ui.current_page_mut().focus_window_state_mut().unwrap() {
-                MutableWindowState::Table(table) => *table.offset_mut() = location.0,
+                MutableWindowState::Table(table) => *table.offset_mut() = source_index,
                 _ => unreachable!("playlist context should be a table"),
             }
         }
