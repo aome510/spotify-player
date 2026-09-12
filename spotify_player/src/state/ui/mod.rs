@@ -2,7 +2,7 @@ use crate::{
     config::{self, Theme},
     key,
     ui::{self, Orientation},
-    utils::filtered_items_from_query,
+    utils::{filtered_items_from_query, filtered_items_from_regex_pattern},
 };
 
 #[cfg(feature = "image")]
@@ -78,6 +78,13 @@ impl UIState {
         });
     }
 
+    pub fn new_regex_search_popup(&mut self){
+        self.current_page_mut().select(0);
+         self.popup = Some(PopupState::RegexSearch {
+            pattern: String::new(),
+        });
+    }
+
     pub fn new_page(&mut self, page: PageState) {
         self.popup = None;
         if let Some(current_page) = self.history.last() {
@@ -102,6 +109,7 @@ impl UIState {
     pub fn search_filtered_items<'a, T: std::fmt::Display>(&self, items: &'a [T]) -> Vec<&'a T> {
         match self.popup {
             Some(PopupState::Search { ref query }) => filtered_items_from_query(query, items),
+            Some(PopupState::RegexSearch { ref pattern }) => filtered_items_from_regex_pattern(pattern, items),
             _ => items.iter().collect::<Vec<_>>(),
         }
     }
