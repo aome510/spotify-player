@@ -452,6 +452,7 @@ fn handle_action_for_browse_page(
                 let Some(playlists) = data.browse.category_playlists.get(&category.id) else {
                     return Ok(false);
                 };
+                let playlists = ui.search_filtered_items(playlists);
 
                 let page_state = ui.current_page_mut();
                 let selected = page_state.selected().unwrap_or_default();
