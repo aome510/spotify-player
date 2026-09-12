@@ -76,8 +76,25 @@ pub struct AppClient {
     auth_config: AuthConfig,
     /// The Spotify Web API client, used for interacting with Spotify Web APIs
     api_client: WebApiClient,
+    /// The integrated streaming connection (librespot spirc), replaced on
+    /// (re)connect and torn down explicitly during deliberate replacements.
     #[cfg(feature = "streaming")]
     stream_conn: Arc<Mutex<Option<librespot_connect::Spirc>>>,
+    /// Sender half of the link-drop notification channel; the streaming
+    /// watchdog uses it to signal an unexpected Connect link drop.
+    #[cfg(feature = "streaming")]
+    stream_drop_tx: flume::Sender<()>,
+    /// Receiver half of [`Self::stream_drop_tx`]; consumed by the session
+    /// watcher to trigger reconnection on an unexpected link drop.
+    #[cfg(feature = "streaming")]
+    stream_drop_rx: flume::Receiver<()>,
+    /// Monotonic counter advanced whenever the streaming connection is
+    /// deliberately replaced (re-auth or `RestartIntegratedClient`). A spirc
+    /// watchdog task captures the epoch at spawn and only signals a link drop
+    /// if the counter is unchanged — i.e. the drop was not caused by a
+    /// deliberate reconnect.
+    #[cfg(feature = "streaming")]
+    stream_epoch: Arc<std::sync::atomic::AtomicU64>,
 }
 
 impl Deref for AppClient {
@@ -161,6 +178,35 @@ pub fn new_api_client() -> Result<WebApiClient> {
         .with_ncspot_only_get_endpoints(ncspot_only_get_endpoints))
 }
 
+#[cfg(feature = "streaming")]
+impl AppClient {
+    /// Returns a clone of the sender used to signal an unexpected Connect link drop.
+    pub fn stream_drop_sender(&self) -> flume::Sender<()> {
+        self.stream_drop_tx.clone()
+    }
+
+    /// Returns the receiver that yields a signal whenever the integrated Connect
+    /// link drops unexpectedly. Consumed by the session watcher to reconnect.
+    pub fn stream_drop_receiver(&self) -> flume::Receiver<()> {
+        self.stream_drop_rx.clone()
+    }
+
+    /// Returns the current streaming-connection epoch. A spirc watchdog task
+    /// captures this at spawn; an unexpected link drop is signalled only if the
+    /// epoch is unchanged when the task ends.
+    pub fn stream_epoch(&self) -> u64 {
+        self.stream_epoch.load(std::sync::atomic::Ordering::SeqCst)
+    }
+
+    /// Advances the streaming-connection epoch, marking the current connection
+    /// as deliberately replaced. Call before tearing down an old connection so
+    /// its watchdog task does not spuriously signal a link drop.
+    pub fn advance_stream_epoch(&self) {
+        self.stream_epoch
+            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+    }
+}
+
 impl AppClient {
     /// Construct a new client
     pub async fn new() -> Result<Self> {
@@ -172,6 +218,9 @@ impl AppClient {
             .await
             .context("authenticate Spotify Web API client")?;
 
+        #[cfg(feature = "streaming")]
+        let (stream_drop_tx, stream_drop_rx) = flume::unbounded();
+
         Ok(Self {
             spotify: Arc::new(spotify::Spotify::new()),
             http: reqwest::Client::new(),
@@ -180,6 +229,12 @@ impl AppClient {
 
             #[cfg(feature = "streaming")]
             stream_conn: Arc::new(Mutex::new(None)),
+            #[cfg(feature = "streaming")]
+            stream_drop_tx,
+            #[cfg(feature = "streaming")]
+            stream_drop_rx,
+            #[cfg(feature = "streaming")]
+            stream_epoch: Arc::new(std::sync::atomic::AtomicU64::new(0)),
         })
     }
 
@@ -326,6 +381,11 @@ impl AppClient {
         session: librespot_core::Session,
         creds: librespot_core::authentication::Credentials,
     ) -> Result<()> {
+        // Deliberately replacing the connection: advance the epoch so the old
+        // spirc watchdog task (which captured a prior epoch) does not treat
+        // this teardown as an unexpected link drop.
+        self.advance_stream_epoch();
+
         let new_conn =
             crate::streaming::new_connection(self.clone(), state, session, creds).await?;
         let mut stream_conn = self.stream_conn.lock();
