@@ -248,6 +248,7 @@ pub struct LibraryLayoutConfig {
 #[serde(from = "StreamingTypeOrBool")]
 pub enum StreamingType {
     Always,
+    Auto,
     DaemonOnly,
     Never,
 }
@@ -257,6 +258,7 @@ config_parser_impl!(StreamingType);
 #[derive(Deserialize)]
 enum RawStreamingType {
     Always,
+    Auto,
     DaemonOnly,
     Never,
 }
@@ -277,6 +279,7 @@ impl From<StreamingTypeOrBool> for StreamingType {
             StreamingTypeOrBool::Bool(false)
             | StreamingTypeOrBool::Type(RawStreamingType::Never) => StreamingType::Never,
             StreamingTypeOrBool::Type(RawStreamingType::DaemonOnly) => StreamingType::DaemonOnly,
+            StreamingTypeOrBool::Type(RawStreamingType::Auto) => StreamingType::Auto,
         }
     }
 }
