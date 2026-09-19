@@ -1,4 +1,8 @@
-use crate::{command::Command, utils::filtered_items_from_query};
+use crate::{
+    command::Command,
+    state::{MouseArea, MouseTarget},
+    utils::filtered_items_from_query,
+};
 
 use super::{
     config, utils, utils::construct_and_render_block, Borders, Cell, Constraint, Frame, Layout,
@@ -60,6 +64,14 @@ pub fn render_popup(
                     desc.widget(PlaylistCreateCurrentField::Desc == *current_field),
                     desc_input,
                 );
+                ui.mouse_areas.push(MouseArea {
+                    rect: popup_chunks[0],
+                    target: MouseTarget::PlaylistCreateField(PlaylistCreateCurrentField::Name),
+                });
+                ui.mouse_areas.push(MouseArea {
+                    rect: popup_chunks[1],
+                    target: MouseTarget::PlaylistCreateField(PlaylistCreateCurrentField::Desc),
+                });
                 (chunks[0], true)
             }
             PopupState::Search { query } => {
@@ -217,7 +229,23 @@ pub fn render_popup(
                     chunks[1],
                 );
 
-                frame.render_widget(Paragraph::new(format!("{message} (y/n)")), confirm_rect);
+                let confirm_chunks = Layout::horizontal([
+                    Constraint::Min(0),
+                    Constraint::Length(6),
+                    Constraint::Length(5),
+                ])
+                .split(confirm_rect);
+                frame.render_widget(Paragraph::new(message.as_str()), confirm_chunks[0]);
+                frame.render_widget(Paragraph::new("[Yes]"), confirm_chunks[1]);
+                frame.render_widget(Paragraph::new("[No]"), confirm_chunks[2]);
+                ui.mouse_areas.push(MouseArea {
+                    rect: confirm_chunks[1],
+                    target: MouseTarget::ConfirmAction(true),
+                });
+                ui.mouse_areas.push(MouseArea {
+                    rect: confirm_chunks[2],
+                    target: MouseTarget::ConfirmAction(false),
+                });
 
                 (chunks[0], true)
             }
@@ -247,6 +275,19 @@ fn render_list_popup(
         len,
         ui.popup.as_mut().unwrap().list_state_mut().unwrap(),
     );
+    let first_item = ui
+        .popup
+        .as_ref()
+        .and_then(PopupState::list_state)
+        .map(ratatui::widgets::ListState::offset)
+        .unwrap_or_default();
+    ui.mouse_areas.push(MouseArea {
+        rect,
+        target: MouseTarget::PopupList {
+            first_item,
+            item_count: len,
+        },
+    });
 
     chunks[0]
 }

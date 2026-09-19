@@ -12,10 +12,11 @@ use crate::{
         ActionListItem, Album, AlbumId, Artist, ArtistFocusState, ArtistId, ArtistPopupAction,
         BrowsePageUIState, ConfirmableAction, Context, ContextId, ContextPageType,
         ContextPageUIState, DataReadGuard, Focusable, Id, Item, ItemId, LibraryFocusState,
-        LibraryPageUIState, PageState, PageType, PlayableId, Playback, PlaylistCreateCurrentField,
-        PlaylistFolderItem, PlaylistId, PlaylistPopupAction, PopupState, SearchFocusState,
-        SearchPageUIState, SharedState, ShowId, Track, TrackId, TrackOrder, TracksId, UIStateGuard,
-        USER_LIKED_TRACKS_ID, USER_RECENTLY_PLAYED_TRACKS_ID, USER_TOP_TRACKS_ID,
+        LibraryPageUIState, MouseClickTarget, MouseTarget, PageState, PageType, PlayableId,
+        Playback, PlaylistCreateCurrentField, PlaylistFolderItem, PlaylistId, PlaylistPopupAction,
+        PopupState, SearchFocusState, SearchPageUIState, SharedState, ShowId, Track, TrackId,
+        TrackOrder, TracksId, UIStateGuard, USER_LIKED_TRACKS_ID, USER_RECENTLY_PLAYED_TRACKS_ID,
+        USER_TOP_TRACKS_ID,
     },
     ui::{single_line_input::LineInput, Orientation},
     utils::parse_uri,
@@ -72,22 +73,28 @@ fn handle_mouse_event(
     let enable_scroll = config::get_config().app_config.enable_mouse_scroll_volume;
 
     match event.kind {
-        crossterm::event::MouseEventKind::ScrollUp if enable_scroll => {
-            let step = config::get_config().app_config.volume_scroll_step;
-            if let Some(ref playback) = state.player.read().buffered_playback {
-                if let Some(volume) = playback.volume {
-                    let new_volume = std::cmp::min(volume as u8 + step, 100);
-                    client_pub.send(ClientRequest::Player(PlayerRequest::Volume(new_volume)))?;
-                }
+        crossterm::event::MouseEventKind::ScrollUp => {
+            if !handle_mouse_scroll(
+                event.column,
+                event.row,
+                Command::SelectPreviousOrScrollUp,
+                client_pub,
+                state,
+            )? && enable_scroll
+            {
+                change_volume_from_mouse_scroll(true, client_pub, state)?;
             }
         }
-        crossterm::event::MouseEventKind::ScrollDown if enable_scroll => {
-            let step = config::get_config().app_config.volume_scroll_step;
-            if let Some(ref playback) = state.player.read().buffered_playback {
-                if let Some(volume) = playback.volume {
-                    let new_volume = (volume as u8).saturating_sub(step);
-                    client_pub.send(ClientRequest::Player(PlayerRequest::Volume(new_volume)))?;
-                }
+        crossterm::event::MouseEventKind::ScrollDown => {
+            if !handle_mouse_scroll(
+                event.column,
+                event.row,
+                Command::SelectNextOrScrollDown,
+                client_pub,
+                state,
+            )? && enable_scroll
+            {
+                change_volume_from_mouse_scroll(false, client_pub, state)?;
             }
         }
         // a left click event
@@ -110,11 +117,303 @@ fn handle_mouse_event(
                         chrono::Duration::try_milliseconds(position_ms).unwrap(),
                     )))?;
                 }
+            } else {
+                let area = mouse_area_at(event.column, event.row, state);
+
+                if let Some(area) = area {
+                    if handle_mouse_area_click(area, event.row, client_pub, state)? {
+                        let mut ui = state.ui.lock();
+                        if matches!(area.target, MouseTarget::PopupList { .. }) {
+                            popup::handle_command_for_popup(
+                                Command::ChooseSelected,
+                                client_pub,
+                                state,
+                                &mut ui,
+                            )?;
+                        } else {
+                            page::handle_command_for_page(
+                                Command::ChooseSelected,
+                                client_pub,
+                                state,
+                                &mut ui,
+                            )?;
+                        }
+                    }
+                }
             }
         }
         _ => {}
     }
     Ok(())
+}
+
+fn mouse_area_at(column: u16, row: u16, state: &SharedState) -> Option<crate::state::MouseArea> {
+    let ui = state.ui.lock();
+    let has_focused_popup = ui.has_focused_popup();
+    ui.mouse_areas
+        .iter()
+        .rev()
+        .find(|area| {
+            area.contains(column, row)
+                && (!has_focused_popup || area.target.is_available_with_focused_popup())
+        })
+        .copied()
+}
+
+fn handle_mouse_scroll(
+    column: u16,
+    row: u16,
+    command: Command,
+    client_pub: &flume::Sender<ClientRequest>,
+    state: &SharedState,
+) -> Result<bool> {
+    let Some(area) = mouse_area_at(column, row, state) else {
+        return Ok(false);
+    };
+    let mut ui = state.ui.lock();
+    match area.target {
+        MouseTarget::PopupList { .. } => {
+            popup::handle_command_for_popup(command, client_pub, state, &mut ui)
+        }
+        MouseTarget::ScrollablePage => {
+            page::handle_command_for_page(command, client_pub, state, &mut ui)
+        }
+        _ => Ok(false),
+    }
+}
+
+fn change_volume_from_mouse_scroll(
+    increase: bool,
+    client_pub: &flume::Sender<ClientRequest>,
+    state: &SharedState,
+) -> Result<()> {
+    let step = config::get_config().app_config.volume_scroll_step;
+    if let Some(ref playback) = state.player.read().buffered_playback {
+        if let Some(volume) = playback.volume {
+            let new_volume = if increase {
+                std::cmp::min(volume as u8 + step, 100)
+            } else {
+                (volume as u8).saturating_sub(step)
+            };
+            client_pub.send(ClientRequest::Player(PlayerRequest::Volume(new_volume)))?;
+        }
+    }
+    Ok(())
+}
+
+fn handle_mouse_area_click(
+    area: crate::state::MouseArea,
+    row: u16,
+    client_pub: &flume::Sender<ClientRequest>,
+    state: &SharedState,
+) -> Result<bool> {
+    match area.target {
+        MouseTarget::ResumePause => {
+            client_pub.send(ClientRequest::Player(PlayerRequest::ResumePause))?;
+            Ok(false)
+        }
+        MouseTarget::LibraryWindow { focus, .. } => {
+            let Some(item) = area.item_at(row) else {
+                let mut ui = state.ui.lock();
+                let PageState::Library { state: page_state } = ui.current_page_mut() else {
+                    return Ok(false);
+                };
+                page_state.focus = focus;
+                return Ok(false);
+            };
+
+            let mut ui = state.ui.lock();
+            let PageState::Library { state: page_state } = ui.current_page_mut() else {
+                return Ok(false);
+            };
+            page_state.focus = focus;
+            match focus {
+                LibraryFocusState::Playlists => page_state.playlist_list.select(Some(item)),
+                LibraryFocusState::SavedAlbums => page_state.saved_album_list.select(Some(item)),
+                LibraryFocusState::FollowedArtists => {
+                    page_state.followed_artist_list.select(Some(item));
+                }
+            }
+            Ok(ui.register_mouse_click(MouseClickTarget::Library(focus, item)))
+        }
+        MouseTarget::SearchInput => {
+            let mut ui = state.ui.lock();
+            let PageState::Search {
+                state: page_state, ..
+            } = ui.current_page_mut()
+            else {
+                return Ok(false);
+            };
+            page_state.focus = SearchFocusState::Input;
+            Ok(false)
+        }
+        MouseTarget::SearchWindow { focus, .. } => {
+            let Some(item) = area.item_at(row) else {
+                let mut ui = state.ui.lock();
+                let PageState::Search {
+                    state: page_state, ..
+                } = ui.current_page_mut()
+                else {
+                    return Ok(false);
+                };
+                page_state.focus = focus;
+                return Ok(false);
+            };
+
+            let mut ui = state.ui.lock();
+            let PageState::Search {
+                state: page_state, ..
+            } = ui.current_page_mut()
+            else {
+                return Ok(false);
+            };
+            page_state.focus = focus;
+            match focus {
+                SearchFocusState::Input => {}
+                SearchFocusState::Tracks => page_state.track_list.select(Some(item)),
+                SearchFocusState::Albums => page_state.album_list.select(Some(item)),
+                SearchFocusState::Artists => page_state.artist_list.select(Some(item)),
+                SearchFocusState::Playlists => page_state.playlist_list.select(Some(item)),
+                SearchFocusState::Shows => page_state.show_list.select(Some(item)),
+                SearchFocusState::Episodes => page_state.episode_list.select(Some(item)),
+            }
+            Ok(ui.register_mouse_click(MouseClickTarget::Search(focus, item)))
+        }
+        MouseTarget::ContextWindow { focus, .. } => {
+            let item = area.item_at(row);
+            let mut ui = state.ui.lock();
+            let PageState::Context {
+                state: Some(page_state),
+                ..
+            } = ui.current_page_mut()
+            else {
+                return Ok(false);
+            };
+            match (page_state, focus) {
+                (
+                    ContextPageUIState::Artist {
+                        top_track_table,
+                        focus: page_focus,
+                        ..
+                    },
+                    Some(ArtistFocusState::TopTracks),
+                ) => {
+                    *page_focus = ArtistFocusState::TopTracks;
+                    if let Some(item) = item {
+                        top_track_table.select(Some(item));
+                    }
+                }
+                (
+                    ContextPageUIState::Artist {
+                        liked_track_table,
+                        focus: page_focus,
+                        ..
+                    },
+                    Some(ArtistFocusState::LikedSongs),
+                ) => {
+                    *page_focus = ArtistFocusState::LikedSongs;
+                    if let Some(item) = item {
+                        liked_track_table.select(Some(item));
+                    }
+                }
+                (
+                    ContextPageUIState::Artist {
+                        album_table,
+                        focus: page_focus,
+                        ..
+                    },
+                    Some(ArtistFocusState::Albums),
+                ) => {
+                    *page_focus = ArtistFocusState::Albums;
+                    if let Some(item) = item {
+                        album_table.select(Some(item));
+                    }
+                }
+                (
+                    ContextPageUIState::Artist {
+                        related_artist_list,
+                        focus: page_focus,
+                        ..
+                    },
+                    Some(ArtistFocusState::RelatedArtists),
+                ) => {
+                    *page_focus = ArtistFocusState::RelatedArtists;
+                    if let Some(item) = item {
+                        related_artist_list.select(Some(item));
+                    }
+                }
+                (
+                    ContextPageUIState::Playlist { track_table }
+                    | ContextPageUIState::Album { track_table }
+                    | ContextPageUIState::Tracks { track_table },
+                    None,
+                ) => {
+                    if let Some(item) = item {
+                        track_table.select(Some(item));
+                    }
+                }
+                (ContextPageUIState::Show { episode_table }, None) => {
+                    if let Some(item) = item {
+                        episode_table.select(Some(item));
+                    }
+                }
+                _ => return Ok(false),
+            }
+            let Some(item) = item else {
+                return Ok(false);
+            };
+            Ok(ui.register_mouse_click(MouseClickTarget::Context(focus, item)))
+        }
+        MouseTarget::BrowseWindow { .. } => {
+            let Some(item) = area.item_at(row) else {
+                return Ok(false);
+            };
+
+            let mut ui = state.ui.lock();
+            let PageState::Browse { state: page_state } = ui.current_page_mut() else {
+                return Ok(false);
+            };
+            match page_state {
+                BrowsePageUIState::CategoryList { state }
+                | BrowsePageUIState::CategoryPlaylistList { state, .. } => {
+                    state.select(Some(item));
+                }
+            }
+            Ok(ui.register_mouse_click(MouseClickTarget::Browse(item)))
+        }
+        MouseTarget::PopupList { .. } => {
+            let Some(item) = area.item_at(row) else {
+                return Ok(false);
+            };
+            let mut ui = state.ui.lock();
+            let Some(popup) = ui.popup.as_mut() else {
+                return Ok(false);
+            };
+            popup.list_select(Some(item));
+            Ok(ui.register_mouse_click(MouseClickTarget::Popup(item)))
+        }
+        MouseTarget::PlaylistCreateField(field) => {
+            let mut ui = state.ui.lock();
+            let Some(PopupState::PlaylistCreate { current_field, .. }) = ui.popup.as_mut() else {
+                return Ok(false);
+            };
+            *current_field = field;
+            Ok(false)
+        }
+        MouseTarget::ConfirmAction(confirmed) => {
+            let action = {
+                let ui = state.ui.lock();
+                let Some(PopupState::ConfirmAction { action, .. }) = ui.popup.as_ref() else {
+                    return Ok(false);
+                };
+                action.clone()
+            };
+            let mut ui = state.ui.lock();
+            popup::handle_confirmation(confirmed, client_pub, &mut ui, action)?;
+            Ok(false)
+        }
+        MouseTarget::ScrollablePage => Ok(false),
+    }
 }
 
 // Handle a terminal key pressed event

@@ -21,17 +21,9 @@ pub fn handle_key_sequence_for_page(
         .keymap_config
         .find_command_or_action_from_key_sequence(key_sequence)
     {
-        Some(CommandOrAction::Command(command)) => match page_type {
-            PageType::Search => anyhow::bail!("page search type should already be handled!"),
-            PageType::Library => handle_command_for_library_page(command, client_pub, ui, state),
-            PageType::Context => handle_command_for_context_page(command, client_pub, ui, state),
-            PageType::Browse => handle_command_for_browse_page(command, client_pub, ui, state),
-            // lyrics page doesn't support any commands
-            PageType::Lyrics => Ok(false),
-            PageType::Queue => Ok(handle_command_for_queue_page(command, ui)),
-            PageType::CommandHelp => Ok(handle_command_for_command_help_page(command, ui)),
-            PageType::Logs => Ok(handle_command_for_logs_page(command, ui)),
-        },
+        Some(CommandOrAction::Command(command)) => {
+            handle_command_for_page(command, client_pub, state, ui)
+        }
         Some(CommandOrAction::Action(action, ActionTarget::SelectedItem)) => match page_type {
             PageType::Search => anyhow::bail!("page search type should already be handled!"),
             PageType::Library => handle_action_for_library_page(action, client_pub, ui, state),
@@ -42,6 +34,33 @@ pub fn handle_key_sequence_for_page(
             _ => Ok(false),
         },
         _ => Ok(false),
+    }
+}
+
+/// Handle a command for the current page without consulting the configured keymap.
+///
+/// Mouse actions use this path so their behavior remains stable when users remap keys.
+pub fn handle_command_for_page(
+    command: Command,
+    client_pub: &flume::Sender<ClientRequest>,
+    state: &SharedState,
+    ui: &mut UIStateGuard,
+) -> Result<bool> {
+    match ui.current_page().page_type() {
+        PageType::Search => handle_command_or_action_for_search_page(
+            CommandOrAction::Command(command),
+            client_pub,
+            state,
+            ui,
+        ),
+        PageType::Library => handle_command_for_library_page(command, client_pub, ui, state),
+        PageType::Context => handle_command_for_context_page(command, client_pub, ui, state),
+        PageType::Browse => handle_command_for_browse_page(command, client_pub, ui, state),
+        // lyrics page doesn't support any commands
+        PageType::Lyrics => Ok(false),
+        PageType::Queue => Ok(handle_command_for_queue_page(command, ui)),
+        PageType::CommandHelp => Ok(handle_command_for_command_help_page(command, ui)),
+        PageType::Logs => Ok(handle_command_for_logs_page(command, ui)),
     }
 }
 
@@ -254,8 +273,25 @@ fn handle_key_sequence_for_search_page(
         return Ok(false);
     };
 
+    handle_command_or_action_for_search_page(found_keymap, client_pub, state, ui)
+}
+
+fn handle_command_or_action_for_search_page(
+    found_keymap: CommandOrAction,
+    client_pub: &flume::Sender<ClientRequest>,
+    state: &SharedState,
+    ui: &mut UIStateGuard,
+) -> Result<bool> {
+    let (focus_state, current_query) = match ui.current_page() {
+        PageState::Search {
+            state,
+            current_query,
+            ..
+        } => (state.focus, current_query.clone()),
+        _ => anyhow::bail!("expect a search page"),
+    };
     let data = state.data.read();
-    let search_results = data.caches.search_results(current_query);
+    let search_results = data.caches.search_results(&current_query);
 
     match focus_state {
         SearchFocusState::Input => anyhow::bail!("user's search input should be handled before"),

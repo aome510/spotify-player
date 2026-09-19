@@ -134,6 +134,7 @@ pub enum ActionTarget {
     SelectedItem,
 }
 
+#[derive(Clone, Copy, Debug)]
 pub enum CommandOrAction {
     Command(Command),
     Action(Action, ActionTarget),
