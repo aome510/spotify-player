@@ -96,6 +96,10 @@ impl Default for KeymapConfig {
                     command: Command::Search,
                 },
                 Keymap {
+                    key_sequence: ";".into(),
+                    command: Command::SearchRegex
+                },
+                Keymap {
                     key_sequence: "z".into(),
                     command: Command::Queue,
                 },
