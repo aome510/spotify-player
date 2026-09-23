@@ -40,6 +40,8 @@ pub fn run(state: &SharedState, mut terminal: Terminal) -> Result<()> {
         config::get_config().app_config.app_refresh_duration_in_ms,
     );
     let mut last_terminal_size = None;
+    let mut last_theme_check = std::time::Instant::now();
+    let mut last_theme_mtime = None;
 
     loop {
         {
@@ -47,6 +49,26 @@ pub fn run(state: &SharedState, mut terminal: Terminal) -> Result<()> {
             if !ui.is_running {
                 clean_up(terminal).context("clean up UI resources")?;
                 std::process::exit(0);
+            }
+
+            // Live theme hot-reload: check theme.toml every 200ms
+            if last_theme_check.elapsed() > std::time::Duration::from_millis(200) {
+                last_theme_check = std::time::Instant::now();
+                if let Ok(config_folder) = config::get_config_folder_path() {
+                    let theme_file = config_folder.join(config::THEME_CONFIG_FILE);
+                    if let Ok(metadata) = std::fs::metadata(&theme_file) {
+                        if let Ok(mtime) = metadata.modified() {
+                            if last_theme_mtime != Some(mtime) {
+                                last_theme_mtime = Some(mtime);
+                                if let Ok(theme_config) = config::ThemeConfig::new(&config_folder) {
+                                    if let Some(theme) = theme_config.find_theme(&ui.theme.name) {
+                                        ui.theme = theme;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             let terminal_size = terminal.size()?;
