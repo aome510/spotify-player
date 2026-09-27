@@ -53,8 +53,20 @@ pub async fn start_session_watcher(state: SharedState, client: super::AppClient)
     // rather than firing them back-to-back.
     interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
 
+    #[cfg(feature = "streaming")]
+    let stream_drop_rx = client.stream_drop_receiver();
+
     loop {
         interval.tick().await;
+
+        #[cfg(feature = "streaming")]
+        if stream_drop_rx.try_recv().is_ok() {
+            tracing::info!("Integrated Connect link drop detected; creating a new session...");
+            if let Err(err) = client.new_session(Some(&state), false).await {
+                tracing::error!("Failed to reconnect after Connect link drop: {err:#}");
+            }
+        }
+
         if let Err(err) = client.check_valid_session(&state).await {
             tracing::error!("Failed to check/reconnect the client's session: {err:#}");
         }
