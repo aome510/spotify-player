@@ -276,11 +276,82 @@ impl AppClient {
 
         #[cfg(feature = "streaming")]
         if let Some(state) = state {
-            if state.is_streaming_enabled() {
+            use crate::config::StreamingType;
+            let enable_streaming = config::get_config().app_config.enable_streaming.clone();
+
+            // `Always` and `DaemonOnly` go through the existing path.
+            // `Auto` queries the user's available Spotify Connect devices first:
+            // if any device is already active, skip librespot and act as a Web
+            // API remote (no local audio engine); otherwise fall back to the
+            // `Always` path.
+            if enable_streaming == StreamingType::Always
+                || (enable_streaming == StreamingType::DaemonOnly && state.is_daemon)
+            {
                 self.new_streaming_connection(state.clone(), session.clone(), creds.clone())
                     .await
                     .context("new streaming connection")?;
                 connected = true;
+            } else if enable_streaming == StreamingType::Auto {
+                // Resolve `Auto` against both `available_devices` and
+                // `current_playback`: a Connect device that is online but idle
+                // (e.g. an Echo logged into the same account, sitting in standby)
+                // still has `is_active == true` even though nothing is playing.
+                // Treating that as "another device is playing" would leave the
+                // TUI with no local audio and surface "No playback found".
+                //
+                // Web API mode is only entered when a device is *actively*
+                // playing; otherwise we fall back to the local librespot path.
+                match self.available_devices().await {
+                    Ok(devices) => {
+                        let has_active_device = devices.iter().any(|d| d.is_active);
+                        let has_active_playback = match self.current_playback2().await {
+                            Ok(Some(ctx)) => ctx.is_playing,
+                            Ok(None) => false,
+                            Err(err) => {
+                                tracing::warn!(
+                                    "Auto streaming: failed to query current playback; \
+                                     treating as no active playback: {err:#}"
+                                );
+                                false
+                            }
+                        };
+                        let has_active_playing = has_active_device && has_active_playback;
+                        if has_active_playing {
+                            tracing::info!(
+                                "Auto streaming: a Spotify Connect device is actively playing; \
+                                 running in Web API mode without a local librespot player"
+                            );
+                        } else {
+                            tracing::info!(
+                                "Auto streaming: no active playback detected \
+                                 (active_devices={has_active_device}, playing={has_active_playback}); \
+                                 initializing a local librespot player"
+                            );
+                            self.new_streaming_connection(
+                                state.clone(),
+                                session.clone(),
+                                creds.clone(),
+                            )
+                            .await
+                            .context("new streaming connection")?;
+                            connected = true;
+                        }
+                    }
+                    Err(err) => {
+                        tracing::warn!(
+                            "Auto streaming: failed to query available devices; \
+                             falling back to local librespot: {err:#}"
+                        );
+                        self.new_streaming_connection(
+                            state.clone(),
+                            session.clone(),
+                            creds.clone(),
+                        )
+                        .await
+                        .context("new streaming connection")?;
+                        connected = true;
+                    }
+                }
             }
         }
 
