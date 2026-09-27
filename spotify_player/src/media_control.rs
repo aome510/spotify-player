@@ -46,6 +46,7 @@ fn update_control_metadata(
                             artist: Some(&map_join(&track.artists, |a| &a.name, ", ")),
                             duration: track.duration.to_std().ok(),
                             cover_url: utils::get_track_album_image_url(track),
+                            media_url: Some(&track.external_urls["spotify"]),
                         })?;
 
                         *prev_info = track_info;
@@ -62,6 +63,7 @@ fn update_control_metadata(
                             artist: Some(&episode.show.publisher),
                             duration: episode.duration.to_std().ok(),
                             cover_url: utils::get_episode_show_image_url(episode),
+                            media_url: Some(&episode.external_urls["spotify"]),
                         })?;
 
                         *prev_info = episode_info;
