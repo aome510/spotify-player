@@ -21,7 +21,6 @@ use anyhow::Context as _;
 use anyhow::Result;
 
 use librespot_core::SpotifyUri;
-#[cfg(feature = "streaming")]
 use parking_lot::Mutex;
 
 use rspotify::model::LibraryId;
@@ -78,6 +77,9 @@ pub struct AppClient {
     api_client: WebApiClient,
     #[cfg(feature = "streaming")]
     stream_conn: Arc<Mutex<Option<librespot_connect::Spirc>>>,
+    /// Device IDs of sessions replaced by a newer one. Spotify keeps reporting these devices
+    /// (in the device list and as the playback's device) for a while after they are gone.
+    stale_device_ids: Arc<Mutex<HashSet<String>>>,
 }
 
 impl Deref for AppClient {
@@ -180,6 +182,7 @@ impl AppClient {
 
             #[cfg(feature = "streaming")]
             stream_conn: Arc::new(Mutex::new(None)),
+            stale_device_ids: Arc::new(Mutex::new(HashSet::new())),
         })
     }
 
@@ -194,19 +197,29 @@ impl AppClient {
                 // The main playback initialization logic is simple:
                 // if there is no playback, connect to an available device
                 //
-                // However, because it takes time for Spotify server to show up new changes,
-                // a retry logic is implemented to ensure the application's state is properly initialized
-                let max_retries = 3;
+                // However, because it takes time for Spotify server to show up new changes
+                // (a new integrated device can take several seconds to become connectable),
+                // a retry logic with an increasing delay is implemented to ensure the application's
+                // state is properly initialized
+                let max_retries = 5;
                 for i in 0..max_retries {
-                    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                    tokio::time::sleep(std::time::Duration::from_secs(i + 1)).await;
 
                     if let Err(err) = client.retrieve_current_playback(&state, false).await {
                         tracing::error!("Failed to retrieve current playback: {err:#}");
                         return;
                     }
 
-                    // if playback exists, don't connect to a new device
-                    if state.player.read().playback.is_some() {
+                    // if playback exists, don't connect to a new device.
+                    // A playback on a replaced session's device is a leftover of a dropped
+                    // connection, so it's treated as no playback.
+                    let has_playback = state.player.read().playback.as_ref().is_some_and(|p| {
+                        p.device
+                            .id
+                            .as_deref()
+                            .is_none_or(|id| !client.is_stale_device(id))
+                    });
+                    if has_playback {
                         tracing::info!("Playback already exists, skipping device connection.");
                         continue;
                     }
@@ -269,7 +282,7 @@ impl AppClient {
 
         let session = self.auth_config.session();
         let creds = auth::get_creds(&self.auth_config, reauth, true).context("get credentials")?;
-        self.spotify.set_session(session.clone()).await;
+        self.replace_session(session.clone()).await;
 
         #[allow(unused_mut)]
         let mut connected = false;
@@ -305,6 +318,15 @@ impl AppClient {
         }
 
         Ok(())
+    }
+
+    /// Use a new session for the client, marking the previous session's device as stale
+    async fn replace_session(&self, session: librespot_core::Session) {
+        if let Some(prev_session) = self.spotify.set_session(session).await {
+            self.stale_device_ids
+                .lock()
+                .insert(prev_session.device_id().to_string());
+        }
     }
 
     /// Check if the current session is valid and if invalid, create a new session
@@ -509,7 +531,10 @@ impl AppClient {
                 state.data.write().user_data.user = Some(user);
             }
             ClientRequest::Player(request) => {
-                let playback = state.player.read().buffered_playback.clone();
+                let mut playback = state.player.read().buffered_playback.clone();
+                if let Some(playback) = playback.as_mut() {
+                    self.retarget_stale_playback(&request, playback).await?;
+                }
                 let playback = self.handle_player_request(request, playback).await?;
                 state.player.write().buffered_playback = playback;
                 self.update_playback_non_blocking(state);
@@ -750,9 +775,47 @@ impl AppClient {
         }
     }
 
-    /// Get user available devices
+    /// Get user available devices, excluding devices of replaced sessions
     pub async fn available_devices(&self) -> Result<Vec<rspotify::model::Device>> {
-        Ok(self.device().await?)
+        let mut devices = self.device().await?;
+        devices.retain(|d| d.id.as_deref().is_none_or(|id| !self.is_stale_device(id)));
+        Ok(devices)
+    }
+
+    /// Check if a device belongs to a session replaced by a newer one
+    fn is_stale_device(&self, device_id: &str) -> bool {
+        self.stale_device_ids.lock().contains(device_id)
+    }
+
+    /// Retarget a playback still pointing at a replaced session's device to the current
+    /// session's device, transferring the playback there when the request requires it.
+    async fn retarget_stale_playback(
+        &self,
+        request: &PlayerRequest,
+        playback: &mut PlaybackMetadata,
+    ) -> Result<()> {
+        let is_stale = playback
+            .device_id
+            .as_deref()
+            .is_some_and(|id| self.is_stale_device(id));
+        if !is_stale || matches!(request, PlayerRequest::TransferPlayback(..)) {
+            return Ok(());
+        }
+
+        let device_id = self.spotify.session().await.device_id().to_string();
+        tracing::info!(
+            stale_device_id = ?playback.device_id,
+            %device_id,
+            "Playback targets a replaced device, retargeting to the current device"
+        );
+        // nothing is actually playing on a replaced device
+        playback.is_playing = false;
+        // starting a new playback activates the target device, other requests need an active one
+        if !matches!(request, PlayerRequest::StartPlayback(..)) {
+            self.transfer_playback(&device_id, Some(false)).await?;
+        }
+        playback.device_id = Some(device_id);
+        Ok(())
     }
 
     /// After handling a request changing the player's playback,
@@ -2045,9 +2108,198 @@ fn move_seed_track_to_front(tracks: &mut Vec<Track>, seed_track: Track) {
 
 #[cfg(test)]
 mod tests {
-    use super::{move_seed_track_to_front, parse_current_playback_response};
-    use crate::state::Track;
+    use super::{
+        move_seed_track_to_front, parse_current_playback_response, spotify, AppClient,
+        PlayerRequest, WebApiClient,
+    };
+    use crate::{
+        auth::AuthConfig,
+        state::{ContextId, Playback, PlaybackMetadata, PlaylistId, Track},
+    };
+    use librespot_core::{config::SessionConfig, Session};
+    use parking_lot::Mutex;
     use rspotify::model::{PlayableItem, TrackId};
+    use std::{collections::HashSet, sync::Arc};
+    use wiremock::{
+        matchers::{body_json, method, path, query_param},
+        Mock, MockServer, ResponseTemplate,
+    };
+
+    async fn app_client(server: &MockServer) -> AppClient {
+        AppClient {
+            http: reqwest::Client::new(),
+            spotify: Arc::new(spotify::Spotify::new()),
+            auth_config: AuthConfig::default(),
+            api_client: WebApiClient::new(spotify::tests::client(server, false).await, None),
+            #[cfg(feature = "streaming")]
+            stream_conn: Arc::new(Mutex::new(None)),
+            stale_device_ids: Arc::new(Mutex::new(HashSet::new())),
+        }
+    }
+
+    /// Simulate a reconnection, returning the device IDs of the old and the new session
+    async fn reconnect(client: &AppClient) -> (String, String) {
+        let old_session = Session::new(SessionConfig::default(), None);
+        let new_session = Session::new(SessionConfig::default(), None);
+        client.replace_session(old_session.clone()).await;
+        client.replace_session(new_session.clone()).await;
+        (
+            old_session.device_id().to_string(),
+            new_session.device_id().to_string(),
+        )
+    }
+
+    fn playback_on(device_id: &str) -> PlaybackMetadata {
+        PlaybackMetadata {
+            device_name: "spotify-player".to_string(),
+            device_id: Some(device_id.to_string()),
+            volume: None,
+            is_playing: true,
+            repeat_state: rspotify::model::RepeatState::Off,
+            shuffle_state: false,
+            mute_state: None,
+        }
+    }
+
+    #[tokio::test]
+    async fn available_devices_excludes_replaced_session_devices() {
+        let server = MockServer::start().await;
+        let client = app_client(&server).await;
+        let (old_device_id, new_device_id) = reconnect(&client).await;
+        let device = |id: &str| {
+            serde_json::json!({
+                "id": id,
+                "is_active": false,
+                "is_private_session": false,
+                "is_restricted": false,
+                "name": "spotify-player",
+                "type": "Speaker",
+                "volume_percent": 70,
+            })
+        };
+        Mock::given(method("GET"))
+            .and(path("/v1/me/player/devices"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(
+                serde_json::json!({ "devices": [device(&old_device_id), device(&new_device_id)] }),
+            ))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let devices = client.available_devices().await.unwrap();
+
+        assert_eq!(devices.len(), 1);
+        assert_eq!(devices[0].id.as_deref(), Some(new_device_id.as_str()));
+    }
+
+    #[tokio::test]
+    async fn player_request_on_replaced_device_transfers_to_current_device() {
+        let server = MockServer::start().await;
+        let client = app_client(&server).await;
+        let (old_device_id, new_device_id) = reconnect(&client).await;
+        Mock::given(method("PUT"))
+            .and(path("/v1/me/player"))
+            .and(body_json(
+                serde_json::json!({ "device_ids": [new_device_id], "play": false }),
+            ))
+            .respond_with(ResponseTemplate::new(204))
+            .expect(1)
+            .mount(&server)
+            .await;
+        Mock::given(method("PUT"))
+            .and(path("/v1/me/player/play"))
+            .and(query_param("device_id", new_device_id.as_str()))
+            .respond_with(ResponseTemplate::new(204))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let mut playback = playback_on(&old_device_id);
+        client
+            .retarget_stale_playback(&PlayerRequest::ResumePause, &mut playback)
+            .await
+            .unwrap();
+        assert_eq!(playback.device_id.as_deref(), Some(new_device_id.as_str()));
+        // the replaced device was not actually playing, so the toggle resumes the playback
+        assert!(!playback.is_playing);
+
+        let playback = client
+            .handle_player_request(PlayerRequest::ResumePause, Some(playback))
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(playback.is_playing);
+    }
+
+    #[tokio::test]
+    async fn start_playback_on_replaced_device_targets_current_device() {
+        let server = MockServer::start().await;
+        let client = app_client(&server).await;
+        let (old_device_id, new_device_id) = reconnect(&client).await;
+        Mock::given(method("PUT"))
+            .and(path("/v1/me/player"))
+            .respond_with(ResponseTemplate::new(204))
+            .expect(0)
+            .mount(&server)
+            .await;
+        Mock::given(method("PUT"))
+            .and(path("/v1/me/player/play"))
+            .and(query_param("device_id", new_device_id.as_str()))
+            .and(body_json(
+                serde_json::json!({ "context_uri": "spotify:playlist:37i9dQZF1DXcBWIGoYBM5M" }),
+            ))
+            .respond_with(ResponseTemplate::new(204))
+            .expect(1)
+            .mount(&server)
+            .await;
+        Mock::given(method("PUT"))
+            .and(path("/v1/me/player/shuffle"))
+            .and(query_param("device_id", new_device_id.as_str()))
+            .respond_with(ResponseTemplate::new(204))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let request = PlayerRequest::StartPlayback(
+            Playback::Context(
+                ContextId::Playlist(PlaylistId::from_id("37i9dQZF1DXcBWIGoYBM5M").unwrap()),
+                None,
+            ),
+            None,
+        );
+        let mut playback = playback_on(&old_device_id);
+        client
+            .retarget_stale_playback(&request, &mut playback)
+            .await
+            .unwrap();
+        assert_eq!(playback.device_id.as_deref(), Some(new_device_id.as_str()));
+
+        client
+            .handle_player_request(request, Some(playback))
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn player_request_on_other_device_is_not_retargeted() {
+        let server = MockServer::start().await;
+        let client = app_client(&server).await;
+        reconnect(&client).await;
+        Mock::given(method("PUT"))
+            .and(path("/v1/me/player"))
+            .respond_with(ResponseTemplate::new(204))
+            .expect(0)
+            .mount(&server)
+            .await;
+
+        let mut playback = playback_on("phone-device-id");
+        client
+            .retarget_stale_playback(&PlayerRequest::ResumePause, &mut playback)
+            .await
+            .unwrap();
+
+        assert_eq!(playback, playback_on("phone-device-id"));
+    }
 
     fn sample_track(id: &'static str, name: &str) -> Track {
         Track {
