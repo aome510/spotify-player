@@ -50,8 +50,9 @@ impl Spotify {
         }
     }
 
-    pub async fn set_session(&self, session: Session) {
-        *self.session.lock().await = Some(session);
+    /// Replace the current session, returning the previous one if any
+    pub async fn set_session(&self, session: Session) -> Option<Session> {
+        self.session.lock().await.replace(session)
     }
 
     pub async fn session(&self) -> Session {
@@ -253,9 +254,17 @@ impl WebApiClient {
             .any(|endpoint| url.starts_with(endpoint))
     }
 
-    fn fallback_status(error: &ClientError) -> Option<reqwest::StatusCode> {
+    fn fallback_status(url: &str, error: &ClientError) -> Option<reqwest::StatusCode> {
         match error {
             ClientError::Http(error) => match error.as_ref() {
+                // A 404 from a player endpoint means the target device is gone or no device is
+                // active. Retrying with another client cannot fix that and only spends its quota.
+                HttpError::StatusCode(response)
+                    if response.status() == reqwest::StatusCode::NOT_FOUND
+                        && url.starts_with("me/player") =>
+                {
+                    None
+                }
                 HttpError::StatusCode(response) if response.status().is_client_error() => {
                     Some(response.status())
                 }
@@ -303,7 +312,7 @@ impl BaseClient for WebApiClient {
         }
 
         match self.primary.api_get(url, payload).await {
-            Err(error) => match (Self::fallback_status(&error), &self.fallback) {
+            Err(error) => match (Self::fallback_status(url, &error), &self.fallback) {
                 (Some(status), Some(fallback)) => {
                     Self::log_fallback("GET", url, status);
                     fallback.api_get(url, payload).await
@@ -316,7 +325,7 @@ impl BaseClient for WebApiClient {
 
     async fn api_post(&self, url: &str, payload: &Value) -> ClientResult<String> {
         match self.primary.api_post(url, payload).await {
-            Err(error) => match (Self::fallback_status(&error), &self.fallback) {
+            Err(error) => match (Self::fallback_status(url, &error), &self.fallback) {
                 (Some(status), Some(fallback)) => {
                     Self::log_fallback("POST", url, status);
                     fallback.api_post(url, payload).await
@@ -329,7 +338,7 @@ impl BaseClient for WebApiClient {
 
     async fn api_put(&self, url: &str, payload: &Value) -> ClientResult<String> {
         match self.primary.api_put(url, payload).await {
-            Err(error) => match (Self::fallback_status(&error), &self.fallback) {
+            Err(error) => match (Self::fallback_status(url, &error), &self.fallback) {
                 (Some(status), Some(fallback)) => {
                     Self::log_fallback("PUT", url, status);
                     fallback.api_put(url, payload).await
@@ -342,7 +351,7 @@ impl BaseClient for WebApiClient {
 
     async fn api_delete(&self, url: &str, payload: &Value) -> ClientResult<String> {
         match self.primary.api_delete(url, payload).await {
-            Err(error) => match (Self::fallback_status(&error), &self.fallback) {
+            Err(error) => match (Self::fallback_status(url, &error), &self.fallback) {
                 (Some(status), Some(fallback)) => {
                     Self::log_fallback("DELETE", url, status);
                     fallback.api_delete(url, payload).await
@@ -366,11 +375,13 @@ impl OAuthClient for WebApiClient {
 }
 
 #[cfg(test)]
-mod tests {
+pub(super) mod tests {
     use super::WebApiClient;
     use crate::client::middleware::SpotifyApiMiddleware;
     use rspotify::{
-        clients::BaseClient, http::Query, AuthCodePkceSpotify, Config, Credentials, OAuth, Token,
+        clients::BaseClient,
+        http::{HttpError, Query},
+        AuthCodePkceSpotify, ClientError, Config, Credentials, OAuth, Token,
     };
     use std::{collections::HashSet, sync::Arc};
     use wiremock::{
@@ -422,7 +433,7 @@ mod tests {
         client
     }
 
-    async fn client(server: &MockServer, with_middleware: bool) -> AuthCodePkceSpotify {
+    pub(crate) async fn client(server: &MockServer, with_middleware: bool) -> AuthCodePkceSpotify {
         client_with_token(server, with_middleware, "access-token").await
     }
 
@@ -537,6 +548,69 @@ mod tests {
                 .api_post("test", &serde_json::json!({ "name": "playlist" }))
                 .await
                 .unwrap(),
+            "fallback"
+        );
+    }
+
+    #[tokio::test]
+    async fn player_not_found_does_not_use_fallback() {
+        let primary_server = MockServer::start().await;
+        Mock::given(method("PUT"))
+            .and(path("/v1/me/player/play"))
+            .respond_with(ResponseTemplate::new(404))
+            .expect(1)
+            .mount(&primary_server)
+            .await;
+        let fallback_server = MockServer::start().await;
+        Mock::given(method("PUT"))
+            .and(path("/v1/me/player/play"))
+            .respond_with(ResponseTemplate::new(204))
+            .expect(0)
+            .mount(&fallback_server)
+            .await;
+
+        let client = WebApiClient::new(
+            client(&primary_server, false).await,
+            Some(client(&fallback_server, true).await),
+        );
+
+        let error = client
+            .api_put("me/player/play?device_id=device-id", &serde_json::json!({}))
+            .await
+            .unwrap_err();
+        let ClientError::Http(error) = error else {
+            panic!("unexpected error: {error:?}");
+        };
+        let HttpError::StatusCode(response) = *error else {
+            panic!("unexpected HTTP error: {error:?}");
+        };
+        assert_eq!(response.status(), 404);
+    }
+
+    #[tokio::test]
+    async fn not_found_outside_player_uses_fallback() {
+        let primary_server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/v1/test"))
+            .respond_with(ResponseTemplate::new(404))
+            .expect(1)
+            .mount(&primary_server)
+            .await;
+        let fallback_server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/v1/test"))
+            .respond_with(ResponseTemplate::new(200).set_body_string("fallback"))
+            .expect(1)
+            .mount(&fallback_server)
+            .await;
+
+        let client = WebApiClient::new(
+            client(&primary_server, false).await,
+            Some(client(&fallback_server, true).await),
+        );
+
+        assert_eq!(
+            client.api_get("test", &Query::new()).await.unwrap(),
             "fallback"
         );
     }
