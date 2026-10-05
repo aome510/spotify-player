@@ -940,6 +940,20 @@ impl AppClient {
             .collect())
     }
 
+    /// Get the top artists of the current user
+    pub async fn current_user_top_artists(&self) -> Result<Vec<Artist>> {
+        let limit = config::get_config().app_config.top_artists_limit;
+        if limit == 0 {
+            return Ok(Vec::new());
+        }
+
+        let artists = self
+            .all_paging_items::<rspotify::model::FullArtist>("me/top/artists", limit)
+            .await?;
+
+        Ok(artists.into_iter().map(Artist::from).collect())
+    }
+
     /// Get all playlists of the current user
     pub async fn current_user_playlists(&self) -> Result<Vec<Playlist>> {
         let playlists = self

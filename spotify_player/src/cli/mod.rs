@@ -20,6 +20,8 @@ pub enum Key {
     UserSavedAlbums,
     UserFollowedArtists,
     UserTopTracks,
+    UserTopArtists,
+    UserRecentlyPlayed,
     Queue,
 }
 

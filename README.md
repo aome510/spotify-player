@@ -403,7 +403,7 @@ To enable [fuzzy search](https://en.wikipedia.org/wiki/Approximate_string_matchi
 
 `spotify_player` provides several CLI commands for interacting with Spotify:
 
-- `get`: Get Spotify data (playlist/album/artist data, user's data, etc)
+- `get`: Get Spotify data. `get key <key>` accepts `playback`, `devices`, `user-playlists`, `user-liked-tracks`, `user-saved-albums`, `user-followed-artists`, `user-top-tracks`, `user-top-artists`, `user-recently-played`, or `queue`; `get item` fetches a playlist, album, artist, or track by `--id`/`--name`.
 - `playback`: Interact with the playback (start a playback, play-pause, next, etc)
 - `search`: Search spotify
 - `connect`: Connect to a Spotify device

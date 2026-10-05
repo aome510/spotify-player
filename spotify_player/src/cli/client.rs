@@ -224,6 +224,14 @@ async fn handle_get_key_request(
             let tracks = client.current_user_top_tracks().await?;
             serde_json::to_vec(&tracks)?
         }
+        Key::UserTopArtists => {
+            let artists = client.current_user_top_artists().await?;
+            serde_json::to_vec(&artists)?
+        }
+        Key::UserRecentlyPlayed => {
+            let tracks = client.current_user_recently_played_tracks().await?;
+            serde_json::to_vec(&tracks)?
+        }
         Key::UserSavedAlbums => {
             let albums = client.current_user_saved_albums().await?;
             serde_json::to_vec(&albums)?
