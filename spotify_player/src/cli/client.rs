@@ -26,8 +26,8 @@ use rspotify::{
 };
 
 use super::{
-    Command, Deserialize, EditAction, GetRequest, IdOrName, ItemId, ItemType, Key, PlaylistCommand,
-    Response, Serialize, MAX_REQUEST_SIZE,
+    Command, Deserialize, EditAction, GetRequest, IdOrName, ItemId, ItemType, Key, KeyRequest,
+    PlaylistCommand, Response, Serialize, TimeRange, MAX_REQUEST_SIZE,
 };
 
 pub async fn start_socket(
@@ -135,7 +135,9 @@ async fn handle_socket_request(
     request: super::Request,
 ) -> Result<Vec<u8>> {
     match request {
-        Request::Get(GetRequest::Key(key)) => handle_get_key_request(client, state, key).await,
+        Request::Get(GetRequest::Key(request)) => {
+            handle_get_key_request(client, state, request).await
+        }
         Request::Get(GetRequest::Item(item_type, id_or_name)) => {
             handle_get_item_request(client, item_type, id_or_name).await
         }
@@ -201,9 +203,9 @@ async fn handle_socket_request(
 async fn handle_get_key_request(
     client: &AppClient,
     state: Option<&SharedState>,
-    key: Key,
+    request: KeyRequest,
 ) -> Result<Vec<u8>> {
-    Ok(match key {
+    Ok(match request.key {
         Key::Playback => {
             let playback = current_playback(client, state).await?;
             serde_json::to_vec(&playback)?
@@ -221,15 +223,21 @@ async fn handle_get_key_request(
             serde_json::to_vec(&tracks)?
         }
         Key::UserTopTracks => {
-            let tracks = client.current_user_top_tracks().await?;
+            let tracks = client
+                .current_user_top_tracks(request.time_range.map(TimeRange::query_value))
+                .await?;
             serde_json::to_vec(&tracks)?
         }
         Key::UserTopArtists => {
-            let artists = client.current_user_top_artists().await?;
+            let artists = client
+                .current_user_top_artists(request.time_range.map(TimeRange::query_value))
+                .await?;
             serde_json::to_vec(&artists)?
         }
         Key::UserRecentlyPlayed => {
-            let tracks = client.current_user_recently_played_tracks().await?;
+            let tracks = client
+                .current_user_recently_played_tracks(request.after, request.before)
+                .await?;
             serde_json::to_vec(&tracks)?
         }
         Key::UserSavedAlbums => {

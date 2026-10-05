@@ -48,9 +48,44 @@ enum ItemId {
     Track(TrackId<'static>),
 }
 
+/// Time range for the current user's top tracks/artists (`me/top/*`).
+#[derive(Debug, Serialize, Deserialize, clap::ValueEnum, Clone, Copy)]
+#[serde(rename_all = "snake_case")]
+pub enum TimeRange {
+    #[value(name = "short_term")]
+    Short,
+    #[value(name = "medium_term")]
+    Medium,
+    #[value(name = "long_term")]
+    Long,
+}
+
+impl TimeRange {
+    /// The `time_range` query value expected by the Spotify Web API.
+    pub fn query_value(self) -> &'static str {
+        match self {
+            Self::Short => "short_term",
+            Self::Medium => "medium_term",
+            Self::Long => "long_term",
+        }
+    }
+}
+
+/// Parameters for a `get key` request.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct KeyRequest {
+    pub key: Key,
+    #[serde(default)]
+    pub time_range: Option<TimeRange>,
+    #[serde(default)]
+    pub after: Option<i64>,
+    #[serde(default)]
+    pub before: Option<i64>,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub enum GetRequest {
-    Key(Key),
+    Key(KeyRequest),
     Item(ItemType, IdOrName),
 }
 

@@ -161,6 +161,13 @@ pub fn new_api_client() -> Result<WebApiClient> {
         .with_ncspot_only_get_endpoints(ncspot_only_get_endpoints))
 }
 
+/// Extra query parameters for a `me/top/*` request scoped to a time range.
+fn time_range_params(time_range: Option<&str>) -> Vec<(&'static str, String)> {
+    time_range
+        .map(|range| vec![("time_range", range.to_string())])
+        .unwrap_or_default()
+}
+
 impl AppClient {
     /// Construct a new client
     pub async fn new() -> Result<Self> {
@@ -597,11 +604,13 @@ impl AppClient {
                         ContextId::Artist(artist_id) => self.artist_context(artist_id).await?,
                         ContextId::Tracks(tracks_id) => match tracks_id.uri.as_str() {
                             USER_TOP_TRACKS_URI => Context::Tracks {
-                                tracks: self.current_user_top_tracks().await?,
+                                tracks: self.current_user_top_tracks(None).await?,
                                 desc: "User's top tracks".to_string(),
                             },
                             USER_RECENTLY_PLAYED_TRACKS_URI => Context::Tracks {
-                                tracks: self.current_user_recently_played_tracks().await?,
+                                tracks: self
+                                    .current_user_recently_played_tracks(None, None)
+                                    .await?,
                                 desc: "User's recently played tracks".to_string(),
                             },
                             USER_LIKED_TRACKS_URI => {
@@ -904,10 +913,27 @@ impl AppClient {
             .collect())
     }
 
-    /// Get the recently played tracks of the current user
-    pub async fn current_user_recently_played_tracks(&self) -> Result<Vec<Track>> {
+    /// Get the recently played tracks of the current user.
+    ///
+    /// `after` and `before` are Unix-ms timestamps that scope the recently-played
+    /// window; at most one may be set. Spotify only exposes the ~50 most recent
+    /// plays, so these bound that set rather than reaching further back.
+    pub async fn current_user_recently_played_tracks(
+        &self,
+        after: Option<i64>,
+        before: Option<i64>,
+    ) -> Result<Vec<Track>> {
+        let time_limit = after
+            .and_then(chrono::DateTime::<chrono::Utc>::from_timestamp_millis)
+            .map(rspotify::model::TimeLimits::After)
+            .or_else(|| {
+                before
+                    .and_then(chrono::DateTime::<chrono::Utc>::from_timestamp_millis)
+                    .map(rspotify::model::TimeLimits::Before)
+            });
+
         let play_histories = self
-            .current_user_recently_played(Some(50), None)
+            .current_user_recently_played(Some(50), time_limit)
             .await?
             .items;
 
@@ -923,15 +949,19 @@ impl AppClient {
         Ok(tracks)
     }
 
-    /// Get the top tracks of the current user
-    pub async fn current_user_top_tracks(&self) -> Result<Vec<Track>> {
+    /// Get the top tracks of the current user, optionally scoped to a time range
+    pub async fn current_user_top_tracks(&self, time_range: Option<&str>) -> Result<Vec<Track>> {
         let limit = config::get_config().app_config.top_tracks_limit;
         if limit == 0 {
             return Ok(Vec::new());
         }
 
         let tracks = self
-            .all_paging_items::<rspotify::model::FullTrack>("me/top/tracks", limit)
+            .all_paging_items_with_params::<rspotify::model::FullTrack>(
+                "me/top/tracks",
+                limit,
+                &time_range_params(time_range),
+            )
             .await?;
 
         Ok(tracks
@@ -940,15 +970,19 @@ impl AppClient {
             .collect())
     }
 
-    /// Get the top artists of the current user
-    pub async fn current_user_top_artists(&self) -> Result<Vec<Artist>> {
+    /// Get the top artists of the current user, optionally scoped to a time range
+    pub async fn current_user_top_artists(&self, time_range: Option<&str>) -> Result<Vec<Artist>> {
         let limit = config::get_config().app_config.top_artists_limit;
         if limit == 0 {
             return Ok(Vec::new());
         }
 
         let artists = self
-            .all_paging_items::<rspotify::model::FullArtist>("me/top/artists", limit)
+            .all_paging_items_with_params::<rspotify::model::FullArtist>(
+                "me/top/artists",
+                limit,
+                &time_range_params(time_range),
+            )
             .await?;
 
         Ok(artists.into_iter().map(Artist::from).collect())
@@ -1608,7 +1642,21 @@ impl AppClient {
         Ok(serde_json::from_str(&text)?)
     }
 
-    async fn all_paging_items<T>(&self, base_url: &str, mut count: usize) -> Result<Vec<T>>
+    async fn all_paging_items<T>(&self, base_url: &str, count: usize) -> Result<Vec<T>>
+    where
+        T: serde::de::DeserializeOwned + std::fmt::Debug,
+    {
+        self.all_paging_items_with_params(base_url, count, &[])
+            .await
+    }
+
+    /// Like [`Self::all_paging_items`], adding `extra_params` to every page request.
+    async fn all_paging_items_with_params<T>(
+        &self,
+        base_url: &str,
+        mut count: usize,
+        extra_params: &[(&str, String)],
+    ) -> Result<Vec<T>>
     where
         T: serde::de::DeserializeOwned + std::fmt::Debug,
     {
@@ -1633,13 +1681,18 @@ impl AppClient {
                 let current_offset = offset + i * PAGE_LIMIT;
                 let limit_str = PAGE_LIMIT.to_string();
                 let offset_str = current_offset.to_string();
+                let extra = extra_params.to_vec();
 
                 futures.push(async move {
-                    let params = Query::from([
+                    let mut pairs: Vec<(&str, &str)> = vec![
                         ("market", "from_token"),
                         ("limit", &limit_str),
                         ("offset", &offset_str),
-                    ]);
+                    ];
+                    for (key, value) in &extra {
+                        pairs.push((*key, value.as_str()));
+                    }
+                    let params: Query = pairs.into_iter().collect();
                     self.http_get::<rspotify::model::Page<T>>(base_url, &params)
                         .await
                 });
