@@ -165,6 +165,13 @@ pub struct Album {
 pub struct Artist {
     pub id: ArtistId<'static>,
     pub name: String,
+    /// Artist genres reported by the Spotify Web API.
+    ///
+    /// Only populated when the artist is fetched in full (for example from the
+    /// artist page, search, or the top/followed-artists endpoints); artists
+    /// derived from simplified track or album data have no genres.
+    #[serde(default)]
+    pub genres: Vec<String>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -515,15 +522,18 @@ impl Artist {
         Some(Self {
             id: artist.id?,
             name: artist.name,
+            genres: Vec::new(),
         })
     }
 }
 
 impl From<rspotify::model::FullArtist> for Artist {
+    #[allow(deprecated)]
     fn from(artist: rspotify::model::FullArtist) -> Self {
         Self {
             name: artist.name,
             id: artist.id,
+            genres: artist.genres,
         }
     }
 }
@@ -769,5 +779,35 @@ impl From<librespot_metadata::lyrics::Lyrics> for Lyrics {
             .collect::<Vec<_>>();
         lines.sort_by_key(|l| l.0);
         Self { lines }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Artist;
+
+    #[test]
+    fn artist_genres_default_to_empty() {
+        // `Artist` values are cached in the followed-artists cache file; entries
+        // written before the `genres` field existed must still deserialize.
+        let artist: Artist = serde_json::from_str(r#"{"id":"1","name":"Artist"}"#).unwrap();
+        assert!(artist.genres.is_empty());
+    }
+
+    #[test]
+    fn full_artist_genres_are_preserved() {
+        let full: rspotify::model::FullArtist = serde_json::from_str(
+            r#"{
+                "external_urls": {},
+                "href": "",
+                "id": "1",
+                "images": [],
+                "name": "Artist",
+                "genres": ["indie rock", "shoegaze"]
+            }"#,
+        )
+        .unwrap();
+
+        assert_eq!(Artist::from(full).genres, ["indie rock", "shoegaze"]);
     }
 }
