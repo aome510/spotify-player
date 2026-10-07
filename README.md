@@ -429,6 +429,14 @@ read -p "Search spotify: " query
 spotify_player playback start track --id $(spotify_player search "$query" | jq '.tracks.[0].id' | xargs)
 ```
 
+Example: Play a playlist starting at a given track (the rest of the playlist follows, as when picking a track in the TUI):
+
+```sh
+spotify_player playback start context --id "$playlist_id" --offset "$track_id" playlist
+```
+
+Albums, artists and playlists in the JSON output include an `image` URL when Spotify has one.
+
 ## Commands
 
 Press `?` or `C-h` to open the shortcut help page (default for `OpenCommandHelp`).

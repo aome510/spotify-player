@@ -83,12 +83,17 @@ fn handle_playback_subcommand(args: &ArgMatches) -> Result<Request> {
                     .expect("context_type is required")
                     .to_owned();
                 let shuffle = args.get_flag("shuffle");
+                let offset = args
+                    .get_one::<String>("offset")
+                    .map(|s| TrackId::from_id_or_uri(s).map(TrackId::into_static))
+                    .transpose()?;
 
                 let id_or_name = get_id_or_name(args);
                 Command::StartContext {
                     context_type,
                     id_or_name,
                     shuffle,
+                    offset,
                 }
             }
             Some(("liked", args)) => {
@@ -396,4 +401,63 @@ fn print_features() {
     print_feature!("jackaudio-backend");
     print_feature!("sdl-backend");
     print_feature!("gstreamer-backend");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{handle_playback_subcommand, Command, Request};
+    use crate::cli::commands::init_playback_subcommand;
+    use rspotify::model::Id;
+
+    fn start_context(extra: &[&str]) -> anyhow::Result<Request> {
+        let mut argv = vec![
+            "playback",
+            "start",
+            "context",
+            "--id",
+            "37i9dQZF1DXcBWIGoYBM5M",
+        ];
+        argv.extend_from_slice(extra);
+        argv.push("playlist");
+        let matches = init_playback_subcommand().try_get_matches_from(argv)?;
+        handle_playback_subcommand(&matches)
+    }
+
+    #[test]
+    fn context_starts_at_the_offset_track() {
+        let request = start_context(&["--offset", "4uLU6hMCjMI75M1A2tKUQC"]).unwrap();
+        let Request::Playback(Command::StartContext { offset, .. }) = request else {
+            panic!("expected a context playback");
+        };
+        assert_eq!(
+            offset.map(|id| id.id().to_string()).as_deref(),
+            Some("4uLU6hMCjMI75M1A2tKUQC")
+        );
+    }
+
+    #[test]
+    fn context_offset_accepts_a_uri() {
+        let request = start_context(&["--offset", "spotify:track:4uLU6hMCjMI75M1A2tKUQC"]).unwrap();
+        assert!(matches!(
+            request,
+            Request::Playback(Command::StartContext {
+                offset: Some(_),
+                ..
+            })
+        ));
+    }
+
+    #[test]
+    fn context_without_offset_starts_at_the_beginning() {
+        let request = start_context(&[]).unwrap();
+        assert!(matches!(
+            request,
+            Request::Playback(Command::StartContext { offset: None, .. })
+        ));
+    }
+
+    #[test]
+    fn a_bad_offset_is_an_error() {
+        assert!(start_context(&["--offset", "not-an-id"]).is_err());
+    }
 }

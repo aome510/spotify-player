@@ -47,6 +47,12 @@ fn init_playback_start_subcommand() -> Command {
                         .long("shuffle")
                         .action(ArgAction::SetTrue)
                         .help("Shuffle tracks within the launched playback"),
+                )
+                .arg(
+                    Arg::new("offset")
+                        .long("offset")
+                        .value_name("TRACK_ID")
+                        .help("Start at this track of the context instead of its first one"),
                 ),
         ))
         .subcommand(add_id_or_name_group(

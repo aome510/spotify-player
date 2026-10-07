@@ -158,6 +158,9 @@ pub struct Album {
     pub artists: Vec<Artist>,
     pub typ: Option<rspotify::model::AlbumType>,
     pub added_at: u64,
+    /// the album art's URL, if Spotify has one
+    #[serde(default)]
+    pub image: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -165,6 +168,9 @@ pub struct Album {
 pub struct Artist {
     pub id: ArtistId<'static>,
     pub name: String,
+    /// the artist's image URL; simplified artists (e.g. a track's) have none
+    #[serde(default)]
+    pub image: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -179,6 +185,9 @@ pub struct Playlist {
     #[serde(default)]
     pub current_folder_id: usize,
     pub snapshot_id: String,
+    /// the playlist cover's URL, if it has one
+    #[serde(default)]
+    pub image: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -453,6 +462,7 @@ impl Album {
                     _ => None,
                 }),
             added_at: 0,
+            image: image_url(&album.images),
         })
     }
 
@@ -483,6 +493,7 @@ impl From<rspotify::model::FullAlbum> for Album {
             artists: from_simplified_artists_to_artists(album.artists),
             typ: Some(album.album_type),
             added_at: 0,
+            image: image_url(&album.images),
         }
     }
 }
@@ -515,6 +526,7 @@ impl Artist {
         Some(Self {
             id: artist.id?,
             name: artist.name,
+            image: None,
         })
     }
 }
@@ -524,6 +536,7 @@ impl From<rspotify::model::FullArtist> for Artist {
         Self {
             name: artist.name,
             id: artist.id,
+            image: image_url(&artist.images),
         }
     }
 }
@@ -532,6 +545,17 @@ impl std::fmt::Display for Artist {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.name)
     }
+}
+
+/// The URL of the smallest image at least 64 px wide, else of the first one.
+/// Small enough for a list row or a thumbnail, large enough to stay sharp.
+fn image_url(images: &[rspotify::model::Image]) -> Option<String> {
+    images
+        .iter()
+        .filter(|i| i.width.unwrap_or(0) >= 64)
+        .min_by_key(|i| i.width.unwrap_or(0))
+        .or_else(|| images.first())
+        .map(|i| i.url.clone())
 }
 
 /// a helper function to convert a vector of `rspotify::model::SimplifiedArtist`
@@ -560,6 +584,7 @@ impl From<rspotify::model::SimplifiedPlaylist> for Playlist {
             desc: String::new(),
             current_folder_id: 0,
             snapshot_id: playlist.snapshot_id,
+            image: image_url(&playlist.images),
         }
     }
 }
@@ -582,6 +607,7 @@ impl From<rspotify::model::FullPlaylist> for Playlist {
             desc,
             current_folder_id: 0,
             snapshot_id: playlist.snapshot_id,
+            image: image_url(&playlist.images),
         }
     }
 }
@@ -769,5 +795,52 @@ impl From<librespot_metadata::lyrics::Lyrics> for Lyrics {
             .collect::<Vec<_>>();
         lines.sort_by_key(|l| l.0);
         Self { lines }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{image_url, Artist};
+    use rspotify::model::{ArtistId, Image};
+
+    fn image(url: &str, width: Option<u32>) -> Image {
+        Image {
+            url: url.to_string(),
+            height: width,
+            width,
+        }
+    }
+
+    #[test]
+    fn image_url_picks_the_smallest_sharp_enough_image() {
+        let images = vec![
+            image("big", Some(640)),
+            image("tiny", Some(32)),
+            image("small", Some(64)),
+            image("mid", Some(300)),
+        ];
+        assert_eq!(image_url(&images).as_deref(), Some("small"));
+    }
+
+    #[test]
+    fn image_url_falls_back_to_the_first_image() {
+        let images = vec![image("unsized", None), image("tiny", Some(32))];
+        assert_eq!(image_url(&images).as_deref(), Some("unsized"));
+        assert_eq!(image_url(&[]), None);
+    }
+
+    #[test]
+    fn cached_items_without_an_image_still_load() {
+        let artist = Artist {
+            id: ArtistId::from_id("0OdUWJ0sBjDrqHygGUXeCF")
+                .unwrap()
+                .into_static(),
+            name: "name".to_string(),
+            image: Some("url".to_string()),
+        };
+        let mut json = serde_json::to_value(&artist).unwrap();
+        json.as_object_mut().unwrap().remove("image");
+        let back: Artist = serde_json::from_value(json).unwrap();
+        assert_eq!(back.image, None);
     }
 }

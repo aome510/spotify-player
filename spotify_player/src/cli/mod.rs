@@ -102,6 +102,9 @@ pub enum Command {
         context_type: ContextType,
         id_or_name: IdOrName,
         shuffle: bool,
+        /// the track to start at, instead of the context's first track
+        #[serde(default)]
+        offset: Option<TrackId<'static>>,
     },
     StartTrack(IdOrName),
     StartLikedTracks {
