@@ -185,34 +185,17 @@ impl UserData {
         }
     }
 
-    /// Get a list of playlist items that are **possibly** modifiable by user
-    ///
-    /// If `folder_id` is provided, returns items in the given folder id.
-    /// Otherwise, returns the all items.
-    pub fn modifiable_playlist_items(&self, folder_id: Option<usize>) -> Vec<&PlaylistFolderItem> {
-        match self.user {
-            None => vec![],
-            Some(ref u) => self
-                .playlists
-                .iter()
-                // filter items in a folder (if specified)
-                .filter(|item| {
-                    if let Some(folder_id) = folder_id {
-                        match item {
-                            PlaylistFolderItem::Playlist(p) => p.current_folder_id == folder_id,
-                            PlaylistFolderItem::Folder(f) => f.current_id == folder_id,
-                        }
-                    } else {
-                        true
-                    }
-                })
-                // filter modifiable items
-                .filter(|item| match item {
-                    PlaylistFolderItem::Playlist(p) => p.owner.1 == u.id || p.collaborative,
-                    PlaylistFolderItem::Folder(_) => true,
-                })
-                .collect(),
-        }
+    pub fn modifiable_playlists(&self) -> Vec<&Playlist> {
+        let Some(ref u) = self.user else {
+            return vec![];
+        };
+        self.playlists
+            .iter()
+            .filter_map(|item| match item {
+                PlaylistFolderItem::Playlist(p) if p.owner.1 == u.id || p.collaborative => Some(p),
+                _ => None,
+            })
+            .collect()
     }
 
     /// Get playlists items for the given folder id
@@ -222,6 +205,23 @@ impl UserData {
             .filter(|item| match item {
                 PlaylistFolderItem::Playlist(p) => p.current_folder_id == folder_id,
                 PlaylistFolderItem::Folder(f) => f.current_id == folder_id,
+            })
+            .collect()
+    }
+
+    pub fn playlist_items_for_search(
+        &self,
+        folder_id: usize,
+        query: &str,
+    ) -> Vec<&PlaylistFolderItem> {
+        if query.trim().is_empty() {
+            return self.folder_playlists_items(folder_id);
+        }
+        self.playlists
+            .iter()
+            .filter(|item| match item {
+                PlaylistFolderItem::Playlist(_) => true,
+                PlaylistFolderItem::Folder(f) => f.target_id > f.current_id,
             })
             .collect()
     }
