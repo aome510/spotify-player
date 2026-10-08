@@ -30,11 +30,31 @@ pub async fn start_client_handler(
         let state = state.clone();
         let client = client.clone();
         let span = tracing::info_span!("client_request", request = ?request);
+        let description = request.description();
+        if description.is_some() {
+            state.request_status.lock().start();
+        }
+
+        let handle = tokio::task::spawn({
+            let state = state.clone();
+            async move { client.handle_request(&state, request).await }.instrument(span.clone())
+        });
 
         tokio::task::spawn(
             async move {
-                if let Err(err) = client.handle_request(&state, request).await {
+                let result = handle
+                    .await
+                    .map_err(anyhow::Error::from)
+                    .and_then(|result| result);
+                if let Err(err) = &result {
                     tracing::error!("Failed to handle client request: {err:#}");
+                }
+                if let Some(description) = description {
+                    state.request_status.lock().finish(
+                        result
+                            .err()
+                            .map(|err| format!("Failed to {description}: {err:#}")),
+                    );
                 }
             }
             .instrument(span),
