@@ -120,36 +120,34 @@ pub fn render_popup(
             }
             PopupState::UserPlaylistList(action, _) => {
                 let data = state.data.read();
-                let (items, search_query) = match action {
+                let (display_items, search_query) = match action {
                     PlaylistPopupAction::Browse {
                         folder_id,
                         search_query,
-                    } => (
-                        data.user_data.folder_playlists_items(*folder_id),
-                        search_query,
-                    ),
-                    PlaylistPopupAction::AddTrack {
-                        folder_id,
-                        search_query,
-                        ..
+                    } => {
+                        let items = data
+                            .user_data
+                            .playlist_items_for_search(*folder_id, search_query);
+                        (
+                            filtered_items_from_query(search_query, &items)
+                                .iter()
+                                .map(|p| (p.to_string(), false))
+                                .collect(),
+                            search_query,
+                        )
                     }
-                    | PlaylistPopupAction::AddEpisode {
-                        folder_id,
-                        search_query,
-                        ..
-                    } => (
-                        data.user_data.modifiable_playlist_items(Some(*folder_id)),
-                        search_query,
-                    ),
+                    PlaylistPopupAction::AddTrack { search_query, .. }
+                    | PlaylistPopupAction::AddEpisode { search_query, .. } => {
+                        let playlists = data.user_data.modifiable_playlists();
+                        (
+                            filtered_items_from_query(search_query, &playlists)
+                                .iter()
+                                .map(|p| (p.to_string(), false))
+                                .collect(),
+                            search_query,
+                        )
+                    }
                 };
-
-                // Filter items based on search query if present
-                let filtered_items = filtered_items_from_query(search_query, &items);
-
-                let display_items = filtered_items
-                    .iter()
-                    .map(|p| (p.to_string(), false))
-                    .collect();
 
                 let chunks = Layout::vertical([
                     Constraint::Length(3),

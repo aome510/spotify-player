@@ -65,12 +65,10 @@ pub enum PlaylistPopupAction {
         search_query: String,
     },
     AddTrack {
-        folder_id: usize,
         track_id: TrackId<'static>,
         search_query: String,
     },
     AddEpisode {
-        folder_id: usize,
         episode_id: EpisodeId<'static>,
         search_query: String,
     },

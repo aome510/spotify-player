@@ -506,7 +506,11 @@ pub fn render_library_page(
     // 3. Construct the page's widgets
     // Construct the playlist window
     let items = ui
-        .search_filtered_items(&data.user_data.folder_playlists_items(playlist_folder_id))
+        .search_filtered_items(
+            &data
+                .user_data
+                .playlist_items_for_search(playlist_folder_id, ui.search_query()),
+        )
         .into_iter()
         .map(|item| match item {
             PlaylistFolderItem::Playlist(p) => {

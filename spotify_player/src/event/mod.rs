@@ -237,7 +237,6 @@ pub fn handle_action_in_context(
                 client_pub.send(ClientRequest::GetUserPlaylists)?;
                 ui.popup = Some(PopupState::UserPlaylistList(
                     PlaylistPopupAction::AddTrack {
-                        folder_id: 0,
                         track_id: track.id,
                         search_query: String::new(),
                     },
@@ -442,7 +441,6 @@ pub fn handle_action_in_context(
                 client_pub.send(ClientRequest::GetUserPlaylists)?;
                 ui.popup = Some(PopupState::UserPlaylistList(
                     PlaylistPopupAction::AddEpisode {
-                        folder_id: 0,
                         episode_id: episode.id,
                         search_query: String::new(),
                     },

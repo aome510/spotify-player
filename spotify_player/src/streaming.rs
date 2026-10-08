@@ -196,6 +196,7 @@ pub async fn new_connection(
         "Initializing a new integrated player with device_id={}",
         session.device_id()
     );
+    state.player.write().integrated_device_id = Some(session.device_id().to_string());
 
     let player = {
         // Clone the Option<Arc<...>> so the factory closure can move it.
