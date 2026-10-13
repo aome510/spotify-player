@@ -1456,6 +1456,174 @@ impl AppClient {
 
     /// Get a playlist context data
     pub async fn playlist_context(&self, playlist_id: PlaylistId<'_>) -> Result<Context> {
+        // The Web API no longer returns the items of playlists the user doesn't own,
+        // so playlists are loaded through Spotify's internal API first.
+        match self.playlist_context_internal(playlist_id.as_ref()).await {
+            Ok(context) => Ok(context),
+            Err(err) => {
+                tracing::warn!(
+                    "Failed to get playlist context via the internal API, falling back to the Web API: {err:#}"
+                );
+                self.playlist_context_web_api(playlist_id).await
+            }
+        }
+    }
+
+    /// Get a playlist context data using Spotify's internal API
+    async fn playlist_context_internal(&self, playlist_id: PlaylistId<'_>) -> Result<Context> {
+        use librespot_metadata::Metadata as _;
+        use librespot_protocol::extended_metadata::{
+            BatchedEntityRequest, EntityRequest, ExtensionQuery,
+        };
+        use librespot_protocol::extension_kind::ExtensionKind;
+        use protobuf::Message as _;
+
+        const METADATA_BATCH_SIZE: usize = 500;
+
+        let playlist_uri = playlist_id.uri();
+        tracing::info!(
+            "Get playlist context via the internal API: {}",
+            playlist_uri
+        );
+
+        let session = self.spotify.session().await;
+        let playlist = librespot_metadata::Playlist::get(
+            &session,
+            &SpotifyUri::from_uri(&playlist_uri).context("parse playlist URI")?,
+        )
+        .await
+        .context("get playlist")?;
+
+        let SpotifyUri::Playlist {
+            user: Some(owner_username),
+            ..
+        } = &playlist.id
+        else {
+            anyhow::bail!("playlist {playlist_uri} has no owner");
+        };
+        let owner_name = match self.user_display_name(&session, owner_username).await {
+            Ok(name) => name,
+            Err(err) => {
+                tracing::warn!("Failed to get display name of user {owner_username}: {err:#}");
+                owner_username.clone()
+            }
+        };
+        let owner_id = UserId::from_id(owner_username.clone()).context("parse owner ID")?;
+
+        // local files and podcast episodes are skipped, like in the Web API version
+        let items = playlist
+            .contents
+            .items
+            .iter()
+            .filter(|item| matches!(item.id, SpotifyUri::Track { .. }))
+            .filter_map(|item| {
+                let added_at = item.attributes.timestamp.as_timestamp_ms() / 1000;
+                Some((
+                    item.id.to_uri().ok()?,
+                    u64::try_from(added_at).unwrap_or_default(),
+                ))
+            })
+            .collect::<Vec<_>>();
+
+        let mut unique_uris = HashSet::new();
+        let uris = items
+            .iter()
+            .map(|(uri, _)| uri.clone())
+            .filter(|uri| unique_uris.insert(uri.clone()))
+            .collect::<Vec<_>>();
+
+        let mut tracks_metadata = HashMap::new();
+        for uris in uris.chunks(METADATA_BATCH_SIZE) {
+            let request = BatchedEntityRequest {
+                entity_request: uris
+                    .iter()
+                    .map(|uri| EntityRequest {
+                        entity_uri: uri.clone(),
+                        query: vec![ExtensionQuery {
+                            extension_kind: protobuf::EnumOrUnknown::new(ExtensionKind::TRACK_V4),
+                            ..Default::default()
+                        }],
+                        ..Default::default()
+                    })
+                    .collect(),
+                ..Default::default()
+            };
+            let response = session
+                .spclient()
+                .get_extended_metadata(request)
+                .await
+                .context("get tracks' metadata")?;
+
+            // the response isn't in request order, so tracks are matched by their URIs
+            for data in response
+                .extended_metadata
+                .into_iter()
+                .flat_map(|array| array.extension_data)
+            {
+                let Some(any) = data.extension_data.into_option() else {
+                    continue;
+                };
+                let track = SpotifyUri::from_uri(&data.entity_uri)
+                    .map_err(anyhow::Error::from)
+                    .and_then(|uri| {
+                        let msg =
+                            librespot_protocol::metadata::Track::parse_from_bytes(&any.value)?;
+                        Ok(librespot_metadata::Track::parse(&msg, &uri)?)
+                    });
+                match track {
+                    Ok(track) => {
+                        tracks_metadata.insert(data.entity_uri, track);
+                    }
+                    Err(err) => {
+                        tracing::warn!("Failed to parse metadata of {}: {err:#}", data.entity_uri);
+                    }
+                }
+            }
+        }
+
+        let tracks = items
+            .iter()
+            .filter_map(|(uri, added_at)| {
+                Track::try_from_librespot_track(tracks_metadata.get(uri)?, *added_at)
+            })
+            .collect::<Vec<_>>();
+        tracing::info!(
+            "Got {} of {} playlist items via the internal API: {}",
+            tracks.len(),
+            playlist.contents.items.len(),
+            playlist_uri
+        );
+
+        Ok(Context::Playlist {
+            playlist: Playlist::from_librespot(
+                playlist_id.into_static(),
+                &playlist,
+                (owner_name, owner_id),
+            ),
+            tracks,
+        })
+    }
+
+    /// Get the display name of a Spotify user using Spotify's internal API
+    async fn user_display_name(
+        &self,
+        session: &librespot_core::Session,
+        username: &str,
+    ) -> Result<String> {
+        #[derive(Deserialize)]
+        struct UserProfile {
+            name: String,
+        }
+
+        let response = session
+            .spclient()
+            .get_user_profile(username, Some(0), Some(0))
+            .await?;
+        Ok(serde_json::from_slice::<UserProfile>(&response)?.name)
+    }
+
+    /// Get a playlist context data using the Web API
+    async fn playlist_context_web_api(&self, playlist_id: PlaylistId<'_>) -> Result<Context> {
         let playlist_uri = playlist_id.uri();
         tracing::info!("Get playlist context: {}", playlist_uri);
 
