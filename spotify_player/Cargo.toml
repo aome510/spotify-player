@@ -19,6 +19,8 @@ librespot-connect = { version = "0.8.0", optional = true }
 librespot-core = { version = "0.8.0" }
 librespot-playback = {version = "0.8.0", optional = true, default-features = false, features = ["native-tls"]}
 librespot-metadata = { version = "0.8.0" }
+librespot-protocol = { version = "0.8.0" }
+protobuf = "3.7.2"
 log = "0.4.34"
 chrono = "0.4.45"
 chrono-humanize = "0.2.3"
