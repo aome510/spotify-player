@@ -1566,13 +1566,7 @@ impl AppClient {
     /// Get a playlist context data using Spotify's internal API
     async fn playlist_context_internal(&self, playlist_id: PlaylistId<'_>) -> Result<Context> {
         use librespot_metadata::Metadata as _;
-        use librespot_protocol::extended_metadata::{
-            BatchedEntityRequest, EntityRequest, ExtensionQuery,
-        };
         use librespot_protocol::extension_kind::ExtensionKind;
-        use protobuf::Message as _;
-
-        const METADATA_BATCH_SIZE: usize = 500;
 
         let playlist_uri = playlist_id.uri();
         tracing::info!(
@@ -1619,61 +1613,14 @@ impl AppClient {
             })
             .collect::<Vec<_>>();
 
-        let mut unique_uris = HashSet::new();
-        let uris = items
-            .iter()
-            .map(|(uri, _)| uri.clone())
-            .filter(|uri| unique_uris.insert(uri.clone()))
-            .collect::<Vec<_>>();
-
-        let mut tracks_metadata = HashMap::new();
-        for uris in uris.chunks(METADATA_BATCH_SIZE) {
-            let request = BatchedEntityRequest {
-                entity_request: uris
-                    .iter()
-                    .map(|uri| EntityRequest {
-                        entity_uri: uri.clone(),
-                        query: vec![ExtensionQuery {
-                            extension_kind: protobuf::EnumOrUnknown::new(ExtensionKind::TRACK_V4),
-                            ..Default::default()
-                        }],
-                        ..Default::default()
-                    })
-                    .collect(),
-                ..Default::default()
-            };
-            let response = session
-                .spclient()
-                .get_extended_metadata(request)
-                .await
-                .context("get tracks' metadata")?;
-
-            // the response isn't in request order, so tracks are matched by their URIs
-            for data in response
-                .extended_metadata
-                .into_iter()
-                .flat_map(|array| array.extension_data)
-            {
-                let Some(any) = data.extension_data.into_option() else {
-                    continue;
-                };
-                let track = SpotifyUri::from_uri(&data.entity_uri)
-                    .map_err(anyhow::Error::from)
-                    .and_then(|uri| {
-                        let msg =
-                            librespot_protocol::metadata::Track::parse_from_bytes(&any.value)?;
-                        Ok(librespot_metadata::Track::parse(&msg, &uri)?)
-                    });
-                match track {
-                    Ok(track) => {
-                        tracks_metadata.insert(data.entity_uri, track);
-                    }
-                    Err(err) => {
-                        tracing::warn!("Failed to parse metadata of {}: {err:#}", data.entity_uri);
-                    }
-                }
-            }
-        }
+        let uris = items.iter().map(|(uri, _)| uri.clone()).collect::<Vec<_>>();
+        let tracks_metadata = Self::internal_metadata::<librespot_metadata::Track>(
+            &session,
+            &uris,
+            ExtensionKind::TRACK_V4,
+        )
+        .await
+        .context("get tracks' metadata")?;
 
         let tracks = items
             .iter()
@@ -1696,6 +1643,72 @@ impl AppClient {
             ),
             tracks,
         })
+    }
+
+    /// Get the metadata of Spotify items using Spotify's internal API, keyed by item URI.
+    /// Items whose metadata can't be parsed are left out.
+    async fn internal_metadata<T: librespot_metadata::Metadata>(
+        session: &librespot_core::Session,
+        uris: &[String],
+        kind: librespot_protocol::extension_kind::ExtensionKind,
+    ) -> Result<HashMap<String, T>> {
+        use librespot_protocol::extended_metadata::{
+            BatchedEntityRequest, EntityRequest, ExtensionQuery,
+        };
+        use protobuf::Message as _;
+
+        const BATCH_SIZE: usize = 500;
+
+        let mut unique_uris = HashSet::new();
+        let uris = uris
+            .iter()
+            .filter(|uri| unique_uris.insert(*uri))
+            .collect::<Vec<_>>();
+
+        let mut metadata = HashMap::new();
+        for uris in uris.chunks(BATCH_SIZE) {
+            let request = BatchedEntityRequest {
+                entity_request: uris
+                    .iter()
+                    .map(|uri| EntityRequest {
+                        entity_uri: (*uri).clone(),
+                        query: vec![ExtensionQuery {
+                            extension_kind: protobuf::EnumOrUnknown::new(kind),
+                            ..Default::default()
+                        }],
+                        ..Default::default()
+                    })
+                    .collect(),
+                ..Default::default()
+            };
+            let response = session.spclient().get_extended_metadata(request).await?;
+
+            // the response isn't in request order, so items are matched by their URIs
+            for data in response
+                .extended_metadata
+                .into_iter()
+                .flat_map(|array| array.extension_data)
+            {
+                let Some(any) = data.extension_data.into_option() else {
+                    continue;
+                };
+                let item = SpotifyUri::from_uri(&data.entity_uri)
+                    .map_err(anyhow::Error::from)
+                    .and_then(|uri| {
+                        let msg = T::Message::parse_from_bytes(&any.value)?;
+                        Ok(T::parse(&msg, &uri)?)
+                    });
+                match item {
+                    Ok(item) => {
+                        metadata.insert(data.entity_uri, item);
+                    }
+                    Err(err) => {
+                        tracing::warn!("Failed to parse metadata of {}: {err:#}", data.entity_uri);
+                    }
+                }
+            }
+        }
+        Ok(metadata)
     }
 
     /// Get the display name of a Spotify user using Spotify's internal API
@@ -1780,6 +1793,92 @@ impl AppClient {
 
     /// Get an artist context data
     pub async fn artist_context(&self, artist_id: ArtistId<'_>) -> Result<Context> {
+        // The Web API no longer returns an artist's top tracks for custom client IDs and
+        // rejects their album requests, so artists are loaded through Spotify's internal API first.
+        match self.artist_context_internal(artist_id.as_ref()).await {
+            Ok(context) => Ok(context),
+            Err(err) => {
+                tracing::warn!(
+                    "Failed to get artist context via the internal API, falling back to the Web API: {err:#}"
+                );
+                self.artist_context_web_api(artist_id).await
+            }
+        }
+    }
+
+    /// Get an artist context data using Spotify's internal API
+    async fn artist_context_internal(&self, artist_id: ArtistId<'_>) -> Result<Context> {
+        use librespot_metadata::Metadata as _;
+        use librespot_protocol::extension_kind::ExtensionKind;
+
+        let artist_uri = artist_id.uri();
+        tracing::info!("Get artist context via the internal API: {}", artist_uri);
+
+        let session = self.spotify.session().await;
+        let artist = librespot_metadata::Artist::get(
+            &session,
+            &SpotifyUri::from_uri(&artist_uri).context("parse artist URI")?,
+        )
+        .await
+        .context("get artist")?;
+
+        let top_track_uris = artist
+            .top_tracks
+            .for_country(&session.country())
+            .iter()
+            .filter_map(|uri| uri.to_uri().ok())
+            .collect::<Vec<_>>();
+        let top_tracks_metadata = Self::internal_metadata::<librespot_metadata::Track>(
+            &session,
+            &top_track_uris,
+            ExtensionKind::TRACK_V4,
+        )
+        .await
+        .context("get top tracks' metadata")?;
+        let top_tracks = top_track_uris
+            .iter()
+            .filter_map(|uri| Track::try_from_librespot_track(top_tracks_metadata.get(uri)?, 0))
+            .collect::<Vec<_>>();
+
+        // same album groups as the Web API version (`include_groups=album,single`)
+        let album_uris = artist
+            .albums_current()
+            .chain(artist.singles_current())
+            .filter_map(|uri| uri.to_uri().ok())
+            .collect::<Vec<_>>();
+        let albums_metadata = Self::internal_metadata::<librespot_metadata::Album>(
+            &session,
+            &album_uris,
+            ExtensionKind::ALBUM_V4,
+        )
+        .await
+        .context("get albums' metadata")?;
+        let albums = album_uris
+            .iter()
+            .filter_map(|uri| Album::try_from_librespot_album(albums_metadata.get(uri)?))
+            .collect::<Vec<_>>();
+
+        tracing::info!(
+            "Got {} top tracks and {} albums via the internal API: {}",
+            top_tracks.len(),
+            albums.len(),
+            artist_uri
+        );
+
+        Ok(Context::Artist {
+            artist: Artist {
+                id: artist_id.into_static(),
+                name: artist.name.clone(),
+            },
+            top_tracks,
+            albums: AppClient::process_artist_albums(albums),
+            // Spotify's internal artist metadata no longer lists related artists
+            related_artists: Vec::new(),
+        })
+    }
+
+    /// Get an artist context data using the Web API
+    async fn artist_context_web_api(&self, artist_id: ArtistId<'_>) -> Result<Context> {
         let artist_uri = artist_id.uri();
         tracing::info!("Get artist context: {}", artist_uri);
 
