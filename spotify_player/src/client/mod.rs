@@ -942,6 +942,100 @@ impl AppClient {
 
     /// Get all playlists of the current user
     pub async fn current_user_playlists(&self) -> Result<Vec<Playlist>> {
+        // The Web API omits Spotify-owned playlists, so the library is listed through
+        // Spotify's internal API, using the Web API only for owners' display names.
+        let (web_api_playlists, internal_playlists) = tokio::join!(
+            self.current_user_playlists_web_api(),
+            self.current_user_playlists_internal()
+        );
+        match internal_playlists {
+            Ok(mut playlists) => {
+                let web_api_playlists = web_api_playlists.unwrap_or_else(|err| {
+                    tracing::warn!("Failed to get user's playlists via the Web API: {err:#}");
+                    Vec::new()
+                });
+                for playlist in &mut playlists {
+                    if let Some(p) = web_api_playlists.iter().find(|p| p.id == playlist.id) {
+                        playlist.owner.0.clone_from(&p.owner.0);
+                    }
+                }
+                Ok(playlists)
+            }
+            Err(err) => {
+                tracing::warn!(
+                    "Failed to get user's playlists via the internal API, falling back to the Web API: {err:#}"
+                );
+                web_api_playlists
+            }
+        }
+    }
+
+    /// Get all playlists of the current user using Spotify's internal API
+    async fn current_user_playlists_internal(&self) -> Result<Vec<Playlist>> {
+        use base64::Engine as _;
+        use protobuf::Message as _;
+
+        let session = self.spotify.session().await;
+        let response = session
+            .spclient()
+            .get_rootlist(0, Some(10_000))
+            .await
+            .context("get rootlist")?;
+        let rootlist =
+            librespot_protocol::playlist4_external::SelectedListContent::parse_from_bytes(
+                &response,
+            )?;
+        let contents = rootlist.contents.get_or_default();
+        // names and owners are only in `meta_items`, which must pair up with `items`
+        if contents.items.len() != contents.meta_items.len() {
+            anyhow::bail!(
+                "rootlist has {} items but {} meta items",
+                contents.items.len(),
+                contents.meta_items.len()
+            );
+        }
+        if contents.truncated() {
+            tracing::warn!("The rootlist is truncated, some library items are missing");
+        }
+
+        // folder markers are skipped, folders are handled by `playlist_folder_node`
+        let playlists = contents
+            .items
+            .iter()
+            .zip(contents.meta_items.iter())
+            .filter_map(|(item, meta)| {
+                let id = PlaylistId::from_uri(item.uri()).ok()?.into_static();
+                let attributes = meta.attributes.get_or_default();
+                if attributes.name().is_empty() {
+                    return None;
+                }
+                let owner_id = UserId::from_id(meta.owner_username().to_string()).ok()?;
+                let owner_name = if meta.owner_username() == "spotify" {
+                    "Spotify".to_string()
+                } else {
+                    meta.owner_username().to_string()
+                };
+                Some(Playlist {
+                    id,
+                    collaborative: attributes.collaborative(),
+                    name: attributes.name().to_string(),
+                    owner: (owner_name, owner_id),
+                    desc: String::new(),
+                    current_folder_id: 0,
+                    snapshot_id: base64::engine::general_purpose::STANDARD.encode(meta.revision()),
+                })
+            })
+            .collect::<Vec<_>>();
+        tracing::info!(
+            "Got {} of {} library items via the internal API",
+            playlists.len(),
+            contents.items.len()
+        );
+        Ok(playlists)
+    }
+
+    /// Get all playlists of the current user using the Web API
+    async fn current_user_playlists_web_api(&self) -> Result<Vec<Playlist>> {
         let playlists = self
             .all_paging_items::<rspotify::model::SimplifiedPlaylist>(
                 "me/playlists",
