@@ -318,7 +318,12 @@ fn main() -> Result<()> {
             }
 
             let state = std::sync::Arc::new(state::State::new(is_daemon, log_buffer));
-            start_app(&state)
+            let result = start_app(&state);
+            // A daemon's stderr is /dev/null, so the log file is the only place this shows.
+            if let Err(err) = &result {
+                tracing::error!("{err:#}");
+            }
+            result
         }
         Some((cmd, args)) => cli::handle_cli_subcommand(cmd, args),
     }
