@@ -1,14 +1,19 @@
 use std::{
     io::{BufRead, BufReader, Write},
     net::{SocketAddr, TcpListener, TcpStream},
+    time::{Duration, Instant},
 };
 
 use crate::config;
 use anyhow::{Context as _, Result};
 use base64::Engine as _;
 use librespot_core::{authentication::Credentials, cache::Cache, Session};
-use reqwest::Url;
-use rspotify::clients::{BaseClient as _, OAuthClient as _};
+use reqwest::{StatusCode, Url};
+use rspotify::{
+    clients::{BaseClient as _, OAuthClient as _},
+    http::HttpError,
+    ClientError,
+};
 use sha2::{Digest as _, Sha256};
 
 pub const SPOTIFY_CLIENT_ID: &str = "65b708073fc0480ea92a077233ca87bd";
@@ -17,6 +22,9 @@ pub const NCSPOT_REDIRECT_URI: &str = "http://127.0.0.1:8989/login";
 
 const SPOTIFY_AUTHORIZE_URL: &str = "https://accounts.spotify.com/authorize";
 const SPOTIFY_TOKEN_URL: &str = "https://accounts.spotify.com/api/token";
+
+const TOKEN_REFRESH_RETRY_WINDOW: Duration = Duration::from_mins(2);
+const TOKEN_REFRESH_MAX_DELAY: Duration = Duration::from_secs(30);
 
 // based on https://developer.spotify.com/documentation/web-api/concepts/scopes#list-of-scopes
 pub const OAUTH_SCOPES: &[&str] = &[
@@ -165,32 +173,8 @@ async fn prompt_for_web_api_token(
                 return Ok(());
             }
 
-            // A refresh may fail because the refresh token expired (Spotify expires
-            // refresh tokens 6 months after the original authorization, returning
-            // `invalid_grant`) or because no refresh token is available. In either
-            // case, fall through to the interactive flow below rather than failing.
-            match client.refetch_token().await {
-                Ok(Some(refreshed)) => {
-                    *client.get_token().lock().await.unwrap() = Some(refreshed);
-                    client
-                        .write_token_cache()
-                        .await
-                        .context("write refreshed token to cache")?;
-                    return Ok(());
-                }
-                Ok(None) => {
-                    tracing::warn!(
-                        "Cached token could not be refreshed (no refresh token available); \
-                         falling back to interactive re-authentication."
-                    );
-                }
-                Err(err) => {
-                    tracing::warn!(
-                        "Failed to refresh the cached token (the refresh token may have expired \
-                         per Spotify's 6-month refresh-token expiration policy); \
-                         falling back to interactive re-authentication: {err:#}"
-                    );
-                }
+            if refresh_cached_token(client, client_name).await? {
+                return Ok(());
             }
         }
     }
@@ -208,6 +192,82 @@ async fn prompt_for_web_api_token(
         .with_context(|| format!("exchange auth code for token ({client_name})"))?;
 
     Ok(())
+}
+
+/// Refresh the cached token, returning `false` when the user has to authorize again: Spotify
+/// rejected the refresh (it expires refresh tokens 6 months after the original authorization,
+/// returning `invalid_grant`) or no refresh token is available. A refresh that never got an
+/// answer (e.g. started before the network is up) says nothing about the token, so it is
+/// retried, and fails once `TOKEN_REFRESH_RETRY_WINDOW` has passed.
+async fn refresh_cached_token(
+    client: &crate::client::PkceWebApiClient,
+    client_name: &str,
+) -> Result<bool> {
+    let started = Instant::now();
+    let mut delay = Duration::from_secs(1);
+    loop {
+        let err = match client.refetch_token().await {
+            Ok(Some(refreshed)) => {
+                *client.get_token().lock().await.unwrap() = Some(refreshed);
+                client
+                    .write_token_cache()
+                    .await
+                    .context("write refreshed token to cache")?;
+                return Ok(true);
+            }
+            Ok(None) => {
+                tracing::warn!(
+                    "Cached token could not be refreshed (no refresh token available); \
+                     falling back to interactive re-authentication."
+                );
+                return Ok(false);
+            }
+            Err(err) => err,
+        };
+
+        if !is_transient_refresh_error(&err) {
+            tracing::warn!(
+                "Failed to refresh the cached token (the refresh token may have expired \
+                 per Spotify's 6-month refresh-token expiration policy); \
+                 falling back to interactive re-authentication: {err:#}"
+            );
+            return Ok(false);
+        }
+        let err = with_http_cause(err);
+        if started.elapsed() >= TOKEN_REFRESH_RETRY_WINDOW {
+            return Err(err.context(format!("refresh the cached token ({client_name})")));
+        }
+        tracing::warn!(
+            "Could not refresh the cached token ({client_name}), retrying in {delay:?}: {err:#}"
+        );
+        tokio::time::sleep(delay).await;
+        delay = (delay * 2).min(TOKEN_REFRESH_MAX_DELAY);
+    }
+}
+
+/// `ClientError::Http` doesn't report its HTTP error as its source, so formatting it drops
+/// the cause (DNS failure, refused connection, TLS error, timeout).
+fn with_http_cause(err: ClientError) -> anyhow::Error {
+    match err {
+        ClientError::Http(err) => anyhow::Error::new(*err).context("http error"),
+        err => err.into(),
+    }
+}
+
+/// Whether a failed token refresh says nothing about the refresh token itself: the
+/// request got no response, or Spotify answered 429 or 5xx. Any other status (e.g.
+/// 400 `invalid_grant`) means the user has to authorize again.
+fn is_transient_refresh_error(err: &ClientError) -> bool {
+    let ClientError::Http(err) = err else {
+        return false;
+    };
+    match err.as_ref() {
+        HttpError::Client(_) => true,
+        HttpError::StatusCode(response) => {
+            let status = response.status();
+            status == StatusCode::TOO_MANY_REQUESTS || status.is_server_error()
+        }
+    }
 }
 
 /// Run the authorization code with PKCE flow for `librespot` and return an access token.
@@ -454,5 +514,42 @@ mod test {
         let challenge = base64::engine::general_purpose::URL_SAFE_NO_PAD
             .encode(Sha256::digest(verifier.as_bytes()));
         assert_eq!(challenge, "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM");
+    }
+
+    fn status_error(status: u16) -> ClientError {
+        let response = http::Response::builder()
+            .status(status)
+            .body(Vec::<u8>::new())
+            .unwrap();
+        HttpError::StatusCode(response.into()).into()
+    }
+
+    #[test]
+    fn refresh_rejected_by_spotify_is_not_transient() {
+        assert!(!is_transient_refresh_error(&status_error(400)));
+        assert!(!is_transient_refresh_error(&status_error(401)));
+        assert!(is_transient_refresh_error(&status_error(429)));
+        assert!(is_transient_refresh_error(&status_error(503)));
+    }
+
+    #[tokio::test]
+    async fn refresh_without_a_response_is_transient() {
+        // Nothing listens on the port once the listener is dropped, so the request
+        // fails before any response, as it does when the network is down.
+        let port = TcpListener::bind("127.0.0.1:0")
+            .unwrap()
+            .local_addr()
+            .unwrap()
+            .port();
+        let err = reqwest::Client::builder()
+            .no_proxy()
+            .build()
+            .unwrap()
+            .get(format!("http://127.0.0.1:{port}"))
+            .send()
+            .await
+            .unwrap_err();
+        let err: ClientError = HttpError::Client(err.into()).into();
+        assert!(is_transient_refresh_error(&err));
     }
 }
