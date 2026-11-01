@@ -816,14 +816,21 @@ fn handle_global_command(
                 state.player.read().currently_playing()
             {
                 if let Some(id) = &track.id {
-                    let artists = map_join(&track.artists, |a| &a.name, ", ");
-                    ui.new_page(PageState::Lyrics {
-                        track_uri: id.uri(),
-                        track: track.name.clone(),
-                        artists,
-                        scroll_offset: 0,
-                        scrolled_at: None,
-                    });
+                    // `new_page` dedups by equality, which the lyrics scroll state would defeat
+                    let is_shown = matches!(
+                        ui.current_page(),
+                        PageState::Lyrics { track_uri, .. } if *track_uri == id.uri()
+                    );
+                    if !is_shown {
+                        let artists = map_join(&track.artists, |a| &a.name, ", ");
+                        ui.new_page(PageState::Lyrics {
+                            track_uri: id.uri(),
+                            track: track.name.clone(),
+                            artists,
+                            scroll_offset: 0,
+                            scrolled_at: None,
+                        });
+                    }
 
                     client_pub.send(ClientRequest::GetLyrics {
                         track_id: id.clone_static(),
