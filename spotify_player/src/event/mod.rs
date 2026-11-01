@@ -821,6 +821,8 @@ fn handle_global_command(
                         track_uri: id.uri(),
                         track: track.name.clone(),
                         artists,
+                        scroll_offset: 0,
+                        scrolled_at: None,
                     });
 
                     client_pub.send(ClientRequest::GetLyrics {

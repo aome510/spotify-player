@@ -29,6 +29,7 @@ cover_img_pixels = 16
 seek_duration_secs = 5
 custom_queue = true
 enable_relative_line_number = false
+lyrics_auto_follow_timeout_in_secs = 0
 
 [device]
 name = "spotify-player"
