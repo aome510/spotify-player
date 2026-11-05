@@ -3,6 +3,7 @@ use crate::{
     ui::single_line_input::LineInput,
 };
 use ratatui::widgets::{ListState, TableState};
+use std::time::Instant;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum PageState {
@@ -23,6 +24,9 @@ pub enum PageState {
         track_uri: String,
         track: String,
         artists: String,
+        scroll_offset: usize,
+        /// When the user last scrolled; `None` means the view follows the playing line.
+        scrolled_at: Option<Instant>,
     },
     Browse {
         state: BrowsePageUIState,
@@ -240,8 +244,8 @@ impl PageState {
                     Some(MutableWindowState::List(state))
                 }
             },
-            Self::Lyrics { .. } => None,
-            Self::CommandHelp { scroll_offset }
+            Self::Lyrics { scroll_offset, .. }
+            | Self::CommandHelp { scroll_offset }
             | Self::Queue { scroll_offset }
             | Self::Logs { scroll_offset } => Some(MutableWindowState::Scroll(scroll_offset)),
         }

@@ -26,8 +26,7 @@ pub fn handle_key_sequence_for_page(
             PageType::Library => handle_command_for_library_page(command, client_pub, ui, state),
             PageType::Context => handle_command_for_context_page(command, client_pub, ui, state),
             PageType::Browse => handle_command_for_browse_page(command, client_pub, ui, state),
-            // lyrics page doesn't support any commands
-            PageType::Lyrics => Ok(false),
+            PageType::Lyrics => Ok(handle_command_for_lyrics_page(command, ui, state)),
             PageType::Queue => Ok(handle_command_for_queue_page(command, ui)),
             PageType::CommandHelp => Ok(handle_command_for_command_help_page(command, ui)),
             PageType::Logs => Ok(handle_command_for_logs_page(command, ui)),
@@ -578,6 +577,45 @@ fn handle_command_for_command_help_page(command: Command, ui: &mut UIStateGuard)
     }
     let count = ui.count_prefix;
     handle_navigation_command(command, ui.current_page_mut(), scroll_offset, 10000, count)
+}
+
+fn handle_command_for_lyrics_page(
+    command: Command,
+    ui: &mut UIStateGuard,
+    state: &SharedState,
+) -> bool {
+    let PageState::Lyrics {
+        track_uri,
+        scroll_offset,
+        scrolled_at,
+        ..
+    } = ui.current_page_mut()
+    else {
+        return false;
+    };
+
+    let (num_lines, synced) = match state.data.read().caches.lyrics.get(track_uri) {
+        Some(Some(lyrics)) => (lyrics.lines.len(), lyrics.synced),
+        _ => return false,
+    };
+
+    if command == Command::FollowLyrics {
+        if synced {
+            *scrolled_at = None;
+        }
+        return synced;
+    }
+
+    let offset = *scroll_offset;
+    let count = ui.count_prefix;
+    let handled =
+        handle_navigation_command(command, ui.current_page_mut(), offset, num_lines, count);
+    if handled {
+        if let PageState::Lyrics { scrolled_at, .. } = ui.current_page_mut() {
+            *scrolled_at = Some(std::time::Instant::now());
+        }
+    }
+    handled
 }
 
 fn handle_command_for_logs_page(command: Command, ui: &mut UIStateGuard) -> bool {

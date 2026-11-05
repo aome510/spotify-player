@@ -751,10 +751,16 @@ impl PlaybackMetadata {
 pub struct Lyrics {
     /// Timestamped lines
     pub lines: Vec<(chrono::Duration, String)>,
+    /// Whether line timestamps follow the track playback. Unsynced lyrics' timestamps are meaningless.
+    pub synced: bool,
 }
 
 impl From<librespot_metadata::lyrics::Lyrics> for Lyrics {
     fn from(value: librespot_metadata::lyrics::Lyrics) -> Self {
+        let synced = matches!(
+            value.lyrics.sync_type,
+            librespot_metadata::lyrics::SyncType::LineSynced
+        );
         let mut lines = value
             .lyrics
             .lines
@@ -768,6 +774,6 @@ impl From<librespot_metadata::lyrics::Lyrics> for Lyrics {
             })
             .collect::<Vec<_>>();
         lines.sort_by_key(|l| l.0);
-        Self { lines }
+        Self { lines, synced }
     }
 }

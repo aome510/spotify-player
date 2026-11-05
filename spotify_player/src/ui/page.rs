@@ -681,10 +681,13 @@ pub fn render_lyrics_page(
         track_uri,
         track,
         artists,
-    } = ui.current_page_mut()
+        scroll_offset,
+        scrolled_at,
+    } = ui.current_page()
     else {
         return;
     };
+    let (mut scroll_offset, mut scrolled_at) = (*scroll_offset, *scrolled_at);
 
     let lyrics = match data.caches.lyrics.get(track_uri) {
         None => {
@@ -712,9 +715,11 @@ pub fn render_lyrics_page(
     // the last played line id (1-based)
     // zero value indicates no line has been played yet
     let mut last_played_line_id = 0;
-    for (id, (t, _)) in lyrics.lines.iter().enumerate() {
-        if *t <= progress {
-            last_played_line_id = id + 1;
+    if lyrics.synced {
+        for (id, (t, _)) in lyrics.lines.iter().enumerate() {
+            if *t <= progress {
+                last_played_line_id = id + 1;
+            }
         }
     }
     let lines = lyrics
@@ -728,14 +733,36 @@ pub fn render_lyrics_page(
         })
         .collect::<Vec<_>>();
 
-    let mut paragraph = Paragraph::new(lines);
-    // keep the currently playing line in the center if
-    // the line goes pass the lower half of lyrics section
-    let half_height = (chunks[1].height / 2) as usize;
-    if let Some(offset) = last_played_line_id.checked_sub(half_height) {
-        paragraph = paragraph.scroll((offset as u16, 0));
+    let timeout = config::get_config()
+        .app_config
+        .lyrics_auto_follow_timeout_in_secs;
+    if timeout > 0
+        && scrolled_at.is_some_and(|t| t.elapsed() >= std::time::Duration::from_secs(timeout))
+    {
+        scrolled_at = None;
     }
+
+    if lyrics.synced && scrolled_at.is_none() {
+        // keep the currently playing line in the center if
+        // the line goes pass the lower half of lyrics section
+        let half_height = (chunks[1].height / 2) as usize;
+        scroll_offset = last_played_line_id.saturating_sub(half_height);
+    }
+    scroll_offset = scroll_offset.min(lines.len().saturating_sub(1));
+
+    let paragraph = Paragraph::new(lines).scroll((scroll_offset as u16, 0));
     frame.render_widget(paragraph, chunks[1]);
+
+    // the stored offset is the starting point of the next user scroll
+    if let PageState::Lyrics {
+        scroll_offset: offset,
+        scrolled_at: at,
+        ..
+    } = ui.current_page_mut()
+    {
+        *offset = scroll_offset;
+        *at = scrolled_at;
+    }
 }
 
 pub fn render_commands_help_page(frame: &mut Frame, ui: &mut UIStateGuard, rect: Rect) {

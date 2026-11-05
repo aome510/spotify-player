@@ -144,6 +144,10 @@ pub struct AppConfig {
 
     pub enable_relative_line_number: bool,
 
+    /// Seconds after the last lyrics scroll before the lyrics page follows the playing line again.
+    /// `0` disables it: following resumes only with `FollowLyrics` or on a new track.
+    pub lyrics_auto_follow_timeout_in_secs: u64,
+
     /// Start the application with playback paused instead of resuming the
     /// previous session. Requires streaming. When the integrated client
     /// connects on startup, Spotify may restore and auto-resume the last
@@ -408,6 +412,8 @@ impl Default for AppConfig {
             custom_queue: true,
 
             enable_relative_line_number: false,
+
+            lyrics_auto_follow_timeout_in_secs: 0,
 
             #[cfg(feature = "streaming")]
             pause_on_startup: false,
