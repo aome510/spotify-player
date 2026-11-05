@@ -141,15 +141,18 @@ client_id_command = { command = "cat", args = ["/full/path/to/file"] }
 
 Device options are configured in the `[device]` section:
 
-| Option          | Description                              | Default          |
-| --------------- | ---------------------------------------- | ---------------- |
-| `name`          | Device name.                             | `spotify-player` |
-| `device_type`   | Device type.                             | `speaker`        |
-| `volume`        | Initial volume (percent).                | `70`             |
-| `bitrate`       | Bitrate in kbps (`96`, `160`, or `320`). | `320`            |
-| `audio_cache`   | Enable audio file caching.               | `false`          |
-| `normalization` | Enable audio normalization.              | `false`          |
-| `autoplay`      | Enable autoplay of similar songs.        | `false`          |
+| Option                  | Description                                                    | Default          |
+| ----------------------- | -------------------------------------------------------------- | ---------------- |
+| `name`                  | Device name.                                                   | `spotify-player` |
+| `device_type`           | Device type.                                                   | `speaker`        |
+| `volume`                | Initial volume (percent).                                      | `70`             |
+| `bitrate`               | Bitrate in kbps (`96`, `160`, or `320`).                       | `320`            |
+| `audio_cache`           | Enable audio file caching.                                     | `false`          |
+| `normalization`         | Enable audio normalization.                                    | `false`          |
+| `normalization_pregain` | Gain in dB, `-10` to `10`, applied when `normalization` is on. | `0`              |
+| `volume_ctrl`           | Volume curve: `Log`, `Cubic`, or `Linear`.                     | `Log`            |
+| `volume_range`          | Range of the `Log` and `Cubic` curves in dB, up to `100`.      | `60`             |
+| `autoplay`              | Enable autoplay of similar songs.                              | `false`          |
 
 See the [Librespot wiki](https://github.com/librespot-org/librespot/wiki/Options) for more details on these options.
 

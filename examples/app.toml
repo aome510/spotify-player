@@ -37,6 +37,9 @@ volume = 70
 bitrate = 320
 audio_cache = false
 normalization = false
+normalization_pregain = 0.0
+volume_ctrl = "Log"
+volume_range = 60.0
 autoplay = false
 
 [layout]
