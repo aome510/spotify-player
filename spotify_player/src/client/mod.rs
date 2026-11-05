@@ -942,6 +942,100 @@ impl AppClient {
 
     /// Get all playlists of the current user
     pub async fn current_user_playlists(&self) -> Result<Vec<Playlist>> {
+        // The Web API omits Spotify-owned playlists, so the library is listed through
+        // Spotify's internal API, using the Web API only for owners' display names.
+        let (web_api_playlists, internal_playlists) = tokio::join!(
+            self.current_user_playlists_web_api(),
+            self.current_user_playlists_internal()
+        );
+        match internal_playlists {
+            Ok(mut playlists) => {
+                let web_api_playlists = web_api_playlists.unwrap_or_else(|err| {
+                    tracing::warn!("Failed to get user's playlists via the Web API: {err:#}");
+                    Vec::new()
+                });
+                for playlist in &mut playlists {
+                    if let Some(p) = web_api_playlists.iter().find(|p| p.id == playlist.id) {
+                        playlist.owner.0.clone_from(&p.owner.0);
+                    }
+                }
+                Ok(playlists)
+            }
+            Err(err) => {
+                tracing::warn!(
+                    "Failed to get user's playlists via the internal API, falling back to the Web API: {err:#}"
+                );
+                web_api_playlists
+            }
+        }
+    }
+
+    /// Get all playlists of the current user using Spotify's internal API
+    async fn current_user_playlists_internal(&self) -> Result<Vec<Playlist>> {
+        use base64::Engine as _;
+        use protobuf::Message as _;
+
+        let session = self.spotify.session().await;
+        let response = session
+            .spclient()
+            .get_rootlist(0, Some(10_000))
+            .await
+            .context("get rootlist")?;
+        let rootlist =
+            librespot_protocol::playlist4_external::SelectedListContent::parse_from_bytes(
+                &response,
+            )?;
+        let contents = rootlist.contents.get_or_default();
+        // names and owners are only in `meta_items`, which must pair up with `items`
+        if contents.items.len() != contents.meta_items.len() {
+            anyhow::bail!(
+                "rootlist has {} items but {} meta items",
+                contents.items.len(),
+                contents.meta_items.len()
+            );
+        }
+        if contents.truncated() {
+            tracing::warn!("The rootlist is truncated, some library items are missing");
+        }
+
+        // folder markers are skipped, folders are handled by `playlist_folder_node`
+        let playlists = contents
+            .items
+            .iter()
+            .zip(contents.meta_items.iter())
+            .filter_map(|(item, meta)| {
+                let id = PlaylistId::from_uri(item.uri()).ok()?.into_static();
+                let attributes = meta.attributes.get_or_default();
+                if attributes.name().is_empty() {
+                    return None;
+                }
+                let owner_id = UserId::from_id(meta.owner_username().to_string()).ok()?;
+                let owner_name = if meta.owner_username() == "spotify" {
+                    "Spotify".to_string()
+                } else {
+                    meta.owner_username().to_string()
+                };
+                Some(Playlist {
+                    id,
+                    collaborative: attributes.collaborative(),
+                    name: attributes.name().to_string(),
+                    owner: (owner_name, owner_id),
+                    desc: String::new(),
+                    current_folder_id: 0,
+                    snapshot_id: base64::engine::general_purpose::STANDARD.encode(meta.revision()),
+                })
+            })
+            .collect::<Vec<_>>();
+        tracing::info!(
+            "Got {} of {} library items via the internal API",
+            playlists.len(),
+            contents.items.len()
+        );
+        Ok(playlists)
+    }
+
+    /// Get all playlists of the current user using the Web API
+    async fn current_user_playlists_web_api(&self) -> Result<Vec<Playlist>> {
         let playlists = self
             .all_paging_items::<rspotify::model::SimplifiedPlaylist>(
                 "me/playlists",
@@ -1456,6 +1550,187 @@ impl AppClient {
 
     /// Get a playlist context data
     pub async fn playlist_context(&self, playlist_id: PlaylistId<'_>) -> Result<Context> {
+        // The Web API no longer returns the items of playlists the user doesn't own,
+        // so playlists are loaded through Spotify's internal API first.
+        match self.playlist_context_internal(playlist_id.as_ref()).await {
+            Ok(context) => Ok(context),
+            Err(err) => {
+                tracing::warn!(
+                    "Failed to get playlist context via the internal API, falling back to the Web API: {err:#}"
+                );
+                self.playlist_context_web_api(playlist_id).await
+            }
+        }
+    }
+
+    /// Get a playlist context data using Spotify's internal API
+    async fn playlist_context_internal(&self, playlist_id: PlaylistId<'_>) -> Result<Context> {
+        use librespot_metadata::Metadata as _;
+        use librespot_protocol::extension_kind::ExtensionKind;
+
+        let playlist_uri = playlist_id.uri();
+        tracing::info!(
+            "Get playlist context via the internal API: {}",
+            playlist_uri
+        );
+
+        let session = self.spotify.session().await;
+        let playlist = librespot_metadata::Playlist::get(
+            &session,
+            &SpotifyUri::from_uri(&playlist_uri).context("parse playlist URI")?,
+        )
+        .await
+        .context("get playlist")?;
+
+        let SpotifyUri::Playlist {
+            user: Some(owner_username),
+            ..
+        } = &playlist.id
+        else {
+            anyhow::bail!("playlist {playlist_uri} has no owner");
+        };
+        let owner_name = match self.user_display_name(&session, owner_username).await {
+            Ok(name) => name,
+            Err(err) => {
+                tracing::warn!("Failed to get display name of user {owner_username}: {err:#}");
+                owner_username.clone()
+            }
+        };
+        let owner_id = UserId::from_id(owner_username.clone()).context("parse owner ID")?;
+
+        // local files and podcast episodes are skipped, like in the Web API version
+        let items = playlist
+            .contents
+            .items
+            .iter()
+            .filter(|item| matches!(item.id, SpotifyUri::Track { .. }))
+            .filter_map(|item| {
+                let added_at = item.attributes.timestamp.as_timestamp_ms() / 1000;
+                Some((
+                    item.id.to_uri().ok()?,
+                    u64::try_from(added_at).unwrap_or_default(),
+                ))
+            })
+            .collect::<Vec<_>>();
+
+        let uris = items.iter().map(|(uri, _)| uri.clone()).collect::<Vec<_>>();
+        let tracks_metadata = Self::internal_metadata::<librespot_metadata::Track>(
+            &session,
+            &uris,
+            ExtensionKind::TRACK_V4,
+        )
+        .await
+        .context("get tracks' metadata")?;
+
+        let tracks = items
+            .iter()
+            .filter_map(|(uri, added_at)| {
+                Track::try_from_librespot_track(tracks_metadata.get(uri)?, *added_at)
+            })
+            .collect::<Vec<_>>();
+        tracing::info!(
+            "Got {} of {} playlist items via the internal API: {}",
+            tracks.len(),
+            playlist.contents.items.len(),
+            playlist_uri
+        );
+
+        Ok(Context::Playlist {
+            playlist: Playlist::from_librespot(
+                playlist_id.into_static(),
+                &playlist,
+                (owner_name, owner_id),
+            ),
+            tracks,
+        })
+    }
+
+    /// Get the metadata of Spotify items using Spotify's internal API, keyed by item URI.
+    /// Items whose metadata can't be parsed are left out.
+    async fn internal_metadata<T: librespot_metadata::Metadata>(
+        session: &librespot_core::Session,
+        uris: &[String],
+        kind: librespot_protocol::extension_kind::ExtensionKind,
+    ) -> Result<HashMap<String, T>> {
+        use librespot_protocol::extended_metadata::{
+            BatchedEntityRequest, EntityRequest, ExtensionQuery,
+        };
+        use protobuf::Message as _;
+
+        const BATCH_SIZE: usize = 500;
+
+        let mut unique_uris = HashSet::new();
+        let uris = uris
+            .iter()
+            .filter(|uri| unique_uris.insert(*uri))
+            .collect::<Vec<_>>();
+
+        let mut metadata = HashMap::new();
+        for uris in uris.chunks(BATCH_SIZE) {
+            let request = BatchedEntityRequest {
+                entity_request: uris
+                    .iter()
+                    .map(|uri| EntityRequest {
+                        entity_uri: (*uri).clone(),
+                        query: vec![ExtensionQuery {
+                            extension_kind: protobuf::EnumOrUnknown::new(kind),
+                            ..Default::default()
+                        }],
+                        ..Default::default()
+                    })
+                    .collect(),
+                ..Default::default()
+            };
+            let response = session.spclient().get_extended_metadata(request).await?;
+
+            // the response isn't in request order, so items are matched by their URIs
+            for data in response
+                .extended_metadata
+                .into_iter()
+                .flat_map(|array| array.extension_data)
+            {
+                let Some(any) = data.extension_data.into_option() else {
+                    continue;
+                };
+                let item = SpotifyUri::from_uri(&data.entity_uri)
+                    .map_err(anyhow::Error::from)
+                    .and_then(|uri| {
+                        let msg = T::Message::parse_from_bytes(&any.value)?;
+                        Ok(T::parse(&msg, &uri)?)
+                    });
+                match item {
+                    Ok(item) => {
+                        metadata.insert(data.entity_uri, item);
+                    }
+                    Err(err) => {
+                        tracing::warn!("Failed to parse metadata of {}: {err:#}", data.entity_uri);
+                    }
+                }
+            }
+        }
+        Ok(metadata)
+    }
+
+    /// Get the display name of a Spotify user using Spotify's internal API
+    async fn user_display_name(
+        &self,
+        session: &librespot_core::Session,
+        username: &str,
+    ) -> Result<String> {
+        #[derive(Deserialize)]
+        struct UserProfile {
+            name: String,
+        }
+
+        let response = session
+            .spclient()
+            .get_user_profile(username, Some(0), Some(0))
+            .await?;
+        Ok(serde_json::from_slice::<UserProfile>(&response)?.name)
+    }
+
+    /// Get a playlist context data using the Web API
+    async fn playlist_context_web_api(&self, playlist_id: PlaylistId<'_>) -> Result<Context> {
         let playlist_uri = playlist_id.uri();
         tracing::info!("Get playlist context: {}", playlist_uri);
 
@@ -1518,6 +1793,92 @@ impl AppClient {
 
     /// Get an artist context data
     pub async fn artist_context(&self, artist_id: ArtistId<'_>) -> Result<Context> {
+        // The Web API no longer returns an artist's top tracks for custom client IDs and
+        // rejects their album requests, so artists are loaded through Spotify's internal API first.
+        match self.artist_context_internal(artist_id.as_ref()).await {
+            Ok(context) => Ok(context),
+            Err(err) => {
+                tracing::warn!(
+                    "Failed to get artist context via the internal API, falling back to the Web API: {err:#}"
+                );
+                self.artist_context_web_api(artist_id).await
+            }
+        }
+    }
+
+    /// Get an artist context data using Spotify's internal API
+    async fn artist_context_internal(&self, artist_id: ArtistId<'_>) -> Result<Context> {
+        use librespot_metadata::Metadata as _;
+        use librespot_protocol::extension_kind::ExtensionKind;
+
+        let artist_uri = artist_id.uri();
+        tracing::info!("Get artist context via the internal API: {}", artist_uri);
+
+        let session = self.spotify.session().await;
+        let artist = librespot_metadata::Artist::get(
+            &session,
+            &SpotifyUri::from_uri(&artist_uri).context("parse artist URI")?,
+        )
+        .await
+        .context("get artist")?;
+
+        let top_track_uris = artist
+            .top_tracks
+            .for_country(&session.country())
+            .iter()
+            .filter_map(|uri| uri.to_uri().ok())
+            .collect::<Vec<_>>();
+        let top_tracks_metadata = Self::internal_metadata::<librespot_metadata::Track>(
+            &session,
+            &top_track_uris,
+            ExtensionKind::TRACK_V4,
+        )
+        .await
+        .context("get top tracks' metadata")?;
+        let top_tracks = top_track_uris
+            .iter()
+            .filter_map(|uri| Track::try_from_librespot_track(top_tracks_metadata.get(uri)?, 0))
+            .collect::<Vec<_>>();
+
+        // same album groups as the Web API version (`include_groups=album,single`)
+        let album_uris = artist
+            .albums_current()
+            .chain(artist.singles_current())
+            .filter_map(|uri| uri.to_uri().ok())
+            .collect::<Vec<_>>();
+        let albums_metadata = Self::internal_metadata::<librespot_metadata::Album>(
+            &session,
+            &album_uris,
+            ExtensionKind::ALBUM_V4,
+        )
+        .await
+        .context("get albums' metadata")?;
+        let albums = album_uris
+            .iter()
+            .filter_map(|uri| Album::try_from_librespot_album(albums_metadata.get(uri)?))
+            .collect::<Vec<_>>();
+
+        tracing::info!(
+            "Got {} top tracks and {} albums via the internal API: {}",
+            top_tracks.len(),
+            albums.len(),
+            artist_uri
+        );
+
+        Ok(Context::Artist {
+            artist: Artist {
+                id: artist_id.into_static(),
+                name: artist.name.clone(),
+            },
+            top_tracks,
+            albums: AppClient::process_artist_albums(albums),
+            // Spotify's internal artist metadata no longer lists related artists
+            related_artists: Vec::new(),
+        })
+    }
+
+    /// Get an artist context data using the Web API
+    async fn artist_context_web_api(&self, artist_id: ArtistId<'_>) -> Result<Context> {
         let artist_uri = artist_id.uri();
         tracing::info!("Get artist context: {}", artist_uri);
 

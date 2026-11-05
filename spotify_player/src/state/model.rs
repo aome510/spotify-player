@@ -419,6 +419,24 @@ impl Track {
 
         Track::try_from_full_track_with_date(track, item.added_at)
     }
+
+    /// tries to convert from a librespot track (from Spotify's internal API) into `Track`
+    pub fn try_from_librespot_track(
+        track: &librespot_metadata::Track,
+        added_at: u64,
+    ) -> Option<Self> {
+        Some(Self {
+            id: TrackId::from_id(librespot_base62_id(&track.id)?).ok()?,
+            name: track.name.clone(),
+            artists: from_librespot_artists(&track.artists),
+            album: Album::try_from_librespot_album(&track.album),
+            duration: std::time::Duration::from_millis(
+                u64::try_from(track.duration).unwrap_or_default(),
+            ),
+            explicit: track.is_explicit,
+            added_at,
+        })
+    }
 }
 
 impl std::fmt::Display for Track {
@@ -452,6 +470,26 @@ impl Album {
                     "compilation" => Some(rspotify::model::AlbumType::Compilation),
                     _ => None,
                 }),
+            added_at: 0,
+        })
+    }
+
+    /// tries to convert from a librespot album (from Spotify's internal API) into `Album`
+    pub fn try_from_librespot_album(album: &librespot_metadata::Album) -> Option<Self> {
+        use librespot_metadata::album::AlbumType;
+
+        Some(Self {
+            id: AlbumId::from_id(librespot_base62_id(&album.id)?).ok()?,
+            name: album.name.clone(),
+            release_date: album.date.as_utc().date().to_string(),
+            artists: from_librespot_artists(&album.artists),
+            typ: match album.album_type {
+                AlbumType::ALBUM => Some(rspotify::model::AlbumType::Album),
+                // the Web API reports EPs as singles
+                AlbumType::SINGLE | AlbumType::EP => Some(rspotify::model::AlbumType::Single),
+                AlbumType::COMPILATION => Some(rspotify::model::AlbumType::Compilation),
+                _ => None,
+            },
             added_at: 0,
         })
     }
@@ -545,6 +583,29 @@ fn from_simplified_artists_to_artists(
         .collect()
 }
 
+/// a helper function to convert librespot artists into a vector of `Artist`.
+fn from_librespot_artists(artists: &librespot_metadata::artist::Artists) -> Vec<Artist> {
+    artists
+        .iter()
+        .filter_map(|artist| {
+            Some(Artist {
+                id: ArtistId::from_id(librespot_base62_id(&artist.id)?).ok()?,
+                name: artist.name.clone(),
+            })
+        })
+        .collect()
+}
+
+/// gets the base62 ID of a librespot track, album or artist URI
+fn librespot_base62_id(uri: &librespot_core::SpotifyUri) -> Option<String> {
+    match uri {
+        librespot_core::SpotifyUri::Track { id }
+        | librespot_core::SpotifyUri::Album { id }
+        | librespot_core::SpotifyUri::Artist { id } => id.to_base62().ok(),
+        _ => None,
+    }
+}
+
 impl BidiDisplay for Artist {}
 
 impl From<rspotify::model::SimplifiedPlaylist> for Playlist {
@@ -566,11 +627,6 @@ impl From<rspotify::model::SimplifiedPlaylist> for Playlist {
 
 impl From<rspotify::model::FullPlaylist> for Playlist {
     fn from(playlist: rspotify::model::FullPlaylist) -> Self {
-        // remove HTML tags from the description
-        let re = regex::Regex::new("(<.*?>|</.*?>)").expect("valid regex");
-        let desc = playlist.description.unwrap_or_default();
-        let desc = decode_html_entities(&re.replace_all(&desc, "")).to_string();
-
         Self {
             id: playlist.id,
             name: playlist.name,
@@ -579,11 +635,39 @@ impl From<rspotify::model::FullPlaylist> for Playlist {
                 playlist.owner.display_name.unwrap_or_default(),
                 playlist.owner.id,
             ),
-            desc,
+            desc: plain_text_description(&playlist.description.unwrap_or_default()),
             current_folder_id: 0,
             snapshot_id: playlist.snapshot_id,
         }
     }
+}
+
+impl Playlist {
+    /// creates a `Playlist` from a librespot playlist (from Spotify's internal API)
+    pub fn from_librespot(
+        id: PlaylistId<'static>,
+        playlist: &librespot_metadata::Playlist,
+        owner: (String, UserId<'static>),
+    ) -> Self {
+        use base64::Engine as _;
+
+        Self {
+            id,
+            name: playlist.attributes.name.clone(),
+            collaborative: playlist.attributes.is_collaborative,
+            owner,
+            desc: plain_text_description(&playlist.attributes.description),
+            current_folder_id: 0,
+            // the Web API's snapshot ID is the base64-encoded playlist revision
+            snapshot_id: base64::engine::general_purpose::STANDARD.encode(&playlist.revision),
+        }
+    }
+}
+
+/// removes HTML tags and entities from a playlist description
+fn plain_text_description(desc: &str) -> String {
+    let re = regex::Regex::new("(<.*?>|</.*?>)").expect("valid regex");
+    decode_html_entities(&re.replace_all(desc, "")).to_string()
 }
 
 impl std::fmt::Display for Playlist {
