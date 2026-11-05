@@ -98,6 +98,13 @@ impl UIState {
         }
     }
 
+    pub fn search_query(&self) -> &str {
+        match self.popup {
+            Some(PopupState::Search { ref query }) => query,
+            _ => "",
+        }
+    }
+
     /// Get a list of items possibly filtered by a search query if exists a search popup
     pub fn search_filtered_items<'a, T: std::fmt::Display>(&self, items: &'a [T]) -> Vec<&'a T> {
         match self.popup {
