@@ -52,6 +52,16 @@ pub fn handle_key_sequence_for_popup(
         return Ok(false);
     };
 
+    handle_command_for_popup(command, client_pub, state, ui)
+}
+
+/// Handle a command for the current list popup without consulting the configured keymap.
+pub fn handle_command_for_popup(
+    command: Command,
+    client_pub: &flume::Sender<ClientRequest>,
+    state: &SharedState,
+    ui: &mut UIStateGuard,
+) -> Result<bool> {
     match ui.popup.as_ref().context("empty popup")? {
         PopupState::ConfirmAction { .. } => {
             anyhow::bail!("confirm action should be handled before")
@@ -60,8 +70,21 @@ pub fn handle_key_sequence_for_popup(
         PopupState::PlaylistCreate { .. } => {
             anyhow::bail!("create playlist popup should be handled before")
         }
-        PopupState::ActionList(..) => {
-            anyhow::bail!("action list popup should be handled before")
+        PopupState::ActionList(item, ..) => {
+            let n_actions = item.n_actions();
+            handle_command_for_list_popup(
+                command,
+                ui,
+                n_actions,
+                |_, _| {},
+                |ui: &mut UIStateGuard, id: usize| -> Result<()> {
+                    handle_item_action(id, client_pub, state, ui)?;
+                    Ok(())
+                },
+                |ui: &mut UIStateGuard| {
+                    ui.popup = None;
+                },
+            )
         }
         PopupState::ArtistList(_, artists, _) => {
             let n_items = artists.len();
@@ -625,10 +648,20 @@ fn handle_key_sequence_for_confirm_popup(
     ui: &mut UIStateGuard,
     action: ConfirmableAction,
 ) -> Result<bool> {
-    if matches!(
+    let confirmed = matches!(
         key_sequence.keys.as_slice(),
         [Key::None(crossterm::event::KeyCode::Char('y'))]
-    ) {
+    );
+    handle_confirmation(confirmed, client_pub, ui, action)
+}
+
+pub fn handle_confirmation(
+    confirmed: bool,
+    client_pub: &flume::Sender<ClientRequest>,
+    ui: &mut UIStateGuard,
+    action: ConfirmableAction,
+) -> Result<bool> {
+    if confirmed {
         match action {
             ConfirmableAction::DeleteTrackFromPlaylist {
                 playlist_id,

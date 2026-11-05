@@ -139,6 +139,8 @@ fn clean_up(mut terminal: Terminal) -> Result<()> {
 fn render_application(frame: &mut Frame, state: &SharedState, ui: &mut UIStateGuard, rect: Rect) {
     // rendering order: playback window -> shortcut help popup -> other popups -> main layout
 
+    ui.mouse_areas.clear();
+
     // render playback window before other popups and windows to ensure nothing is rendered on top
     // of the playback window, which is to avoid "duplicated images" issue
     // See: https://github.com/aome510/spotify-player/issues/498

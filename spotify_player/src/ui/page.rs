@@ -7,7 +7,7 @@ use chrono_humanize::HumanTime;
 use ratatui::text::Line;
 
 use crate::{
-    state::{Episode, SearchCacheEntry},
+    state::{Episode, MouseArea, MouseTarget, SearchCacheEntry},
     utils::format_duration,
 };
 
@@ -26,6 +26,15 @@ const COMMAND_TABLE_CONSTRAINTS: [Constraint; 3] = [
     Constraint::Percentage(25),
     Constraint::Percentage(50),
 ];
+
+fn table_rows_rect(rect: Rect) -> Rect {
+    Rect::new(
+        rect.x,
+        rect.y.saturating_add(1),
+        rect.width,
+        rect.height.saturating_sub(1),
+    )
+}
 
 // UI codes to render a page.
 // A `render_*_page` function should follow (not strictly) the below steps
@@ -90,6 +99,12 @@ pub fn render_search_page(
         line_input.widget(is_active && focus_state == SearchFocusState::Input),
         search_input_rect,
     );
+    if is_active {
+        ui.mouse_areas.push(MouseArea {
+            rect: search_input_rect,
+            target: MouseTarget::SearchInput,
+        });
+    }
 
     if let Some(status) = status {
         let status_rect = Layout::vertical([
@@ -263,54 +278,118 @@ pub fn render_search_page(
 
     // 4. Render the page's widgets
     // Need mutable access to the list/table states stored inside the page state for rendering.
-    let PageState::Search {
-        state: page_state, ..
-    } = ui.current_page_mut()
-    else {
-        return;
+    let (track_offset, album_offset, artist_offset, playlist_offset, show_offset, episode_offset) = {
+        let PageState::Search {
+            state: page_state, ..
+        } = ui.current_page_mut()
+        else {
+            return;
+        };
+        utils::render_list_window(
+            frame,
+            track_list,
+            track_rect,
+            n_tracks,
+            &mut page_state.track_list,
+        );
+        utils::render_list_window(
+            frame,
+            album_list,
+            album_rect,
+            n_albums,
+            &mut page_state.album_list,
+        );
+        utils::render_list_window(
+            frame,
+            artist_list,
+            artist_rect,
+            n_artists,
+            &mut page_state.artist_list,
+        );
+        utils::render_list_window(
+            frame,
+            playlist_list,
+            playlist_rect,
+            n_playlists,
+            &mut page_state.playlist_list,
+        );
+        utils::render_list_window(
+            frame,
+            show_list,
+            show_rect,
+            n_shows,
+            &mut page_state.show_list,
+        );
+        utils::render_list_window(
+            frame,
+            episode_list,
+            episode_rect,
+            n_episodes,
+            &mut page_state.episode_list,
+        );
+
+        (
+            page_state.track_list.offset(),
+            page_state.album_list.offset(),
+            page_state.artist_list.offset(),
+            page_state.playlist_list.offset(),
+            page_state.show_list.offset(),
+            page_state.episode_list.offset(),
+        )
     };
-    utils::render_list_window(
-        frame,
-        track_list,
-        track_rect,
-        n_tracks,
-        &mut page_state.track_list,
-    );
-    utils::render_list_window(
-        frame,
-        album_list,
-        album_rect,
-        n_albums,
-        &mut page_state.album_list,
-    );
-    utils::render_list_window(
-        frame,
-        artist_list,
-        artist_rect,
-        n_artists,
-        &mut page_state.artist_list,
-    );
-    utils::render_list_window(
-        frame,
-        playlist_list,
-        playlist_rect,
-        n_playlists,
-        &mut page_state.playlist_list,
-    );
-    utils::render_list_window(
-        frame,
-        show_list,
-        show_rect,
-        n_shows,
-        &mut page_state.show_list,
-    );
-    utils::render_list_window(
-        frame,
-        episode_list,
-        episode_rect,
-        n_episodes,
-        &mut page_state.episode_list,
-    );
+
+    if is_active {
+        ui.mouse_areas.extend([
+            MouseArea {
+                rect: track_rect,
+                target: MouseTarget::SearchWindow {
+                    focus: SearchFocusState::Tracks,
+                    first_item: track_offset,
+                    item_count: n_tracks,
+                },
+            },
+            MouseArea {
+                rect: album_rect,
+                target: MouseTarget::SearchWindow {
+                    focus: SearchFocusState::Albums,
+                    first_item: album_offset,
+                    item_count: n_albums,
+                },
+            },
+            MouseArea {
+                rect: artist_rect,
+                target: MouseTarget::SearchWindow {
+                    focus: SearchFocusState::Artists,
+                    first_item: artist_offset,
+                    item_count: n_artists,
+                },
+            },
+            MouseArea {
+                rect: playlist_rect,
+                target: MouseTarget::SearchWindow {
+                    focus: SearchFocusState::Playlists,
+                    first_item: playlist_offset,
+                    item_count: n_playlists,
+                },
+            },
+            MouseArea {
+                rect: show_rect,
+                target: MouseTarget::SearchWindow {
+                    focus: SearchFocusState::Shows,
+                    first_item: show_offset,
+                    item_count: n_shows,
+                },
+            },
+            MouseArea {
+                rect: episode_rect,
+                target: MouseTarget::SearchWindow {
+                    focus: SearchFocusState::Episodes,
+                    first_item: episode_offset,
+                    item_count: n_episodes,
+                },
+            },
+        ]);
+    }
 }
 
 pub fn render_context_page(
@@ -404,7 +483,7 @@ pub fn render_context_page(
                         chunks[1]
                     };
 
-                    render_track_table(
+                    let (first_item, item_count) = render_track_table(
                         frame,
                         rect,
                         is_active,
@@ -414,9 +493,19 @@ pub fn render_context_page(
                         &data,
                         false,
                     );
+                    if is_active {
+                        ui.mouse_areas.push(MouseArea {
+                            rect: table_rows_rect(rect),
+                            target: MouseTarget::ContextWindow {
+                                focus: None,
+                                first_item,
+                                item_count,
+                            },
+                        });
+                    }
                 }
                 Context::Tracks { tracks, .. } | Context::Album { tracks, .. } => {
-                    render_track_table(
+                    let (first_item, item_count) = render_track_table(
                         frame,
                         rect,
                         is_active,
@@ -426,9 +515,19 @@ pub fn render_context_page(
                         &data,
                         false,
                     );
+                    if is_active {
+                        ui.mouse_areas.push(MouseArea {
+                            rect: table_rows_rect(rect),
+                            target: MouseTarget::ContextWindow {
+                                focus: None,
+                                first_item,
+                                item_count,
+                            },
+                        });
+                    }
                 }
                 Context::Show { episodes, .. } => {
-                    render_episode_table(
+                    let (first_item, item_count) = render_episode_table(
                         frame,
                         rect,
                         is_active,
@@ -436,6 +535,16 @@ pub fn render_context_page(
                         ui.search_filtered_items(episodes),
                         ui,
                     );
+                    if is_active {
+                        ui.mouse_areas.push(MouseArea {
+                            rect: table_rows_rect(rect),
+                            target: MouseTarget::ContextWindow {
+                                focus: None,
+                                first_item,
+                                item_count,
+                            },
+                        });
+                    }
                 }
             }
         }
@@ -562,31 +671,68 @@ pub fn render_library_page(
     // 4. Render the page's widgets
     // Render the library page's windows.
     // Will need mutable access to the list/table states stored inside the page state for rendering.
-    let PageState::Library { state: page_state } = ui.current_page_mut() else {
-        return;
+    let (playlist_offset, album_offset, artist_offset) = {
+        let PageState::Library { state: page_state } = ui.current_page_mut() else {
+            return;
+        };
+
+        utils::render_list_window(
+            frame,
+            playlist_list,
+            playlist_rect,
+            n_playlists,
+            &mut page_state.playlist_list,
+        );
+        utils::render_list_window(
+            frame,
+            album_list,
+            album_rect,
+            n_albums,
+            &mut page_state.saved_album_list,
+        );
+        utils::render_list_window(
+            frame,
+            artist_list,
+            artist_rect,
+            n_artists,
+            &mut page_state.followed_artist_list,
+        );
+
+        (
+            page_state.playlist_list.offset(),
+            page_state.saved_album_list.offset(),
+            page_state.followed_artist_list.offset(),
+        )
     };
 
-    utils::render_list_window(
-        frame,
-        playlist_list,
-        playlist_rect,
-        n_playlists,
-        &mut page_state.playlist_list,
-    );
-    utils::render_list_window(
-        frame,
-        album_list,
-        album_rect,
-        n_albums,
-        &mut page_state.saved_album_list,
-    );
-    utils::render_list_window(
-        frame,
-        artist_list,
-        artist_rect,
-        n_artists,
-        &mut page_state.followed_artist_list,
-    );
+    if is_active {
+        ui.mouse_areas.extend([
+            MouseArea {
+                rect: playlist_rect,
+                target: MouseTarget::LibraryWindow {
+                    focus: LibraryFocusState::Playlists,
+                    first_item: playlist_offset,
+                    item_count: n_playlists,
+                },
+            },
+            MouseArea {
+                rect: album_rect,
+                target: MouseTarget::LibraryWindow {
+                    focus: LibraryFocusState::SavedAlbums,
+                    first_item: album_offset,
+                    item_count: n_albums,
+                },
+            },
+            MouseArea {
+                rect: artist_rect,
+                target: MouseTarget::LibraryWindow {
+                    focus: LibraryFocusState::FollowedArtists,
+                    first_item: artist_offset,
+                    item_count: n_artists,
+                },
+            },
+        ]);
+    }
 }
 
 pub fn render_browse_page(
@@ -655,6 +801,17 @@ pub fn render_browse_page(
         return;
     };
     utils::render_list_window(frame, list, rect, len, list_state);
+    let first_item = list_state.offset();
+
+    if is_active {
+        ui.mouse_areas.push(MouseArea {
+            rect,
+            target: MouseTarget::BrowseWindow {
+                first_item,
+                item_count: len,
+            },
+        });
+    }
 }
 
 pub fn render_lyrics_page(
@@ -773,6 +930,10 @@ pub fn render_commands_help_page(frame: &mut Frame, ui: &mut UIStateGuard, rect:
 
     // 2. Construct the page's layout
     let rect = construct_and_render_block("Commands", &ui.theme, Borders::ALL, frame, rect);
+    ui.mouse_areas.push(MouseArea {
+        rect,
+        target: MouseTarget::ScrollablePage,
+    });
 
     // 3. Construct the page's widget
     let help_table = Table::new(
@@ -862,6 +1023,10 @@ pub fn render_queue_page(
 
     // 2. Construct the page's layout
     let rect = construct_and_render_block("Queue", &ui.theme, Borders::ALL, frame, rect);
+    ui.mouse_areas.push(MouseArea {
+        rect,
+        target: MouseTarget::ScrollablePage,
+    });
 
     // 3. Construct the page's widget
     let queue_table = Table::new(
@@ -1016,7 +1181,7 @@ fn render_artist_context_page_windows(
     };
 
     // 4. Render the page's widgets
-    render_track_table(
+    let (top_tracks_offset, n_top_tracks) = render_track_table(
         frame,
         top_tracks_rect,
         is_active && focus_state == ArtistFocusState::TopTracks,
@@ -1027,7 +1192,7 @@ fn render_artist_context_page_windows(
         false,
     );
 
-    render_track_table(
+    let (liked_tracks_offset, n_liked_tracks) = render_track_table(
         frame,
         liked_songs_rect,
         is_active && focus_state == ArtistFocusState::LikedSongs,
@@ -1038,27 +1203,68 @@ fn render_artist_context_page_windows(
         true,
     );
 
-    let PageState::Context {
-        state:
-            Some(ContextPageUIState::Artist {
-                album_table,
-                related_artist_list,
-                ..
-            }),
-        ..
-    } = ui.current_page_mut()
-    else {
-        return;
+    let (albums_offset, related_artists_offset) = {
+        let PageState::Context {
+            state:
+                Some(ContextPageUIState::Artist {
+                    album_table,
+                    related_artist_list,
+                    ..
+                }),
+            ..
+        } = ui.current_page_mut()
+        else {
+            return;
+        };
+
+        utils::render_table_window(frame, albums_table, albums_rect, n_albums, album_table);
+        utils::render_list_window(
+            frame,
+            artist_list,
+            related_artists_rect,
+            n_artists,
+            related_artist_list,
+        );
+
+        (album_table.offset(), related_artist_list.offset())
     };
 
-    utils::render_table_window(frame, albums_table, albums_rect, n_albums, album_table);
-    utils::render_list_window(
-        frame,
-        artist_list,
-        related_artists_rect,
-        n_artists,
-        related_artist_list,
-    );
+    if is_active {
+        ui.mouse_areas.extend([
+            MouseArea {
+                rect: table_rows_rect(top_tracks_rect),
+                target: MouseTarget::ContextWindow {
+                    focus: Some(ArtistFocusState::TopTracks),
+                    first_item: top_tracks_offset,
+                    item_count: n_top_tracks,
+                },
+            },
+            MouseArea {
+                rect: table_rows_rect(liked_songs_rect),
+                target: MouseTarget::ContextWindow {
+                    focus: Some(ArtistFocusState::LikedSongs),
+                    first_item: liked_tracks_offset,
+                    item_count: n_liked_tracks,
+                },
+            },
+            MouseArea {
+                rect: table_rows_rect(albums_rect),
+                target: MouseTarget::ContextWindow {
+                    focus: Some(ArtistFocusState::Albums),
+                    first_item: albums_offset,
+                    item_count: n_albums,
+                },
+            },
+            MouseArea {
+                rect: related_artists_rect,
+                target: MouseTarget::ContextWindow {
+                    focus: Some(ArtistFocusState::RelatedArtists),
+                    first_item: related_artists_offset,
+                    item_count: n_artists,
+                },
+            },
+        ]);
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1071,7 +1277,7 @@ fn render_track_table(
     ui: &mut UIStateGuard,
     data: &DataReadGuard,
     is_artist_liked_songs: bool,
-) {
+) -> (usize, usize) {
     let configs = config::get_config();
     // get the current playing track's URI to decorate such track (if exists) in the track table
     let mut playing_track_uri = String::new();
@@ -1201,7 +1407,7 @@ fn render_track_table(
     .column_spacing(2)
     .row_highlight_style(ui.theme.selection(is_active));
 
-    if let PageState::Context {
+    let offset = if let PageState::Context {
         state: Some(state), ..
     } = ui.current_page_mut()
     {
@@ -1225,7 +1431,12 @@ fn render_track_table(
             }
         };
         utils::render_table_window(frame, track_table, rect, n_tracks, playable_table_state);
-    }
+        playable_table_state.offset()
+    } else {
+        0
+    };
+
+    (offset, n_tracks)
 }
 
 fn render_episode_table(
@@ -1235,7 +1446,7 @@ fn render_episode_table(
     state: &SharedState,
     episodes: Vec<&Episode>,
     ui: &mut UIStateGuard,
-) {
+) -> (usize, usize) {
     let configs = config::get_config();
     // get the current playing episode's URI to decorate such episode (if exists) in the episode table
     let mut playing_episode_uri = String::new();
@@ -1312,7 +1523,7 @@ fn render_episode_table(
     .column_spacing(2)
     .row_highlight_style(ui.theme.selection(is_active));
 
-    if let PageState::Context {
+    let offset = if let PageState::Context {
         state: Some(state), ..
     } = ui.current_page_mut()
     {
@@ -1321,11 +1532,20 @@ fn render_episode_table(
             s => unreachable!("unexpected state: {s:?}"),
         };
         utils::render_table_window(frame, episode_table, rect, n_episodes, playable_table_state);
-    }
+        playable_table_state.offset()
+    } else {
+        0
+    };
+
+    (offset, n_episodes)
 }
 
 pub fn render_logs_page(frame: &mut Frame, state: &SharedState, ui: &mut UIStateGuard, rect: Rect) {
     let rect = construct_and_render_block("Logs", &ui.theme, Borders::ALL, frame, rect);
+    ui.mouse_areas.push(MouseArea {
+        rect,
+        target: MouseTarget::ScrollablePage,
+    });
 
     let logs = state.logs.lock();
     let scroll_offset = match ui.current_page_mut() {
