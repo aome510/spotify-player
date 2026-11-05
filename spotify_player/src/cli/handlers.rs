@@ -2,8 +2,8 @@ use crate::{auth::AuthConfig, client};
 
 use super::{
     config, init_cli, start_socket, AlbumId, Command, ContextType, EditAction, GetRequest,
-    IdOrName, ItemType, Key, PlaylistCommand, PlaylistId, Request, Response, TrackId,
-    MAX_REQUEST_SIZE,
+    IdOrName, ItemType, Key, KeyRequest, PlaylistCommand, PlaylistId, Request, Response, TimeRange,
+    TrackId, MAX_REQUEST_SIZE,
 };
 use anyhow::{Context, Result};
 use clap::{ArgMatches, Id};
@@ -56,7 +56,15 @@ fn handle_get_subcommand(args: &ArgMatches) -> Request {
                 .get_one::<Key>("key")
                 .expect("key is required")
                 .to_owned();
-            Request::Get(GetRequest::Key(key))
+            let time_range = args.get_one::<TimeRange>("time-range").copied();
+            let after = args.get_one::<i64>("after").copied();
+            let before = args.get_one::<i64>("before").copied();
+            Request::Get(GetRequest::Key(KeyRequest {
+                key,
+                time_range,
+                after,
+                before,
+            }))
         }
         "item" => {
             let item_type = args
