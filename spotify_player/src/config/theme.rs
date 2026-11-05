@@ -98,6 +98,7 @@ struct ComponentStyle {
     like: Option<Style>,
     lyrics_played: Option<Style>,
     lyrics_playing: Option<Style>,
+    error: Option<Style>,
     #[cfg(feature = "streaming")]
     visualization: Option<VisualizationStyle>,
 }
@@ -218,6 +219,18 @@ impl Theme {
             .block_title
             .as_ref()
             .unwrap_or(&Style::default().fg(StyleColor::Magenta))
+            .style(&self.palette)
+    }
+
+    pub fn error(&self) -> style::Style {
+        self.component_style
+            .error
+            .as_ref()
+            .unwrap_or(
+                &Style::default()
+                    .fg(StyleColor::Red)
+                    .modifiers([StyleModifier::Bold]),
+            )
             .style(&self.palette)
     }
 
