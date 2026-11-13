@@ -29,6 +29,28 @@ pub fn init_get_subcommand() -> Command {
         ))
 }
 
+fn add_playlist_id_or_name_group(cmd: Command) -> Command {
+    cmd.arg(
+        Arg::new("playlist_id")
+            .long("playlist-id")
+            .short('p')
+            .help("Playlist ID")
+            .value_parser(clap::builder::NonEmptyStringValueParser::new()),
+    )
+    .arg(
+        Arg::new("playlist_name")
+            .long("playlist-name")
+            .short('P')
+            .help("User's playlist name")
+            .value_parser(clap::builder::NonEmptyStringValueParser::new()),
+    )
+    .group(
+        ArgGroup::new("playlist_id_or_name")
+            .args(["playlist_id", "playlist_name"])
+            .required(true),
+    )
+}
+
 fn init_playback_start_subcommand() -> Command {
     Command::new("start")
         .about("Start a new playback")
@@ -213,30 +235,36 @@ pub fn init_playlist_subcommand() -> Command {
                 .long("delete")
                 .action(clap::ArgAction::SetTrue)
                 .help("Deletes any previously imported tracks that are no longer in an imported playlist since last import.")))
-        .subcommand(Command::new("edit").about("Add or remove tracks or albums from a playlist.")
+        .subcommand(add_playlist_id_or_name_group(Command::new("edit").about("Add or remove tracks or albums from a playlist.")
             .arg(Arg::new("action")
                 .help("Action to perform")
                 .required(true)
                 .value_parser(EnumValueParser::<EditAction>::new()))
-            .arg(Arg::new("playlist_id")
-                .help("Playlist ID")
-                .required(true)
-                .value_parser(clap::builder::NonEmptyStringValueParser::new()))
             .arg(Arg::new("track_id")
                 .long("track-id")
                 .short('t')
                 .help("Track ID to add or remove")
+                .value_parser(clap::builder::NonEmptyStringValueParser::new()))
+            .arg(Arg::new("track_name")
+                .long("track-name")
+                .short('T')
+                .help("Track name to add or remove")
                 .value_parser(clap::builder::NonEmptyStringValueParser::new()))
             .arg(Arg::new("album_id")
                 .long("album-id")
                 .short('a')
                 .help("Album ID to add or remove")
                 .value_parser(clap::builder::NonEmptyStringValueParser::new()))
+            .arg(Arg::new("album_name")
+                .long("album-name")
+                .short('A')
+                .help("Album name to add or remove")
+                .value_parser(clap::builder::NonEmptyStringValueParser::new()))
             .group(
                 ArgGroup::new("content_id")
-                    .args(["track_id", "album_id"])
-                    .required(true)
-            ))
+                    .args(["track_id", "track_name", "album_id", "album_name"])
+                    .required(true))
+        ))
 }
 
 pub fn init_print_features_command() -> Command {
