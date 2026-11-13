@@ -53,6 +53,7 @@ spotify_player -o device.volume=80 -o theme=dracula
 | `page_size_in_rows`               | Number of rows per page for navigation.                                                             | `20`                                                                   |
 | `enable_media_control`            | Enable media control support (requires `media-control` feature).                                    | `true` (Linux), `false` (macOS/Windows)                                |
 | `enable_streaming`                | Enable streaming (`Always`, `Never`, or `DaemonOnly`).                                              | `Always`                                                               |
+| `load_liked_tracks_on_startup`    | Load all liked tracks at startup. If `false`, they are loaded when the liked tracks page is opened (useful to avoid rate limits with large libraries). | `true` |
 | `enable_audio_visualization`      | Show a real-time frequency bar chart in the playback window (requires `streaming` feature).         | `false`                                                                |
 | `enable_notify`                   | Enable notifications (requires `notify` feature).                                                   | `true`                                                                 |
 | `enable_cover_image_cache`        | Cache album cover images.                                                                           | `true`                                                                 |

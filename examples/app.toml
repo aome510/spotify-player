@@ -16,6 +16,7 @@ api_rate_limit_retries = 2
 page_size_in_rows = 20
 enable_media_control = false
 enable_streaming = "Always"
+load_liked_tracks_on_startup = true
 enable_notify = true
 enable_cover_image_cache = true
 notify_streaming_only = false

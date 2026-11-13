@@ -117,6 +117,8 @@ pub struct AppConfig {
 
     pub enable_streaming: StreamingType,
 
+    pub load_liked_tracks_on_startup: bool,
+
     #[cfg(feature = "streaming")]
     pub enable_audio_visualization: bool,
 
@@ -385,6 +387,8 @@ impl Default for AppConfig {
 
             enable_streaming: StreamingType::Always,
 
+            load_liked_tracks_on_startup: true,
+
             #[cfg(feature = "streaming")]
             enable_audio_visualization: false,
 
@@ -569,4 +573,18 @@ pub fn apply_config_override(config: &mut AppConfig, key: &str, value: &str) -> 
     *config = config_value.try_into()?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_load_liked_tracks_on_startup_option() {
+        let mut config = AppConfig::default();
+        assert!(config.load_liked_tracks_on_startup);
+
+        apply_config_override(&mut config, "load_liked_tracks_on_startup", "false").unwrap();
+        assert!(!config.load_liked_tracks_on_startup);
+    }
 }
