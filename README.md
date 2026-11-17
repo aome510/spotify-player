@@ -409,7 +409,16 @@ To enable [fuzzy search](https://en.wikipedia.org/wiki/Approximate_string_matchi
 - `connect`: Connect to a Spotify device
 - `like`: Like currently playing track
 - `authenticate`: Authenticate the application
-- `playlist`: Playlist editing (new, delete, import, fork, etc)
+- `playlist`: Playlist editing (new, delete, import, fork, edit, etc)
+
+Example: add a track or an album to a playlist, each given by ID or name (`delete` removes it):
+
+```sh
+spotify_player playlist edit add --playlist-name "My playlist" --track-name "The Wolven Storm"
+spotify_player playlist edit add --playlist-id <playlist-id> --album-id <album-id>
+```
+
+Playlist names are matched exactly against the user's own playlists. Track and album names take the first search result.
 
 For more details, run `spotify_player -h` or `spotify_player {command} -h`.
 
