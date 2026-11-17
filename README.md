@@ -249,6 +249,8 @@ When a custom `client_id` is configured, `spotify-player` sends most Web API req
 
 The custom client uses no request middleware. The ncspot client stores `Retry-After` durations and retries rate-limited GET requests up to two times by default; mutation requests are never delayed or retried by the middleware. Configure the ncspot retry count with `api_rate_limit_retries`; see the [configuration documentation](https://github.com/aome510/spotify-player/blob/master/docs/config.md) for details.
 
+Playlist contents, the library's playlist list and artist pages (top tracks and albums) are loaded through the librespot session instead of the Web API, because the Web API no longer returns them for newly registered applications. These requests don't use either client ID's quota. If they fail, the Web API is used as before. Related artists are not available this way, so artist pages loaded through librespot show none.
+
 ### Using a custom client ID
 
 Use a custom client ID to avoid competing for the shared ncspot client's rate limit. Most requests will be attributed to your own Spotify application instead. Newly registered applications use restricted default quota mode, so endpoints unavailable to the custom client transparently fall back to ncspot.
