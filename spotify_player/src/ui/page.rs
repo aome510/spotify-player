@@ -173,9 +173,7 @@ pub fn render_search_page(
 
     // 3. Construct the page's widgets
     let (track_list, n_tracks) = {
-        let track_items = search_results
-            .map(|s| search_items(&s.tracks))
-            .unwrap_or_default();
+        let track_items = search_results.map_or_default(|s| search_items(&s.tracks));
 
         let is_active = is_active && focus_state == SearchFocusState::Tracks;
         let selected_index = if is_active {
@@ -188,9 +186,7 @@ pub fn render_search_page(
     };
 
     let (album_list, n_albums) = {
-        let album_items = search_results
-            .map(|s| search_items(&s.albums))
-            .unwrap_or_default();
+        let album_items = search_results.map_or_default(|s| search_items(&s.albums));
 
         let is_active = is_active && focus_state == SearchFocusState::Albums;
         let selected_index = if is_active {
@@ -203,9 +199,7 @@ pub fn render_search_page(
     };
 
     let (artist_list, n_artists) = {
-        let artist_items = search_results
-            .map(|s| search_items(&s.artists))
-            .unwrap_or_default();
+        let artist_items = search_results.map_or_default(|s| search_items(&s.artists));
 
         let is_active = is_active && focus_state == SearchFocusState::Artists;
         let selected_index = if is_active {
@@ -218,9 +212,7 @@ pub fn render_search_page(
     };
 
     let (playlist_list, n_playlists) = {
-        let playlist_items = search_results
-            .map(|s| search_items(&s.playlists))
-            .unwrap_or_default();
+        let playlist_items = search_results.map_or_default(|s| search_items(&s.playlists));
 
         let is_active = is_active && focus_state == SearchFocusState::Playlists;
         let selected_index = if is_active {
@@ -233,9 +225,7 @@ pub fn render_search_page(
     };
 
     let (show_list, n_shows) = {
-        let show_items = search_results
-            .map(|s| search_items(&s.shows))
-            .unwrap_or_default();
+        let show_items = search_results.map_or_default(|s| search_items(&s.shows));
         let is_active = is_active && focus_state == SearchFocusState::Shows;
         let selected_index = if is_active {
             ui.current_page_mut().selected()
@@ -247,9 +237,7 @@ pub fn render_search_page(
     };
 
     let (episode_list, n_episodes) = {
-        let episode_items = search_results
-            .map(|s| search_items(&s.episodes))
-            .unwrap_or_default();
+        let episode_items = search_results.map_or_default(|s| search_items(&s.episodes));
 
         let is_active = is_active && focus_state == SearchFocusState::Episodes;
         let selected_index = if is_active {
@@ -1078,11 +1066,7 @@ fn render_track_table(
     let mut playing_id = "";
     if let Some(ref playback) = state.player.read().playback {
         if let Some(rspotify::model::PlayableItem::Track(ref track)) = playback.item {
-            playing_track_uri = track
-                .id
-                .as_ref()
-                .map(rspotify::prelude::Id::uri)
-                .unwrap_or_default();
+            playing_track_uri = track.id.as_ref().map_or_default(rspotify::prelude::Id::uri);
 
             playing_id = if playback.is_playing {
                 &configs.app_config.play_icon

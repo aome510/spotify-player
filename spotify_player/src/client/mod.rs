@@ -123,7 +123,8 @@ pub fn new_api_client() -> Result<WebApiClient> {
         )?;
         let client = rspotify::AuthCodePkceSpotify::with_config(
             rspotify::Credentials { id, secret: None },
-            build_oauth(configs.app_config.login_redirect_uri.clone()),
+            // ncspot's app registers only this URI, whatever `login_redirect_uri` says.
+            build_oauth(auth::NCSPOT_REDIRECT_URI.to_string()),
             config,
         )
         .with_middleware(middleware);
