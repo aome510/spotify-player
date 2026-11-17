@@ -95,6 +95,11 @@ fn handle_command_for_library_page(
         return Ok(true);
     }
 
+    if command == Command::SearchRegex {
+        ui.new_regex_search_popup();
+        return Ok(true);
+    }
+
     let (focus_state, folder_id) = match ui.current_page() {
         PageState::Library { state } => (state.focus, state.playlist_folder_id),
         _ => anyhow::bail!("expect a library page state"),

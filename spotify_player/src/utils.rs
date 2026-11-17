@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use regex::Regex;
 
 /// formats a time duration into a "{minutes}:{seconds}" format
 pub fn format_duration(duration: &chrono::Duration) -> String {
@@ -94,4 +95,24 @@ pub fn filtered_items_from_query<'a, T: std::fmt::Display>(
             }
         })
         .collect::<Vec<_>>()
+}
+
+pub fn filtered_items_from_regex_pattern<'a, T: std::fmt::Display>(
+    pattern: &str,
+    items: &'a [T],
+) -> Vec<&'a T> {
+    let pattern = pattern.to_lowercase();
+    let pattern = pattern.as_str();
+    let re = Regex::new(& pattern);
+    match re {
+        Err( .. ) => { Vec::new() },
+        Ok(re) => { 
+            items
+                .iter()
+                .filter(|t| {
+                    let t = t.to_string().to_lowercase();
+                    re.is_match(&t)
+                }).collect::<Vec<_>>()
+        }
+    }
 }
