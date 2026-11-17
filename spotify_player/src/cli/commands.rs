@@ -3,7 +3,7 @@ use clap_complete::Shell;
 
 use crate::cli::EditAction;
 
-use super::{ContextType, ItemType, Key};
+use super::{ContextType, ItemType, Key, TimeRange};
 
 pub fn init_connect_subcommand() -> Command {
     add_id_or_name_group(Command::new("connect").about("Connect to a Spotify device"))
@@ -14,11 +14,32 @@ pub fn init_get_subcommand() -> Command {
         .about("Get Spotify data")
         .subcommand_required(true)
         .subcommand(
-            Command::new("key").about("Get data by key").arg(
-                Arg::new("key")
-                    .value_parser(EnumValueParser::<Key>::new())
-                    .required(true),
-            ),
+            Command::new("key")
+                .about("Get data by key")
+                .arg(
+                    Arg::new("key")
+                        .value_parser(EnumValueParser::<Key>::new())
+                        .required(true),
+                )
+                .arg(
+                    Arg::new("time-range")
+                        .long("time-range")
+                        .value_parser(EnumValueParser::<TimeRange>::new())
+                        .help("Time range for user-top-tracks and user-top-artists (default: medium_term)"),
+                )
+                .arg(
+                    Arg::new("after")
+                        .long("after")
+                        .value_parser(value_parser!(i64))
+                        .conflicts_with("before")
+                        .help("Only for user-recently-played: Unix-ms timestamp; return plays after it"),
+                )
+                .arg(
+                    Arg::new("before")
+                        .long("before")
+                        .value_parser(value_parser!(i64))
+                        .help("Only for user-recently-played: Unix-ms timestamp; return plays before it"),
+                ),
         )
         .subcommand(add_id_or_name_group(
             Command::new("item").about("Get a Spotify item's data").arg(
