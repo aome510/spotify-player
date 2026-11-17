@@ -265,8 +265,7 @@ fn handle_playlist_subcommand(args: &ArgMatches) -> Result<Request> {
 
             let description = args
                 .get_one::<String>("description")
-                .map(std::borrow::ToOwned::to_owned)
-                .unwrap_or_default();
+                .map_or_default(std::borrow::ToOwned::to_owned);
 
             let public = args.get_flag("public");
             let collab = args.get_flag("collab");

@@ -260,9 +260,7 @@ fn handle_key_sequence_for_search_page(
     match focus_state {
         SearchFocusState::Input => anyhow::bail!("user's search input should be handled before"),
         SearchFocusState::Tracks => {
-            let tracks = search_results
-                .map(|s| s.tracks.iter().collect::<Vec<_>>())
-                .unwrap_or_default();
+            let tracks = search_results.map_or_default(|s| s.tracks.iter().collect::<Vec<_>>());
 
             match found_keymap {
                 CommandOrAction::Command(command) => window::handle_command_for_track_list_window(
@@ -275,9 +273,7 @@ fn handle_key_sequence_for_search_page(
             }
         }
         SearchFocusState::Artists => {
-            let artists = search_results
-                .map(|s| s.artists.iter().collect::<Vec<_>>())
-                .unwrap_or_default();
+            let artists = search_results.map_or_default(|s| s.artists.iter().collect::<Vec<_>>());
 
             match found_keymap {
                 CommandOrAction::Command(command) => Ok(
@@ -290,9 +286,7 @@ fn handle_key_sequence_for_search_page(
             }
         }
         SearchFocusState::Albums => {
-            let albums = search_results
-                .map(|s| s.albums.iter().collect::<Vec<_>>())
-                .unwrap_or_default();
+            let albums = search_results.map_or_default(|s| s.albums.iter().collect::<Vec<_>>());
 
             match found_keymap {
                 CommandOrAction::Command(command) => window::handle_command_for_album_list_window(
@@ -305,14 +299,12 @@ fn handle_key_sequence_for_search_page(
             }
         }
         SearchFocusState::Playlists => {
-            let playlists = search_results
-                .map(|s| {
-                    s.playlists
-                        .iter()
-                        .map(|p| PlaylistFolderItem::Playlist(p.clone()))
-                        .collect::<Vec<_>>()
-                })
-                .unwrap_or_default();
+            let playlists = search_results.map_or_default(|s| {
+                s.playlists
+                    .iter()
+                    .map(|p| PlaylistFolderItem::Playlist(p.clone()))
+                    .collect::<Vec<_>>()
+            });
             let playlist_refs = playlists.iter().collect::<Vec<_>>();
 
             match found_keymap {
@@ -337,9 +329,7 @@ fn handle_key_sequence_for_search_page(
             }
         }
         SearchFocusState::Shows => {
-            let shows = search_results
-                .map(|s| s.shows.iter().collect::<Vec<_>>())
-                .unwrap_or_default();
+            let shows = search_results.map_or_default(|s| s.shows.iter().collect::<Vec<_>>());
 
             match found_keymap {
                 CommandOrAction::Command(command) => Ok(
@@ -490,14 +480,12 @@ fn handle_command_for_browse_page(
                 .browse
                 .categories
                 .as_deref()
-                .map(|categories| ui.search_filtered_items(categories).len())
-                .unwrap_or_default(),
+                .map_or_default(|categories| ui.search_filtered_items(categories).len()),
             BrowsePageUIState::CategoryPlaylistList { category, .. } => data
                 .browse
                 .category_playlists
                 .get(&category.id)
-                .map(|v| ui.search_filtered_items(v).len())
-                .unwrap_or_default(),
+                .map_or_default(|v| ui.search_filtered_items(v).len()),
         },
         _ => anyhow::bail!("expect a browse page state"),
     };

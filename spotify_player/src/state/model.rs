@@ -340,10 +340,7 @@ impl Track {
 
     /// gets the track's album information
     pub fn album_info(&self) -> String {
-        self.album
-            .as_ref()
-            .map(|a| a.name.clone())
-            .unwrap_or_default()
+        self.album.as_ref().map_or_default(|a| a.name.clone())
     }
 
     /// gets the track's name, including an explicit label
@@ -399,7 +396,7 @@ impl Track {
                 album: Album::try_from_simplified_album(track.album),
                 duration: track.duration.to_std().expect("valid chrono duration"),
                 explicit: track.explicit,
-                added_at: added_at.map(|t| t.timestamp() as u64).unwrap_or_default(),
+                added_at: added_at.map_or_default(|t| t.timestamp() as u64),
             })
         } else {
             None
