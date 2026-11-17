@@ -24,12 +24,60 @@ use tracing_subscriber::util::SubscriberInitExt;
 
 use crate::config::apply_config_override;
 
+struct UiThreadSupervisor {
+    state: state::SharedState,
+    thread: Option<std::thread::JoinHandle<Result<()>>>,
+}
+
+impl UiThreadSupervisor {
+    fn new(state: state::SharedState, thread: std::thread::JoinHandle<Result<()>>) -> Self {
+        Self {
+            state,
+            thread: Some(thread),
+        }
+    }
+
+    fn join(mut self) -> Result<()> {
+        join_ui_thread(self.thread.take().expect("UI thread is available"))
+    }
+}
+
+impl Drop for UiThreadSupervisor {
+    fn drop(&mut self) {
+        self.state.ui.lock().is_running = false;
+        if let Some(thread) = self.thread.take() {
+            if let Err(err) = join_ui_thread(thread) {
+                tracing::error!("Failed while shutting down the UI thread: {err:#}");
+            }
+        }
+    }
+}
+
+fn install_panic_hook(backtrace_file: Option<std::fs::File>) {
+    let backtrace_file = backtrace_file.map(std::sync::Mutex::new);
+    let previous_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        ui::handle_panic();
+
+        if let Some(backtrace_file) = backtrace_file.as_ref() {
+            if let Ok(mut file) = backtrace_file.lock() {
+                let backtrace = backtrace::Backtrace::new();
+                let _ = writeln!(&mut file, "Got a panic: {info:#?}\n");
+                let _ = writeln!(&mut file, "Stack backtrace:\n{backtrace:?}");
+            }
+        }
+
+        previous_hook(info);
+    }));
+}
+
 fn init_logging(
     log_folder: &std::path::Path,
     log_buffer: Arc<Mutex<VecDeque<String>>>,
 ) -> Result<()> {
     if std::env::var_os("RUST_LOG").is_some_and(|x| x == "off") {
         // Don't create log files if logging is disabled.
+        install_panic_hook(None);
         return Ok(());
     }
 
@@ -64,13 +112,7 @@ fn init_logging(
     // initialize the application's panic backtrace
     let backtrace_file = std::fs::File::create(log_folder.join(format!("{log_prefix}.backtrace")))
         .context("failed to create backtrace file")?;
-    let backtrace_file = std::sync::Mutex::new(backtrace_file);
-    std::panic::set_hook(Box::new(move |info| {
-        let mut file = backtrace_file.lock().unwrap();
-        let backtrace = backtrace::Backtrace::new();
-        writeln!(&mut file, "Got a panic: {info:#?}\n").unwrap();
-        writeln!(&mut file, "Stack backtrace:\n{backtrace:?}").unwrap();
-    }));
+    install_panic_hook(Some(backtrace_file));
 
     Ok(())
 }
@@ -165,7 +207,9 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
             }
         })?;
 
-    if !state.is_daemon {
+    let ui_thread = if state.is_daemon {
+        None
+    } else {
         #[cfg(feature = "image")]
         ui::init_image_picker(state).context("initialize image picker")?;
         let terminal = ui::init_terminal().context("initialize terminal")?;
@@ -182,11 +226,22 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
             })?;
 
         // application UI task
-        std::thread::Builder::new().name("ui".to_string()).spawn({
+        let ui_thread = std::thread::Builder::new().name("ui".to_string()).spawn({
             let state = state.clone();
-            move || ui::run(&state, terminal)
+            move || {
+                let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    ui::run(&state, terminal)
+                }));
+                state.ui.lock().is_running = false;
+
+                match result {
+                    Ok(result) => result,
+                    Err(payload) => std::panic::resume_unwind(payload),
+                }
+            }
         })?;
-    }
+        Some(UiThreadSupervisor::new(state.clone(), ui_thread))
+    };
 
     #[cfg(feature = "media-control")]
     if config::get_config().app_config.enable_media_control {
@@ -213,14 +268,44 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
             // control events. The below code will create an invisible window on startup
             // to listen to such events.
             let event_loop = winit::event_loop::EventLoop::new()?;
+            let state = state.clone();
             #[allow(deprecated)]
-            event_loop.run(move |_, _| {})?;
+            event_loop.run(move |_, event_loop| {
+                event_loop.set_control_flow(winit::event_loop::ControlFlow::WaitUntil(
+                    std::time::Instant::now() + std::time::Duration::from_millis(100),
+                ));
+                if !state.ui.lock().is_running {
+                    event_loop.exit();
+                }
+            })?;
         }
     }
 
-    // infinite loop to keep the main thread alive
+    if let Some(ui_thread) = ui_thread {
+        return ui_thread.join();
+    }
+
+    // Keep daemon mode alive while its background tasks are healthy.
     loop {
+        if ui::application_panicked() {
+            anyhow::bail!("an application thread panicked");
+        }
         std::thread::sleep(std::time::Duration::from_secs(1));
+    }
+}
+
+fn panic_payload_message(payload: &(dyn std::any::Any + Send)) -> &str {
+    payload
+        .downcast_ref::<&str>()
+        .copied()
+        .or_else(|| payload.downcast_ref::<String>().map(String::as_str))
+        .unwrap_or("unknown panic payload")
+}
+
+fn join_ui_thread(ui_thread: std::thread::JoinHandle<Result<()>>) -> Result<()> {
+    match ui_thread.join() {
+        Ok(result) => result.context("application UI failed"),
+        Err(payload) => anyhow::bail!("UI thread panicked: {}", panic_payload_message(&*payload)),
     }
 }
 
@@ -321,5 +406,21 @@ fn main() -> Result<()> {
             start_app(&state)
         }
         Some((cmd, args)) => cli::handle_cli_subcommand(cmd, args),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::join_ui_thread;
+
+    #[test]
+    fn ui_thread_panic_is_reported_as_an_error() {
+        let ui_thread = std::thread::spawn(|| -> anyhow::Result<()> {
+            panic!("injected UI failure");
+        });
+
+        let err = join_ui_thread(ui_thread).unwrap_err();
+
+        assert!(err.to_string().contains("injected UI failure"));
     }
 }
