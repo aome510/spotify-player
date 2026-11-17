@@ -210,6 +210,14 @@ impl Command {
     }
 }
 
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
+pub enum VolumeCtrl {
+    Log,
+    Cubic,
+    Linear,
+}
+config_parser_impl!(VolumeCtrl);
+
 #[derive(Debug, Deserialize, Serialize, ConfigParse, Clone)]
 /// Application device configurations
 pub struct DeviceConfig {
@@ -219,6 +227,9 @@ pub struct DeviceConfig {
     pub bitrate: u16,
     pub audio_cache: bool,
     pub normalization: bool,
+    pub normalization_pregain: f64,
+    pub volume_ctrl: VolumeCtrl,
+    pub volume_range: f64,
     pub autoplay: bool,
 }
 
@@ -424,6 +435,9 @@ impl Default for DeviceConfig {
             bitrate: 320,
             audio_cache: false,
             normalization: false,
+            normalization_pregain: 0.0,
+            volume_ctrl: VolumeCtrl::Log,
+            volume_range: 60.0,
             autoplay: false,
         }
     }
@@ -438,6 +452,36 @@ impl Default for LayoutConfig {
             },
             playback_window_position: Position::Top,
             playback_window_height: 6,
+        }
+    }
+}
+
+impl DeviceConfig {
+    pub fn check_values(&self) -> Result<()> {
+        if self.volume_ctrl != VolumeCtrl::Linear
+            && !(self.volume_range > 0.0 && self.volume_range <= 100.0)
+        {
+            anyhow::bail!(
+                "device.volume_range must be in (0, 100] dB, got {}",
+                self.volume_range
+            );
+        }
+        if !(-10.0..=10.0).contains(&self.normalization_pregain) {
+            anyhow::bail!(
+                "device.normalization_pregain must be in [-10, 10] dB, got {}",
+                self.normalization_pregain
+            );
+        }
+        Ok(())
+    }
+
+    #[cfg(feature = "streaming")]
+    pub fn mixer_volume_ctrl(&self) -> librespot_playback::config::VolumeCtrl {
+        use librespot_playback::config::VolumeCtrl as Mixer;
+        match self.volume_ctrl {
+            VolumeCtrl::Log => Mixer::Log(self.volume_range),
+            VolumeCtrl::Cubic => Mixer::Cubic(self.volume_range),
+            VolumeCtrl::Linear => Mixer::Linear,
         }
     }
 }
@@ -459,6 +503,7 @@ impl AppConfig {
         }
 
         config.layout.check_values()?;
+        config.device.check_values()?;
         Ok(config)
     }
 
@@ -569,4 +614,52 @@ pub fn apply_config_override(config: &mut AppConfig, key: &str, value: &str) -> 
     *config = config_value.try_into()?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn device(
+        volume_ctrl: VolumeCtrl,
+        volume_range: f64,
+        normalization_pregain: f64,
+    ) -> DeviceConfig {
+        DeviceConfig {
+            volume_ctrl,
+            volume_range,
+            normalization_pregain,
+            ..DeviceConfig::default()
+        }
+    }
+
+    #[test]
+    fn device_check_values_rejects_out_of_range_values() {
+        assert!(DeviceConfig::default().check_values().is_ok());
+        assert!(device(VolumeCtrl::Cubic, 100.0, 10.0)
+            .check_values()
+            .is_ok());
+        assert!(device(VolumeCtrl::Linear, 0.0, 0.0).check_values().is_ok());
+        assert!(device(VolumeCtrl::Cubic, 0.0, 0.0).check_values().is_err());
+        assert!(device(VolumeCtrl::Log, f64::NAN, 0.0)
+            .check_values()
+            .is_err());
+        assert!(device(VolumeCtrl::Log, 60.0, 10.5).check_values().is_err());
+    }
+
+    #[test]
+    fn device_volume_ctrl_override_must_name_a_curve() {
+        let mut config = AppConfig::default();
+        apply_config_override(&mut config, "device.volume_ctrl", "Cubic").unwrap();
+        assert_eq!(config.device.volume_ctrl, VolumeCtrl::Cubic);
+        assert!(apply_config_override(&mut config, "device.volume_ctrl", "Cubc").is_err());
+    }
+
+    #[cfg(feature = "streaming")]
+    #[test]
+    fn default_device_keeps_librespot_default_curve() {
+        use librespot_playback::config::VolumeCtrl as Mixer;
+        let ctrl = DeviceConfig::default().mixer_volume_ctrl();
+        assert!(matches!(ctrl, Mixer::Log(r) if r == 60.0));
+    }
 }

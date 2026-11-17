@@ -176,8 +176,14 @@ pub async fn new_connection(
 
     tracing::info!("Application's connect configurations: {:?}", connect_config);
 
+    // CLI overrides are applied after `AppConfig::new` validated the config file.
+    device.check_values()?;
     let mixer = Arc::new(
-        mixer::softmixer::SoftMixer::open(MixerConfig::default()).context("opening softmixer")?,
+        mixer::softmixer::SoftMixer::open(MixerConfig {
+            volume_ctrl: device.mixer_volume_ctrl(),
+            ..MixerConfig::default()
+        })
+        .context("opening softmixer")?,
     );
     mixer.set_volume(volume);
 
@@ -189,6 +195,7 @@ pub async fn new_connection(
             .parse::<Bitrate>()
             .unwrap_or_default(),
         normalisation: device.normalization,
+        normalisation_pregain_db: device.normalization_pregain,
         ..Default::default()
     };
 
