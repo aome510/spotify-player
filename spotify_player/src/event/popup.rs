@@ -111,7 +111,9 @@ pub fn handle_key_sequence_for_popup(
             } => {
                 let search_query = search_query.clone();
                 let data = state.data.read();
-                let items = data.user_data.folder_playlists_items(*folder_id);
+                let items = data
+                    .user_data
+                    .playlist_items_for_search(*folder_id, &search_query);
                 let filtered_items = filtered_items_from_query(&search_query, &items);
 
                 handle_command_for_list_popup(
@@ -150,39 +152,27 @@ pub fn handle_key_sequence_for_popup(
                 )
             }
             PlaylistPopupAction::AddTrack {
-                folder_id,
                 track_id,
                 search_query,
             } => {
                 let search_query = search_query.clone();
                 let track_id = track_id.clone();
                 let data = state.data.read();
-                let items = data.user_data.modifiable_playlist_items(Some(*folder_id));
-                let filtered_items = filtered_items_from_query(&search_query, &items);
+                let playlists = data.user_data.modifiable_playlists();
+                let filtered_playlists = filtered_items_from_query(&search_query, &playlists);
 
                 handle_command_for_list_popup(
                     command,
                     ui,
-                    filtered_items.len(),
+                    filtered_playlists.len(),
                     |_, _| {},
                     |ui: &mut UIStateGuard, id: usize| -> Result<()> {
-                        ui.popup = match filtered_items.get(id).expect("invalid index") {
-                            PlaylistFolderItem::Folder(f) => Some(PopupState::UserPlaylistList(
-                                PlaylistPopupAction::AddTrack {
-                                    folder_id: f.target_id,
-                                    track_id,
-                                    search_query: search_query.clone(),
-                                },
-                                ListState::default(),
-                            )),
-                            PlaylistFolderItem::Playlist(p) => {
-                                client_pub.send(ClientRequest::AddPlayableToPlaylist(
-                                    p.id.clone(),
-                                    track_id.into(),
-                                ))?;
-                                None
-                            }
-                        };
+                        let playlist = filtered_playlists.get(id).expect("invalid index");
+                        client_pub.send(ClientRequest::AddPlayableToPlaylist(
+                            playlist.id.clone(),
+                            track_id.into(),
+                        ))?;
+                        ui.popup = None;
                         Ok(())
                     },
                     |ui: &mut UIStateGuard| {
@@ -191,39 +181,27 @@ pub fn handle_key_sequence_for_popup(
                 )
             }
             PlaylistPopupAction::AddEpisode {
-                folder_id,
                 episode_id,
                 search_query,
             } => {
                 let search_query = search_query.clone();
                 let episode_id = episode_id.clone();
                 let data = state.data.read();
-                let items = data.user_data.modifiable_playlist_items(Some(*folder_id));
-                let filtered_items = filtered_items_from_query(&search_query, &items);
+                let playlists = data.user_data.modifiable_playlists();
+                let filtered_playlists = filtered_items_from_query(&search_query, &playlists);
 
                 handle_command_for_list_popup(
                     command,
                     ui,
-                    filtered_items.len(),
+                    filtered_playlists.len(),
                     |_, _| {},
                     |ui: &mut UIStateGuard, id: usize| -> Result<()> {
-                        ui.popup = match filtered_items.get(id).expect("invalid index") {
-                            PlaylistFolderItem::Folder(f) => Some(PopupState::UserPlaylistList(
-                                PlaylistPopupAction::AddEpisode {
-                                    folder_id: f.target_id,
-                                    episode_id,
-                                    search_query: search_query.clone(),
-                                },
-                                ListState::default(),
-                            )),
-                            PlaylistFolderItem::Playlist(p) => {
-                                client_pub.send(ClientRequest::AddPlayableToPlaylist(
-                                    p.id.clone(),
-                                    episode_id.into(),
-                                ))?;
-                                None
-                            }
-                        };
+                        let playlist = filtered_playlists.get(id).expect("invalid index");
+                        client_pub.send(ClientRequest::AddPlayableToPlaylist(
+                            playlist.id.clone(),
+                            episode_id.into(),
+                        ))?;
+                        ui.popup = None;
                         Ok(())
                     },
                     |ui: &mut UIStateGuard| {

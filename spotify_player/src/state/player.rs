@@ -7,6 +7,7 @@ use super::queue::CustomQueue;
 #[derive(Default, Debug)]
 pub struct PlayerState {
     pub devices: Vec<Device>,
+    pub integrated_device_id: Option<String>,
 
     pub playback: Option<rspotify::model::CurrentPlaybackContext>,
     pub playback_last_updated_time: Option<std::time::Instant>,
@@ -55,6 +56,12 @@ impl PlayerState {
         }
 
         Some(playback)
+    }
+
+    pub fn is_playback_on_integrated_device(&self) -> bool {
+        self.playback.as_ref().is_some_and(|playback| {
+            playback.device.id.is_some() && playback.device.id == self.integrated_device_id
+        })
     }
 
     pub fn currently_playing(&self) -> Option<&rspotify::model::PlayableItem> {

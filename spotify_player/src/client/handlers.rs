@@ -14,7 +14,7 @@ use crate::utils::map_join;
 use super::ClientRequest;
 
 struct PlayerEventHandlerState {
-    ended_playable_uri: Option<String>,
+    end_of_playback_refresh: Option<(String, Instant)>,
     last_get_context: Instant,
     last_playback_refresh: Instant,
     last_queue_refresh: Option<(String, Instant)>,
@@ -46,6 +46,8 @@ pub async fn start_client_handler(
 const SESSION_CHECK_INTERVAL: Duration = Duration::from_secs(1);
 const CONTEXT_REFRESH_THROTTLE: Duration = Duration::from_secs(5);
 const QUEUE_REFRESH_THROTTLE: Duration = Duration::from_secs(5);
+const END_OF_PLAYBACK_REFRESH_THROTTLE: Duration = Duration::from_secs(2);
+const REMOTE_PLAYBACK_REFRESH_INTERVAL: Duration = Duration::from_secs(5);
 
 pub async fn start_session_watcher(state: SharedState, client: super::AppClient) {
     let mut interval = tokio::time::interval(SESSION_CHECK_INTERVAL);
@@ -88,11 +90,20 @@ fn handle_playback_change_event(
     let playback_ended = player
         .playback_progress()
         .is_some_and(|progress| progress >= duration && playback.is_playing);
-    if playback_ended && handler_state.ended_playable_uri.as_deref() != Some(&playable_uri) {
-        client_pub.send(ClientRequest::GetCurrentPlayback)?;
-        handler_state.ended_playable_uri = Some(playable_uri.clone());
-    } else if !playback_ended {
-        handler_state.ended_playable_uri = None;
+    if playback_ended {
+        let should_refresh =
+            handler_state
+                .end_of_playback_refresh
+                .as_ref()
+                .is_none_or(|(last_uri, timer)| {
+                    last_uri != &playable_uri || timer.elapsed() >= END_OF_PLAYBACK_REFRESH_THROTTLE
+                });
+        if should_refresh {
+            client_pub.send(ClientRequest::GetCurrentPlayback)?;
+            handler_state.end_of_playback_refresh = Some((playable_uri.clone(), Instant::now()));
+        }
+    } else {
+        handler_state.end_of_playback_refresh = None;
     }
 
     let queue_needs_refresh = player.queue.as_ref().is_none_or(|queue| {
@@ -227,14 +238,21 @@ pub fn start_player_event_watcher(state: &SharedState, client_pub: &flume::Sende
     let mut handler_state = PlayerEventHandlerState {
         last_get_context: Instant::now(),
         last_playback_refresh: Instant::now(),
-        ended_playable_uri: None,
+        end_of_playback_refresh: None,
         last_queue_refresh: None,
     };
 
     loop {
         // periodically refresh the playback state (if enabled in config)
-        if configs.app_config.playback_refresh_duration_in_ms > 0
-            && handler_state.last_playback_refresh.elapsed() >= playback_refresh_duration
+        let refresh_interval = if configs.app_config.playback_refresh_duration_in_ms > 0 {
+            Some(playback_refresh_duration)
+        } else if !state.player.read().is_playback_on_integrated_device() {
+            Some(REMOTE_PLAYBACK_REFRESH_INTERVAL)
+        } else {
+            None
+        };
+        if refresh_interval
+            .is_some_and(|interval| handler_state.last_playback_refresh.elapsed() >= interval)
         {
             client_pub
                 .send(ClientRequest::GetCurrentPlayback)
