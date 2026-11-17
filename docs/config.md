@@ -76,6 +76,7 @@ spotify_player -o device.volume=80 -o theme=dracula
 | `custom_queue`                    | Enable app-managed queue for custom playback integration (requires `streaming` feature).            | `true`                                                                 |
 | `pause_on_startup`                | Start with playback paused instead of resuming the previous session (requires `streaming` feature). | `false`                                                                |
 | `enable_relative_line_number`     | Enable Vim-style relative line numbers for lists and popups.                                        | `false`                                                                |
+| `lyrics_auto_follow_timeout_in_secs` | Seconds after scrolling the lyrics page before it follows the playing line again (`0`: never).      | `0`                                                                    |
 | `device`                          | Device configuration (see below).                                                                   | See below                                                              |
 
 ### Notes

@@ -181,6 +181,8 @@ fn handle_page_change_event(
             track_uri,
             track,
             artists,
+            scroll_offset,
+            scrolled_at,
         } => {
             if let Some(rspotify::model::PlayableItem::Track(current_track)) =
                 state.player.read().currently_playing()
@@ -191,6 +193,8 @@ fn handle_page_change_event(
                         track.clone_from(&current_track.name);
                         *artists = map_join(&current_track.artists, |a| &a.name, ", ");
                         *track_uri = id.uri();
+                        *scroll_offset = 0;
+                        *scrolled_at = None;
                         client_pub.send(ClientRequest::GetLyrics {
                             track_id: id.clone_static(),
                         })?;

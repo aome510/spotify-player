@@ -482,6 +482,7 @@ List of supported commands:
 | `RecentlyPlayedTrackPage`       | go to the user recently played track page                                                          | `g r`              |
 | `LikedTrackPage`                | go to the user liked track page                                                                    | `g y`              |
 | `LyricsPage`                    | go to the lyrics page of the current track                                                         | `g L`, `l`         |
+| `FollowLyrics`                  | scroll the lyrics page back to the playing line and follow it                                      | `f`                |
 | `LibraryPage`                   | go to the user library page                                                                        | `g l`              |
 | `SearchPage`                    | go to the search page                                                                              | `g s`              |
 | `BrowsePage`                    | go to the browse page                                                                              | `g b`              |

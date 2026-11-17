@@ -185,6 +185,10 @@ impl Default for KeymapConfig {
                     command: Command::LyricsPage,
                 },
                 Keymap {
+                    key_sequence: "f".into(),
+                    command: Command::FollowLyrics,
+                },
+                Keymap {
                     key_sequence: "g l".into(),
                     command: Command::LibraryPage,
                 },
