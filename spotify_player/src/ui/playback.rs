@@ -6,7 +6,7 @@ use super::{
 #[cfg(feature = "image")]
 use crate::state::ImageRenderInfo;
 use crate::{
-    state::Track,
+    state::{MouseArea, MouseTarget, Track},
     ui::utils::{format_genres, to_bidi_string},
 };
 use rspotify::model::Id;
@@ -116,9 +116,23 @@ pub fn render_playback_window(
             };
 
             if let Some(ref playback) = player.buffered_playback {
-                let playback_text = construct_playback_text(ui, state, item, playback);
+                let (playback_text, status_areas) =
+                    construct_playback_text(ui, state, item, playback);
                 let playback_desc = Paragraph::new(playback_text);
                 frame.render_widget(playback_desc, metadata_rect);
+
+                for area in status_areas {
+                    let x = metadata_rect.x.saturating_add(area.x);
+                    let y = metadata_rect.y.saturating_add(area.y);
+                    let width = area.width.min(metadata_rect.right().saturating_sub(x));
+                    let height = area.height.min(metadata_rect.bottom().saturating_sub(y));
+                    if width > 0 && height > 0 {
+                        ui.mouse_areas.push(MouseArea {
+                            rect: Rect::new(x, y, width, height),
+                            target: MouseTarget::ResumePause,
+                        });
+                    }
+                }
             }
 
             let duration = match item {
@@ -226,7 +240,7 @@ fn construct_playback_text(
     state: &SharedState,
     playable: &rspotify::model::PlayableItem,
     playback: &PlaybackMetadata,
-) -> Text<'static> {
+) -> (Text<'static>, Vec<Rect>) {
     // Construct a "styled" text (`playback_text`) from playback's data
     // based on a user-configurable format string (app_config.playback_format)
     let configs = config::get_config();
@@ -235,6 +249,7 @@ fn construct_playback_text(
 
     let mut playback_text = Text::default();
     let mut spans = vec![];
+    let mut status_areas = vec![];
 
     // this regex is to handle a format argument or a newline
     let re = regex::Regex::new(r"\{.*?\}|\n").unwrap();
@@ -382,7 +397,16 @@ fn construct_playback_text(
             _ => continue,
         };
 
-        spans.push(Span::styled(text, style));
+        let span = Span::styled(text, style);
+        if m.as_str() == "{status}" {
+            status_areas.push(Rect::new(
+                u16::try_from(Line::from(spans.clone()).width()).unwrap_or(u16::MAX),
+                u16::try_from(playback_text.lines.len()).unwrap_or(u16::MAX),
+                u16::try_from(span.width()).unwrap_or(u16::MAX),
+                1,
+            ));
+        }
+        spans.push(span);
     }
     if ptr < format_str.len() {
         spans.push(Span::raw(format_str[ptr..].to_string()));
@@ -391,7 +415,7 @@ fn construct_playback_text(
         playback_text.lines.push(Line::from(spans));
     }
 
-    playback_text
+    (playback_text, status_areas)
 }
 
 fn render_playback_progress_bar(
