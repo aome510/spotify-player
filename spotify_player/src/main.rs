@@ -121,9 +121,13 @@ async fn start_app(state: &state::SharedState) -> Result<()> {
     client_pub.send(client::ClientRequest::GetUserPlaylists)?;
     client_pub.send(client::ClientRequest::GetUserFollowedArtists)?;
     client_pub.send(client::ClientRequest::GetUserSavedAlbums)?;
-    client_pub.send(client::ClientRequest::GetContext(state::ContextId::Tracks(
-        state::USER_LIKED_TRACKS_ID.to_owned(),
-    )))?;
+    // Loading all liked tracks takes one request per 50 tracks, which can hit Spotify's rate
+    // limit for large libraries. When disabled, they are loaded when the liked tracks page is opened.
+    if config::get_config().app_config.load_liked_tracks_on_startup {
+        client_pub.send(client::ClientRequest::GetContext(state::ContextId::Tracks(
+            state::USER_LIKED_TRACKS_ID.to_owned(),
+        )))?;
+    }
     client_pub.send(client::ClientRequest::GetUserSavedShows)?;
 
     // client socket task (for handling CLI commands)
