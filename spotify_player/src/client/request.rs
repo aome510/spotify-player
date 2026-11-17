@@ -60,3 +60,33 @@ pub enum ClientRequest {
         desc: String,
     },
 }
+
+impl ClientRequest {
+    pub fn description(&self) -> Option<&'static str> {
+        let description = match self {
+            Self::GetCurrentPlayback | Self::GetCurrentUserQueue => return None,
+            Self::GetCurrentUser => "load user profile",
+            Self::GetDevices => "load devices",
+            Self::GetBrowseCategories => "load browse categories",
+            Self::GetBrowseCategoryPlaylists(_) => "load category playlists",
+            Self::GetUserPlaylists => "load playlists",
+            Self::GetUserSavedAlbums => "load saved albums",
+            Self::GetUserSavedShows => "load saved shows",
+            Self::GetUserFollowedArtists => "load followed artists",
+            Self::GetContext(_) => "load page",
+            Self::Search(_) => "search",
+            Self::AddPlayableToQueue(_) | Self::AddAlbumToQueue(_) => "add to queue",
+            Self::AddPlayableToPlaylist(..) => "add to playlist",
+            Self::DeleteTrackFromPlaylist(..) => "remove from playlist",
+            Self::ReorderPlaylistItems { .. } => "reorder playlist",
+            Self::AddToLibrary(_) => "add to library",
+            Self::DeleteFromLibrary(_) => "remove from library",
+            Self::Player(_) => "control playback",
+            Self::GetLyrics { .. } => "load lyrics",
+            #[cfg(feature = "streaming")]
+            Self::RestartIntegratedClient => "restart integrated client",
+            Self::CreatePlaylist { .. } => "create playlist",
+        };
+        Some(description)
+    }
+}

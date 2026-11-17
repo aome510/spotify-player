@@ -5,7 +5,11 @@ mod player;
 mod queue;
 mod ui;
 
-use std::{collections::VecDeque, sync::Arc};
+use std::{
+    collections::VecDeque,
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
 pub use constant::*;
 pub use data::*;
@@ -37,6 +41,40 @@ pub struct State {
     pub vis_bands: Option<Arc<Mutex<crate::ui::streaming::VisBands>>>,
 
     pub logs: Arc<Mutex<VecDeque<String>>>,
+
+    pub request_status: Mutex<RequestStatus>,
+}
+
+const REQUEST_ERROR_DISPLAY_DURATION: Duration = Duration::from_secs(10);
+
+#[derive(Default, Debug)]
+pub struct RequestStatus {
+    pending: usize,
+    last_error: Option<(String, Instant)>,
+}
+
+impl RequestStatus {
+    pub fn start(&mut self) {
+        self.pending += 1;
+    }
+
+    pub fn finish(&mut self, error: Option<String>) {
+        self.pending = self.pending.saturating_sub(1);
+        if let Some(error) = error {
+            self.last_error = Some((error, Instant::now()));
+        }
+    }
+
+    pub fn is_loading(&self) -> bool {
+        self.pending > 0
+    }
+
+    pub fn recent_error(&self) -> Option<&str> {
+        self.last_error
+            .as_ref()
+            .filter(|(_, time)| time.elapsed() < REQUEST_ERROR_DISPLAY_DURATION)
+            .map(|(error, _)| error.as_str())
+    }
 }
 
 impl State {
@@ -66,6 +104,8 @@ impl State {
             },
 
             logs: log_buffer,
+
+            request_status: Mutex::new(RequestStatus::default()),
         }
     }
 
@@ -94,5 +134,40 @@ impl State {
     #[cfg(feature = "streaming")]
     pub fn is_local_streaming_active(&self) -> bool {
         self.vis_bands.as_ref().is_some_and(|b| b.lock().is_active)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn request_status_tracks_pending_requests_and_errors() {
+        let mut status = RequestStatus::default();
+        assert!(!status.is_loading());
+
+        status.start();
+        status.start();
+        status.finish(None);
+        assert!(status.is_loading());
+        assert_eq!(status.recent_error(), None);
+
+        status.finish(Some("Failed to load playlists: 429".to_string()));
+        assert!(!status.is_loading());
+        assert_eq!(status.recent_error(), Some("Failed to load playlists: 429"));
+
+        status.finish(None);
+        assert!(!status.is_loading());
+    }
+
+    #[test]
+    fn request_status_hides_expired_errors() {
+        let status = RequestStatus {
+            pending: 0,
+            last_error: Instant::now()
+                .checked_sub(REQUEST_ERROR_DISPLAY_DURATION)
+                .map(|time| ("old error".to_string(), time)),
+        };
+        assert_eq!(status.recent_error(), None);
     }
 }

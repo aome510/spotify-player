@@ -215,6 +215,7 @@ The `component_style` table customizes UI component appearance. All fields are o
 | `like`                           | Style for the like indicator                              |
 | `lyrics_played`                  | Style for played lyrics lines                             |
 | `lyrics_playing`                 | Style for the currently playing lyrics line               |
+| `error`                          | Style for request error messages in the playback window   |
 | `visualization`                  | Colors for the audio visualization bars (see below)       |
 
 The `visualization` style uses three optional colors (`low`, `mid`, `high`), interpolated by bar amplitude: quiet bars use `low`, medium bars use `mid`, and loud bars use `high`. When omitted, a blue → green → red gradient is used.

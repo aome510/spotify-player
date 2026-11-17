@@ -23,7 +23,9 @@ pub fn render_playback_window(
     rect: Rect,
 ) -> Rect {
     let (rect, other_rect) = split_rect_for_playback_window(state, rect);
+    let block_rect = rect;
     let rect = construct_and_render_block("Playback", &ui.theme, Borders::ALL, frame, rect);
+    render_request_status(frame, state, &ui.theme, block_rect);
 
     let player = state.player.read();
     if let Some(ref playback) = player.playback {
@@ -152,13 +154,6 @@ pub fn render_playback_window(
 
     if player.playback_last_updated_time.is_none() {
         // Still waiting for the first successful playback fetch — show animated loading indicator
-        const SPINNER_FRAMES: [&str; 10] = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
-        let frame_idx = (std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_millis()
-            / 100) as usize
-            % SPINNER_FRAMES.len();
         let vertical_chunks = Layout::vertical([
             Constraint::Fill(1),
             Constraint::Length(1),
@@ -166,7 +161,7 @@ pub fn render_playback_window(
         ])
         .split(rect);
         frame.render_widget(
-            Paragraph::new(format!("{} Loading...", SPINNER_FRAMES[frame_idx]))
+            Paragraph::new(format!("{} Loading...", spinner_frame()))
                 .style(ui.theme.playback_metadata())
                 .alignment(Alignment::Center),
             vertical_chunks[1],
@@ -439,6 +434,64 @@ fn render_playback_progress_bar(
 
     // update the progress bar's position stored inside the UI state
     ui.playback_progress_bar_rect = rect;
+}
+
+const SPINNER_FRAMES: [&str; 10] = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+
+fn spinner_frame() -> &'static str {
+    let elapsed = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis();
+    SPINNER_FRAMES[(elapsed / 100) as usize % SPINNER_FRAMES.len()]
+}
+
+fn render_request_status(
+    frame: &mut Frame,
+    state: &SharedState,
+    theme: &config::Theme,
+    rect: Rect,
+) {
+    if rect.width <= 2 || rect.height == 0 {
+        return;
+    }
+    let area = Rect {
+        x: rect.x + 1,
+        y: rect.y,
+        width: rect.width - 2,
+        height: 1,
+    };
+
+    let status = state.request_status.lock();
+    let mut spans = Vec::new();
+    if let Some(error) = status.recent_error() {
+        let max_len = usize::from(area.width).saturating_sub(16);
+        let error = error.replace('\n', " ");
+        let error = if error.chars().count() > max_len {
+            let truncated = error
+                .chars()
+                .take(max_len.saturating_sub(1))
+                .collect::<String>();
+            format!("{truncated}…")
+        } else {
+            error
+        };
+        spans.push(Span::styled(format!(" ⚠ {error} "), theme.error()));
+    }
+    if status.is_loading() {
+        spans.push(Span::styled(
+            format!(" {} ", spinner_frame()),
+            theme.block_title(),
+        ));
+    }
+    drop(status);
+
+    if !spans.is_empty() {
+        frame.render_widget(
+            Paragraph::new(Line::from(spans)).alignment(Alignment::Right),
+            area,
+        );
+    }
 }
 
 /// Split the given area into two, the first one for the playback window
