@@ -1773,13 +1773,38 @@ impl AppClient {
             }
         }
 
+        // Music-video-only releases have no album cover, so try to borrow one from
+        // another release of the same track. The result is shared with the UI and
+        // media controls through `caches.cover_urls`.
+        if let rspotify::model::PlayableItem::Track(ref track) = curr_item {
+            if configs.app_config.disable_music_video_covers
+                && crate::utils::is_music_video_only(&track.album.images)
+            {
+                if let Some(orig) = crate::utils::get_track_album_image_url(track) {
+                    if !state.data.read().caches.cover_urls.contains_key(orig) {
+                        let alt = self.find_cover_url(track).await.unwrap_or_else(|err| {
+                            tracing::warn!("Failed to find an album cover: {err:#}");
+                            None
+                        });
+                        state
+                            .data
+                            .write()
+                            .caches
+                            .cover_urls
+                            .insert(orig.to_owned(), alt.unwrap_or_else(|| orig.to_owned()));
+                    }
+                }
+            }
+        }
+
         let url = match curr_item {
             rspotify::model::PlayableItem::Track(ref track) => {
-                crate::utils::get_track_album_image_url(track)
+                crate::utils::get_track_cover_url(track, &state.data.read())
                     .ok_or(anyhow::anyhow!("missing image"))?
             }
             rspotify::model::PlayableItem::Episode(ref episode) => {
                 crate::utils::get_episode_show_image_url(episode)
+                    .map(String::from)
                     .ok_or(anyhow::anyhow!("missing image"))?
             }
             rspotify::model::PlayableItem::Unknown(_) => return Ok(()),
@@ -1787,12 +1812,13 @@ impl AppClient {
 
         let filename = (match curr_item {
             rspotify::model::PlayableItem::Track(ref track) => {
+                // name the file after the image, so a different image for the same album
+                // (e.g. a cover instead of a music video frame) gets its own file
                 format!(
                     "{}-{}-cover-{}.jpg",
                     track.album.name,
                     track.album.artists.first().unwrap().name,
-                    // first 6 characters of the album's id
-                    &track.album.id.as_ref().unwrap().id()[..6]
+                    crate::utils::get_image_id(&url)
                 )
             }
             #[allow(deprecated)]
@@ -1811,12 +1837,12 @@ impl AppClient {
         let path = configs.cache_folder.join("image").join(filename);
 
         if configs.app_config.enable_cover_image_cache {
-            self.retrieve_image(url, &path, true).await?;
+            self.retrieve_image(&url, &path, true).await?;
         }
 
         #[cfg(feature = "image")]
-        if !state.data.read().caches.images.contains_key(url) {
-            let bytes = self.retrieve_image(url, &path, false).await?;
+        if !state.data.read().caches.images.contains_key(&url) {
+            let bytes = self.retrieve_image(&url, &path, false).await?;
 
             #[cfg(not(feature = "pixelate"))]
             let image =
@@ -1835,7 +1861,7 @@ impl AppClient {
                 .write()
                 .caches
                 .images
-                .insert(url.to_owned(), image, *TTL_CACHE_DURATION);
+                .insert(url.clone(), image, *TTL_CACHE_DURATION);
         }
 
         // notify user about the playback's change if any
@@ -1970,6 +1996,47 @@ impl AppClient {
         n.show()?;
 
         Ok(())
+    }
+
+    /// Searches for another release of `track` (same name and first artist) that has an
+    /// album cover, returning that cover's URL. Albums and singles are preferred over
+    /// other releases, and compilations are skipped.
+    async fn find_cover_url(&self, track: &rspotify::model::FullTrack) -> Result<Option<String>> {
+        let Some(artist) = track.artists.first() else {
+            return Ok(None);
+        };
+        if artist.id.is_none() {
+            return Ok(None);
+        }
+        let query = format!(
+            "track:\"{}\" artist:\"{}\"",
+            track.name.replace('"', ""),
+            artist.name.replace('"', "")
+        );
+        let result = self
+            .search_specific_type(&query, rspotify::model::SearchType::Track)
+            .await?;
+        let rspotify::model::SearchResult::Tracks(page) = result else {
+            return Ok(None);
+        };
+        Ok(page
+            .items
+            .iter()
+            .filter(|t| {
+                t.id != track.id
+                    && t.name.eq_ignore_ascii_case(&track.name)
+                    && t.artists.iter().any(|a| a.id == artist.id)
+                    && t.album.album_type.as_deref() != Some("compilation")
+            })
+            .filter_map(|t| {
+                let url = crate::utils::get_cover_image_url(&t.album.images)?;
+                let is_album_or_single =
+                    matches!(t.album.album_type.as_deref(), Some("album" | "single"));
+                Some((!is_album_or_single, url))
+            })
+            // `min_by_key` keeps the first (most relevant) result among equals
+            .min_by_key(|(rank, _)| *rank)
+            .map(|(_, url)| url.to_owned()))
     }
 
     /// Retrieve an image from a `url` or a cached `path`.

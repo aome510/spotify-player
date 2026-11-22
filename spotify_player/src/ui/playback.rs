@@ -69,7 +69,7 @@ pub fn render_playback_window(
 
                     let url = match item {
                         rspotify::model::PlayableItem::Track(track) => {
-                            crate::utils::get_track_album_image_url(track).map(String::from)
+                            crate::utils::get_track_cover_url(track, &state.data.read())
                         }
                         rspotify::model::PlayableItem::Episode(episode) => {
                             crate::utils::get_episode_show_image_url(episode).map(String::from)
