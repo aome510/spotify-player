@@ -75,8 +75,33 @@ fn init_logging(
     Ok(())
 }
 
+/// Sets the app that macOS notifications are sent on behalf of.
+///
+/// Without this, `mac-notification-sys` (used by `notify-rust`) looks up the bundle id of
+/// an app named `use_default` on the first notification, which makes macOS open a
+/// "Where is `use_default`?" app picker. Use the app that launched us (e.g. the terminal),
+/// falling back to Terminal.
+#[cfg(all(feature = "notify", target_os = "macos"))]
+fn set_notification_application() {
+    const FALLBACK: &str = "com.apple.Terminal";
+    let bundle = std::env::var("__CFBundleIdentifier")
+        .ok()
+        .filter(|b| !b.is_empty())
+        .unwrap_or_else(|| FALLBACK.to_string());
+    if let Err(err) = notify_rust::set_application(&bundle) {
+        tracing::warn!(
+            "Failed to set the notification application to {bundle}, falling back to {FALLBACK}: {err:#}"
+        );
+    }
+}
+
 #[tokio::main]
 async fn start_app(state: &state::SharedState) -> Result<()> {
+    #[cfg(all(feature = "notify", target_os = "macos"))]
+    if config::get_config().app_config.enable_notify {
+        set_notification_application();
+    }
+
     // client channels
     let (client_pub, client_sub) = flume::unbounded::<client::ClientRequest>();
 
