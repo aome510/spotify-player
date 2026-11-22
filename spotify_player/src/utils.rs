@@ -21,18 +21,47 @@ where
 
 #[allow(dead_code)]
 pub fn get_track_album_image_url(track: &rspotify::model::FullTrack) -> Option<&str> {
-    let images = &track.album.images;
-    // Spotify may list a non-square music video frame before the square album cover,
-    // so prefer the first square image when `disable_music_video_covers` is set.
-    let square = if crate::config::get_config()
-        .app_config
-        .disable_music_video_covers
-    {
-        get_square_image_url(images)
+    pick_album_image_url(
+        &track.album.images,
+        crate::config::get_config()
+            .app_config
+            .disable_music_video_covers,
+    )
+}
+
+/// Picks the album image to show. Spotify may list a music video frame before the
+/// album cover, so with `prefer_cover` the first image that isn't a video frame wins.
+pub fn pick_album_image_url(images: &[rspotify::model::Image], prefer_cover: bool) -> Option<&str> {
+    let cover = if prefer_cover {
+        get_cover_image_url(images)
     } else {
         None
     };
-    square.or(images.first().map(|i| i.url.as_str()))
+    cover.or(images.first().map(|i| i.url.as_str()))
+}
+
+/// Returns the URL of the first image that isn't a music video frame, if any.
+pub fn get_cover_image_url(images: &[rspotify::model::Image]) -> Option<&str> {
+    images
+        .iter()
+        .find(|i| !is_video_frame(i))
+        .map(|i| i.url.as_str())
+}
+
+/// Whether `images` has images but all of them are music video frames, so a cover has
+/// to be borrowed from another release.
+pub fn is_music_video_only(images: &[rspotify::model::Image]) -> bool {
+    !images.is_empty() && images.iter().all(is_video_frame)
+}
+
+/// Whether an image is clearly wider than tall (e.g. a 16:9 music video frame). Album
+/// covers are square, and images without dimensions are assumed to be covers.
+fn is_video_frame(image: &rspotify::model::Image) -> bool {
+    match (image.width, image.height) {
+        // wider than 5:4
+        (Some(w), Some(h)) => u64::from(w) * 4 > u64::from(h) * 5,
+        _ => false,
+    }
 }
 
 /// Returns the cover URL to display for `track`: the album's own image, or the
@@ -51,12 +80,23 @@ pub fn get_track_cover_url(
     )
 }
 
-/// Returns the URL of the first square image, if any.
-pub fn get_square_image_url(images: &[rspotify::model::Image]) -> Option<&str> {
-    images
-        .iter()
-        .find(|i| i.width.is_some() && i.width == i.height)
-        .map(|i| i.url.as_str())
+/// Whether the replacement cover for a music-video-only `track` is still being looked up.
+#[allow(dead_code)]
+pub fn is_cover_lookup_pending(
+    track: &rspotify::model::FullTrack,
+    data: &crate::state::AppData,
+) -> bool {
+    crate::config::get_config()
+        .app_config
+        .disable_music_video_covers
+        && is_music_video_only(&track.album.images)
+        && get_track_album_image_url(track)
+            .is_some_and(|url| !data.caches.cover_urls.contains_key(url))
+}
+
+/// Returns the id of a Spotify image from its URL (`https://i.scdn.co/image/<id>`).
+pub fn get_image_id(url: &str) -> &str {
+    url.rsplit('/').next().unwrap_or(url)
 }
 
 #[allow(dead_code)]
@@ -125,4 +165,57 @@ pub fn filtered_items_from_query<'a, T: std::fmt::Display>(
             }
         })
         .collect::<Vec<_>>()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn image(url: &str, width: Option<u32>, height: Option<u32>) -> rspotify::model::Image {
+        rspotify::model::Image {
+            height,
+            url: url.to_string(),
+            width,
+        }
+    }
+
+    #[test]
+    fn prefers_cover_over_video_frame() {
+        let images = [
+            image("frame", Some(1920), Some(1080)),
+            image("cover", Some(640), Some(640)),
+        ];
+        assert_eq!(pick_album_image_url(&images, true), Some("cover"));
+        assert_eq!(pick_album_image_url(&images, false), Some("frame"));
+        assert!(!is_music_video_only(&images));
+    }
+
+    #[test]
+    fn falls_back_to_first_image_for_music_video_only_release() {
+        let images = [
+            image("frame1", Some(1920), Some(1080)),
+            image("frame2", Some(640), Some(360)),
+        ];
+        assert_eq!(pick_album_image_url(&images, true), Some("frame1"));
+        assert!(is_music_video_only(&images));
+    }
+
+    #[test]
+    fn images_without_dimensions_and_near_square_images_are_covers() {
+        let images = [image("cover", None, None)];
+        assert_eq!(get_cover_image_url(&images), Some("cover"));
+        assert!(!is_music_video_only(&images));
+
+        let images = [image("cover", Some(640), Some(600))];
+        assert_eq!(get_cover_image_url(&images), Some("cover"));
+        assert!(!is_music_video_only(&[]));
+    }
+
+    #[test]
+    fn image_id_is_last_url_segment() {
+        assert_eq!(
+            get_image_id("https://i.scdn.co/image/ab67616d0000b273abc"),
+            "ab67616d0000b273abc"
+        );
+    }
 }

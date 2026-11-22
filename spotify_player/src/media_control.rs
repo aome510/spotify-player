@@ -38,8 +38,16 @@ fn update_control_metadata(
                 rspotify::model::PlayableItem::Unknown(_) => {}
                 rspotify::model::PlayableItem::Track(track) => {
                     // only update metadata when the track information is changed, including
-                    // when a replacement for a music video cover has been resolved
-                    let cover_url = utils::get_track_cover_url(track, &state.data.read());
+                    // when a replacement for a music video cover has been resolved. Leave
+                    // the cover out until then, so the video frame isn't shown first.
+                    let cover_url = {
+                        let data = state.data.read();
+                        if utils::is_cover_lookup_pending(track, &data) {
+                            None
+                        } else {
+                            utils::get_track_cover_url(track, &data)
+                        }
+                    };
                     let track_info = format!(
                         "{}/{}/{}",
                         track.name,
