@@ -1894,6 +1894,24 @@ impl AppClient {
         playable: &rspotify::model::PlayableItem,
         cover_img_path: &std::path::Path,
     ) -> Result<()> {
+        // On macOS, notify-rust looks up the sending app with the AppleScript
+        // `get id of application "use_default"` unless one is set, which makes macOS
+        // open a "Where is use_default?" app picker. Set the app that launched us
+        // (e.g. the terminal) instead, falling back to Terminal.
+        #[cfg(target_os = "macos")]
+        {
+            static SET_APPLICATION: std::sync::Once = std::sync::Once::new();
+            SET_APPLICATION.call_once(|| {
+                let bundle = std::env::var("__CFBundleIdentifier")
+                    .unwrap_or_else(|_| "com.apple.Terminal".to_string());
+                if let Err(err) = notify_rust::set_application(&bundle) {
+                    tracing::warn!(
+                        "Failed to set the notification application to {bundle}: {err:#}"
+                    );
+                }
+            });
+        }
+
         let mut n = notify_rust::Notification::new();
 
         let re = regex::Regex::new(r"\{.*?\}").unwrap();
