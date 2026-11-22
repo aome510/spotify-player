@@ -58,6 +58,8 @@ pub struct MemoryCaches {
     pub search: ttl_cache::TtlCache<String, SearchCacheEntry>,
     pub lyrics: ttl_cache::TtlCache<String, Option<Lyrics>>,
     pub genres: ttl_cache::TtlCache<String, Vec<String>>,
+    /// album cover URL -> URL of the cover to show instead (see `disable_music_video_covers`)
+    pub cover_urls: ttl_cache::TtlCache<String, String>,
     #[cfg(feature = "image")]
     pub images: ttl_cache::TtlCache<String, image::DynamicImage>,
 }
@@ -76,6 +78,7 @@ impl MemoryCaches {
             search: ttl_cache::TtlCache::new(64),
             lyrics: ttl_cache::TtlCache::new(64),
             genres: ttl_cache::TtlCache::new(64),
+            cover_urls: ttl_cache::TtlCache::new(64),
             #[cfg(feature = "image")]
             images: ttl_cache::TtlCache::new(64),
         }

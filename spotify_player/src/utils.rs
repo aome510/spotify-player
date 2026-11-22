@@ -21,11 +21,42 @@ where
 
 #[allow(dead_code)]
 pub fn get_track_album_image_url(track: &rspotify::model::FullTrack) -> Option<&str> {
-    if track.album.images.is_empty() {
-        None
+    let images = &track.album.images;
+    // Spotify may list a non-square music video frame before the square album cover,
+    // so prefer the first square image when `disable_music_video_covers` is set.
+    let square = if crate::config::get_config()
+        .app_config
+        .disable_music_video_covers
+    {
+        get_square_image_url(images)
     } else {
-        Some(&track.album.images[0].url)
-    }
+        None
+    };
+    square.or(images.first().map(|i| i.url.as_str()))
+}
+
+/// Returns the cover URL to display for `track`: the album's own image, or the
+/// replacement found for a music-video-only release (see `disable_music_video_covers`).
+pub fn get_track_cover_url(
+    track: &rspotify::model::FullTrack,
+    data: &crate::state::AppData,
+) -> Option<String> {
+    let url = get_track_album_image_url(track)?;
+    Some(
+        data.caches
+            .cover_urls
+            .get(url)
+            .cloned()
+            .unwrap_or_else(|| url.to_owned()),
+    )
+}
+
+/// Returns the URL of the first square image, if any.
+pub fn get_square_image_url(images: &[rspotify::model::Image]) -> Option<&str> {
+    images
+        .iter()
+        .find(|i| i.width.is_some() && i.width == i.height)
+        .map(|i| i.url.as_str())
 }
 
 #[allow(dead_code)]

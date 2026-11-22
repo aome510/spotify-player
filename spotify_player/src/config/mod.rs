@@ -125,6 +125,8 @@ pub struct AppConfig {
 
     pub enable_cover_image_cache: bool,
 
+    pub disable_music_video_covers: bool,
+
     pub device: DeviceConfig,
 
     #[cfg(all(feature = "streaming", feature = "notify"))]
@@ -392,6 +394,8 @@ impl Default for AppConfig {
             enable_notify: true,
 
             enable_cover_image_cache: true,
+
+            disable_music_video_covers: true,
 
             device: DeviceConfig::default(),
 

@@ -18,6 +18,7 @@ enable_media_control = false
 enable_streaming = "Always"
 enable_notify = true
 enable_cover_image_cache = true
+disable_music_video_covers = true
 notify_streaming_only = false
 play_icon = "▶"
 pause_icon = "▌▌"

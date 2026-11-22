@@ -37,15 +37,22 @@ fn update_control_metadata(
             match item {
                 rspotify::model::PlayableItem::Unknown(_) => {}
                 rspotify::model::PlayableItem::Track(track) => {
-                    // only update metadata when the track information is changed
-                    let track_info = format!("{}/{}", track.name, track.album.name);
+                    // only update metadata when the track information is changed, including
+                    // when a replacement for a music video cover has been resolved
+                    let cover_url = utils::get_track_cover_url(track, &state.data.read());
+                    let track_info = format!(
+                        "{}/{}/{}",
+                        track.name,
+                        track.album.name,
+                        cover_url.as_deref().unwrap_or_default()
+                    );
                     if track_info != *prev_info {
                         controls.set_metadata(MediaMetadata {
                             title: Some(&track.name),
                             album: Some(&track.album.name),
                             artist: Some(&map_join(&track.artists, |a| &a.name, ", ")),
                             duration: track.duration.to_std().ok(),
-                            cover_url: utils::get_track_album_image_url(track),
+                            cover_url: cover_url.as_deref(),
                         })?;
 
                         *prev_info = track_info;

@@ -1773,13 +1773,42 @@ impl AppClient {
             }
         }
 
+        // Music-video-only releases have no square cover, so try to borrow one from
+        // another release of the same track. The result is shared with the UI and
+        // media controls through `caches.cover_urls`.
+        let mut cover_lookup_failed = false;
+        if let rspotify::model::PlayableItem::Track(ref track) = curr_item {
+            if configs.app_config.disable_music_video_covers
+                && crate::utils::get_square_image_url(&track.album.images).is_none()
+            {
+                if let Some(orig) = crate::utils::get_track_album_image_url(track) {
+                    if !state.data.read().caches.cover_urls.contains_key(orig) {
+                        match self.find_square_cover_url(track).await {
+                            Ok(alt) => {
+                                state.data.write().caches.cover_urls.insert(
+                                    orig.to_owned(),
+                                    alt.unwrap_or_else(|| orig.to_owned()),
+                                    *TTL_CACHE_DURATION,
+                                );
+                            }
+                            Err(err) => {
+                                tracing::warn!("Failed to find a square cover image: {err:#}");
+                                cover_lookup_failed = true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         let url = match curr_item {
             rspotify::model::PlayableItem::Track(ref track) => {
-                crate::utils::get_track_album_image_url(track)
+                crate::utils::get_track_cover_url(track, &state.data.read())
                     .ok_or(anyhow::anyhow!("missing image"))?
             }
             rspotify::model::PlayableItem::Episode(ref episode) => {
                 crate::utils::get_episode_show_image_url(episode)
+                    .map(String::from)
                     .ok_or(anyhow::anyhow!("missing image"))?
             }
             rspotify::model::PlayableItem::Unknown(_) => return Ok(()),
@@ -1787,8 +1816,16 @@ impl AppClient {
 
         let filename = (match curr_item {
             rspotify::model::PlayableItem::Track(ref track) => {
+                // a replacement cover gets its own file, so a music video frame cached
+                // under the album's usual name is never shown in its place
+                let suffix = if crate::utils::get_track_album_image_url(track) == Some(url.as_str())
+                {
+                    ""
+                } else {
+                    "-alt"
+                };
                 format!(
-                    "{}-{}-cover-{}.jpg",
+                    "{}-{}-cover-{}{suffix}.jpg",
                     track.album.name,
                     track.album.artists.first().unwrap().name,
                     // first 6 characters of the album's id
@@ -1810,13 +1847,15 @@ impl AppClient {
         .replace('/', ""); // remove invalid characters from the file's name
         let path = configs.cache_folder.join("image").join(filename);
 
-        if configs.app_config.enable_cover_image_cache {
-            self.retrieve_image(url, &path, true).await?;
+        // don't save a music video frame to disk while its replacement is unknown,
+        // so a later successful lookup isn't hidden behind the cached frame
+        if configs.app_config.enable_cover_image_cache && !cover_lookup_failed {
+            self.retrieve_image(&url, &path, true).await?;
         }
 
         #[cfg(feature = "image")]
-        if !state.data.read().caches.images.contains_key(url) {
-            let bytes = self.retrieve_image(url, &path, false).await?;
+        if !state.data.read().caches.images.contains_key(&url) {
+            let bytes = self.retrieve_image(&url, &path, false).await?;
 
             #[cfg(not(feature = "pixelate"))]
             let image =
@@ -1835,7 +1874,7 @@ impl AppClient {
                 .write()
                 .caches
                 .images
-                .insert(url.to_owned(), image, *TTL_CACHE_DURATION);
+                .insert(url.clone(), image, *TTL_CACHE_DURATION);
         }
 
         // notify user about the playback's change if any
@@ -1970,6 +2009,34 @@ impl AppClient {
         n.show()?;
 
         Ok(())
+    }
+
+    /// Searches for another release of `track` (same name and first artist) whose
+    /// album has a square cover image, returning that image's URL.
+    async fn find_square_cover_url(
+        &self,
+        track: &rspotify::model::FullTrack,
+    ) -> Result<Option<String>> {
+        let Some(artist) = track.artists.first() else {
+            return Ok(None);
+        };
+        let query = format!(
+            "track:{} artist:{}",
+            track.name.replace('"', ""),
+            artist.name.replace('"', "")
+        );
+        let result = self
+            .search_specific_type(&query, rspotify::model::SearchType::Track)
+            .await?;
+        let rspotify::model::SearchResult::Tracks(page) = result else {
+            return Ok(None);
+        };
+        Ok(page
+            .items
+            .iter()
+            .filter(|t| t.id != track.id && t.artists.iter().any(|a| a.id == artist.id))
+            .find_map(|t| crate::utils::get_square_image_url(&t.album.images))
+            .map(String::from))
     }
 
     /// Retrieve an image from a `url` or a cached `path`.
