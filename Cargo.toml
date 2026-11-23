@@ -2,6 +2,21 @@
 members = ["spotify_player"]
 resolver = "2"
 
+[patch.crates-io]
+# Unmerged librespot PR #1870: handle Web API `uris` plays (spotify:webapi contexts).
+# Since ~2026-11-17, `PUT /me/player/play` with `uris` sends the device a play
+# command with context uri `spotify:webapi:<id>`; librespot 0.8.0 fails to
+# resolve it (context-resolve answers 400) and the Web API reports
+# 403 "Player command failed: Restriction violated". Revert to crates.io
+# releases once a librespot version containing #1870 is published.
+librespot-audio = { git = "https://github.com/stefanbd/librespot", rev = "afb2e6aa6ead6206089141b46e7b88134657e87d" }
+librespot-connect = { git = "https://github.com/stefanbd/librespot", rev = "afb2e6aa6ead6206089141b46e7b88134657e87d" }
+librespot-core = { git = "https://github.com/stefanbd/librespot", rev = "afb2e6aa6ead6206089141b46e7b88134657e87d" }
+librespot-metadata = { git = "https://github.com/stefanbd/librespot", rev = "afb2e6aa6ead6206089141b46e7b88134657e87d" }
+librespot-oauth = { git = "https://github.com/stefanbd/librespot", rev = "afb2e6aa6ead6206089141b46e7b88134657e87d" }
+librespot-playback = { git = "https://github.com/stefanbd/librespot", rev = "afb2e6aa6ead6206089141b46e7b88134657e87d" }
+librespot-protocol = { git = "https://github.com/stefanbd/librespot", rev = "afb2e6aa6ead6206089141b46e7b88134657e87d" }
+
 [profile.release]
 debug = 1
 

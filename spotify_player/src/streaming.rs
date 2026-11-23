@@ -97,11 +97,12 @@ impl PlayerEvent {
 fn spotify_id_to_playable_id(uri: &spotify_uri::SpotifyUri) -> anyhow::Result<PlayableId<'static>> {
     match uri {
         SpotifyUri::Track { .. } => {
-            let uri = uri.to_uri()?;
+            // `SpotifyUri::to_uri` returns `String` since librespot dev (patched PR #1870)
+            let uri = uri.to_uri();
             Ok(TrackId::from_uri(&uri)?.into_static().into())
         }
         SpotifyUri::Episode { .. } => {
-            let uri = uri.to_uri()?;
+            let uri = uri.to_uri();
             Ok(EpisodeId::from_uri(&uri)?.into_static().into())
         }
         _ => anyhow::bail!("unexpected spotify_id {uri:?}"),
@@ -172,6 +173,7 @@ pub async fn new_connection(
         is_group: false,
         disable_volume: false,
         volume_steps: 64,
+        emit_set_queue_events: false,
     };
 
     tracing::info!("Application's connect configurations: {:?}", connect_config);
