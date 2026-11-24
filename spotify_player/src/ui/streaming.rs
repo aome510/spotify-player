@@ -364,8 +364,8 @@ fn bar_color(t: f32, low: Color, mid: Color, high: Color) -> Color {
 
 /// Render a frequency-band bar chart using live FFT data from the audio sink.
 ///
-/// Bars are subsampled to the available rect width so they always fill the area
-/// cleanly. Heights use a sqrt (perceptual) curve so quiet signals stay visible.
+/// Draws one bar per column, resampled from the bands, so the chart fills the
+/// area at any width. Heights use a sqrt (perceptual) curve so quiet signals stay visible.
 /// Each bar is coloured by its amplitude using the theme's visualization colors:
 /// `low` (quiet) → `mid` → `high` (loud).
 pub fn render_audio_visualization(
@@ -393,18 +393,16 @@ pub fn render_audio_visualization(
     let values = guard.values;
     drop(guard);
     let vis_colors = theme.visualization();
-    let num_bars = (rect.width as usize).min(values.len()).max(1);
     // Multiply by 8 to use ratatui's eighth-block characters (▁▂▃▄▅▆▇█),
     // giving 8× the resolution of whole terminal rows.
     let max_val = u64::from(rect.height) * 8;
 
-    let step = values.len() as f64 / num_bars as f64;
-    let bars: Vec<Bar> = (0..num_bars)
-        .map(|i| {
-            let idx = ((i as f64 * step) as usize).min(values.len() - 1);
+    let bars: Vec<Bar> = resample_bands(&values, (rect.width as usize).max(1))
+        .into_iter()
+        .map(|value| {
             // Normalise against the slow peak envelope, then apply inter-frame decay.
             // Sqrt (gamma 0.5) scaling boosts quiet signals without clipping louds.
-            let norm = ((values[idx] * display_decay) / peak_norm)
+            let norm = ((value * display_decay) / peak_norm)
                 .clamp(0.0, 1.0)
                 .powf(0.5);
             let val = (norm * max_val as f32) as u64;
@@ -427,4 +425,57 @@ pub fn render_audio_visualization(
         .max(max_val);
 
     frame.render_widget(chart, rect);
+}
+
+/// Resamples `bands` to `columns` values so the chart fills the full width.
+/// Wider charts interpolate linearly between neighbouring bands; narrower charts
+/// average the bands that share a column, so short spikes are not dropped.
+fn resample_bands(bands: &[f32], columns: usize) -> Vec<f32> {
+    let len = bands.len();
+    if columns >= len {
+        let scale = len as f32 / columns as f32;
+        (0..columns)
+            .map(|i| {
+                let pos = ((i as f32 + 0.5) * scale - 0.5).clamp(0.0, (len - 1) as f32);
+                let lo = pos as usize;
+                let hi = (lo + 1).min(len - 1);
+                let t = pos - lo as f32;
+                bands[lo] * (1.0 - t) + bands[hi] * t
+            })
+            .collect()
+    } else {
+        (0..columns)
+            .map(|i| {
+                let group = &bands[i * len / columns..(i + 1) * len / columns];
+                group.iter().sum::<f32>() / group.len() as f32
+            })
+            .collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::resample_bands;
+
+    #[test]
+    fn resample_same_width_is_identity() {
+        let bands: Vec<f32> = (0..128).map(|i| i as f32).collect();
+        assert_eq!(resample_bands(&bands, 128), bands);
+    }
+
+    #[test]
+    fn resample_narrower_averages_groups() {
+        assert_eq!(resample_bands(&[1.0, 3.0, 5.0, 7.0], 2), vec![2.0, 6.0]);
+    }
+
+    #[test]
+    fn resample_wider_fills_every_column_within_range() {
+        let bands: Vec<f32> = (0..128).map(|i| i as f32).collect();
+        for columns in 1..=600 {
+            let out = resample_bands(&bands, columns);
+            assert_eq!(out.len(), columns);
+            assert!(out.iter().all(|v| (0.0..=127.0).contains(v)));
+        }
+        assert_eq!(resample_bands(&[0.0, 4.0], 4), vec![0.0, 1.0, 3.0, 4.0]);
+    }
 }
