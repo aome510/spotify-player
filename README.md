@@ -371,6 +371,8 @@ cargo install spotify_player --features notify
 
 **Note**: Notification support is limited on macOS and Windows compared to Linux.
 
+On macOS, notifications are sent on behalf of the app that launched `spotify_player` (e.g. your terminal), so that app needs notification permission in System Settings. When it can't be detected (e.g. over SSH), Terminal is used. Under `tmux`, notifications are sent on behalf of the terminal that started the `tmux` server.
+
 ### Mouse support
 
 Mouse support: You can seek to a position in the playback by left-clicking the progress bar.
