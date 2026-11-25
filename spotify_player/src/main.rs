@@ -75,22 +75,23 @@ fn init_logging(
     Ok(())
 }
 
-/// Sets the app that macOS notifications are sent on behalf of.
+/// Sets the app that macOS notifications are sent on behalf of: the app that launched us
+/// (e.g. the terminal), or Terminal if that's unknown.
 ///
-/// Without this, `mac-notification-sys` (used by `notify-rust`) looks up the bundle id of
-/// an app named `use_default` on the first notification, which makes macOS open a
-/// "Where is `use_default`?" app picker. Use the app that launched us (e.g. the terminal),
-/// falling back to Terminal.
+/// Without this, `mac-notification-sys` (used by `notify-rust`) looks up an app named
+/// `use_default` on the first notification, which makes macOS open a
+/// "Where is `use_default`?" app picker.
 #[cfg(all(feature = "notify", target_os = "macos"))]
 fn set_notification_application() {
-    const FALLBACK: &str = "com.apple.Terminal";
     let bundle = std::env::var("__CFBundleIdentifier")
         .ok()
         .filter(|b| !b.is_empty())
-        .unwrap_or_else(|| FALLBACK.to_string());
+        .unwrap_or_else(|| "com.apple.Terminal".to_string());
+    // `set_application` only takes effect on its first call, so a failure can't be retried
+    // with another bundle id. It still stops the `use_default` lookup.
     if let Err(err) = notify_rust::set_application(&bundle) {
         tracing::warn!(
-            "Failed to set the notification application to {bundle}, falling back to {FALLBACK}: {err:#}"
+            "Failed to set the macOS notification application to {bundle}, notifications may not be shown: {err:#}"
         );
     }
 }
